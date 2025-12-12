@@ -1,0 +1,110 @@
+# ==============================================================================
+# BAM Engine Default Configuration
+# ==============================================================================
+#
+# This file provides default parameter values for BAM (Bottom-Up Adaptive
+# Macroeconomics) simulations. All parameters can be overridden via:
+#
+#   1. Custom YAML config file: Simulation.init(config="my_config.yml")
+#   2. Keyword arguments: Simulation.init(n_firms=200, seed=42)
+#
+# Time scale: 1 period = 1 quarter (4 periods = 1 year)
+#
+# Parameter precedence (later overrides earlier):
+#   1. This file (defaults.yml)
+#   2. User config file (if provided)
+#   3. Keyword arguments (highest priority)
+#
+# See Also
+# --------
+# - bamengine.config.schema.Config : Configuration dataclass
+# - bamengine.config.validator.ConfigValidator : Validation logic
+# - bamengine.simulation.Simulation.init : Initialize simulation
+# - notes/CALIBRATION.md : Rationale for parameter choices
+#
+# ==============================================================================
+
+# ── POPULATION SIZES ──────────────────────────────────────────────────────────
+# Number of agents in each population.
+# Recommendation: n_households >= 5 * n_firms for realistic labor markets.
+
+n_firms:              100        # Producer/Employer agents (firms)
+n_households:         500        # Worker/Consumer agents (households)
+n_banks:               10        # Lender agents (commercial banks)
+
+# ── RUN LENGTH ────────────────────────────────────────────────────────────────
+# Default number of periods for Simulation.run() when n_periods not specified.
+
+n_periods:            1000       # Simulation periods (quarters)
+
+# ── STOCHASTIC SHOCK WIDTHS ───────────────────────────────────────────────────
+# Maximum magnitude of random shocks (drawn from uniform distribution).
+# Example: h_rho = 0.10 means production growth shock in [-10%, +10%].
+
+h_rho:                0.10       # Production growth shock cap (firms)
+h_xi:                 0.05       # Wage growth shock cap (firms)
+h_phi:                0.10       # Bank operating expense shock cap (banks)
+h_eta:                0.10       # Price adjustment shock cap (firms)
+
+# ── SEARCH FRICTIONS ──────────────────────────────────────────────────────────
+# Market matching constraints limiting how many partners agents can contact
+# per period. Higher values reduce frictions but increase computation time.
+
+max_M:                4          # Job applications per unemployed worker/period
+max_H:                2          # Loan applications per firm/period
+max_Z:                2          # Shops a household can visit/period
+
+# ── ECONOMY-WIDE STRUCTURAL PARAMETERS ────────────────────────────────────────
+# Behavioral and policy parameters affecting all agents.
+
+theta:                8          # Job contract base length (periods)
+                                 # Actual duration: θ + Poisson(10)
+beta:                 2.50       # Consumption propensity exponent
+                                 # Controls how strongly savings affect spending:
+                                 #   π_j = 1 / (1 + tanh(SA_j / SA_avg)^β)
+                                 # Higher β = stronger response to savings
+delta:                0.40       # Dividend payout ratio (share of profits)
+                                 # Fraction of positive profits paid as dividends
+v:                    0.06       # Bank capital requirement coefficient
+                                 # Max leverage = 1/v (default: ~16.7x)
+r_bar:                0.02       # Baseline interest rate (quarterly)
+                                 # Policy rate used in bank interest calculations
+min_wage:             0.6        # Initial minimum wage floor
+min_wage_rev_period:  4          # Periods between min wage adjustments
+                                 # Adjusts with inflation every 4 quarters (1 year)
+
+# ── INITIAL CONDITIONS ────────────────────────────────────────────────────────
+# Balance sheet values at t=0. Can be scalars (broadcast to all agents) or
+# arrays of length n_firms/n_households for heterogeneous initialization.
+
+net_worth_init:      12.0        # Firm net worth at t=0 (money units)
+production_init:      4.0        # Firm production at t=0 (goods units)
+price_init:           1.0        # Goods price at t=0 (money/goods)
+savings_init:         3.0        # Household savings at t=0 (money units)
+wage_offer_init:      0.9        # Wage offer at t=0 (money/period)
+equity_base_init:     5.0        # Bank equity at t=0 (money units)
+
+# ── RANDOM NUMBER GENERATION ──────────────────────────────────────────────────
+# Seed for deterministic simulations. Use fixed seed for reproducibility,
+# or set to null for non-deterministic behavior.
+
+seed:               12345        # RNG seed (null = random seed)
+
+# ── PIPELINE CONFIGURATION ────────────────────────────────────────────────────
+# Path to custom event pipeline YAML. If null, uses config/default_pipeline.yml.
+# Custom pipelines allow reordering events, removing events, or adding custom
+# events. See config/default_pipeline.yml for syntax.
+
+pipeline_path:      null         # Custom pipeline path (null = use default)
+
+# ── LOGGING CONFIGURATION ─────────────────────────────────────────────────────
+# Control log output verbosity globally and per-event.
+# Levels: TRACE (5), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
+
+logging:
+  default_level:    INFO         # Default log level for all events
+  events:           {}           # Per-event overrides
+                                 # Example:
+                                 #   workers_send_one_round: WARNING
+                                 #   firms_hire_workers: DEBUG
+                                 #   firms_adjust_price: TRACE
