@@ -1,0 +1,29 @@
+name: Linters
+run-name: ${{ github.actor }} execute Linters 🚀
+permissions:
+  contents: read
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  steps:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Realiza o checkout
+        uses: actions/checkout@v4
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: 3.11
+
+      - name: Instala dependências
+        run: uv sync --group linter
+
+      - name: Executa Ruff
+        run: uv run ruff check
+
+      - name: Executa Mypy
+        run: uv run mypy .

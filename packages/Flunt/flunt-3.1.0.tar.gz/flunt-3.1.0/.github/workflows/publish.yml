@@ -1,0 +1,31 @@
+name: Publish
+permissions:
+  contents: read
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Realiza o checkout
+      uses: actions/checkout@v4
+
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        python-version: 3.11
+        cache-dependency-glob: "pyproject.toml"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Build and publish to pypi
+      run: uv build
+
+    - name: Publish to pypi
+      run: uv publish --token ${{ secrets.TOKEN_PYPI_PYFLUNT }}
