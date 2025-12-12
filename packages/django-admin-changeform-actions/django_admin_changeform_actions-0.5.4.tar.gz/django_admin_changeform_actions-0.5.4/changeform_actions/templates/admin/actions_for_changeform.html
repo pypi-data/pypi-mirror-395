@@ -1,0 +1,54 @@
+{% load i18n %}
+
+<li style="margin-left: 15px;">
+  <form
+    id="changeform_actions"
+    action="{{ action_form_url }}"
+    method="post"
+  >
+    {% csrf_token %}
+
+    <input type="hidden" name="app_label" value="{{ app_label }}">
+    <input type="hidden" name="model_name" value="{{ model_name }}">
+    <input type="hidden" name="pk" value="{{ object_id }}">
+
+    <!-- Based on: https://github.com/django/django/blob/5.2.7/django/contrib/admin/templates/admin/actions.html -->
+    <div class="actions">
+      <label>{{ action_form.action.label }} {{ action_form.action}}</label>
+      <!-- Note: This button changed in 6.0a1, we should update it once released or use alternating versions based on host django project version
+           https://github.com/django/django/commit/019acad112da3d00bb81b3022fd25ccd8457e5d9 -->
+      <button type="submit" class="button" title="{% translate "Run the selected action" %}" name="index" value="{{ action_index|default:0 }}">{% translate "Go" %}</button>
+    </div>
+
+  </form>
+</li>
+
+<style>
+/* Based on: #changelist .actions ... */
+
+#changeform_actions .actions select {
+    vertical-align: top;
+    height: 1.5rem;
+    color: var(--body-fg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    padding: 0 0 0 4px;
+    margin: 0;
+    margin-left: 10px;
+}
+
+#changeform_actions .actions .button {
+    font-size: 0.8125rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--body-bg);
+    box-shadow: 0 -15px 20px -10px rgba(0, 0, 0, 0.15) inset;
+    cursor: pointer;
+    height: 1.5rem;
+    line-height: 1;
+    padding: 4px 8px;
+    margin: 0;
+    color: var(--body-fg);
+}
+</style>
