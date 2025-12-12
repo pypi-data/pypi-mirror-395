@@ -1,0 +1,1 @@
+var generateChoiceUrl = "{% url data.generate_choice_url data.data_structure_id %}";
