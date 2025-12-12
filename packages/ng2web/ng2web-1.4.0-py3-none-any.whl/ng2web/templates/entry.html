@@ -1,0 +1,24 @@
+{# -*- engine: jinja2 -*- #}
+
+{% extends "base.html" %}
+
+{% block title %}{{ entry|title }}{% endblock %}
+
+{% block content %}
+  {% block prelines %}{% endblock %}
+  {% block lines %}
+    <pre class="entry">
+      {%- for line in entry -%}
+        {%- if line is string or not line.has_offset -%}
+          <span class="line">{{ line|toHTML }}</span>
+        {%- else -%}
+          <a class="line" href="{{ line|urlify }}">{{ line.text|toHTML }}</a>
+        {%- endif -%}
+        <br />
+    {%- endfor -%}
+    </pre>
+  {% endblock %}
+  {% block postlines %}{% endblock %}
+{% endblock %}
+
+{# entry.html ends here #}
