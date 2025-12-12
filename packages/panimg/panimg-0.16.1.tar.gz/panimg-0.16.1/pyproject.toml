@@ -1,0 +1,73 @@
+[project]
+authors = [
+    {name = "James Meakin"},
+]
+license = {text = "Apache-2.0"}
+requires-python = "<4.0,>=3.10"
+dependencies = [
+    "pydantic>=2",
+    "numpy>=1.22",
+    "SimpleITK!=2.1.1.1,>=2.0",
+    "pydicom>=2.2",
+    "Pillow",
+    "openslide-python",
+    "pyvips",
+    "tifffile",
+    "construct",
+    "click",
+    "pylibjpeg",
+    "pylibjpeg-libjpeg",
+    "pylibjpeg-openjpeg",
+    "wsidicom>=0.10.0",
+    "imagecodecs>=2023.3.16",
+]
+name = "panimg"
+version = "0.16.1"
+description = "Conversion of medical images to MHA and TIFF."
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Healthcare Industry",
+    "Operating System :: POSIX",
+]
+
+[project.urls]
+repository = "https://github.com/DIAGNijmegen/rse-panimg"
+
+[project.optional-dependencies]
+isyntax = [
+    "pyisyntax>=0.1.5",
+]
+
+[project.scripts]
+panimg = "panimg.cli:cli"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-xdist",
+    "pytest-randomly",
+    "pytest-cov",
+    "pre-commit",
+]
+
+[tool.uv]
+package = true
+
+[tool.isort]
+profile = "black"
+known_first_party = ["panimg", "tests"]
+line_length = 79
+
+[tool.black]
+line-length = 79
+target-version = ['py38']
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = [
+    "tests",
+]
+python_files = "tests.py test_*.py *_tests.py"
+addopts = "--strict-markers --showlocals -n auto --dist loadscope"
