@@ -1,0 +1,118 @@
+"""Tests for the cluster kernel module."""
+
+import os
+import sys
+
+import numpy as np
+import pytest
+
+from crow import completeness_models, kernel, purity_models
+
+
+def test_create_spectroscopic_redshift_kernel():
+    srk = kernel.SpectroscopicRedshift()
+    assert srk is not None
+
+
+def test_create_mass_kernel():
+    mk = kernel.TrueMass()
+    assert mk is not None
+
+
+def test_create_completeness_kernel():
+    ck = completeness_models.CompletenessAguena16()
+    ck.parameters["a_logm_piv"] = 13.31
+    ck.parameters["b_logm_piv"] = 0.2025
+    ck.parameters["a_n"] = 0.38
+    ck.parameters["b_n"] = 1.2634
+    assert ck is not None
+    assert ck.parameters["a_logm_piv"] == 13.31
+    assert ck.parameters["b_logm_piv"] == 0.2025
+    assert ck.parameters["a_n"] == 0.38
+    assert ck.parameters["b_n"] == 1.2634
+
+
+def test_create_purity_kernel():
+    pk = purity_models.PurityAguena16()
+    pk.parameters["a_n"] = 3.9193
+    pk.parameters["b_n"] = -0.3323
+    pk.parameters["a_logm_piv"] = 1.1839
+    pk.parameters["b_logm_piv"] = -0.4077
+    assert pk is not None
+    assert pk.parameters["a_n"] == 3.9193
+    assert pk.parameters["b_n"] == -0.3323
+    assert pk.parameters["a_logm_piv"] == 1.1839
+    assert pk.parameters["b_logm_piv"] == -0.4077
+
+
+def test_spec_z_distribution():
+    srk = kernel.SpectroscopicRedshift()
+    assert srk.distribution() == 1.0
+
+
+def test_true_mass_distribution():
+    tmk = kernel.TrueMass()
+    assert tmk.distribution() == 1.0
+
+
+@pytest.mark.precision_sensitive
+def test_purity_distribution():
+    pk = purity_models.PurityAguena16()
+    pk.parameters["a_n"] = 3.9193
+    pk.parameters["b_n"] = -0.3323
+    pk.parameters["a_logm_piv"] = 1.1839
+    pk.parameters["b_logm_piv"] = -0.4077
+    log_mass_proxy = np.linspace(0.0, 2.5, 10, dtype=np.float64)
+    z = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], dtype=np.float64)
+
+    truth = np.array(
+        [
+            0.00242882,
+            0.03294582,
+            0.3122527,
+            0.85213252,
+            0.98584893,
+            0.99875485,
+            0.99988632,
+            0.99998911,
+            0.99999891,
+            0.99999988,
+        ],
+        dtype=np.float64,
+    )
+
+    purity_values = pk.distribution(log_mass_proxy, z).flatten()
+    assert isinstance(purity_values, np.ndarray)
+    for ref, true in zip(purity_values, truth):
+        assert ref == pytest.approx(true, rel=1e-5, abs=0.0)
+
+
+@pytest.mark.precision_sensitive
+def test_completeness_distribution():
+    ck = completeness_models.CompletenessAguena16()
+    ck.parameters["a_logm_piv"] = 13.31
+    ck.parameters["b_logm_piv"] = 0.2025
+    ck.parameters["a_n"] = 0.38
+    ck.parameters["b_n"] = 1.2634
+    mass = np.linspace(13.0, 15.0, 10, dtype=np.float64)
+    z = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], dtype=np.float64)
+
+    truth = np.array(
+        [
+            0.10239024,
+            0.19090539,
+            0.35438466,
+            0.58952617,
+            0.80866296,
+            0.93327968,
+            0.98115635,
+            0.99543348,
+            0.99902667,
+            0.99981606,
+        ]
+    )
+
+    comp = ck.distribution(mass, z).flatten()
+    assert isinstance(comp, np.ndarray)
+    for ref, true in zip(comp, truth):
+        assert ref == pytest.approx(true, rel=1e-7, abs=0.0)
