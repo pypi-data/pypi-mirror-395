@@ -1,0 +1,3120 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Google Chronicle Security",
+            "group": "gcp",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources.html"
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 10000000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "batch_size": {
+                "default": 2000,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "optional": true,
+                "hidden": true
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 3600,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "config_map": {
+                        "int_supported_fields": [
+                            "src.port",
+                            "principal.port",
+                            "target.port",
+                            "network.received_bytes",
+                            "network.sent_bytes",
+                            "network.dns.id",
+                            "network.session_duration.seconds",
+                            "network.dns.opcode",
+                            "network.dns.response_code",
+                            "network.dns.questions.class",
+                            "network.dns.questions.type",
+                            "network.dhcp.transaction_id",
+                            "network.http.response_code",
+                            "src.file.size",
+                            "target.file.size",
+                            "about.file.size",
+                            "src.process.file.size",
+                            "target.process.file.size",
+                            "principal.process.file.size"
+                        ],
+                        "timestamp_supported_fields": [
+                            "src.file.last_modification_time.seconds",
+                            "target.file.last_modification_time.seconds",
+                            "src.process.file.last_modification_time.seconds",
+                            "target.process.file.last_modification_time.seconds",
+                            "principal.process.file.last_modification_time.seconds",
+                            "about.file.last_modification_time.seconds",
+                            "network.tls.server.certificate.not_before.seconds",
+                            "network.tls.client.certificate.not_before.seconds",
+                            "network.tls.server.certificate.not_after.seconds",
+                            "network.tls.client.certificate.not_after.seconds",
+                            "metadata.event_timestamp.seconds"
+                        ],
+                        "mac_supported_fields": [
+                            "src.mac",
+                            "target.mac",
+                            "principal.mac"
+                        ],
+                        "email_supported_fields": [
+                            "security_result.about.email",
+                            "principal.user.email_addresses",
+                            "src.user.email_addresses",
+                            "target.user.email_addresses",
+                            "network.email.from",
+                            "network.email.to",
+                            "network.email.cc",
+                            "network.email.bcc"
+                        ],
+                        "enum_supported_fields": [
+                            "network.ip_protocol",
+                            "network.application_protocol",
+                            "network.dhcp.opcode",
+                            "network.dhcp.type",
+                            "src.user.account_type",
+                            "target.user.account_type",
+                            "principal.user.account_type",
+                            "src.file.file_type",
+                            "target.file.file_type",
+                            "src.process.file.file_type",
+                            "about.file.file_type",
+                            "target.process.file.file_type",
+                            "principal.process.file.file_type",
+                            "metadata.event_type",
+                            "src.resource.resource_type",
+                            "target.resource.resource_type",
+                            "principal.resource.resource_type",
+                            "src.resource.attribute.cloud.environment",
+                            "target.resource.attribute.cloud.environment",
+                            "principal.resource.attribute.cloud.environment",
+                            "security_result.action",
+                            "security_result.severity",
+                            "security_result.alert_state",
+                            "security_result.category",
+                            "security_result.threat_status",
+                            "principal.asset.type",
+                            "src.asset.platform_software.platform",
+                            "target.asset.platform_software.platform",
+                            "principal.asset.platform_software.platform",
+                            "src.asset.attribute.cloud.environment",
+                            "target.asset.attribute.cloud.environment",
+                            "principal.asset.attribute.cloud.environment",
+                            "network.direction"
+                        ],
+                        "enum_supported_values": {
+                            "ip_protocol": [
+                                "UNKNOWN_IP_PROTOCOL",
+                                "EIGRP",
+                                "ESP",
+                                "ETHERIP",
+                                "GRE",
+                                "ICMP",
+                                "IGMP",
+                                "IP6IN4",
+                                "PIM",
+                                "TCP",
+                                "UDP",
+                                "VRRP"
+                            ],
+                            "application_protocol": [
+                                "UNKNOWN_APPLICATION_PROTOCOL",
+                                "AFP",
+                                "APPC",
+                                "AMQP",
+                                "ATOM",
+                                "BEEP",
+                                "BITCOIN",
+                                "BIT_TORRENT",
+                                "CFDP",
+                                "COAP",
+                                "DDS",
+                                "DEVICE_NET",
+                                "DHCP",
+                                "DNS",
+                                "E_DONKEY",
+                                "ENRP",
+                                "FAST_TRACK",
+                                "FINGER",
+                                "FREENET",
+                                "FTAM",
+                                "GOPHER",
+                                "HL7",
+                                "H323",
+                                "HTTP",
+                                "HTTPS",
+                                "IRCP",
+                                "KADEMLIA",
+                                "LDAP",
+                                "LPD",
+                                "MIME",
+                                "MODBUS",
+                                "MQTT",
+                                "NETCONF",
+                                "NFS",
+                                "NIS",
+                                "NNTP",
+                                "NTCIP",
+                                "NTP",
+                                "OSCAR",
+                                "PNRP",
+                                "QUIC",
+                                "RDP",
+                                "RELP",
+                                "RIP",
+                                "RLOGIN",
+                                "RPC",
+                                "RTMP",
+                                "RTP",
+                                "RTPS",
+                                "RTSP",
+                                "SAP",
+                                "SDP",
+                                "SIP",
+                                "SLP",
+                                "SMB",
+                                "SMTP",
+                                "SNTP",
+                                "SSH",
+                                "SSMS",
+                                "STYX",
+                                "TCAP",
+                                "TDS",
+                                "TOR",
+                                "TSP",
+                                "VTP",
+                                "WHOIS",
+                                "WEB_DAV",
+                                "X400",
+                                "X500",
+                                "XMPP"
+                            ],
+                            "opcode": [
+                                "UNKNOWN_OPCODE",
+                                "BOOTREQUEST",
+                                "BOOTREPLY"
+                            ],
+                            "network.dhcp.type": [
+                                "UNKNOWN_MESSAGE_TYPE",
+                                "DISCOVER",
+                                "OFFER",
+                                "REQUEST",
+                                "DECLINE",
+                                "ACK",
+                                "NAK",
+                                "RELEASE",
+                                "INFORM",
+                                "WIN_DELETED",
+                                "WIN_EXPIRED"
+                            ],
+                            "account_type": [
+                                "ACCOUNT_TYPE_UNSPECIFIED",
+                                "DOMAIN_ACCOUNT_TYPE",
+                                "LOCAL_ACCOUNT_TYPE",
+                                "CLOUD_ACCOUNT_TYPE",
+                                "SERVICE_ACCOUNT_TYPE",
+                                "DEFAULT_ACCOUNT_TYPE"
+                            ],
+                            "file_type": [
+                                "FILE_TYPE_UNSPECIFIED",
+                                "FILE_TYPE_PE_EXE",
+                                "FILE_TYPE_PE_DLL",
+                                "FILE_TYPE_MSI",
+                                "FILE_TYPE_NE_EXE",
+                                "FILE_TYPE_NE_DLL",
+                                "FILE_TYPE_DOS_EXE",
+                                "FILE_TYPE_DOS_COM",
+                                "FILE_TYPE_COFF",
+                                "FILE_TYPE_ELF",
+                                "FILE_TYPE_LINUX_KERNEL",
+                                "FILE_TYPE_RPM",
+                                "FILE_TYPE_LINUX",
+                                "FILE_TYPE_MACH_O",
+                                "FILE_TYPE_JAVA_BYTECODE",
+                                "FILE_TYPE_DMG",
+                                "FILE_TYPE_DEB",
+                                "FILE_TYPE_PKG",
+                                "FILE_TYPE_LNK",
+                                "FILE_TYPE_JPEG",
+                                "FILE_TYPE_TIFF",
+                                "FILE_TYPE_GIF",
+                                "FILE_TYPE_PNG",
+                                "FILE_TYPE_BMP",
+                                "FILE_TYPE_GIMP",
+                                "FILE_TYPE_IN_DESIGN",
+                                "FILE_TYPE_PSD",
+                                "FILE_TYPE_TARGA",
+                                "FILE_TYPE_XWD",
+                                "FILE_TYPE_DIB",
+                                "FILE_TYPE_JNG",
+                                "FILE_TYPE_ICO",
+                                "FILE_TYPE_FPX",
+                                "FILE_TYPE_EPS",
+                                "FILE_TYPE_SVG",
+                                "FILE_TYPE_EMF",
+                                "FILE_TYPE_WEBP",
+                                "FILE_TYPE_OGG",
+                                "FILE_TYPE_FLC",
+                                "FILE_TYPE_FLI",
+                                "FILE_TYPE_MP3",
+                                "FILE_TYPE_FLAC",
+                                "FILE_TYPE_WAV",
+                                "FILE_TYPE_MIDI",
+                                "FILE_TYPE_AVI",
+                                "FILE_TYPE_MPEG",
+                                "FILE_TYPE_QUICKTIME",
+                                "FILE_TYPE_ASF",
+                                "FILE_TYPE_DIVX",
+                                "FILE_TYPE_FLV",
+                                "FILE_TYPE_WMA",
+                                "FILE_TYPE_WMV",
+                                "FILE_TYPE_RM",
+                                "FILE_TYPE_MOV",
+                                "FILE_TYPE_MP4",
+                                "FILE_TYPE_T3GP",
+                                "FILE_TYPE_PDF",
+                                "FILE_TYPE_PS",
+                                "FILE_TYPE_DOC",
+                                "FILE_TYPE_DOCX",
+                                "FILE_TYPE_PPT",
+                                "FILE_TYPE_PPTX",
+                                "FILE_TYPE_PPSX",
+                                "FILE_TYPE_XLS",
+                                "FILE_TYPE_XLSX",
+                                "FILE_TYPE_RTF",
+                                "FILE_TYPE_ODP",
+                                "FILE_TYPE_ODS",
+                                "FILE_TYPE_ODT",
+                                "FILE_TYPE_HWP",
+                                "FILE_TYPE_GUL",
+                                "FILE_TYPE_ODF",
+                                "FILE_TYPE_ODG",
+                                "FILE_TYPE_EBOOK",
+                                "FILE_TYPE_LATEX",
+                                "FILE_TYPE_TTF",
+                                "FILE_TYPE_EOT",
+                                "FILE_TYPE_WOFF",
+                                "FILE_TYPE_CHM",
+                                "FILE_TYPE_ZIP",
+                                "FILE_TYPE_GZIP",
+                                "FILE_TYPE_BZIP",
+                                "FILE_TYPE_RZIP",
+                                "FILE_TYPE_DZIP",
+                                "FILE_TYPE_SEVENZIP",
+                                "FILE_TYPE_CAB",
+                                "FILE_TYPE_JAR",
+                                "FILE_TYPE_RAR",
+                                "FILE_TYPE_MSCOMPRESS",
+                                "FILE_TYPE_ACE",
+                                "FILE_TYPE_ARC",
+                                "FILE_TYPE_ARJ",
+                                "FILE_TYPE_ASD",
+                                "FILE_TYPE_BLACKHOLE",
+                                "FILE_TYPE_KGB",
+                                "FILE_TYPE_ZLIB",
+                                "FILE_TYPE_TAR",
+                                "FILE_TYPE_TEXT",
+                                "FILE_TYPE_SCRIPT",
+                                "FILE_TYPE_PHP",
+                                "FILE_TYPE_PYTHON",
+                                "FILE_TYPE_PERL",
+                                "FILE_TYPE_RUBY",
+                                "FILE_TYPE_C",
+                                "FILE_TYPE_CPP",
+                                "FILE_TYPE_JAVA",
+                                "FILE_TYPE_SHELLSCRIPT",
+                                "FILE_TYPE_PASCAL",
+                                "FILE_TYPE_AWK",
+                                "FILE_TYPE_DYALOG",
+                                "FILE_TYPE_FORTRAN",
+                                "FILE_TYPE_JAVASCRIPT",
+                                "FILE_TYPE_POWERSHELL",
+                                "FILE_TYPE_VBA",
+                                "FILE_TYPE_SYMBIAN",
+                                "FILE_TYPE_PALMOS",
+                                "FILE_TYPE_WINCE",
+                                "FILE_TYPE_ANDROID",
+                                "FILE_TYPE_IPHONE",
+                                "FILE_TYPE_HTML",
+                                "FILE_TYPE_XML",
+                                "FILE_TYPE_SWF",
+                                "FILE_TYPE_FLA",
+                                "FILE_TYPE_COOKIE",
+                                "FILE_TYPE_TORRENT",
+                                "FILE_TYPE_EMAIL_TYPE",
+                                "FILE_TYPE_OUTLOOK",
+                                "FILE_TYPE_CAP",
+                                "FILE_TYPE_ISOIMAGE",
+                                "FILE_TYPE_APPLE",
+                                "FILE_TYPE_MACINTOSH",
+                                "FILE_TYPE_APPLESINGLE",
+                                "FILE_TYPE_APPLEDOUBLE",
+                                "FILE_TYPE_MACINTOSH_HFS",
+                                "FILE_TYPE_APPLE_PLIST",
+                                "FILE_TYPE_MACINTOSH_LIB",
+                                "FILE_TYPE_APPLESCRIPT",
+                                "FILE_TYPE_APPLESCRIPT_COMPILED",
+                                "FILE_TYPE_CRX",
+                                "FILE_TYPE_XPI",
+                                "FILE_TYPE_ROM"
+                            ],
+                            "event_type": [
+                                "EVENTTYPE_UNSPECIFIED",
+                                "PROCESS_UNCATEGORIZED",
+                                "PROCESS_LAUNCH",
+                                "PROCESS_INJECTION",
+                                "PROCESS_PRIVILEGE_ESCALATION",
+                                "PROCESS_TERMINATION",
+                                "PROCESS_OPEN",
+                                "PROCESS_MODULE_LOAD",
+                                "REGISTRY_UNCATEGORIZED",
+                                "REGISTRY_CREATION",
+                                "REGISTRY_MODIFICATION",
+                                "REGISTRY_DELETION",
+                                "SETTING_UNCATEGORIZED",
+                                "SETTING_CREATION",
+                                "SETTING_MODIFICATION",
+                                "SETTING_DELETION",
+                                "MUTEX_UNCATEGORIZED",
+                                "MUTEX_CREATION",
+                                "FILE_UNCATEGORIZED",
+                                "FILE_CREATION",
+                                "FILE_DELETION",
+                                "FILE_MODIFICATION",
+                                "FILE_READ",
+                                "FILE_COPYFILE_OPEN",
+                                "FILE_MOVE",
+                                "FILE_SYNCUSER_UNCATEGORIZED",
+                                "USER_LOGIN",
+                                "USER_LOGOUT",
+                                "USER_CREATION",
+                                "USER_CHANGE_PASSWORD",
+                                "USER_CHANGE_PERMISSIONS",
+                                "USER_BADGE_IN",
+                                "USER_DELETION",
+                                "USER_RESOURCE_CREATION",
+                                "USER_RESOURCE_UPDATE_CONTENT",
+                                "USER_RESOURCE_UPDATE_PERMISSIONS",
+                                "USER_COMMUNICATION",
+                                "USER_RESOURCE_ACCESS",
+                                "USER_RESOURCE_DELETION",
+                                "GROUP_UNCATEGORIZED",
+                                "GROUP_CREATION",
+                                "GROUP_DELETION",
+                                "GROUP_MODIFICATION",
+                                "EMAIL_UNCATEGORIZED",
+                                "EMAIL_TRANSACTION",
+                                "NETWORK_UNCATEGORIZED",
+                                "NETWORK_FLOW",
+                                "NETWORK_CONNECTION",
+                                "NETWORK_FTP",
+                                "NETWORK_DHCP",
+                                "NETWORK_DNS",
+                                "NETWORK_HTTP",
+                                "NETWORK_SMTP",
+                                "STATUS_UNCATEGORIZED",
+                                "STATUS_HEARTBEAT",
+                                "STATUS_STARTUP",
+                                "STATUS_SHUTDOWN",
+                                "STATUS_UPDATE",
+                                "SCAN_UNCATEGORIZED",
+                                "SCAN_FILE",
+                                "SCAN_PROCESS",
+                                "SCAN_HOST",
+                                "SCAN_VULN_HOST",
+                                "SCAN_VULN_NETWORK",
+                                "SCAN_NETWORK",
+                                "SCHEDULED_TASK_UNCATEGORIZED",
+                                "SCHEDULED_TASK_CREATION",
+                                "SCHEDULED_TASK_DELETION",
+                                "SCHEDULED_TASK_ENABLE",
+                                "SCHEDULED_TASK_DISABLE",
+                                "SCHEDULED_TASK_MODIFICATION",
+                                "SYSTEM_AUDIT_LOG_UNCATEGORIZED",
+                                "SYSTEM_AUDIT_LOG_WIPE",
+                                "SERVICE_UNSPECIFIED",
+                                "SERVICE_CREATION",
+                                "SERVICE_DELETION",
+                                "SERVICE_START",
+                                "SERVICE_STOP",
+                                "SERVICE_MODIFICATION",
+                                "GENERIC_EVENT",
+                                "RESOURCE_CREATION",
+                                "RESOURCE_DELETION",
+                                "RESOURCE_PERMISSIONS_CHANGE",
+                                "RESOURCE_READ",
+                                "RESOURCE_WRITTEN",
+                                "ANALYST_UPDATE_VERDICT",
+                                "ANALYST_UPDATE_REPUTATION",
+                                "ANALYST_UPDATE_SEVERITY_SCORE",
+                                "ANALYST_UPDATE_STATUS",
+                                "ANALYST_ADD_COMMENT"
+                            ],
+                            "resource_type": [
+                                "UNSPECIFIED",
+                                "MUTEX",
+                                "TASK",
+                                "PIPE",
+                                "DEVICE",
+                                "FIREWALL_RULE",
+                                "MAILBOX_FOLDER",
+                                "VPC_NETWORK",
+                                "VIRTUAL_MACHINE",
+                                "STORAGE_BUCKET",
+                                "STORAGE_OBJECT",
+                                "DATABASE",
+                                "TABLE",
+                                "CLOUD_PROJECT",
+                                "CLOUD_ORGANIZATION",
+                                "ACCESS_POLICY",
+                                "CLUSTER",
+                                "SETTING",
+                                "DATASET",
+                                "BACKEND_SERVICE"
+                            ],
+                            "action": [
+                                "UNKNOWN_ACTION",
+                                "ALLOW",
+                                "BLOCK",
+                                "ALLOW_WITH_MODIFICATION",
+                                "QUARANTINE",
+                                "FAIL"
+                            ],
+                            "severity": [
+                                "16",
+                                "32",
+                                "48",
+                                "64",
+                                "80",
+                                "100"
+                            ],
+                            "alert_state": [
+                                "UNSPECIFIED",
+                                "NOT_ALERTING",
+                                "ALERTING"
+                            ],
+                            "category": [
+                                "THREAT",
+                                "VIOLATION",
+                                "POLICY",
+                                "ALERT"
+                            ],
+                            "threat_status": [
+                                "THREAT_STATUS_UNSPECIFIED",
+                                "ACTIVE",
+                                "CLEARED",
+                                "FALSE_POSITIVE"
+                            ],
+                            "type": [
+                                "ROLE_UNSPECIFIED",
+                                "WORKSTATION",
+                                "LAPTOP",
+                                "IOT",
+                                "NETWORK_ATTACHED_STORAGE",
+                                "PRINTER",
+                                "SCANNER",
+                                "SERVER",
+                                "TAPE_LIBRARY",
+                                "MOBILE"
+                            ],
+                            "platform": [
+                                "UNKNOWN_PLATFORM",
+                                "WINDOWS",
+                                "MAC",
+                                "LINUX"
+                            ],
+                            "environment": [
+                                "UNSPECIFIED_CLOUD_ENVIRONMENT",
+                                "GOOGLE_CLOUD_PLATFORM",
+                                "AMAZON_WEB_SERVICES",
+                                "MICROSOFT_AZURE"
+                            ],
+                            "direction": [
+                                "UNKNOWN_DIRECTION",
+                                "INBOUND",
+                                "OUTBOUND",
+                                "BROADCAST"
+                            ]
+                        },
+                        "list_type_fields": [
+                            "src.ip",
+                            "target.ip",
+                            "principal.ip",
+                            "src.mac",
+                            "target.mac",
+                            "principal.mac",
+                            "network.smtp.server_response",
+                            "security_result.about.email",
+                            "security_result.about.url",
+                            "principal.user.email_addresses",
+                            "src.user.email_addresses",
+                            "target.user.email_addresses",
+                            "network.email.to",
+                            "network.email.cc",
+                            "network.email.bcc",
+                            "security_result.threat_name",
+                            "security_result.rule_name",
+                            "security_result.summary",
+                            "security_result.threat_id",
+                            "security_result.description",
+                            "network.dns.questions.name",
+                            "network.email.subject",
+                            "src.asset.software.name",
+                            "target.asset.software.name",
+                            "principal.asset.software.name",
+                            "src.asset.software.version",
+                            "target.asset.software.version",
+                            "principal.asset.software.version",
+                            "security_result.action",
+                            "security_result.severity",
+                            "security_result.alert_state",
+                            "security_result.category",
+                            "security_result.threat_status",
+                            "network.dns.questions.class",
+                            "network.dns.questions.type",
+                            "principal.asset.hardware.cpu_platform",
+                            "principal.asset.hardware.manufacturer",
+                            "principal.asset.hardware.serial_number"
+                        ],
+                        "regex_formatting_fields": [
+                            "src.file.full_path",
+                            "target.file.full_path",
+                            "src.process.file.full_path",
+                            "target.process.file.full_path",
+                            "principal.process.file.full_path",
+                            "target.process.parent_process.file.full_path",
+                            "principal.process.parent_process.file.full_path",
+                            "about.file.full_path"
+                        ],
+                        "security_result_conversion_fields": {
+                            "security_result.severity": {
+                                "16": "INFORMATIONAL",
+                                "32": "ERROR",
+                                "48": "LOW",
+                                "64": "MEDIUM",
+                                "80": "HIGH",
+                                "100": "CRITICAL"
+                            },
+                            "security_result.category": {
+                                "ALERT": [
+                                    "SOFTWARE_SUSPICIOUS",
+                                    "NETWORK_SUSPICIOUS",
+                                    "NETWORK_CATEGORIZED_CONTENT",
+                                    "NETWORK_DENIAL_OF_SERVICE",
+                                    "NETWORK_RECON",
+                                    "NETWORK_COMMAND_AND_CONTROL",
+                                    "EXPLOIT",
+                                    "DATA_EXFILTRATION",
+                                    "DATA_AT_REST",
+                                    "DATA_DESTRUCTION"
+                                ],
+                                "POLICY": [
+                                    "POLICY_VIOLATION"
+                                ],
+                                "VIOLATION": [
+                                    "ACL_VIOLATION",
+                                    "AUTH_VIOLATION"
+                                ],
+                                "THREAT": [
+                                    "SOFTWARE_MALICIOUS",
+                                    "SOFTWARE_PUA",
+                                    "NETWORK_MALICIOUS",
+                                    "MAIL_SPAM",
+                                    "MAIL_PHISHING",
+                                    "MAIL_SPOOFING"
+                                ]
+                            }
+                        }
+                    },
+                    "to_stix_map": {
+                        "event": {
+                            "principal": {
+                                "ip": [
+                                    {
+                                        "key": "ipv4-addr.value",
+                                        "object": "principal_ip",
+                                        "unwrap": true,
+                                        "transformer": "FilterIPv4List"
+                                    },
+                                    {
+                                        "key": "ipv6-addr.value",
+                                        "object": "principal_ip",
+                                        "unwrap": true,
+                                        "transformer": "FilterIPv6List"
+                                    },
+                                    {
+                                        "key": "network-traffic.src_ref",
+                                        "object": "nt",
+                                        "references": "principal_ip"
+                                    },
+                                    {
+                                        "key": "x-oca-event.network_ref",
+                                        "object": "event",
+                                        "references": "nt"
+                                    },
+                                    {
+                                        "key": "x-ibm-finding.src_ip_ref",
+                                        "object": "security_result",
+                                        "references": "principal_ip"
+                                    },
+                                    {
+                                        "key": "x-oca-event.ip_refs",
+                                        "object": "event",
+                                        "references": [
+                                            "principal_ip"
+                                        ],
+                                        "group": true
+                                    },
+                                    {
+                                        "key": "x-oca-asset.ip_refs",
+                                        "object": "principal_asset",
+                                        "references": [
+                                            "principal_ip"
+                                        ]
+                                    }
+                                ],
+                                "port": [
+                                    {
+                                        "key": "network-traffic.src_port",
+                                        "object": "nt",
+                                        "transformer": "ToInteger"
+                                    },
+                                    {
+                                        "key": "x-oca-event.network_ref",
+                                        "object": "event",
+                                        "references": "nt"
+                                    }
+                                ],
+                                "mac": [
+                                    {
+                                        "key": "mac-addr.value",
+                                        "object": "principal_mac",
+                                        "unwrap": true
+                                    },
+                                    {
+                                        "key": "x-oca-asset.mac_refs",
+                                        "object": "principal_asset",
+                                        "references": [
+                                            "principal_mac"
+                                        ]
+                                    },
+                                    {
+                                        "key": "ipv4-addr.resolves_to_refs",
+                                        "object": "principal_ip",
+                                        "references": [
+                                            "principal_mac"
+                                        ]
+                                    },
+                                    {
+                                        "key": "ipv6-addr.resolves_to_refs",
+                                        "object": "principal_ip",
+                                        "references": [
+                                            "principal_mac"
+                                        ]
+                                    }
+                                ],
+                                "url": [
+                                    {
+                                        "key": "url.value",
+                                        "object": "principal_url",
+                                        "transformer": "ValidateUrl"
+                                    },
+                                    {
+                                        "key": "x-oca-event.url_ref",
+                                        "object": "event",
+                                        "references": "principal_url"
+                                    }
+                                ],
+                                "domain": {
+                                    "name": [
+                                        {
+                                            "key": "domain-name.value",
+                                            "object": "principal_domain"
+                                        },
+                                        {
+                                            "key": "x-oca-event.domain_ref",
+                                            "object": "event",
+                                            "references": "principal_domain"
+                                        }
+                                    ],
+                                    "status": {
+                                        "key": "domain-name.extensions.x-gcp-chronicle-domain.status",
+                                        "object": "principal_domain"
+                                    }
+                                },
+                                "application": {
+                                    "key": "x-oca-event.extensions.x-gcp-chronicle-event.src_appservice",
+                                    "object": "event"
+                                },
+                                "hostname": [
+                                    {
+                                        "key": "x-oca-asset.hostname",
+                                        "object": "principal_asset"
+                                    },
+                                    {
+                                        "key": "x-oca-event.host_ref",
+                                        "object": "event",
+                                        "references": "principal_asset"
+                                    }
+                                ],
+                                "assetId": {
+                                    "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.asset_id",
+                                    "object": "principal_asset"
+                                },
+                                "location": {
+                                    "name": [
+                                        {
+                                            "key": "x-oca-event.extensions.x-gcp-chronicle-event.src_location",
+                                            "object": "event"
+                                        }
+                                    ],
+                                    "city": {
+                                        "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.city",
+                                        "object": "principal_asset"
+                                    },
+                                    "countryOrRegion": {
+                                        "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.country_or_region",
+                                        "object": "principal_asset"
+                                    }
+                                },
+                                "asset": {
+                                    "category": {
+                                        "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.category",
+                                        "object": "principal_asset"
+                                    },
+                                    "type": {
+                                        "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.type",
+                                        "object": "principal_asset"
+                                    },
+                                    "platformSoftware": {
+                                        "platform": [
+                                            {
+                                                "key": "software.name",
+                                                "object": "principal_os_software"
+                                            },
+                                            {
+                                                "key": "x-ibm-finding.src_os_ref",
+                                                "object": "security_result",
+                                                "references": "principal_os_software"
+                                            }
+                                        ],
+                                        "platformVersion": {
+                                            "key": "software.version",
+                                            "object": "principal_os_software"
+                                        }
+                                    },
+                                    "hardware": {
+                                        "cpuPlatform": {
+                                            "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.hw_cpu_platform",
+                                            "object": "principal_asset"
+                                        },
+                                        "manufacturer": {
+                                            "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.hw_manufacturer",
+                                            "object": "principal_asset"
+                                        },
+                                        "serialNumber": {
+                                            "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.hw_serial_number",
+                                            "object": "principal_asset"
+                                        }
+                                    },
+                                    "attribute": {
+                                        "cloud": {
+                                            "environment": {
+                                                "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.cloud_environment",
+                                                "object": "principal_asset"
+                                            },
+                                            "availabilityZone": {
+                                                "key": "x-oca-asset.extensions.x-gcp-chronicle-asset.cloud_availability_zone",
+                                                "object": "principal_asset"
+                                            }
+                                        }
+                                    },
+                                    "software": {
+                                        "name": [
+                                            {
+                                                "key": "software.name",
+                                                "object": "principal_software"
+                                            },
+                                            {
+                                                "key": "x-ibm-finding.src_application_ref",
+                                                "object": "security_result",
+                                                "references": "principal_software"
+                                            }
+                                        ],
+                                        "version": {
+                                            "key": "software.version",
+                                            "object": "principal_software"
+                                        }
+                                    }
+                                },
+                                "user": {
+                                    "userid": [
+                                        {
+                                            "key": "user-account.user_id",
+                                            "object": "principal_user"
+                                        },
+                                        {
+                                            "key": "process.creator_user_ref",
+                                            "object": "principal_process",
+                                            "references": "principal_user"
+                                        },
+                                        {
+                                            "key": "x-oca-event.user_ref",
+                                            "object": "event",
+                                            "references": "principal_user"
+                                        }
+                                    ],
+                                    "userDisplayName": {
+                                        "key": "user-account.display_name",
+                                        "object": "principal_user"
+                                    },
+                                    "accountType": {
+                                        "key": "user-account.extensions.x-gcp-chronicle-user.type",
+                                        "object": "principal_user"
+                                    },
+                                    "windowsSid": {
+                                        "key": "user-account.extensions.windows-account-ext.sid",
+                                        "object": "principal_user"
+                                    },
+                                    "emailAddresses": [
+                                        {
+                                            "key": "email-addr.value",
+                                            "object": "principal_email",
+                                            "unwrap": true
+                                        }
+                                    ]
+                                },
+                                "process": {
+                                    "file": {
+                                        "fullPath": [
+                                            {
+                                                "key": "file.name",
+                                                "object": "principal_process_file",
+                                                "transformer": "ToFileName"
+                                            },
+                                            {
+                                                "key": "process.name",
+                                                "object": "principal_process",
+                                                "transformer": "ToFileName"
+                                            },
+                                            {
+                                                "key": "directory.path",
+                                                "object": "principal_process_directory",
+                                                "transformer": "ToDirectoryPath"
+                                            },
+                                            {
+                                                "key": "file.parent_directory_ref",
+                                                "object": "principal_process_file",
+                                                "references": "principal_process_directory"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "principal_process",
+                                                "references": "principal_process_file"
+                                            },
+                                            {
+                                                "key": "x-oca-event.file_ref",
+                                                "object": "event",
+                                                "references": "principal_process_file"
+                                            },
+                                            {
+                                                "key": "x-oca-event.process_ref",
+                                                "object": "event",
+                                                "references": "principal_process"
+                                            }
+                                        ],
+                                        "size": {
+                                            "key": "file.size",
+                                            "object": "principal_process_file",
+                                            "transformer": "ToInteger"
+                                        },
+                                        "md5": [
+                                            {
+                                                "key": "file.hashes.MD5",
+                                                "object": "principal_process_file"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "principal_process",
+                                                "references": "principal_process_file"
+                                            }
+                                        ],
+                                        "sha1": {
+                                            "key": "file.hashes.SHA-1",
+                                            "object": "principal_process_file"
+                                        },
+                                        "sha256": [
+                                            {
+                                                "key": "file.hashes.SHA-256",
+                                                "object": "principal_process_file"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "principal_process",
+                                                "references": "principal_process_file"
+                                            }
+                                        ],
+                                        "lastModificationTime": {
+                                            "key": "file.modified",
+                                            "object": "principal_process_file"
+                                        },
+                                        "mimeType": {
+                                            "key": "file.extensions.x-gcp-chronicle-file.mime_type",
+                                            "object": "principal_process_file"
+                                        },
+                                        "fileType": {
+                                            "key": "file.extensions.x-gcp-chronicle-file.file_type",
+                                            "object": "principal_process_file"
+                                        }
+                                    },
+                                    "commandLine": {
+                                        "key": "process.command_line",
+                                        "object": "principal_process"
+                                    },
+                                    "parentProcess": {
+                                        "commandLine": {
+                                            "key": "process.command_line",
+                                            "object": "principal_parent_process"
+                                        },
+                                        "file": {
+                                            "fullPath": [
+                                                {
+                                                    "key": "file.name",
+                                                    "object": "principal_parent_process_file",
+                                                    "transformer": "ToFileName"
+                                                },
+                                                {
+                                                    "key": "directory.path",
+                                                    "object": "principal_parent_process_directory",
+                                                    "transformer": "ToDirectoryPath"
+                                                },
+                                                {
+                                                    "key": "file.parent_directory_ref",
+                                                    "object": "principal_parent_process_file",
+                                                    "references": "principal_parent_process_directory"
+                                                },
+                                                {
+                                                    "key": "process.name",
+                                                    "object": "principal_parent_process",
+                                                    "transformer": "ToFileName"
+                                                },
+                                                {
+                                                    "key": "process.binary_ref",
+                                                    "object": "principal_parent_process",
+                                                    "references": "principal_parent_process_file"
+                                                },
+                                                {
+                                                    "key": "process.parent_ref",
+                                                    "object": "principal_process",
+                                                    "references": "principal_parent_process"
+                                                },
+                                                {
+                                                    "key": "x-oca-event.parent_process_ref",
+                                                    "object": "event",
+                                                    "references": "principal_parent_process"
+                                                }
+                                            ]
+                                        },
+                                        "pid": [
+                                            {
+                                                "key": "process.pid",
+                                                "object": "principal_parent_process",
+                                                "transformer": "ToInteger"
+                                            },
+                                            {
+                                                "key": "process.parent_ref",
+                                                "object": "principal_process",
+                                                "references": "principal_parent_process"
+                                            }
+                                        ]
+                                    },
+                                    "pid": [
+                                        {
+                                            "key": "process.pid",
+                                            "object": "principal_process",
+                                            "transformer": "ToInteger"
+                                        }
+                                    ]
+                                },
+                                "resource": {
+                                    "resourceType": {
+                                        "key": "x-gcp-chronicle-resource.resource_type",
+                                        "object": "principal_resource"
+                                    },
+                                    "resourceSubtype": {
+                                        "key": "x-gcp-chronicle-resource.resource_subtype",
+                                        "object": "principal_resource"
+                                    },
+                                    "name": [
+                                        {
+                                            "key": "x-gcp-chronicle-resource.name",
+                                            "object": "principal_resource"
+                                        },
+                                        {
+                                            "key": "x-oca-event.extensions.x-gcp-chronicle-event-ext.src_resource_ref",
+                                            "object": "event",
+                                            "references": "principal_resource"
+                                        }
+                                    ],
+                                    "attribute": {
+                                        "cloud": {
+                                            "availabilityZone": {
+                                                "key": "x-gcp-chronicle-resource.availability_zone",
+                                                "object": "principal_resource"
+                                            },
+                                            "environment": {
+                                                "key": "x-gcp-chronicle-resource.environment",
+                                                "object": "principal_resource"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "src": {
+                                "ip": [
+                                    {
+                                        "key": "ipv4-addr.value",
+                                        "object": "src_ip",
+                                        "unwrap": true,
+                                        "transformer": "FilterIPv4List"
+                                    },
+                                    {
+                                        "key": "ipv6-addr.value",
+                                        "object": "src_ip",
+                                        "unwrap": true,
+                                        "transformer": "FilterIPv6List"
+                                    },
+                                    {
+                                        "key": "network-traffic.src_ref",
+                                        "object": "nt",
+                                        "references": "src_ip"
+                                    },
+                                    {
+                                        "key": "x-oca-event.network_ref",
+                                        "object": "event",
+                                        "references": "nt"
+                                    },
+                                    {
+                                        "key": "x-oca-event.ip_refs",
+                                        "object": "event",
+                                        "references": [
+                                            "src_ip"
+                                        ],
+                                        "group": true
+                                    }
+                                ],
+                                "port": {
+                                    "key": "network-traffic.src_port",
+                                    "object": "nt",
+                                    "transformer": "ToInteger"
+                                },
+                                "mac": [
+                                    {
+                                        "key": "mac-addr.value",
+                                        "object": "src_mac",
+                                        "unwrap": true
+                                    },
+                                    {
+                                        "key": "ipv4-addr.resolves_to_refs",
+                                        "object": "src_ip",
+                                        "references": [
+                                            "src_mac"
+                                        ]
+                                    },
+                                    {
+                                        "key": "ipv6-addr.resolves_to_refs",
+                                        "object": "src_ip",
+                                        "references": [
+                                            "src_mac"
+                                        ]
+                                    }
+                                ],
+                                "url": {
+                                    "key": "url.value",
+                                    "object": "src_url",
+                                    "transformer": "ValidateUrl"
+                                },
+                                "domain": {
+                                    "name": {
+                                        "key": "domain-name.value",
+                                        "object": "src_domain"
+                                    },
+                                    "status": {
+                                        "key": "domain-name.extensions.x-gcp-chronicle-domain.status",
+                                        "object": "src_domain"
+                                    }
+                                },
+                                "registry": {
+                                    "registryKey": [
+                                        {
+                                            "key": "windows-registry-key.key",
+                                            "object": "src_registry"
+                                        }
+                                    ],
+                                    "registryValues": {
+                                        "key": "windows-registry-key.values",
+                                        "object": "src_registry",
+                                        "transformer": "FormatToStixRegistryValue"
+                                    }
+                                },
+                                "asset": {
+                                    "platformSoftware": {
+                                        "platform": {
+                                            "key": "software.name",
+                                            "object": "src_os_software"
+                                        },
+                                        "platformVersion": {
+                                            "key": "software.version",
+                                            "object": "src_os_software"
+                                        }
+                                    },
+                                    "software": {
+                                        "name": {
+                                            "key": "software.name",
+                                            "object": "src_software"
+                                        },
+                                        "version": {
+                                            "key": "software.version",
+                                            "object": "src_software"
+                                        }
+                                    }
+                                },
+                                "user": {
+                                    "userid": [
+                                        {
+                                            "key": "user-account.user_id",
+                                            "object": "src_user"
+                                        },
+                                        {
+                                            "key": "process.creator_user_ref",
+                                            "object": "src_process",
+                                            "references": "src_user"
+                                        }
+                                    ],
+                                    "userDisplayName": {
+                                        "key": "user-account.display_name",
+                                        "object": "src_user"
+                                    },
+                                    "accountType": {
+                                        "key": "user-account.extensions.x-gcp-chronicle-user.type",
+                                        "object": "src_user"
+                                    },
+                                    "windowsSid": {
+                                        "key": "user-account.extensions.windows-account-ext.sid",
+                                        "object": "src_user"
+                                    },
+                                    "emailAddresses": {
+                                        "key": "email-addr.value",
+                                        "object": "src_email",
+                                        "unwrap": true
+                                    }
+                                },
+                                "file": {
+                                    "fullPath": [
+                                        {
+                                            "key": "file.name",
+                                            "object": "src_file",
+                                            "transformer": "ToFileName"
+                                        },
+                                        {
+                                            "key": "directory.path",
+                                            "object": "src_directory",
+                                            "transformer": "ToDirectoryPath"
+                                        },
+                                        {
+                                            "key": "file.parent_directory_ref",
+                                            "object": "src_file",
+                                            "references": "src_directory"
+                                        }
+                                    ],
+                                    "size": {
+                                        "key": "file.size",
+                                        "object": "src_file",
+                                        "transformer": "ToInteger"
+                                    },
+                                    "md5": {
+                                        "key": "file.hashes.MD5",
+                                        "object": "src_file"
+                                    },
+                                    "sha1": {
+                                        "key": "file.hashes.SHA-1",
+                                        "object": "src_file"
+                                    },
+                                    "sha256": {
+                                        "key": "file.hashes.SHA-256",
+                                        "object": "src_file"
+                                    },
+                                    "lastModificationTime": {
+                                        "key": "file.modified",
+                                        "object": "src_file"
+                                    },
+                                    "mimeType": {
+                                        "key": "file.extensions.x-gcp-chronicle-file.mime_type",
+                                        "object": "src_file"
+                                    },
+                                    "fileType": {
+                                        "key": "file.extensions.x-gcp-chronicle-file.file_type",
+                                        "object": "src_file"
+                                    }
+                                },
+                                "process": {
+                                    "file": {
+                                        "fullPath": [
+                                            {
+                                                "key": "file.name",
+                                                "object": "src_process_file",
+                                                "transformer": "ToFileName"
+                                            },
+                                            {
+                                                "key": "directory.path",
+                                                "object": "src_process_directory",
+                                                "transformer": "ToDirectoryPath"
+                                            },
+                                            {
+                                                "key": "file.parent_directory_ref",
+                                                "object": "src_process_file",
+                                                "references": "src_process_directory"
+                                            },
+                                            {
+                                                "key": "process.name",
+                                                "object": "src_process",
+                                                "transformer": "ToFileName"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "src_process",
+                                                "references": "src_process_file"
+                                            }
+                                        ],
+                                        "size": {
+                                            "key": "file.size",
+                                            "object": "src_process_file",
+                                            "transformer": "ToInteger"
+                                        },
+                                        "md5": [
+                                            {
+                                                "key": "file.hashes.MD5",
+                                                "object": "src_process_file"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "src_process",
+                                                "references": "src_process_file"
+                                            }
+                                        ],
+                                        "sha1": {
+                                            "key": "file.hashes.SHA-1",
+                                            "object": "src_process_file"
+                                        },
+                                        "sha256": [
+                                            {
+                                                "key": "file.hashes.SHA-256",
+                                                "object": "src_process_file"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "src_process",
+                                                "references": "src_process_file"
+                                            }
+                                        ],
+                                        "lastModificationTime": {
+                                            "key": "file.modified",
+                                            "object": "src_process_file"
+                                        },
+                                        "mimeType": {
+                                            "key": "file.extensions.x-gcp-chronicle-file.mime_type",
+                                            "object": "src_process_file"
+                                        },
+                                        "fileType": {
+                                            "key": "file.extensions.x-gcp-chronicle-file.file_type",
+                                            "object": "src_process_file"
+                                        }
+                                    },
+                                    "commandLine": {
+                                        "key": "process.command_line",
+                                        "object": "src_process"
+                                    },
+                                    "pid": {
+                                        "key": "process.pid",
+                                        "object": "src_process",
+                                        "transformer": "ToInteger"
+                                    }
+                                },
+                                "resource": {
+                                    "resourceType": {
+                                        "key": "x-gcp-chronicle-resource.resource_type",
+                                        "object": "src_resource"
+                                    },
+                                    "resourceSubtype": {
+                                        "key": "x-gcp-chronicle-resource.resource_subtype",
+                                        "object": "src_resource"
+                                    },
+                                    "name": {
+                                        "key": "x-gcp-chronicle-resource.name",
+                                        "object": "src_resource"
+                                    },
+                                    "attribute": {
+                                        "cloud": {
+                                            "availabilityZone": {
+                                                "key": "x-gcp-chronicle-resource.availability_zone",
+                                                "object": "src_resource"
+                                            },
+                                            "environment": {
+                                                "key": "x-gcp-chronicle-resource.environment",
+                                                "object": "src_resource"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "target": {
+                                "ip": [
+                                    {
+                                        "key": "ipv4-addr.value",
+                                        "object": "dst_ip",
+                                        "unwrap": true,
+                                        "transformer": "FilterIPv4List"
+                                    },
+                                    {
+                                        "key": "ipv6-addr.value",
+                                        "object": "dst_ip",
+                                        "unwrap": true,
+                                        "transformer": "FilterIPv6List"
+                                    },
+                                    {
+                                        "key": "network-traffic.dst_ref",
+                                        "object": "nt",
+                                        "references": "dst_ip"
+                                    },
+                                    {
+                                        "key": "x-oca-event.network_ref",
+                                        "object": "event",
+                                        "references": "nt"
+                                    },
+                                    {
+                                        "key": "x-ibm-finding.dst_ip_ref",
+                                        "object": "security_result",
+                                        "references": "dst_ip"
+                                    },
+                                    {
+                                        "key": "x-oca-event.ip_refs",
+                                        "object": "event",
+                                        "references": [
+                                            "dst_ip"
+                                        ],
+                                        "group": true
+                                    }
+                                ],
+                                "port": [
+                                    {
+                                        "key": "network-traffic.dst_port",
+                                        "object": "nt",
+                                        "transformer": "ToInteger"
+                                    },
+                                    {
+                                        "key": "x-oca-event.network_ref",
+                                        "object": "event",
+                                        "references": "nt"
+                                    }
+                                ],
+                                "mac": [
+                                    {
+                                        "key": "mac-addr.value",
+                                        "object": "dst_mac",
+                                        "unwrap": true
+                                    },
+                                    {
+                                        "key": "ipv4-addr.resolves_to_refs",
+                                        "object": "dst_ip",
+                                        "references": [
+                                            "dst_mac"
+                                        ]
+                                    },
+                                    {
+                                        "key": "ipv6-addr.resolves_to_refs",
+                                        "object": "dst_ip",
+                                        "references": [
+                                            "dst_mac"
+                                        ]
+                                    }
+                                ],
+                                "url": {
+                                    "key": "url.value",
+                                    "object": "dst_url",
+                                    "transformer": "ValidateUrl"
+                                },
+                                "domain": {
+                                    "name": {
+                                        "key": "domain-name.value",
+                                        "object": "dst_domain"
+                                    },
+                                    "status": {
+                                        "key": "domain-name.extensions.x-gcp-chronicle-domain.status",
+                                        "object": "dst_domain"
+                                    }
+                                },
+                                "registry": {
+                                    "registryKey": [
+                                        {
+                                            "key": "windows-registry-key.key",
+                                            "object": "target_registry"
+                                        },
+                                        {
+                                            "key": "x-oca-event.registry_ref",
+                                            "object": "event",
+                                            "references": "target_registry"
+                                        }
+                                    ],
+                                    "registryValues": {
+                                        "key": "windows-registry-key.values",
+                                        "object": "target_registry",
+                                        "transformer": "FormatToStixRegistryValue"
+                                    }
+                                },
+                                "application": {
+                                    "key": "x-oca-event.extensions.x-gcp-chronicle-event.target_appservice",
+                                    "object": "event"
+                                },
+                                "hostname": [
+                                    {
+                                        "key": "x-oca-event.extensions.x-gcp-chronicle-event.target_hostname",
+                                        "object": "event"
+                                    }
+                                ],
+                                "location": {
+                                    "name": [
+                                        {
+                                            "key": "x-oca-event.extensions.x-gcp-chronicle-event.target_location",
+                                            "object": "event"
+                                        }
+                                    ]
+                                },
+                                "asset": {
+                                    "platformSoftware": {
+                                        "platform": [
+                                            {
+                                                "key": "software.name",
+                                                "object": "target_os_software"
+                                            },
+                                            {
+                                                "key": "x-ibm-finding.dst_os_ref",
+                                                "object": "security_result",
+                                                "references": "target_os_software"
+                                            }
+                                        ],
+                                        "platformVersion": {
+                                            "key": "software.version",
+                                            "object": "target_os_software"
+                                        }
+                                    },
+                                    "software": {
+                                        "name": [
+                                            {
+                                                "key": "software.name",
+                                                "object": "target_software"
+                                            },
+                                            {
+                                                "key": "x-ibm-finding.dst_application_ref",
+                                                "object": "security_result",
+                                                "references": "target_software"
+                                            }
+                                        ],
+                                        "version": {
+                                            "key": "software.version",
+                                            "object": "target_software"
+                                        }
+                                    }
+                                },
+                                "user": {
+                                    "userid": [
+                                        {
+                                            "key": "user-account.user_id",
+                                            "object": "dst_user"
+                                        },
+                                        {
+                                            "key": "process.creator_user_ref",
+                                            "object": "target_process",
+                                            "references": "dst_user"
+                                        }
+                                    ],
+                                    "userDisplayName": {
+                                        "key": "user-account.display_name",
+                                        "object": "dst_user"
+                                    },
+                                    "accountType": {
+                                        "key": "user-account.extensions.x-gcp-chronicle-user.type",
+                                        "object": "dst_user"
+                                    },
+                                    "windowsSid": {
+                                        "key": "user-account.extensions.windows-account-ext.sid",
+                                        "object": "dst_user"
+                                    },
+                                    "emailAddresses": [
+                                        {
+                                            "key": "email-addr.value",
+                                            "object": "target_email",
+                                            "unwrap": true
+                                        }
+                                    ]
+                                },
+                                "file": {
+                                    "fullPath": [
+                                        {
+                                            "key": "file.name",
+                                            "object": "target_file",
+                                            "transformer": "ToFileName"
+                                        },
+                                        {
+                                            "key": "directory.path",
+                                            "object": "target_directory",
+                                            "transformer": "ToDirectoryPath"
+                                        },
+                                        {
+                                            "key": "file.parent_directory_ref",
+                                            "object": "target_file",
+                                            "references": "target_directory"
+                                        }
+                                    ],
+                                    "size": {
+                                        "key": "file.size",
+                                        "object": "target_file",
+                                        "transformer": "ToInteger"
+                                    },
+                                    "md5": {
+                                        "key": "file.hashes.MD5",
+                                        "object": "target_file"
+                                    },
+                                    "sha1": {
+                                        "key": "file.hashes.SHA-1",
+                                        "object": "target_file"
+                                    },
+                                    "sha256": {
+                                        "key": "file.hashes.SHA-256",
+                                        "object": "target_file"
+                                    },
+                                    "lastModificationTime": {
+                                        "key": "file.modified",
+                                        "object": "target_file"
+                                    },
+                                    "mimeType": {
+                                        "key": "file.extensions.x-gcp-chronicle-file.mime_type",
+                                        "object": "target_file"
+                                    },
+                                    "fileType": {
+                                        "key": "file.extensions.x-gcp-chronicle-file.file_type",
+                                        "object": "target_file"
+                                    }
+                                },
+                                "process": {
+                                    "file": {
+                                        "fullPath": [
+                                            {
+                                                "key": "file.name",
+                                                "object": "target_process_file",
+                                                "transformer": "ToFileName"
+                                            },
+                                            {
+                                                "key": "process.name",
+                                                "object": "target_process",
+                                                "transformer": "ToFileName"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "target_process",
+                                                "references": "target_process_file"
+                                            },
+                                            {
+                                                "key": "directory.path",
+                                                "object": "target_process_directory",
+                                                "transformer": "ToDirectoryPath"
+                                            },
+                                            {
+                                                "key": "file.parent_directory_ref",
+                                                "object": "target_process_file",
+                                                "references": "target_process_directory"
+                                            },
+                                            {
+                                                "key": "x-oca-event.cross_process_target_ref",
+                                                "object": "event",
+                                                "references": "target_process"
+                                            }
+                                        ],
+                                        "size": {
+                                            "key": "file.size",
+                                            "object": "target_process_file",
+                                            "transformer": "ToInteger"
+                                        },
+                                        "md5": [
+                                            {
+                                                "key": "file.hashes.MD5",
+                                                "object": "target_process_file"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "target_process",
+                                                "references": "target_process_file"
+                                            }
+                                        ],
+                                        "sha1": {
+                                            "key": "file.hashes.SHA-1",
+                                            "object": "target_process_file"
+                                        },
+                                        "sha256": [
+                                            {
+                                                "key": "file.hashes.SHA-256",
+                                                "object": "target_process_file"
+                                            },
+                                            {
+                                                "key": "process.binary_ref",
+                                                "object": "target_process",
+                                                "references": "target_process_file"
+                                            }
+                                        ],
+                                        "lastModificationTime": {
+                                            "key": "file.modified",
+                                            "object": "target_process_file"
+                                        },
+                                        "mimeType": {
+                                            "key": "file.extensions.x-gcp-chronicle-file.mime_type",
+                                            "object": "target_process_file"
+                                        },
+                                        "fileType": {
+                                            "key": "file.extensions.x-gcp-chronicle-file.file_type",
+                                            "object": "target_process_file"
+                                        }
+                                    },
+                                    "commandLine": {
+                                        "key": "process.command_line",
+                                        "object": "target_process"
+                                    },
+                                    "parentProcess": {
+                                        "commandLine": {
+                                            "key": "process.command_line",
+                                            "object": "target_parent_process"
+                                        },
+                                        "file": {
+                                            "fullPath": [
+                                                {
+                                                    "key": "file.name",
+                                                    "object": "target_parent_process_file",
+                                                    "transformer": "ToFileName"
+                                                },
+                                                {
+                                                    "key": "directory.path",
+                                                    "object": "target_parent_process_directory",
+                                                    "transformer": "ToDirectoryPath"
+                                                },
+                                                {
+                                                    "key": "file.parent_directory_ref",
+                                                    "object": "target_parent_process_file",
+                                                    "references": "target_parent_process_directory"
+                                                },
+                                                {
+                                                    "key": "process.name",
+                                                    "object": "target_parent_process",
+                                                    "transformer": "ToFileName"
+                                                },
+                                                {
+                                                    "key": "process.binary_ref",
+                                                    "object": "target_parent_process",
+                                                    "references": "target_parent_process_file"
+                                                },
+                                                {
+                                                    "key": "process.parent_ref",
+                                                    "object": "target_process",
+                                                    "references": "target_parent_process"
+                                                }
+                                            ]
+                                        },
+                                        "pid": [
+                                            {
+                                                "key": "process.pid",
+                                                "object": "target_parent_process",
+                                                "transformer": "ToInteger"
+                                            },
+                                            {
+                                                "key": "process.parent_ref",
+                                                "object": "target_process",
+                                                "references": "target_parent_process"
+                                            }
+                                        ]
+                                    },
+                                    "pid": [
+                                        {
+                                            "key": "process.pid",
+                                            "object": "target_process",
+                                            "transformer": "ToInteger"
+                                        }
+                                    ]
+                                },
+                                "resource": {
+                                    "resourceType": {
+                                        "key": "x-gcp-chronicle-resource.resource_type",
+                                        "object": "target_resource"
+                                    },
+                                    "resourceSubtype": {
+                                        "key": "x-gcp-chronicle-resource.resource_subtype",
+                                        "object": "target_resource"
+                                    },
+                                    "name": [
+                                        {
+                                            "key": "x-gcp-chronicle-resource.name",
+                                            "object": "target_resource"
+                                        },
+                                        {
+                                            "key": "x-oca-event.extensions.x-gcp-chronicle-event.target_resource_ref",
+                                            "object": "event",
+                                            "references": "target_resource"
+                                        }
+                                    ],
+                                    "attribute": {
+                                        "cloud": {
+                                            "availabilityZone": {
+                                                "key": "x-gcp-chronicle-resource.availability_zone",
+                                                "object": "target_resource"
+                                            },
+                                            "environment": {
+                                                "key": "x-gcp-chronicle-resource.environment",
+                                                "object": "target_resource"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "network": {
+                                "ipProtocol": {
+                                    "key": "network-traffic.protocols",
+                                    "object": "nt",
+                                    "group": true,
+                                    "transformer": "ToLowercaseArray"
+                                },
+                                "applicationProtocol": {
+                                    "key": "network-traffic.protocols",
+                                    "object": "nt",
+                                    "group": true,
+                                    "transformer": "ToLowercaseArray"
+                                },
+                                "sentBytes": {
+                                    "key": "network-traffic.src_byte_count",
+                                    "object": "nt",
+                                    "transformer": "ToInteger"
+                                },
+                                "receivedBytes": {
+                                    "key": "network-traffic.dst_byte_count",
+                                    "object": "nt",
+                                    "transformer": "ToInteger"
+                                },
+                                "dnsDomain": {
+                                    "key": "domain-name.value",
+                                    "object": "domain"
+                                },
+                                "sessionDuration": {
+                                    "key": "network-traffic.extensions.x-gcp-chronicle-network.session_duration",
+                                    "object": "nt"
+                                },
+                                "sessionId": {
+                                    "key": "network-traffic.extensions.x-gcp-chronicle-network.session_id",
+                                    "object": "nt"
+                                },
+                                "direction": {
+                                    "key": "network-traffic.extensions.x-gcp-chronicle-network.direction",
+                                    "object": "nt"
+                                },
+                                "ftp": {
+                                    "command": {
+                                        "key": "network-traffic.extensions.ftp-ext.command",
+                                        "object": "nt"
+                                    }
+                                },
+                                "dns": {
+                                    "id": {
+                                        "key": "network-traffic.extensions.dns-ext.query_id",
+                                        "object": "nt"
+                                    },
+                                    "opcode": {
+                                        "key": "network-traffic.extensions.dns-ext.opcode",
+                                        "object": "nt"
+                                    },
+                                    "responseCode": {
+                                        "key": "network-traffic.extensions.dns-ext.response_code",
+                                        "object": "nt"
+                                    },
+                                    "questions": {
+                                        "key": "network-traffic.extensions.dns-ext.questions",
+                                        "object": "nt",
+                                        "group": true
+                                    }
+                                },
+                                "dhcp": {
+                                    "clientHostname": {
+                                        "key": "network-traffic.extensions.dhcp-ext.client_hostname",
+                                        "object": "nt"
+                                    },
+                                    "opcode": {
+                                        "key": "network-traffic.extensions.dhcp-ext.opcode",
+                                        "object": "nt"
+                                    },
+                                    "sname": {
+                                        "key": "network-traffic.extensions.dhcp-ext.server_name",
+                                        "object": "nt"
+                                    },
+                                    "transactionId": {
+                                        "key": "network-traffic.extensions.dhcp-ext.transaction_id",
+                                        "object": "nt"
+                                    },
+                                    "type": {
+                                        "key": "network-traffic.extensions.dhcp-ext.message_type",
+                                        "object": "nt"
+                                    }
+                                },
+                                "http": {
+                                    "method": {
+                                        "key": "network-traffic.extensions.http-ext.request_method",
+                                        "object": "nt"
+                                    },
+                                    "responseCode": {
+                                        "key": "network-traffic.extensions.http-ext.response_code",
+                                        "object": "nt"
+                                    },
+                                    "userAgent": {
+                                        "key": "network-traffic.extensions.http-ext.user_agent",
+                                        "object": "nt"
+                                    },
+                                    "referralUrl": {
+                                        "key": "url.value",
+                                        "object": "url",
+                                        "transformer": "ValidateUrl"
+                                    }
+                                },
+                                "tls": {
+                                    "cipher": {
+                                        "key": "network-traffic.extensions.tls-ext.cipher",
+                                        "object": "nt"
+                                    },
+                                    "version": {
+                                        "key": "network-traffic.extensions.tls-ext.version",
+                                        "object": "nt"
+                                    },
+                                    "versionProtocol": {
+                                        "key": "network-traffic.extensions.tls-ext.version_protocol",
+                                        "object": "nt"
+                                    },
+                                    "curve": {
+                                        "key": "network-traffic.extensions.tls-ext.elliptical_curve",
+                                        "object": "nt"
+                                    },
+                                    "nextProtocol": {
+                                        "key": "network-traffic.extensions.tls-ext.next_protocol",
+                                        "object": "nt"
+                                    },
+                                    "server": {
+                                        "ja3s": {
+                                            "key": "network-traffic.extensions.tls-ext.server_ja3_hash",
+                                            "object": "nt"
+                                        },
+                                        "certificate": {
+                                            "version": [
+                                                {
+                                                    "key": "x509-certificate.version",
+                                                    "object": "server_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.server_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "server_cert"
+                                                }
+                                            ],
+                                            "serial": [
+                                                {
+                                                    "key": "x509-certificate.serial_number",
+                                                    "object": "server_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.server_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "server_cert"
+                                                }
+                                            ],
+                                            "issuer": [
+                                                {
+                                                    "key": "x509-certificate.issuer",
+                                                    "object": "server_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.server_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "server_cert"
+                                                }
+                                            ],
+                                            "notBefore": {
+                                                "key": "x509-certificate.validity_not_before",
+                                                "object": "server_cert"
+                                            },
+                                            "notAfter": {
+                                                "key": "x509-certificate.validity_not_after",
+                                                "object": "server_cert"
+                                            },
+                                            "subject": [
+                                                {
+                                                    "key": "x509-certificate.subject",
+                                                    "object": "server_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.server_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "server_cert"
+                                                }
+                                            ],
+                                            "md5": {
+                                                "key": "x509-certificate.hashes.MD5",
+                                                "object": "server_cert"
+                                            },
+                                            "sha1": {
+                                                "key": "x509-certificate.hashes.SHA-1",
+                                                "object": "server_cert"
+                                            },
+                                            "sha256": {
+                                                "key": "x509-certificate.hashes.SHA-256",
+                                                "object": "server_cert"
+                                            }
+                                        }
+                                    },
+                                    "client": {
+                                        "ja3": {
+                                            "key": "network-traffic.extensions.tls-ext.client_ja3_hash",
+                                            "object": "nt"
+                                        },
+                                        "serverName": {
+                                            "key": "network-traffic.extensions.tls-ext.server_host_name",
+                                            "object": "nt"
+                                        },
+                                        "certificate": {
+                                            "version": [
+                                                {
+                                                    "key": "x509-certificate.version",
+                                                    "object": "client_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.client_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "client_cert"
+                                                }
+                                            ],
+                                            "serial": [
+                                                {
+                                                    "key": "x509-certificate.serial_number",
+                                                    "object": "client_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.client_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "client_cert"
+                                                }
+                                            ],
+                                            "issuer": [
+                                                {
+                                                    "key": "x509-certificate.issuer",
+                                                    "object": "client_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.client_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "client_cert"
+                                                }
+                                            ],
+                                            "notBefore": {
+                                                "key": "x509-certificate.validity_not_before",
+                                                "object": "client_cert"
+                                            },
+                                            "notAfter": {
+                                                "key": "x509-certificate.validity_not_after",
+                                                "object": "client_cert"
+                                            },
+                                            "subject": [
+                                                {
+                                                    "key": "x509-certificate.subject",
+                                                    "object": "client_cert"
+                                                },
+                                                {
+                                                    "key": "network-traffic.extensions.tls-ext.client_certificate_ref",
+                                                    "object": "nt",
+                                                    "references": "client_cert"
+                                                }
+                                            ],
+                                            "md5": {
+                                                "key": "x509-certificate.hashes.MD5",
+                                                "object": "client_cert"
+                                            },
+                                            "sha1": {
+                                                "key": "x509-certificate.hashes.SHA-1",
+                                                "object": "client_cert"
+                                            },
+                                            "sha256": {
+                                                "key": "x509-certificate.hashes.SHA-256",
+                                                "object": "client_cert"
+                                            }
+                                        }
+                                    }
+                                },
+                                "smtp": {
+                                    "serverResponse": {
+                                        "key": "network-traffic.extensions.smtp-ext.server_response",
+                                        "object": "nt"
+                                    }
+                                },
+                                "asn": {
+                                    "key": "autonomous-system.number",
+                                    "object": "asn",
+                                    "transformer": "ToInteger"
+                                },
+                                "email": {
+                                    "subject": {
+                                        "key": "email-message.subject",
+                                        "object": "em",
+                                        "unwrap": true
+                                    },
+                                    "isMultipart": {
+                                        "key": "email-message.is_multipart",
+                                        "object": "em"
+                                    },
+                                    "from": [
+                                        {
+                                            "key": "email-addr.value",
+                                            "object": "email_from",
+                                            "transformer": "FilterValidEmail"
+                                        },
+                                        {
+                                            "key": "email-message.from_ref",
+                                            "object": "em",
+                                            "references": "email_from"
+                                        },
+                                        {
+                                            "key": "x-oca-event.extensions.x-gcp-chronicle-event.email_message_ref",
+                                            "object": "event",
+                                            "references": "em"
+                                        }
+                                    ],
+                                    "to": [
+                                        {
+                                            "key": "email-addr.value",
+                                            "object": "email_to",
+                                            "unwrap": true
+                                        },
+                                        {
+                                            "key": "email-message.to_refs",
+                                            "object": "em",
+                                            "references": [
+                                                "email_to"
+                                            ]
+                                        }
+                                    ],
+                                    "cc": [
+                                        {
+                                            "key": "email-addr.value",
+                                            "object": "email_cc",
+                                            "unwrap": true
+                                        },
+                                        {
+                                            "key": "email-message.cc_refs",
+                                            "object": "em",
+                                            "references": [
+                                                "email_cc"
+                                            ]
+                                        }
+                                    ],
+                                    "bcc": [
+                                        {
+                                            "key": "email-addr.value",
+                                            "object": "email_bcc",
+                                            "unwrap": true
+                                        },
+                                        {
+                                            "key": "email-message.bcc_refs",
+                                            "object": "em",
+                                            "references": [
+                                                "email_bcc"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            },
+                            "securityResult": {
+                                "about": {
+                                    "email": {
+                                        "key": "email-addr.value",
+                                        "object": "security_email",
+                                        "transformer": "FilterValidEmail"
+                                    },
+                                    "url": {
+                                        "key": "url.value",
+                                        "object": "security_url",
+                                        "transformer": "ValidateUrl"
+                                    },
+                                    "groupAboutUrlReferences": {
+                                        "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.url_refs",
+                                        "object": "security_result",
+                                        "references": [
+                                            "security_url"
+                                        ],
+                                        "group_ref": true
+                                    }
+                                },
+                                "findingType": {
+                                    "key": "x-ibm-finding.finding_type",
+                                    "object": "security_result"
+                                },
+                                "threatName": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.threat_name",
+                                    "object": "security_result"
+                                },
+                                "ruleName": {
+                                    "key": "x-ibm-finding.rule_names",
+                                    "object": "security_result",
+                                    "transformer": "ValueToList"
+                                },
+                                "alertState": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.alert_state",
+                                    "object": "security_result"
+                                },
+                                "severity": {
+                                    "key": "x-ibm-finding.severity",
+                                    "object": "security_result"
+                                },
+                                "category": {
+                                    "key": "x-ibm-finding.finding_type",
+                                    "object": "security_result"
+                                },
+                                "summary": {
+                                    "key": "x-ibm-finding.name",
+                                    "object": "security_result"
+                                },
+                                "threatId": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.threat_id",
+                                    "object": "security_result"
+                                },
+                                "threatStatus": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.threat_status",
+                                    "object": "security_result"
+                                },
+                                "description": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.description",
+                                    "object": "security_result"
+                                },
+                                "action": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.actions_taken",
+                                    "object": "security_result"
+                                }
+                            },
+                            "metadata": {
+                                "eventType": {
+                                    "key": "x-oca-event.action",
+                                    "object": "event"
+                                },
+                                "productLogId": {
+                                    "key": "x-oca-event.code",
+                                    "object": "event"
+                                },
+                                "eventTimestamp": [
+                                    {
+                                        "key": "x-oca-event.created",
+                                        "object": "event"
+                                    },
+                                    {
+                                        "key": "first_observed"
+                                    },
+                                    {
+                                        "key": "last_observed"
+                                    }
+                                ],
+                                "description": {
+                                    "key": "x-oca-event.extensions.x-gcp-chronicle-event.description",
+                                    "object": "event"
+                                },
+                                "productName": {
+                                    "key": "x-oca-event.agent",
+                                    "object": "event"
+                                },
+                                "vendorName": {
+                                    "key": "x-oca-event.provider",
+                                    "object": "event"
+                                },
+                                "productEventType": {
+                                    "key": "x-oca-event.outcome",
+                                    "object": "event"
+                                }
+                            },
+                            "about": {
+                                "file": {
+                                    "fullPath": [
+                                        {
+                                            "key": "file.name",
+                                            "object": "about_file",
+                                            "transformer": "ToFileName"
+                                        },
+                                        {
+                                            "key": "directory.path",
+                                            "object": "about_directory",
+                                            "transformer": "ToDirectoryPath"
+                                        },
+                                        {
+                                            "key": "file.parent_directory_ref",
+                                            "object": "about_file",
+                                            "references": "about_directory"
+                                        }
+                                    ],
+                                    "size": {
+                                        "key": "file.size",
+                                        "object": "about_file",
+                                        "transformer": "ToInteger"
+                                    },
+                                    "md5": {
+                                        "key": "file.hashes.MD5",
+                                        "object": "about_file"
+                                    },
+                                    "sha1": {
+                                        "key": "file.hashes.SHA-1",
+                                        "object": "about_file"
+                                    },
+                                    "sha256": {
+                                        "key": "file.hashes.SHA-256",
+                                        "object": "about_file"
+                                    },
+                                    "mimeType": {
+                                        "key": "file.extensions.x-gcp-chronicle-file.mime_type",
+                                        "object": "about_file"
+                                    },
+                                    "lastModificationTime": {
+                                        "key": "file.modified",
+                                        "object": "about_file"
+                                    },
+                                    "fileType": {
+                                        "key": "file.extensions.x-gcp-chronicle-file.file_type",
+                                        "object": "about_file"
+                                    }
+                                },
+                                "GroupAboutFileReferences": {
+                                    "key": "email-message.extensions.x-gcp-chronicle-email-message.file_refs",
+                                    "object": "em",
+                                    "references": [
+                                        "about_file"
+                                    ],
+                                    "group_ref": true
+                                }
+                            },
+                            "additional": {
+                                "detectorId": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.aws_detector_id",
+                                    "object": "security_result"
+                                },
+                                "archived": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.aws_archived",
+                                    "object": "security_result"
+                                },
+                                "count": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.aws_count",
+                                    "object": "security_result"
+                                },
+                                "imageId": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.aws_image_id",
+                                    "object": "security_result"
+                                },
+                                "resourceRole": {
+                                    "key": "x-ibm-finding.extensions.x-gcp-chronicle-security-result.aws_resource_role",
+                                    "object": "security_result"
+                                }
+                            }
+                        }
+                    },
+                    "from_stix_map": {
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "src.ip",
+                                    "target.ip",
+                                    "principal.ip"
+                                ],
+                                "resolves_to_refs[*].value": [
+                                    "src.mac",
+                                    "target.mac",
+                                    "principal.mac"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "fields": {
+                                "value": [
+                                    "src.ip",
+                                    "target.ip",
+                                    "principal.ip"
+                                ],
+                                "resolves_to_refs[*].value": [
+                                    "src.mac",
+                                    "target.mac",
+                                    "principal.mac"
+                                ]
+                            }
+                        },
+                        "url": {
+                            "fields": {
+                                "value": [
+                                    "src.url",
+                                    "target.url",
+                                    "principal.url",
+                                    "network.http.referral_url",
+                                    "security_result.about.url"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "fields": {
+                                "src_port": [
+                                    "src.port",
+                                    "principal.port"
+                                ],
+                                "dst_port": [
+                                    "target.port"
+                                ],
+                                "protocols[*]": [
+                                    "network.ip_protocol",
+                                    "network.application_protocol"
+                                ],
+                                "src_ref.value": [
+                                    "src.ip",
+                                    "principal.ip"
+                                ],
+                                "dst_ref.value": [
+                                    "target.ip"
+                                ],
+                                "src_byte_count": [
+                                    "network.sent_bytes"
+                                ],
+                                "dst_byte_count": [
+                                    "network.received_bytes"
+                                ],
+                                "extensions.'x-gcp-chronicle-network'.session_duration": [
+                                    "network.session_duration.seconds"
+                                ],
+                                "extensions.'x-gcp-chronicle-network'.session_id": [
+                                    "network.session_id"
+                                ],
+                                "extensions.'x-gcp-chronicle-network'.direction": [
+                                    "network.direction"
+                                ],
+                                "extensions.'ftp-ext'.command": [
+                                    "network.ftp.command"
+                                ],
+                                "extensions.'dns-ext'.query_id": [
+                                    "network.dns.id"
+                                ],
+                                "extensions.'dns-ext'.opcode": [
+                                    "network.dns.opcode"
+                                ],
+                                "extensions.'dns-ext'.response_code": [
+                                    "network.dns.response_code"
+                                ],
+                                "extensions.'dns-ext'.query_class": [
+                                    "network.dns.questions.class"
+                                ],
+                                "extensions.'dns-ext'.query_type": [
+                                    "network.dns.questions.type"
+                                ],
+                                "extensions.'dns-ext'.questions_domain_name": [
+                                    "network.dns.questions.name"
+                                ],
+                                "extensions.'dhcp-ext'.client_hostname": [
+                                    "network.dhcp.client_hostname"
+                                ],
+                                "extensions.'dhcp-ext'.opcode": [
+                                    "network.dhcp.opcode"
+                                ],
+                                "extensions.'dhcp-ext'.server_name": [
+                                    "network.dhcp.sname"
+                                ],
+                                "extensions.'dhcp-ext'.transaction_id": [
+                                    "network.dhcp.transaction_id"
+                                ],
+                                "extensions.'dhcp-ext'.message_type": [
+                                    "network.dhcp.type"
+                                ],
+                                "extensions.'http-ext'.request_method": [
+                                    "network.http.method"
+                                ],
+                                "extensions.'http-ext'.response_code": [
+                                    "network.http.response_code"
+                                ],
+                                "extensions.'http-ext'.user_agent": [
+                                    "network.http.user_agent"
+                                ],
+                                "extensions.'smtp-ext'.server_response[*]": [
+                                    "network.smtp.server_response"
+                                ],
+                                "extensions.'tls-ext'.cipher": [
+                                    "network.tls.cipher"
+                                ],
+                                "extensions.'tls-ext'.version": [
+                                    "network.tls.version"
+                                ],
+                                "extensions.'tls-ext'.version_protocol": [
+                                    "network.tls.version_protocol"
+                                ],
+                                "extensions.'tls-ext'.elliptical_curve": [
+                                    "network.tls.curve"
+                                ],
+                                "extensions.'tls-ext'.next_protocol": [
+                                    "network.tls.next_protocol"
+                                ],
+                                "extensions.'tls-ext'.server_ja3_hash": [
+                                    "network.tls.server.ja3s"
+                                ],
+                                "extensions.'tls-ext'.client_ja3_hash": [
+                                    "network.tls.client.ja3"
+                                ],
+                                "extensions.'tls-ext'.server_host_name": [
+                                    "network.tls.client.server_name"
+                                ],
+                                "extensions.'tls-ext'.server_certificate_ref.subject": [
+                                    "network.tls.server.certificate.subject"
+                                ],
+                                "extensions.'tls-ext'.client_certificate_ref.subject": [
+                                    "network.tls.client.certificate.subject"
+                                ]
+                            }
+                        },
+                        "mac-addr": {
+                            "fields": {
+                                "value": [
+                                    "src.mac",
+                                    "target.mac",
+                                    "principal.mac"
+                                ]
+                            }
+                        },
+                        "autonomous-system": {
+                            "fields": {
+                                "number": [
+                                    "network.asn"
+                                ]
+                            }
+                        },
+                        "domain-name": {
+                            "fields": {
+                                "value": [
+                                    "src.domain.name",
+                                    "target.domain.name",
+                                    "principal.domain.name",
+                                    "network.dns_domain"
+                                ],
+                                "extensions.'x-gcp-chronicle-domain'.status": [
+                                    "src.domain.status",
+                                    "target.domain.status",
+                                    "principal.domain.status"
+                                ]
+                            }
+                        },
+                        "email-addr": {
+                            "fields": {
+                                "value": [
+                                    "principal.user.email_addresses",
+                                    "src.user.email_addresses",
+                                    "target.user.email_addresses",
+                                    "network.email.from",
+                                    "network.email.to",
+                                    "network.email.cc",
+                                    "network.email.bcc",
+                                    "security_result.about.email"
+                                ]
+                            }
+                        },
+                        "email-message": {
+                            "fields": {
+                                "subject": [
+                                    "network.email.subject"
+                                ],
+                                "to_refs[*]": [
+                                    "network.email.to"
+                                ],
+                                "from_ref": [
+                                    "network.email.from"
+                                ],
+                                "cc_refs[*]": [
+                                    "network.email.cc"
+                                ],
+                                "bcc_refs[*]": [
+                                    "network.email.bcc"
+                                ],
+                                "extensions.'x-gcp-chronicle-email-message'.file_ref.name": [
+                                    "about.file.full_path"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "user_id": [
+                                    "src.user.userid",
+                                    "target.user.userid",
+                                    "principal.user.userid"
+                                ],
+                                "display_name": [
+                                    "src.user.user_display_name",
+                                    "target.user.user_display_name",
+                                    "principal.user.user_display_name"
+                                ],
+                                "extensions.'x-gcp-chronicle-user'.type": [
+                                    "src.user.account_type",
+                                    "target.user.account_type",
+                                    "principal.user.account_type"
+                                ],
+                                "extensions.'windows-account-ext'.sid": [
+                                    "src.user.windows_sid",
+                                    "target.user.windows_sid",
+                                    "principal.user.windows_sid"
+                                ]
+                            }
+                        },
+                        "file": {
+                            "fields": {
+                                "name": [
+                                    "src.file.full_path",
+                                    "target.file.full_path",
+                                    "src.process.file.full_path",
+                                    "target.process.file.full_path",
+                                    "principal.process.file.full_path",
+                                    "target.process.parent_process.file.full_path",
+                                    "principal.process.parent_process.file.full_path",
+                                    "about.file.full_path"
+                                ],
+                                "size": [
+                                    "src.file.size",
+                                    "target.file.size",
+                                    "src.process.file.size",
+                                    "target.process.file.size",
+                                    "principal.process.file.size",
+                                    "about.file.size"
+                                ],
+                                "hashes.MD5": [
+                                    "src.file.md5",
+                                    "target.file.md5",
+                                    "src.process.file.md5",
+                                    "target.process.file.md5",
+                                    "principal.process.file.md5",
+                                    "about.file.md5"
+                                ],
+                                "hashes.'SHA-1'": [
+                                    "src.file.sha1",
+                                    "target.file.sha1",
+                                    "src.process.file.sha1",
+                                    "target.process.file.sha1",
+                                    "principal.process.file.sha1",
+                                    "about.file.sha1"
+                                ],
+                                "hashes.'SHA-256'": [
+                                    "src.file.sha256",
+                                    "target.file.sha256",
+                                    "src.process.file.sha256",
+                                    "target.process.file.sha256",
+                                    "principal.process.file.sha256",
+                                    "about.file.sha256"
+                                ],
+                                "modified": [
+                                    "src.file.last_modification_time.seconds",
+                                    "target.file.last_modification_time.seconds",
+                                    "src.process.file.last_modification_time.seconds",
+                                    "target.process.file.last_modification_time.seconds",
+                                    "principal.process.file.last_modification_time.seconds",
+                                    "about.file.last_modification_time.seconds"
+                                ],
+                                "parent_directory_ref.path": [
+                                    "src.file.full_path",
+                                    "target.file.full_path",
+                                    "src.process.file.full_path",
+                                    "target.process.file.full_path",
+                                    "principal.process.file.full_path",
+                                    "target.process.parent_process.file.full_path",
+                                    "principal.process.parent_process.file.full_path",
+                                    "about.file.full_path"
+                                ],
+                                "extensions.'x-gcp-chronicle-file'.mime_type": [
+                                    "src.file.mime_type",
+                                    "target.file.mime_type",
+                                    "src.process.file.mime_type",
+                                    "target.process.file.mime_type",
+                                    "principal.process.file.mime_type",
+                                    "about.file.mime_type"
+                                ],
+                                "extensions.'x-gcp-chronicle-file'.file_type": [
+                                    "src.file.file_type",
+                                    "target.file.file_type",
+                                    "src.process.file.file_type",
+                                    "target.process.file.file_type",
+                                    "principal.process.file.file_type",
+                                    "about.file.file_type"
+                                ]
+                            }
+                        },
+                        "directory": {
+                            "fields": {
+                                "path": [
+                                    "src.file.full_path",
+                                    "target.file.full_path",
+                                    "about.file.full_path",
+                                    "src.process.file.full_path",
+                                    "target.process.file.full_path",
+                                    "principal.process.file.full_path",
+                                    "target.process.parent_process.file.full_path",
+                                    "principal.process.parent_process.file.full_path"
+                                ]
+                            }
+                        },
+                        "process": {
+                            "fields": {
+                                "command_line": [
+                                    "src.process.command_line",
+                                    "target.process.command_line",
+                                    "principal.process.command_line",
+                                    "target.process.parent_process.command_line",
+                                    "principal.process.parent_process.command_line"
+                                ],
+                                "name": [
+                                    "src.process.file.full_path",
+                                    "target.process.file.full_path",
+                                    "principal.process.file.full_path",
+                                    "target.process.parent_process.file.full_path",
+                                    "principal.process.parent_process.file.full_path"
+                                ],
+                                "pid": [
+                                    "src.process.pid",
+                                    "target.process.pid",
+                                    "principal.process.pid",
+                                    "target.process.parent_process.pid",
+                                    "principal.process.parent_process.pid"
+                                ],
+                                "parent_ref.pid": [
+                                    "target.process.parent_process.pid",
+                                    "principal.process.parent_process.pid"
+                                ],
+                                "creator_user_ref.user_id": [
+                                    "src.user.userid",
+                                    "target.user.userid",
+                                    "principal.user.userid"
+                                ],
+                                "parent_ref.name": [
+                                    "target.process.parent_process.file.full_path",
+                                    "principal.process.parent_process.file.full_path"
+                                ],
+                                "binary_ref.name": [
+                                    "src.process.file.full_path",
+                                    "target.process.file.full_path",
+                                    "principal.process.file.full_path",
+                                    "target.process.parent_process.file.full_path",
+                                    "principal.process.parent_process.file.full_path"
+                                ],
+                                "binary_ref.hashes.MD5": [
+                                    "src.process.file.md5",
+                                    "target.process.file.md5",
+                                    "principal.process.file.md5"
+                                ],
+                                "binary_ref.hashes.'SHA-256'": [
+                                    "src.process.file.sha256",
+                                    "target.process.file.sha256",
+                                    "principal.process.file.sha256"
+                                ],
+                                "binary_ref.parent_directory_ref.path": [
+                                    "src.process.file.full_path",
+                                    "target.process.file.full_path",
+                                    "principal.process.file.full_path"
+                                ]
+                            }
+                        },
+                        "software": {
+                            "fields": {
+                                "name": [
+                                    "src.asset.software.name",
+                                    "target.asset.software.name",
+                                    "principal.asset.software.name",
+                                    "principal.asset.platform_software.platform",
+                                    "target.asset.platform_software.platform",
+                                    "src.asset.platform_software.platform"
+                                ],
+                                "version": [
+                                    "src.asset.software.version",
+                                    "target.asset.software.version",
+                                    "principal.asset.software.version",
+                                    "principal.asset.platform_software.platform_version",
+                                    "src.asset.platform_software.platform_version",
+                                    "target.asset.platform_software.platform_version"
+                                ]
+                            }
+                        },
+                        "windows-registry-key": {
+                            "fields": {
+                                "key": [
+                                    "src.registry.registry_key",
+                                    "target.registry.registry_key"
+                                ],
+                                "values[*]": [
+                                    "src.registry.registry_value_data",
+                                    "target.registry.registry_value_data"
+                                ]
+                            }
+                        },
+                        "x509-certificate": {
+                            "fields": {
+                                "version": [
+                                    "network.tls.client.certificate.version",
+                                    "network.tls.server.certificate.version"
+                                ],
+                                "serial_number": [
+                                    "network.tls.client.certificate.serial",
+                                    "network.tls.server.certificate.serial"
+                                ],
+                                "issuer": [
+                                    "network.tls.client.certificate.issuer",
+                                    "network.tls.server.certificate.issuer"
+                                ],
+                                "validity_not_before": [
+                                    "network.tls.server.certificate.not_before.seconds",
+                                    "network.tls.client.certificate.not_before.seconds"
+                                ],
+                                "validity_not_after": [
+                                    "network.tls.server.certificate.not_after.seconds",
+                                    "network.tls.client.certificate.not_after.seconds"
+                                ],
+                                "subject": [
+                                    "network.tls.client.certificate.subject",
+                                    "network.tls.server.certificate.subject"
+                                ],
+                                "hashes.MD5": [
+                                    "network.tls.client.certificate.md5",
+                                    "network.tls.server.certificate.md5"
+                                ],
+                                "hashes.'SHA-1'": [
+                                    "network.tls.client.certificate.sha1",
+                                    "network.tls.server.certificate.sha1"
+                                ],
+                                "hashes.'SHA-256'": [
+                                    "network.tls.client.certificate.sha256",
+                                    "network.tls.server.certificate.sha256"
+                                ]
+                            }
+                        },
+                        "x-ibm-finding": {
+                            "fields": {
+                                "name": [
+                                    "security_result.summary"
+                                ],
+                                "finding_type": [
+                                    "security_result.category"
+                                ],
+                                "rule_names[*]": [
+                                    "security_result.rule_name"
+                                ],
+                                "severity": [
+                                    "security_result.severity"
+                                ],
+                                "src_ip_ref.value": [
+                                    "principal.ip"
+                                ],
+                                "dst_ip_ref.value": [
+                                    "target.ip"
+                                ],
+                                "src_os_ref": [
+                                    "principal.asset.platform_software.platform"
+                                ],
+                                "dst_os_ref": [
+                                    "target.asset.platform_software.platform"
+                                ],
+                                "src_application_ref.name": [
+                                    "principal.asset.software.name"
+                                ],
+                                "dst_application_ref.name": [
+                                    "target.asset.software.name"
+                                ],
+                                "extensions.'x-gcp-chronicle-security-result'.url_ref.value": [
+                                    "security_result.about.url"
+                                ],
+                                "extensions.'x-gcp-chronicle-security-result'.alert_state": [
+                                    "security_result.alert_state"
+                                ],
+                                "extensions.'x-gcp-chronicle-security-result'.threat_id": [
+                                    "security_result.threat_id"
+                                ],
+                                "extensions.'x-gcp-chronicle-security-result'.threat_status": [
+                                    "security_result.threat_status"
+                                ],
+                                "extensions.'x-gcp-chronicle-security-result'.threat_name": [
+                                    "security_result.threat_name"
+                                ],
+                                "extensions.'x-gcp-chronicle-security-result'.description": [
+                                    "security_result.description"
+                                ],
+                                "extensions.'x-gcp-chronicle-security-result'.actions_taken[*]": [
+                                    "security_result.action"
+                                ]
+                            }
+                        },
+                        "x-oca-event": {
+                            "fields": {
+                                "action": [
+                                    "metadata.event_type"
+                                ],
+                                "code": [
+                                    "metadata.product_log_id"
+                                ],
+                                "created": [
+                                    "metadata.event_timestamp.seconds"
+                                ],
+                                "agent": [
+                                    "metadata.product_name"
+                                ],
+                                "provider": [
+                                    "metadata.vendor_name"
+                                ],
+                                "outcome": [
+                                    "metadata.product_event_type"
+                                ],
+                                "host_ref.hostname": [
+                                    "principal.hostname"
+                                ],
+                                "url_ref.value": [
+                                    "principal.url"
+                                ],
+                                "file_ref.name": [
+                                    "principal.process.file.full_path"
+                                ],
+                                "process_ref.name": [
+                                    "principal.process.file.full_path"
+                                ],
+                                "parent_process_ref.name": [
+                                    "principal.process.parent_process.file.full_path"
+                                ],
+                                "domain_ref.value": [
+                                    "principal.domain.name"
+                                ],
+                                "ip_refs[*].value": [
+                                    "src.ip",
+                                    "principal.ip",
+                                    "target.ip"
+                                ],
+                                "network_ref.src_port": [
+                                    "principal.port"
+                                ],
+                                "network_ref.dst_port": [
+                                    "target.port"
+                                ],
+                                "user_ref.user_id": [
+                                    "principal.user.userid"
+                                ],
+                                "registry_ref.key": [
+                                    "target.registry.registry_key"
+                                ],
+                                "cross_process_target_ref.name": [
+                                    "target.process.file.full_path"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.src_location": [
+                                    "principal.location.name"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.target_location": [
+                                    "target.location.name"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.target_hostname": [
+                                    "target.hostname"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.email_message_ref.value": [
+                                    "network.email.from"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.src_appservice": [
+                                    "principal.application"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.target_appservice": [
+                                    "target.application"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.src_resource_ref.name": [
+                                    "principal.resource.name"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.target_resource_ref.name": [
+                                    "target.resource.name"
+                                ],
+                                "extensions.'x-gcp-chronicle-event'.description": [
+                                    "metadata.description"
+                                ]
+                            }
+                        },
+                        "x-oca-asset": {
+                            "fields": {
+                                "hostname": [
+                                    "principal.hostname"
+                                ],
+                                "ip_refs[*].value": [
+                                    "principal.ip"
+                                ],
+                                "mac_refs[*].value": [
+                                    "principal.mac"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.cloud_environment": [
+                                    "principal.asset.attribute.cloud.environment"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.cloud_availability_zone": [
+                                    "principal.asset.attribute.cloud.availability_zone"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.city": [
+                                    "principal.location.city"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.country_or_region": [
+                                    "principal.location.country_or_region"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.asset_id": [
+                                    "principal.asset_id"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.category": [
+                                    "principal.asset.category"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.type": [
+                                    "principal.asset.type"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.hw_cpu_platform": [
+                                    "principal.asset.hardware.cpu_platform"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.hw_manufacturer": [
+                                    "principal.asset.hardware.manufacturer"
+                                ],
+                                "extensions.'x-gcp-chronicle-asset'.hw_serial_number": [
+                                    "principal.asset.hardware.serial_number"
+                                ]
+                            }
+                        },
+                        "x-gcp-chronicle-resource": {
+                            "fields": {
+                                "name": [
+                                    "src.resource.name",
+                                    "target.resource.name",
+                                    "principal.resource.name"
+                                ],
+                                "resource_type": [
+                                    "src.resource.resource_type",
+                                    "target.resource.resource_type",
+                                    "principal.resource.resource_type"
+                                ],
+                                "resource_subtype": [
+                                    "src.resource.resource_subtype",
+                                    "target.resource.resource_subtype",
+                                    "principal.resource.resource_subtype"
+                                ],
+                                "availability_zone": [
+                                    "src.resource.attribute.cloud.availability_zone",
+                                    "target.resource.attribute.cloud.availability_zone",
+                                    "principal.resource.attribute.cloud.availability_zone"
+                                ],
+                                "environment": [
+                                    "src.resource.attribute.cloud.environment",
+                                    "target.resource.attribute.cloud.environment",
+                                    "principal.resource.attribute.cloud.environment"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "and",
+                        "ComparisonExpressionOperators.Or": "or",
+                        "ComparisonComparators.Equal": "=",
+                        "ComparisonComparators.NotEqual": "!=",
+                        "ComparisonComparators.Like": "=",
+                        "ComparisonComparators.Matches": "=",
+                        "ComparisonComparators.GreaterThan": ">",
+                        "ComparisonComparators.GreaterThanOrEqual": ">=",
+                        "ComparisonComparators.LessThan": "<",
+                        "ComparisonComparators.LessThanOrEqual": "<=",
+                        "ComparisonComparators.In": "=",
+                        "ObservationOperators.Or": "or",
+                        "ObservationOperators.And": "or"
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "client_email": {
+                "type": "text"
+            },
+            "private_key": {
+                "type": "password"
+            }
+        }
+    }
+}
