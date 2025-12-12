@@ -1,0 +1,17 @@
+#!/usr/bin/bash
+NGSCXX_DIR=$( cd $(dirname $0); pwd )
+PY_INCLUDE_FLAGS=-I$(python3 -c"import sysconfig;print(sysconfig.get_path('include'))")
+if [ -f /opt/rh/gcc-toolset-14/root/usr/bin/c++ ]
+  then NGSCXX=/opt/rh/gcc-toolset-14/root/usr/bin/c++
+  else NGSCXX=c++
+fi
+export CCACHE_NOHASHDIR=1
+
+
+if [ -f /usr/local/cuda/bin/nvcc ]
+  then NVCC=/usr/local/cuda/bin/nvcc
+  else NVCC=nvcc
+fi
+
+$NVCC -rdc=true -arch=native $*
+
