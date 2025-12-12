@@ -1,0 +1,72 @@
+{%- macro render_port(name, direction, type) -%}
+  {{ name }}: {{ direction }} {{ type | type_to_port }} port {{ type | type_to_aadl_type}};
+{%- endmacro -%}
+
+{%- macro render_node_threads(machine) -%}
+  {%- for node in machine.nodes %}
+  thread {{ node.name }}
+    features {# TODO: Replace these with real resolved fields #}
+      input:  in  data port Base_Types::Float;
+      output: out data port Base_Types::Float;
+  end {{ node.name }};
+  thread implementation {{ node.name }}.impl
+  end {{ node.name }}.impl;
+  {%- endfor %}
+{%- endmacro -%}
+
+package LogicalArchitecture
+public
+  with messages, Base_Types;
+{%- for package in packages %}
+  process {{package.name}}
+    {%- set interface_vars = package.interfaces | map(attribute="variables") | sum(start=[]) -%}
+    {%- set machine_vars = package.machines | map(attribute="variables") | sum(start=[]) -%}
+    {%- if interface_vars or machine_vars %}
+    features
+      {%- for interface in package.interfaces -%}
+        {%- for variable in interface.variables %}
+      {{ render_port(variable.name, "in",  variable.type) }}
+        {%- endfor %}
+      {%- endfor %}
+      {%- for machine in package.machines -%}
+        {%- for variable in machine.variables %}
+      {{ render_port(variable.name, "in",  variable.type) }}
+        {%- endfor %}
+      {%- endfor -%}
+      {%- endif %}
+  end {{package.name}};
+  process implementation {{package.name}}.impl
+  {%- set machines_with_nodes = package.machines | selectattr('nodes') | selectattr('nodes', '!=', []) | list %}
+    {%- if machines_with_nodes %}
+    modes
+      {%- for machine in machines_with_nodes -%}
+        {% for node in machine.nodes %}
+      {{node.name}}: mode;
+        {%- endfor %}
+      {%- endfor %}
+  {%- endif %}
+  {%- if machines_with_nodes %}
+    subcomponents
+      {%- for machine in machines_with_nodes -%}
+        {% for node in machine.nodes %}
+      {{node.name}}: thread {{node.name}}; {# TODO: Filter so not all nodes are transformed into threads #}
+        {%- endfor %}
+      {%- endfor %}
+  {%- endif %}
+  {%- set machines_with_transitions = package.machines | selectattr("transitions") | selectattr('transitions', '!=', []) | list %}
+  {%- if machines_with_transitions %}
+    connections
+      {%- for machine in machines_with_transitions -%}
+        {% for transition in machine.transitions %}
+      {{ transition.name }}: port {{ transition.source }} -> {{ transition.target }}; {# TODO: Check if these are correct #}
+        {%- endfor %}
+      {%- endfor %}
+  {%- endif %}
+  end {{package.name}}.impl;
+  {%- if machines_with_nodes %}
+    {%- for machine in machines_with_nodes -%}
+      {{ render_node_threads(machine) }}
+    {%- endfor %}
+  {%- endif %}
+{%- endfor %}
+end LogicalArchitecture;

@@ -1,0 +1,14 @@
+package messages
+public
+  with Base_Types, Data_Model;
+  {%- for package in packages %}
+    {%- for type in package.types %}
+    data {{ type.name }}
+      features
+        {%- for field in type.fields %}
+        {{ field.name }}: provides data access {{ field.type | type_to_aadl_type }};
+        {%- endfor %}
+    end {{type.name}};
+    {%- endfor %}
+  {%- endfor %}
+end messages;

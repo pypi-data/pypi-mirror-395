@@ -1,0 +1,511 @@
+Package:
+  'package' name=QualifiedName? (
+    'diagram' ID
+    | imports+=Import
+    | interfaces+=Interface
+    | robots+=RoboticPlatformDef
+    | types+=TypeDecl
+    | controllers+=ControllerDef
+    | machines+=StateMachineDef
+    | operations+=OperationDef
+    | functions+=Function
+    | modules+=Module
+  )*
+;
+
+QualifiedName: parts+=ID['::'];
+
+Import: 'import' name=QualifiedNameWithWildcard;
+
+QualifiedNameWithWildcard: name=QualifiedName ('::*')?;
+
+Module:
+  'module' name=ID '{' (connections+=Connection | nodes+=ConnectionNode)* '}'
+;
+
+Connection:
+  'connection' source=QualifiedName 'on' event_source=QualifiedName 'to' target=QualifiedName 'on' event_target=QualifiedName ('(' asynchronous?='_async' ')')? ('[' bidirectional?='mult' ']')?
+;
+
+ConnectionNode: Controller | StateMachine | RoboticPlatform;
+
+Controller: ControllerDef | ControllerRef;
+
+ControllerDef:
+  'controller' name=ID '{' (
+    'uses' uses+=QualifiedName[',']
+    | 'provides' provides+=QualifiedName[',']
+    | 'requires' requires+=QualifiedName[',']
+    | events+=Event
+    | machines+=StateMachine
+    | operations+=Operation
+    | connections+=Connection
+    | variables+=VariableList
+  )* '}'
+;
+
+VariableList:
+  modifier=VariableModifier variables+=Variable[',']
+;
+
+VariableModifier: 'var' | 'const';
+
+Variable:
+  name=ID ':' type=Type ('=' initial=Expression)?
+;
+
+Type: source=FunctionType ('<->' target=Type)?;
+
+FunctionType:
+  source=ProductType ('->' target=FunctionType)?
+;
+
+ProductType:
+  types=VectorType ('*' types=TypeRef)*
+;
+
+VectorType: source=VectorDef | source=MatrixDef | source=TypeRef;
+
+VectorDef: 'vector' '(' base=Type ',' size=Atomic ')';
+
+MatrixDef: 'matrix' '(' base=Type ',' rows=Atomic ',' columns=Atomic ')';
+
+TypeRef: type=SetType | type=SeqType | type=AnyType | '(' type=Type ')' | type=QualifiedName;
+
+SetType: 'Set(' domain=Type ')';
+
+SeqType: 'Seq(' domain=Type ')';
+
+AnyType: '?' identifier=ID;
+
+Atomic:
+  'result'
+  | 'to'
+  | 'from'
+  | 'real'
+  | "<>"
+  | value=INT
+  | value=FLOAT
+  | value=STRING
+  | value=BOOL
+  | RefExp
+  | RecordExp
+  | TypeLit
+  | RangeAndParExp
+  | ClockExp
+  | StateClockExp
+  | EqualDelim
+  | SetExpression
+  | VectorOrMatrixExp
+  | SetComprehension
+  | TupleExp
+;
+
+TypeLit: type=QualifiedName '::' literal=QualifiedName;
+EqualDelim: '<' (values+=PlusMinus[','])? '>';
+
+RefExp:
+  ref=NamedExpression | unknown=ID | unknown=QualifiedName
+;
+
+RecordExp:
+  record=QualifiedName '(|' definitions+=FieldDefinition[','] '|)'
+;
+
+FieldDefinition:
+  field=QualifiedName '=' value=Expression
+;
+
+Expression:
+  expression=ForAll
+  | expression=Exists
+  | expression=LambdaExp
+  | expression=Iff
+;
+
+ForAll:
+  'forall' variables+=VariableNoInit[','] ('|' suchthat=Expression)? '@' predicate=Expression
+;
+
+Exists:
+  ('exists' | unique?='exists1') variables+=VariableNoInit[','] ('|' suchthat=Expression)? '@' predicate=Expression
+;
+
+VariableNoInit:
+  name=ID ':' type=Type
+;
+
+LambdaExp:
+  'lambda' variables+=VariableNoInit[','] ('|' suchthat=Expression)? '@' expression=Expression
+;
+
+Iff:
+  left=Implies ('iff' right=Implies)*
+;
+
+Implies:
+  left=Or ("=>" right=Or)*
+;
+
+Or:
+  left=And ("\/" right=And)*
+;
+
+And:
+  left=Not ("/\" right=Not)*
+;
+
+Not:
+  'not' exp=Not | exp=Comp
+;
+
+Comp: left=DefiniteDescription (comp=Comparison right=DefiniteDescription | 'in' set=DefiniteDescription)*;
+
+DefiniteDescription:
+  'the' variables+=VariableNoInit[','] ('|' suchthat=Expression)? '@' expression=DefiniteDescription
+  | expression=LetExpression
+;
+
+LetExpression:
+  'let' declarations+=Declaration[','] '@' expression=LetExpression
+  | expression=IfExpression
+;
+
+Declaration:
+  name=ID '==' expression=Expression
+;
+
+IfExpression:
+  'if' condition=Expression 'then' ifexp=Expression 'else' elseexp=Expression 'end'
+  | expression=TypedExpression
+;
+
+TypedExpression:
+  expression=PlusMinus ('as' type=Type | 'is' type=Type)?
+;
+
+PlusMinus:
+  expression=MultDivMod ('+' right=MultDivMod | '-' right=MultDivMod)*
+;
+
+MultDivMod:
+  expression=CatExp ('*' right=CatExp | '/' right=CatExp | '%' right=CatExp)*
+;
+
+CatExp:
+  expression=Neg ('cat' right=Neg | '^' right=Neg)*
+;
+
+Neg: '-' expression=Neg | expression=Selection;
+
+Selection:
+  expression=ArrayExp ('.' member=QualifiedName)*
+;
+
+ArrayExp: expression=CallExp ('[' parameters+=Expression[','] ']')?;
+
+CallExp: expression=Atomic ('(' (args+=Expression[','])? ')')?;
+
+RangeAndParExp: delimiter_start='[' | '(' range_start=Expression (',' range_end=Expression)? delimiter_end=']' | ')';
+
+ClockExp: 'since' '(' clock=QualifiedName ')';
+
+StateClockExp:
+  'sinceEntry' '(' state=QualifiedName ')'
+;
+
+SetExpression:
+  '{' (values+=Expression[','] | Expression 'to' end=Expression)? '}'
+;
+
+VectorOrMatrixExp:
+  '[|' Row ( (';' values+=Row)+ )? '|]'
+  | 'inverse' '(' value=Expression ')'
+  | 'transpose' '(' value=Expression ')'
+;
+
+Row: values+=Expression[','];
+
+SetComprehension:
+  '{' variables+=VariableNoInit[','] ('|' predicate=Expression)? ('@' expression=Expression)? '}'
+;
+
+TupleExp:
+  '(|' (values+=Expression (',' values+=Expression)*)? '|)'
+;
+
+Comparison:
+  operator='==' right=DefiniteDescription
+  | operator='!=' right=DefiniteDescription
+  | operator='>'  right=DefiniteDescription
+  | operator='>=' right=DefiniteDescription
+  | operator='<'  right=DefiniteDescription
+  | operator='<=' right=DefiniteDescription
+  | operator='in' set=DefiniteDescription
+;
+
+Event: broadcast?='_broadcast'? 'event' name=ID (':' type=Type)?;
+
+Operation: operation=OperationRef | operation=OperationDef;
+
+OperationDef:
+  'operation' name=ID '(' (parameters+=Parameter[','])? ')' '{' (
+      terminates='terminates'
+      | 'precondition' preconditions+=Expression
+      | 'postcondition' postconditions+=Expression
+      | 'uses' uses+=QualifiedName[',']
+      | 'provides' provides+=QualifiedName[',']
+      | 'requires' requires+=QualifiedName[',']
+      | variables+=VariableList
+      | events+=Event
+      | nodes+=Node
+      | transitions+=Transition
+      | clocks+=Clock
+    )*
+  '}'
+;
+
+Parameter:
+  name=ID ':' type=Type
+;
+
+Node: State | Initial | Junction | Final | ProbabilisticJunction;
+
+State:
+  'state' name=ID '{'
+    body=Body
+    //(
+    //  nodes+=Node
+    //  | transitions+=Transition
+    //  | actions+=Action
+    //)*
+  '}'
+;
+
+Initial:
+  'initial' name=QualifiedName
+;
+
+Junction:
+  'junction' name=QualifiedName
+;
+
+Final:
+  'final' name=QualifiedName
+;
+
+ProbabilisticJunction:
+  'probabilistic' name=QualifiedName
+;
+
+Transition:
+  'transition' name=ID '{'
+    'from' source=QualifiedName
+    'to' target=QualifiedName
+    trigger?=Trigger
+    (reset*=ClockReset '<{' deadline=Expression '}')?
+    ('condition' condition=ConditionExpr)?
+    ('action' action=Statement)?
+  '}'
+;
+
+Trigger: 'trigger' trigger=Communication | 'probability' probability=Expression;
+
+Communication:
+  event=QualifiedName
+  (
+    '[|'
+    (
+      source=QualifiedName '=' 'from'
+      ( '|]' | '|' predicate=Expression '|]' )
+      | predicate=Expression? '|]'
+    )
+  )?
+  (
+    type=InputType
+    | type=OutputType
+    | type=SyncType
+  )?
+;
+
+InputType: '?' parameter=QualifiedName;
+
+OutputType: '!' value=CallExp;
+
+SyncType: '.' value=CallExp;
+
+ClockReset: '#' clock=QualifiedName;
+
+ConditionExpr: Expression | Else;
+
+Else: 'else';
+
+Statement:
+  statements+=EndStatement[';']
+;
+
+EndStatement:
+  BasicStatement ('<{' deadline=Expression '}')?
+;
+
+BasicStatement:
+  IfStmt
+  | Assignment
+  | CommunicationStmt
+  | Skip
+  | Call
+  | '(' stmt=Statement ')'
+  | Wait
+  | ClockReset
+;
+
+IfStmt:
+  'if' expression=Expression 'then' then=Statement ('else' else=Statement)? 'end'
+;
+
+CommunicationStmt:
+  ('send')? communication=Communication
+;
+
+Skip:
+  'skip'
+;
+
+Call:
+  operation=QualifiedName '(' (args+=Expression[','])? ')'
+;
+
+Assignment:
+  left=VariableSelection '=' right=Expression
+;
+
+VariableSelection:
+  reference=VariableReference ('.' member=QualifiedName | '[' parameters+=Expression[','] ']')*
+;
+
+VariableReference: name=QualifiedName;
+
+Wait:
+  'wait' '(' duration=Expression ')'
+;
+
+Action:
+  EntryAction | DuringAction | ExitAction
+;
+
+EntryAction: 'entry' action=Statement;
+
+DuringAction: 'during' action=Statement;
+
+ExitAction: 'exit' action=Statement;
+
+Clock:
+  'clock' name=ID
+;
+
+OperationRef:
+  'opref' name=ID '=' ref=QualifiedName
+;
+
+
+StateMachineRef:
+  'sref' name=ID '=' ref=QualifiedName
+;
+
+StateMachine: StateMachineDef | StateMachineRef;
+
+StateMachineDef:
+  'stm' name=ID '{'
+    (
+      'uses' uses+=QualifiedName[',']
+      | 'provides' provides+=QualifiedName[',']
+      | 'requires' requires+=QualifiedName[',']
+      | variables+=VariableList
+      | events+=Event
+      | nodes+=Node
+      | transitions+=Transition
+      | clocks+=Clock
+    )*
+  '}'
+;
+
+ControllerRef:
+  'cref' name=ID '=' ref=QualifiedName
+;
+
+RoboticPlatform: RoboticPlatformDef | RoboticPlatformRef;
+
+RoboticPlatformDef:
+  'robotic' 'platform' name=ID '{'
+    (
+      'uses' uses+=QualifiedName[',']
+      | 'provides' provides+=QualifiedName[',']
+      | 'requires' requires+=QualifiedName[',']
+      | variables+=VariableList
+      | operations+=OperationSig
+      | events+=Event
+    )*
+  '}'
+;
+
+OperationSig: name=ID '(' (parameters+=Parameter[','])? ')' ('[' terminates?='terminates' ']')?;
+
+RoboticPlatformRef: 'rref' name=ID '=' ref=QualifiedName;
+
+Interface:
+  'interface' name=ID '{'
+    (
+      operations+=OperationSig
+      | events+=Event
+      | variables+=VariableList
+      | clocks+=Clock
+    )*
+  '}'
+;
+
+TypeDecl:
+  PrimitiveType | RecordType | Enumeration
+;
+
+PrimitiveType:
+  'type' name=ID
+;
+
+RecordType:
+  ('datatype' | 'record') name=ID '{'
+    fields*=Field
+  '}'
+;
+
+Field:
+  name=ID ':' type=Type
+;
+
+Enumeration:
+  'enumeration' name=ID '{'
+    literals*=Literal
+  '}'
+;
+
+Literal:
+  name=ID ('(' types+=Type[','] ')')?
+;
+
+NamedExpression:
+  Variable | Parameter | Field
+;
+
+// TODO The FunctionBody is there to parse all contents of the function and replaces the pre and post condition parsing to simplify the translation to textx
+Function:
+  'function' name=ID '(' (parameters+=Parameter[','])? ')' ':' type=Type
+  '{' body=Body
+    //( 'precondition' preconditions+=Expression | 'postcondition' postconditions+=Expression)*
+  '}'
+;
+Body: elements*=BodyContent;
+BodyContent: /[^{}]+/ | NestedBlock;
+NestedBlock: '{' body=Body '}';
+
+Comment:
+  /\/\/.*$/
+;
