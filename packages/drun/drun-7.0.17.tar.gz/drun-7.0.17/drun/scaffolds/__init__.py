@@ -1,0 +1,35 @@
+"""
+Drun project scaffold templates.
+
+Provides templates for `drun init` command.
+"""
+
+from .templates import (
+    CSV_DATA_TESTCASE,
+    CSV_USERS_SAMPLE,
+    DEMO_TESTCASE,
+    DEMO_TESTSUITE,
+    ENV_TEMPLATE,
+    GITIGNORE_TEMPLATE,
+    GITKEEP_CONTENT,
+    GITHUB_WORKFLOW_TEMPLATE,
+    HEALTH_TESTCASE,
+    HOOKS_TEMPLATE,
+    README_TEMPLATE,
+    SAMPLE_CURL,
+)
+
+__all__ = [
+    "CSV_DATA_TESTCASE",
+    "CSV_USERS_SAMPLE",
+    "DEMO_TESTCASE",
+    "DEMO_TESTSUITE",
+    "ENV_TEMPLATE",
+    "GITIGNORE_TEMPLATE",
+    "GITKEEP_CONTENT",
+    "GITHUB_WORKFLOW_TEMPLATE",
+    "HEALTH_TESTCASE",
+    "HOOKS_TEMPLATE",
+    "README_TEMPLATE",
+    "SAMPLE_CURL",
+]

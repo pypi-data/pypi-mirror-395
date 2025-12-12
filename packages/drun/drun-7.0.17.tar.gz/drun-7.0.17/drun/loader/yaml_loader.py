@@ -1,0 +1,721 @@
+from __future__ import annotations
+
+import csv
+import json
+from pathlib import Path
+import re
+from typing import Any, Dict, List, Tuple
+
+import yaml
+from pydantic import ValidationError
+
+from drun.models.case import Case, Suite
+from drun.models.config import Config
+from drun.models.step import Step
+from drun.models.validators import normalize_validators
+from drun.utils.errors import LoadError
+
+
+def _is_suite(doc: Dict[str, Any]) -> bool:
+    return "cases" in doc
+
+
+def _is_caseflow(doc: Dict[str, Any]) -> bool:
+    """检测是否为 caseflow 格式的测试套件"""
+    return isinstance(doc, dict) and isinstance(doc.get("caseflow"), list)
+
+
+def _escape_template_expressions_in_yaml(raw_text: str) -> str:
+    """
+    Temporarily escape template expressions to ensure safe YAML parsing.
+
+    When template expressions like ${func(...)} appear in arrays/lists,
+    YAML parser may get confused by special characters like parentheses.
+    We wrap such expressions in double quotes to ensure safe parsing.
+    """
+    import re
+
+    # Pattern to match template expressions that need escaping
+    # Look for ${...} patterns that contain parentheses (function calls)
+    pattern = r'\$\{[^}]*\([^)]*\)[^}]*\}'
+
+    def replace_template(match):
+        full_match = match.group(0)
+        # Check if the template expression is already quoted
+        # Look for quotes right before the ${...} pattern
+        start_pos = match.start()
+        if start_pos > 0 and raw_text[start_pos - 1] in ('"', "'"):
+            return full_match
+        # Wrap in double quotes to escape special chars
+        return f'"{full_match}"'
+
+    return re.sub(pattern, replace_template, raw_text)
+
+
+def strip_escape_quotes(value: str) -> str:
+    """
+    Strip escape quotes from template expressions for display purposes.
+
+    When displaying variables, we want to show clean values without the
+    escape quotes that were added during YAML parsing.
+
+    Args:
+        value: The value that may contain escape quotes
+
+    Returns:
+        Value with escape quotes removed if present
+    """
+    import re
+
+    # Pattern to match escaped template expressions: "${...}"
+    # This handles both:
+    # 1. Full value is just a template: "${func()}"
+    # 2. Template is part of a larger string: text_"${func()}" or text_"${func()}"_more
+    pattern = r'"(\$\{[^}]*\})"'
+
+    def replace_escaped_template(match):
+        # Return just the template part without the wrapping quotes
+        return match.group(1)
+
+    # Replace all occurrences of "template" with just template
+    result = re.sub(pattern, replace_escaped_template, value)
+    return result
+
+
+def format_variables_multiline(variables: Dict[str, Any], prefix: str, max_line_length: int = 120) -> str:
+    """
+    Format variables into vertical list display.
+
+    This function creates a clean vertical list where each variable is on its own
+    line with consistent 2-space indentation, making it easy to read and scan.
+
+    Args:
+        variables: Dictionary of variable name-value pairs
+        prefix: The prefix string (e.g., "[CONFIG] variables: ")
+        max_line_length: Maximum line length before wrapping (default: 120)
+        Note: This parameter is kept for backward compatibility but not used in vertical format
+
+    Returns:
+        Multi-line formatted string with each variable on its own line
+    """
+    if not variables:
+        return prefix.rstrip() if prefix.endswith(": ") else prefix
+
+    # Format all variable assignments with escape quotes removed
+    var_assignments = [f"{k}: {strip_escape_quotes(str(v))}" for k, v in variables.items()]
+
+    # Return vertical list format with proper indentation
+    # Remove trailing colon/space from prefix if present, then add single colon
+    clean_prefix = prefix.rstrip()
+    if not clean_prefix.endswith(":"):
+        clean_prefix += ":"
+
+    lines = [clean_prefix]
+    # Calculate indentation to align with the colon in the prefix
+    colon_pos = clean_prefix.find(":")
+    if colon_pos != -1:
+        # Align variables with the colon position
+        indentation = " " * (colon_pos + 1)  # +1 to align after the colon
+    else:
+        # Fallback to 2-space indentation if no colon found
+        indentation = "  "
+
+    for var_assignment in var_assignments:
+        lines.append(indentation + var_assignment)
+
+    return "\n".join(lines)
+
+
+
+def _normalize_case_dict(d: Dict[str, Any], path: Path | None = None, raw_text: str | None = None) -> Dict[str, Any]:
+    dd = dict(d)
+    has_top_level_parameters = "parameters" in dd
+    # Allow case-level hooks declared inside config as aliases, e.g.:
+    # config:
+    #   setup_hooks: ["${func()}"]
+    #   teardown_hooks: ["${func()}"]
+    promoted_from_config: set[str] = set()
+    parameters_from_config = False
+    if "config" in dd and isinstance(dd["config"], dict):
+        if "parameters" in dd["config"]:
+            parameters_from_config = True
+            dd["parameters"] = dd["config"].pop("parameters")
+        for hk_field in ("setup_hooks", "teardown_hooks"):
+            if hk_field in dd["config"]:
+                items = dd["config"].get(hk_field)
+                if items is None:
+                    items = []
+                if not isinstance(items, list):
+                    raise LoadError(f"Invalid config.{hk_field} entry type {type(items).__name__}; expected list of '${{func(...)}}'")
+                # validate expressions and promote to case-level
+                for item in items:
+                    if not isinstance(item, str):
+                        raise LoadError(f"Invalid {hk_field} entry type {type(item).__name__}; expected string like '${{func(...)}}'")
+                    text = item.strip()
+                    if not text:
+                        raise LoadError(f"Invalid empty {hk_field} entry")
+                    if not (text.startswith("${") and text.endswith("}")):
+                        raise LoadError(f"Invalid {hk_field} entry '{item}': must use expression syntax '${{func(...)}}'")
+                dd[hk_field] = list(items)
+                promoted_from_config.add(hk_field)
+                # remove from config to avoid model validation issues
+                dd["config"].pop(hk_field, None)
+        if parameters_from_config and has_top_level_parameters:
+            raise LoadError(
+                "Invalid duplicate 'parameters': define parameters under 'config.parameters' only."
+            )
+    if "parameters" in dd and not parameters_from_config:
+        raise LoadError(
+            "Invalid top-level 'parameters'. Move case parameters under 'config.parameters'."
+        )
+    if "steps" in dd and isinstance(dd["steps"], list):
+        new_steps: List[Dict[str, Any]] = []
+        for idx, s in enumerate(dd["steps"]):
+            ss = dict(s)
+            # Disallow legacy request.json field (no compatibility)
+            if isinstance(ss.get("request"), dict) and "json" in ss["request"]:
+                step_label = str(ss.get("name") or f"steps[{idx + 1}]")
+                # Try to locate the exact line of 'request.json' for better UX
+                line_hint = None
+                if path is not None and raw_text is not None:
+                    loc = _find_request_subfield_location(raw_text, idx, "json")
+                    if loc is not None:
+                        line_no, line_text = loc
+                        line_hint = f"{path}:{line_no}: '{line_text.strip()}'"
+                hint = (
+                    f"Invalid request field 'json' in {path if path else '<file>'}: step '{step_label}'. "
+                    "Use 'body' instead (YAML path: request.json)."
+                )
+                if line_hint:
+                    hint += f"\nHint → {line_hint}"
+                raise LoadError(hint)
+            if "validate" in ss:
+                ss["validate"] = [v.model_dump() for v in normalize_validators(ss["validate"])]
+                # enforce $-only for body checks
+                for v in ss["validate"]:
+                    chk = v.get("check")
+                    if isinstance(chk, str) and chk.startswith("body."):
+                        raise LoadError(f"Invalid check '{chk}': use '$' syntax e.g. '$.path.to.field'")
+            # enforce $-only for extract
+            if "extract" in ss and isinstance(ss["extract"], dict):
+                for k, ex in ss["extract"].items():
+                    if isinstance(ex, str) and ex.startswith("body."):
+                        raise LoadError(f"Invalid extract '{ex}' for '{k}': use '$' syntax e.g. '$.path.to.field'")
+            # hooks field: enforce "${...}" expression form
+            for hk_field in ("setup_hooks", "teardown_hooks"):
+                if hk_field in ss and isinstance(ss[hk_field], list):
+                    for item in ss[hk_field]:
+                        if not isinstance(item, str):
+                            raise LoadError(f"Invalid {hk_field} entry type {type(item).__name__}; expected string like \"${{func(...)}}\"")
+                        text = item.strip()
+                        if not text:
+                            raise LoadError(f"Invalid empty {hk_field} entry")
+                        if not (text.startswith("${") and text.endswith("}")):
+                            raise LoadError(f"Invalid {hk_field} entry '{item}': must use expression syntax \"${{func(...)}}\"")
+            new_steps.append(ss)
+        dd["steps"] = new_steps
+    # Disallow old-style case-level hooks at top-level; allow if just promoted from config
+    for hk_field in ("setup_hooks", "teardown_hooks"):
+        if hk_field in dd and hk_field not in promoted_from_config:
+            raise LoadError(
+                f"Invalid top-level '{hk_field}': case-level hooks must be declared under 'config.{hk_field}'."
+            )
+    return dd
+
+
+def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
+    try:
+        raw = path.read_text(encoding="utf-8")
+        # Pre-process YAML to escape template expressions that may cause parsing issues
+        # When template expressions like ${func(...)} appear in arrays/lists, they may confuse YAML parser
+        # We temporarily wrap them in quotes to ensure safe parsing
+        processed_raw = _escape_template_expressions_in_yaml(raw)
+        obj = yaml.safe_load(processed_raw) or {}
+    except Exception as e:
+        raise LoadError(f"Failed to parse YAML: {path}: {e}")
+
+    cases: List[Case] = []
+    # Caseflow format: { config: {name, tags}, caseflow: [ {name, invoke, variables?}, ... ] }
+    if _is_caseflow(obj):
+        # 解析 config（只取 name 和 tags，不支持 base_url/parameters）
+        raw_cfg = obj.get("config") or {}
+        suite_cfg = Config(
+            name=raw_cfg.get("name", "Unnamed Caseflow"),
+            tags=raw_cfg.get("tags", []),
+        )
+        
+        # 将 caseflow 项转换为 invoke steps
+        steps: List[Step] = []
+        caseflow_items = obj.get("caseflow") or []
+        if not isinstance(caseflow_items, list):
+            raise LoadError("Invalid caseflow: 'caseflow' must be a list")
+        
+        for idx, item in enumerate(caseflow_items):
+            if not isinstance(item, dict):
+                raise LoadError(f"Invalid caseflow item at index {idx}: expected dict")
+            
+            invoke_path = item.get("invoke")
+            if not invoke_path:
+                raise LoadError(f"Caseflow item at index {idx}: missing 'invoke'")
+            
+            step_dict = {
+                "name": item.get("name", f"Step {idx + 1}"),
+                "invoke": invoke_path,
+                "variables": item.get("variables", {}),
+            }
+            steps.append(Step.model_validate_obj(step_dict))
+        
+        # 构建虚拟 Case
+        virtual_case = Case(
+            config=suite_cfg,
+            steps=steps,
+        )
+        cases.append(virtual_case)
+
+    elif _is_suite(obj):
+        # Legacy inline suite with 'cases:' is no longer supported
+        raise LoadError("Legacy inline suite ('cases:') is not supported. Please use caseflow format.")
+    else:
+        # single case file: normalize validators
+        obj = _normalize_case_dict(obj, path=path, raw_text=processed_raw)
+        try:
+            case = Case.model_validate(obj)
+        except ValidationError as exc:
+            raise LoadError(_format_case_validation_error(exc, obj, path, processed_raw)) from exc
+        cases.append(case)
+
+    meta = {"file": str(path)}
+    return cases, meta
+
+
+def _format_case_validation_error(exc: ValidationError, obj: Dict[str, Any], path: Path, raw_text: str) -> str:
+    """Provide user-friendly messages for common authoring mistakes."""
+
+    def _step_name(idx: int) -> str:
+        steps = obj.get("steps") if isinstance(obj.get("steps"), list) else []
+        if isinstance(steps, list) and 0 <= idx < len(steps):
+            step = steps[idx] or {}
+            name = step.get("name") if isinstance(step, dict) else None
+            if name:
+                return str(name)
+        return f"steps[{idx + 1}]"
+
+    for err in exc.errors():
+        loc = err.get("loc") or ()
+        err_type = err.get("type")
+
+        # Friendly message for url vs path confusion
+        if (
+            err_type == "extra_forbidden"
+            and len(loc) >= 4
+            and loc[0] == "steps"
+            and isinstance(loc[1], int)
+            and loc[2] == "request"
+            and loc[3] == "url"
+        ):
+            step_label = _step_name(loc[1])
+            return (
+                f"Invalid request field 'url' in {path}: step '{step_label}'.\n"
+                f"Use 'path' instead of 'url' for the request endpoint.\n\n"
+                "Example:\n"
+                "  - name: Example Step\n"
+                "    request:\n"
+                "      method: GET\n"
+                "      path: /api/endpoint  # Use 'path', not 'url'"
+            )
+
+        # Friendly message when fields (extract/validate/...) are indented under request
+        if (
+            err_type == "extra_forbidden"
+            and len(loc) >= 4
+            and loc[0] == "steps"
+            and isinstance(loc[1], int)
+            and loc[2] == "request"
+        ):
+            field = loc[3]
+            if field in {"extract", "validate", "setup_hooks", "teardown_hooks"}:
+                step_label = _step_name(loc[1])
+                line_info = _find_step_field_location(raw_text, loc[1], field)
+                if line_info:
+                    line_no, actual_indent, expected_indent, line_text = line_info
+                    indent_hint = (
+                        f"line {line_no}: '{line_text.strip()}' uses {actual_indent} leading spaces; "
+                        f"expected {expected_indent}."
+                    )
+                    return (
+                        f"Invalid YAML indentation in {path}: step '{step_label}' has '{field}' nested under 'request'. "
+                        f"Move '{field}' out to align with 'request' (indent {expected_indent} spaces).\n"
+                        f"Hint → {indent_hint}\n"
+                        "Example:\n"
+                        "  - name: Example\n"
+                        "    request:\n"
+                        "      ...\n"
+                        "    extract: { token: $.data.token }\n"
+                        "    validate: [ { eq: [status_code, 200] } ]"
+                    )
+                return (
+                    f"Invalid YAML indentation in {path}: step '{step_label}' has '{field}' nested under 'request'. "
+                    "Check indentation — 'extract'/'validate' blocks belong alongside 'request', not inside it."
+                )
+
+    # Fallback to default detail when we cannot produce a custom hint
+    return f"Failed to load {path}: {exc}"
+
+
+def _find_step_field_location(raw_text: str, step_index: int, field: str) -> tuple[int, int, int, str] | None:
+    """Locate the line/indentation for a field inside a step for better diagnostics."""
+
+    lines = raw_text.splitlines()
+    step_pattern = re.compile(r"^\s*-\s+name\s*:")
+    current_step = -1
+    step_indent = None
+    step_start = None
+
+    for idx, line in enumerate(lines):
+        if step_pattern.match(line):
+            current_step += 1
+            if current_step == step_index:
+                step_indent = len(line) - len(line.lstrip(" "))
+                step_start = idx
+                break
+
+    if step_start is None or step_indent is None:
+        return None
+
+    expected_indent = step_indent + 2
+    field_prefix = f"{field}:"
+
+    for idx in range(step_start + 1, len(lines)):
+        line = lines[idx]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        if step_pattern.match(line) and indent <= step_indent:
+            break
+        if not stripped:
+            continue
+        if stripped.startswith(field_prefix):
+            if indent > expected_indent:
+                return idx + 1, indent, expected_indent, line.rstrip()
+            return None
+
+    return None
+
+
+def _find_request_subfield_location(raw_text: str, step_index: int, subfield: str) -> tuple[int, str] | None:
+    """Best-effort locate the line where a given request subfield (e.g., 'json') appears.
+
+    We detect the step by matching '- name:' lines, then find the 'request:' block
+    and finally the target subfield under it.
+    Returns (line_no_1_based, line_text) or None if not found.
+    """
+    lines = raw_text.splitlines()
+    step_pattern = re.compile(r"^\s*-\s+name\s*:")
+    current_step = -1
+    step_indent = None
+    step_start = None
+
+    for idx, line in enumerate(lines):
+        if step_pattern.match(line):
+            current_step += 1
+            if current_step == step_index:
+                step_indent = len(line) - len(line.lstrip(" "))
+                step_start = idx
+                break
+
+    if step_start is None or step_indent is None:
+        return None
+
+    expected_step_child_indent = step_indent + 2
+    request_indent = None
+    # Find 'request:' within this step
+    for idx in range(step_start + 1, len(lines)):
+        line = lines[idx]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        if step_pattern.match(line) and indent <= step_indent:
+            # next step begins
+            break
+        if not stripped:
+            continue
+        if stripped.startswith("request:") and indent == expected_step_child_indent:
+            request_indent = indent
+            request_start = idx
+            break
+
+    if request_indent is None:
+        return None
+
+    # Now search within request block for the subfield
+    expected_sub_indent = request_indent + 2
+    sub_prefix = f"{subfield}:"
+    for idx in range(request_start + 1, len(lines)):
+        line = lines[idx]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        if not stripped:
+            continue
+        # out of request block when indentation returns to step-level child
+        if indent <= request_indent and not stripped.startswith("#"):
+            break
+        if stripped.startswith(sub_prefix) and indent == expected_sub_indent:
+            return idx + 1, line.rstrip()
+
+    return None
+
+
+def _resolve_csv_path(path_value: str, source_path: Path | None) -> Path:
+    from drun.loader.hooks import find_hooks
+
+    candidate = Path(path_value).expanduser()
+    if candidate.is_absolute():
+        return candidate
+
+    base: Path | None = None
+    if source_path:
+        hooks_path = find_hooks(source_path)
+        if hooks_path:
+            base = hooks_path.parent.resolve()
+
+    if base is None:
+        base = Path.cwd().resolve()
+
+    return (base / candidate).resolve()
+
+
+def _normalize_csv_columns(columns: Any) -> List[str]:
+    if columns is None:
+        return []
+    if not isinstance(columns, list) or not columns:
+        raise LoadError("CSV parameters 'columns' must be a non-empty list of column names.")
+    names: List[str] = []
+    for idx, col in enumerate(columns):
+        if not isinstance(col, str):
+            raise LoadError(f"CSV parameters column at index {idx} must be a string; got {type(col).__name__}.")
+        name = col.strip()
+        if not name:
+            raise LoadError(f"CSV parameters column at index {idx} cannot be empty or whitespace.")
+        if name in names:
+            raise LoadError(f"CSV parameters column '{name}' is duplicated; column names must be unique.")
+        names.append(name)
+    return names
+
+
+def _auto_convert_csv_value(value: str) -> Any:
+    """自动将 CSV 字符串值转换为合适的类型
+    
+    转换规则：
+    - 整数：纯数字（包括负数），且长度 <= 15 位 -> int
+    - 浮点数：包含小数点的数字 -> float
+    - 布尔值：true/false（不区分大小写）-> bool
+    - 其他：保持字符串
+    
+    注意：超长数字字符串（如手机号、ID）保持字符串以避免精度问题
+    """
+    stripped = value.strip()
+    
+    if not stripped:
+        return value
+    
+    # 布尔值
+    if stripped.lower() == 'true':
+        return True
+    if stripped.lower() == 'false':
+        return False
+    
+    # 整数（包括负数）- 限制长度避免大数精度问题
+    digits_part = stripped.lstrip('-')
+    if digits_part.isdigit() and len(digits_part) <= 15:
+        return int(stripped)
+    
+    # 浮点数
+    try:
+        if '.' in stripped:
+            # 验证格式：只有一个小数点，其余都是数字
+            parts = stripped.lstrip('-').split('.')
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                return float(stripped)
+    except ValueError:
+        pass
+    
+    return value
+
+
+def _load_csv_parameters(spec: Any, source_path: Path | None) -> List[Dict[str, Any]]:
+    if isinstance(spec, str):
+        cfg: Dict[str, Any] = {"path": spec}
+    elif isinstance(spec, dict):
+        cfg = dict(spec)
+    else:
+        raise LoadError(
+            f"Invalid CSV parameters declaration: expected string or mapping, got {type(spec).__name__}."
+        )
+
+    raw_path = cfg.get("path") or cfg.get("file")
+    if not raw_path or not isinstance(raw_path, str):
+        raise LoadError("CSV parameters require a string 'path'.")
+
+    delimiter = cfg.get("delimiter", ",")
+    if not isinstance(delimiter, str) or not delimiter:
+        raise LoadError("CSV parameters 'delimiter' must be a non-empty string.")
+    if len(delimiter) > 1:
+        raise LoadError("CSV parameters 'delimiter' must be a single character.")
+
+    encoding = cfg.get("encoding", "utf-8")
+    if not isinstance(encoding, str) or not encoding:
+        raise LoadError("CSV parameters 'encoding' must be a valid encoding name.")
+
+    header_flag = cfg.get("header")
+    if header_flag is not None and not isinstance(header_flag, bool):
+        raise LoadError("CSV parameters 'header' must be a boolean if provided.")
+
+    columns = _normalize_csv_columns(cfg.get("columns"))
+    header = header_flag if header_flag is not None else True
+
+    strip_values = cfg.get("strip", False)
+    if strip_values not in (True, False):
+        raise LoadError("CSV parameters 'strip' must be boolean when provided.")
+
+    # auto_type: 自动将数字字符串转为数字类型（默认 True）
+    auto_type = cfg.get("auto_type", True)
+    if auto_type not in (True, False):
+        raise LoadError("CSV parameters 'auto_type' must be boolean when provided.")
+
+    csv_path = _resolve_csv_path(raw_path, source_path)
+    if not csv_path.exists():
+        raise LoadError(f"CSV parameters file not found: '{raw_path}' (resolved to '{csv_path}')")
+
+    rows: List[Dict[str, Any]] = []
+    try:
+        with csv_path.open(newline="", encoding=encoding) as fp:
+            reader = csv.reader(fp, delimiter=delimiter)
+            if header:
+                try:
+                    header_row = next(reader)
+                except StopIteration as exc:
+                    raise LoadError(f"CSV parameters file '{csv_path}' is empty.") from exc
+                header_values = [str(h).strip() for h in header_row]
+                if columns:
+                    if len(columns) != len(header_values):
+                        raise LoadError(
+                            f"CSV parameters file '{csv_path}' header has {len(header_values)} columns but 'columns' override defines {len(columns)}."
+                        )
+                    fieldnames = columns
+                else:
+                    if any(not name for name in header_values):
+                        raise LoadError(
+                            f"CSV parameters file '{csv_path}' has empty column names in header row."
+                        )
+                    seen: set[str] = set()
+                    for name in header_values:
+                        if name in seen:
+                            raise LoadError(
+                                f"CSV parameters file '{csv_path}' header contains duplicate column '{name}'."
+                            )
+                        seen.add(name)
+                    fieldnames = header_values
+                start_line = 2
+            else:
+                if not columns:
+                    raise LoadError(
+                        f"CSV parameters for '{csv_path}' require 'columns' when 'header' is false."
+                    )
+                fieldnames = columns
+                start_line = 1
+
+            expected_len = len(fieldnames)
+            for line_no, raw_row in enumerate(reader, start=start_line):
+                if not raw_row or all(not str(cell).strip() for cell in raw_row):
+                    continue
+                if len(raw_row) != expected_len:
+                    raise LoadError(
+                        f"CSV parameters file '{csv_path}' line {line_no}: expected {expected_len} columns, got {len(raw_row)}."
+                    )
+                def _process_cell(val: str) -> Any:
+                    if strip_values:
+                        val = val.strip()
+                    if auto_type:
+                        return _auto_convert_csv_value(val)
+                    return val
+                
+                row_dict = {
+                    fieldnames[idx]: _process_cell(raw_row[idx])
+                    for idx in range(expected_len)
+                }
+                rows.append(row_dict)
+    except UnicodeDecodeError as exc:
+        raise LoadError(
+            f"Failed to decode CSV parameters file '{csv_path}' with encoding '{encoding}'."
+        ) from exc
+    except OSError as exc:
+        raise LoadError(f"Failed to read CSV parameters file '{csv_path}': {exc}") from exc
+
+    if not rows:
+        raise LoadError(f"CSV parameters file '{csv_path}' produced no data rows.")
+
+    return rows
+
+
+def _expand_zipped_block(key: str, rows: Any) -> List[Dict[str, Any]]:
+    if not isinstance(rows, list):
+        raise LoadError(f"Zipped parameters for '{key}' must be provided as a list.")
+    names = [n.strip() for n in str(key).split("-") if n.strip()]
+    if not names:
+        raise LoadError(f"Zipped parameter key '{key}' must contain at least one variable name.")
+
+    unit: List[Dict[str, Any]] = []
+    for row in rows:
+        if len(names) == 1:
+            if isinstance(row, (list, tuple)):
+                if len(row) != 1:
+                    raise LoadError(
+                        f"Zipped parameters for '{key}' expect single values; got {row!r}."
+                    )
+                values = [row[0]]
+            else:
+                values = [row]
+        else:
+            if not isinstance(row, (list, tuple)):
+                raise LoadError(
+                    f"Zipped parameters for '{key}' expect list/tuple rows matching {names}; got {row!r}."
+                )
+            if len(row) != len(names):
+                raise LoadError(
+                    f"Row {row!r} does not match variables {names} for zipped group '{key}'."
+                )
+            values = list(row)
+        unit.append({name: value for name, value in zip(names, values)})
+    return unit
+
+
+def expand_parameters(parameters: Any, *, source_path: str | Path | None = None) -> List[Dict[str, Any]]:
+    """Expand parameterization to a list of param dicts (zipped + CSV)."""
+    if not parameters:
+        return [{}]
+
+    if isinstance(parameters, list):
+        combos: List[Dict[str, Any]] = [{}]
+
+        def product_append(base: List[Dict[str, Any]], unit: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+            out: List[Dict[str, Any]] = []
+            for b in base:
+                for u in unit:
+                    out.append({**b, **u})
+            return out
+
+        for idx, item in enumerate(parameters):
+            if not isinstance(item, dict) or len(item) != 1:
+                raise LoadError(
+                    f"Invalid parameters at index {idx}: expected single-key dict like '- a-b: [...]' or '- csv: ...'."
+                )
+            key, value = next(iter(item.items()))
+            if key == "csv" and not isinstance(value, list):
+                unit = _load_csv_parameters(value, Path(source_path) if source_path else None)
+            else:
+                unit = _expand_zipped_block(str(key), value)
+            combos = product_append(combos, unit)
+
+        return combos
+
+    raise LoadError(
+        "Parameters must be declared as a list of single-key dictionaries under config.parameters."
+    )
