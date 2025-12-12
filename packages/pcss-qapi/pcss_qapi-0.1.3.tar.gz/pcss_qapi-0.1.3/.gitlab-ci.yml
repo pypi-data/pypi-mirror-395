@@ -1,0 +1,52 @@
+image: python:3.12-slim
+
+stages:
+  - testing and code analysis
+  - deploy
+  - publish
+
+default:
+  before_script:
+    - python --version ; pip --version
+    - apt-get update
+    - apt-get upgrade -y
+    - apt-get install -y git
+    - pip install uv
+    - uv venv .venv
+    - uv sync
+    - source .venv/bin/activate
+    - uv pip install git+https://ptseries-CI:${PTSERIES_TOKEN}@gitlab.pcss.pl/quantum/ptseries.git
+
+pylint_and_pytest:
+  stage: testing and code analysis
+  script:
+    - pylint pcss_qapi
+    - pytest -v tests
+
+  rules:
+#    - if: '$CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+pages:
+  stage: deploy
+  script:
+    - cd docs
+    - mkdir -p tutorials
+    - cp ./../examples/*.ipynb ./tutorials
+    - sphinx-build -b html . ../public
+    - cd ..
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+publish:
+ stage: publish
+ script:
+   - uv pip install build twine
+   - python -m build
+   - twine upload dist/* -u "$PyPI_USERNAME" -p "$PyPI_PASSWORD"
+ rules:
+   - if: '$CI_COMMIT_BRANCH == "main"'
