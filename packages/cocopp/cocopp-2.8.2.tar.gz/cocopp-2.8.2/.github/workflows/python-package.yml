@@ -1,0 +1,33 @@
+name: Python package
+on:
+  push:
+  #   branches: [ "main" ]
+  pull_request:
+  #   branches: [ "main" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install ruff
+    - name: Lint with ruff
+      run: ruff check --ignore E701 --ignore E712 --ignore E722 --ignore E401 --ignore E703 --ignore F401 --ignore E402 --ignore F403 --ignore F405 src/
+    - name: Install package
+      run: pip install .
+    - name: Run doctests
+      run: python -m cocopp.test doctest  # takes about 5 seconds
+    - name: Run tests
+      run: python -m cocopp.test  # takes about 5 minutes
+    # - name: Run all tests
+    #   run: python -m cocopp.test all  # takes about 30 minutes    
