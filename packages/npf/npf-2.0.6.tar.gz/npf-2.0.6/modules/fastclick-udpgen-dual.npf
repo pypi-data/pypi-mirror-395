@@ -1,0 +1,127 @@
+%info
+UDP Traffic loop Module, dual side
+
+This will generate UDP traffic using 2 NICs.
+Packets are expected to come back, and the sum of UDP
+traffic is accounted for and printed as the RESULT.
+
+Roles : client will use two NICs of the node running this file to send traffic
+towards "dut" and should receive back the packets on the opposite ports.
+
+See tests/generic_dpdk/l2_fwd.test for example
+
+GEN_WAIT is the test time, while the client generates $GEN_FLOWS flows of $GEN_BURST packets in loop
+
+%config
+default_role_map={dut:client,client:client}
+require_tags=import,dpdk
+
+%variables
+GEN_BURST=32
+GEN_FLOWS=128
+GEN_LENGTH=64
+GEN_WAIT=5
+rate:GEN_RATE=1000
+skipinit=0
+DUT_NIC_0=0
+DUT_NIC_1=1
+GEN_PROMISC=false
+
+%late_variables
+GEN_TOT=EXPAND( $(( $GEN_BURST * $GEN_FLOWS )) )
+
+%script deps=fastclick sudo=true delay=2
+cat REPLAYER PKTGEN_CONFIG | click --dpdk -c 0xf --
+
+%-rate:file REPLAYER
+elementclass Replayer { $srcmac, $dstmac, $srcip, $dstip |
+
+    gen :: FastUDPFlows(RATE 0, LIMIT $GEN_TOT, LENGTH $GEN_LENGTH, SRCETH $srcmac, DSTETH $dstmac, SRCIP $srcip, DSTIP $dstip, FLOWS $GEN_FLOWS, FLOWSIZE $GEN_BURST)
+    -> MarkMACHeader
+    -> EnsureDPDKBuffer
+    -> replay :: ReplayUnqueue(STOP -1, QUICK_CLONE true)
+    -> output
+}
+
+%rate:file REPLAYER
+elementclass Replayer { $srcmac, $dstmac, $srcip, $dstip |
+    gen :: FastUDPFlows(RATE 0, LIMIT -1, LENGTH $GEN_LENGTH, SRCETH $srcmac, DSTETH $dstmac, SRCIP $srcip, DSTIP $dstip, FLOWS $GEN_FLOWS, FLOWSIZE $GEN_BURST)
+    -> replay :: RatedUnqueue( $(( (int)(ceil($GEN_RATE  / 2) ) )) )
+    -> output
+}
+
+
+%file PKTGEN_CONFIG
+
+elementclass Generator { $port, $th, $qu, $srcmac, $dstmac, $srcip, $dstip |
+
+    rp :: Replayer($srcmac, $dstmac, $srcip, $dstip)
+    -> sndavg :: AverageCounter()
+    -> output;
+
+    StaticThreadSched(rp/replay $th)
+
+    fd :: FromDPDKDevice($port, MAC $srcmac, MAXTHREADS 1, QUEUE $qu, PROMISC $GEN_PROMISC, VERBOSE 99)
+    -> c0 :: Classifier(12/0806 20/0001,
+                        12/0806 20/0002,
+                        -)[2]
+    -> avg :: AverageCounter
+    -> Discard;
+
+    c0[0] -> ARPResponder($srcip $srcmac)
+          -> output;
+    c0[1] -> Discard;
+}
+td0::ToDPDKDevice(${client:0:pci}, BLOCKING true, VERBOSE 3);
+td1::ToDPDKDevice(${client:1:pci}, BLOCKING true, VERBOSE 3);
+
+gen0A :: Generator(${client:0:pci}, 0, 0, ${client:0:mac}, ${dut:$DUT_NIC_0:mac}, ${client:0:ip}, ${client:1:ip}) -> td0;
+gen0B :: Generator(${client:0:pci}, 1, 1, ${client:0:mac}, ${dut:$DUT_NIC_0:mac}, ${client:0:ip}, ${client:1:ip}) -> td0;
+gen1A :: Generator(${client:1:pci}, 2, 0, ${client:1:mac}, ${dut:$DUT_NIC_1:mac}, ${client:1:ip}, ${client:0:ip}) -> td1;
+gen1B :: Generator(${client:1:pci}, 3, 1, ${client:1:mac}, ${dut:$DUT_NIC_1:mac}, ${client:1:ip}, ${client:0:ip}) -> td1;
+
+DriverManager(
+    label init,
+    wait 1s,
+    goto test_2 $(eq 1 $skipinit),
+    set initok 0,
+    goto test_1 $(lt $(add $(gen0A/avg.count) $(gen0B/avg.count)) 1),
+    set initok $(add $initok 1),
+    label test_1,
+
+    goto test_2 $(lt $(add $(gen1A/avg.count) $(gen1B/avg.count)) 1),
+    set initok $(add $initok 1),
+
+    label test_2,
+//    print "$initok",
+    write gen0A/sndavg.reset,
+    write gen0B/sndavg.reset,
+    write gen1A/sndavg.reset,
+    write gen1B/sndavg.reset,
+    write gen0A/avg.reset,
+    write gen0B/avg.reset,
+    write gen1A/avg.reset,
+    write gen1B/avg.reset,
+    goto init $(lt $initok 2),
+    init twice 0,
+    set twice $(add $twice 1),
+    goto init $(lt $twice 2),
+    print "Launching test...",
+    print "EVENT launch",
+    wait $GEN_WAIT,
+    print "EVENT stop",
+    print "SAVG0A $(gen0A/sndavg.link_rate)",
+    print "SAVG1A $(gen1A/sndavg.link_rate)",
+    print "SAVG0B $(gen0B/sndavg.link_rate)",
+    print "SAVG1B $(gen1B/sndavg.link_rate)",
+    print "AVG0A $(gen0A/avg.link_rate) $(gen0A/avg.count)",
+    print "AVG1A $(gen1A/avg.link_rate) $(gen1A/avg.count)",
+    print "AVG0B $(gen0B/avg.link_rate) $(gen0B/avg.count)",
+    print "AVG1B $(gen1B/avg.link_rate) $(gen1B/avg.count)",
+    set snd $(add $(gen0A/sndavg.link_rate) $(gen0B/sndavg.link_rate) $(gen1A/sndavg.link_rate) $(gen1B/sndavg.link_rate)),
+    set throughput $(add $(gen0A/avg.link_rate) $(gen0B/avg.link_rate) $(gen1A/avg.link_rate) $(gen1B/avg.link_rate)),
+    set pps $(add $(gen0A/avg.rate) $(gen0B/avg.rate) $(gen1A/avg.rate) $(gen1B/avg.rate)),
+    print "RESULT-LOSS $(div $(sub $snd $throughput) $snd)",
+    print "RESULT-TX $snd",
+    print "RESULT-PPS $pps",
+    print "RESULT-THROUGHPOUT $throughput")

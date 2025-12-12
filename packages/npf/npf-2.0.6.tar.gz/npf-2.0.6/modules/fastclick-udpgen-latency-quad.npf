@@ -1,0 +1,124 @@
+%info
+UDP Traffic generator Module with latency test, dual side
+
+This will generate UDP traffic using 2 NICs. Packets are expected to come back on the SAME NIC, and the sum of UDP traffic is accounted for and printed as the RESULT.
+
+Roles : client will use two NICs of the node running this file to send traffic
+towards "dut" and should receive back the packets on the opposite ports.
+
+See tests/generic_dpdk/l2_fwd_latency.test for example
+
+The client generates $GEN_FLOWS flows of $GEN_BURST packets in loop, and plays a max of $LIMIT packets
+
+%config
+default_role_map={dut:client,server:client}
+require_tags=import,dpdk
+
+%variables
+GEN_BURST=32
+GEN_FLOWS=128
+GEN_LENGTH=64
+GEN_BLOCKING=true
+GEN_REPLAY=1
+GEN_INIT_WAIT=5
+LIMIT=500000
+
+%late_variables
+NBBUF=EXPAND( $(( ($LIMIT * 4) + 8192 )) )
+
+%script deps=fastclick sudo=true delay=2
+click --dpdk -c 0xff -- PKTGEN_CONFIG
+
+%file PKTGEN_CONFIG
+DPDKInfo($NBBUF)
+
+define($replay_count $GEN_REPLAY)
+
+elementclass Numberise {
+    input-> Strip(14) -> check :: CheckIPHeader -> nPacket :: NumberPacket(40) -> SetIPChecksum -> Unstrip(14) -> output
+}
+
+
+elementclass Generator {$pci, $th, $srcmac, $dstmac, $srcip, $dstip, $e |
+    tdOUT::ToDPDKDevice($pci, BLOCKING $GEN_BLOCKING);
+
+    adv1 :: FastUDPFlows(RATE 0, LIMIT $LIMIT, LENGTH $GEN_LENGTH, SRCETH $srcmac, DSTETH $dstmac, SRCIP $srcip, DSTIP $dstip, FLOWS $GEN_FLOWS, FLOWSIZE $GEN_BURST)
+    -> MarkMACHeader
+	-> Numberise
+    -> EnsureDPDKBuffer
+    -> replay :: ReplayUnqueue(STOP 0, QUICK_CLONE true)
+    -> rt :: RecordTimestamp(N $LIMIT)
+    -> sndavg :: AverageCounter()
+    -> tdOUT;
+
+    StaticThreadSched(replay $th)
+
+    fd :: FromDPDKDevice($pci, MAC $srcmac, MAXTHREADS 1, PROMISC false, VERBOSE 99)
+    -> c0 :: Classifier(12/0806 20/0001,
+                        12/0806 20/0002,
+                        12/0800,
+                        -)[2]
+    -> Strip(14)
+    -> tsd :: TimestampDiff($e)
+    -> Unstrip(14)
+    -> avg :: AverageCounter
+    -> Discard;
+
+    tsd[1]
+    -> Print("WARNING: Untimestamped packet", -1)
+    -> Discard
+
+    c0[3]
+    -> Print("WARNING: Non-IP packet !")
+    -> Discard
+
+    c0[0] -> ARPResponder($srcip $srcmac)
+          -> tdOUT;
+    c0[1] -> Discard;
+}
+
+gen0 :: Generator(${client:0:pci}, 0, ${client:0:mac}, ${dut:0:mac}, ${client:0:ip}, ${server:1:ip}, gen1/rt)
+gen1 :: Generator(${client:1:pci}, 1, ${client:1:mac}, ${dut:1:mac}, ${client:1:ip}, ${server:0:ip}, gen0/rt)
+gen2 :: Generator(${client:2:pci}, 2, ${client:2:mac}, ${dut:2:mac}, ${client:2:ip}, ${server:3:ip}, gen3/rt)
+gen3 :: Generator(${client:3:pci}, 3, ${client:3:mac}, ${dut:3:mac}, ${client:3:ip}, ${server:2:ip}, gen2/rt)
+
+DriverManager(
+    pause,
+    pause,
+    pause,
+    pause,
+    wait ${GEN_INIT_WAIT}s,
+
+    print "Launching replay",
+    write gen0/avg.reset,
+    write gen0/sndavg.reset,
+    write gen0/replay.stop $replay_count,
+    write gen0/replay.active true,
+    write gen1/avg.reset,
+    write gen1/sndavg.reset,
+    write gen1/replay.stop $replay_count,
+    write gen1/replay.active true,
+    write gen1/avg.reset,
+    write gen2/sndavg.reset,
+    write gen2/replay.stop $replay_count,
+    write gen2/replay.active true,
+    write gen3/avg.reset,
+    write gen3/sndavg.reset,
+    write gen3/replay.stop $replay_count,
+    write gen3/replay.active true,
+    pause,
+    pause,
+    pause,
+    pause,
+    print "SAVG0 $(gen0/sndavg.link_rate)",
+    print "SAVG1 $(gen1/sndavg.link_rate)",
+    print "SAVG2 $(gen2/sndavg.link_rate)",
+    print "SAVG3 $(gen3/sndavg.link_rate)",
+    print "AVG0 $(gen0/avg.link_rate) $(gen0/avg.count) $(gen0/fd.hw_count)",
+    print "AVG1 $(gen1/avg.link_rate) $(gen1/avg.count) $(gen1/fd.hw_count)",
+    print "AVG2 $(gen2/avg.link_rate) $(gen2/avg.count) $(gen2/fd.hw_count)",
+    print "AVG3 $(gen3/avg.link_rate) $(gen3/avg.count) $(gen3/fd.hw_count)",
+    print "RESULT-LATENCY $(add $(gen0/tsd.average) $(gen1/tsd.average) $(gen2/tsd.average) $(gen3/tsd.average))",
+    print "RESULT-TX $(add $(gen0/sndavg.link_rate) $(gen1/sndavg.link_rate) $(gen2/sndavg.link_rate) $(gen3/sndavg.link_rate))",
+    print "RESULT-PPS $(add $(gen0/avg.rate) $(gen1/avg.rate) $(gen2/avg.rate) $(gen3/avg.rate))",
+    print "RESULT-THROUGHPUT $(add $(gen0/avg.link_rate) $(gen1/avg.link_rate) $(gen2/avg.link_rate) $(gen3/avg.link_rate))")
