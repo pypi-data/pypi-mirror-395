@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codefusion"
+version = "1.1.1"
+authors = [
+    { name = "Vamsi", email = "vamsik.devloper@gmail.com" },
+]
+description = "A powerful, interactive CLI tool to compile source code into a single document for AI analysis, featuring a rich interactive TUI, clipboard integration, and token estimation."
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.7"
+keywords = ["code", "compilation", "utility", "cli", "python", "interactive", "parallel", "rich-cli", "llm", "ai", "context", "clipboard"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Utilities",
+    "Topic :: Text Processing",
+]
+
+# Core dependencies (from requires.txt)
+dependencies = [
+    "gitignore-parser>=0.1.0",
+    "tqdm>=4.60.0",
+    "colorama>=0.4.0",
+    "rich>=10.0.0",
+    'tomli>=1.2.0; python_version < "3.11"', # Conditional dependency
+    "pyperclip",
+]
+
+# Defines the 'codeunify' command (from entry_points.txt)
+[project.scripts]
+codefusion = "codefusion.ui.cli:main"
+
+# Defines optional dependencies (from requires.txt)
+[project.optional-dependencies]
+magic = ["python-magic>=0.4.0"]
+dev = [
+    "pytest>=6.0.0",
+    "pytest-cov>=2.0.0",
+    "black>=22.0.0",
+    "ruff>=0.0.200",
+    "mypy>=0.900",
+    "pre-commit>=2.15.0",
+]
+# It's good practice to have an "all" that includes all optional features
+all = ["codefusion[magic]"]
+
+
+[tool.setuptools]
+# Let setuptools know where to find your package code
+packages = ["codefusion"]
+include-package-data = true

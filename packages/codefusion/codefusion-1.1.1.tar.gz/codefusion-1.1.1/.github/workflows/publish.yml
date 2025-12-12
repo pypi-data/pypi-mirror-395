@@ -1,0 +1,44 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-and-publish:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    
+    # ⚠️ CRITICAL: Add these permissions for trusted publishing
+    permissions:
+      contents: read
+      id-token: write  # This is what was missing!
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Required for setuptools_scm
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+
+    - name: Build package
+      run: python -m build
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      # Note: No password/token needed with trusted publishing
+      # Make sure you've configured the trusted publisher on PyPI:
+      # https://pypi.org/manage/account/publishing/

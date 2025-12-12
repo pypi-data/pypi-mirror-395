@@ -1,0 +1,120 @@
+# 📜 CodeFusion 🚀
+
+[![Version](https://img.shields.io/badge/Version-1.0.12-blue.svg)](https://pypi.org/project/codefusion/)
+[![Python Version](https://img.shields.io/badge/Python-3.7+-yellow.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Downloads](https://static.pepy.tech/badge/codefusion)](https://pepy.tech/project/codefusion)
+
+> **The Ultimate Code Compilation Tool for AI & LLM Context.**
+>
+> **CodeFusion** is a powerful, interactive CLI tool designed to **concatenate source code files** into a single, well-formatted document. It is the perfect utility for developers needing to share code context with **AI models (ChatGPT, Claude, Gemini)**, perform code reviews, or generate comprehensive documentation.
+
+**CodeFusion** intelligently combines your project's files while strictly adhering to `.gitignore` rules (including nested ones!), custom ignore patterns, and file type filters. It features a **rich interactive TUI**, **clipboard integration**, **token estimation**, and **parallel processing** for lightning-fast performance on large codebases.
+
+## ✨ Key Features
+
+*   **Interactive TUI:** Rich terminal user interface with interactive menus to configure options on the fly (press `o` at the prompt).
+*   **Clipboard Integration:** Automatically copy the compiled code to your clipboard for easy sharing with AI tools.
+*   **Token Estimation:** Displays estimated token count for the compiled context, helping you stay within LLM limits.
+*   **Single-File Compilation:** Combines multiple source code files into a single, readable document.
+*   **Parallel Processing:** Leverages multi-threading to read and process files concurrently, significantly speeding up compilation for large codebases.
+*   **`.gitignore` Compliance:** Fully respects your project's `.gitignore` file, preventing unwanted files from being included. (Powered by `gitignore_parser`)
+*   **Custom Ignore Files:** Supports custom ignore files (e.g., `.codeignore`) with `.gitignore`-style syntax for fine-grained control over file exclusion.
+*   **Smart Exclusions:** Automatically excludes `.git`, `venv`, `node_modules`, `.vscode`, `.idea`, and now also excludes `.gitignore` and secret files (e.g., `.env`, `*.pem`, `*.key`) by default.
+*   **Flexible Extension Filtering:** Specify desired file extensions (e.g., `py js html`) or automatically detect them based on the project's files.
+*   **Directory Exclusion:** Excludes common directories by default. Customize exclusions further with additional patterns.
+*   **Clean Formatting:** Inserts headers and separators between files for enhanced readability.
+*   **Colored CLI Output:** Provides visually distinct and readable log messages and progress updates using `colorama`.
+*   **Progress Bar:** Provides real-time feedback during compilation using `tqdm`.
+| `--min-size`                | Minimum file size in bytes to include in the compilation. Files smaller than this size will be skipped.                                                                                                                                                                                                   | `0` (bytes)            |
+| `-i`, `--ignore-file`       | Name of the custom ignore file (uses `.gitignore` syntax).                                                                                                                                                                                                                                                     | `.codeignore`          |
+| `-e`, `--extensions`        | Space-separated list of file extensions to include (e.g., `py js html`). If omitted, includes all extensions found after applying ignore rules.                                                                                                                                                           | (Auto-detect)          |
+| `--no-gitignore`            | Do not use the `.gitignore` file found in the root directory. (Note: `.gitignore` file itself is excluded from output by default).                                                                                                                                                                                                                                               | (Use `.gitignore`)     |
+| `--exclude`                 | Space-separated list of fnmatch patterns for files/directories to exclude (applied relative to the root directory). Example: `"*_test.py" "*/tests/*" "data/*"`                                                                                                                                     | (None)                 |
+| `--list-default-exclusions` | List the built-in default exclusion patterns and exit. Useful for understanding which files are excluded automatically.                                                                                                                                                                                        | (Don't List)           |
+| `--include-dirs`            | Space-separated list of directories to explicitly include in the compilation. Paths are relative to the main directory argument.                                                                                                                                                                                          | (All)                  |
+| `-v`, `--verbose`           | Enable verbose DEBUG logging output.                                                                                                                                                                                                                                                                        | (No verbose output)    |
+| `--version`                 | Show the program's version number and exit.                                                                                                                                                                                                                                                                |                        |
+
+### Examples
+
+```bash
+# 🚀 Quick Start: Interactive Mode (Recommended)
+codefusion
+
+# 📂 Compile all files in current directory (respects .gitignore)
+codefusion .
+
+# ⚡ Auto-mode (skip interactive preview)
+codefusion --auto .
+
+# 🎯 Filter by specific extensions
+codefusion -e py js ts html css .
+
+# 🚫 Ignore .gitignore rules (include everything)
+codefusion --no-gitignore .
+
+# 📦 Monorepo Support: Respects nested .gitignore files automatically!
+codefusion /path/to/monorepo
+
+# 📝 Output to a specific file
+codefusion -o context_for_llm.txt .
+
+# 📋 Copy directly to clipboard (Mac/Linux/Windows)
+codefusion --stdout | pbcopy  # Mac
+codefusion --stdout | clip    # Windows
+
+# 🔍 Exclude specific patterns (e.g., tests, config files)
+codefusion --exclude "*_test.py" "*/tests/*" "*.config.js" .
+
+# 🧹 Include empty files and set size limits
+codefusion --include-empty --min-size 100 --max-size 1048576 .
+
+# 🕵️ Dry run (see what would be included without processing)
+codefusion --dry-run .
+
+# 🔧 Use a custom ignore file
+codefusion -i .myignore .
+
+# 🐛 Debug mode
+codefusion -v .
+```
+
+## ⚙️ Configuration
+
+### Custom Ignore File (`.codeignore`)
+
+Create a `.codeignore` file in the root directory of your project to specify additional files and directories to exclude. The syntax is the same as `.gitignore`. This is useful for excluding files that are specific to CodeFusion, but not necessarily to your version control.
+
+Example `.codeignore`:
+
+```
+# Exclude test files
+*_test.py
+tests/
+
+# Exclude IDE-specific files
+.idea/
+.vscode/
+
+# Exclude documentation build output
+docs/_build/
+```
+
+### Default Exclusions
+
+CodeFusion automatically excludes common directories and files (e.g., `.git`, `venv`, `node_modules`, `.vscode`, `.idea`) to avoid including irrelevant content in the output. You can view the complete list using the `--list-default-exclusions` option.
+
+### Caching
+
+CodeFusion uses a cache to speed up binary file detection on subsequent runs. You can manage the cache with:
+
+*   `--cache-stats`: View cache statistics.
+*   `--clear-cache`: Clear cache for the current project.
+*   `--no-cache`: Run without using the cache.
+
+## 📝 Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues to suggest improvements or report bugs.
+
+
