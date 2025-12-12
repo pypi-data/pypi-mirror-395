@@ -1,0 +1,1214 @@
+# py-tacview-duckdb
+
+Parse Tacview ACMI v2.2 files into DuckDB database with kinematic analysis and enrichment pipeline.
+
+## Features
+
+- **Parse ACMI files from scratch** - No external dependencies on other ACMI parsers
+- **Auto-detect file formats** - Handles `.txt.acmi`, `.zip.acmi`, and `.acmi` files automatically
+- **DuckDB storage** - Fast columnar storage with excellent compression (~50% of SQLite size)
+- **Enhanced kinematic analysis** - Automatic computation of speed, vertical speed, turn rate, turn radius, 3-axis acceleration, and G-loading
+- **Energy state tracking** - Potential energy (PE), kinetic energy (KE), and specific energy (Es) computed for all objects with full kinematics
+- **SQL-based enrichment** - Weapon tracking, container parent detection, and coalition propagation using spatial queries
+- **Automatic DCS enrichments** - When `DataSource` starts with 'DCS', automatically applies coalitions, weapons, containers, decoys, missed_weapons, ejections, projectiles, and takeoff_landing enrichments
+- **Spatial queries** - DuckDB spatial extension for proximity detection and 3D distance calculations
+- **Parent-child tracking** - Weapons linked to launching platforms, containers linked to parent aircraft via `parent_id`
+- **Decoy detection** - Weapons that hit decoys classified as DECOYED fate
+- **Missed weapon analysis** - Time-reversed trajectory analysis to detect if missed weapons were decoyed or passed near targets
+- **Landing/takeoff detection** - Automatic detection of takeoff, landing, and touch-and-go events for fixed-wing aircraft
+- **Unguided weapon logic** - Bombs, projectiles, and rockets cannot target other weapons (no intercept capability)
+- **Container enrichment** - Drop tanks and external stores linked to parent aircraft using spatial proximity
+- **Static object detection** - Ground units, SAMs, and ships included in launcher/target detection
+- **Streaming parser** - Memory-efficient parsing with Parquet staging for large files
+- **Hash-based database naming** - Unique database per recording based on metadata
+- **Both library and CLI interfaces** - Use as Python library or command-line tool
+- **SQL query interface** - Query data with standard SQL
+- **Object attributes** - Name, Type, Pilot, Group, Coalition, Color, Country
+
+## Installation
+
+### Prebuilt Binaries
+
+On each tagged release (`v*`), GitHub Actions builds standalone binaries for macOS, Linux, and Windows and attaches them as artifacts. Download the appropriate `tacview-parse-*` binary from the release and run it directly.
+
+Build locally with:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pyinstaller --onefile --name tacview-parse --paths src src/tacview_duckdb/cli/main.py
+```
+
+```bash
+pip install py-tacview-duckdb
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/yourusername/py-tacview-duckdb.git
+cd py-tacview-duckdb
+pip install -e .
+```
+
+### Optional: Install Geocoding Support
+
+For faster reverse geocoding of locations (airports, landing zones):
+
+```bash
+# Install optional dependencies
+pip install geopy python-dotenv
+
+# Copy configuration template
+cp env.example .env
+
+# Edit .env if you need performance tuning (optional)
+nano .env
+```
+
+See [Configuration Guide](docs/CONFIGURATION.md) for all available options.
+
+## Quick Start
+
+### As a Library
+
+```python
+from tacview_duckdb import parse_acmi
+
+# Parse ACMI file - DCS files auto-enrich by default
+# (weapons, coalitions, landing/takeoff, etc.)
+store = parse_acmi('recording.acmi', output_dir='timeline_data/')
+
+# Database path for external access
+print(f"Database: {store.database_path}")
+# Output: timeline_data/a3f5d9c2b1e8f4a7.duckdb
+
+# Get summary
+summary = store.get_summary()
+print(f"Objects: {summary['object_count']}")
+print(f"States: {summary['state_count']}")
+
+# Query with SQL
+f16s = store.query_sql("SELECT * FROM objects WHERE type_specific LIKE '%F-16%'")
+red_forces = store.query_sql("SELECT * FROM objects WHERE coalition = 'Enemies'")
+```
+
+### Enrichment Control
+
+```python
+from tacview_duckdb import parse_acmi
+
+# Default: Product-specific enrichments (recommended)
+store = parse_acmi('dcs_mission.acmi')  # DCS auto-enriches
+
+# Explicitly disable enrichments (fast raw parsing)
+store = parse_acmi('dcs_mission.acmi', enrichments=[])
+
+# Custom enrichments only
+store = parse_acmi(
+    'recording.acmi',
+    enrichments=['weapons', 'coalitions'],
+    output_dir='timeline_data/',
+    progress=True
+)
+```
+
+### Progress Tracking
+
+Track progress for both parsing and enrichments:
+
+```python
+from tacview_duckdb import parse_acmi
+import time
+
+# Parsing progress (automatic with progress=True)
+store = parse_acmi('recording.acmi', progress=True, async_enrichments=True)
+# For .txt.acmi: Shows "10,000 / 620,000 lines (1.6%)"
+# For .zip.acmi: Shows "50%" → counts → "100%"
+
+# Enrichment progress (manual polling)
+while not store.enrichments_complete():
+    progress = store.get_enrichment_progress()
+    print(f"\rEnrichment: {progress['percent']}% - {progress['current']}", end='', flush=True)
+    time.sleep(0.5)
+
+print("\nComplete!")
+```
+
+**Enrichment Progress Methods:**
+
+```python
+# Get detailed progress
+progress = store.get_enrichment_progress()
+# Returns: {'progress': 0.57, 'percent': 57, 'current': 'coalitions',
+#           'completed': 4, 'total': 7, 'complete': False}
+
+# Quick check if done
+if store.enrichments_complete():
+    print("Enrichments complete!")
+
+# Wait with optional timeout
+if store.wait_for_enrichments(timeout=30.0):
+    print("Done!")
+else:
+    print("Taking longer than expected...")
+
+# Get detailed status
+status = store.enrichment_status()
+# Returns: {'async_mode': True, 'complete': False, 'thread_alive': True, ...}
+```
+
+See [Progress Tracking Guide](docs/PROGRESS_TRACKING.md) for integration examples.
+
+### On-Demand Enrichments
+
+Apply enrichments after parsing without re-parsing the entire file:
+
+```python
+from tacview_duckdb import parse_acmi
+
+# Fast initial parse with no enrichments
+store = parse_acmi('recording.acmi', enrichments=[])
+
+# Check if we need landing/takeoff data
+events = store.query_sql("""
+    SELECT COUNT(*) as count FROM events
+    WHERE event_name IN ('TakenOff', 'Landed')
+""")
+
+if events[0]['count'] == 0:
+    # No takeoff/landing events found in file, add them
+    print("Detecting landing and takeoff events...")
+    results = store.apply_enrichments(['takeoff_landing'], progress=True)
+    print(f"✅ Added events for {results['takeoff_landing']} aircraft")
+
+# Or apply multiple enrichments at once
+store.apply_enrichments(['containers', 'ejections'], progress=True)
+```
+
+**Available enrichments**:
+
+- `'weapons'`: Link weapons to launchers
+- `'coalitions'`: Infer coalitions from colors
+- `'containers'`: Link drop tanks to parent aircraft
+- `'ejections'`: Detect ejected pilots
+- `'decoys'`: Link decoys to deploying platforms
+- `'takeoff_landing'`: Detect takeoff/landing events (expensive)
+- `'missed_weapons'`: Analyze missed weapon proximity (expensive)
+- `'projectiles'`: Enrich gun projectiles (launchers, hits, burst grouping)
+
+### DuckDBStore API
+
+The `parse_acmi()` function returns a `DuckDBStore` object with the following API:
+
+```python
+from tacview_duckdb import parse_acmi
+
+# Parse returns a DuckDBStore object
+store = parse_acmi('recording.acmi')
+
+# Access database path
+print(store.database_path)  # 'timeline_data/abc123.duckdb'
+
+# Query using helper method (returns list of dicts)
+results = store.query_sql("SELECT * FROM objects WHERE type_basic = 'FixedWing'")
+for obj in results:
+    print(obj['name'], obj['coalition'])
+
+# Or get your own connection for advanced queries
+with store.get_query_connection() as conn:
+    cursor = conn.execute("""
+        SELECT COUNT(*) as count
+        FROM objects
+        WHERE type_basic = 'Weapon'
+    """)
+    weapon_count = cursor.fetchall()[0][0]
+
+# Apply enrichments on-demand
+store.apply_enrichments(['takeoff_landing'], progress=True)
+
+# Close when done (or use context manager)
+store.close()
+```
+
+**Async enrichment workflow** (default behavior - enrichments run in background):
+
+```python
+from tacview_duckdb import parse_acmi
+
+# Async mode is now the default - returns fast!
+store = parse_acmi('recording.acmi', progress=True)
+# Returns in ~6s (parsing + indexing), enrichments run in background
+
+# Query immediately - database is fully indexed
+# Safe to query while enrichments run in background
+aircraft = store.query_sql("SELECT * FROM objects WHERE type_basic = 'FixedWing'")
+trajectories = store.query_sql("SELECT * FROM states WHERE object_id IN (...)")
+
+# Or get your own connection for multiple queries
+with store.get_query_connection() as conn:
+    # Safe concurrent access while enrichments run
+    count = conn.execute("SELECT COUNT(*) FROM objects").fetchone()[0]
+    types = conn.execute("SELECT DISTINCT type_basic FROM objects").fetchall()
+
+# Wait for enrichments if you need enriched data
+store.wait_for_enrichments()
+
+# Now query enriched data
+events = store.query_sql("SELECT * FROM events WHERE event_name = 'TakenOff'")
+weapons = store.query_sql("SELECT * FROM objects WHERE properties->>'Fate' = 'HIT'")
+```
+
+For traditional synchronous behavior, set `async_enrichments=False`:
+
+```python
+# Blocks until all enrichments complete
+store = parse_acmi('recording.acmi', async_enrichments=False, progress=True)
+# All enriched data immediately available
+```
+
+See `examples/async_parse_example.py` for a complete example.
+
+### Query Examples
+
+```python
+# Query weapons with launcher information
+weapons = store.query_sql("""
+    SELECT
+        w.name as weapon,
+        l.name as launcher,
+        w.properties->>'Fate' as fate
+    FROM objects w
+    LEFT JOIN objects l ON w.parent_id = l.id
+    WHERE w.type_class = 'Weapon'
+""")
+```
+
+### Open Existing Database
+
+```python
+from tacview_duckdb import DuckDBStore
+
+# Open existing database
+store = DuckDBStore.from_path('timeline_data/a3f5d9c2b1e8f4a7.duckdb')
+
+# Query with helper methods
+summary = store.get_summary()
+results = store.query_sql("SELECT * FROM objects LIMIT 10")
+
+# Or get your own connection
+with store.get_query_connection() as conn:
+    df = conn.execute("SELECT * FROM states").fetchdf()
+```
+
+### As CLI Tool
+
+```bash
+# Parse ACMI file (DCS files get auto-enrichments, others get none by default)
+tacview-parse recording.acmi -o timeline_data/
+
+# Parse with explicit enrichments
+tacview-parse recording.acmi -o timeline_data/ --enrich weapons --enrich coalitions
+
+# With specific enrichments only
+tacview-parse recording.acmi -o timeline_data/ --enrich coalitions
+
+# Show summary
+tacview-parse timeline_data/a3f5d9c2b1e8f4a7.duckdb --summary
+
+# Execute SQL query
+tacview-parse timeline_data/a3f5d9c2b1e8f4a7.duckdb --query "SELECT COUNT(*) FROM objects"
+
+# Open interactive shell
+tacview-parse timeline_data/a3f5d9c2b1e8f4a7.duckdb --shell
+```
+
+## Database Schema
+
+### Metadata Table
+
+| Column | Type    | Description    |
+| ------ | ------- | -------------- |
+| key    | VARCHAR | Metadata key   |
+| value  | VARCHAR | Metadata value |
+
+**Special Keys:**
+
+- `parser_version` - Version of py-tacview-duckdb used to parse the file
+
+### Objects Table
+
+| Column          | Type    | Description                                 |
+| --------------- | ------- | ------------------------------------------- |
+| id              | VARCHAR | Primary key (object identifier)             |
+| name            | VARCHAR | Object name (e.g., "Viper 1-1")             |
+| type_class      | VARCHAR | Type class (Air, Ground, Sea, etc.)         |
+| type_attributes | VARCHAR | Type attributes (FixedWing, etc.)           |
+| type_basic      | VARCHAR | Basic type (Aircraft, Missile, etc.)        |
+| type_specific   | VARCHAR | Specific type (F-16C, AIM-120, etc.)        |
+| pilot           | VARCHAR | Pilot name or unit designation              |
+| group_name      | VARCHAR | Group name from DCS                         |
+| coalition       | VARCHAR | Coalition (Enemies, Allies, Neutrals)       |
+| color           | VARCHAR | Color attribute (Red, Blue, Grey)           |
+| country         | VARCHAR | 2-letter country code (us, ru, cn)          |
+| parent_id       | VARCHAR | For weapons: launching platform id          |
+| first_seen      | DOUBLE  | First timestamp                             |
+| last_seen       | DOUBLE  | Last timestamp                              |
+| removed_at      | DOUBLE  | Timestamp when object was removed/destroyed |
+| properties      | JSON    | Additional properties (enriched data)       |
+
+**Primary Key:** `id`  
+**Logical Relationships:** `parent_id` → `id` (weapons to platforms, parachutists to aircraft)
+
+**Properties JSON Fields (for weapons):**
+
+- `LauncherStateAtLaunch` - state_id of launcher at weapon launch
+- `TargetStateAtLaunch` - state_id of target when weapon launched
+- `TargetStateAtImpact` - state_id of target at weapon impact
+- `WeaponStateAtImpact` - state_id of weapon itself at impact time
+- `Fate` - HIT/MISS/DECOYED/INTERCEPT
+- Plus launcher/target details (name, type, pilot, coalition, etc.)
+
+### States Table
+
+| Column         | Type    | Description                      |
+| -------------- | ------- | -------------------------------- |
+| id             | BIGINT  | Auto-increment primary key       |
+| object_id      | VARCHAR | Object identifier                |
+| timestamp      | DOUBLE  | Time in seconds                  |
+| longitude      | DOUBLE  | Longitude (degrees)              |
+| latitude       | DOUBLE  | Latitude (degrees)               |
+| altitude       | DOUBLE  | Altitude (meters)                |
+| roll           | DOUBLE  | Roll angle (degrees)             |
+| pitch          | DOUBLE  | Pitch angle (degrees)            |
+| yaw            | DOUBLE  | Yaw angle (degrees)              |
+| heading        | DOUBLE  | Heading (degrees)                |
+| u              | DOUBLE  | Flat X coordinate (meters)       |
+| v              | DOUBLE  | Flat Y coordinate (meters)       |
+| speed          | DOUBLE  | 3D speed (m/s) - computed        |
+| vertical_speed | DOUBLE  | Vertical speed (m/s) - computed  |
+| turn_rate      | DOUBLE  | Turn rate (deg/sec) - computed   |
+| turn_radius    | DOUBLE  | Turn radius (meters) - computed  |
+| ax             | DOUBLE  | Acceleration X (m/s²) - computed |
+| ay             | DOUBLE  | Acceleration Y (m/s²) - computed |
+| az             | DOUBLE  | Acceleration Z (m/s²) - computed |
+| g_load         | DOUBLE  | G-loading (1.0 = 1g) - computed  |
+
+**Primary Key:** `id` (auto-increment)  
+**Unique Constraint:** `(object_id, timestamp)`
+
+## Kinematic Analysis
+
+The parser automatically computes enhanced kinematic fields from object motion during ingest for **Air** and **Weapon** type objects:
+
+- **Speed**: 3D speed from position changes (m/s)
+- **Vertical Speed**: Rate of altitude change (m/s)
+- **Turn Rate**: Rate of heading change (deg/sec)
+- **Turn Radius**: Instantaneous turn radius from speed and turn rate (meters)
+- **3-Axis Acceleration**: ax, ay, az in world frame (m/s²)
+- **G-Loading**: Total G-force including gravity compensation (1.0 = 1g)
+
+These fields are computed in real-time during parsing using efficient flat-world U/V coordinates and stored in the states table. Ground and sea units get basic kinematics only (speed, vertical_speed, turn_rate) for efficiency.
+
+## Enrichments
+
+**Note:** Enrichments are disabled by default for non-DCS files. DCS files (DataSource starts with 'DCS') automatically get `['coalitions', 'weapons', 'containers', 'decoys', 'missed_weapons', 'ejections', 'projectiles', 'takeoff_landing']` enrichments. Use `enrichments=[...]` to explicitly enable specific enrichments for any file.
+
+### Weapon Tracking
+
+Uses SQL spatial queries with a two-query approach to track weapons and identify launchers/targets:
+
+- **Weapon Detection**: Both guided weapons (`type_class = 'Weapon'`) and unguided projectiles (`type_basic = 'Projectile'`)
+- **Launcher Detection** (100% accuracy): Two-query approach for maximum compatibility
+  - **Query 1**: Fast detection for moving platforms (aircraft, moving vehicles)
+    - 100m radius, 1 second time window
+    - Finds platforms with states near weapon spawn time
+  - **Query 2**: Fallback for static/slow-moving platforms (SAM sites, stationary vehicles)
+    - 500m radius (accommodates static positions with spawn inaccuracies)
+    - Uses last platform state before weapon launch time
+    - Handles platforms with single position or infrequent state updates
+    - Checks platform lifetime (first_seen, removed_at) against launch time
+  - Stored in `parent_id` column for efficient joins
+  - Coalition-filtered (launcher always same coalition as weapon)
+  - Includes aircraft, helicopters, ground vehicles, ships, and SAM sites
+  - **State linking**: `LauncherStateAtLaunch` property stores launcher's state_id at weapon launch
+- **Target Detection**: Object hit by weapon at impact (150m radius)
+  - Includes moving and static targets
+  - Ground targets (SAM sites, vehicles, buildings)
+  - **Target filtering by weapon type**:
+    - **Missiles** can target any object, including other weapons (air-to-air intercepts)
+    - **All other weapons** (bombs, rockets, torpedoes, projectiles) can only target Air/Sea/Ground type_class (no weapon-on-weapon)
+  - **State linking**: `TargetStateAtLaunch` and `TargetStateAtImpact` properties store target state_ids
+- **Fate**: Classification based on proximity and target type
+  - **HIT**: Impact within 150m of target
+  - **MISS**: Impact >150m from nearest target
+  - **INTERCEPT**: Hit another weapon (only for missiles with missile targets)
+  - **DECOYED**: Hit a decoy object (chaff, flare, decoy)
+- **Launch Parameters**: Range, altitude, coalition
+
+The enrichment uses DuckDB's spatial extension with 3D distance calculations for accurate detection. The two-query approach ensures 100% launcher detection for both air-launched and ground-launched weapons. State IDs enable precise reconstruction of weapon timelines from launch to impact.
+
+Example:
+
+```python
+store = parse_acmi('recording.acmi', enrichments=['weapons'])
+
+# Query weapons with complete trajectory data
+weapons = store.query_sql("""
+    SELECT
+        w.name as weapon,
+        w.coalition,
+        l.name as launcher,
+        l.pilot as launcher_pilot,
+        t.name as target,
+        w.properties->>'Fate' as fate,
+        ls.longitude as launch_lon,
+        ls.latitude as launch_lat,
+        ws.longitude as weapon_impact_lon,
+        ws.latitude as weapon_impact_lat,
+        ws.speed as weapon_impact_speed,
+        ts.longitude as target_lon,
+        ts.latitude as target_lat
+    FROM objects w
+    LEFT JOIN objects l ON w.parent_id = l.id
+    LEFT JOIN LATERAL (
+        -- TargetIDs is an array, get first element (0-based indexing in JSON)
+        SELECT (w.properties->'TargetIDs')[0]::VARCHAR as target_id
+    ) first_target ON true
+    LEFT JOIN objects t ON first_target.target_id = t.id
+    LEFT JOIN states ls ON ls.id = (w.properties->>'LauncherStateAtLaunch')::BIGINT
+    LEFT JOIN states ws ON ws.id = (w.properties->>'WeaponStateAtImpact')::BIGINT
+    LEFT JOIN states ts ON ts.id = (w.properties->>'TargetStateAtImpact')::BIGINT
+    WHERE w.type_class = 'Weapon'
+""")
+```
+
+### Container Parent Detection
+
+Identifies parent platforms for dropped objects (drop tanks, external stores) using spatial proximity:
+
+- **Container Detection**: Objects with `type_specific = 'Container'`
+- **Parent Identification**: Closest platform (aircraft, helicopter, ground vehicle) at spawn time
+- **Spatial Proximity**: 3D distance calculation using first available position state
+- **No Coalition Filtering**: Containers are neutral but dropped by aircraft
+- **Drop Range**: Distance from parent at release stored in properties
+
+Example:
+
+```python
+store = parse_acmi('recording.acmi', enrichments=['weapons'])
+
+# Query containers with their parent aircraft
+containers = store.query_sql("""
+    SELECT
+        c.name as container,
+        p.name as parent_aircraft,
+        p.pilot as pilot,
+        c.properties->>'DropRange' as distance_meters
+    FROM objects c
+    LEFT JOIN objects p ON c.parent_id = p.id
+    WHERE c.type_specific = 'Container'
+    ORDER BY CAST(c.properties->>'DropRange' AS DOUBLE)
+""")
+```
+
+### Ejected Pilot Tracking
+
+Identifies parent aircraft for ejected pilots (parachutists) and marks aircraft with ejection fate:
+
+- **Pilot Detection**: Objects with `type_specific='Parachutist'` and `name='Pilot'`
+- **Parent Identification**: Closest aircraft at spawn time using spatial proximity (500m radius, 0.5 second window)
+  - Radius accounts for fast-moving aircraft and network desync
+- **Parent Validation**: Parent aircraft must have `last_seen` within 120 seconds after ejection (ensures parent was actually destroyed/damaged)
+- **Parent Marking**: Parent aircraft is marked with `fate=Ejected` in properties
+- **Parachutist Properties**: Includes parent aircraft name, type, pilot, coalition, and ejection distance
+- **Event Creation**: Automatically creates `Message` events on the **aircraft object** (not parachutist) for easy querying alongside other aircraft events
+- **Use Case**: Track pilot ejections from damaged or destroyed aircraft
+
+Example:
+
+```python
+store = parse_acmi('recording.acmi', enrichments=['weapons'])
+
+# Query ejection events (events are on aircraft objects)
+ejection_events = store.query_sql("""
+    SELECT
+        e.timestamp,
+        o.name as aircraft,
+        o.pilot as pilot_name,
+        o.coalition,
+        e.event_params as message
+    FROM events e
+    JOIN objects o ON e.object_id = o.id
+    WHERE e.event_name = 'Message'
+      AND e.event_params LIKE '%ejected%'
+    ORDER BY e.timestamp
+""")
+
+# Query ejected pilots and their aircraft
+ejected_pilots = store.query_sql("""
+    SELECT
+        p.id as parachute_id,
+        p.name as parachute_name,
+        a.name as aircraft,
+        a.type_basic as aircraft_type,
+        a.pilot as pilot_name,
+        (p.properties->>'EjectionDistance')::DOUBLE as distance_meters,
+        a.properties->>'fate' as aircraft_fate
+    FROM objects p
+    LEFT JOIN objects a ON p.parent_id = a.id
+    WHERE p.type_specific = 'Parachutist'
+      AND p.name = 'Pilot'
+""")
+
+# Query all aircraft that had pilots eject
+aircraft_with_ejections = store.query_sql("""
+    SELECT
+        id,
+        name,
+        type_basic,
+        pilot,
+        coalition,
+        properties->>'fate' as fate
+    FROM objects
+    WHERE properties->>'fate' = 'Ejected'
+""")
+```
+
+### Decoy Parent Detection
+
+Identifies parent platforms for deployed decoys (chaff, flares, electronic decoys) using spatial proximity:
+
+- **Decoy Detection**: Objects with `type_basic = 'Decoy'`
+- **Parent Identification**: Closest platform (aircraft, ground vehicle, ship) at spawn time using haversine distance
+  - Uses lat/lon coordinates with haversine formula (decoys don't have U/V coordinates)
+  - 500m search radius to account for fast-moving aircraft and deployment mechanics
+  - 1 second time window around decoy spawn
+- **No Coalition Filtering**: Decoys are typically Neutral coalition but deployed by Allies/Enemies platforms
+- **Parent Validation**: Parent platform must exist at decoy deployment time
+- **Deployment Range**: 3D distance from parent at deployment stored in properties
+- **Use Case**: Track countermeasure deployment, analyze defensive tactics, understand decoy effectiveness
+
+Example:
+
+```python
+store = parse_acmi('recording.acmi', enrichments=['decoys'])
+
+# Query decoys with their parent platforms
+decoys = store.query_sql("""
+    SELECT
+        d.name as decoy,
+        d.coalition,
+        p.name as parent_platform,
+        p.type_basic as parent_type,
+        p.pilot as pilot,
+        d.properties->>'DeploymentRange' as distance_meters,
+        d.first_seen as deployment_time
+    FROM objects d
+    LEFT JOIN objects p ON d.parent_id = p.id
+    WHERE d.type_basic = 'Decoy'
+    ORDER BY d.first_seen
+""")
+
+# Analyze decoy deployment patterns by platform
+decoy_deployment = store.query_sql("""
+    SELECT
+        p.name as platform,
+        p.type_basic as platform_type,
+        COUNT(*) as decoys_deployed
+    FROM objects d
+    JOIN objects p ON d.parent_id = p.id
+    WHERE d.type_basic = 'Decoy'
+    GROUP BY p.name, p.type_basic
+    ORDER BY decoys_deployed DESC
+""")
+```
+
+### Missed Weapon Proximity Analysis
+
+**Advanced enrichment for analyzing weapon misses and decoy effectiveness.**
+
+Traces backward through time from missed weapons to detect proximity to decoys and targets. Uses **adaptive sampling with binary refinement** for 10-100x speedup over full trajectory scanning.
+
+- **Weapon Detection**: Missiles and rockets marked as `MISS` from standard weapon enrichment
+- **Adaptive Sampling** (default): Samples trajectory at ~12 points with adaptive radius
+  - Radius = `distance_between_points / 2` (ensures coverage)
+  - If proximity found, refines search around that time window
+  - **Performance**: ~5-15s for 200 weapons vs ~30-60s for full scan
+- **Classification**:
+  - **DECOYED**: Weapon was lured away by a decoy (`type_basic='Decoy'`)
+  - **NEAR_MISS**: Weapon passed within 200m of a target
+  - **MISS**: No proximity detected (beyond 200m threshold)
+- **Coalition Filtering**: Only searches opposing coalitions
+- **Properties Added**: `Fate`, `TargetIDs` (array), `IntendedTargetID` (for decoys), `ProximityDistance`, `ProximityTime`, `WeaponStateAtProximity`, `TargetStateAtProximity`
+
+**Note**: Only IDs are stored in properties. Use JOIN queries to retrieve object details (names, types, coalitions, pilots). Enable explicitly with `enrichments=['missed_weapons']` or `enrichments=['missed_weapon_proximity']`. With adaptive sampling (default), performance is much improved.
+
+Example:
+
+```python
+# Enable missed weapon proximity analysis
+store = parse_acmi(
+    'recording.acmi',
+    enrichments=['weapons', 'coalitions', 'missed_weapons'],  # Add missed_weapons
+    progress=True
+)
+
+# Find all decoyed weapons with launcher and intended target
+decoyed = store.query_sql("""
+    SELECT
+        w.name as weapon,
+        launcher.name as launcher,
+        decoy.name as decoy,
+        intended_target.name as intended_target,
+        CAST(w.properties->>'ProximityDistance' AS DOUBLE) as distance
+    FROM objects w
+    JOIN objects launcher ON w.parent_id = launcher.id
+    CROSS JOIN LATERAL (
+        -- TargetIDs is an array, get first element (0-based indexing in JSON)
+        SELECT (w.properties->'TargetIDs')[0]::VARCHAR as target_id
+    ) first_target
+    JOIN objects decoy ON first_target.target_id = decoy.id
+    LEFT JOIN objects intended_target ON w.properties->>'IntendedTargetID' = intended_target.id
+    WHERE w.properties->>'Fate' = 'DECOYED'
+""")
+
+# Measure decoy effectiveness by parent platform
+decoy_stats = store.query_sql("""
+    SELECT
+        parent.name as platform,
+        parent.pilot as pilot,
+        COUNT(*) as weapons_decoyed,
+        ROUND(AVG(CAST(w.properties->>'ProximityDistance' AS DOUBLE)), 1) as avg_distance
+    FROM objects w
+    CROSS JOIN LATERAL (
+        -- TargetIDs is an array, get first element (0-based indexing in JSON)
+        SELECT (w.properties->'TargetIDs')[0]::VARCHAR as target_id
+    ) first_target
+    JOIN objects decoy ON first_target.target_id = decoy.id
+    JOIN objects parent ON decoy.parent_id = parent.id
+    WHERE w.properties->>'Fate' = 'DECOYED'
+    GROUP BY parent.name, parent.pilot
+    ORDER BY weapons_decoyed DESC
+""")
+
+# Find near-misses
+near_misses = store.query_sql("""
+    SELECT
+        w.name as weapon,
+        target.name as target,
+        target.type_basic as target_type,
+        CAST(w.properties->>'ProximityDistance' AS DOUBLE) as distance_m
+    FROM objects w
+    CROSS JOIN LATERAL (
+        -- TargetIDs is an array, get first element (0-based indexing in JSON)
+        SELECT (w.properties->'TargetIDs')[0]::VARCHAR as target_id
+    ) first_target
+    JOIN objects target ON first_target.target_id = target.id
+    WHERE w.properties->>'Fate' = 'NEAR_MISS'
+    ORDER BY distance_m
+""")
+```
+
+See [docs/MISSED_WEAPON_ANALYSIS.md](docs/MISSED_WEAPON_ANALYSIS.md) for detailed documentation.
+
+### Projectile Enrichment
+
+**Comprehensive projectile analysis: launcher detection, hit detection, and burst grouping.**
+
+Groups individual bullets into burst objects for cleaner analytics and creates hierarchy: **Aircraft → Burst → Individual Projectiles**. Automatically enabled for DCS recordings.
+
+**Processing Pipeline:**
+
+1. **Launcher Detection**: Match projectiles to launchers using coalition/color/country + spatial proximity (100m)
+2. **Hit Detection**: Detect projectile hits (10m radius) before burst grouping - coalition-agnostic to detect friendly fire
+3. **Burst Grouping**: Group projectiles fired within 1.0s into burst objects with aggregated statistics
+4. **Tactical Events**: Creates `WEAPON_HIT` and `WEAPON_MISS` events in `tactical_events` table
+5. **Intended Target Detection** (Enabled by default): Identifies likely intended targets for missed air-to-air bursts using 3D cone tracking and updates `WEAPON_MISS` events
+
+**Key Features:**
+
+- **Synthetic Burst Objects**: Custom objects (not in ACMI spec) that aggregate projectile groups
+- **Time-Based Grouping**: 1.0s gap triggers new burst (handles continuous CIWS fire)
+- **Single-Fire Handling**: Artillery/tank rounds keep direct `parent_id` to launcher (no burst created)
+- **Multi-Target Bursts**: Tracks hits on multiple targets in single burst
+- **Friendly Fire Detection**: Coalition-agnostic hit detection classifies hits as `FRIENDLY_FIRE`, `ENEMY`, or `NEUTRAL`
+- **Performance**: ~4ms per projectile for full processing (launcher + hit + burst)
+
+**Burst Properties:**
+
+- `BurstProjectileCount`: Number of projectiles in burst
+- `BurstDuration`: Time gun was firing (excludes bullet flight time)
+- `BurstFireRate`: Rounds per second
+- `HitCount`: Number of hits in burst
+- `TargetIDs`: Array of targets hit (supports multi-target bursts)
+- `Fate`: `HIT` or `MISS`
+- `ProjectileIDs`: Array of projectile IDs in burst
+- `IntendedTargetIDs`: Array of intended target IDs (top 3, for missed bursts only)
+- `IntendedTargetTimeInCone`: Array of time-in-cone values for each intended target
+- `IntendedTargetAvgDistance`: Array of average distances to intended targets
+- `IntendedTargetMinDistance`: Array of minimum distances to intended targets
+
+**Projectile Properties:**
+
+- `Fate`: `HIT` or `MISS`
+- `HitType`: `FRIENDLY_FIRE`, `ENEMY`, or `NEUTRAL` (if hit)
+- `HitDistance`: Distance to target in meters (if hit)
+- `TargetIDs`: Array with single target ID (if hit)
+
+Example:
+
+```python
+# Enabled by default for DCS recordings
+store = parse_acmi('dcs_mission.acmi', progress=True)
+
+# Query burst statistics
+burst_stats = store.query_sql("""
+    SELECT
+        COUNT(*) as burst_count,
+        SUM(CAST(properties->>'BurstProjectileCount' AS INT)) as total_rounds,
+        SUM(CAST(properties->>'HitCount' AS INT)) as total_hits,
+        ROUND(100.0 * SUM(CAST(properties->>'HitCount' AS INT)) /
+              SUM(CAST(properties->>'BurstProjectileCount' AS INT)), 2) as accuracy_pct
+    FROM objects
+    WHERE type_specific = 'Burst'
+""")
+
+# Gun effectiveness by pilot
+pilot_stats = store.query_sql("""
+    SELECT
+        l.pilot,
+        COUNT(*) as bursts,
+        SUM(CAST(b.properties->>'HitCount' AS INT)) as hits,
+        ROUND(100.0 * SUM(CAST(b.properties->>'HitCount' AS INT)) /
+              SUM(CAST(b.properties->>'BurstProjectileCount' AS INT)), 2) as accuracy
+    FROM objects b
+    JOIN objects l ON b.parent_id = l.id
+    WHERE b.type_specific = 'Burst'
+    GROUP BY l.pilot
+    ORDER BY accuracy DESC
+""")
+
+# Get bursts from specific aircraft (no individual bullets)
+bursts = store.query_sql("""
+    SELECT * FROM objects
+    WHERE parent_id = 'aircraft_123'
+      AND type_specific = 'Burst'
+""")
+
+# Get individual projectiles in a burst
+projectiles = store.query_sql("""
+    SELECT * FROM objects
+    WHERE parent_id = 'burst_id'
+    ORDER BY first_seen
+""")
+
+# Friendly fire detection
+friendly_fire = store.query_sql("""
+    WITH burst_ff AS (
+        SELECT
+            b.id,
+            b.name as burst,
+            l.name as shooter,
+            l.coalition,
+            (
+                SELECT COUNT(*)
+                FROM json_each(b.properties->'TargetIDs') t
+                JOIN objects tgt ON tgt.id = CAST(t.value AS VARCHAR)
+                WHERE tgt.coalition = l.coalition
+            ) as ff_hits
+        FROM objects b
+        JOIN objects l ON b.parent_id = l.id
+        WHERE b.type_specific = 'Burst'
+    )
+    SELECT * FROM burst_ff WHERE ff_hits > 0
+""")
+
+# Query WEAPON_MISS events with intended target information
+missed_bursts = store.query_sql("""
+    SELECT
+        te.timestamp,
+        launcher.name as launcher,
+        launcher.pilot,
+        target.name as intended_target,
+        target.type_basic as target_type,
+        te.metadata->'intended_target_ids' as all_intended_targets,
+        te.metadata->'intended_target_time_in_cone' as time_in_cone,
+        te.metadata->'intended_target_avg_distance' as avg_distances
+    FROM tactical_events te
+    JOIN objects launcher ON te.initiator_id = launcher.id
+    LEFT JOIN objects target ON te.target_id = target.id
+    WHERE te.event_type = 'WEAPON_MISS'
+      AND te.target_id IS NOT NULL  -- Has intended target
+    ORDER BY te.timestamp
+""")
+```
+
+**Custom Configuration:**
+
+```python
+from tacview_duckdb.enrichment import ProjectileEnricher
+import duckdb
+
+# Custom enricher with different settings
+enricher = ProjectileEnricher(
+    launcher_radius=150.0,      # Wider launcher search
+    hit_radius=15.0,            # More tolerant hit detection
+    burst_time_gap=2.0,         # Longer gap for continuous fire
+    detect_intended_targets=True,  # Enable intended target detection (default: True)
+    intended_cone_azimuth=30.0,    # Wider azimuth cone (±30° = 60° total)
+    intended_cone_pitch=15.0,      # Narrower pitch cone (±15° = 30° total)
+    intended_max_distance=5000.0   # Extended range (5km)
+)
+
+# Apply to existing database
+store = DuckDBStore.from_path('timeline_data/mission.duckdb')
+conn = store.get_query_connection()
+enricher.enrich([], conn)
+conn.close()
+store.close()
+```
+
+See `examples/projectile_analysis.py` for more examples.
+
+### Landing and Takeoff Detection
+
+**Automatic detection of flight phase transitions for fixed-wing aircraft and rotorcraft.**
+
+Uses **hybrid gap-based detection** that leverages Tacview's behavior of not emitting states for stationary objects. This approach is **~3000x faster** than window function-based methods for gap detection, with boundary refinement for precise timing.
+
+**Air Start Detection:**
+
+- Automatically detects aircraft spawning mid-flight (late joins, respawns)
+- Criteria: Spawn ≥10s after mission start, altitude ≥100m, speed ≥30 m/s
+- Includes pilot names: `pilot 'John' (F-16C) has spawned at Beirut Airport`
+
+**Geographic Enrichment:**
+
+- **Airport Database**: ~80,000 airports from OurAirports (fast, local, cached)
+- **Reverse Geocoding**: City/region names via geopy + Photon (primary, unlimited) or Nominatim (fallback)
+- **Automatic Fallback**: No configuration needed - works out of the box with English results
+- **Configuration**: Use `.env` file for easy API key management (see [Configuration Guide](docs/CONFIGURATION.md))
+- **In-Memory Caching**: 65,000x speedup for repeated lookups
+- **Output Examples**:
+  - `"F-16C has taken off from Beirut Rafic Hariri International Airport (OLBA)"`
+  - `"Su-27 has taken off from near Al-Mushayrifah, Ar-Raqqa Governorate, Syria"`
+  - `"pilot 'Jane' (AH-64D) has spawned at near Damascus, Syria"`
+
+#### Fixed-Wing Aircraft
+
+- **Detection Logic**: Speed-based (taxi vs flight speed)
+- **Event Types**:
+  - **TakenOff**: Aircraft accelerates and transitions from ground to flight
+  - **Landed**: Aircraft decelerates and transitions from flight to ground
+  - **TouchAndGo**: Brief ground contact (< 15 seconds with speed > 10 m/s)
+- **Runway Detection**: Extracts runway heading from ground roll
+- **Gap Merging**: Merges consecutive gaps if taxiing between them (speed < 10 m/s)
+
+#### Rotorcraft (Helicopters)
+
+- **Detection Logic**: Altitude-based (vertical movement, since helicopters can hover)
+- **Event Types**:
+  - **TakenOff**: Climbed ≥10m and accelerated to ≥10 m/s after gap
+  - **Landed**: Descended ≥10m and decelerated from ≥10 m/s before gap
+- **Landing Zones**: Reports "LZ" (Landing Zone) locations instead of runways
+- **No Touch-and-Go**: Not applicable for rotorcraft
+
+#### Common Features
+
+- **Tacview Integration**: Events injected into `events` table using native ACMI 2.2 format
+- **Properties Stored**: Takeoff/Landing time, altitude, speed, heading, location, flight duration, max altitude/speed
+- **Gap-Based Detection**: Uses `LAG()` window function to identify gaps in state timestamps
+- **Boundary Refinement**: Fetches states around gap boundaries for precise timing
+- **Performance**: ~147% overhead on typical files
+
+#### Aircraft Removal Detection
+
+The `takeoff_landing` enrichment also includes **automatic aircraft removal classification**:
+
+- **Destroyed Events**: Aircraft removed at high speed (>30 m/s average) are marked with `Destroyed` event
+- **LeftArea Events**: Aircraft removed at low speed (<1 m/s average) are marked with `LeftArea` event
+- **Speed Analysis**: Averages the last 3 states before removal to classify the event
+- **Coalition Statistics**: Enables accurate kill/loss tracking by filtering out non-combat removals
+
+This helps distinguish between actual combat losses and despawned/disconnected aircraft. See [docs/AIRCRAFT_REMOVAL_DETECTION.md](.cursor/docs/AIRCRAFT_REMOVAL_DETECTION.md) for details.
+
+**Note**: Enable with `enrichments=['takeoff_landing']` or `enrichments=['flight_phases']`.
+
+#### Airport Database Enrichment
+
+Optionally use the [OurAirports open database](https://github.com/davidmegginson/ourairports-data) (~80,000 airports worldwide) to automatically identify airports:
+
+```python
+# Enable airport identification
+store.apply_enrichments(
+    ['takeoff_landing'],
+    use_airport_database=True,      # Enable airport matching
+    airport_max_distance_km=5.0     # Search within 5 km (default)
+)
+# Output: "F-16C has taken off from Nellis Air Force Base (KLSV) (Runway 21L)"
+# vs without: "F-16C has taken off from Location (36.236, -115.034) (Runway 21)"
+```
+
+Features: Automatic ICAO/IATA codes, local caching (~7MB, 30-day TTL), includes heliports for rotorcraft. See [docs/LANDING_TAKEOFF_DETECTION.md](docs/LANDING_TAKEOFF_DETECTION.md#airport-database-enrichment) for details.
+
+**⚠️ Limitations**:
+
+- Does **NOT** work for aircraft carrier operations (carriers are moving platforms with continuous state updates)
+- Only detects land-based airfield/landing zone operations
+
+Example:
+
+```python
+# Parse with landing/takeoff detection
+store = parse_acmi(
+    'recording.acmi',
+    enrichments=['landing_takeoff'],
+    output_dir='timeline_data/'
+)
+
+# Query landing/takeoff events
+events = store.query_sql("""
+    SELECT
+        e.timestamp,
+        o.name as aircraft,
+        e.event_name,
+        e.event_params as details
+    FROM events e
+    JOIN objects o ON e.object_id = o.id
+    WHERE e.event_name IN ('TakenOff', 'Landed', 'TouchAndGo')
+    ORDER BY e.timestamp
+""")
+
+# Get flight statistics
+stats = store.query_sql("""
+    SELECT
+        o.name,
+        o.properties->>'NumberOfTakeoffs' as takeoffs,
+        o.properties->>'NumberOfLandings' as landings,
+        o.properties->>'FlightDuration' as flight_time,
+        o.properties->>'MaxAltitude' as max_altitude
+    FROM objects o
+    WHERE o.type_basic = 'FixedWing'
+      AND o.properties->>'TakeoffTime' IS NOT NULL
+""")
+```
+
+See [docs/LANDING_TAKEOFF_DETECTION.md](docs/LANDING_TAKEOFF_DETECTION.md) for detailed documentation.
+
+### Coalition Propagation (SQL-based)
+
+Infers coalition from color attribute when coalition is not explicitly set using a single SQL UPDATE query:
+
+- Red → Enemies
+- Blue → Allies
+- Other → Neutrals
+
+All enrichments use SQL queries for maximum performance - no Python iteration over objects.
+
+## File Format Support
+
+Automatically detects and handles:
+
+- **`.txt.acmi`** - Uncompressed text files (using native Python file I/O)
+- **`.zip.acmi`** - ZIP compressed files (extracts first `.txt.acmi` from archive)
+- **`.acmi`** - Auto-detects format using ZIP magic bytes
+
+All formats are handled transparently - just pass the file path to `parse_acmi()`.
+
+**Note on ZIP files**: ZIP archives use a codec reader wrapper which may behave slightly differently than native file reading. Both handle UTF-8 with BOM properly, but if you experience parsing issues with a `.zip.acmi` file, try extracting it to `.txt.acmi` first.
+
+## DuckDB Benefits
+
+| Feature            | SQLite             | DuckDB                   |
+| ------------------ | ------------------ | ------------------------ |
+| Storage            | Row-based          | Columnar                 |
+| Query speed        | Slow for analytics | 10-100x faster           |
+| Compression        | Limited            | Excellent (~50% smaller) |
+| Time-series        | Limited            | Native support           |
+| Analytical queries | Poor               | Excellent                |
+
+## Integration with Other Tools
+
+DuckDB databases can be queried directly:
+
+```python
+import duckdb
+
+# Direct access
+conn = duckdb.connect('timeline_data/a3f5d9c2b1e8f4a7.duckdb', read_only=True)
+df = conn.execute("SELECT * FROM states").fetchdf()
+
+# Export to Pandas
+import pandas as pd
+df = conn.query("SELECT * FROM states WHERE timestamp > 100").to_df()
+
+# Export to Parquet
+conn.execute("COPY states TO 'states.parquet' (FORMAT PARQUET)")
+
+# Use with Apache Arrow
+arrow_table = conn.execute("SELECT * FROM states").fetch_arrow_table()
+```
+
+### Concurrent Access
+
+The library uses **DuckDB's MVCC (Multi-Version Concurrency Control)** for safe concurrent access:
+
+```python
+import threading
+
+def query_worker(store):
+    # Each thread gets its own connection - DuckDB MVCC handles concurrency
+    with store.get_query_connection() as conn:
+        return conn.execute("SELECT COUNT(*) FROM objects").fetchone()[0]
+
+# Safe concurrent queries - DuckDB's MVCC coordinates all access
+threads = [threading.Thread(target=query_worker, args=(store,)) for _ in range(5)]
+for t in threads: t.start()
+for t in threads: t.join()
+
+# Meanwhile, enrichments can run in background
+store.apply_enrichments(['coalitions'], async_enrichments=True)
+
+# All connections are read-write, application logic manages writes
+# DuckDB's MVCC ensures consistency
+with store.get_query_connection() as conn:
+    # Query or update - MVCC handles concurrency automatically
+    results = conn.execute("SELECT * FROM objects").fetchall()
+```
+
+**Architecture:**
+
+- Internal writer: Parser + enrichments share single connection (single thread)
+- Consumer queries: Each gets own connection via `get_query_connection()`
+- DuckDB MVCC: Automatic coordination of concurrent reads/writes
+- No locks needed: MVCC handles everything
+- Perfect for websocket streaming: write continuously, query concurrently
+
+See: https://duckdb.org/docs/stable/connect/concurrency
+
+## Query Examples
+
+```python
+from tacview_duckdb import parse_acmi
+
+store = parse_acmi('recording.acmi', enrichments=['weapons', 'coalitions'])
+
+# Find all F-16s
+f16s = store.query_sql("""
+    SELECT id, name, pilot, coalition
+    FROM objects
+    WHERE type_specific LIKE '%F-16%'
+""")
+
+# Get red forces
+red_forces = store.query_sql("""
+    SELECT * FROM objects
+    WHERE coalition = 'Enemies'
+""")
+
+# Find high-speed states
+high_speed = store.query_sql("""
+    SELECT o.name, s.timestamp, s.speed, s.altitude
+    FROM states s
+    JOIN objects o ON s.object_id = o.id
+    WHERE s.speed > 300
+    ORDER BY s.speed DESC
+    LIMIT 10
+""")
+
+# Weapon effectiveness by launcher (using parent_id join)
+weapon_stats = store.query_sql("""
+    SELECT
+        l.name as launcher,
+        l.pilot,
+        w.properties->>'Fate' as fate,
+        COUNT(*) as count
+    FROM objects w
+    LEFT JOIN objects l ON w.parent_id = l.id
+    WHERE w.type_class = 'Weapon'
+    GROUP BY l.name, l.pilot, fate
+    ORDER BY launcher, fate
+""")
+
+# Russian units
+russian = store.query_sql("""
+    SELECT * FROM objects WHERE country = 'ru'
+""")
+
+# CAP flights
+cap_flights = store.query_sql("""
+    SELECT * FROM objects WHERE group_name LIKE '%CAP%'
+""")
+```
+
+## Development
+
+```bash
+# Clone repository
+git clone https://github.com/yourusername/py-tacview-duckdb.git
+cd py-tacview-duckdb
+
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run tests with coverage
+pytest --cov=tacview_duckdb --cov-report=html
+
+# Format code
+black src/ tests/
+
+# Lint
+ruff check src/ tests/
+
+# Type checking
+mypy src/
+```
+
+## Documentation
+
+- [API Reference](docs/API_REFERENCE.md) - Complete API documentation
+- [Progress Tracking](docs/PROGRESS_TRACKING.md) - Track parsing and enrichment progress
+- [Configuration Guide](docs/CONFIGURATION.md) - Environment variables and performance tuning
+- [ACMI Format](docs/ACMI_FORMAT.md) - Understanding the Tacview ACMI format
+- [Landing/Takeoff Detection](docs/LANDING_TAKEOFF_DETECTION.md) - Flight phase detection
+- [Tacview Events](docs/TACVIEW_EVENTS_INTEGRATION.md) - Native Tacview event integration
+- [Ejection Events](docs/EJECTION_EVENTS.md) - Pilot ejection detection
+- [Missed Weapons](docs/MISSED_WEAPON_ANALYSIS.md) - Trajectory analysis for near misses
+
+## Requirements
+
+- Python 3.8+
+- duckdb >= 1.4.0
+- pyarrow >= 15.0.0 (for Parquet staging)
+
+**Optional:**
+
+- geopy >= 2.3.0 (for reverse geocoding)
+- python-dotenv >= 0.19.0 (for `.env` file support)
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+Contributions welcome! Please open an issue or submit a pull request.
+
+## Roadmap
+
+- [x] ~~Spatial queries with DuckDB spatial extension~~ ✅ Implemented
+- [x] ~~Parent-child relationship tracking~~ ✅ Implemented (`parent_id` column)
+- [x] ~~Streaming parser for memory efficiency~~ ✅ Implemented (Parquet staging)
+- [ ] More enrichment modules (formation detection, engagement analysis)
+- [ ] Performance optimizations for very large files
+- [ ] Export to common formats (CSV, Parquet, Arrow)
+
+**Note**: This library is a pure data export tool for converting ACMI to queryable databases. For trajectory visualization and analysis, use the exported DuckDB database with visualization tools like Python (matplotlib, plotly), Grafana, or BI tools.
+
+## Acknowledgments
+
+- Tacview for the ACMI format specification
+- DuckDB for the excellent analytical database
