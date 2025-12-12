@@ -1,0 +1,186 @@
+# 🧪 htest-tools
+
+**A complete statistics hub for Hypothesis Testing, UMP Tests, Estimator Properties, and MLE.**
+
+`htest-tools` is a Python library designed to streamline statistical analysis. It provides clean results, automatic interpretations, and robust data structures for Z-tests, Neyman-Pearson (MP/UMP) tests, Cramer-Rao Lower Bound (CRLB) calculations, and Maximum Likelihood Estimation (MLE).
+
+Here is a comprehensive, formatted `README.md` file ready for PyPI, organized based on the documentation you provided.
+
+````markdown
+# 🧪 htest-tools
+
+**A complete statistics hub for Hypothesis Testing, UMP Tests, Estimator Properties, and MLE.**
+
+`htest-tools` is a Python library designed to streamline statistical analysis. It provides clean results, automatic interpretations, and robust data structures for Z-tests, Neyman-Pearson (MP/UMP) tests, Cramer-Rao Lower Bound (CRLB) calculations, and Maximum Likelihood Estimation (MLE).
+
+---
+
+## 📦 Installation
+
+```bash
+pip install htest-tools
+````
+
+-----
+
+## 🚀 Features
+
+  * **Z-Tests & Confidence Intervals:** Standard tests for means and proportions with automatic interpretations.
+  * **Neyman–Pearson / UMP Tests:** Implements Most Powerful and Uniformly Most Powerful tests for Binomial, Poisson, and Normal distributions.
+  * **Estimator Analysis:** Calculates bias, variance, efficiency, and CRLB.
+  * **Maximum Likelihood Estimation:** Computes MLEs with handling for edge cases/degenerate data.
+  * **Structured Outputs:** All functions return clear, typed `dataclasses` (e.g., `TestResult`, `EstimatorSummary`, `MLEOutput`) containing full context, p-values, and logical interpretations.
+
+-----
+
+## 📝 Usage Example
+
+```python
+from htest_tools import (
+    np_binom, np_norm, np_pois,
+    est_norm_mean, est_binom_p,
+    mle_exp
+)
+import numpy as np
+
+# 1. Neyman–Pearson Test (Binomial)
+# Testing H0: p=0.4 vs H1: p=0.6 with 12 successes in 20 trials
+result = np_binom(x=12, n=20, p0=0.4, p1=0.6, alternative="greater")
+print(f"Reject Null: {result.reject_h0}")
+print(f"Interpretation: {result.interpretation}")
+
+# 2. Estimator Properties
+# Analyze sample mean properties for Normal distribution
+sample = np.random.normal(10, 2, 50)
+est_summary = est_norm_mean(sample, sigma2_known=4)
+print(f"Efficiency: {est_summary.efficient}")
+print(f"CRLB: {est_summary.crlb}")
+
+# 3. Maximum Likelihood Estimation
+# Estimate lambda for Exponential distribution
+exp_data = np.random.exponential(scale=2, size=100)
+mle_result = mle_exp(exp_data)
+print(f"Estimated Lambda: {mle_result.parameters_hat}")
+```
+
+-----
+
+## 📚 API Reference
+
+###  Z-Tests & Confidence Intervals (`htests.py`)
+
+Standard hypothesis tests and confidence intervals.
+
+#### Hypothesis Tests
+
+| Function | Description | Parameters |
+| :--- | :--- | :--- |
+| `z_test_one_mean` | Z-test for one population mean | `xbar`, `mu0`, `sigma`, `n`, `alpha`, `alternative` |
+| `z_test_two_proportions` | Z-test comparing two proportions | `x1`, `n1`, `x2`, `n2`, `alpha`, `alternative` |
+
+#### Confidence Intervals
+
+| Function | Description | Parameters |
+| :--- | :--- | :--- |
+| `ci_one_mean_t` | CI for mean (σ unknown) | `xbar`, `s`, `n`, `alpha` |
+| `ci_one_mean_z` | CI for mean (σ known) | `xbar`, `sigma`, `n`, `alpha` |
+| `ci_two_means_independent_t` | CI for diff in means (t-test) | `xbar1`, `s1`, `n1`, `xbar2`, `s2`, `n2`, `alpha` |
+| `ci_two_means_independent_z` | CI for diff in means (z-test) | `xbar1`, `sigma1`, `n1`, `xbar2`, `sigma2`, `n2`, `alpha` |
+
+-----
+
+###  Neyman–Pearson / UMP Tests (`np_lemma_tests.py`)
+
+Implements MP/UMP tests. Returns a `TestResult` object containing the statistic, critical region, p-value, and rejection logic.
+
+**Return Object:** `TestResult`
+
+#### Functions
+
+  * **`np_binom(x, n, p0, p1, alpha, alternative)`**
+
+      * **Distribution:** Binomial(n, p)
+      * **Purpose:** MP/UMP test for proportion $p$.
+      * **Hypotheses:** $H_0: p = p_0$ vs $H_1: p = p_1$.
+
+  * **`np_pois(x, lambda0, lambda1, alpha, alternative)`**
+
+      * **Distribution:** Poisson(λ)
+      * **Purpose:** MP/UMP test for rate $\lambda$.
+
+  * **`np_norm(xbar, n, mu0, mu1, sigma, alpha, alternative)`**
+
+      * **Distribution:** Normal(μ, σ known)
+      * **Purpose:** MP/UMP z-test for mean $\mu$.
+
+-----
+
+###  Estimator Properties & CRLB (`estimator_properties.py`)
+
+Analyzes the properties of an estimator, including Bias, Variance, and Efficiency compared to the Cramer-Rao Lower Bound (CRLB).
+
+**Return Object:** `EstimatorSummary`
+
+#### Estimator Analyzers
+
+| Function | Distribution | Computes |
+| :--- | :--- | :--- |
+| `est_norm_mean(sample, sigma2_known)` | Normal | Bias, Var, Efficiency of $\bar{X}$ |
+| `est_binom_p(k, n, p_true)` | Binomial | Properties of $\hat{p} = k/n$ |
+| `est_pois_lam(counts, lambda_true)` | Poisson | Properties of $\hat{\lambda} = \bar{X}$ |
+
+#### CRLB Utilities
+
+Calculates the theoretical lower bound for variance.
+
+  * `crlb_norm(sigma2, n)`: CRLB for $\mu$
+  * `crlb_binom(p, n)`: CRLB for $p$
+  * `crlb_pois(lam, n)`: CRLB for $\lambda$
+
+-----
+
+###  Maximum Likelihood Estimation (`mle_est.py`)
+
+Computes MLE parameters for common distributions, handling boundary conditions and degenerate cases.
+
+**Return Object:** `MLEOutput`
+
+#### Functions
+
+  * **`mle_norm(sample)`**
+
+      * Returns: $\hat{\mu}$ (mean), $\hat{\sigma}^2$ (variance with denominator $n$).
+      * *Note:* Handles degenerate cases where all values are equal.
+
+  * **`mle_binom(k, n)`**
+
+      * Returns: $\hat{p} = k/n$.
+      * *Note:* Handles boundary cases ($k=0 \to \hat{p}=0$, $k=n \to \hat{p}=1$).
+
+  * **`mle_exp(sample)`**
+
+      * Returns: $\hat{\lambda} = 1 / \bar{X}$.
+      * *Note:* If all data is 0, returns $\hat{\lambda} = \infty$.
+
+-----
+
+## 🔗 Public API
+
+The following functions are exposed via `__all__`:
+
+  * `z_test_one_mean`, `z_test_two_proportions`
+  * `ci_one_mean_t`, `ci_one_mean_z`
+  * `ci_two_means_independent_t`, `ci_two_means_independent_z`
+  * `np_binom`, `np_pois`, `np_norm`
+  * `est_norm_mean`, `est_binom_p`, `est_pois_lam`
+  * `crlb_norm`, `crlb_binom`, `crlb_pois`
+  * `mle_norm`, `mle_binom`, `mle_exp`
+
+-----
+
+## 📄 License
+
+MIT
+
+```
+```
