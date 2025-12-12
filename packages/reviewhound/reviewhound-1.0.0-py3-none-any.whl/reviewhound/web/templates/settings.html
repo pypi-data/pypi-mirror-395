@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Review Hound{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-semibold text-[var(--text-primary)]">Settings</h1>
+    <p class="text-[var(--text-muted)] mt-1">Configure API keys and sentiment analysis</p>
+</div>
+
+<div class="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border)] p-6 max-w-2xl">
+    <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">API Keys</h2>
+    <p class="text-[var(--text-muted)] text-sm mb-6">
+        Add API keys to fetch reviews from official APIs instead of web scraping.
+        This is more reliable and provides access to more reviews.
+    </p>
+
+    <!-- Google Places API -->
+    <div class="mb-6 pb-6 border-b border-[var(--border)]">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h3 class="font-medium text-[var(--text-primary)]">Google Places API</h3>
+                <p class="text-sm text-[var(--text-muted)]">Fetch Google reviews for your businesses</p>
+            </div>
+            {% if api_keys.get('google_places') %}
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="googleToggle" class="sr-only peer"
+                       {% if api_keys.get('google_places', {}).get('enabled') %}checked{% endif %}
+                       onchange="toggleApiKey('google_places')">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+            {% endif %}
+        </div>
+
+        <div id="googleKeyForm">
+            {% if api_keys.get('google_places') %}
+            <div class="flex items-center gap-3">
+                <div class="flex-1 bg-[var(--bg-muted)] rounded px-3 py-2 font-mono text-sm text-[var(--text-secondary)]">
+                    {{ api_keys['google_places']['key_preview'] }}
+                </div>
+                <button onclick="showEditForm('google_places')" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm">Edit</button>
+                <button onclick="deleteApiKey('google_places')" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm">Delete</button>
+            </div>
+            {% else %}
+            <form onsubmit="saveApiKey(event, 'google_places')" class="flex gap-3">
+                <input type="text" id="googleApiKey" placeholder="Enter Google Places API key"
+                       class="flex-1 border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5 placeholder-[var(--text-muted)]">
+                <button type="submit" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Save</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div id="googleEditForm" class="hidden">
+            <form onsubmit="saveApiKey(event, 'google_places')" class="flex gap-3">
+                <input type="text" id="googleApiKeyEdit" placeholder="Enter new API key"
+                       class="flex-1 border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5 placeholder-[var(--text-muted)]">
+                <button type="submit" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Save</button>
+                <button type="button" onclick="hideEditForm('google_places')" class="px-4 py-2.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] font-medium">Cancel</button>
+            </form>
+        </div>
+
+        <p class="text-xs text-[var(--text-muted)] mt-2">
+            <a href="https://developers.google.com/maps/documentation/places/web-service/get-api-key" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">Get a Google Places API key</a>
+        </p>
+    </div>
+
+    <!-- Yelp Fusion API -->
+    <div class="mb-2">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h3 class="font-medium text-[var(--text-primary)]">Yelp Fusion API</h3>
+                <p class="text-sm text-[var(--text-muted)]">Fetch Yelp reviews for your businesses</p>
+            </div>
+            {% if api_keys.get('yelp_fusion') %}
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="yelpToggle" class="sr-only peer"
+                       {% if api_keys.get('yelp_fusion', {}).get('enabled') %}checked{% endif %}
+                       onchange="toggleApiKey('yelp_fusion')">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+            {% endif %}
+        </div>
+
+        <div id="yelpKeyForm">
+            {% if api_keys.get('yelp_fusion') %}
+            <div class="flex items-center gap-3">
+                <div class="flex-1 bg-[var(--bg-muted)] rounded px-3 py-2 font-mono text-sm text-[var(--text-secondary)]">
+                    {{ api_keys['yelp_fusion']['key_preview'] }}
+                </div>
+                <button onclick="showEditForm('yelp_fusion')" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm">Edit</button>
+                <button onclick="deleteApiKey('yelp_fusion')" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm">Delete</button>
+            </div>
+            {% else %}
+            <form onsubmit="saveApiKey(event, 'yelp_fusion')" class="flex gap-3">
+                <input type="text" id="yelpApiKey" placeholder="Enter Yelp Fusion API key"
+                       class="flex-1 border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5 placeholder-[var(--text-muted)]">
+                <button type="submit" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Save</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div id="yelpEditForm" class="hidden">
+            <form onsubmit="saveApiKey(event, 'yelp_fusion')" class="flex gap-3">
+                <input type="text" id="yelpApiKeyEdit" placeholder="Enter new API key"
+                       class="flex-1 border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5 placeholder-[var(--text-muted)]">
+                <button type="submit" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Save</button>
+                <button type="button" onclick="hideEditForm('yelp_fusion')" class="px-4 py-2.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] font-medium">Cancel</button>
+            </form>
+        </div>
+
+        <p class="text-xs text-[var(--text-muted)] mt-2">
+            <a href="https://www.yelp.com/developers/v3/manage_app" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">Get a Yelp Fusion API key</a>
+        </p>
+    </div>
+</div>
+
+<!-- Sentiment Analysis Settings -->
+<div class="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border)] p-6 max-w-2xl mt-6">
+    <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Sentiment Analysis</h2>
+    <p class="text-[var(--text-muted)] text-sm mb-6">
+        Configure how sentiment scores are calculated. The final score combines the star rating
+        and text analysis based on the weights below.
+    </p>
+
+    <div class="space-y-6">
+        <div>
+            <div class="flex justify-between mb-2">
+                <label class="text-sm font-medium text-[var(--text-secondary)]">Star Rating Weight</label>
+                <span id="ratingWeightValue" class="text-sm text-[var(--text-secondary)]">{{ sentiment_config.rating_weight * 100 | int }}%</span>
+            </div>
+            <input type="range" id="ratingWeight" min="0" max="100" value="{{ sentiment_config.rating_weight * 100 | int }}"
+                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                   oninput="updateWeights()">
+            <p class="text-xs text-[var(--text-muted)] mt-1">How much the star rating (1-5) influences the sentiment score</p>
+        </div>
+
+        <div>
+            <div class="flex justify-between mb-2">
+                <label class="text-sm font-medium text-[var(--text-secondary)]">Text Analysis Weight</label>
+                <span id="textWeightValue" class="text-sm text-[var(--text-secondary)]">{{ sentiment_config.text_weight * 100 | int }}%</span>
+            </div>
+            <input type="range" id="textWeight" min="0" max="100" value="{{ sentiment_config.text_weight * 100 | int }}"
+                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                   oninput="updateWeights()">
+            <p class="text-xs text-[var(--text-muted)] mt-1">How much the review text analysis influences the sentiment score</p>
+        </div>
+
+        <div class="pt-4 border-t border-[var(--border)]">
+            <div class="flex justify-between mb-2">
+                <label class="text-sm font-medium text-[var(--text-secondary)]">Classification Threshold</label>
+                <span id="thresholdValue" class="text-sm text-[var(--text-secondary)]">{{ sentiment_config.threshold }}</span>
+            </div>
+            <input type="range" id="threshold" min="0" max="50" value="{{ sentiment_config.threshold * 100 | int }}"
+                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                   oninput="updateThreshold()">
+            <p class="text-xs text-[var(--text-muted)] mt-1">Score must be above this value to be classified as positive/negative (0 = any non-zero score, 0.5 = strong signal needed)</p>
+        </div>
+
+        <div class="flex items-center justify-between pt-4">
+            <button onclick="saveSentimentSettings()" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                Save Settings
+            </button>
+            <button onclick="resetSentimentDefaults()" class="px-4 py-2.5 border border-[var(--border)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-muted)] font-medium">
+                Reset to Defaults
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+const providerInputIds = {
+    'google_places': { main: 'googleApiKey', edit: 'googleApiKeyEdit' },
+    'yelp_fusion': { main: 'yelpApiKey', edit: 'yelpApiKeyEdit' }
+};
+
+const providerFormIds = {
+    'google_places': { key: 'googleKeyForm', edit: 'googleEditForm' },
+    'yelp_fusion': { key: 'yelpKeyForm', edit: 'yelpEditForm' }
+};
+
+function showEditForm(provider) {
+    document.getElementById(providerFormIds[provider].key).classList.add('hidden');
+    document.getElementById(providerFormIds[provider].edit).classList.remove('hidden');
+    document.getElementById(providerInputIds[provider].edit).focus();
+}
+
+function hideEditForm(provider) {
+    document.getElementById(providerFormIds[provider].edit).classList.add('hidden');
+    document.getElementById(providerFormIds[provider].key).classList.remove('hidden');
+}
+
+async function saveApiKey(event, provider) {
+    event.preventDefault();
+
+    const mainInput = document.getElementById(providerInputIds[provider].main);
+    const editInput = document.getElementById(providerInputIds[provider].edit);
+    const apiKey = editInput?.value || mainInput?.value;
+
+    if (!apiKey) {
+        alert('Please enter an API key');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings/api-keys', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                provider: provider,
+                api_key: apiKey,
+                enabled: true
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to save API key');
+        }
+    } catch (e) {
+        alert('Error saving API key');
+    }
+}
+
+async function deleteApiKey(provider) {
+    if (!confirm('Are you sure you want to delete this API key?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/settings/api-keys/${provider}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to delete API key');
+        }
+    } catch (e) {
+        alert('Error deleting API key');
+    }
+}
+
+async function toggleApiKey(provider) {
+    try {
+        const response = await fetch(`/api/settings/api-keys/${provider}/toggle`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.error || 'Failed to toggle API key');
+            window.location.reload();
+        }
+    } catch (e) {
+        alert('Error toggling API key');
+        window.location.reload();
+    }
+}
+
+// Sentiment settings functions
+function updateWeights() {
+    const ratingWeight = parseInt(document.getElementById('ratingWeight').value);
+    const textWeight = parseInt(document.getElementById('textWeight').value);
+
+    document.getElementById('ratingWeightValue').textContent = ratingWeight + '%';
+    document.getElementById('textWeightValue').textContent = textWeight + '%';
+}
+
+function updateThreshold() {
+    const threshold = parseInt(document.getElementById('threshold').value) / 100;
+    document.getElementById('thresholdValue').textContent = threshold.toFixed(2);
+}
+
+async function saveSentimentSettings() {
+    const ratingWeight = parseInt(document.getElementById('ratingWeight').value) / 100;
+    const textWeight = parseInt(document.getElementById('textWeight').value) / 100;
+    const threshold = parseInt(document.getElementById('threshold').value) / 100;
+
+    try {
+        const response = await fetch('/api/settings/sentiment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                rating_weight: ratingWeight,
+                text_weight: textWeight,
+                threshold: threshold
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Sentiment settings saved successfully');
+        } else {
+            alert(data.error || 'Failed to save sentiment settings');
+        }
+    } catch (e) {
+        alert('Error saving sentiment settings');
+    }
+}
+
+async function resetSentimentDefaults() {
+    if (!confirm('Reset sentiment settings to defaults (70% rating, 30% text)?')) {
+        return;
+    }
+
+    document.getElementById('ratingWeight').value = 70;
+    document.getElementById('textWeight').value = 30;
+    document.getElementById('threshold').value = 10;
+    updateWeights();
+    updateThreshold();
+    await saveSentimentSettings();
+}
+</script>
+{% endblock %}
