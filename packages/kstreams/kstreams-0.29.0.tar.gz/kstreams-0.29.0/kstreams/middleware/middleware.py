@@ -1,0 +1,172 @@
+import logging
+import signal
+import sys
+import typing
+
+from kstreams import types
+from kstreams.consts import StreamErrorPolicy, UDFType
+
+if typing.TYPE_CHECKING:
+    from kstreams import Stream, StreamEngine  #  pragma: no cover
+
+
+logger = logging.getLogger(__name__)
+
+
+class MiddlewareProtocol(typing.Protocol):
+    next_call: types.NextMiddlewareCall
+    send: types.Send
+    stream: "Stream"
+
+    def __init__(
+        self,
+        *,
+        next_call: types.NextMiddlewareCall,
+        send: types.Send,
+        stream: "Stream",
+        send_many: types.SendMany,
+        **kwargs: typing.Any,
+    ) -> None: ...  #  pragma: no cover
+
+    async def __call__(
+        self, cr: types.ConsumerRecord
+    ) -> typing.Any: ...  #  pragma: no cover
+
+
+class Middleware:
+    def __init__(
+        self, middleware: typing.Type[MiddlewareProtocol], **kwargs: typing.Any
+    ) -> None:
+        self.middleware = middleware
+        self.kwargs = kwargs
+
+    def __iter__(self) -> typing.Iterator:
+        return iter((self.middleware, self.kwargs))
+
+    def __repr__(self) -> str:
+        middleware_name = self.middleware.__name__
+        extra_options = [f"{key}={value!r}" for key, value in self.kwargs.items()]
+        return f"{middleware_name}({extra_options})"
+
+
+class BaseMiddleware:
+    next_call: types.NextMiddlewareCall
+    send: types.Send
+    stream: "Stream"
+    send_many: types.SendMany
+
+    def __init__(
+        self,
+        *,
+        next_call: types.NextMiddlewareCall,
+        send: types.Send,
+        stream: "Stream",
+        send_many: types.SendMany,
+    ) -> None:
+        self.next_call = next_call
+        self.send = send
+        self.stream = stream
+        self.send_many = send_many
+
+    async def __call__(self, cr: types.ConsumerRecord) -> typing.Any:
+        raise NotImplementedError
+
+
+class ExceptionMiddleware(BaseMiddleware):
+    """
+    This is always the first Middleware in the middleware stack
+    to catch any exception that might occur. Any exception raised
+    when consuming events that is not handled by the end user
+    will be handled by this ExceptionMiddleware executing the
+    policy_error that was stablished.
+    """
+
+    def __init__(
+        self, *, engine: "StreamEngine", error_policy: StreamErrorPolicy, **kwargs
+    ) -> None:
+        super().__init__(**kwargs)
+        self.engine = engine
+        self.error_policy = error_policy
+
+    async def __call__(self, cr: types.ConsumerRecord) -> typing.Any:
+        try:
+            return await self.next_call(cr)
+        except Exception as exc:
+            logger.exception(
+                "Unhandled error occurred while listening to the stream. "
+                f"Stream consuming from topics {self.stream.topics} CRASHED!!! \n\n "
+            )
+            if sys.version_info >= (3, 11):
+                exc.add_note(f"Handler: {self.stream.func}")
+                exc.add_note(f"Topics: {self.stream.topics}")
+
+            await self.cleanup_policy(exc)
+
+    async def cleanup_policy(self, exc: Exception) -> None:
+        """
+        Execute cleanup policy according to the Stream configuration.
+
+        At this point we are inside the asyncio.Lock `is_processing`
+        as an event is being processed and an exeption has occured.
+        The Lock must be released to stop the Stream
+        (which must happen for any policy), then before re-raising
+        the exception the Lock must be acquire again to continue the processing
+
+        Exception and policies:
+
+            - STOP: The exception is re-raised as the Stream will be stopped
+              and the end user will deal with it
+
+            - STOP_ENGINE: The exception is re-raised as the Engine will be stopped
+              (all Streams and Producer) and the end user will deal with it
+
+            - RESTART: The exception is not re-raised as the Stream
+              will recover and continue the processing. The logger.exception
+              from __call__ will record that something went wrong
+
+            - STOP_APPLICATION: The exception is not re-raised as the entire
+              application will be stopped. This is only useful when using kstreams
+              with another library like FastAPI. The logger.exception
+              from __call__ will record that something went wrong
+
+        Args:
+            exc (Exception): Any Exception that causes the Stream to crash
+
+        Raises:
+            exc: Exception is the policy is `STOP` or `STOP_ENGINE`
+        """
+        self.stream.is_processing.release()
+
+        if self.error_policy == StreamErrorPolicy.RESTART:
+            await self.engine.restart_stream(self.stream)
+            await self.stream.is_processing.acquire()
+        elif self.error_policy == StreamErrorPolicy.STOP:
+            task = self.engine.streams_to_tasks[self.stream]
+            await self.engine.stop_stream(stream=self.stream, task=task)
+            # acquire `is_processing` Lock again to resume processing
+            # and avoid `RuntimeError: Lock is not acquired.`
+            await self.stream.is_processing.acquire()
+            raise exc
+        elif self.error_policy == StreamErrorPolicy.STOP_ENGINE:
+            await self.engine.stop()
+            # acquire `is_processing` Lock again to resume processing
+            # and avoid `RuntimeError: Lock is not acquired.`
+            await self.stream.is_processing.acquire()
+            raise exc
+        else:
+            # STOP_APPLICATION
+            await self.engine.stop()
+            await self.stream.is_processing.acquire()
+            signal.raise_signal(signal.SIGTERM)
+
+
+class BaseDependcyMiddleware(MiddlewareProtocol, typing.Protocol):
+    """Base class for Dependency Injection Middleware.
+
+    `get_type` is used to identify the way to call the user defined function,
+    whether to use DI or not.
+
+    On top of that, this middleware helps **avoid circular dependencies**.
+    """
+
+    def get_type(self) -> UDFType: ...

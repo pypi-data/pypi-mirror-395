@@ -1,0 +1,27 @@
+import enum
+
+APPLICATION_X_AVRO_BINARY = "application/x-avro-binary"
+APPLICATION_X_AVRO_JSON = "application/x-avro-json"
+APPLICATION_X_JSON_SCHEMA = "application/x-json-schema"
+APPLICATION_JSON = "application/json"
+
+AVRO_SERIALIZATION_TYPES = (
+    APPLICATION_X_AVRO_BINARY,
+    APPLICATION_X_AVRO_JSON,
+)
+SERIALIZATION_TYPES = AVRO_SERIALIZATION_TYPES + (
+    APPLICATION_X_JSON_SCHEMA,
+    APPLICATION_JSON,
+)
+
+
+class UDFType(str, enum.Enum):
+    NO_TYPING = "NO_TYPING"
+    WITH_TYPING = "WITH_TYPING"
+
+
+class StreamErrorPolicy(str, enum.Enum):
+    RESTART = "RESTART"
+    STOP = "STOP"
+    STOP_ENGINE = "STOP_ENGINE"
+    STOP_APPLICATION = "STOP_APPLICATION"

@@ -1,0 +1,90 @@
+[tool.poetry]
+name = "kstreams"
+version = "0.29.0"
+description = "Build simple kafka streams applications"
+authors = ["Marcos Schroh <marcos.schroh@kpn.com>"]
+maintainers = ["Santiago Fraire Willemoës <santiago.fraire@kpn.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["stream", "processing", "kafka", "event streaming"]
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Distributed Computing",
+    "Framework :: AsyncIO",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiokafka = "<1.0"
+prometheus-client = "<1.0"
+future = "^1.0.0"
+PyYAML = ">=5.4,<7.0.0"
+pydantic = ">=2.0.0,<3.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+pytest-asyncio = ">=0.24,<1.4"
+pytest-benchmark = "^5.1.0"
+pytest-cov = "^6"
+pytest-httpserver = "^1.1.0"
+mypy = "^1.11.2"
+ruff = ">=0.8,<0.14"
+aiorun = ">=2024.5.1,<2026.0.0"
+jedi = "^0.19.1"
+mkdocs = "^1.1.2"
+uvicorn = "<1.0"
+commitizen = "^4"
+fastapi = ">=0.115,<0.122"
+mkdocs-material = "^9.5.39"
+starlette-prometheus = "^0.10.0"
+codecov = "^2.1.12"
+mkdocstrings = { version = ">=0.27,<1.1", extras = ["python"] }
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.commitizen]
+version_provider = "poetry"
+tag_format = "$version"
+update_changelog_on_bump = true
+major_version_zero = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+log_level = "DEBUG"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[[tool.mypy.overrides]]
+module = "aiokafka.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "prometheus_client.*"
+ignore_missing_imports = true
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle"
+    "E4",
+    "E7",
+    "E9",
+    "E501",
+    # Pyflakes
+    "F",
+    # isort
+    "I",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["kstreams", "tests"]
