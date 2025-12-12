@@ -1,0 +1,125 @@
+Metadata-Version: 2.4
+Name: gondolin
+Version: 0.1.1
+Summary: Policy-as-Code for AI Agents. Secure your LLM's access to tools with decorators and safe proxies.
+Author-email: Jashua Gupta <findjashua@gmail.com>
+Project-URL: Homepage, https://github.com/findjashua/gondolin
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Security
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: PyYAML>=6.0
+
+# Gondolin
+
+**Gondolin** is a security framework for AI Agents. It acts as a "Safe Proxy" layer between your LLM and sensitive Python libraries (like Jira, Stripe, AWS, or internal tools).
+
+Named after the legendary Hidden City protected by seven gates, Gondolin enforces **Policy-as-Code** to ensure your Agent never executes dangerous actions, even if it tries.
+
+## Features
+
+*   **Zero Boilerplate:** No need to write wrapper scripts for every API call.
+*   **Policy-as-Code:** Define allowed methods and security rules in a simple YAML file.
+*   **Decorator-Based Logic:** Use standard Python decorators to enforce limits (e.g., `max_amount=500`), logging, or authorization.
+*   **Recursive Proxies:** Automatically protects nested objects (e.g., `client.users.delete`).
+*   **Import Interception:** Prevents the Agent from importing the "real" dangerous library.
+
+## Installation
+
+```bash
+pip install gondolin
+```
+
+## Quick Start
+
+### 1. Define your Policies (`policy_config.yaml`)
+Define method allowlist and map to a list of policy decorators. Each lib entry must include `target_class` (the class that will be proxied).
+
+```yaml
+libs:
+  jira:
+    target_class: "JIRA"
+    policies:
+      # Simple Allow
+      search_issues:
+        - audit_log
+      
+      # Parametrized Logic
+      assign_issue:
+        - audit_log
+        - require_reason
+      
+      # Dangerous Action (Not listed = Blocked by default)
+      # delete_issue: [] 
+
+# Nested paths are supported (e.g., "sub.deep_action").
+```
+
+### 2. Define your Decorators (`policy_decorators.py`)
+Write standard Python decorators to implement your business logic.
+
+```python
+from gondolin import Registry
+import logging
+
+decorator_registry = Registry()
+logger = logging.getLogger("Audit")
+
+@decorator_registry.register("audit_log")
+def audit_log(func):
+    def wrapper(*args, **kwargs):
+        logger.info(f"Agent calling {func.__name__} with {args} {kwargs}")
+        return func(*args, **kwargs)
+    return wrapper
+
+@decorator_registry.register("require_reason")
+def require_reason(func):
+    def wrapper(*args, **kwargs):
+        if "reason" not in kwargs:
+            raise PermissionError(f"SOP Violation: You must provide a 'reason' argument to call {func.__name__}")
+        return func(*args, **kwargs)
+    return wrapper
+
+# Decorator args: {"limit": 5} passes 5 positionally; {"limit": {"max": 5}} passes kwargs.
+```
+
+### 3. Initialize Gondolin (`main.py`)
+Run the setup before your Agent starts.
+
+```python
+from gondolin import setup
+from policy_decorators import decorator_registry
+
+# 1. Bootstrap the environment
+# This reads the YAML and monkey-patches sys.modules
+setup("policy_config.yaml", decorator_registry)
+
+# 2. Agent Execution
+# When the Agent runs this, it gets the Safe Proxy, not the raw lib.
+import jira 
+
+client = jira.JIRA(server="https://jira.example.com")
+
+# ✅ Allowed (Logged)
+client.search_issues("project = PROJ")
+
+# ❌ Blocked (Raises PermissionError)
+client.delete_issue("PROJ-1")
+```
+
+## Architecture
+
+Gondolin works by dynamically creating a **Module Facade**. When `setup()` is called, it:
+1.  Imports the real library in the background.
+2.  Creates a fake module that mimics the real structure.
+3.  Injects a **SafeProxy** class that intercepts all attribute access.
+4.  Replaces the real library in `sys.modules` with the Safe Proxy.
+
+Validation: `setup` rejects malformed configs (missing `target_class`/`policies`, non-list rules, non-string rule names/keys).
+
+## License
+
+MIT
