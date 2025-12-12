@@ -1,0 +1,181 @@
+//! Client module for Full IPC
+//! 
+//! This module is only available when the "client" feature is enabled.
+
+/*
+DO NOT MODIFY THIS FILE.  It is automatically generated and changes will be over-written
+on the next generation.
+
+This is the Client for the Full interface.
+
+LICENSE: This generated code is not subject to any license restrictions from the generator itself.
+TODO: Get license text from stinger file
+*/
+
+use {{stinger.rust.package_name}}::client::{{stinger.rust.client_struct_name}};
+use {{stinger.rust.package_name}}::discovery::{{stinger.name|UpperCamelCase}}Discovery;
+use mqttier::{MqttierClient, MqttierOptionsBuilder, Connection};
+use tokio::time::{sleep, Duration};
+use tokio::join;
+#[allow(unused_imports)]
+use {{stinger.rust.package_name}}::payloads::{MethodReturnCode, *};
+#[allow(unused_imports)]
+use tracing::{debug, info, warn, error};
+#[tokio::main]
+async fn main() {
+    // Initialize tracing subscriber to see log output
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
+        )
+        .init();
+
+    info!("Starting {{stinger.name}} client demo...");
+
+    // Create an MQTT client that implements the MqttPubSub trait.
+    // Application code is responsible for managing the client object.
+    let mqttier_options = MqttierOptionsBuilder::default()
+        .connection(Connection::TcpLocalhost(1883))
+        .client_id("rust-client-demo".to_string())
+        .build().unwrap();
+    let mut mqttier_client = MqttierClient::new(mqttier_options).unwrap();
+    let _ = mqttier_client.start().await;
+
+    // We need to discover a service instance before we can create the client.
+    // For this demo, we assume a singleton server.
+    let service_discovery = {{stinger.name|UpperCamelCase}}Discovery::new(&mut mqttier_client).await.unwrap();
+    // The `discovered_singleton` struct contains the service_id and initial property values.
+    let discovered_singleton = service_discovery.get_singleton_service().await;
+
+    #[cfg(feature = "metrics")]
+    {
+        let metrics = service_discovery.metrics.lock().expect("Failed to lock metrics");
+        println!("Discovery complete.  Metrics: {:?}", metrics);
+        println!("Time to first discovery (ms): {:?}", metrics.time_to_first_discovery_ms());
+    };
+    drop(service_discovery);
+    let {%if stinger.methods|length > 0%}mut {%endif%}{{stinger.name|snake_case}}_client = {{stinger.rust.client_struct_name}}::new(mqttier_client.clone(), discovered_singleton).await;
+
+    let mut client_for_loop = {{stinger.name|snake_case}}_client.clone();
+    tokio::spawn(async move {
+        let _conn_loop = client_for_loop.run_loop().await;
+    });
+
+    {%for sig_name, sig in stinger.signals.items()%}
+    let mut sig_rx = {{stinger.name|snake_case}}_client.get_{{sig_name|snake_case}}_receiver();
+    println!("Got signal receiver for {{sig_name}}");
+
+    sleep(Duration::from_secs(5)).await;
+
+    let sig_rx_task{{loop.index}} = tokio::spawn(async move {
+        println!("Looping for signal reception...");
+        loop {
+            match sig_rx.recv().await {
+                Ok(payload) => {
+                    println!("*** Received {{sig_name}} signal with payload: {:?}", payload);
+                },
+                Err(e) => {
+                    eprintln!("Error receiving {{sig_name}} signal: {:?}", e);
+                    break;
+                }
+            }
+        }
+    });
+    {%endfor%}
+    {%if stinger.properties|length > 0  %}
+    // This task subscribes to a watch chanel for each property to get notified of changes.
+    let client_for_prop_change = {{stinger.name|snake_case}}_client.clone();
+    let _prop_change_rx_task = tokio::spawn(async move {
+        {%for prop_name, prop in stinger.properties.items()-%}
+        let mut {{prop_name|snake_case}}_change_rx = client_for_prop_change.watch_{{prop_name|snake_case}}();
+        {%endfor%}
+
+        loop {
+            tokio::select! { {%-for prop_name, prop in stinger.properties.items()%}
+                _ = {{prop_name|snake_case}}_change_rx.changed() => {
+                    println!("Property '{{prop_name}}' changed to: {:?}", *{{prop_name|snake_case}}_change_rx.borrow());
+                }{%endfor%}
+            }
+        }
+    });
+    {%endif%}
+
+    {%if stinger.methods|length > 0 %}
+    let mut client_for_method_calling = {{stinger.name|snake_case}}_client.clone();
+    let method_calling_task = tokio::spawn(async move {
+        sleep(Duration::from_secs(19)).await;
+        loop {
+            {%for method_name, method in stinger.methods.items()%}
+            println!(">>> Calling {{method_name}} with example values...");
+            let result = client_for_method_calling.{{method_name | snake_case}}(
+                {%for arg in method.arg_list%}
+                {{arg.get_random_example_value(lang='rust')}},
+                {%endfor%}).await;
+            println!("<<< {{method_name}} response: {:?}", result);
+            sleep(Duration::from_secs(19)).await;
+            {%endfor%}
+            sleep(Duration::from_secs(29)).await;
+        }
+    });
+    {%endif%}
+
+    // Property handles are Send so we can move them into tasks.
+    {%for prop_name, prop in stinger.properties.items()%}
+    let {{prop_name|snake_case}}_handle = {{stinger.name|snake_case}}_client.get_{{prop_name|snake_case}}_handle();
+    {%endfor%}
+    {%if stinger.properties|length > 0 %}
+    let property_update_task = tokio::spawn(async move {
+        let mut i = 0;
+        loop {
+            sleep(Duration::from_secs(20)).await;
+            {%for prop_name, prop in stinger.properties.items()%}
+            { // Scoping for '{{prop_name}}' property.  Demonstrates reading the value.
+                let current_value_ref = {{prop_name|snake_case}}_handle.read().await;
+                println!("=== Current value of property '{{prop_name}}': {:?}", *current_value_ref);
+            }
+            {%if prop.read_only%}
+            // We can't do `{{prop_name|snake_case}}_handle.write()` here because it is a read-only lock.
+            {%else%}
+            sleep(Duration::from_secs(2)).await;
+            { // Scoping for '{{prop_name}}' property.  Demonstrates creating a request to set the value.
+                {%if prop.arg_list|length == 1 -%}
+                let {{prop_name|snake_case}}_new_value = {%if prop.arg_list[0].arg_type.name.lower() == "primitive" and prop.arg_list[0].type.name.lower() == "string"%}format!("new-value-{}", i).into(){%else%}{{prop.arg_list[0].get_random_example_value(lang="rust")}}{%endif%};
+                {%else-%}
+                let {{prop_name|snake_case}}_new_value = {{prop.rust_type}} {
+                    {%-for arg in prop.arg_list %}
+                        {{arg.name|snake_case}}: {%if arg.arg_type.name.lower() == "primitive" and arg.type.name.lower() == "string"%}format!("new-value-{}", i).into(){%else%}{{arg.get_random_example_value(lang="rust")}}{%endif%},
+                    {%-endfor%}
+                };
+                {%endif-%}
+                let mut write_lock = {{prop_name|snake_case}}_handle.write().await;
+                *write_lock = {{prop_name|snake_case}}_new_value;
+                println!("<~~ Sending request to update property '{{prop_name}}' to new value: {:?}", *write_lock);
+            }
+            sleep(Duration::from_secs(10)).await;
+            {%endif%}
+            {%endfor%}
+            i += 1;
+        }
+    });
+    {%endif%} {# has any properties #}
+
+    println!("Waiting for Ctrl-C to exit...");
+    tokio::signal::ctrl_c().await.expect("Failed to listen for Ctrl-C");
+    println!("Ctrl-C received, shutting down...");
+
+    {%for _ in stinger.signals%}
+    sig_rx_task{{loop.index}}.abort();
+    {%endfor%}
+    {%if stinger.properties|length > 0 %}
+    property_update_task.abort();
+    {%endif%}
+    {%if stinger.methods|length > 0 %}
+    method_calling_task.abort();
+    {%endif%}
+
+    // Join on all the signal emitting tasks.
+    let _ = join!({%if stinger.properties|length > 0 %}property_update_task, {%endif%}{%for _ in stinger.signals%}sig_rx_task{{loop.index}}, {%endfor%}{%if stinger.methods|length > 0 %}method_calling_task, {%endif%});
+
+    // Ctrl-C to stop
+}
