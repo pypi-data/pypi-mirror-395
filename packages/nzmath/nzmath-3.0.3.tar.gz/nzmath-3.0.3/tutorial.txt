@@ -1,0 +1,369 @@
+==========================================
+NZMATH Tutorial (version 3.0.3 or later)
+==========================================
+
+--------------
+1. What is it?
+--------------
+
+NZMATH is a Python calculator on number theory.  The purpose of the
+NZMATH system is to provide mathematical, especially number-theoretic
+computational power to you.  It is written in Python scripting
+language in order to enhance quickly with users' experiences.
+
+--------
+2. Usage
+--------
+
+2.1. Before You Start
+=====================
+
+Detailed `tutorial on installing packages`_ will help you to install
+NZMATH on your machine.
+
+.. _`tutorial on installing packages`: https://packaging.python.org/en/latest/tutorials/installing-packages/
+
+Usually, you must have appropriate write permission to your machine.
+
+2.1.1. Installation of Python
+-----------------------------
+
+NZMATH requires Python version 3.9 or later.  If you do not have Python
+installed on your machine, please install it.  The Python language
+is a very high level language.  It is downloadable from the website_.
+There are also some documents there.
+
+.. _website: https://www.python.org/
+
+Ensure you can run Python from the command line::
+
+    % python --version
+
+(We use '%' for a command line prompt on UNIX/macOS.  On Windows, it
+may be 'C:\>' or something.  Sometimes, you may need to be a privileged
+user and the prompt may change to # or so on, but we don't care.)
+
+2.1.1.1. Note about Python 2
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+NZMATH is ready for Python 3 now, and will not support for Python 2.
+For Python 2, you can install a former version NZMATH-1.2.0 for example.
+
+2.1.2. Installation of NZMATH
+-----------------------------
+
+2.1.2.1. Install from PyPI
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Next, ensure you can run pip from the command line::
+
+    % python -m pip --version
+
+Then, you can use pip installation from command line.  Now, ensure pip
+itself, setuptools and wheel are up to date::
+
+    % python -m pip install -U pip setuptools wheel
+
+Finally, you can now install NZMATH from PyPI by::
+
+    % python -m pip install -U nzmath
+
+The easiest way to get the newest NZMATH!
+
+2.1.2.2. Install from Local Archives
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you cannot install NZMATH directly from PyPI by some reason, you may
+install it from local archives.  For that, you need to obtain source
+distribution (sdist) and/or built distribution (wheel)::
+
+    nzmath-x.y.z.tar.gz
+    nzmath-x.y.z-py3-none-any.whl
+
+in advance, where x, y, z are non-negative integers meaning version
+numbers of NZMATH.  You can get them at SourceForge_.
+
+.. _SourceForge: https://sourceforge.net/projects/nzmath/files/nzmath/
+
+You can also find them at PyPI_.
+
+.. _PyPI: https://pypi.org/project/nzmath/
+
+Assume that nzmath-x.y.z.tar.gz and nzmath-x.y.z-py3-none-any.whl are
+obtained and put in a local folder say /tmp/dist for example.  Then, by
+any of the three methods below, you can install NZMATH-x.y.z::
+
+    % python -m pip install -U --no-index -f /tmp/dist/ nzmath
+
+or::
+
+    % python -m pip install -U /tmp/dist/nzmath-x.y.z.tar.gz
+
+or::
+
+    % python -m pip install -U /tmp/dist/nzmath-x.y.z-py3-none-any.whl
+
+2.1.2.3. Config Setting
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The module tries to load the user's config file named nzmathconf.py, a
+Python script from nzmath.config. Users can set the constants like
+HAVE_MPMATH, which will override the default settings. These constants,
+except assumption ones, are automatically set, unless constants
+accompanying the check functions are false.  See nzmathconf.py.example_
+in detail.
+
+.. _nzmathconf.py.example: nzmathconf.py.example
+
+
+2.1.3. Installation of IPython
+------------------------------
+
+(Optional, but recommended)
+
+IPython is an enhanced interactive Python shell.  If you do not have
+it installed on your system, it is recommended to install it now.
+
+You can get IPython with pip::
+
+    % python -m pip install -U ipython
+
+2.1.4. Installation of mpmath
+-----------------------------
+
+(Optional, but recommended)
+
+mpmath is a multiple precision floating point arithmetic package for
+Python.  Some modules in NZMATH essentially depend on the availability
+of mpmath, and some other modules can be more powerful with mpmath.
+
+You can get mpmath with pip::
+
+    % python -m pip install -U mpmath
+
+2.2. Quick Start
+================
+
+2.2.1. User Interfaces
+----------------------
+
+NZMATH does not have own interpreter nor graphical interface.  Users
+have to use with the raw Python interpreter (or possibly IPython).
+Though the interpreters are designed well, of course, they are not
+specialized for mathematical computation.  Please be patient about it.
+
+2.2.2. Sample Session
+---------------------
+
+Start your Python interpreter. ::
+
+    % python
+    Python 3.9.16 (...........................)[..........] on ......
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>>
+
+Here, '>>>' is a Python prompt.  You are in the Python interpreter
+until you will type 'exit()'.  Then, type ::
+
+    >>> from nzmath import *
+    >>>
+
+The whole NZMATH stuff is imported. ::
+
+    >>> r = rational.Rational(113, 355)
+    >>> print(r)
+    113/355
+    >>>
+    ....
+
+The session continues until you will stop.
+
+2.2.3. Readline
+---------------
+
+(Optional)
+
+As you see, class names of NZMATH objects may be boringly long to
+type.  You can use completion feature; if you are using ipython it is
+presented by default, or if you use default Python you might be able
+to configure it to use readline.  Unfortunately, sometimes Python is
+built WITHOUT readline module for some license issue.  So, the
+following is for those who are lucky to have readline enabled Python.
+
+Save the following content in your file, pythonrc.py, for example:
+
+try:
+    import readline
+except ImportError:
+    print("Module readline not available.")
+else:
+    import rlcompleter
+    readline.parse_and_bind("tab: complete")
+
+Then, set environment variable PYTHONSTARTUP pointing to the file.
+
+(Please read Python Library Reference of readline and rlcompleter
+modules for more detailed explanation.)
+
+-------------------------
+3. How to Write a Program
+-------------------------
+
+Writing everything at the interpreter prompt is a dull work.  Instead
+of it, you can make a program file.
+
+The name of the file must end with '.py'; for example, 'sample.py'.
+
+The contents of the file must be a valid Python program.  And, you may
+want to import some NZMATH modules at the start of the file.
+
+See the Python documents for detailed Python syntax or built-in data
+types and functions.  NZMATH data types are explained below.
+
+To invoke your program (sample.py, say), simply type ::
+
+    % python sample.py
+
+-------------
+4. Data types
+-------------
+
+Python is an object-oriented programming language, and user can create
+a new data type as class.  The data types provided by NZMATH are also
+classes, which have a lot of methods including overloaded operators.
+
+4.1. Numbers
+============
+
+4.1.1. Integer
+--------------
+
+There is an integer data type int (arbitrary precision) in Python.
+NZMATH has Integer (nzmath.rational.Integer) to give a rational result
+for division instead of a float. ::
+
+    >>> rational.Integer(3) / 4
+    Rational(3, 4)
+    >>> 3 / 4
+    0.75
+
+Python's int behaves just like C's int type by double slash operator,
+i.e. floor division. ::
+
+    >>> 3 // 4
+    0
+    >>> 8 // 5
+    1
+
+4.1.2. Rational
+---------------
+
+NZMATH provides Rational (nzmath.rational.Rational) class representing
+a rational number, as already appeared in the previous example.
+
+4.1.3. Algebraic number
+-----------------------
+
+In NZMATH, algfield module provides algebraic numbers.
+
+4.1.4. floating point number
+----------------------------
+
+Python has float data type for it.  The mpmath also provides it.
+
+4.2. Algebraic types
+====================
+
+4.2.1. Polynomials
+------------------
+
+There are several polynomial classes.  New users should use poly
+sub-package. ::
+
+    >>> poly.uniutil.polynomial({0:-1,100:1}, rational.theIntegerRing)
+    IntegerPolynomial([(0, -1), (100, 1)], IntegerRing())
+
+poly.uniutil.polynomial is the factory function for univariate
+polynomials.
+
+4.2.2. Matrices
+---------------
+
+There are several matrix classes.  matrix module provides them.
+
+4.3. Algebraic structures
+=========================
+
+4.3.1. Rings
+------------
+
+Integers are in the integer ring, a polynomial in a certain polynomial
+ring, etc....  They are obtained from elements of them by getRing
+method.  For example, rational.Integer(1).getRing() returns a
+rational.IntegerRing object.
+
+This is a convention in NZMATH and does not apply to the object
+provided by Python itself such as int...
+
+4.3.2. Fields
+-------------
+
+Fields are a part of rings (see Rings).
+
+There are some fields: the field of rational numbers, real numbers,
+and complex numbers are defined.  Finite fields are provided through
+finitefield module.
+
+4.3.3. Groups
+-------------
+
+There are some groups in NZMATH: for example, class group of
+imaginary quadratic fields in quad module, or rational point of
+elliptic curves over finite fields in elliptic module.
+
+We are not providing general frameworks for them, though.
+
+----------------
+5. Other Modules
+----------------
+
+There are other modules, such as bigrandom, factor, prime, etc.
+Please read the manual for those modules.
+
+--------------
+6. Development
+--------------
+
+The project is of open source, and your participation is essential.
+
+6.1. sourceforge.net
+====================
+
+We have a project site on the sf.net_.  There are bug tracker, source
+repository and so on.
+
+.. _sf.net: https://sourceforge.net/projects/nzmath/
+
+6.1.1. Mailing List
+-------------------
+
+Your feedbacks are always welcomed.  Please consider to join the
+`mailing list`_.
+
+.. _`mailing list`: ml.html
+
+6.2. TMU
+========
+
+Almost all the former developers are doctor, master or bachelor course
+students of Nakamula laboratory, Tokyo Metropolitan University (TMU).
+
+----------
+7. License
+----------
+
+NZMATH is distributed under the BSD license.  Please read LICENSE.txt_
+in the distribution tar ball for detail.
+
+.. _LICENSE.txt: LICENSE.txt
+
