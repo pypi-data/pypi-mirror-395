@@ -1,0 +1,72 @@
+Metadata-Version: 2.4
+Name: fallible
+Version: 2025.12.5
+Summary: fallible, an experimental ansible
+Home-page: https://ansible.com/
+Author: Ansible, Inc.
+Author-email: info@ansible.com
+License: GPLv3+
+Project-URL: Bug Tracker, https://github.com/ansible/ansible/issues
+Project-URL: CI: Azure Pipelines, https://dev.azure.com/ansible/ansible/
+Project-URL: Code of Conduct, https://docs.ansible.com/ansible/latest/community/code_of_conduct.html
+Project-URL: Documentation, https://docs.ansible.com/ansible-core/
+Project-URL: Mailing lists, https://docs.ansible.com/ansible/latest/community/communication.html#mailing-list-information
+Project-URL: Source Code, https://github.com/ansible/ansible
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Natural Language :: English
+Classifier: Operating System :: POSIX
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: System :: Installation/Setup
+Classifier: Topic :: System :: Systems Administration
+Classifier: Topic :: Utilities
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: jinja2>=3.1.0
+Requires-Dist: PyYAML>=5.1
+Requires-Dist: cryptography
+Requires-Dist: packaging
+Requires-Dist: resolvelib<2.0.0,>=0.8.0
+Provides-Extra: compat
+Requires-Dist: fallible-compat; extra == "compat"
+Dynamic: license-file
+Dynamic: requires-dist
+
+# fallible
+fallible, an experimental ansible
+
+## building
+```shell
+$ python3 src/fallible/_vendor/_build.py --pr 72553 devel
+$ python3 -m build -w -o dist
+$ python3 -m build -w -o dist compat_entrypoints
+```
+
+Alternatively, instead of using `--pr` to enumerate individual PRs, you can use `--all` to fetch all PRs labeled with `fallible`.
+
+## using
+```shell
+$ python3 -m fallible playbook site.yml
+$ fallible-playbook site.yml
+```
+
+## ansible-core compat
+
+The `compat_entrypoints` dir provides a package for `fallible-compat` that will install `ansible*` entrypoints.
+
+```shell
+$ pip3 install fallible-compat
+$ ansible-playbook site.yml
+```
+
+## fallible features
+
+These additional features have been included in this release of fallible:
+
+
+- [86241 - Register projections and action plugin dynamic host/group/var API](https://github.com/ansible/ansible/pull/86241)
