@@ -1,0 +1,412 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Consuming Tasks &#8212; huey 2.4.5 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Understanding how tasks are imported" href="imports.html" />
+    <link rel="prev" title="Guide" href="guide.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="imports.html" title="Understanding how tasks are imported"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="guide.html" title="Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">huey 2.4.5 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Consuming Tasks</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="consuming-tasks">
+<span id="id1"></span><h1>Consuming Tasks<a class="headerlink" href="#consuming-tasks" title="Permalink to this heading">¶</a></h1>
+<p>To run the consumer, simply point it at the “import path” to your application’s
+<a class="reference internal" href="api.html#Huey" title="Huey"><code class="xref py py-class docutils literal notranslate"><span class="pre">Huey</span></code></a> instance. For example, here is how I run it on my blog:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>huey_consumer.py<span class="w"> </span>blog.main.huey<span class="w"> </span>--logfile<span class="o">=</span>../logs/huey.log
+</pre></div>
+</div>
+<p>The concept of the “import path” has been the source of a few questions, but
+it is quite simple. It is simply the dotted-path you might use if you were
+to try and import the “huey” object in the interactive interpreter:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">blog.main</span> <span class="kn">import</span> <span class="n">huey</span>
+</pre></div>
+</div>
+<p>You may run into trouble though when “blog” is not on your python-path. To
+work around this:</p>
+<ol class="arabic simple">
+<li><p>Manually specify your pythonpath: <code class="docutils literal notranslate"><span class="pre">PYTHONPATH=/some/dir/:$PYTHONPATH</span> <span class="pre">huey_consumer.py</span> <span class="pre">blog.main.huey</span></code>.</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">huey_consumer.py</span></code> from the directory your config module is in. I use
+supervisord to manage my huey process, so I set the <code class="docutils literal notranslate"><span class="pre">directory</span></code> to the
+root of my site.</p></li>
+<li><p>Create a wrapper and hack <code class="docutils literal notranslate"><span class="pre">sys.path</span></code>.</p></li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If you plan to use <a class="reference external" href="http://supervisord.org/">supervisord</a> to manage your
+consumer process, be sure that you are running the consumer directly and
+without any intermediary shell scripts. Shell script wrappers interfere
+with supervisor’s ability to terminate and restart the consumer Python
+process. For discussion see <a class="reference external" href="https://github.com/coleifer/huey/issues/88">GitHub issue 88</a>.</p>
+</div>
+<section id="options-for-the-consumer">
+<span id="consumer-options"></span><h2>Options for the consumer<a class="headerlink" href="#options-for-the-consumer" title="Permalink to this heading">¶</a></h2>
+<p>The following table lists the options available for the consumer as well as
+their default values.</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">-l</span></code>, <code class="docutils literal notranslate"><span class="pre">--logfile</span></code></dt><dd><p>Path to file used for logging.  When a file is specified, by default Huey
+the logfile will grow indefinitely, so you may wish to configure a tool
+like <code class="docutils literal notranslate"><span class="pre">logrotate</span></code>.</p>
+<p>Alternatively, you can attach your own handler to <code class="docutils literal notranslate"><span class="pre">huey.consumer</span></code>.</p>
+<p>The default loglevel is <code class="docutils literal notranslate"><span class="pre">INFO</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-v</span></code>, <code class="docutils literal notranslate"><span class="pre">--verbose</span></code></dt><dd><p>Verbose logging (loglevel=DEBUG). If no logfile is specified and
+verbose is set, then the consumer will log to the console.</p>
+<p><strong>Note:</strong> due to conflicts, when using Django this option is renamed to
+use <code class="docutils literal notranslate"><span class="pre">-V</span></code>, <code class="docutils literal notranslate"><span class="pre">--huey-verbose</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-q</span></code>, <code class="docutils literal notranslate"><span class="pre">--quiet</span></code></dt><dd><p>Minimal logging, only errors and their tracebacks will be logged.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-S</span></code>, <code class="docutils literal notranslate"><span class="pre">--simple</span></code></dt><dd><p>Use a simple log format consisting only of the time H:M:S and log message.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-w</span></code>, <code class="docutils literal notranslate"><span class="pre">--workers</span></code></dt><dd><p>Number of worker threads/processes/greenlets, the default is <code class="docutils literal notranslate"><span class="pre">1</span></code> but
+most applications will want to increase this number for greater throughput.
+Even if you have a small workload, you will typically want to increase this
+number to at least 2 just in case one worker gets tied up on a slow task.
+If you have a CPU-intensive workload, you may want to increase the number
+of workers to the number of CPU cores (or 2x CPU cores). Lastly, if you are
+using the <code class="docutils literal notranslate"><span class="pre">greenlet</span></code> worker type, you can easily run tens or hundreds of
+workers as they are extremely lightweight.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-k</span></code>, <code class="docutils literal notranslate"><span class="pre">--worker-type</span></code></dt><dd><p>Choose the worker type, <code class="docutils literal notranslate"><span class="pre">thread</span></code>, <code class="docutils literal notranslate"><span class="pre">process</span></code> or <code class="docutils literal notranslate"><span class="pre">greenlet</span></code>. The
+default is <code class="docutils literal notranslate"><span class="pre">thread</span></code>.</p>
+<p>Depending on your workload, one worker type may perform better than the
+others:</p>
+<ul class="simple">
+<li><p>CPU heavy loads: use “process”. Python’s global interpreter lock prevents
+multiple threads from running simultaneously, so to leverage multiple CPU
+cores (and reduce thread contention) run each worker as a separate
+process.</p></li>
+<li><p>IO heavy loads: use “greenlet”. For example, tasks that crawl websites or
+which spend a lot of time waiting to read/write to a socket, will get a
+huge boost from using the greenlet worker model. Because greenlets are so
+cheap in terms of memory, you can easily run a large number of workers.
+Note that all code that does <strong>not</strong> consist in waiting for a socket will
+be blocking and cannot be pre-empted. Understand the tradeoffs before
+jumping to use greenlets.</p></li>
+<li><p>Anything else: use “thread”. You get the benefits of pre-emptive
+multi-tasking without the overhead of multiple processes. A safe choice
+and the default.</p></li>
+</ul>
+<p>See the <a class="reference internal" href="#worker-types"><span class="std std-ref">Worker types</span></a> section for additional information.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-n</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-periodic</span></code></dt><dd><p>Indicate that this consumer process should <em>not</em> enqueue periodic tasks.
+If you do not plan on using the periodic task feature, feel free to use
+this option to save a few CPU cycles.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-d</span></code>, <code class="docutils literal notranslate"><span class="pre">--delay</span></code></dt><dd><p>When using a “polling”-type queue backend, this is the number of seconds to
+wait when polling the backend.  Default is 0.1 seconds. For example, when
+the consumer starts up it will begin polling every 0.1 seconds. If no tasks
+are found in the queue, it will multiply the current delay (0.1) by the
+backoff parameter. When a task is received, the polling interval will reset
+back to this value.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-m</span></code>, <code class="docutils literal notranslate"><span class="pre">--max-delay</span></code></dt><dd><p>The maximum amount of time to wait between polling, if using weighted
+backoff. Default is 10 seconds. If your huey consumer doesn’t see a lot of
+action, you can increase this number to reduce CPU usage.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-b</span></code>, <code class="docutils literal notranslate"><span class="pre">--backoff</span></code></dt><dd><p>The amount to back-off when polling for results.  Must be greater than
+one.  Default is 1.15. This parameter controls the rate at which the
+interval increases after successive attempts return no tasks. Here is how
+the defaults, 0.1 initial and 1.15 backoff, look:</p>
+<img alt="http://media.charlesleifer.com/blog/photos/p1472257818.22.png" src="http://media.charlesleifer.com/blog/photos/p1472257818.22.png" />
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-c</span></code>, <code class="docutils literal notranslate"><span class="pre">--health-check-interval</span></code></dt><dd><p>This parameter specifies how often huey should check on the status of the
+workers, restarting any that died for some reason. I personally run a dozen
+or so huey consumers at any given time and have never encountered an issue
+with the workers, but I suppose anything’s possible and better safe than
+sorry.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-C</span></code>, <code class="docutils literal notranslate"><span class="pre">--disable-health-check</span></code></dt><dd><p>This option <strong>disables</strong> the worker health checks. Until version 1.3.0,
+huey had no concept of a “worker health check” because in my experience the
+workers simply always stayed up and responsive. But if you are using huey
+for critical tasks, you may want the insurance of having additional
+monitoring to make sure your workers stay up and running. At any rate, I
+feel comfortable saying that it’s perfectly fine to use this option and
+disable worker health checks.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-f</span></code>, <code class="docutils literal notranslate"><span class="pre">--flush-locks</span></code></dt><dd><p>Flush all locks when starting the consumer. This may be useful if the
+consumer was killed abruptly while executing a locked task.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-L</span></code>, <code class="docutils literal notranslate"><span class="pre">--extra-locks</span></code></dt><dd><p>Additional lock-names to flush when starting the consumer, separated by
+comma. This is useful if you have locks within context-managers that may
+not be discovered during consumer startup, but you wish to ensure they are
+cleared. Implies <code class="docutils literal notranslate"><span class="pre">--flush-locks</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">-s</span></code>, <code class="docutils literal notranslate"><span class="pre">--scheduler-interval</span></code></dt><dd><p>The frequency with which the scheduler should run. By default this will run
+every second, but you can increase the interval to as much as 60 seconds.</p>
+</dd>
+</dl>
+<section id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Permalink to this heading">¶</a></h3>
+<p>Running the consumer with 8 threads and a logfile for errors:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>huey_consumer.py<span class="w"> </span>my.app.huey<span class="w"> </span>-l<span class="w"> </span>/var/log/app.huey.log<span class="w"> </span>-w<span class="w"> </span><span class="m">8</span><span class="w"> </span>-q
+</pre></div>
+</div>
+<p>Using multi-processing to run 4 worker processes.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>huey_consumer.py<span class="w"> </span>my.app.huey<span class="w"> </span>-w<span class="w"> </span><span class="m">4</span><span class="w"> </span>-k<span class="w"> </span>process
+</pre></div>
+</div>
+<p>Running single-threaded with periodic task support disabled. Additionally,
+logging records are written to stdout.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>huey_consumer.py<span class="w"> </span>my.app.huey<span class="w"> </span>-v<span class="w"> </span>-n
+</pre></div>
+</div>
+<p>Using greenlets to run 50 workers, with no health checking and a scheduler
+granularity of 60 seconds.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>huey_consumer.py<span class="w"> </span>my.app.huey<span class="w"> </span>-w<span class="w"> </span><span class="m">50</span><span class="w"> </span>-k<span class="w"> </span>greenlet<span class="w"> </span>-C<span class="w"> </span>-s<span class="w"> </span><span class="m">60</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="worker-types">
+<span id="id2"></span><h2>Worker types<a class="headerlink" href="#worker-types" title="Permalink to this heading">¶</a></h2>
+<p>The consumer consists of a main process, a scheduler, and one or more workers.
+These individual components all run concurrently, and Huey supports three
+different mechanisms to achieve this concurrency.</p>
+<ul class="simple">
+<li><p><em>thread</em>, the default - uses OS threads. Due to Python’s global interpreter
+lock, only one thread can be running at a time, but this is actually less of
+a limitation than it might sound. The Python runtime can intelligently switch
+the running thread when an I/O occurs or when a thread is idle. If the worker
+is CPU-bound, the runtime will pre-emptively switch threads after a given
+number of operations, ensuring each thread gets a chance to make progress.
+Threads provide a good balance of performance and memory efficiency.</p></li>
+<li><p><em>process</em> - runs the scheduler and worker(s) in their own process. The main
+benefit over threads is the absence of the global interpreter lock, which
+allows CPU-bound workers to execute in parallel. Since each process maintains
+its own copy of the code in memory, it is likely that processes will require
+more memory than threads or greenlets. Processes are a good choice for tasks
+that perform CPU-intensive work.</p></li>
+<li><p><em>greenlet</em> - runs the scheduler and worker(s) in greenlets. Requires <a class="reference external" href="https://gevent.org/">gevent</a>,
+a cooperative multi-tasking library. When a task performs an operation that
+would be blocking (read or write on a socket), the file descriptor is added
+to an event loop managed by gevent, and the scheduler will switch tasks.
+Since gevent uses cooperative multi-tasking, a task that is CPU-bound will
+not yield control to the gevent scheduler, limiting concurrency. For this
+reason, gevent is a good choice for tasks that perform lots of socket I/O,
+but may give worse performance for tasks that are CPU-bound (e.g., parsing
+large files, manipulating images, generating reports, etc). Understand the
+tradeoff thoroughly before using this worker type.</p></li>
+</ul>
+<p>When in doubt, the default setting (<code class="docutils literal notranslate"><span class="pre">thread</span></code>) is a safe choice.</p>
+<section id="using-gevent">
+<h3>Using gevent<a class="headerlink" href="#using-gevent" title="Permalink to this heading">¶</a></h3>
+<p>Gevent works by monkey-patching various Python modules, such as <code class="docutils literal notranslate"><span class="pre">socket</span></code>,
+<code class="docutils literal notranslate"><span class="pre">ssl</span></code>, <code class="docutils literal notranslate"><span class="pre">time</span></code>, etc. In order for your application to be able to switch
+tasks reliably, you should apply the monkey-patch at the very beginning of
+your code – before anything else gets loaded.</p>
+<p>Suppose we have defined an entrypoint for our application named
+<code class="docutils literal notranslate"><span class="pre">main.py</span></code>, which imports our <a class="reference internal" href="api.html#Huey" title="Huey"><code class="xref py py-class docutils literal notranslate"><span class="pre">Huey</span></code></a> instance, our tasks, and
+the other essential parts of our application (the WSGI app, database
+connection, etc).</p>
+<p>We would place the monkey-patch at the top of <code class="docutils literal notranslate"><span class="pre">main.py</span></code>, before all the
+other imports:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># main.py</span>
+<span class="kn">from</span> <span class="nn">gevent</span> <span class="kn">import</span> <span class="n">monkey</span><span class="p">;</span> <span class="n">monkey</span><span class="o">.</span><span class="n">patch_all</span><span class="p">()</span>  <span class="c1"># Apply monkey-patch.</span>
+
+<span class="kn">from</span> <span class="nn">.app</span> <span class="kn">import</span> <span class="n">wsgi_app</span>  <span class="c1"># Import our WSGI app.</span>
+<span class="kn">from</span> <span class="nn">.db</span> <span class="kn">import</span> <span class="n">database</span>  <span class="c1"># Database connection.</span>
+<span class="kn">from</span> <span class="nn">.queue</span> <span class="kn">import</span> <span class="n">huey</span>  <span class="c1"># Huey instance for our app.</span>
+<span class="kn">from</span> <span class="nn">.tasks</span> <span class="kn">import</span> <span class="o">*</span>  <span class="c1"># Import all tasks, so they are discoverable.</span>
+</pre></div>
+</div>
+<p>To run the consumer:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>huey_consumer.py<span class="w"> </span>main.huey<span class="w"> </span>-k<span class="w"> </span>greenlet<span class="w"> </span>-w<span class="w"> </span><span class="m">16</span>
+</pre></div>
+</div>
+<p>You should have a good understanding of how gevent works, its strengths and
+limitations, before using the greenlet worker type.</p>
+</section>
+</section>
+<section id="consumer-shutdown">
+<span id="id3"></span><h2>Consumer shutdown<a class="headerlink" href="#consumer-shutdown" title="Permalink to this heading">¶</a></h2>
+<p>The huey consumer supports graceful shutdown via <code class="docutils literal notranslate"><span class="pre">SIGINT</span></code>. When the consumer
+process receives <code class="docutils literal notranslate"><span class="pre">SIGINT</span></code>, workers are allowed to finish up whatever task
+they are currently executing before the process exits.</p>
+<p>Alternatively, you can shutdown the consumer using <code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code> and any running
+tasks will be interrupted, ensuring the process exits quickly.</p>
+</section>
+<section id="consumer-restart">
+<span id="id4"></span><h2>Consumer restart<a class="headerlink" href="#consumer-restart" title="Permalink to this heading">¶</a></h2>
+<p>To cleanly restart the consumer, including all workers, send the <code class="docutils literal notranslate"><span class="pre">SIGHUP</span></code>
+signal. When the consumer receives the hang-up signal, any tasks being executed
+will be allowed to finish before the restart occurs.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you are using Python 2.7 and either the thread or greenlet worker model,
+it is strongly recommended that you use a process manager (such as systemd
+or supervisor) to handle running and restarting the consumer. The reason
+has to do with the potential of Python 2.7, when mixed with thread/greenlet
+workers, to leak file descriptors. For more information, check out
+<a class="reference external" href="https://github.com/coleifer/huey/issues/374">issue 374</a> and
+<a class="reference external" href="https://www.python.org/dev/peps/pep-0446/">PEP 446</a>.</p>
+</div>
+</section>
+<section id="consumer-internals">
+<span id="id5"></span><h2>Consumer Internals<a class="headerlink" href="#consumer-internals" title="Permalink to this heading">¶</a></h2>
+<p>This section will attempt to explain what happens when you call a
+<code class="docutils literal notranslate"><span class="pre">task</span></code>-decorated function in your application. To do this, we will go into
+the implementation of the consumer. The <a class="reference external" href="https://github.com/coleifer/huey/blob/master/huey/consumer.py">code for the consumer</a>
+itself is actually quite short (couple hundred lines), and I encourage you to
+check it out.</p>
+<p>The consumer is composed of three components: a master process, the scheduler,
+and the worker(s). Depending on the worker type chosen, the scheduler and
+workers will be run in their threads, processes or greenlets.</p>
+<p>These three components coordinate the receipt, scheduling, and execution of
+your tasks, respectively.</p>
+<ol class="arabic simple">
+<li><p>You call a function – huey has decorated it, which triggers a message being
+put into the queue (e.g a Redis list). At this point your application
+returns immediately, returning a <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> object.</p></li>
+<li><p>In the consumer process, the worker(s) will be listening for new messages
+and one of the workers will receive your message indicating which task to
+run, when to run it, and with what parameters.</p></li>
+<li><p>The worker looks at the message and checks to see if it can be run (i.e.,
+was this message “revoked”? Is it scheduled to actually run later?).  If it
+is revoked, the message is thrown out. If it is scheduled to run later, it
+gets added to the schedule. Otherwise, it is executed.</p></li>
+<li><p>The worker executes the task. If the task finishes, any results are stored
+in the result store. If the task fails, the consumer checks to see if the
+task can be retried. Then, if the task is to be retried, the consumer checks
+to see if the task is configured to wait a number of seconds between
+retries. Depending on the configuration, huey will either re-enqueue the
+task for execution, or tell the scheduler when to re-enqueue it based on the
+delay. If the consumer is killed abruptly or the machine powers off
+unexpectedly, any tasks that are currently being run by a worker will be
+“lost”.</p></li>
+</ol>
+<p>While all the above is going on with the Worker(s), the Scheduler is looking at
+its schedule to see if any tasks are ready to be executed.  If a task is ready
+to run, it is enqueued and will be processed by the next available worker.</p>
+<p>If you are using the Periodic Task feature (cron), then every minute, the
+scheduler will check through the various periodic tasks to see if any should
+be run. If so, these tasks are enqueued.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>SIGINT is used to perform a graceful shutdown.</p>
+<p>When the consumer is shutdown using SIGTERM, any workers still
+involved in the execution of a task will be interrupted mid-task.</p>
+</div>
+</section>
+<section id="signals">
+<h2>Signals<a class="headerlink" href="#signals" title="Permalink to this heading">¶</a></h2>
+<p>The consumer will emit certain <a class="reference internal" href="signals.html#signals"><span class="std std-ref">Signals</span></a> as it executes tasks. User code
+can register signal handlers to respond to these events. For more information,
+see the <a class="reference internal" href="signals.html#signals"><span class="std std-ref">Signals</span></a> document.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Consuming Tasks</a><ul>
+<li><a class="reference internal" href="#options-for-the-consumer">Options for the consumer</a><ul>
+<li><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#worker-types">Worker types</a><ul>
+<li><a class="reference internal" href="#using-gevent">Using gevent</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#consumer-shutdown">Consumer shutdown</a></li>
+<li><a class="reference internal" href="#consumer-restart">Consumer restart</a></li>
+<li><a class="reference internal" href="#consumer-internals">Consumer Internals</a></li>
+<li><a class="reference internal" href="#signals">Signals</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="guide.html"
+                          title="previous chapter">Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="imports.html"
+                          title="next chapter">Understanding how tasks are imported</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/consumer.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="imports.html" title="Understanding how tasks are imported"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="guide.html" title="Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">huey 2.4.5 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Consuming Tasks</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2013, charles leifer.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 6.1.3.
+    </div>
+  </body>
+</html>

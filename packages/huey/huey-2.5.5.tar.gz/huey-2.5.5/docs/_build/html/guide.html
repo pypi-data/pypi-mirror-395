@@ -1,0 +1,1119 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Guide &#8212; huey 2.4.5 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Consuming Tasks" href="consumer.html" />
+    <link rel="prev" title="Installing" href="installation.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="consumer.html" title="Consuming Tasks"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installing"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">huey 2.4.5 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="guide">
+<span id="id1"></span><h1>Guide<a class="headerlink" href="#guide" title="Permalink to this heading">¶</a></h1>
+<p>The purpose of this document is to present Huey using simple examples that
+cover the most common usage of the library. Detailed documentation can be found
+in the <a class="reference internal" href="api.html#api"><span class="std std-ref">API documentation</span></a>.</p>
+<p>Example <a class="reference internal" href="api.html#Huey.task" title="Huey.task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">task()</span></code></a> that adds two numbers:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># demo.py</span>
+<span class="kn">from</span> <span class="nn">huey</span> <span class="kn">import</span> <span class="n">SqliteHuey</span>
+
+<span class="n">huey</span> <span class="o">=</span> <span class="n">SqliteHuey</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;/tmp/demo.db&#39;</span><span class="p">)</span>
+
+<span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</pre></div>
+</div>
+<p>To test, run the consumer, specifying the import path to the <code class="docutils literal notranslate"><span class="pre">huey</span></code> object:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>huey_consumer.py<span class="w"> </span>demo.huey
+</pre></div>
+</div>
+<p>In a Python shell, we can call our <code class="docutils literal notranslate"><span class="pre">add</span></code> task:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">demo</span> <span class="kn">import</span> <span class="n">add</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="p">()</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you try to resolve the result (<code class="docutils literal notranslate"><span class="pre">r</span></code>) before the task has been executed,
+then <code class="docutils literal notranslate"><span class="pre">r()</span></code> will return <code class="docutils literal notranslate"><span class="pre">None</span></code>. You can avoid this by instructing the
+result to block until the task has finished and a result is ready:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="p">(</span><span class="n">blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># Wait up to 5 seconds for result.</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</div>
+<p>What happens when we call a task function?</p>
+<ol class="arabic simple">
+<li><p>When the <code class="docutils literal notranslate"><span class="pre">add()</span></code> function is called, a message representing the call is
+placed in a queue.</p></li>
+<li><p>The function returns immediately without actually running, and returns a
+<a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> handle, which can be used to retrieve the result once the
+task has been executed by the consumer.</p></li>
+<li><p>The consumer process sees that a message has arrived, and a worker will call
+the <code class="docutils literal notranslate"><span class="pre">add()</span></code> function and place the return value into the result store.</p></li>
+<li><p>We can use the <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> handle to read the return value from the
+result store.</p></li>
+</ol>
+<p>For more information, see the <a class="reference internal" href="api.html#Huey.task" title="Huey.task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">task()</span></code></a> decorator documentation.</p>
+<section id="scheduling-tasks">
+<h2>Scheduling tasks<a class="headerlink" href="#scheduling-tasks" title="Permalink to this heading">¶</a></h2>
+<p>Tasks can be scheduled to execute at a certain time, or after a delay.</p>
+<p>In the following example, we will schedule a call to <code class="docutils literal notranslate"><span class="pre">add()</span></code> to run in 10
+seconds, and then will block until the result becomes available:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">schedule</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">delay</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="p">(</span><span class="n">blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Will block for ~10 seconds before returning.</span>
+<span class="go">7</span>
+</pre></div>
+</div>
+<p>If we wished to schedule the task to run at a particular time, we can use the
+<code class="docutils literal notranslate"><span class="pre">eta</span></code> parameter instead. The following example will run after a 10 second
+delay:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">eta</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">schedule</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">eta</span><span class="o">=</span><span class="n">eta</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">r</span><span class="p">(</span><span class="n">blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Will block for ~10 seconds.</span>
+<span class="go">9</span>
+</pre></div>
+</div>
+<p>What happens when we schedule a task?</p>
+<ol class="arabic simple">
+<li><p>When we call <a class="reference internal" href="api.html#TaskWrapper.schedule" title="TaskWrapper.schedule"><code class="xref py py-meth docutils literal notranslate"><span class="pre">schedule()</span></code></a>, a message is placed on the
+queue instructing the consumer to call the <code class="docutils literal notranslate"><span class="pre">add()</span></code> function in 10 seconds.</p></li>
+<li><p>The function returns immediately, and returns a <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> handle.</p></li>
+<li><p>The consumer process sees that a message has arrived, and will notice that
+the message is not yet ready to be executed, but should be run in ~10s.</p></li>
+<li><p>The consumer adds the message to a schedule.</p></li>
+<li><p>In ~10 seconds, the scheduler will pick-up the message and place it back
+into the queue for execution.</p></li>
+<li><p>A worker will dequeue the message, execute the <code class="docutils literal notranslate"><span class="pre">add()</span></code> function, and place
+the return value in the result store.</p></li>
+<li><p>The <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> handle from step 2 will now be able to read the
+return value from the task.</p></li>
+</ol>
+<p>For more details, see the <a class="reference internal" href="api.html#TaskWrapper.schedule" title="TaskWrapper.schedule"><code class="xref py py-meth docutils literal notranslate"><span class="pre">schedule()</span></code></a> API documentation.</p>
+</section>
+<section id="periodic-tasks">
+<h2>Periodic tasks<a class="headerlink" href="#periodic-tasks" title="Permalink to this heading">¶</a></h2>
+<p>Huey provides crontab-like functionality that enables functions to be executed
+automatically on a given schedule.</p>
+<p>In the following example, we will declare a <a class="reference internal" href="api.html#Huey.periodic_task" title="Huey.periodic_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">periodic_task()</span></code></a> that
+executes every 3 minutes and prints a message on consumer process stdout:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">huey</span> <span class="kn">import</span> <span class="n">SqliteHuey</span>
+<span class="kn">from</span> <span class="nn">huey</span> <span class="kn">import</span> <span class="n">crontab</span>
+
+<span class="n">huey</span> <span class="o">=</span> <span class="n">SqliteHuey</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;/tmp/demo.db&#39;</span><span class="p">)</span>
+
+<span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="nd">@huey</span><span class="o">.</span><span class="n">periodic_task</span><span class="p">(</span><span class="n">crontab</span><span class="p">(</span><span class="n">minute</span><span class="o">=</span><span class="s1">&#39;*/3&#39;</span><span class="p">))</span>
+<span class="k">def</span> <span class="nf">every_three_minutes</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;This task runs every three minutes&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Once a minute, the scheduler will check to see if any of the periodic tasks
+should be called. If so, the task will be enqueued for execution.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Because periodic tasks are called independent of any user interaction, they
+do not accept any arguments.</p>
+<p>Similarly, the return-value for periodic tasks is discarded, rather than
+being put into the result store. This is because there is not an obvious
+way for an application to obtain a <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> handle to access the
+result of a given periodic task execution.</p>
+</div>
+<p>The <a class="reference internal" href="api.html#crontab" title="crontab"><code class="xref py py-func docutils literal notranslate"><span class="pre">crontab()</span></code></a> function accepts the following arguments:</p>
+<ul class="simple">
+<li><p>minute</p></li>
+<li><p>hour</p></li>
+<li><p>day</p></li>
+<li><p>month</p></li>
+<li><p>day_of_week (0=Sunday, 6=Saturday)</p></li>
+</ul>
+<p>Acceptable inputs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">*</span></code> - always true, e.g. if <code class="docutils literal notranslate"><span class="pre">hour='*'</span></code>, then the rule matches any hour.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*/n</span></code> - every <em>n</em> interval, e.g. <code class="docutils literal notranslate"><span class="pre">minute='*/15'</span></code> means every 15 minutes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m-n</span></code> - run every time <code class="docutils literal notranslate"><span class="pre">m..n</span></code> inclusive.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m,n</span></code> - run on <em>m</em> and <em>n</em>.</p></li>
+</ul>
+<p>Multiple rules can be expressed by separating the individual rules with a
+comma, for example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Runs every 10 minutes between 9a and 11a, and 4p-6p.</span>
+<span class="n">crontab</span><span class="p">(</span><span class="n">minute</span><span class="o">=</span><span class="s1">&#39;*/10&#39;</span><span class="p">,</span> <span class="n">hour</span><span class="o">=</span><span class="s1">&#39;9-11,16-18&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For more information see the following API documentation:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#Huey.periodic_task" title="Huey.periodic_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">periodic_task()</span></code></a></p></li>
+<li><p><a class="reference internal" href="api.html#crontab" title="crontab"><code class="xref py py-func docutils literal notranslate"><span class="pre">crontab()</span></code></a></p></li>
+</ul>
+</section>
+<section id="retrying-tasks-that-fail">
+<h2>Retrying tasks that fail<a class="headerlink" href="#retrying-tasks-that-fail" title="Permalink to this heading">¶</a></h2>
+<p>Sometimes we may have a task that we anticipate might fail from time to time,
+in which case we should retry it. Huey supports automatically retrying tasks a
+given number of times, optionally with a delay between attempts.</p>
+<p>Here we’ll declare a task that fails approximately half of the time. To
+configure this task to be automatically retried, use the <code class="docutils literal notranslate"><span class="pre">retries</span></code> parameter
+of the <a class="reference internal" href="api.html#Huey.task" title="Huey.task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">task()</span></code></a> decorator:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">random</span>
+
+<span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Retry the task up to 2 times.</span>
+<span class="k">def</span> <span class="nf">flaky_task</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;failing!&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s1">&#39;OK&#39;</span>
+</pre></div>
+</div>
+<p>What happens when we call this task?</p>
+<ol class="arabic simple">
+<li><p>Message is placed on the queue and a <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> handle is returned
+to the caller.</p></li>
+<li><p>Consumer picks up the message and attempts to run the task, but the call to
+<code class="docutils literal notranslate"><span class="pre">random.randint()</span></code> happens to return <code class="docutils literal notranslate"><span class="pre">0</span></code>, raising an <code class="docutils literal notranslate"><span class="pre">Exception</span></code>.</p></li>
+<li><p>The consumer puts the error into the result store and the exception is
+logged. If the caller resolves the <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> now, a
+<a class="reference internal" href="api.html#TaskException" title="TaskException"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaskException</span></code></a> will be raised which contains information about
+the exception that occurred in our task.</p></li>
+<li><p>The consumer notices that the task can be retried 2 times, so it decrements
+the retry count and re-enqueues it for execution.</p></li>
+<li><p>The consumer picks up the message again and runs the task. This time, the
+task succeeds! The new return value is placed into the result store (“OK”).</p></li>
+<li><p>We can reset our <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> handle by calling
+<a class="reference internal" href="api.html#Result.reset" title="Result.reset"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset()</span></code></a> and then re-resolve it. The result handle will now
+give us the new value, “OK”.</p></li>
+</ol>
+<p>Should the task fail on the first invocation, it will be retried up-to two
+times. Note that it will be retried <em>immediately</em> after it returns.</p>
+<p>To specify a delay between retry attempts, we can add a <code class="docutils literal notranslate"><span class="pre">retry_delay</span></code>
+argument. The task will be retried up-to two times, with a delay of 10 seconds
+between attempts:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">retry_delay</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">flaky_task</span><span class="p">():</span>
+    <span class="c1"># ...</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Retries and retry delay arguments can also be specified for periodic tasks.</p>
+</div>
+<p>It is also possible to explicitly retry a task from within the task, by raising
+a <a class="reference internal" href="api.html#RetryTask" title="RetryTask"><code class="xref py py-class docutils literal notranslate"><span class="pre">RetryTask</span></code></a> exception. When this exception is used, the task will
+be retried regardless of whether it was declared with <code class="docutils literal notranslate"><span class="pre">retries</span></code>. Similarly,
+the task’s remaining retries (if they were declared) will not be affected by
+raising <a class="reference internal" href="api.html#RetryTask" title="RetryTask"><code class="xref py py-class docutils literal notranslate"><span class="pre">RetryTask</span></code></a>.</p>
+<p>For more information, see the following API documentation:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#Huey.task" title="Huey.task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">task()</span></code></a> and <a class="reference internal" href="api.html#Huey.periodic_task" title="Huey.periodic_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">periodic_task()</span></code></a></p></li>
+<li><p><a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a></p></li>
+</ul>
+</section>
+<section id="task-priority">
+<span id="priority"></span><h2>Task priority<a class="headerlink" href="#task-priority" title="Permalink to this heading">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Priority support for Redis requires Redis 5.0 or newer. To use task
+priorities with Redis, use the <a class="reference internal" href="api.html#PriorityRedisHuey" title="PriorityRedisHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorityRedisHuey</span></code></a> instead of
+<a class="reference internal" href="api.html#RedisHuey" title="RedisHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">RedisHuey</span></code></a>.</p>
+<p>Task prioritization is fully supported by <a class="reference internal" href="api.html#SqliteHuey" title="SqliteHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">SqliteHuey</span></code></a> and the
+in-memory storage layer used when <a class="reference internal" href="#immediate"><span class="std std-ref">Immediate mode</span></a> is enabled.</p>
+</div>
+<p>Huey tasks can be given a priority, allowing you to ensure that your most
+important tasks do not get delayed when the workers are busy.</p>
+<p>Priorities can be assigned to a task function, in which case all invocations of
+the task will default to the given priority. Additionally, individual task
+invocations can be assigned a priority on a one-off basis.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When no priority is given, the task will default to a priority of <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+</div>
+<p>To see how this works, lets define a task that has a priority (<code class="docutils literal notranslate"><span class="pre">10</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">send_email</span><span class="p">(</span><span class="n">to</span><span class="p">,</span> <span class="n">subj</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">mailer</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">to</span><span class="p">,</span> <span class="s1">&#39;webmaster@myapp.com&#39;</span><span class="p">,</span> <span class="n">subj</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When we invoke this task, it will be processed <em>before</em> any other pending tasks
+whose priority is less than 10. So we could imagine our queue looking something
+like this:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">process_payment</span></code> - priority = 50</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check_spam</span></code> - priority = 1</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">make_thumbnail</span></code> - priority = 0 (default)</p></li>
+</ul>
+<p>Invoke the <code class="docutils literal notranslate"><span class="pre">send_email()</span></code> task:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">send_email</span><span class="p">(</span><span class="s1">&#39;new_user@foo.com&#39;</span><span class="p">,</span> <span class="s1">&#39;Welcome&#39;</span><span class="p">,</span> <span class="s1">&#39;blah blah&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now the queue of pending tasks would be:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">process_payment</span></code> - priority = 50</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_email</span></code> - priority = 10</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check_spam</span></code> - priority = 1</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">make_thumbnail</span></code> - priority = 0</p></li>
+</ul>
+<p>We can override the default priority by passing <code class="docutils literal notranslate"><span class="pre">priority=</span></code> as a keyword
+argument to the task function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">send_email</span><span class="p">(</span><span class="s1">&#39;boss@mycompany.com&#39;</span><span class="p">,</span> <span class="s1">&#39;Important!&#39;</span><span class="p">,</span> <span class="s1">&#39;etc&#39;</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now the queue of pending tasks would be:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">send_email</span></code> (to boss) - priority = 90</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_payment</span></code> - priority = 50</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_email</span></code> - priority = 10</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check_spam</span></code> - priority = 1</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">make_thumbnail</span></code> - priority = 0</p></li>
+</ul>
+<p>Task priority only affects the ordering of tasks as they are pulled from the
+queue of pending tasks. If there are periods of time where your workers are not
+able to keep up with the influx of tasks, Huey’s <code class="docutils literal notranslate"><span class="pre">priority</span></code> feature can
+ensure that your most important tasks do not get delayed.</p>
+<p>Task-specific priority overrides can also be specified when scheduling a task
+to run in the future:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Uses priority=10, since that was the default we used when</span>
+<span class="c1"># declaring the send_email task:</span>
+<span class="n">send_email</span><span class="o">.</span><span class="n">schedule</span><span class="p">((</span><span class="s1">&#39;foo@bar.com&#39;</span><span class="p">,</span> <span class="s1">&#39;subj&#39;</span><span class="p">,</span> <span class="s1">&#39;msg&#39;</span><span class="p">),</span> <span class="n">delay</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Override, specifying priority=50 for this task.</span>
+<span class="n">send_email</span><span class="o">.</span><span class="n">schedule</span><span class="p">((</span><span class="s1">&#39;bar@foo.com&#39;</span><span class="p">,</span> <span class="s1">&#39;subj&#39;</span><span class="p">,</span> <span class="s1">&#39;msg&#39;</span><span class="p">),</span> <span class="n">delay</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Lastly, we can specify priority on <a class="reference internal" href="api.html#Huey.periodic_task" title="Huey.periodic_task"><code class="xref py py-class docutils literal notranslate"><span class="pre">periodic_task</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">periodic_task</span><span class="p">(</span><span class="n">crontab</span><span class="p">(</span><span class="n">minute</span><span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="p">,</span> <span class="n">hour</span><span class="o">=</span><span class="s1">&#39;*/3&#39;</span><span class="p">),</span> <span class="n">priority</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">some_periodic_task</span><span class="p">():</span>
+    <span class="c1"># ...</span>
+</pre></div>
+</div>
+<p>For more information:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#PriorityRedisHuey" title="PriorityRedisHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorityRedisHuey</span></code></a> - Huey implementation that adds support for
+task priorities with the Redis storage layer. <em>Requires Redis 5.0 or newer</em>.</p></li>
+<li><p><a class="reference internal" href="api.html#SqliteHuey" title="SqliteHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">SqliteHuey</span></code></a> and the in-memory storage used when immediate-mode is
+enabled have full support for task priorities.</p></li>
+<li><p><a class="reference internal" href="api.html#Huey.task" title="Huey.task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">task()</span></code></a> and <a class="reference internal" href="api.html#Huey.periodic_task" title="Huey.periodic_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">periodic_task()</span></code></a></p></li>
+</ul>
+</section>
+<section id="canceling-or-pausing-tasks">
+<h2>Canceling or pausing tasks<a class="headerlink" href="#canceling-or-pausing-tasks" title="Permalink to this heading">¶</a></h2>
+<p>Huey tasks can be cancelled dynamically at runtime. This applies to regular
+tasks, tasks scheduled to execute in the future, and periodic tasks.</p>
+<p>Any task can be canceled (“revoked”), provided the task has not started
+executing yet. Similarly, a revoked task can be restored, provided it has not
+already been processed and discarded by the consumer.</p>
+<p>Using the <a class="reference internal" href="api.html#Result.revoke" title="Result.revoke"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Result.revoke()</span></code></a> and <a class="reference internal" href="api.html#Result.restore" title="Result.restore"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Result.restore()</span></code></a> methods:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Schedule a task to execute in 60 seconds.</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">schedule</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">delay</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="c1"># Provided the 60s has not elapsed, the task can be canceled</span>
+<span class="c1"># by calling the `revoke()` method on the result object.</span>
+<span class="n">res</span><span class="o">.</span><span class="n">revoke</span><span class="p">()</span>
+
+<span class="c1"># We can check to see if the task is revoked.</span>
+<span class="n">res</span><span class="o">.</span><span class="n">is_revoked</span><span class="p">()</span>  <span class="c1"># -&gt; True</span>
+
+<span class="c1"># Similarly, we can restore the task, provided the 60s has</span>
+<span class="c1"># not elapsed (at which point it would have been read and</span>
+<span class="c1"># discarded by the consumer).</span>
+<span class="n">res</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To revoke <em>all</em> instances of a given task, use the
+<a class="reference internal" href="api.html#TaskWrapper.revoke" title="TaskWrapper.revoke"><code class="xref py py-meth docutils literal notranslate"><span class="pre">revoke()</span></code></a> and <a class="reference internal" href="api.html#TaskWrapper.restore" title="TaskWrapper.restore"><code class="xref py py-meth docutils literal notranslate"><span class="pre">restore()</span></code></a> methods on
+the task function itself:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Prevent all instances of the add() task from running.</span>
+<span class="n">add</span><span class="o">.</span><span class="n">revoke</span><span class="p">()</span>
+
+<span class="c1"># We can check to see that all instances of the add() task</span>
+<span class="c1"># are revoked:</span>
+<span class="n">add</span><span class="o">.</span><span class="n">is_revoked</span><span class="p">()</span>  <span class="c1"># -&gt; True</span>
+
+<span class="c1"># We can enqueue an instance of the add task, and then check</span>
+<span class="c1"># to verify that it is revoked:</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">res</span><span class="o">.</span><span class="n">is_revoked</span><span class="p">()</span>  <span class="c1"># -&gt; True</span>
+
+<span class="c1"># To re-enable a task, we&#39;ll use the restore() method on</span>
+<span class="c1"># the task function:</span>
+<span class="n">add</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span>
+
+<span class="c1"># Is the add() task enabled again?</span>
+<span class="n">add</span><span class="o">.</span><span class="n">is_revoked</span><span class="p">()</span>  <span class="c1"># -&gt; False</span>
+</pre></div>
+</div>
+<p>Huey provides APIs to revoke / restore on both individual instances of a task,
+as well as all instances of the task. For more information, see the following
+API docs:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#Result.revoke" title="Result.revoke"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Result.revoke()</span></code></a> and <a class="reference internal" href="api.html#Result.restore" title="Result.restore"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Result.restore()</span></code></a> for revoking
+individual instances of a task.</p></li>
+<li><p><a class="reference internal" href="api.html#Result.is_revoked" title="Result.is_revoked"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Result.is_revoked()</span></code></a> for checking the status of a task instance.</p></li>
+<li><p><a class="reference internal" href="api.html#TaskWrapper.revoke" title="TaskWrapper.revoke"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TaskWrapper.revoke()</span></code></a> and <a class="reference internal" href="api.html#TaskWrapper.restore" title="TaskWrapper.restore"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TaskWrapper.restore()</span></code></a> for revoking
+all instances of a task.</p></li>
+<li><p><a class="reference internal" href="api.html#TaskWrapper.is_revoked" title="TaskWrapper.is_revoked"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TaskWrapper.is_revoked()</span></code></a> for checking the status of the task
+function itself.</p></li>
+</ul>
+<section id="canceling-from-within-a-task">
+<h3>Canceling from within a Task<a class="headerlink" href="#canceling-from-within-a-task" title="Permalink to this heading">¶</a></h3>
+<p>Huey provides a special <a class="reference internal" href="api.html#CancelExecution" title="CancelExecution"><code class="xref py py-class docutils literal notranslate"><span class="pre">CancelExecution</span></code></a> exception which can be
+raised, either within a <a class="reference internal" href="api.html#Huey.pre_execute" title="Huey.pre_execute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pre_execute()</span></code></a> hook or within the body of
+a <a class="reference internal" href="api.html#Huey.task" title="Huey.task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">task()</span></code></a>-decorated function, to cancel the execution of the
+task. Additionally, when raised from within a task, the <code class="docutils literal notranslate"><span class="pre">CancelExecution</span></code>
+exception can override the task’s default retry policy, by specifying either
+<code class="docutils literal notranslate"><span class="pre">retry=True/False</span></code>.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">load_data</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">something_temporary_is_wrong</span><span class="p">():</span>
+        <span class="c1"># Task will be retried, even if it has run out of retries or is a</span>
+        <span class="c1"># task that does not specify any automatic retries.</span>
+        <span class="k">raise</span> <span class="n">CancelExecution</span><span class="p">(</span><span class="n">retry</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">something_fatal_is_wrong</span><span class="p">():</span>
+        <span class="c1"># Task will NOT be retried, even if it has more than one retry</span>
+        <span class="c1"># remaining.</span>
+        <span class="k">raise</span> <span class="n">CancelExecution</span><span class="p">(</span><span class="n">retry</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">cancel_and_maybe_retry</span><span class="p">():</span>
+        <span class="c1"># Task will only be retried if it has one or more retries</span>
+        <span class="c1"># remaining (this is the default).</span>
+        <span class="k">raise</span> <span class="n">CancelExecution</span><span class="p">()</span>
+
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>For more information, see: <a class="reference internal" href="api.html#CancelExecution" title="CancelExecution"><code class="xref py py-class docutils literal notranslate"><span class="pre">CancelExecution</span></code></a>.</p>
+</section>
+</section>
+<section id="canceling-or-pausing-periodic-tasks">
+<h2>Canceling or pausing periodic tasks<a class="headerlink" href="#canceling-or-pausing-periodic-tasks" title="Permalink to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">revoke()</span></code> and <code class="docutils literal notranslate"><span class="pre">restore()</span></code> methods support some additional options
+which may be especially useful for <a class="reference internal" href="api.html#Huey.periodic_task" title="Huey.periodic_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">periodic_task()</span></code></a>.</p>
+<p>The <a class="reference internal" href="api.html#TaskWrapper.revoke" title="TaskWrapper.revoke"><code class="xref py py-meth docutils literal notranslate"><span class="pre">revoke()</span></code></a> method accepts two optional parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">revoke_once</span></code> - boolean flag, if set then only the next occurrence of the
+task will be revoked, after which it will be restored automatically.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">revoke_until</span></code> - datetime, which specifies the time at which the task
+should be automatically restored.</p></li>
+</ul>
+<p>For example, suppose we have a task that sends email notifications, but our
+mail server goes down and won’t be fixed for a while. We can revoke the task
+for a couple of hours, after which time it will start executing again:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">periodic_task</span><span class="p">(</span><span class="n">crontab</span><span class="p">(</span><span class="n">minute</span><span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="p">,</span> <span class="n">hour</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">))</span>
+<span class="k">def</span> <span class="nf">send_notification_emails</span><span class="p">():</span>
+    <span class="c1"># ... code to send emails ...</span>
+</pre></div>
+</div>
+<p>Here is how we might revoke the task for the next 3 hours:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">eta</span> <span class="o">=</span> <span class="n">now</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">send_notification_emails</span><span class="o">.</span><span class="n">revoke</span><span class="p">(</span><span class="n">revoke_until</span><span class="o">=</span><span class="n">eta</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Alternatively, we could use <code class="docutils literal notranslate"><span class="pre">revoke_once=True</span></code> to just skip the next
+execution of the task:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">send_notification_emails</span><span class="o">.</span><span class="n">revoke</span><span class="p">(</span><span class="n">revoke_once</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>At any time, the task can be restored using the usual
+<a class="reference internal" href="api.html#TaskWrapper.restore" title="TaskWrapper.restore"><code class="xref py py-meth docutils literal notranslate"><span class="pre">restore()</span></code></a> method, and it’s status can be checked using
+the <a class="reference internal" href="api.html#TaskWrapper.is_revoked" title="TaskWrapper.is_revoked"><code class="xref py py-meth docutils literal notranslate"><span class="pre">is_revoked()</span></code></a> method.</p>
+</section>
+<section id="task-expiration">
+<h2>Task expiration<a class="headerlink" href="#task-expiration" title="Permalink to this heading">¶</a></h2>
+<p>Huey tasks can be configured with an expiration time. Setting an expiration
+time on tasks will prevent them being run after the given time has elapsed.
+Expiration times may be useful if your queue is busy and there may be a
+significant lag between the time a task is enqueued and the time the consumer
+starts executing it.</p>
+<p>Expiration times can be specified as:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">datetime()</span></code> instances, which are treated as absolute times.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">timedelta()</span></code> or <code class="docutils literal notranslate"><span class="pre">int</span></code>, which are relative to the time <em>at which the task
+is enqueued</em>.</p></li>
+</ul>
+<p>A default expire time can be provided when declaring a task:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Task must be executed by consumer within 60s of being enqueued.</span>
+<span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">expires</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">time_sensitive_task</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
+</pre></div>
+</div>
+<p>Expiration times can be specified per-invocation, as well:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Task must be executed by consumer within 5 minutes of being enqueued.</span>
+<span class="n">time_sensitive_task</span><span class="p">(</span><span class="n">report_file</span><span class="p">,</span> <span class="n">expires</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Expiration times can also be specified when scheduling tasks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Task scheduled to run in 1 hour, and once enqueued for execution, must be</span>
+<span class="c1"># run within 60 seconds.</span>
+<span class="n">time_sensitive_task</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">report_file</span><span class="p">,),</span>
+    <span class="n">delay</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">3600</span><span class="p">),</span>
+    <span class="n">expires</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">))</span>
+
+<span class="c1"># Example using absolute datetimes instead of relative deltas:</span>
+<span class="n">one_hr</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+<span class="n">time_sensitive_task</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">report_file</span><span class="p">,),</span>
+    <span class="n">eta</span><span class="o">=</span><span class="n">one_hr</span><span class="p">,</span>
+    <span class="n">expires</span><span class="o">=</span><span class="n">one_hr</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="task-pipelines">
+<h2>Task pipelines<a class="headerlink" href="#task-pipelines" title="Permalink to this heading">¶</a></h2>
+<p>Huey supports pipelines (or chains) of one or more tasks that should be
+executed sequentially.</p>
+<p>To get started, let’s review the usual way we execute tasks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An equivalent, but more verbose, way is to use the <a class="reference internal" href="api.html#TaskWrapper.s" title="TaskWrapper.s"><code class="xref py py-meth docutils literal notranslate"><span class="pre">s()</span></code></a>
+method to create a <a class="reference internal" href="api.html#Task" title="Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a> instance and then enqueue it explicitly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create a task representing the execution of add(1, 2).</span>
+<span class="n">task</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">s</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Enqueue the task instance, which returns a Result handle.</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">huey</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>So the following are equivalent:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># And:</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">huey</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="n">add</span><span class="o">.</span><span class="n">s</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="api.html#TaskWrapper.s" title="TaskWrapper.s"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TaskWrapper.s()</span></code></a> method is used to create a <a class="reference internal" href="api.html#Task" title="Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a>
+instance (which represents the execution of the given function). The
+<code class="docutils literal notranslate"><span class="pre">Task</span></code> is what gets serialized and sent to the consumer.</p>
+<p>To create a pipeline, we will use the <a class="reference internal" href="api.html#TaskWrapper.s" title="TaskWrapper.s"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TaskWrapper.s()</span></code></a> method to create
+a <a class="reference internal" href="api.html#Task" title="Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a> instance. We can then chain additional tasks using the
+<a class="reference internal" href="api.html#Task.then" title="Task.then"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Task.then()</span></code></a> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">add_task</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">s</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># Create Task to represent add(1, 2) invocation.</span>
+
+<span class="c1"># Add additional tasks to pipeline by calling add_task.then().</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="p">(</span><span class="n">add_task</span>
+            <span class="o">.</span><span class="n">then</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>  <span class="c1"># Call add() with previous result (1+2) and 3.</span>
+            <span class="o">.</span><span class="n">then</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1"># Previous result ((1+2)+3) and 4.</span>
+            <span class="o">.</span><span class="n">then</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span> <span class="c1"># Etc.</span>
+
+<span class="c1"># When a pipeline is enqueued, a ResultGroup is returned (which is</span>
+<span class="c1"># comprised of individual Result instances).</span>
+<span class="n">result_group</span> <span class="o">=</span> <span class="n">huey</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span>
+
+<span class="c1"># Print results of above pipeline.</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<span class="c1"># [3, 6, 10, 15]</span>
+
+<span class="c1"># Alternatively, we could have iterated over the result group:</span>
+<span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">result_group</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<span class="c1"># 3</span>
+<span class="c1"># 6</span>
+<span class="c1"># 10</span>
+<span class="c1"># 15</span>
+</pre></div>
+</div>
+<p>When enqueueing a task pipeline, the return value will be a
+<a class="reference internal" href="api.html#ResultGroup" title="ResultGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">ResultGroup</span></code></a>, which encapsulates the <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> objects for
+the individual tasks. <a class="reference internal" href="api.html#ResultGroup" title="ResultGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">ResultGroup</span></code></a> can be iterated over or you can
+use the <a class="reference internal" href="api.html#ResultGroup.get" title="ResultGroup.get"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ResultGroup.get()</span></code></a> method to get all the task return values as
+a list.</p>
+<p>Note that the return value from the parent task is passed to the next task in
+the pipeline, and so on.</p>
+<p>If the value returned by the parent function is a <code class="docutils literal notranslate"><span class="pre">tuple</span></code>, then the tuple
+will be used to extend the <code class="docutils literal notranslate"><span class="pre">*args</span></code> for the next task.  Likewise, if the
+parent function returns a <code class="docutils literal notranslate"><span class="pre">dict</span></code>, then the dict will be used to update the
+<code class="docutils literal notranslate"><span class="pre">**kwargs</span></code> for the next task.</p>
+<p>Example of chaining fibonacci calculations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">fib</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>  <span class="c1"># returns tuple, which is passed as *args</span>
+
+<span class="n">pipe</span> <span class="o">=</span> <span class="p">(</span><span class="n">fib</span><span class="o">.</span><span class="n">s</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">then</span><span class="p">(</span><span class="n">fib</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">then</span><span class="p">(</span><span class="n">fib</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">then</span><span class="p">(</span><span class="n">fib</span><span class="p">))</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">huey</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="n">pipe</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>  <span class="c1"># Resolve results, blocking until all are finished.</span>
+<span class="c1"># [(2, 1), (3, 2), (5, 3), (8, 5)]</span>
+</pre></div>
+</div>
+<p>For more information, see the following API docs:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#TaskWrapper.s" title="TaskWrapper.s"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TaskWrapper.s()</span></code></a></p></li>
+<li><p><a class="reference internal" href="api.html#Task.then" title="Task.then"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Task.then()</span></code></a></p></li>
+<li><p><a class="reference internal" href="api.html#ResultGroup" title="ResultGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">ResultGroup</span></code></a> and <a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a></p></li>
+</ul>
+</section>
+<section id="locking-tasks">
+<h2>Locking tasks<a class="headerlink" href="#locking-tasks" title="Permalink to this heading">¶</a></h2>
+<p>Task locking can be accomplished using the <a class="reference internal" href="api.html#Huey.lock_task" title="Huey.lock_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.lock_task()</span></code></a> method,
+which can be used as a context-manager or decorator.</p>
+<p>This lock prevents multiple invocations of a task from running concurrently.</p>
+<p>If a second invocation occurs and the lock cannot be acquired, then a special
+<a class="reference internal" href="api.html#TaskLockedException" title="TaskLockedException"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaskLockedException</span></code></a> is raised and the task will not be executed.
+If the task is configured to be retried, then it will be retried normally.</p>
+<p>Examples:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">periodic_task</span><span class="p">(</span><span class="n">crontab</span><span class="p">(</span><span class="n">minute</span><span class="o">=</span><span class="s1">&#39;*/5&#39;</span><span class="p">))</span>
+<span class="nd">@huey</span><span class="o">.</span><span class="n">lock_task</span><span class="p">(</span><span class="s1">&#39;reports-lock&#39;</span><span class="p">)</span>  <span class="c1"># Goes *after* the task decorator.</span>
+<span class="k">def</span> <span class="nf">generate_report</span><span class="p">():</span>
+    <span class="c1"># If a report takes longer than 5 minutes to generate, we do</span>
+    <span class="c1"># not want to kick off another until the previous invocation</span>
+    <span class="c1"># has finished.</span>
+    <span class="n">run_report</span><span class="p">()</span>
+
+
+<span class="nd">@huey</span><span class="o">.</span><span class="n">periodic_task</span><span class="p">(</span><span class="n">crontab</span><span class="p">(</span><span class="n">minute</span><span class="o">=</span><span class="s1">&#39;0&#39;</span><span class="p">))</span>
+<span class="k">def</span> <span class="nf">backup</span><span class="p">():</span>
+    <span class="c1"># Generate backup of code</span>
+    <span class="n">do_code_backup</span><span class="p">()</span>
+
+    <span class="c1"># Generate database backup. Since this may take longer than an</span>
+    <span class="c1"># hour, we want to ensure that it is not run concurrently.</span>
+    <span class="k">with</span> <span class="n">huey</span><span class="o">.</span><span class="n">lock_task</span><span class="p">(</span><span class="s1">&#39;db-backup&#39;</span><span class="p">):</span>
+        <span class="n">do_db_backup</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="api.html#Huey.lock_task" title="Huey.lock_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.lock_task()</span></code></a> for API documentation.</p>
+</section>
+<section id="signals">
+<h2>Signals<a class="headerlink" href="#signals" title="Permalink to this heading">¶</a></h2>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">Consumer</span></code> sends <a class="reference internal" href="signals.html#signals"><span class="std std-ref">signals</span></a> as it processes tasks.
+The <a class="reference internal" href="api.html#Huey.signal" title="Huey.signal"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.signal()</span></code></a> method can be used to attach a callback to one or
+more signals, which will be invoked synchronously by the consumer when the
+signal is sent.</p>
+<p>For a simple example, we can add a signal handler that simply prints the signal
+name and the ID of the related task.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">signal</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">print_signal_args</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">exc</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">signal</span> <span class="o">==</span> <span class="n">SIGNAL_ERROR</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1"> - exception: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="api.html#Huey.signal" title="Huey.signal"><code class="xref py py-meth docutils literal notranslate"><span class="pre">signal()</span></code></a> method is used to decorate the signal-handling
+function. It accepts an optional list of signals. If none are provided, as in
+our example, then the handler will be called for any signal.</p>
+<p>The callback function (<code class="docutils literal notranslate"><span class="pre">print_signal_args</span></code>) accepts two required arguments,
+which are present on every signal: <code class="docutils literal notranslate"><span class="pre">signal</span></code> and <code class="docutils literal notranslate"><span class="pre">task</span></code>. Additionally, our
+handler accepts an optional third argument <code class="docutils literal notranslate"><span class="pre">exc</span></code> which is only included with
+<code class="docutils literal notranslate"><span class="pre">SIGNAL_ERROR</span></code>. <code class="docutils literal notranslate"><span class="pre">SIGNAL_ERROR</span></code> is only sent when a task raises an uncaught
+exception during execution.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Signal handlers are executed <em>synchronously</em> by the consumer, so it is
+typically a bad idea to introduce any slow operations into a signal
+handler.</p>
+</div>
+<p>For a complete list of Huey’s signals and their meaning, see the <a class="reference internal" href="signals.html#signals"><span class="std std-ref">Signals</span></a>
+document, and the <a class="reference internal" href="api.html#Huey.signal" title="Huey.signal"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.signal()</span></code></a> API documentation.</p>
+</section>
+<section id="immediate-mode">
+<span id="immediate"></span><h2>Immediate mode<a class="headerlink" href="#immediate-mode" title="Permalink to this heading">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Immediate mode replaces the <em>always eager</em> mode available prior to the
+release of Huey 2. It offers many improvements over always eager mode,
+which are described in the <a class="reference internal" href="changes.html#changes"><span class="std std-ref">Changes in 2.0</span></a> document.</p>
+</div>
+<p>Huey can be run in a special mode called <em>immediate</em> mode, which is very useful
+during testing and development. In immediate mode, Huey will execute task
+functions immediately rather than enqueueing them, while still preserving the
+APIs and behaviors one would expect when running a dedicated consumer process.</p>
+<p>Immediate mode can be enabled in two ways:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">huey</span> <span class="o">=</span> <span class="n">RedisHuey</span><span class="p">(</span><span class="s1">&#39;my-app&#39;</span><span class="p">,</span> <span class="n">immediate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Or at any time, via the &quot;immediate&quot; attribute:</span>
+<span class="n">huey</span> <span class="o">=</span> <span class="n">RedisHuey</span><span class="p">(</span><span class="s1">&#39;my-app&#39;</span><span class="p">)</span>
+<span class="n">huey</span><span class="o">.</span><span class="n">immediate</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>To disable immediate mode:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">huey</span><span class="o">.</span><span class="n">immediate</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<p>By default, enabling immediate mode will switch your Huey instance to using
+in-memory storage. This is to prevent accidentally reading or writing to live
+storage while doing development or testing. If you prefer to use immediate mode
+with live storage, you can specify <code class="docutils literal notranslate"><span class="pre">immediate_use_memory=False</span></code> when creating
+your <a class="reference internal" href="api.html#Huey" title="Huey"><code class="xref py py-class docutils literal notranslate"><span class="pre">Huey</span></code></a> instance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">huey</span> <span class="o">=</span> <span class="n">RedisHuey</span><span class="p">(</span><span class="s1">&#39;my-app&#39;</span><span class="p">,</span> <span class="n">immediate_use_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can try out immediate mode quite easily in the Python shell. In the
+following example, everything happens within the interpreter – no separate
+consumer process is needed. In fact, because immediate mode switches to an
+in-memory storage when enabled, we don’t even have to be running a Redis
+server:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">huey</span> <span class="kn">import</span> <span class="n">RedisHuey</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">huey</span> <span class="o">=</span> <span class="n">RedisHuey</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">huey</span><span class="o">.</span><span class="n">immediate</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="gp">... </span><span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+<span class="gp">...</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span><span class="p">()</span>
+<span class="go">3</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">add</span><span class="o">.</span><span class="n">revoke</span><span class="p">(</span><span class="n">revoke_once</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># We can revoke tasks.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">add</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>
+<span class="go">True</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">add</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)()</span>  <span class="c1"># No longer revoked, was restored automatically.</span>
+<span class="go">7</span>
+</pre></div>
+</div>
+<p>What happens if we try to schedule a task for execution in the future, while
+using immediate mode?</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">schedule</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">delay</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>  <span class="c1"># No result.</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<p>As you can see, the task was not executed. So what happened to it? The answer
+is that the task was added to the in-memory storage layer’s schedule. We can
+check this by calling <a class="reference internal" href="api.html#Huey.scheduled" title="Huey.scheduled"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.scheduled()</span></code></a>:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">huey</span><span class="o">.</span><span class="n">scheduled</span><span class="p">()</span>
+<span class="go">[__main__.add: 8873...bcbd @2019-03-27 02:50:06]</span>
+</pre></div>
+</div>
+<p>Since immediate mode is fully synchronous, there is not a separate thread
+monitoring the schedule. The schedule can still be read or written to, but
+scheduled tasks will not automatically be executed.</p>
+</section>
+<section id="logging">
+<span id="id2"></span><h2>Logging<a class="headerlink" href="#logging" title="Permalink to this heading">¶</a></h2>
+<p>Huey uses the standard library <code class="docutils literal notranslate"><span class="pre">logging</span></code> module to log information about task
+execution and consumer activity. Messages are logged to the <code class="docutils literal notranslate"><span class="pre">huey</span></code> namespace,
+with consumer-specific messages being logged to <code class="docutils literal notranslate"><span class="pre">huey.consumer</span></code>.</p>
+<p>When the consumer is run, it binds a default <code class="docutils literal notranslate"><span class="pre">StreamHandler()</span></code> to the huey
+namespace so that all messages are logged to the console. The consumer logging
+can be configured using the following consumer options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-l</span> <span class="pre">FILE,</span> <span class="pre">--logfile=FILE</span></code> - log to a file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code> - verbose logging (includes DEBUG level)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code> - minimal logging</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-S,</span> <span class="pre">--simple</span></code> - simple logging format (“time message”)</p></li>
+</ul>
+<p>If you would like to get email alerts when an error occurs, you can attach a
+<code class="docutils literal notranslate"><span class="pre">logging.handlers.SMTPHandler</span></code> to the <code class="docutils literal notranslate"><span class="pre">huey</span></code> namespace at level <code class="docutils literal notranslate"><span class="pre">ERROR</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">logging.handlers</span> <span class="kn">import</span> <span class="n">SMTPHandler</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">mail_handler</span> <span class="o">=</span> <span class="n">SMTPHandler</span><span class="p">(</span>
+    <span class="n">mailhost</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;smtp.gmail.com&#39;</span><span class="p">,</span> <span class="mi">587</span><span class="p">),</span>
+    <span class="n">fromaddr</span><span class="o">=</span><span class="s1">&#39;errors@myapp.com&#39;</span><span class="p">,</span>
+    <span class="n">toaddrs</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;developers@myapp.com&#39;</span><span class="p">],</span>
+    <span class="n">subject</span><span class="o">=</span><span class="s1">&#39;Huey error log&#39;</span><span class="p">,</span>
+    <span class="n">credentials</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;errors@myapp.com&#39;</span><span class="p">,</span> <span class="s1">&#39;secret_password&#39;</span><span class="p">),</span>
+    <span class="n">secure</span><span class="o">=</span><span class="p">())</span>
+<span class="n">mail_handler</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;huey&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">mail_handler</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="storage-options">
+<span id="id3"></span><h2>Storage Options<a class="headerlink" href="#storage-options" title="Permalink to this heading">¶</a></h2>
+<p>Huey provides a number of different storage layers suitable to different types
+of workloads. Below I will try to sketch the differences, strengths, and
+weaknesses of each storage layer.</p>
+<dl>
+<dt><a class="reference internal" href="api.html#RedisHuey" title="RedisHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">RedisHuey</span></code></a></dt><dd><p>Huey’s capabilities are, to a large extent, informed by the functionality
+available in Redis. This is the most robust option available and can handle
+very busy workloads. Because Redis runs as a separate server process, it is
+even possible to run Huey consumers on multiple machines to facilitate
+“scale-out” operation.</p>
+<p>Operations are guaranteed to be atomic, following the guarantees provided
+by Redis. The queue is stored in a Redis list, scheduled tasks use a sorted
+set, and the task result-store is kept in a hash.</p>
+<p>Tasks that return a meaningful value must be sure that the caller
+“resolves” those return values at some point, to ensure that the result
+store does not become filled with unused data (to mitigate this, you can
+just modify your tasks to return <code class="docutils literal notranslate"><span class="pre">None</span></code> if you never intend to use the
+result).</p>
+<p>By default Huey performs a “blocking” pop on the queue, which reduces
+latency, although polling can be used instead by passing <code class="docutils literal notranslate"><span class="pre">blocking=False</span></code>
+when instantiating <code class="docutils literal notranslate"><span class="pre">RedisHuey</span></code>.</p>
+<p>Task priorities are not supported by <a class="reference internal" href="api.html#RedisHuey" title="RedisHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">RedisHuey</span></code></a>.</p>
+</dd>
+<dt><a class="reference internal" href="api.html#PriorityRedisHuey" title="PriorityRedisHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorityRedisHuey</span></code></a></dt><dd><p>Redis storage layer that supports task priorities. In order to make this
+possible and efficient, <code class="docutils literal notranslate"><span class="pre">PriorityRedisHuey</span></code> stores the queue in a sorted
+set. Since sorted sets require the key to be unique, Huey will use the
+timestamp in microseconds to differentiate tasks enqueued with the same
+priority.</p>
+</dd>
+<dt><a class="reference internal" href="api.html#RedisExpireHuey" title="RedisExpireHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">RedisExpireHuey</span></code></a></dt><dd><p>Redis storage layer that stores task results in top-level keys, in order to
+add an expiration time to them. Putting an expiration on task result keys
+can ensure that the result-store does not fill up with unresolved result
+values. The default expire time is 86400 seconds, although this can be
+controlled by setting the <code class="docutils literal notranslate"><span class="pre">expire_time</span></code> parameter during instantiation.</p>
+</dd>
+<dt><a class="reference internal" href="api.html#PriorityRedisExpireHuey" title="PriorityRedisExpireHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorityRedisExpireHuey</span></code></a></dt><dd><p>Combines the behaviors of <a class="reference internal" href="api.html#PriorityRedisHuey" title="PriorityRedisHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorityRedisHuey</span></code></a> to support task
+priorities, with the result-store expiration behavior of
+<a class="reference internal" href="api.html#RedisExpireHuey" title="RedisExpireHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">RedisExpireHuey</span></code></a>.</p>
+</dd>
+<dt><a class="reference internal" href="api.html#SqliteHuey" title="SqliteHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">SqliteHuey</span></code></a></dt><dd><p>Sqlite works well for many workloads (see <a class="reference external" href="https://www.sqlite.org/whentouse.html">Appropriate uses for Sqlite</a>),
+and Huey’s Sqlite storage layer works well regardless of the worker-type
+chosen. Sqlite locks the database during writes, ensuring only a single
+writer can write to the database at any given time. Writes generally happen
+very quickly, however, so in practice this is rarely an issue. Because the
+database is stored in a single file, taking backups is quite simple.</p>
+<p><code class="docutils literal notranslate"><span class="pre">SqliteHuey</span></code> may be a good choice for moderate workloads where the
+operational complexity of running a separate server process like Redis is
+undesirable.</p>
+</dd>
+<dt><a class="reference internal" href="api.html#FileHuey" title="FileHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">FileHuey</span></code></a></dt><dd><p>Stores the queue, schedule and task results in files on the filesystem.
+This implementation is provided mostly for testing and development. An
+exclusive lock is used around all file-system operations, since multiple
+operations (list directory, read file, unlink file, e.g.) are typically
+required for each storage primitive (enqueue, dequeue, store result, etc).</p>
+</dd>
+<dt><a class="reference internal" href="api.html#MemoryHuey" title="MemoryHuey"><code class="xref py py-class docutils literal notranslate"><span class="pre">MemoryHuey</span></code></a></dt><dd><p>In-memory implementation of the storage layer used for <a class="reference internal" href="#immediate"><span class="std std-ref">Immediate mode</span></a>.</p>
+</dd>
+<dt><code class="xref py py-class docutils literal notranslate"><span class="pre">BlackHoleHuey</span></code></dt><dd><p>All storage methods are no-ops.</p>
+</dd>
+</dl>
+</section>
+<section id="tips-and-tricks">
+<h2>Tips and tricks<a class="headerlink" href="#tips-and-tricks" title="Permalink to this heading">¶</a></h2>
+<p>To call a task-decorated function in its original form, you can use
+<a class="reference internal" href="api.html#TaskWrapper.call_local" title="TaskWrapper.call_local"><code class="xref py py-meth docutils literal notranslate"><span class="pre">call_local()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="c1"># Call the add() function in &quot;un-decorated&quot; form, skipping all</span>
+<span class="c1"># the huey stuff:</span>
+<span class="n">add</span><span class="o">.</span><span class="n">call_local</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1"># Returns 7.</span>
+</pre></div>
+</div>
+<p>It’s also worth mentioning that python decorators are just syntactical sugar
+for wrapping a function with another function. Thus, the following two examples
+are equivalent:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="c1"># Equivalent to:</span>
+<span class="k">def</span> <span class="nf">_add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="n">add</span> <span class="o">=</span> <span class="n">huey</span><span class="o">.</span><span class="n">task</span><span class="p">()(</span><span class="n">_add</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Task functions can be applied multiple times to a list (or iterable) of
+parameters using the <a class="reference internal" href="api.html#TaskWrapper.map" title="TaskWrapper.map"><code class="xref py py-meth docutils literal notranslate"><span class="pre">map()</span></code></a> method:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="gp">... </span><span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+<span class="gp">...</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">params</span> <span class="o">=</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result_group</span> <span class="o">=</span> <span class="n">add</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">[0, 2, 6, 12, 20, 30, 42, 56, 72, 90]</span>
+</pre></div>
+</div>
+<p>The Huey result-store can be used directly if you need a convenient way to
+cache arbitrary key/value data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">calculate_something</span><span class="p">():</span>
+    <span class="c1"># By default, the result store treats get() like a pop(), so in</span>
+    <span class="c1"># order to preserve the data so it can be read again, we specify</span>
+    <span class="c1"># the second argument, peek=True.</span>
+    <span class="n">prev_results</span> <span class="o">=</span> <span class="n">huey</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;calculate-something.result&#39;</span><span class="p">,</span> <span class="n">peek</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">prev_results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># No previous results found, start from the beginning.</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">start_from_beginning</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Only calculate what has changed since last time.</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">just_what_changed</span><span class="p">(</span><span class="n">prev_results</span><span class="p">)</span>
+
+    <span class="c1"># We can store the updated data back in the result store.</span>
+    <span class="n">huey</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s1">&#39;calculate-something.result&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="api.html#Huey.get" title="Huey.get"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.get()</span></code></a> and <a class="reference internal" href="api.html#Huey.put" title="Huey.put"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.put()</span></code></a> for additional details.</p>
+<section id="exponential-backoff-retries">
+<h3>Exponential Backoff Retries<a class="headerlink" href="#exponential-backoff-retries" title="Permalink to this heading">¶</a></h3>
+<p>Huey tasks support specifying a number of <code class="docutils literal notranslate"><span class="pre">retries</span></code> and a <code class="docutils literal notranslate"><span class="pre">retry_delay</span></code>,
+but does not support exponential backoff out-of-the-box. That’s not a problem,
+as we can use a couple decorators to implement it ourselves quite easily:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">functools</span>
+
+<span class="k">def</span> <span class="nf">exp_backoff_task</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">retry_backoff</span><span class="o">=</span><span class="mf">1.15</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">deco</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="c1"># We will register this task with `context=True`, which causes</span>
+            <span class="c1"># Huey to pass the task instance as a keyword argument to the</span>
+            <span class="c1"># decorated task function. This enables us to modify its retry</span>
+            <span class="c1"># delay, multiplying it by our backoff factor, in the event of</span>
+            <span class="c1"># an exception.</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;task&#39;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="n">task</span><span class="o">.</span><span class="n">retry_delay</span> <span class="o">*=</span> <span class="n">retry_backoff</span>
+                <span class="k">raise</span> <span class="n">exc</span>
+
+        <span class="c1"># Register our wrapped task (inner()), which handles delegating to</span>
+        <span class="c1"># our function, and in the event of an unhandled exception,</span>
+        <span class="c1"># increases the retry delay by the given factor.</span>
+        <span class="k">return</span> <span class="n">huey</span><span class="o">.</span><span class="n">task</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="n">retries</span><span class="p">,</span> <span class="n">retry_delay</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">True</span><span class="p">)(</span><span class="n">inner</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">deco</span>
+</pre></div>
+</div>
+<p>Example usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@exp_backoff_task</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">retry_backoff</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_backoff</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;test_backoff called:&#39;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;forcing retry&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the consumer started executing our task at 12:00:00, then it would be
+retried at the following times:</p>
+<ul class="simple">
+<li><p>12:00:00 (first call)</p></li>
+<li><p>12:00:02 (retry 1)</p></li>
+<li><p>12:00:06 (retry 2)</p></li>
+<li><p>12:00:14 (retry 3)</p></li>
+<li><p>12:00:30 (retry 4)</p></li>
+<li><p>12:01:02 (retry 5)</p></li>
+</ul>
+</section>
+<section id="dynamic-periodic-tasks">
+<h3>Dynamic periodic tasks<a class="headerlink" href="#dynamic-periodic-tasks" title="Permalink to this heading">¶</a></h3>
+<p>To create periodic tasks dynamically we need to register them so that they are
+added to the in-memory schedule managed by the consumer’s scheduler thread.
+Since this registry is in-memory, any dynamically defined tasks must be
+registered within the process that will ultimately schedule them: the consumer.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The following example will not work with the <strong>process</strong> worker-type
+option, since there is currently no way to interact with the scheduler
+process. When threads or greenlets are used, the worker threads share the
+same in-memory schedule as the scheduler thread, allowing modification to
+take place.</p>
+</div>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">dynamic_ptask</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;dynamically-created periodic task: &quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="o">%</span> <span class="n">message</span><span class="p">)</span>
+
+<span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">schedule_message</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">cron_minutes</span><span class="p">,</span> <span class="n">cron_hours</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">):</span>
+    <span class="c1"># Create a new function that represents the application</span>
+    <span class="c1"># of the &quot;dynamic_ptask&quot; with the provided message.</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">():</span>
+        <span class="n">dynamic_ptask</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+    <span class="c1"># The schedule that was specified for this task.</span>
+    <span class="n">schedule</span> <span class="o">=</span> <span class="n">crontab</span><span class="p">(</span><span class="n">cron_minutes</span><span class="p">,</span> <span class="n">cron_hours</span><span class="p">)</span>
+
+    <span class="c1"># Need to provide a unique name for the task. There are any number of</span>
+    <span class="c1"># ways you can do this -- based on the arguments, etc. -- but for our</span>
+    <span class="c1"># example we&#39;ll just use the time at which it was declared.</span>
+    <span class="n">task_name</span> <span class="o">=</span> <span class="s1">&#39;dynamic_ptask_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+    <span class="n">huey</span><span class="o">.</span><span class="n">periodic_task</span><span class="p">(</span><span class="n">schedule</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">task_name</span><span class="p">)(</span><span class="n">wrapper</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Assuming the consumer is running, we can now set up as many instances as we
+like of the “dynamic ptask” function:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">demo</span> <span class="kn">import</span> <span class="n">schedule_message</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schedule_message</span><span class="p">(</span><span class="s1">&#39;I run every 5 minutes&#39;</span><span class="p">,</span> <span class="s1">&#39;*/5&#39;</span><span class="p">)</span>
+<span class="go">&lt;Result: task ...&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schedule_message</span><span class="p">(</span><span class="s1">&#39;I run between 0-15 and 30-45&#39;</span><span class="p">,</span> <span class="s1">&#39;0-15,30-45&#39;</span><span class="p">)</span>
+<span class="go">&lt;Result: task ...&gt;</span>
+</pre></div>
+</div>
+<p>When the consumer executes the “schedule_message” tasks, our new periodic task
+will be registered and added to the schedule.</p>
+</section>
+<section id="run-arbitrary-functions-as-tasks">
+<h3>Run Arbitrary Functions as Tasks<a class="headerlink" href="#run-arbitrary-functions-as-tasks" title="Permalink to this heading">¶</a></h3>
+<p>Instead of explicitly needing to declare all of your tasks up-front, you can
+write a special task that accepts a dotted-path to a callable and run anything
+inside of huey (provided it is available wherever the consumer is running):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">import_module</span>
+
+<span class="nd">@huey</span><span class="o">.</span><span class="n">task</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">path_task</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">path</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># e.g. path.to.module.function</span>
+    <span class="n">mod</span> <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># Dynamically import the module.</span>
+    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">name</span><span class="p">)(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># Call the function.</span>
+
+<span class="c1"># Example usage might be:</span>
+<span class="c1"># foo.py</span>
+<span class="k">def</span> <span class="nf">add_these</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="c1"># Somewhere else, we can tell the consumer to use the &quot;path_task&quot; to import</span>
+<span class="c1"># the foo module and call &quot;add_these(1, 2)&quot;, storing the result in the</span>
+<span class="c1"># result-store like any other task.</span>
+<span class="n">path_task</span><span class="p">(</span><span class="s1">&#39;foo.add_these&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="reading-more">
+<h2>Reading more<a class="headerlink" href="#reading-more" title="Permalink to this heading">¶</a></h2>
+<p>That sums up the basic usage patterns of huey. Below are links for details on
+other aspects of the APIs:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#Huey" title="Huey"><code class="xref py py-class docutils literal notranslate"><span class="pre">Huey</span></code></a> - responsible for coordinating executable tasks and queue
+backends</p></li>
+<li><p><a class="reference internal" href="api.html#Huey.task" title="Huey.task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.task()</span></code></a> - decorator to indicate an executable task.</p></li>
+<li><p><a class="reference internal" href="api.html#Result" title="Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> - handle for interacting with a task.</p></li>
+<li><p><a class="reference internal" href="api.html#Huey.periodic_task" title="Huey.periodic_task"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Huey.periodic_task()</span></code></a> - decorator to indicate a task that executes at
+periodic intervals.</p></li>
+<li><p><a class="reference internal" href="api.html#crontab" title="crontab"><code class="xref py py-func docutils literal notranslate"><span class="pre">crontab()</span></code></a> - define what intervals to execute a periodic command.</p></li>
+<li><p>For information about managing shared resources like database connections,
+refer to the <a class="reference internal" href="shared_resources.html#shared-resources"><span class="std std-ref">shared resources</span></a> document.</p></li>
+</ul>
+<p>Also check out the <a class="reference internal" href="consumer.html#consuming-tasks"><span class="std std-ref">notes on running the consumer</span></a>.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Guide</a><ul>
+<li><a class="reference internal" href="#scheduling-tasks">Scheduling tasks</a></li>
+<li><a class="reference internal" href="#periodic-tasks">Periodic tasks</a></li>
+<li><a class="reference internal" href="#retrying-tasks-that-fail">Retrying tasks that fail</a></li>
+<li><a class="reference internal" href="#task-priority">Task priority</a></li>
+<li><a class="reference internal" href="#canceling-or-pausing-tasks">Canceling or pausing tasks</a><ul>
+<li><a class="reference internal" href="#canceling-from-within-a-task">Canceling from within a Task</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#canceling-or-pausing-periodic-tasks">Canceling or pausing periodic tasks</a></li>
+<li><a class="reference internal" href="#task-expiration">Task expiration</a></li>
+<li><a class="reference internal" href="#task-pipelines">Task pipelines</a></li>
+<li><a class="reference internal" href="#locking-tasks">Locking tasks</a></li>
+<li><a class="reference internal" href="#signals">Signals</a></li>
+<li><a class="reference internal" href="#immediate-mode">Immediate mode</a></li>
+<li><a class="reference internal" href="#logging">Logging</a></li>
+<li><a class="reference internal" href="#storage-options">Storage Options</a></li>
+<li><a class="reference internal" href="#tips-and-tricks">Tips and tricks</a><ul>
+<li><a class="reference internal" href="#exponential-backoff-retries">Exponential Backoff Retries</a></li>
+<li><a class="reference internal" href="#dynamic-periodic-tasks">Dynamic periodic tasks</a></li>
+<li><a class="reference internal" href="#run-arbitrary-functions-as-tasks">Run Arbitrary Functions as Tasks</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reading-more">Reading more</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="installation.html"
+                          title="previous chapter">Installing</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="consumer.html"
+                          title="next chapter">Consuming Tasks</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/guide.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="consumer.html" title="Consuming Tasks"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installing"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">huey 2.4.5 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2013, charles leifer.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 6.1.3.
+    </div>
+  </body>
+</html>
