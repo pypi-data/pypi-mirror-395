@@ -1,0 +1,373 @@
+name: TestPyPI
+
+# Consider switching to using
+#   https://cibuildwheel.pypa.io/en/stable/ci-services/#
+
+# gh action publish to pypi changes windows .lib to .dll.a
+# cibuildwheel "works" but is super slow, and appears to fail
+#  after completing only one job (gives up on the others)
+# Might be fixable if more correct/up-to-date syntax used?
+
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos-latest:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Langevin repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+          
+      - name: Build package
+        run: |
+          python -m build
+          
+      - name: Upload distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-latest-dist
+          path: dist/
+
+  build-macos-14:
+    runs-on: macos-14
+    steps:
+      - name: Checkout Langevin repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+          
+      - name: Build package
+        run: |
+          python -m build
+          
+      - name: Upload distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-14-dist
+          path: dist/
+
+  build-macos-15:
+    runs-on: macos-15
+    steps:
+      - name: Checkout Langevin repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+          
+      - name: Build package
+        run: |
+          python -m build
+          
+      - name: Upload distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-15-dist
+          path: dist/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build auditwheel
+          
+      - name: Build package
+        run: |
+          python -m build
+          mv dist dist_tmp
+          auditwheel repair dist_tmp/*.whl --wheel-dir dist
+          rm -f dist/*-linux_x86_64.whl
+          
+      - name: Upload distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-dist
+          path: dist/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Langevin repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Prepare MSVC
+        uses: bus1/cabuild/action/msdevshell@v1
+        with:
+          architecture: x64
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist
+          path: dist/
+
+  test-macos:
+    runs-on: macos-latest
+    needs: build-macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: 
+          python-version: "3.14"
+
+      - name: Add user bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Retrieve linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-latest-dist
+          path: dist/
+
+      - name: Check package
+        run: |
+          ls -l ./dist     
+          # ls -l $HOME/work/Langevin/Langevin/dist
+          # ls -l /Users/runner/work/Langevin/Langevin/dist        
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ./dist/*.whl
+
+      - name: Unit tests
+        run: python -m unittest discover tests
+
+      - name: Run demo dp_mixed.py in Python
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          python dp_mixed.py
+      - name: Run DemoDP.ipynb in IPython
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          ipython DemoDP.ipynb
+      - name: Run SimulationDP.ipynb in IPython
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          ipython SimulationDP.ipynb
+
+  test-linux:
+    runs-on: ubuntu-latest
+    needs: build-linux
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: 
+          python-version: "3.14"
+          
+      - name: Add user bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Retrieve linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-dist
+          path: dist/
+
+      - name: Check package
+        run: |
+          ls -l ./dist        
+          ls -l $HOME/work/Langevin/Langevin/dist        
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # pip install -e .
+          pip install $HOME/work/Langevin/Langevin/dist/*.whl
+
+      - name: Unit tests
+        run: python -m unittest discover tests
+  
+      - name: Run demo dp_mixed.py in Python
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          python dp_mixed.py
+      - name: Run DemoDP.ipynb in IPython
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          ipython DemoDP.ipynb
+      - name: Run SimulationDP.ipynb in IPython
+        run: |
+          cd $HOME/work/Langevin/Langevin/demos
+          ipython SimulationDP.ipynb
+
+  test-windows:
+    runs-on: windows-latest
+    needs: build-windows
+    steps:
+      - name: Checkout Langevin repo
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: 
+          python-version: "3.14"
+
+      - name: Add user bin to PATH on Windows
+        # if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $userBinPath = "$env:USERPROFILE\.local\bin"
+          Add-Content -Path $env:GITHUB_PATH -Value $userBinPath
+
+      - name: Retrieve windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-dist
+          path: dist
+          
+      - name: Install Langevin from wheel
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          $wheels = Get-ChildItem -Path dist\*.whl -File
+          Write-Output ($wheels -join "`n") 
+          $wheel = $wheels[0]
+          Write-Output $wheel
+          pip install $wheel
+
+      - name: Check Python path
+        shell: powershell
+        run: python -c "import sys; print(sys.path)"
+      - name: Check Python details
+        run: |
+          python --version
+          where python
+          pip list
+
+      - name: Run version no. unit test
+        run: python -m unittest discover tests -p "*langevin*"
+      - name: Run all unit tests
+        run: python -m unittest discover tests 
+
+      - name: Run demo dp_mixed.py in Python
+        shell: powershell
+        run: |
+          # $userBinPath = "$env:USERPROFILE\.local\bin"
+          # Add-Content -Path $env:GITHUB_PATH -Value $userBinPath
+          python demos\dp_mixed.py
+      - name: Run DemoDP.ipynb in IPython
+        shell: powershell
+        run: |
+          # $userBinPath = "$env:USERPROFILE\.local\bin"
+          # Add-Content -Path $env:GITHUB_PATH -Value $userBinPath
+          cd demos
+          dir
+          ipython DemoDP.ipynb
+      - name: Run SimulationDP.ipynb in IPython
+        shell: powershell
+        run: |
+          # $userBinPath = "$env:USERPROFILE\.local\bin"
+          # Add-Content -Path $env:GITHUB_PATH -Value $userBinPath
+          cd demos
+          dir
+          ipython SimulationDP.ipynb
+
+  publish-to-testpypi:
+    runs-on: ubuntu-latest
+    needs: [
+      build-macos-14, 
+      build-macos-15, 
+      build-macos-latest, 
+      build-linux,
+      build-windows, 
+      test-linux,
+      test-macos,
+      test-windows
+    ]
+    permissions:
+      id-token: write # Required for OIDC authentication
+      contents: read # To checkout the repository
+
+    steps:
+      - name: Retrieve macos-14 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-14-dist
+          path: dist/
+      - name: Retrieve macos-15 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-15-dist
+          path: dist/
+      - name: Retrieve macos artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-latest-dist
+          path: dist/
+      - name: Retrieve linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-dist
+          path: dist/
+      - name: Retrieve windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-dist
+          path: dist/
+
+      - name: Check dist
+        run: |
+          ls -l dist/
+          
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
