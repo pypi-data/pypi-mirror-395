@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<!DOCTYPE rulebase SYSTEM "rulebase.dtd">
+
+<rulebase>
+	<label>Contrôleur de température</label>
+	<variable ident= "entree1">
+		<label>Température</label>
+		<universe unit= "degrés">
+			<bound type="Inf">-10</bound>
+			<bound type="Sup">30</bound>
+		</universe>
+		<sef ident = "ent1Sef1">
+			<label>Froide</label>
+			<point><x>2</x><y>0</y></point>
+			<point><x>6</x><y>0.8</y></point>
+			<point><x>12</x><y>0.8</y></point>
+			<point><x>16</x><y>0</y></point>
+		</sef>
+		<sef ident = "ent1Sef2">
+			<label>Chaude</label>
+			<point><x>18</x><y>0</y></point>
+			<point><x>22</x><y>0.8</y></point>
+			<point><x>30</x><y>0.8</y></point>
+		</sef>
+	</variable>
+
+	<variable ident= "entree2">
+		<label>Variation de température</label>
+		<universe unit= "degrés">
+			<bound type= "Inf">-10</bound>
+			<bound type= "Sup">10</bound>
+		</universe>
+		<sef ident = "ent2Sef1">
+			<label>Négative</label>
+			<point><x>-10</x><y>1</y></point>
+			<point><x>-2</x><y>1</y></point>
+			<point><x>0</x><y>0</y></point>
+		</sef>
+		<sef ident = "ent2Sef2">
+			<label>Positive</label>
+			<point><x>0</x><y>0</y></point>
+			<point><x>2</x><y>1</y></point>
+			<point><x>10</x><y>1</y></point>
+		</sef>
+	</variable>
+
+	<variable ident= "sortie">
+		<label>Variation de climatisation</label>
+		<universe unit= "watt">
+			<bound type= "Inf">-500</bound>
+			<bound type= "Sup">500</bound>
+		</universe>
+		<sef ident = "sortSef1">
+			<label>Réduit</label>
+			<gaussian>
+				<mean>-150</mean>
+				<deviation>55.42</deviation>
+			</gaussian>
+		</sef>
+		<sef ident = "sortSef2">
+			<label>Augmente</label>
+			<gaussian>
+				<mean>150</mean>
+				<deviation>55.42</deviation>
+			</gaussian>
+		</sef>
+	</variable>
+
+	<rule ident = "rule1">
+		<premise>
+			<variableID>entree1</variableID>
+			<fuzzysetID>ent1Sef1</fuzzysetID>
+		</premise>
+		<premise>
+			<variableID>entree2</variableID>
+			<fuzzysetID>ent2Sef1</fuzzysetID>
+		</premise>
+		<conclusion>
+			<variableID>sortie</variableID>
+			<fuzzysetID>sortSef2</fuzzysetID>
+		</conclusion>
+	</rule>
+
+	<rule ident = "rule2">
+		<premise>
+			<variableID>entree1</variableID>
+			<fuzzysetID>ent1Sef2</fuzzysetID>
+		</premise>
+		<premise>
+			<variableID>entree2</variableID>
+			<fuzzysetID>ent2Sef1</fuzzysetID>
+		</premise>
+		<conclusion>
+			<variableID>sortie</variableID>
+			<fuzzysetID>sortSef1</fuzzysetID>
+		</conclusion>
+	</rule>
+	<rule ident = "rule3">
+		<premise>
+			<variableID>entree1</variableID>
+			<fuzzysetID>ent1Sef1</fuzzysetID>
+		</premise>
+		<premise>
+			<variableID>entree2</variableID>
+			<fuzzysetID>ent2Sef2</fuzzysetID>
+		</premise>
+		<conclusion>
+			<variableID>sortie</variableID>
+			<fuzzysetID>sortSef2</fuzzysetID>
+		</conclusion>
+	</rule>
+
+	<rule ident = "rule4">
+		<premise>
+			<variableID>entree1</variableID>
+			<fuzzysetID>ent1Sef2</fuzzysetID>
+		</premise>
+		<premise>
+			<variableID>entree2</variableID>
+			<fuzzysetID>ent2Sef2</fuzzysetID>
+		</premise>
+		<conclusion>
+			<variableID>sortie</variableID>
+			<fuzzysetID>sortSef1</fuzzysetID>
+		</conclusion>
+	</rule>
+	<rule ident = "rule5">
+		<premise>
+			<variableID>entree1</variableID>
+			<fuzzysetID>ent1Sef2</fuzzysetID>
+		</premise>
+		<premise>
+			<variableID>entree2</variableID>
+			<fuzzysetID>ent2Sef2</fuzzysetID>
+		</premise>
+		<conclusion>
+			<variableID>sortie</variableID>
+			<fuzzysetID>sortSef2</fuzzysetID>
+		</conclusion>
+	</rule>	
+</rulebase>
