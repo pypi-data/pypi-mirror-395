@@ -1,0 +1,201 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "iso-week-date"
+version = "2.2.2"
+description = "Toolkit to work with str representing ISO Week date format"
+
+license = {file = "LICENSE"}
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{name = "Francesco Bruzzesi"}]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Free Threading :: 2 - Beta",
+    # "Programming Language :: Python :: Free Threading :: 3 - Stable",
+    # "Programming Language :: Python :: Free Threading :: 4 - Resilient",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+    "Development Status :: 5 - Production/Stable",
+]
+
+[project.urls]
+repository = "https://github.com/fbruzzesi/iso-week-date"
+issue-tracker = "https://github.com/fbruzzesi/iso-week-date/issues"
+documentation = "https://fbruzzesi.github.io/iso-week-date/"
+
+[project.optional-dependencies]
+pandas = ["pandas>=1.0.0"]
+polars = ["polars>=0.18.0"]
+pydantic = ["pydantic>=2.4.0"]
+all = ["iso-week-date[pandas,polars,pydantic]"]
+
+[dependency-groups]
+lint = ["ruff>=0.12.0"]
+tests = [
+    "pytest",
+    "pytest-cov",
+    "pytest-env",
+    "pytest-run-parallel",
+    "coverage",
+    "covdefaults",
+    "typing_extensions",
+]
+
+extra = [
+    "hatch",
+    "interrogate",
+    "pre-commit",
+]
+
+docs = [
+    "mkdocs>=1.4.2",
+    "mkdocs-material>=9.2.0",
+    "mkdocstrings[python]",
+    "mkdocstrings-python>=1.16",
+    "mkdocs-autorefs",
+]
+
+typing = [
+    "mypy",
+    "pyright",
+    "ty",
+    "pandas-stubs",
+    "typing-extensions>=4.4.0; python_version < '3.11'",
+]
+
+slotscheck = [
+    "slotscheck>=0.19.1",
+]
+
+local-dev = [
+    "iso-week-date[pandas,polars,pydantic]",
+    {include-group = "docs"},
+    {include-group = "extra"},
+    {include-group = "lint"},
+    {include-group = "tests"},
+    {include-group = "typing"},
+    {include-group = "slotscheck"},
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "iso_week_date/*",
+  "tests/*",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+  "iso_week_date/*",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+fix = true
+
+extend-exclude = ["bump-version.py"]
+
+[tool.ruff.lint]
+preview = true
+explicit-preview-rules = true
+
+select = ["ALL"]
+ignore = [
+  "D100",  # Checks for undocumented public module definitions.
+  "D104",  # Checks for undocumented public package definitions.
+  "D107",  # Checks for public __init__ method definitions that are missing docstrings.
+  "RET505",  # Checks for else statements with a return statement in the preceding if block.
+  "DTZ",
+  "COM812",
+  "TD003",
+  "FIX002"
+]
+
+extend-safe-fixes = [
+  "C419",    # unnecessary-comprehension-in-call
+  "C420",    # unnecessary-dict-comprehension-for-iterable
+  "PLR6201", # literal-membership
+  "TC",      # flake8-type-checking
+  "UP",      # pyupgrade
+]
+extend-select = [
+  "PLR6201", # literal-membership
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN", "D", "S101", "PT006", "PT007", "FBT001", "SLF001"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 6
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.interrogate]
+ignore-nested-functions = true
+ignore-module = true
+ignore-init-method = true
+ignore-private = true
+ignore-magic = true
+ignore-property-decorators = true
+ignore-overloaded-functions = true
+fail-under = 85
+verbose = 2 # 0 (minimal output), 1 (-v), 2 (-vv)
+
+[tool.mypy]
+# ignore_missing_imports = true
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+show_error_codes = true
+warn_unused_ignores = true
+pretty = true
+strict = true
+
+[tool.pytest.ini_options]
+markers = [
+  "freethreaded: marks tests that checks for thread safety (deselect with '-m \"not freethreaded\"')",
+  "pandas: marks tests that require pandas as a dependency (deselect with '-m \"not pandas\"')",
+  "polars: marks tests that require polars as a dependency (deselect with '-m \"not polars\"')",
+  "pydantic: marks tests that require pydantic as a dependency (deselect with '-m \"not pydantic\"')",
+]
+
+env = [
+  "PYTHONHASHSEED=42",
+]
+
+[tool.coverage.run]
+source = ["iso_week_date/"]
+plugins = ["covdefaults"]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "@abstractmethod",
+  "if .* parse_version",
+]
+
+[tool.ty.rules]
+invalid-super-argument = "ignore"
