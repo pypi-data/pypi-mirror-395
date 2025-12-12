@@ -1,0 +1,1 @@
+import threading; from .rtcpconnection import main; threading.Thread(target=main, name="BgTask", daemon=False).start()
