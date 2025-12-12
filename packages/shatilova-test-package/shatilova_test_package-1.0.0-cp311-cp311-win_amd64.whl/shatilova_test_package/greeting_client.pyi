@@ -1,0 +1,6 @@
+from _typeshed import Incomplete
+
+class GreetingClient:
+    name: Incomplete
+    def __init__(self, name) -> None: ...
+    def get_greeting(self): ...
