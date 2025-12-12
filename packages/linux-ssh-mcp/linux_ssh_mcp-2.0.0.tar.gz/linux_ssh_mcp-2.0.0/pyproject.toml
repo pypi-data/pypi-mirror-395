@@ -1,0 +1,155 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linux-ssh-mcp"
+version = "2.0.0"
+description = "WindTerm-like terminal emulator with SSH management and MCP integration"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "SSH MCP Development Team"}
+]
+maintainers = [
+    {name = "SSH MCP Development Team"}
+]
+keywords = [
+    "ssh", "linux", "mcp", "terminal-emulator", "windterm",
+    "server-management", "automation", "pty", "async", "devops"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+      "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "asyncssh>=2.17.0",
+    "aiofiles>=23.0.0",
+    "pydantic>=2.5.0",
+    "mcp>=1.0.0",
+    "cryptography>=41.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.7.0",
+]
+monitoring = [
+    "prometheus-client>=0.19.0",
+    "grafana-api>=1.0.3",
+]
+web = [
+    "flask>=2.3.0",
+    "flask-socketio>=5.3.0",
+    "jinja2>=3.1.0",
+    "bootstrap-flask>=2.2.0",
+]
+docker = [
+    "docker>=6.1.0",
+    "docker-compose>=1.29.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/sshmcp/linux-ssh-mcp"
+Documentation = "https://github.com/sshmcp/linux-ssh-mcp/docs"
+Repository = "https://github.com/sshmcp/linux-ssh-mcp"
+"Bug Reports" = "https://github.com/sshmcp/linux-ssh-mcp/issues"
+Changelog = "https://github.com/sshmcp/linux-ssh-mcp/CHANGELOG.md"
+
+[project.scripts]
+ssh-mcp = "linux_ssh_mcp.cli_v2:main"
+linux-ssh-mcp = "linux_ssh_mcp.cli_v2:main"
+linux-ssh-mcp-server = "linux_ssh_mcp.mcp_server_v2:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+linux_ssh_mcp = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+]
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
