@@ -1,0 +1,96 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    i18n_domain="collective.iconifiedcategory">
+
+  <utility
+    provides="plone.supermodel.parser.ISchemaPolicy"
+    name="category_group_schema_policy"
+    factory=".categorygroup.CategoryGroupSchemaPolicy"
+    />
+
+  <utility
+    provides="plone.supermodel.parser.ISchemaPolicy"
+    name="category_schema_policy"
+    factory=".category.CategorySchemaPolicy"
+    />
+
+  <utility
+    provides="plone.supermodel.parser.ISchemaPolicy"
+    name="subcategory_schema_policy"
+    factory=".subcategory.SubcategorySchemaPolicy"
+    />
+
+  <subscriber
+    for="collective.iconifiedcategory.behaviors.iconifiedcategorization.IIconifiedCategorizationMarker
+         zope.lifecycleevent.interfaces.IObjectAddedEvent"
+    handler=".events.categorized_content_created"
+    />
+
+  <subscriber
+    for="collective.iconifiedcategory.behaviors.iconifiedcategorization.IIconifiedCategorizationMarker
+         zope.lifecycleevent.interfaces.IObjectModifiedEvent"
+    handler=".events.content_updated"
+    />
+
+  <subscriber
+    for="collective.iconifiedcategory.interfaces.IIconifiedCategoryChangedEvent"
+    handler=".events.content_category_updated"
+    />
+
+  <subscriber
+    for="collective.iconifiedcategory.behaviors.iconifiedcategorization.IIconifiedCategorizationMarker
+         zope.lifecycleevent.interfaces.IObjectMovedEvent"
+    handler=".events.categorized_content_moved"
+    />
+
+  <subscriber
+    for="plone.dexterity.interfaces.IDexterityContent
+         zope.lifecycleevent.interfaces.IObjectMovedEvent"
+    handler=".events.categorized_content_container_moved"
+    />
+
+  <subscriber
+    for="Products.Archetypes.interfaces.base.IBaseObject
+         zope.lifecycleevent.interfaces.IObjectMovedEvent"
+    handler=".events.categorized_content_container_moved"
+    />
+
+  <subscriber
+    for=".category.ICategory
+         OFS.interfaces.IObjectWillBeRemovedEvent"
+    handler=".events.category_before_remove"
+    />
+
+  <subscriber
+    for=".subcategory.ISubcategory
+         OFS.interfaces.IObjectWillBeRemovedEvent"
+    handler=".events.subcategory_before_remove"
+    />
+
+  <subscriber
+    for=".category.ICategory
+         OFS.interfaces.IObjectWillBeMovedEvent"
+    handler=".events.category_moved"
+    />
+
+  <subscriber
+    for=".subcategory.ISubcategory
+         OFS.interfaces.IObjectWillBeMovedEvent"
+    handler=".events.subcategory_moved"
+    />
+
+  <subscriber
+    for=".category.ICategory
+         zope.lifecycleevent.interfaces.IObjectAddedEvent"
+    handler=".events.category_created"
+    />
+
+  <subscriber
+    for=".categorygroup.ICategoryGroup
+         zope.container.interfaces.IContainerModifiedEvent"
+    handler=".events.container_modified"
+    />
+
+</configure>

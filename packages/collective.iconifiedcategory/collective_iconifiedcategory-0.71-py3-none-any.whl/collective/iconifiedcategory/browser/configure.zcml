@@ -1,0 +1,378 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    i18n_domain="collective.iconifiedcategory">
+
+  <!-- Publish static files -->
+  <browser:resourceDirectory
+    name="collective.iconifiedcategory"
+    directory="static"
+    />
+  <browser:resourceDirectory
+    name="collective.iconifiedcategory.images"
+    directory="static/images"
+    />
+
+  <!-- views -->
+  <browser:view
+    name="collective-iconifiedcategory.css"
+    permission="zope2.View"
+    class=".css.IconifiedCategory"
+    />
+
+  <browser:page
+    for="*"
+    name="categorized-childs"
+    permission="zope2.View"
+    class=".views.CategorizedChildView"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    template="templates/categorized-childs.pt"
+    />
+
+  <browser:page
+    for="*"
+    name="categorized-childs-manage"
+    permission="zope2.View"
+    class=".views.ManageCategorizedChildView"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    template="templates/categorized-childs-manage.pt"
+    />
+
+  <browser:page
+    for="*"
+    name="categorized-childs-infos"
+    permission="zope2.View"
+    class=".views.CategorizedChildInfosView"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    template="templates/categorized-childs-infos.pt"
+    />
+
+  <!-- viewlets -->
+  <browser:viewlet
+    name="iconifiedcategory.childs"
+    for="*"
+    manager="plone.app.layout.viewlets.interfaces.IBelowContentBody"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".viewlets.CategorizedChildViewlet"
+    template="templates/categorized-child-viewlet.pt"
+    permission="zope2.View"
+    />
+
+  <!-- Edit form views -->
+  <browser:page
+    name="edit"
+    for="collective.iconifiedcategory.content.category.ICategory"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".contentview.BaseEditView"
+    permission="cmf.ModifyPortalContent"
+    />
+
+  <browser:page
+    name="edit"
+    for="collective.iconifiedcategory.content.subcategory.ISubcategory"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".contentview.BaseEditView"
+    permission="cmf.ModifyPortalContent"
+    />
+
+  <adapter
+    for="Products.CMFCore.interfaces.IFolderish
+         zope.publisher.interfaces.browser.IDefaultBrowserLayer
+         plone.dexterity.interfaces.IDexterityFTI"
+    provides="zope.publisher.interfaces.browser.IBrowserPage"
+    factory=".contentview.BaseAddView"
+    name="Category"
+    />
+  <adapter
+    for="Products.CMFCore.interfaces.IFolderish
+         zope.publisher.interfaces.browser.IDefaultBrowserLayer
+         plone.dexterity.interfaces.IDexterityFTI"
+    provides="zope.publisher.interfaces.browser.IBrowserPage"
+    factory=".contentview.BaseAddView"
+    name="Subcategory"
+    />
+  <class class=".contentview.BaseAddView">
+    <require
+      permission="cmf.AddPortalContent"
+      interface="zope.publisher.interfaces.browser.IBrowserPage"
+      />
+  </class>
+
+  <configure package="plone.dexterity.browser">
+    <browser:page
+      name="view"
+      for="collective.iconifiedcategory.content.category.ICategory"
+      layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+      class="collective.iconifiedcategory.browser.contentview.BaseView"
+      permission="zope2.View"
+      template="item.pt"
+      />
+
+    <browser:page
+      name="view"
+      for="collective.iconifiedcategory.content.subcategory.ISubcategory"
+      layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+      class="collective.iconifiedcategory.browser.contentview.BaseView"
+      permission="zope2.View"
+      template="item.pt"
+      />
+  </configure>
+
+  <browser:page
+    name="iconified-print"
+    for="*"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".actionview.ToPrintChangeView"
+    permission="zope2.View"
+    />
+
+  <browser:page
+    name="iconified-confidential"
+    for="*"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".actionview.ConfidentialChangeView"
+    permission="zope2.View"
+    />
+
+  <browser:page
+    name="iconified-signed"
+    for="*"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".actionview.SignedChangeView"
+    permission="zope2.View"
+    />
+
+  <browser:page
+    name="iconified-approved"
+    for="*"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".actionview.ApprovedChangeView"
+    permission="zope2.View"
+    />
+
+  <browser:page
+    name="iconified-publishable"
+    for="*"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".actionview.PublishableChangeView"
+    permission="zope2.View"
+    />
+
+  <!-- Tab view -->
+  <browser:view
+    for="*"
+    name="iconifiedcategory_table"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".tabview.CategorizedTable"
+    permission="zope2.View" />
+
+  <browser:page
+    for="*"
+    name="iconifiedcategory"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".tabview.CategorizedTabView"
+    permission="zope2.View"
+    template="templates/categorized-tab-view.pt"
+    />
+
+  <!-- Columns -->
+  <adapter
+    name="title-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedTable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.TitleColumn"
+    />
+
+  <adapter
+    name="category-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedTable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.CategoryColumn"
+    />
+
+  <adapter
+    name="author-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedTable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.AuthorColumn"
+    />
+
+  <adapter
+    name="creation-date-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedTable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.CreationDateColumn"
+    />
+
+  <adapter
+    name="last-modification-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedTable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.LastModificationColumn"
+    />
+
+  <adapter
+    name="filesize-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedTable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.FilesizeColumn"
+    />
+
+  <adapter
+    name="print-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedPrint"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.PrintColumn"
+    />
+
+  <adapter
+    name="confidential-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedConfidential"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.ConfidentialColumn"
+    />
+
+  <adapter
+    name="signed-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedSigned"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.SignedColumn"
+    />
+
+  <adapter
+    name="approved-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedApproved"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.ApprovedColumn"
+    />
+
+  <adapter
+    name="publishable-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedPublishable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.PublishableColumn"
+    />
+
+  <adapter
+    name="action-column"
+    for="zope.interface.Interface
+         zope.interface.Interface
+         collective.iconifiedcategory.interfaces.ICategorizedTable"
+    provides="z3c.table.interfaces.IColumn"
+    factory=".tabview.ActionColumn"
+    />
+
+  <!-- subtype views -->
+  <browser:page
+    name="iconified_subtyper"
+    for="*"
+    class=".subtyper.IconifiedCategoryPublicSubtyper"
+    permission="zope.Public"
+    allowed_interface="collective.iconifiedcategory.interfaces.IIconifiedCategorySubtyper"
+    />
+
+  <browser:page
+    name="iconified_subtyper"
+    for="*"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".subtyper.IconifiedCategorySubtyper"
+    permission="zope.Public"
+    allowed_interface="collective.iconifiedcategory.interfaces.IIconifiedCategorySubtyper"
+    />
+
+  <!-- overrides for @@download and @@display-file views, permission is Public,
+       everything is managed by can_view -->
+  <browser:page
+    name="download"
+    for="collective.iconifiedcategory.behaviors.iconifiedcategorization.IIconifiedCategorizationMarker"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".views.CanViewAwareDownload"
+    permission="zope2.Public"
+    />
+
+  <browser:page
+    name="display-file"
+    for="collective.iconifiedcategory.behaviors.iconifiedcategorization.IIconifiedCategorizationMarker"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".views.CanViewAwareDisplayFile"
+    permission="zope2.Public"
+    />
+
+  <!-- overrides for @@download of formwidget.namedfile, permission is Public,
+       everything is managed by can_view -->
+  <browser:page
+    name="download"
+    for="plone.formwidget.namedfile.interfaces.INamedFileWidget"
+    layer="collective.iconifiedcategory.interfaces.ICollectiveIconifiedCategoryLayer"
+    class=".views.CanViewAwareFNWDownload"
+    permission="zope2.Public"
+    />
+
+  <!-- Config views -->
+  <browser:view
+    name="update-categorized-elements"
+    for="collective.iconifiedcategory.content.categoryconfiguration.ICategoryConfiguration"
+    class=".config.UpdateCategorizedElementsConfig"
+    permission="cmf.AddPortalContent"
+    />
+
+  <browser:view
+    name="update-categorized-elements"
+    for="collective.iconifiedcategory.content.categorygroup.ICategoryGroup"
+    class=".config.UpdateCategorizedElementsConfig"
+    permission="cmf.AddPortalContent"
+    />
+
+  <browser:view
+    name="update-categorized-elements"
+    for="collective.iconifiedcategory.content.base.ICategorize"
+    class=".config.UpdateCategorizedElementsCategory"
+    permission="cmf.AddPortalContent"
+    />
+
+  <!-- control panel -->
+  <browser:page
+    name="iconifiedcategory-controlpanel"
+    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+    class=".controlpanel.IconifiedCategorySettingsView"
+    permission="cmf.ManagePortal"
+    />
+
+  <browser:page
+      name="images"
+      for="collective.iconifiedcategory.interfaces.IICImageScaleTraversable"
+      class=".views.ImageDataModifiedImageScaling"
+      allowed_attributes="scale"
+      permission="zope2.View"
+      />
+
+  <browser:viewletManager
+      name="collective.iconifiedcategory.belowcategorizedelements"
+      provides="..interfaces.IBelowCategorizedElementsManager"
+      permission="zope2.View"
+      class="plone.app.viewletmanager.manager.BaseOrderedViewletManager" />
+
+</configure>

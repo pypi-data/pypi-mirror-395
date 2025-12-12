@@ -1,0 +1,132 @@
+<tal:defines define="infos python: view._infos;
+                     portal_url python: view.portal_url"
+             condition="infos"
+             i18n:domain="collective.iconifiedcategory">
+  <div class="tooltipster-categorized-elements">
+    <label class="content-category">
+      <span i18n:translate="ContentCategory">Content category</span> : <span tal:content="python: infos[view.category_uid][0]['category_title']" />
+    </label>
+    <ul tal:define="number_of_columns python: view.number_of_columns(infos[view.category_uid])"
+        tal:attributes="class python: 'many_elements_%d_columns' % view.number_of_columns(infos[view.category_uid])">
+      <li tal:repeat="element python: infos[view.category_uid]">
+        <tal:block define="element_url python: element['download_url'] and element['download_url'] or element['relative_url'];
+                           show_preview python: view.show_preview(element)">
+
+        <span class="help"
+              title="The document is currently under conversion, please refresh the page in a few minutes"
+              i18n:attributes="title"
+              tal:condition="python: element['preview_status'] == 'in_progress'">
+          <img width="16px"
+               height="16px"
+               tal:attributes="src string:${portal_url}/spinner_small.gif" />
+        </span>
+        <span class="help"
+              title="The document conversion failed"
+              i18n:attributes="title"
+              tal:condition="python: element['preview_status'] == 'conversion_error'">
+          <img tal:attributes="src string:${portal_url}/error_icon.png" />
+        </span>
+
+        <a class="categorized-element-title"
+           tal:condition="not: show_preview"
+           tal:attributes="href string:${portal_url}/${element_url}">
+          <span>
+            <img width="16px"
+                 height="16px"
+                 tal:attributes="src string:${portal_url}/${element/icon_url};
+                                 alt element/category_title;
+                                 title element/category_title" />
+            <span tal:content="element/title"
+                  tal:attributes="title element/description"></span>
+          </span>
+        </a>
+
+        <tal:show_preview condition="show_preview">
+        <a title="Preview"
+           i18n:attributes="title"
+           target="_blank"
+           tal:attributes="href string:${portal_url}/${element/relative_url}/documentviewer#document/p1">
+          <span>
+            <img width="16px"
+                 height="16px"
+                 tal:attributes="src string:${portal_url}/${element/icon_url};
+                                 alt element/category_title;
+                                 title element/category_title" />
+            <img src=""
+                 tal:attributes="src string:${portal_url}/file_icon.png" />
+            <span tal:content="element/title"
+                  tal:attributes="title element/description"></span>
+          </span>
+        </a>
+        </tal:show_preview>
+
+        <tal:filesize tal:condition="element/warn_filesize">
+          (<span tal:replace="structure python: view.render_filesize(size=element['filesize'])">File size warning</span>)
+        </tal:filesize>
+
+        <div class="categorized_elements_details" tal:condition="python: view.show_details(number_of_columns)">
+          <tal:show_to_print_icon condition="python: view.show(element, 'to_be_printed')">
+             <span class=""
+                   title=""
+                   i18n:attributes="title"
+                   tal:attributes="class python: view.get_css_classses_for('to_print', element);
+                                   title python: view.get_tag_title_for('to_print', element)">
+             </span>
+           </tal:show_to_print_icon>
+          <tal:show_confidential_icon condition="python: view.show(element, 'confidentiality')">
+             <span class=""
+                   title=""
+                   i18n:attributes="title"
+                   tal:attributes="class python: view.get_css_classses_for('confidential', element);
+                                   title python: view.get_tag_title_for('confidential', element)">
+             </span>
+           </tal:show_confidential_icon>
+          <tal:show_signed_icon condition="python: view.show(element, 'signed')">
+             <span class=""
+                   title=""
+                   i18n:attributes="title"
+                   tal:attributes="class python: view.get_css_classses_for('signed', element);
+                                   title python: view.get_tag_title_for('signed', element)">
+             </span>
+          </tal:show_signed_icon>
+          <tal:show_approved_icon condition="python: view.show(element, 'approved')">
+             <span class=""
+                   title=""
+                   i18n:attributes="title"
+                   tal:attributes="class python: view.get_css_classses_for('approved', element);
+                                   title python: view.get_tag_title_for('approved', element)">
+             </span>
+          </tal:show_approved_icon>
+          <tal:show_publishable_icon condition="python: view.show(element, 'publishable')">
+             <span class=""
+                   title=""
+                   i18n:attributes="title"
+                   tal:attributes="class python: view.get_css_classses_for('publishable', element);
+                                   title python: view.get_tag_title_for('publishable', element)">
+             </span>
+          </tal:show_publishable_icon>
+
+          <tal:show_download_icon condition="python: view.show_download(element)">
+            <a tal:attributes="href string:${portal_url}/${element_url}">
+              <img i18n:attributes="title"
+                   title="Download"
+                   tal:attributes="src string:${portal_url}/download_icon.png;" />
+            </a>
+          </tal:show_download_icon>
+        </div>
+
+        </tal:block>
+      </li>
+    </ul>
+    <br />
+    <a href="#"
+       target="_parent"
+       tal:condition="view/show_more_infos_url"
+       tal:attributes="href view/categorized_elements_more_infos_url">
+      <img class="categorized_elements_more_infos_icon"
+           src="more_infos.png"
+           tal:attributes="src string:${portal_url}/++resource++collective.iconifiedcategory.images/more_infos.png" />
+      <span i18n:translate="">More infos</span>
+    </a>
+  </div>
+</tal:defines>
