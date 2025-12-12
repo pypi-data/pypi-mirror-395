@@ -1,0 +1,178 @@
+from __future__ import annotations
+
+import os
+import sys
+from typing import TYPE_CHECKING
+
+from pyglossary.core import sysName
+from pyglossary.glossary_v2 import Error
+
+from .base import UIBase
+
+if TYPE_CHECKING:
+	import argparse
+	import logging
+	from collections.abc import Callable
+	from typing import Any
+
+	from pyglossary.config_type import ConfigType
+
+__all__ = ["getRunner"]
+
+ui_list = ["gtk3", "gtk4", "tk", "web"]
+if os.sep == "\\" or sysName == "darwin":  # windows or mac
+	ui_list = ["tk", "gtk3", "gtk4", "web"]
+
+log: logging.Logger | None = None
+
+
+def load_ui_gtk3() -> Callable:
+	from pyglossary.ui.ui_gtk3 import UI
+
+	return UI
+
+
+def load_ui_gtk4() -> Callable:
+	from pyglossary.ui.ui_gtk4 import UI
+
+	return UI
+
+
+def load_ui_tk() -> Callable:
+	from pyglossary.ui.ui_tk import UI
+
+	return UI
+
+
+def load_ui_web() -> Callable:
+	from pyglossary.ui.ui_web import UI
+
+	return UI
+
+
+ui_loaders: dict[str, Callable] = {
+	"gtk3": load_ui_gtk3,
+	"gtk4": load_ui_gtk4,
+	"tk": load_ui_tk,
+	"web": load_ui_web,
+}
+
+
+def canRunGUI() -> bool:
+	if sysName == "linux":
+		return bool(os.getenv("DISPLAY"))
+
+	if sysName == "darwin":
+		try:
+			import tkinter  # noqa: F401
+		except ModuleNotFoundError:
+			return False
+
+	return True
+
+
+def shouldUseCMD(args: argparse.Namespace) -> bool:
+	if not canRunGUI():
+		return True
+	if args.interactive:
+		return True
+	return bool(args.inputFilename and args.outputFilename)
+
+
+def base_ui_run(  # noqa: PLR0913
+	inputFilename: str = "",
+	outputFilename: str = "",
+	inputFormat: str = "",
+	outputFormat: str = "",
+	reverse: bool = False,
+	config: ConfigType | None = None,
+	readOptions: dict[str, Any] | None = None,
+	writeOptions: dict[str, Any] | None = None,
+	convertOptions: dict[str, Any] | None = None,
+	glossarySetAttrs: dict[str, Any] | None = None,
+) -> bool:
+	from pyglossary.glossary_v2 import ConvertArgs, Glossary
+
+	assert log
+	if reverse:
+		log.error("--reverse does not work with --ui=none")
+		return False
+	ui = UIBase(progressbar=False)
+	ui.loadConfig(**config)
+	glos = Glossary(ui=ui)
+	glos.config = ui.config
+	glos.progressbar = False
+	if glossarySetAttrs:
+		for attr, value in glossarySetAttrs.items():
+			setattr(glos, attr, value)
+	try:
+		glos.convert(
+			ConvertArgs(
+				inputFilename=inputFilename,
+				outputFilename=outputFilename,
+				inputFormat=inputFormat,
+				outputFormat=outputFormat,
+				readOptions=readOptions,
+				writeOptions=writeOptions,
+				**convertOptions,
+			),
+		)
+	except Error as e:
+		log.critical(str(e))
+		glos.cleanup()
+		return False
+	return True
+
+
+def getRunner(
+	args: argparse.Namespace,
+	ui_type: str,
+	logArg: logging.Logger,
+) -> Callable | None:
+	global log
+	log = logArg
+
+	if ui_type == "none":
+		return base_ui_run
+
+	if ui_type == "auto" and shouldUseCMD(args):
+		ui_type = "cmd"
+
+	uiArgs = {
+		"progressbar": args.progressbar is not False,
+	}
+
+	if ui_type == "cmd":
+		if args.interactive:
+			from .ui_cmd_interactive import UI
+		elif args.inputFilename and args.outputFilename:
+			from .ui_cmd import UI
+		elif not args.no_interactive:
+			from .ui_cmd_interactive import UI
+		else:
+			log.error("no input file given, try --help")
+			return None
+		return UI(**uiArgs).run
+
+	if ui_type == "gtk":
+		ui_type = "gtk3"
+
+	if ui_type == "auto":
+		if not args.no_interactive and sys.stdin.isatty():
+			ui_list.insert(3, "cmd_interactive")
+		log.debug(f"{ui_list = }")
+
+		for ui_type2 in ui_list:
+			try:
+				uiClass = ui_loaders[ui_type2]()
+			except ImportError as e:  # noqa: PERF203
+				log.error(str(e))
+			else:
+				return uiClass(**uiArgs).run
+		log.error(
+			"no user interface module found! "
+			f'try "{sys.argv[0]} -h" to see command line usage',
+		)
+		return None
+
+	return ui_loaders[ui_type]()(**uiArgs).run
