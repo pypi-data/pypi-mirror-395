@@ -1,0 +1,180 @@
+Metadata-Version: 2.4
+Name: sqlmodelgen
+Version: 0.0.16
+Summary: Generate SQLModel code from SQL
+License: MIT License
+        
+        Copyright (c) 2024 nucccc
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Database
+Classifier: Topic :: Software Development :: Code Generators
+Requires-Python: >=3.10
+Requires-Dist: sqloxide>=0.1.56
+Provides-Extra: mysql
+Requires-Dist: mysql-connector-python>=9.5.0; extra == 'mysql'
+Provides-Extra: postgres
+Requires-Dist: psycopg[binary]>=3.2.6; extra == 'postgres'
+Description-Content-Type: text/markdown
+
+# sqlmodelgen
+
+![Coverage badge](https://raw.githubusercontent.com/nucccc/sqlmodelgen/python-coverage-comment-action-data/badge.svg) ![PyPI version](https://img.shields.io/pypi/v/sqlmodelgen)
+
+`sqlmodelgen` is a library to generate models for the **sqlmodel** library ([repo](https://github.com/fastapi/sqlmodel), [official docs](https://sqlmodel.tiangolo.com/)).
+
+It accepts in input the following sources:
+
+* direct `CREATE TABLE` sql statements
+* sqlite file path
+* postgres connection string
+* mysql connection from the [mysql-connector-python](https://github.com/mysql/mysql-connector-python) library
+
+## Installation
+
+Available on PyPi, just run `pip install sqlmodelgen`
+
+Code generation from postgres requires the separate `postgres` extension, installable with `pip install sqlmodelgen[postgres]`
+
+## Usage
+
+### Generating from CREATE TABLE
+
+```python
+from sqlmodelgen import gen_code_from_sql
+
+sql_code = '''
+CREATE TABLE Hero (
+	id INTEGER NOT NULL, 
+	name VARCHAR NOT NULL, 
+	secret_name VARCHAR NOT NULL, 
+	age INTEGER, 
+	PRIMARY KEY (id)
+);
+'''
+print(gen_code_from_sql(sql_code))
+
+```
+
+generates:
+
+```python
+from sqlmodel import SQLModel, Field
+
+class Hero(SQLModel, table = True):
+    __tablename__ = 'Hero'
+    id: int = Field(primary_key=True)
+    name: str
+    secret_name: str
+    age: int | None
+```
+
+### Generating from SQLite
+
+```python
+from sqlmodelgen import gen_code_from_sqlite
+
+code = gen_code_from_sqlite('/home/my_user/my_database.sqlite')
+```
+
+### Generating from Postgres
+
+The separate `postgres` extension is required, it can be installed with `pip install sqlmodelgen[postgres]`.
+
+```python
+from sqlmodelgen import gen_code_from_postgres
+
+code = gen_code_from_postgres('postgres://USER:PASSWORD@HOST:PORT/DBNAME')
+```
+
+### Generating from MYSQL
+
+The separate `mysql` extension is required, it can be installed with `pip install sqlmodelgen[mysql]`.
+
+```python
+import mysql.connector
+from sqlmodelgen import gen_code_from_mysql
+
+# instantiate your connection
+conn = mysql.connector.connect(host='YOURHOST', port=3306, user='YOURUSER', password='YOURPASSWORD')
+
+code = gen_code_from_mysql(conn, 'YOURDBNAME')
+```
+
+### Relationships
+
+`sqlmodelgen` allows to build relationships by passing the argument `generate_relationships=True` to the functions:
+
+* `gen_code_from_sql`
+* `gen_code_from_sqlite`
+* `gen_code_from_postgres`
+* `gen_code_from_mysql`
+
+In such case `sqlmodelgen` is going to generate relationships between classes based on the foreign keys retrieved.
+The following example
+
+```python
+schema = '''CREATE TABLE nations(
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE athletes(
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    nation_id BIGSERIAL,
+    FOREIGN KEY (nation_id) REFERENCES nations(id)
+);'''
+
+sqlmodel_code = gen_code_from_sql(schema, generate_relationships=True)
+```
+
+will generate:
+
+```python
+from sqlmodel import SQLModel, Field, Relationship
+
+class Nations(SQLModel, table = True):
+    __tablename__ = 'nations'
+
+    id: int | None = Field(primary_key=True)
+    name: str
+    athletess: list['Athletes'] = Relationship(back_populates='nation')
+                                                                             
+class Athletes(SQLModel, table = True):
+    __tablename__ = 'athletes'
+
+    id: int | None = Field(primary_key=True)
+    name: str
+    nation_id: int | None = Field(foreign_key="nations.id")
+    nation: Nations | None = Relationship(back_populates='athletess')
+```
+
+## Internal functioning
+
+The library relies on [sqloxide](https://github.com/wseaton/sqloxide) to parse SQL code, then generates sqlmodel classes accordingly
