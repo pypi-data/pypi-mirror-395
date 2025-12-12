@@ -1,0 +1,57 @@
+[project]
+name = "sw-product-lib"
+version = "0.10.2"
+description = "Python library for Strangeworks products to interact with the Strangeworks Platform"
+authors = [{ name = "Strangeworks Devs", email = "hello@strangeworks.com" }]
+requires-python = ">=3.11,<4"
+license = "Apache-2.0"
+dependencies = [
+    "gql>=3.4.1,<4",
+    "fastapi>=0.115.0,<0.116",
+    "python-jose[cryptography]>=3.3.0,<4",
+    "strangeworks-core>=0.5.4",
+    "deprecated>=1.2.13,<2",
+    "google-auth>=2.29.0,<3",
+]
+
+[dependency-groups]
+dev = [
+    "types-requests>=2.28.10,<3",
+    "pytest>=7.1.2,<8",
+    "python-dotenv>=0.21.0,<0.22",
+    "ruff>=0.12.0",
+    "setuptools>=80.9.0",
+    "pre-commit>=4.3.0",
+    "flake8>=7.3.0",
+    "black>=25.9.0",
+    "isort",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["sw_product_lib"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["sw_product_lib"]
+
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+use_parentheses = true
+lines_after_imports = 2
+lines_before_imports = 0
+include_trailing_comma = true
+color_output = true
+
+[tool.flake8]
+max-line-length = 88
+per-file-ignores = ["__init__.py:F401", "./docs/*:E402"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--disable-warnings"
+testpaths = ["tests"]
