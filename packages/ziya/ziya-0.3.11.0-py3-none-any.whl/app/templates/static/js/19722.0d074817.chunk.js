@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[19722],{19722:(e,c,n)=>{n.d(c,{createPacketServices:()=>r.$});var r=n(73959);n(82916)}}]);

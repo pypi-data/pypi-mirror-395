@@ -1,0 +1,218 @@
+"""
+Registry provider management and configuration.
+"""
+
+import os
+from typing import Dict, List, Optional, Type
+import boto3
+from botocore.exceptions import ClientError
+
+from app.mcp.registry.interface import RegistryProvider
+from app.mcp.registry.providers.amazon_internal import AmazonInternalRegistryProvider
+from app.mcp.registry.providers.official_mcp import OfficialMCPRegistryProvider
+from app.mcp.registry.providers.smithery import SmitheryRegistryProvider
+from app.mcp.registry.providers.pulsemcp import PulseMCPRegistryProvider
+from app.mcp.registry.providers.awesome_list import AwesomeListRegistryProvider
+from app.mcp.registry.providers.github import GitHubRegistryProvider
+from app.mcp.registry.providers.open_mcp import OpenMCPProvider
+from app.utils.logging_utils import logger
+
+
+class RegistryProviderRegistry:
+    """Registry for managing different registry providers."""
+    
+    def __init__(self):
+        self._providers: Dict[str, RegistryProvider] = {}
+        self._provider_classes: Dict[str, Type[RegistryProvider]] = {}
+        self._default_providers: List[str] = []
+        
+    def register_provider_class(
+        self, 
+        identifier: str, 
+        provider_class: Type[RegistryProvider],
+        is_default: bool = False
+    ):
+        """Register a provider class for lazy initialization."""
+        self._provider_classes[identifier] = provider_class
+        if is_default:
+            self._default_providers.append(identifier)
+        
+        logger.info(f"Registered registry provider class: {identifier}")
+    
+    def register_provider(self, provider: RegistryProvider, is_default: bool = False):
+        """Register an initialized provider instance."""
+        self._providers[provider.identifier] = provider
+        if is_default:
+            self._default_providers.append(provider.identifier)
+        
+        logger.info(f"Registered registry provider: {provider.identifier}")
+    
+    def get_provider(self, identifier: str) -> Optional[RegistryProvider]:
+        """Get a provider by identifier, initializing if necessary."""
+        # Return cached instance if available
+        if identifier in self._providers:
+            return self._providers[identifier]
+        
+        # Initialize from class if available
+        if identifier in self._provider_classes:
+            try:
+                provider_class = self._provider_classes[identifier]
+                provider = provider_class()
+                self._providers[identifier] = provider
+                return provider
+            except Exception as e:
+                logger.error(f"Failed to initialize provider {identifier}: {e}")
+                return None
+        
+        return None
+    
+    def get_available_providers(self, include_internal: bool = True) -> List[RegistryProvider]:
+        """Get all available providers, optionally filtering internal ones."""
+        providers = []
+        
+        # Get all registered identifiers
+        all_identifiers = set(self._providers.keys()) | set(self._provider_classes.keys())
+        
+        for identifier in all_identifiers:
+            provider = self.get_provider(identifier)
+            if provider and (include_internal or not provider.is_internal):
+                providers.append(provider)
+        
+        return providers
+    
+    def get_default_providers(self, include_internal: bool = True) -> List[RegistryProvider]:
+        """Get default providers for the current environment."""
+        providers = []
+        
+        for identifier in self._default_providers:
+            provider = self.get_provider(identifier)
+            if provider and (include_internal or not provider.is_internal):
+                providers.append(provider)
+        
+        return providers
+
+
+# Global provider registry
+_provider_registry = RegistryProviderRegistry()
+
+
+def get_provider_registry() -> RegistryProviderRegistry:
+    """Get the global provider registry."""
+    return _provider_registry
+
+
+def initialize_registry_providers():
+    """Initialize all available registry providers based on environment."""
+    registry = get_provider_registry()
+    
+    # Register official MCP registry (highest priority)
+    registry.register_provider_class(
+        "official-mcp",
+        OfficialMCPRegistryProvider,
+        is_default=True
+    )
+    
+    # Register PulseMCP (large community collection)
+    registry.register_provider_class(
+        "pulsemcp",
+        PulseMCPRegistryProvider,
+        is_default=True
+    )
+    
+    # Register Smithery (quality-focused)
+    registry.register_provider_class(
+        "smithery",
+        SmitheryRegistryProvider,
+        is_default=True
+    )
+    
+    # Register Awesome Lists (community-maintained)
+    registry.register_provider_class(
+        "awesome-lists",
+        AwesomeListRegistryProvider,
+        is_default=True
+    )
+    
+    # Register Open MCP (community registry)
+    registry.register_provider_class(
+        "open-mcp",
+        OpenMCPProvider,
+        is_default=True
+    )
+    
+    # Keep GitHub provider for backwards compatibility (deprecated)
+    registry.register_provider_class(
+        "github",
+        GitHubRegistryProvider,
+        is_default=False
+    )
+    
+    # Register Amazon internal provider only if we're in an Amazon environment
+    if _is_amazon_environment():
+        logger.info("Amazon environment detected, registering internal registry")
+        registry.register_provider_class(
+            "amazon-internal", 
+            AmazonInternalRegistryProvider,
+            is_default=True
+        )
+    else:
+        logger.info("External environment, skipping Amazon internal registry")
+    
+    # Future: Add other providers here
+    # registry.register_provider_class("npm", NPMRegistryProvider)
+    # registry.register_provider_class("pypi", PyPIRegistryProvider)
+
+
+def _is_amazon_environment(profile_name: str = None) -> bool:
+    """Detect if we're running in an Amazon environment."""
+    # Check filesystem indicators first (doesn't require boto3)
+    if os.path.exists('/apollo'):
+        logger.info("Amazon environment detected via /apollo filesystem")
+        return True
+    
+    # Check environment variables
+    aws_profile = os.environ.get('AWS_PROFILE', '')
+    if 'isengard' in aws_profile.lower():
+        logger.info(f"Amazon environment detected via AWS_PROFILE: {aws_profile}")
+        return True
+    
+    aws_config = os.environ.get('AWS_CONFIG_FILE', '')
+    if 'midway' in aws_config.lower():
+        logger.info(f"Amazon environment detected via AWS_CONFIG_FILE: {aws_config}")
+        return True
+    
+    # Try AWS identity check if boto3 is available
+    try:
+        if not profile_name:
+            try:
+                from app.agents.models import ModelManager
+                profile_name = ModelManager.get_state().get('aws_profile')
+            except Exception:
+                pass
+            if not profile_name:
+                profile_name = os.environ.get('AWS_PROFILE')
+        
+        if profile_name:
+            session = boto3.Session(profile_name=profile_name)
+            sts = session.client('sts')
+        else:
+            sts = boto3.client('sts')
+        
+        identity = sts.get_caller_identity()
+        user_id = identity.get('UserId', '')
+        arn = identity.get('Arn', '')
+        account = identity.get('Account', '')
+        
+        is_amazon = any([
+            'amazon.com' in user_id.lower(),
+            'midway.amazon.com' in user_id.lower(),
+            '/amazon' in arn.lower(),
+            account in ['339712844704']
+        ])
+        
+        if is_amazon:
+            logger.info(f"Amazon environment detected via AWS identity: {arn}")
+        return is_amazon
+    except Exception as e:
+        logger.debug(f"Could not check AWS identity (not fatal): {e}")
+        return False
