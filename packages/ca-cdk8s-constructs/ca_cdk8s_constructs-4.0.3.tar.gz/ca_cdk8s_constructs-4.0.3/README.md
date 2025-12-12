@@ -1,0 +1,78 @@
+# CA cdk8s Constructs
+
+This repository contains a collection of opinionated cdk8s constructs that are commonly used in CA applications.
+
+## Usage
+
+To use the constructs, add the following to your `pyproject.toml` file:
+
+### Poetry project
+
+```toml
+[tool.poetry.dependencies]
+ca-cdk8s-constructs = { git = "https://github.com/citizensadvice/ca-cdk8s-constructs", rev = "<version>" }
+```
+
+### uv project
+
+```toml
+dependencies = [
+  "ca-cdk-constructs @ git+https://github.com/citizensadvice/ca-cdk8s-constructs@<version>"
+]
+```
+
+## Features
+
+There are currently constructs available for:
+
+- Horizontal Pod Autoscaler
+- Vertical Pod Autoscaler
+- Pod Disruption Budget
+- Container Resources
+- cdk8s Helm Chart
+
+Please see the resource docstrings or the [Github Wiki](https://github.com/citizensadvice/ca-cdk8s-constructs/wiki) for usage information.
+
+To request new constructs, please raise an issue in the [GitHub repository](https://github.com/citizensadvice/ca-cdk8s-constructs/issues).
+
+## Custom Resource Definitions
+
+The CRDs are found in the `cdk8s.yaml` file, which contains a list of URLs to the CRD definitions.
+
+The generated classes are imported into the `ca_cdk8s_constructs/imports` directory.
+
+If the CRDs are updated, the imports need to be refreshed. There is an Actions workflow that will run weekly to refresh the imports if there are any changes.
+
+### Manually Refreshing CRD Imports
+
+To refresh the CRD imports, run the following command:
+
+```bash
+cdk8s import --output ca_cdk8s_constructs/imports
+```
+
+## Versioning
+
+New versions of this library will be released via Github Releases and will follow the [Semantic Versioning](https://semver.org/) wherever possible.
+
+## Contributing
+
+To develop this project you will need the following installed:
+
+- `Just` for running commands
+- `uv` for dependency management
+
+Run `just` to see all available commands.
+
+### Releases
+
+This project uses semantic versioning and versions must be bumped in accordance with SemVer rules.
+
+The `Justfile` contains a helper command for making releases, `just draft-release`. To use it:
+
+1. Determine the release type (patch, minor, major)
+2. Run `just draft-release <patch | minor | major>`
+3. Approve the version bump if acceptable
+4. Check the staged changes and approve if acceptable
+5. Follow the link to the draft release and edit it to add details if requied
+6. Publish the release
