@@ -1,0 +1,37 @@
+"""Module to collect results."""
+
+from sdgym.cli.utils import read_csv_from_path
+from sdgym.s3 import write_csv
+
+
+def collect_results(
+    input_path, output_file=None, aws_access_key_id=None, aws_secret_access_key=None
+):
+    """Collect the results in the given input directory.
+
+    Write all the results into one csv file.
+
+    Args:
+        input_path (str):
+            The path of the directory that the results files will be read from.
+        output_file (str):
+            If ``output_file`` is provided, the consolidated results will be written there.
+            Otherwise, they will be written to ``input_path``/results.csv.
+        aws_access_key_id (str):
+            If an ``aws_access_key_id`` is provided, the given access key id will be used
+            to read from and/or write to any s3 paths.
+        aws_secret_access_key (str):
+            If an ``aws_secret_access_key`` is provided, the given secret access key will
+            be used to read from and/or write to any s3 paths.
+    """
+    print(f'Reading results from {input_path}')  # noqa: T201
+    scores = read_csv_from_path(input_path, aws_access_key_id, aws_secret_access_key)
+    scores = scores.drop_duplicates()
+
+    if output_file:
+        output = output_file
+    else:
+        output = f'{input_path}/results.csv'
+
+    print(f'Storing results at {output}')  # noqa: T201
+    write_csv(scores, output, aws_access_key_id, aws_secret_access_key)
