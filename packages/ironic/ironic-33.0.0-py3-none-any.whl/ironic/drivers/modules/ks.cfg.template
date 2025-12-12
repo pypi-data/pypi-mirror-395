@@ -1,0 +1,58 @@
+lang en_US
+keyboard us
+timezone UTC --utc
+#platform x86, AMD64, or Intel EM64T
+text
+cmdline
+reboot
+selinux --enforcing
+firewall --disabled
+firstboot --disabled
+rootpw --lock
+
+bootloader --location=mbr --append="rhgb quiet crashkernel=auto"
+zerombr
+clearpart --all --initlabel
+autopart
+
+# Downloading and installing OS image using "liveimg" section is the
+# default mode of operation for an OpenStack-integrated Ironic
+# deployment where Glance is in use. Users (infrastructure operators)
+# may choose to customize this pattern, or use release specific kickstart
+# configurations which may already point to a mirror.
+#
+# An alternative is "url", which points to a repository of files used for
+# the deploy, similar to mounting an ISO media and exposing the files.
+
+{% if 'is_source_a_path' in ks_options -%}
+url --url {{ks_options.liveimg_url }}
+
+# If packages are not selected, a URL based auto-deployment fails.
+%packages --ignoremissing
+%end
+{% else -%}
+liveimg --url {{ ks_options.liveimg_url }}
+{% endif -%}
+
+# Following %pre and %onerror sections are mandatory
+%pre
+/usr/bin/curl {% if 'insecure_heartbeat' in ks_options %}--insecure{% endif %} -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'X-OpenStack-Ironic-API-Version: 1.72' -d '{"callback_url": "", "agent_token": "{{ ks_options.agent_token }}", "agent_status": "start", "agent_status_message": "Deployment starting. Running pre-installation scripts."}' {{ ks_options.heartbeat_url }}
+%end
+
+%onerror
+/usr/bin/curl {% if 'insecure_heartbeat' in ks_options %}--insecure{% endif %} -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'X-OpenStack-Ironic-API-Version: 1.72' -d '{"callback_url": "", "agent_token": "{{ ks_options.agent_token }}", "agent_status": "error", "agent_status_message": "Error: Deploying using anaconda. Check console for more information."}' {{ ks_options.heartbeat_url }}
+%end
+
+# Config-drive information, if any.
+{{ ks_options.config_drive }}
+
+# Sending callback after the installation is mandatory.
+# This ought to be the last thing done; otherwise the
+# ironic-conductor could reboot the node before anaconda
+# finishes executing everything in this file.
+# The sync makes sure that the data is flushed out to disk,
+# before rebooting.
+%post
+sync
+/usr/bin/curl {% if 'insecure_heartbeat' in ks_options %}--insecure{% endif %} -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'X-OpenStack-Ironic-API-Version: 1.72' -d '{"callback_url": "", "agent_token": "{{ ks_options.agent_token }}", "agent_status": "end", "agent_status_message": "Deployment completed successfully."}' {{ ks_options.heartbeat_url }}
+%end
