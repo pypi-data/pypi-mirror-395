@@ -1,0 +1,108 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kisstdlib*"]
+namespaces = true
+[tool.setuptools.package-data]
+"kisstdlib" = ["py.typed"]
+[project]
+name = "kisstdlib"
+version = "0.0.12"
+authors = [{ name = "Jan Malakhovski", email = "oxij@oxij.org" }]
+description = "System programming with conceptually and algebraically simple primitives."
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Python Software Foundation License",
+    "License :: OSI Approved :: BSD License",
+]
+keywords = [
+    "sys",
+    "stdlib",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "sortedcontainers==2.4.*",
+]
+[project.scripts]
+"describe-forest" = "kisstdlib_bin.describe_forest:main"
+[project.urls]
+"Homepage" = "https://oxij.org/software/kisstdlib/"
+"GitHub" = "https://github.com/oxij/kisstdlib"
+"Support Development" = "https://oxij.org/#support"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+implicit_reexport = true
+explicit_package_bases = true
+files = [
+    "**/*.py"
+]
+[[tool.mypy.overrides]]
+module = [
+    "setuptools",
+    "sortedcontainers",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-s -ra -v"
+testpaths = [
+    "kisstdlib/**/*.py",
+    "example/**/*.py",
+    "test/**/*.py",
+]
+
+[tool.black]
+line-length = 100
+
+[tool.pylint]
+disable = [
+    # `mypy` checks these more precisely
+    "abstract-method",
+    "arguments-renamed",
+    "inconsistent-return-statements",
+    "no-member",
+    "possibly-used-before-assignment",
+    "used-before-assignment",
+    "undefined-variable",
+    "unsubscriptable-object",
+
+    # `kisstdlib` uses this
+    "raising-format-tuple",
+
+    # annoying
+    "dangerous-default-value",
+    "global-statement",
+    "import-outside-toplevel",
+    "invalid-name",
+    "line-too-long",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-boolean-expressions",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-nested-blocks",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+
+    # enable eventually
+    "broad-exception-caught",
+    "fixme",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "unused-wildcard-import",
+    "wildcard-import",
+]
+[tool.pylint.format]
+max-line-length = "100"
