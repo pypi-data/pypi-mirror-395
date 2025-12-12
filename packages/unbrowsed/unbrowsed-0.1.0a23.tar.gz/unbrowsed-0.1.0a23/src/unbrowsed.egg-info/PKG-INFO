@@ -1,0 +1,137 @@
+Metadata-Version: 2.4
+Name: unbrowsed
+Version: 0.1.0a23
+Summary: A browserless HTML testing library for Python
+Author-email: Valentino Gagliardi <valentino@valentinog.com>
+License: MIT License
+        
+        Copyright (c) 2025 Valentino Gagliardi
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Documentation, https://unbrowsed.readthedocs.io
+Project-URL: Repository, https://github.com/valentinogagliardi/unbrowsed
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Testing
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: selectolax>=0.3.28
+Provides-Extra: docs
+Requires-Dist: myst-parser>=2; extra == "docs"
+Requires-Dist: sphinx>=7.2; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=2; extra == "docs"
+Provides-Extra: test
+Requires-Dist: coverage[toml]; extra == "test"
+Requires-Dist: pytest>=7; extra == "test"
+Dynamic: license-file
+
+# unbrowsed
+
+A browserless HTML testing library for Python, inspired by [testing-library](https://testing-library.com/).
+
+## Overview
+
+unbrowsed allows you to test HTML without spawning a browser. It provides a simple, intuitive API for querying HTML elements similar to testing-library's approach, encouraging accessible and maintainable tests.
+
+## Features
+
+- Fast HTML parsing with [selectolax](https://github.com/rushter/selectolax)
+- Query functions that encourage accessible testing practices
+
+## Installation
+
+```bash
+pip install unbrowsed
+```
+
+## Usage
+
+### Basic Example
+
+```python
+from unbrowsed import parse_html, query_by_label_text
+
+# Parse HTML content
+html = """
+<form>
+    <label for="username">Username</label>
+    <input id="username" type="text">
+    <label for="password">Password</label>
+    <input id="password" type="password">
+    <button type="submit">Login</button>
+</form>
+"""
+dom = parse_html(html)
+
+# Query elements by label text
+username_input = query_by_label_text(dom, "Username")
+assert username_input is not None
+```
+
+## Development
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/username/unbrowsed.git
+cd unbrowsed
+
+# Create a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install development dependencies
+pip install -e ".[test]"
+```
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Releasing a New Version
+
+To release a new version:
+
+1. Update the version in `pyproject.toml`
+2. Create and push a new tag:
+
+```bash
+git tag 0.1.0
+git push origin 0.1.0
+```
+
+This will trigger the CI pipeline to build and publish the package to PyPI automatically.
+
+## License
+
+MIT
