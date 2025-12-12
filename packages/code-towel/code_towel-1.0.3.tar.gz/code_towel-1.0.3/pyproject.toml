@@ -1,0 +1,130 @@
+[build-system]
+requires = ["setuptools>=65.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "code-towel"
+version = "1.0.3"
+description = "A Python tool that DRYs your code - finds and refactors repeated code using unification-based analysis"
+authors = [
+    {name = "Eric Allen"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# Zero external runtime dependencies!
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "coverage>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "pydocstyle>=6.0.0",
+    "tqdm>=4.66.0",
+]
+
+[project.scripts]
+towel = "towel.cli:main"
+# Legacy entry points for backwards compatibility with existing workflows
+towel-dry = "towel.cli:dry_main"
+towel-preview = "towel.cli:preview_main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+
+[tool.mypy]
+python_version = "3.11"
+# Enable strict type checking for the selected files
+strict = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+# Additional explicit settings (strict implies many of these)
+check_untyped_defs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+files = [
+    "src/towel/__init__.py",
+    "src/towel/unification/__init__.py",
+    "src/towel/unification/unifier.py",
+    "src/towel/unification/extractor.py",
+    "src/towel/unification/ast_pretty_printer.py",
+    "src/towel/unification/ast_normalizer.py",
+    "src/towel/unification/binding_detector.py",
+    "src/towel/unification/models.py",
+    "src/towel/unification/pipeline.py",
+    "src/towel/unification/visitors.py",
+    "src/towel/unification/orphan_detector.py",
+    "src/towel/unification/assignment_analyzer.py",
+    "src/towel/unification/nominal_unifier.py",
+    "src/towel/unification/builtins.py",
+    "src/towel/unification/visitor_utils.py",
+    "src/towel/unification/block_signature.py",
+    "src/towel/unification/project_layout.py",
+    "src/towel/unification/scope_analyzer.py",
+    "src/towel/unification/exceptions.py",
+    "src/towel/unification/refactor_engine.py",
+    "tests/test_helpers.py",
+    "tests/edge_case_values.py",
+]
+
+# Scripts use sys.path manipulation, so check them separately
+[[tool.mypy.overrides]]
+module = [
+    "scripts.bench_refactor",
+    "scripts.debug_pair",
+    "scripts.report_net_benefit_diff",
+    "scripts.trace_proposals",
+    "scripts._debug_global_case",
+]
+ignore_errors = false
+
+[tool.flake8]
+max-line-length = 100
+exclude = ["venv", "env", "__pycache__", "tests"]
+# E501: Line too long (we use Black's 100 char limit, not PEP8's 79)
+# W503: Line break before binary operator (Black style)
+# E203: Whitespace before ':' (Black vs flake8 conflict in slices)
+ignore = ["E501", "W503", "E203"]
+
+[tool.coverage.run]
+source = ["src/towel"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
