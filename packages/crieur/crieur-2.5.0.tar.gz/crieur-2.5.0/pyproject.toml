@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crieur"
+description = "A Static Revue Generator."
+license = {file = "LICENSE"}
+keywords = ["revue", "generator", "publishing"]
+dynamic = ["version"]
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "dataclass-wizard",
+  "httpx",
+  "Jinja2",
+  "minicli",
+  "mistune>=3.1.4",
+  "pillow",
+  "python-slugify",
+  "unidecode",
+  "tzdata>=2025.2",
+  "pyyaml>=6.0.2",
+  "pytz>=2025.2",
+  "feedgen>=1.0.0",
+  "regex>=2024.11.6",
+  "citeproc-py>=0.6.0",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Education",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Science/Research",
+  "Topic :: Documentation",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Text Processing :: Markup :: Markdown",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+[project.urls]
+Homepage = 'https://gitlab.huma-num.fr/ecrinum/crieur'
+Issues = 'https://gitlab.huma-num.fr/ecrinum/crieur/-/issues'
+Changelog = 'https://gitlab.huma-num.fr/ecrinum/crieur/-/blob/main/CHANGELOG.md?#changelog'
+
+[tool.hatch.version]
+path = "crieur/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/crieur",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["crieur"]
+
+[project.scripts]
+crieur = "crieur.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "cogapp",
+  "isort",
+  "hatch",
+  "pytest",
+  "ruff",
+]
+
+[tool.ruff]
+output-format = "full"
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "PTH", "RUF"]
+fixable = ["I"]
+# Espace insecable (guillemets) + fine insecable (ponctuation double, chiffres)
+# + vraie apostrophe.
+allowed-confusables = [" ", " ", "’", "–"]
