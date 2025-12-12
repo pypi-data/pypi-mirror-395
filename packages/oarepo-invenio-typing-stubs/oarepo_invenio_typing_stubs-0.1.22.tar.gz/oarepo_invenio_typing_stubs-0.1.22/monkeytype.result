@@ -1,0 +1,2690 @@
+=== invenio_records_resources.tasks ===
+from typing import (
+    List,
+    Union,
+)
+
+
+def extract_file_metadata(service_id: str, record_id: str, file_key: str): ...
+
+
+def manage_indexer_queues(): ...
+
+
+def send_change_notifications(record_type: str, records_info: List[List[Union[str, int]]]): ...
+=== invenio_records_resources.services.uow ===
+from invenio_db.uow import UnitOfWork
+from invenio_indexer.api import RecordIndexer
+from tests.mock_module.api import (
+    FileRecord,
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Any,
+    List,
+    Optional,
+    Union,
+)
+from unittest.mock import MagicMock
+
+
+class ChangeNotificationOp:
+    def __init__(self, record_type: str, records: List[Record]): ...
+    def on_post_commit(self, uow: UnitOfWork): ...
+
+
+class RecordBulkCommitOp:
+    def __init__(
+        self,
+        records: List[Union[Record, Any]],
+        indexer: Optional[RecordIndexer] = ...,
+        index_refresh: bool = ...
+    ): ...
+    def on_commit(self, uow: UnitOfWork): ...
+    def on_register(self, uow: UnitOfWork): ...
+
+
+class RecordCommitOp:
+    def __init__(
+        self,
+        record: Union[Record, FileRecord, RecordWithFiles, RecordWithRelations],
+        indexer: Optional[RecordIndexer] = ...,
+        index_refresh: bool = ...
+    ): ...
+    def on_commit(self, uow: UnitOfWork): ...
+    def on_register(self, uow: UnitOfWork): ...
+
+
+class RecordDeleteOp:
+    def __init__(
+        self,
+        record: Record,
+        indexer: Optional[RecordIndexer] = ...,
+        force: bool = ...,
+        index_refresh: bool = ...
+    ): ...
+    def on_commit(self, uow: UnitOfWork): ...
+    def on_register(self, uow: UnitOfWork): ...
+
+
+class TaskOp:
+    def __init__(self, celery_task: MagicMock, *args, **kwargs): ...
+    def on_post_commit(self, uow: UnitOfWork): ...
+=== invenio_records_resources.services.records.service ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_db.uow import UnitOfWork
+from invenio_indexer.api import RecordIndexer
+from invenio_records_resources.services.base.links import LinksTemplate
+from invenio_records_resources.services.records.results import (
+    RecordBulkList,
+    RecordItem,
+    RecordList,
+)
+from invenio_records_resources.services.records.schema import ServiceSchemaWrapper
+from invenio_search.api import RecordsSearchV2
+from opensearch_dsl.query import (
+    Bool,
+    MatchAll,
+)
+from opensearch_dsl.response import Response
+from tests.mock_module.api import (
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from tests.mock_module.config import MockSearchOptions
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
+
+
+class RecordIndexerMixin:
+    @property
+    def indexer(self) -> RecordIndexer: ...
+    def record_to_index(
+        self,
+        record: Union[RecordWithFiles, RecordWithRelations, Record]
+    ) -> str: ...
+
+
+class RecordService:
+    def _create(
+        self,
+        record_cls: Union[Type[RecordWithRelations], Type[RecordWithFiles], Type[Record]],
+        identity: Union[AnonymousIdentity, Identity],
+        data: Dict[str, Any],
+        raise_errors: bool = ...,
+        uow: Optional[UnitOfWork] = ...,
+        expand: bool = ...
+    ) -> RecordItem: ...
+    def _read_many(
+        self,
+        identity: Identity,
+        search_query: Union[MatchAll, Bool],
+        fields: Optional[List[str]] = ...,
+        max_records: int = ...,
+        record_cls: None = ...,
+        search_opts: None = ...,
+        extra_filter: None = ...,
+        preference: None = ...,
+        sort: None = ...,
+        **kwargs
+    ) -> Response: ...
+    def _search(
+        self,
+        action: str,
+        identity: Union[AnonymousIdentity, Identity],
+        params: Dict[str, Union[str, int, Dict[str, List[str]], Dict[Any, Any]]],
+        search_preference: Optional[str],
+        record_cls: None = ...,
+        search_opts: None = ...,
+        extra_filter: None = ...,
+        permission_action: str = ...,
+        versioning: bool = ...,
+        **kwargs
+    ) -> RecordsSearchV2: ...
+    def check_revision_id(
+        self,
+        record: Union[RecordWithFiles, RecordWithRelations, Record],
+        expected_revision_id: Optional[int]
+    ): ...
+    @property
+    def components(self) -> Iterator[Any]: ...
+    def create(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        data: Dict[str, Any],
+        uow: Optional[UnitOfWork] = ...,
+        expand: bool = ...
+    ) -> RecordItem: ...
+    def create_or_update_many(
+        self,
+        identity: Identity,
+        data: List[Union[Tuple[str, Dict[str, Union[Dict[str, int], str]]], Tuple[None, Dict[str, Dict[str, Union[Dict[str, str], str]]]], Tuple[None, Dict[str, Dict[str, int]]], Tuple[str, Dict[str, Dict[str, Union[Dict[str, str], str]]]]]],
+        uow: Optional[UnitOfWork] = ...
+    ) -> RecordBulkList: ...
+    def create_search(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        record_cls: Union[Type[RecordWithRelations], Type[Record]],
+        search_opts: Type[MockSearchOptions],
+        permission_action: str = ...,
+        preference: Optional[str] = ...,
+        extra_filter: None = ...,
+        versioning: bool = ...
+    ) -> RecordsSearchV2: ...
+    def delete(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        revision_id: Optional[int] = ...,
+        uow: Optional[UnitOfWork] = ...
+    ): ...
+    @property
+    def expandable_fields(self) -> List[Any]: ...
+    @property
+    def links_item_tpl(self) -> LinksTemplate: ...
+    def on_relation_update(
+        self,
+        identity: Identity,
+        record_type: str,
+        records_info: List[Union[List[Union[str, int]], Tuple[int, int, int]]],
+        notif_time: str,
+        limit: int = ...
+    ): ...
+    def read(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: Optional[str],
+        expand: bool = ...,
+        action: str = ...
+    ) -> RecordItem: ...
+    def read_all(
+        self,
+        identity: Identity,
+        fields: List[str],
+        max_records: int = ...,
+        **kwargs
+    ) -> RecordList: ...
+    def read_many(
+        self,
+        identity: Identity,
+        ids: List[str],
+        fields: Optional[List[str]] = ...,
+        **kwargs
+    ) -> RecordList: ...
+    @property
+    def record_cls(
+        self
+    ) -> Union[Type[RecordWithRelations], Type[RecordWithFiles], Type[Record]]: ...
+    def reindex(
+        self,
+        identity: Identity,
+        params: None = ...,
+        search_preference: None = ...,
+        search_query: Optional[Bool] = ...,
+        extra_filter: None = ...,
+        **kwargs
+    ): ...
+    def scan(
+        self,
+        identity: Identity,
+        params: None = ...,
+        search_preference: None = ...,
+        expand: bool = ...,
+        **kwargs
+    ) -> RecordList: ...
+    @property
+    def schema(self) -> ServiceSchemaWrapper: ...
+    def search(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        params: Optional[Any] = ...,
+        search_preference: Optional[str] = ...,
+        expand: bool = ...,
+        **kwargs
+    ) -> RecordList: ...
+    def search_request(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        params: Dict[str, Union[str, int, Dict[str, List[str]], Dict[Any, Any]]],
+        record_cls: Union[Type[RecordWithRelations], Type[Record]],
+        search_opts: Type[MockSearchOptions],
+        preference: Optional[str] = ...,
+        extra_filter: None = ...,
+        permission_action: str = ...,
+        versioning: bool = ...
+    ) -> RecordsSearchV2: ...
+    def update(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        data: Dict[str, Any],
+        revision_id: Optional[int] = ...,
+        uow: Optional[UnitOfWork] = ...,
+        expand: bool = ...
+    ) -> RecordItem: ...
+=== invenio_records_resources.services.records.schema ===
+from invenio_records_resources.services.files.schema import FileSchema
+from invenio_records_resources.services.files.service import FileService
+from invenio_records_resources.services.records.service import RecordService
+from tests.mock_module.api import (
+    FileRecord,
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from tests.mock_module.schemas import (
+    RecordSchema,
+    RecordWithFilesSchema,
+)
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Type,
+    Union,
+)
+
+
+class BaseRecordSchema:
+    def clean(self, input_data: Dict[str, Any], **kwargs) -> Dict[str, Any]: ...
+
+
+class ServiceSchemaWrapper:
+    def __init__(
+        self,
+        service: Union[FileService, RecordService],
+        schema: Union[Type[RecordWithFilesSchema], Type[RecordSchema], Type[FileSchema]]
+    ): ...
+    def _build_context(self, base_context: Dict[str, Any]) -> Dict[str, Any]: ...
+    def dump(
+        self,
+        data: Union[Record, FileRecord, RecordWithFiles, RecordWithRelations],
+        schema_args: None = ...,
+        context: Optional[Dict[str, Any]] = ...
+    ) -> Dict[str, Any]: ...
+    def load(
+        self,
+        data: Dict[str, Any],
+        schema_args: None = ...,
+        context: Optional[Dict[str, Any]] = ...,
+        raise_errors: bool = ...
+    ) -> Any: ...
+=== invenio_records_resources.services.records.results ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_records_resources.pagination import Pagination
+from invenio_records_resources.services.base.links import LinksTemplate
+from invenio_records_resources.services.files.service import FileService
+from invenio_records_resources.services.records.schema import ServiceSchemaWrapper
+from invenio_records_resources.services.records.service import RecordService
+from opensearch_dsl.response import Response
+from tests.mock_module.api import (
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
+
+
+class FieldsResolver:
+    def __init__(self, expandable_fields: None): ...
+    def expand(
+        self,
+        identity: Identity,
+        hit: Dict[str, Union[str, Dict[str, str], int, Dict[str, Union[str, Dict[str, str], Dict[str, Dict[str, str]]]], Dict[str, Union[str, Dict[str, int], Dict[str, Dict[str, str]]]]]]
+    ) -> Dict[str, Union[Dict[str, Union[Dict[str, Union[str, int]], Dict[str, str], Dict[str, Dict[str, Dict[str, str]]]]], Dict[str, Union[Dict[str, str], Dict[str, Dict[str, Dict[str, str]]]]]]]: ...
+    def resolve(
+        self,
+        identity: Identity,
+        hits: List[Dict[str, Union[str, Dict[str, str], int, Dict[str, Union[str, Dict[str, str], Dict[str, Dict[str, str]]]], Dict[str, Union[str, Dict[str, int], Dict[str, Dict[str, str]]]]]]]
+    ): ...
+
+
+class RecordBulkItem:
+    def __init__(
+        self,
+        op_type: str,
+        record: Union[Record, Dict[str, Union[Dict[str, int], str]], Dict[str, Dict[str, int]]],
+        errors: List[Union[Dict[str, Union[str, List[str]]], Any]],
+        exc: None
+    ): ...
+    @property
+    def errors(self) -> List[Union[Dict[str, Union[str, List[str]]], Any]]: ...
+    @property
+    def op_type(self) -> str: ...
+    @property
+    def record(
+        self
+    ) -> Union[Dict[str, Dict[str, int]], Record, Dict[str, Union[Dict[str, int], str]]]: ...
+
+
+class RecordBulkList:
+    def __init__(
+        self,
+        service: RecordService,
+        identity: Identity,
+        results: List[Union[Tuple[str, Record, List[Any], None], Tuple[str, Dict[str, Union[Dict[str, int], str]], List[Dict[str, Union[str, List[str]]]], None], Tuple[str, Dict[str, Dict[str, int]], List[Dict[str, Union[str, List[str]]]], None]]]
+    ): ...
+
+
+class RecordItem:
+    def __getitem__(
+        self,
+        key: str
+    ) -> Union[Dict[str, Union[str, Dict[str, str], Dict[str, Union[Dict[str, str], str]]]], str, Dict[str, Union[Dict[str, str], str]]]: ...
+    def __init__(
+        self,
+        service: Union[RecordService, FileService],
+        identity: Union[Identity, AnonymousIdentity],
+        record: Union[RecordWithRelations, Record, RecordWithFiles],
+        errors: Optional[List[Dict[str, Union[str, List[str]]]]] = ...,
+        links_tpl: Optional[LinksTemplate] = ...,
+        schema: Optional[ServiceSchemaWrapper] = ...,
+        expandable_fields: None = ...,
+        expand: bool = ...,
+        nested_links_item: None = ...
+    ): ...
+    @property
+    def _obj(
+        self
+    ) -> Union[RecordWithRelations, Record, RecordWithFiles]: ...
+    @property
+    def data(self) -> Dict[str, Any]: ...
+    def has_permissions_to(self, actions: List[str]) -> Dict[str, bool]: ...
+    @property
+    def id(self) -> str: ...
+    @property
+    def links(self) -> Dict[str, str]: ...
+    def to_dict(self) -> Dict[str, Any]: ...
+
+
+class RecordList:
+    def __init__(
+        self,
+        service: RecordService,
+        identity: Identity,
+        results: Response,
+        params: Optional[Dict[str, Union[str, int]]] = ...,
+        links_tpl: None = ...,
+        links_item_tpl: Optional[LinksTemplate] = ...,
+        nested_links_item: None = ...,
+        schema: None = ...,
+        expandable_fields: None = ...,
+        expand: bool = ...
+    ): ...
+    def __iter__(self) -> Iterator[Any]: ...
+    def __len__(self) -> int: ...
+    @property
+    def aggregations(
+        self
+    ) -> Dict[str, Union[Dict[str, Union[List[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]]], str]], Dict[str, str], Dict[str, Union[List[Union[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]], Dict[str, Union[str, int, bool, Dict[str, List[Any]]]]]], str]]]]: ...
+    @property
+    def hits(self): ...
+    @property
+    def pagination(self) -> Pagination: ...
+    def to_dict(self) -> Dict[str, Any]: ...
+    @property
+    def total(self) -> int: ...
+=== invenio_records_resources.services.records.queryparser.transformer ===
+from flask_principal import Identity
+from invenio_access.permissions import Permission
+from luqum.tree import (
+    Phrase,
+    SearchField,
+    Word,
+)
+from typing import (
+    Callable,
+    Dict,
+    Optional,
+    Set,
+    Union,
+)
+
+
+class FieldValueMapper:
+    def __init__(self, term_name: str, word: Optional[Callable] = ..., phrase: None = ...): ...
+    def map_word(self, node: Word, **kwargs) -> Union[Phrase, Word]: ...
+    @property
+    def term_name(self) -> str: ...
+
+
+class RestrictedTerm:
+    def __init__(self, permission: Permission): ...
+
+
+class RestrictedTermValue:
+    def __init__(
+        self,
+        permission: Permission,
+        word: Optional[Callable] = ...,
+        phrase: None = ...
+    ): ...
+    def map_word(
+        self,
+        node: Word,
+        context: Dict[str, Union[Identity, RestrictedTermValue]],
+        **kwargs
+    ) -> Word: ...
+
+
+class SearchFieldTransformer:
+    def __init__(
+        self,
+        mapping: Dict[str, Union[str, RestrictedTerm, RestrictedTermValue, FieldValueMapper]],
+        allow_list: Set[str],
+        *args,
+        **kwargs
+    ): ...
+    def visit_search_field(
+        self,
+        node: SearchField,
+        context: Dict[str, Union[Identity, FieldValueMapper, RestrictedTermValue]]
+    ): ...
+    def visit_word(
+        self,
+        node: Word,
+        context: Dict[str, Union[Identity, FieldValueMapper, RestrictedTermValue]]
+    ): ...
+=== invenio_records_resources.services.records.queryparser.suggest ===
+from flask_principal import AnonymousIdentity
+from opensearch_dsl.query import MultiMatch
+from typing import (
+    Dict,
+    List,
+    Optional,
+)
+
+
+class SuggestQueryParser:
+    def __init__(
+        self,
+        identity: Optional[AnonymousIdentity] = ...,
+        extra_params: Optional[Dict[str, List[str]]] = ...,
+        **kwargs
+    ): ...
+    def parse(self, query_str: str) -> MultiMatch: ...
+=== invenio_records_resources.services.records.queryparser.query ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from functools import partial
+from invenio_records_resources.services.records.queryparser.transformer import SearchFieldTransformer
+from opensearch_dsl.query import (
+    MultiMatch,
+    QueryString,
+)
+from typing import (
+    Any,
+    List,
+    Optional,
+    Set,
+    Type,
+    Union,
+)
+
+
+class QueryParser:
+    def __init__(
+        self,
+        identity: Optional[Union[Identity, AnonymousIdentity]] = ...,
+        extra_params: Optional[Any] = ...,
+        tree_transformer_cls: Optional[Type[SearchFieldTransformer]] = ...
+    ): ...
+    @property
+    def allow_list(self) -> Set[str]: ...
+    @classmethod
+    def factory(
+        cls,
+        tree_transformer_cls: Optional[Type[SearchFieldTransformer]] = ...,
+        **extra_params
+    ) -> partial: ...
+    @property
+    def fields(self) -> List[Union[Any, str]]: ...
+    def parse(self, query_str: str) -> Union[QueryString, MultiMatch]: ...
+=== invenio_records_resources.services.records.params.sort ===
+from flask_babel.speaklater import LazyString
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_search.api import RecordsSearchV2
+from typing import (
+    Dict,
+    List,
+    Union,
+)
+
+
+class SortParam:
+    def _compute_sort_fields(self, params: Dict[str, Union[Dict[str, List[str]], int, str]]) -> List[str]: ...
+    def _default_sort(
+        self,
+        params: Dict[str, Union[Dict[str, List[str]], int, str]],
+        options: Dict[str, Dict[str, Union[LazyString, List[str]]]]
+    ) -> str: ...
+    def _handle_empty_query(
+        self,
+        params: Dict[str, Union[Dict[str, List[str]], int, str]],
+        options: Dict[str, Dict[str, Union[LazyString, List[str]]]]
+    ) -> str: ...
+    def apply(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        search: RecordsSearchV2,
+        params: Dict[str, Union[Dict[str, List[str]], int, str]]
+    ) -> RecordsSearchV2: ...
+=== invenio_records_resources.services.records.params.querystr ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_search.api import RecordsSearchV2
+from typing import (
+    Any,
+    Dict,
+    List,
+    Union,
+)
+
+
+class QueryStrParam:
+    def apply(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        search: RecordsSearchV2,
+        params: Dict[str, Union[Dict[str, List[str]], int, str, Dict[Any, Any]]]
+    ) -> RecordsSearchV2: ...
+=== invenio_records_resources.services.records.params.pagination ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_search.api import RecordsSearchV2
+from typing import (
+    Any,
+    Dict,
+    List,
+    Union,
+)
+
+
+class PaginationParam:
+    def apply(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        search: RecordsSearchV2,
+        params: Dict[str, Union[Dict[str, List[str]], Dict[Any, Any], str, int]]
+    ) -> RecordsSearchV2: ...
+=== invenio_records_resources.services.records.params.facets ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_records_resources.services.records.config import SearchOptions
+from invenio_records_resources.services.records.facets.facets import (
+    CombinedTermsFacet,
+    NestedTermsFacet,
+)
+from invenio_search.api import RecordsSearchV2
+from tests.mock_module.config import MockSearchOptions
+from typing import (
+    Dict,
+    List,
+    Type,
+    Union,
+)
+
+
+class FacetsParam:
+    def __init__(
+        self,
+        config: Union[Type[MockSearchOptions], Type[SearchOptions]]
+    ): ...
+    def add_filter(self, name: str, values: List[str]): ...
+    def aggregate(self, search: RecordsSearchV2) -> RecordsSearchV2: ...
+    def apply(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        search: RecordsSearchV2,
+        params: Dict[str, Union[Dict[str, List[str]], int, str]]
+    ) -> RecordsSearchV2: ...
+    @property
+    def facets(
+        self
+    ) -> Dict[str, Union[NestedTermsFacet, CombinedTermsFacet]]: ...
+    def filter(self, search: RecordsSearchV2) -> RecordsSearchV2: ...
+=== invenio_records_resources.services.records.params.base ===
+from invenio_records_resources.services.records.config import SearchOptions
+from tests.mock_module.config import MockSearchOptions
+from typing import (
+    Type,
+    Union,
+)
+
+
+class ParamInterpreter:
+    def __init__(
+        self,
+        config: Union[Type[SearchOptions], Type[MockSearchOptions]]
+    ): ...
+=== invenio_records_resources.services.records.links ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_records_resources.services.base.links import (
+    EndpointLink,
+    Link,
+)
+from tests.mock_module.api import (
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Dict,
+    Optional,
+    Union,
+)
+
+
+def pagination_endpoint_links(
+    endpoint: str,
+    params: None = ...
+) -> Dict[str, EndpointLink]: ...
+
+
+def pagination_links(tpl: str) -> Dict[str, Link]: ...
+
+
+class RecordEndpointLink:
+    def __init__(self, *args, **kwargs): ...
+    @staticmethod
+    def vars(
+        record: Union[RecordWithFiles, RecordWithRelations, Record],
+        vars: Dict[str, Union[str, AnonymousIdentity, Identity]]
+    ): ...
+=== invenio_records_resources.services.records.facets.response ===
+=== invenio_records_resources.services.records.facets.facets ===
+from opensearch_dsl.aggs import Terms
+from opensearch_dsl.query import (
+    Bool,
+    Term,
+)
+from opensearch_dsl.response.aggs import (
+    FieldBucket,
+    FieldBucketData,
+)
+from opensearch_dsl.utils import AttrList
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
+
+
+class CombinedTermsFacet:
+    def __init__(self, field: str, combined_field: str, parents: List[str], splitchar: str = ..., **kwargs): ...
+    def get_aggregation(self) -> Terms: ...
+    def get_labelled_values(
+        self,
+        data: FieldBucketData,
+        filter_values: List[Union[Any, str]]
+    ) -> Dict[str, Union[List[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]]], str]]: ...
+    def get_parents(self) -> List[str]: ...
+    def get_value_filter(
+        self,
+        parsed_value: Union[Tuple[str, List[Any]], Tuple[str, List[str]]]
+    ) -> Union[Bool, Term]: ...
+
+
+class LabelledFacetMixin:
+    def __init__(self, label: Optional[str] = ..., value_labels: None = ..., **kwargs): ...
+    def get_label_mapping(self, buckets: AttrList) -> Dict[str, str]: ...
+    def get_value(self, bucket: FieldBucket) -> str: ...
+
+
+class NestedTermsFacet:
+    def __init__(self, field: Optional[str] = ..., subfield: Optional[str] = ..., splitchar: str = ..., **kwargs): ...
+    def _parse_values(self, filter_values: List[str]) -> Dict[str, Union[List[Any], List[str]]]: ...
+    def add_filter(self, filter_values: List[str]) -> Union[Bool, Term]: ...
+    def get_aggregation(self) -> Terms: ...
+    def get_labelled_values(
+        self,
+        data: FieldBucketData,
+        filter_values: List[Union[Any, str]],
+        bucket_label: bool = ...,
+        key_prefix: Optional[str] = ...
+    ) -> Dict[str, Union[List[Union[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]], Dict[str, Union[str, int, bool, Dict[str, List[Any]]]]]], str, List[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]]], List[Dict[str, Union[str, int, bool]]], List[Any]]]: ...
+    def get_value_filter(
+        self,
+        parsed_value: Union[Tuple[str, List[Any]], Tuple[str, List[str]]]
+    ) -> Union[Bool, Term]: ...
+=== invenio_records_resources.services.records.components.relations ===
+from flask_principal import Identity
+from tests.mock_module.api import (
+    Record,
+    RecordWithRelations,
+)
+from typing import (
+    Dict,
+    Optional,
+    Union,
+)
+
+
+class ChangeNotificationsComponent:
+    def update(
+        self,
+        identity: Identity,
+        data: Optional[Dict[str, Dict[str, Union[Dict[str, str], str]]]] = ...,
+        record: Optional[Record] = ...,
+        uow: None = ...,
+        **kwargs
+    ): ...
+
+
+class RelationsComponent:
+    def read(
+        self,
+        identity: Identity,
+        record: Optional[RecordWithRelations] = ...
+    ): ...
+=== invenio_records_resources.services.records.components.metadata ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from tests.mock_module.api import (
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Union,
+)
+
+
+class MetadataComponent:
+    def create(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        data: Optional[Dict[str, Any]] = ...,
+        record: Optional[Union[Record, RecordWithFiles, RecordWithRelations]] = ...,
+        errors: Optional[List[Union[Dict[str, Union[str, List[str]]], Any]]] = ...,
+        **kwargs
+    ): ...
+    def update(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        data: Optional[Dict[str, Any]] = ...,
+        record: Optional[Union[Record, RecordWithFiles, RecordWithRelations]] = ...,
+        **kwargs
+    ): ...
+=== invenio_records_resources.services.records.components.files ===
+=== invenio_records_resources.services.records.components.base ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_search.api import RecordsSearchV2
+from typing import (
+    Dict,
+    List,
+    Union,
+)
+
+
+class ServiceComponent:
+    def create(self, identity: Identity, **kwargs): ...
+    def delete(self, identity: Union[AnonymousIdentity, Identity], **kwargs): ...
+    def read(self, identity: Union[AnonymousIdentity, Identity], **kwargs): ...
+    def search(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        search: RecordsSearchV2,
+        params: Dict[str, Union[int, str, List[str]]],
+        **kwargs
+    ) -> RecordsSearchV2: ...
+    def update(self, identity: Identity, **kwargs): ...
+=== invenio_records_resources.services.files.transfer.registry ===
+from invenio_records_resources.services.files.transfer.providers.fetch import FetchTransfer
+from invenio_records_resources.services.files.transfer.providers.local import LocalTransfer
+from invenio_records_resources.services.files.transfer.providers.multipart import MultipartTransfer
+from invenio_records_resources.services.files.transfer.providers.remote import RemoteTransfer
+from typing import (
+    Optional,
+    Type,
+    Union,
+)
+
+
+class TransferRegistry:
+    def __init__(self, default_transfer_type: str): ...
+    @property
+    def default_transfer_type(self) -> str: ...
+    def get_transfer(
+        self,
+        *,
+        record,
+        file_service,
+        key = ...,
+        transfer_type = ...,
+        file_record = ...,
+        uow = ...
+    ) -> Union[MultipartTransfer, RemoteTransfer, LocalTransfer, FetchTransfer]: ...
+    def get_transfer_class(
+        self,
+        transfer_type: str
+    ) -> Union[Type[RemoteTransfer], Type[FetchTransfer], Type[LocalTransfer], Type[MultipartTransfer]]: ...
+    def register(
+        self,
+        transfer_cls: Union[Type[RemoteTransfer], Type[FetchTransfer], Type[LocalTransfer], Type[MultipartTransfer]]
+    ): ...
+=== invenio_records_resources.services.files.transfer.providers.remote ===
+from flask.wrappers import Response
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Dict,
+    Union,
+)
+
+
+class RemoteTransfer:
+    def init_file(
+        self,
+        record: RecordWithFiles,
+        file_metadata: Dict[str, Union[str, Dict[str, str], int]],
+        **kwargs
+    ) -> FileRecord: ...
+    def send_file(self, *, as_attachment, **kwargs) -> Response: ...
+    @property
+    def status(self) -> str: ...
+
+
+class RemoteTransferBase.Schema:
+    def validate_names(self, value: str): ...
+=== invenio_records_resources.services.files.transfer.providers.multipart ===
+from io import BytesIO
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_files_rest.storage.pyfs import PyFSFileStorage
+from invenio_s3.storage import S3FSFileStorage
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Union,
+)
+from werkzeug.wsgi import LimitedStream
+
+
+class MultipartStorageExt:
+    def __getattr__(self, name: str) -> str: ...
+    def __init__(
+        self,
+        storage: Union[S3FSFileStorage, PyFSFileStorage]
+    ): ...
+    def multipart_commit_upload(self, **multipart_metadata) -> str: ...
+    def multipart_initialize_upload(self, parts: int, size: int, part_size: int) -> Dict[str, str]: ...
+    def multipart_links(
+        self,
+        base_url: str,
+        **multipart_metadata
+    ) -> Dict[str, Optional[List[Dict[str, Union[str, int]]]]]: ...
+    def multipart_set_content(
+        self,
+        part: int,
+        stream: Union[BytesIO, LimitedStream],
+        content_length: int,
+        **multipart_metadata
+    ) -> Dict[Any, Any]: ...
+
+
+class MultipartTransfer:
+    def _get_storage(
+        self,
+        **kwargs
+    ) -> MultipartStorageExt: ...
+    def commit_file(self): ...
+    def expand_links(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        self_url: str
+    ) -> Dict[str, Optional[List[Dict[str, Union[str, int]]]]]: ...
+    def init_file(
+        self,
+        record: RecordWithFiles,
+        file_metadata: Dict[str, Union[Dict[str, str], str, Dict[str, Union[str, int]], int]],
+        **kwargs
+    ) -> FileRecord: ...
+    @property
+    def multipart_metadata(self) -> Dict[str, Union[str, int]]: ...
+    def set_file_multipart_content(
+        self,
+        part: int,
+        stream: Union[BytesIO, LimitedStream],
+        content_length: int
+    ): ...
+    @property
+    def status(self) -> str: ...
+=== invenio_records_resources.services.files.transfer.providers.local ===
+from io import (
+    BufferedReader,
+    BytesIO,
+)
+from typing import (
+    Optional,
+    Union,
+)
+from werkzeug.wsgi import LimitedStream
+
+
+class LocalTransfer:
+    def set_file_content(
+        self,
+        stream: Union[BytesIO, BufferedReader, LimitedStream],
+        content_length: Optional[int]
+    ): ...
+=== invenio_records_resources.services.files.transfer.providers.fetch ===
+from io import BytesIO
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Dict,
+    Optional,
+    Union,
+)
+
+
+class FetchTransfer:
+    def commit_file(self): ...
+    def init_file(
+        self,
+        record: RecordWithFiles,
+        file_metadata: Dict[str, Union[Dict[str, str], str]],
+        **kwargs
+    ) -> FileRecord: ...
+    def set_file_content(self, stream: BytesIO, content_length: Optional[int]): ...
+    @property
+    def status(self) -> str: ...
+
+
+class FetchTransfer.Schema:
+    def validate_names(self, value: str): ...
+=== invenio_records_resources.services.files.transfer.base ===
+from io import (
+    BufferedReader,
+    BytesIO,
+)
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_db.uow import UnitOfWork
+from invenio_records_resources.services.files.service import FileService
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Union,
+)
+from werkzeug.wsgi import LimitedStream
+
+
+class Transfer:
+    def __init__(
+        self,
+        record: RecordWithFiles,
+        key: str,
+        file_service: Optional[FileService],
+        file_record: Optional[FileRecord] = ...,
+        uow: Optional[UnitOfWork] = ...
+    ): ...
+    def commit_file(self): ...
+    def delete_file(self): ...
+    def expand_links(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        self_url: str
+    ) -> Dict[Any, Any]: ...
+    @property
+    def file_record(self) -> FileRecord: ...
+    def init_file(
+        self,
+        record: RecordWithFiles,
+        file_metadata: Dict[str, Union[Dict[str, str], str, Dict[str, Union[str, int]], int, Dict[str, bool]]],
+        **kwargs
+    ) -> FileRecord: ...
+    def send_file(self, *, restricted, as_attachment): ...
+    def set_file_content(
+        self,
+        stream: Union[BytesIO, BufferedReader, LimitedStream],
+        content_length: Optional[int]
+    ): ...
+    @property
+    def status(self) -> str: ...
+=== invenio_records_resources.services.files.tasks ===
+from _hashlib import HASH
+from s3fs.core import S3File
+
+
+def compute_checksum(file_stream: S3File, object_checksum: HASH, part_size: int) -> bytes: ...
+
+
+def fetch_file(service_id: str, record_id: str, file_key: str): ...
+
+
+def recompute_multipart_checksum_task(file_instance_id: str): ...
+=== invenio_records_resources.services.files.service ===
+from io import (
+    BufferedReader,
+    BytesIO,
+)
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_db.uow import UnitOfWork
+from invenio_records_resources.services.base.links import LinksTemplate
+from invenio_records_resources.services.files.results import (
+    FileItem,
+    FileList,
+)
+from invenio_records_resources.services.records.schema import ServiceSchemaWrapper
+from tests.mock_module.api import RecordWithFiles
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Type,
+    Union,
+)
+from werkzeug.wsgi import LimitedStream
+
+
+class FileService:
+    def _get_record(
+        self,
+        id_: str,
+        identity: Union[AnonymousIdentity, Identity],
+        action: str,
+        file_key: Optional[str] = ...
+    ) -> RecordWithFiles: ...
+    def check_permission(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        action_name: str,
+        **kwargs
+    ) -> bool: ...
+    def commit_file(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        file_key: str,
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileItem: ...
+    def delete_all_files(
+        self,
+        identity: Identity,
+        id_: str,
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileList: ...
+    def delete_file(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        file_key: str,
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileItem: ...
+    def extract_file_metadata(
+        self,
+        identity: Identity,
+        id_: str,
+        file_key: str,
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileItem: ...
+    def file_links_item_tpl(self, id_: str) -> LinksTemplate: ...
+    def file_links_list_tpl(self, id_: str) -> LinksTemplate: ...
+    def file_result_item(self, *args, **kwargs) -> FileItem: ...
+    def file_result_list(self, *args, **kwargs) -> FileList: ...
+    @property
+    def file_schema(self) -> ServiceSchemaWrapper: ...
+    def get_file_content(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        file_key: str
+    ) -> FileItem: ...
+    def get_transfer_metadata(self, identity: Identity, id_: str, file_key: str) -> Dict[str, str]: ...
+    def init_files(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        data: Any,
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileList: ...
+    @property
+    def initial_file_schema(self) -> ServiceSchemaWrapper: ...
+    def list_files(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str
+    ) -> FileList: ...
+    def read_file_metadata(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        file_key: str
+    ) -> FileItem: ...
+    @property
+    def record_cls(self) -> Type[RecordWithFiles]: ...
+    def set_file_content(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        file_key: str,
+        stream: Union[LimitedStream, BytesIO, BufferedReader],
+        content_length: Optional[int] = ...,
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileItem: ...
+    def set_multipart_file_content(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        file_key: str,
+        part: int,
+        stream: Union[LimitedStream, BytesIO],
+        content_length: Optional[int] = ...,
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileItem: ...
+    def update_file_metadata(
+        self,
+        identity: AnonymousIdentity,
+        id_: str,
+        file_key: str,
+        data: Dict[str, Dict[str, str]],
+        uow: Optional[UnitOfWork] = ...
+    ) -> FileItem: ...
+    def update_transfer_metadata(
+        self,
+        identity: Identity,
+        id_: str,
+        file_key: str,
+        transfer_metadata: Dict[str, str],
+        uow: Optional[UnitOfWork] = ...
+    ): ...
+=== invenio_records_resources.services.files.schema ===
+from invenio_records_resources.records.transfer import TransferFieldData
+from invenio_records_resources.services.files.transfer.providers.fetch import FetchTransfer
+from invenio_records_resources.services.files.transfer.providers.multipart import MultipartTransfer
+from invenio_records_resources.services.files.transfer.providers.remote import RemoteTransferBase
+from tests.mock_module.api import FileRecord
+from typing import (
+    Any,
+    Dict,
+    Type,
+    Union,
+)
+
+
+class FileSchema:
+    def dump_file_fields(
+        self,
+        obj: Dict[str, Any],
+        original: FileRecord,
+        **kwargs
+    ) -> Dict[str, Any]: ...
+    def dump_status(self, obj: FileRecord) -> str: ...
+
+
+class TransferSchema:
+    def get_obj_type(
+        self,
+        obj: Union[TransferFieldData, Dict[str, Union[str, int, Dict[str, Union[str, int]]]], Dict[str, str], Dict[str, Union[str, int, Dict[str, int]]]]
+    ) -> str: ...
+
+
+class TransferTypeSchemas:
+    def __getitem__(
+        self,
+        transfer_type: str
+    ) -> Union[Type[MultipartTransfer.Schema], Type[RemoteTransferBase.Schema], Type[FetchTransfer.Schema], Type[BaseTransferSchema]]: ...
+=== invenio_records_resources.services.files.results ===
+from io import BufferedReader
+from collections.abc import ValuesView
+from flask.wrappers import Response
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_records_resources.services.base.links import LinksTemplate
+from invenio_records_resources.services.files.service import FileService
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Union,
+)
+
+
+class FileItem:
+    def __init__(
+        self,
+        service: FileService,
+        identity: Union[Identity, AnonymousIdentity],
+        file_: FileRecord,
+        record: RecordWithFiles,
+        errors: None = ...,
+        links_tpl: Optional[LinksTemplate] = ...
+    ): ...
+    @property
+    def _obj(self) -> FileRecord: ...
+    @property
+    def file_id(self) -> str: ...
+    def get_stream(self, mode: str) -> BufferedReader: ...
+    @property
+    def links(self) -> Dict[str, Union[str, List[Dict[str, Union[str, int]]]]]: ...
+    def send_file(self, restricted: bool = ..., as_attachment: bool = ...) -> Response: ...
+
+
+class FileList:
+    def __init__(
+        self,
+        service: FileService,
+        identity: Union[Identity, AnonymousIdentity],
+        results: ValuesView,
+        record: RecordWithFiles,
+        links_tpl: Optional[LinksTemplate] = ...,
+        links_item_tpl: Optional[LinksTemplate] = ...
+    ): ...
+    @property
+    def entries(self): ...
+    def to_dict(self) -> Dict[str, Any]: ...
+=== invenio_records_resources.services.files.processors.image ===
+from tests.mock_module.api import FileRecord
+
+
+class ImageMetadataExtractor:
+    def can_process(self, file_record: FileRecord): ...
+=== invenio_records_resources.services.files.processors.base ===
+from invenio_records_resources.services.files.processors.image import ImageMetadataExtractor
+from tests.mock_module.api import FileRecord
+from typing import List
+
+
+class ProcessorRunner:
+    def __init__(
+        self,
+        processors: List[ImageMetadataExtractor]
+    ): ...
+    def run(self, file_record: FileRecord): ...
+=== invenio_records_resources.services.files.links ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from tests.mock_module.api import FileRecord
+from typing import (
+    Dict,
+    Union,
+)
+
+
+class FileEndpointLink:
+    @staticmethod
+    def vars(
+        file_record: FileRecord,
+        vars: Dict[str, Union[str, AnonymousIdentity, Identity]]
+    ): ...
+=== invenio_records_resources.services.files.generators ===
+from invenio_records_permissions.generators import (
+    AnyUser,
+    AuthenticatedUser,
+    SystemProcess,
+)
+from typing import (
+    Optional,
+    Union,
+)
+
+
+class IfTransferType:
+    def __init__(
+        self,
+        transfer_type: str,
+        then_: Union[SystemProcess, AnyUser, AuthenticatedUser],
+        else_: None = ...
+    ): ...
+    def _condition(self, **kwargs) -> bool: ...
+=== invenio_records_resources.services.files.components.processor ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import Union
+
+
+class FileProcessorComponent:
+    def commit_file(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id: str,
+        file_key: str,
+        record: RecordWithFiles
+    ): ...
+    def extract_file_metadata(
+        self,
+        identity: Identity,
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles,
+        file_record: FileRecord
+    ): ...
+=== invenio_records_resources.services.files.components.multipart ===
+from io import BytesIO
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from tests.mock_module.api import RecordWithFiles
+from typing import Union
+from werkzeug.wsgi import LimitedStream
+
+
+class FileMultipartContentComponent:
+    def set_multipart_file_content(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id: str,
+        file_key: str,
+        part: int,
+        stream: Union[BytesIO, LimitedStream],
+        content_length: int,
+        record: RecordWithFiles
+    ): ...
+=== invenio_records_resources.services.files.components.metadata ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from tests.mock_module.api import RecordWithFiles
+from typing import (
+    Dict,
+    List,
+    Union,
+)
+
+
+class FileMetadataComponent:
+    def commit_file(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles
+    ): ...
+    def init_files(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        record: RecordWithFiles,
+        data: List[Dict[str, Union[Dict[str, str], str, Dict[str, Union[str, int]], int, Dict[str, bool]]]]
+    ): ...
+    def update_file_metadata(
+        self,
+        identity: AnonymousIdentity,
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles,
+        data: Dict[str, Dict[str, str]]
+    ): ...
+    def update_transfer_metadata(
+        self,
+        identity: Identity,
+        id: str,
+        file_key: str,
+        record: RecordWithFiles,
+        transfer_metadata: Dict[str, str]
+    ): ...
+=== invenio_records_resources.services.files.components.content ===
+from io import (
+    BufferedReader,
+    BytesIO,
+)
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Optional,
+    Union,
+)
+from werkzeug.wsgi import LimitedStream
+
+
+class FileContentComponent:
+    def delete_file(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles,
+        deleted_file: FileRecord
+    ): ...
+    def get_file_content(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id: str,
+        file_key: str,
+        record: RecordWithFiles
+    ): ...
+    def set_file_content(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id: str,
+        file_key: str,
+        stream: Union[BytesIO, LimitedStream, BufferedReader],
+        content_length: Optional[int],
+        record: RecordWithFiles
+    ): ...
+=== invenio_records_resources.services.files.components.base ===
+from io import (
+    BufferedReader,
+    BytesIO,
+)
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Union,
+)
+from werkzeug.wsgi import LimitedStream
+
+
+class FileServiceComponent:
+    def commit_file(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles
+    ): ...
+    def delete_all_files(
+        self,
+        identity: Identity,
+        id_: str,
+        record: RecordWithFiles,
+        results: List[Any]
+    ): ...
+    def delete_file(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles,
+        deleted_file: FileRecord
+    ): ...
+    def extract_file_metadata(
+        self,
+        identity: Identity,
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles,
+        file_record: FileRecord
+    ): ...
+    def get_file_content(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles
+    ): ...
+    def init_files(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        record: RecordWithFiles,
+        data: List[Dict[str, Any]]
+    ): ...
+    def list_files(
+        self,
+        identity: str,
+        id_: Union[AnonymousIdentity, Identity],
+        record: RecordWithFiles
+    ): ...
+    def read_file_metadata(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles
+    ): ...
+    def set_file_content(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        id_: str,
+        file_key: str,
+        stream: Union[BytesIO, BufferedReader, LimitedStream],
+        content_length: Optional[int],
+        record: RecordWithFiles
+    ): ...
+    def update_file_metadata(
+        self,
+        identity: AnonymousIdentity,
+        id_: str,
+        file_key: str,
+        record: RecordWithFiles,
+        data: Dict[str, Dict[str, str]]
+    ): ...
+=== invenio_records_resources.services.errors ===
+from typing import (
+    Dict,
+    List,
+    Union,
+)
+
+
+class FileKeyNotFoundError:
+    def __init__(self, recid: str, file_key: str): ...
+
+
+class RevisionIdMismatchError:
+    def __init__(self, record_revision_id: int, expected_revision_id: int): ...
+    @property
+    def description(self) -> str: ...
+
+
+class ValidationErrorGroup:
+    def __init__(self, errors: List[Dict[str, Union[str, List[str]]]]): ...
+=== invenio_records_resources.services.custom_fields.validate ===
+from invenio_records_resources.services.custom_fields.text import TextCF
+from typing import (
+    List,
+    Optional,
+    Set,
+)
+
+
+def validate_custom_fields(
+    available_fields: List[TextCF],
+    namespaces: Optional[Set[str]] = ...,
+    given_fields: Optional[List[str]] = ...
+): ...
+=== invenio_records_resources.services.custom_fields.text ===
+from marshmallow_utils.fields.sanitizedhtml import SanitizedHTML
+from marshmallow_utils.fields.sanitizedunicode import SanitizedUnicode
+from typing import (
+    Dict,
+    Type,
+    Union,
+)
+
+
+class KeywordCF:
+    def __init__(
+        self,
+        name: str,
+        field_cls: Union[Type[SanitizedUnicode], Type[SanitizedHTML]] = ...,
+        **kwargs
+    ): ...
+    @property
+    def mapping(self) -> Dict[str, str]: ...
+
+
+class TextCF:
+    def __init__(
+        self,
+        name: str,
+        field_cls: Union[Type[SanitizedUnicode], Type[SanitizedHTML]] = ...,
+        use_as_filter: bool = ...,
+        **kwargs
+    ): ...
+    @property
+    def mapping(self) -> Dict[str, Union[str, Dict[str, Dict[str, str]]]]: ...
+=== invenio_records_resources.services.custom_fields.schema ===
+from typing import (
+    Dict,
+    List,
+    Union,
+)
+
+
+class CustomFieldsSchema:
+    def __init__(self, fields_var: str, *args, **kwargs): ...
+    def _deserialize(self, data: Dict[str, Union[str, List[str]]], **kwargs) -> Dict[str, Union[str, List[str]]]: ...
+=== invenio_records_resources.services.custom_fields.number ===
+from typing import Dict
+
+
+class DoubleCF:
+    def __init__(self, name: str, **kwargs): ...
+    @property
+    def mapping(self) -> Dict[str, str]: ...
+
+
+class IntegerCF:
+    def __init__(self, name: str, **kwargs): ...
+    @property
+    def mapping(self) -> Dict[str, str]: ...
+=== invenio_records_resources.services.custom_fields.mappings ===
+from typing import (
+    Dict,
+    Union,
+)
+
+
+class BooleanMapping:
+    def to_dict(self) -> Dict[str, str]: ...
+
+
+class DoubleMapping:
+    def to_dict(self) -> Dict[str, str]: ...
+
+
+class EDTFMapping:
+    def to_dict(self) -> Dict[str, Union[str, Dict[str, Dict[str, str]]]]: ...
+
+
+class ISODateMapping:
+    def to_dict(self) -> Dict[str, str]: ...
+
+
+class IntegerMapping:
+    def to_dict(self) -> Dict[str, str]: ...
+
+
+class KeywordMapping:
+    def to_dict(self) -> Dict[str, str]: ...
+
+
+class TextMapping:
+    def __init__(self, use_as_filter: bool = ...): ...
+    def to_dict(self) -> Dict[str, Union[str, Dict[str, Dict[str, str]]]]: ...
+=== invenio_records_resources.services.custom_fields.errors ===
+from typing import Set
+
+
+class CustomFieldsInvalidArgument:
+    def __init__(self, arg_name: str): ...
+
+
+class CustomFieldsNotConfigured:
+    def __init__(self, field_names: Set[str]): ...
+
+
+class InvalidCustomFieldsNamespace:
+    def __init__(self, field_name: str, given_namespace: str): ...
+=== invenio_records_resources.services.custom_fields.date ===
+from marshmallow_utils.fields.edtfdatestring import EDTFDateTimeString
+from tests.mock_module.api import Record
+from time import struct_time
+from typing import (
+    Dict,
+    List,
+    Union,
+)
+
+
+class EDTFDateStringCF:
+    def __init__(self, name: str, **kwargs): ...
+    @classmethod
+    def _calculate_date_range(cls, date: str) -> Dict[str, Union[Dict[str, str], str]]: ...
+    @classmethod
+    def _format_date(cls, date: struct_time) -> str: ...
+    def dump(self, data: Union[Dict[str, Dict[str, List[str]]], Record], cf_key: str = ...): ...
+    @property
+    def field(self) -> EDTFDateTimeString: ...
+    def load(
+        self,
+        record: Union[Dict[str, Dict[str, List[Dict[str, Union[Dict[str, str], str]]]]], Record],
+        cf_key: str = ...
+    ): ...
+    @property
+    def mapping(self) -> Dict[str, Union[str, Dict[str, Dict[str, str]]]]: ...
+
+
+class ISODateStringCF:
+    def __init__(self, name: str, **kwargs): ...
+    @property
+    def mapping(self) -> Dict[str, str]: ...
+=== invenio_records_resources.services.custom_fields.boolean ===
+from typing import Dict
+
+
+class BooleanCF:
+    def __init__(self, name: str, **kwargs): ...
+    @property
+    def mapping(self) -> Dict[str, str]: ...
+=== invenio_records_resources.services.custom_fields.base ===
+from marshmallow.fields import Field
+from tests.mock_module.api import Record
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Optional,
+    Union,
+)
+
+
+def ensure_no_field_cls(func: Callable) -> Callable: ...
+
+
+class BaseCF:
+    def __init__(
+        self,
+        name: str,
+        field_args: Optional[Union[Dict[str, Union[bool, Dict[str, str]]], Dict[str, bool], Dict[str, Callable]]] = ...
+    ): ...
+    def dump(self, record: Record, cf_key: str = ...): ...
+    def load(self, record: Record, cf_key: str = ...): ...
+
+
+class BaseListCF:
+    def __init__(self, name: str, field_cls: Any, multiple: bool = ..., **kwargs): ...
+    @property
+    def field(self) -> Field: ...
+=== invenio_records_resources.services.base.utils ===
+=== invenio_records_resources.services.base.service ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_records_resources.services.records.results import (
+    RecordBulkList,
+    RecordItem,
+    RecordList,
+)
+from tests.mock_module.config import (
+    FileServiceConfig,
+    ServiceConfig,
+    ServiceWithFilesConfig,
+)
+from tests.mock_module.permissions import PermissionPolicy
+from typing import (
+    Any,
+    Iterator,
+    Type,
+    Union,
+)
+
+
+class Service:
+    def __init__(
+        self,
+        config: Union[Type[ServiceWithFilesConfig], Type[ServiceConfig], Type[FileServiceConfig]]
+    ): ...
+    def check_permission(
+        self,
+        identity: Union[AnonymousIdentity, Identity],
+        action_name: str,
+        **kwargs
+    ) -> bool: ...
+    @property
+    def components(self) -> Iterator[Any]: ...
+    @property
+    def id(self) -> str: ...
+    def permission_policy(self, action_name: str, **kwargs) -> PermissionPolicy: ...
+    def require_permission(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        action_name: str,
+        **kwargs
+    ): ...
+    def result_bulk_list(self, *args, **kwargs) -> RecordBulkList: ...
+    def result_item(self, *args, **kwargs) -> RecordItem: ...
+    def result_list(self, *args, **kwargs) -> RecordList: ...
+    def run_components(self, action: str, *args, **kwargs): ...
+=== invenio_records_resources.services.base.links ===
+from flask_principal import (
+    AnonymousIdentity,
+    Identity,
+)
+from invenio_records_resources.pagination import Pagination
+from invenio_records_resources.services.files.links import FileEndpointLink
+from invenio_records_resources.services.records.links import (
+    RecordEndpointLink,
+    RecordLink,
+)
+from tests.mock_module.api import (
+    FileRecord,
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Union,
+)
+
+
+def preprocess_vars(
+    vars: Dict[str, Union[str, Identity]]
+) -> Dict[str, Union[str, Identity]]: ...
+
+
+class EndpointLink:
+    def __init__(
+        self,
+        endpoint: str,
+        when: Optional[Callable] = ...,
+        vars: Optional[Callable] = ...,
+        params: Optional[List[str]] = ...
+    ): ...
+    def expand(
+        self,
+        obj: Union[Record, Pagination, RecordWithRelations, FileRecord, RecordWithFiles],
+        context: Dict[str, Union[str, Identity, AnonymousIdentity, Dict[str, Union[int, str, List[str]]], Dict[str, Union[str, int]]]]
+    ) -> str: ...
+    def should_render(
+        self,
+        obj: Union[Record, Pagination, RecordWithRelations, FileRecord, RecordWithFiles],
+        context: Dict[str, Union[str, Identity, AnonymousIdentity, Dict[str, Union[int, str, List[str]]], Dict[str, Union[str, int]]]]
+    ) -> bool: ...
+    @staticmethod
+    def vars(
+        obj: Pagination,
+        vars: Dict[str, Union[str, Identity, AnonymousIdentity, Dict[str, Union[int, str, List[str]]], Dict[str, Union[str, int]]]]
+    ): ...
+
+
+class ExternalLink:
+    def __init__(self, uritemplate: str, when: Optional[Callable] = ..., vars: Optional[Callable] = ...): ...
+
+
+class Link:
+    def __init__(self, *args, **kwargs): ...
+
+
+class LinksTemplate:
+    def __init__(
+        self,
+        links: Optional[Dict[str, Union[RecordEndpointLink, RecordLink, Link, FileEndpointLink, EndpointLink]]] = ...,
+        context: Optional[Union[Dict[str, Dict[str, Union[str, int]]], Dict[str, str], Dict[str, Dict[str, Union[int, str, List[str]]]]]] = ...
+    ): ...
+    @property
+    def context(self) -> Dict[str, Union[str, Dict[str, Union[str, int]], Dict[str, Union[int, str, List[str]]]]]: ...
+    def expand(
+        self,
+        identity: Union[Identity, AnonymousIdentity],
+        obj: Union[Record, Pagination, RecordWithRelations, FileRecord, RecordWithFiles]
+    ) -> Dict[str, str]: ...
+=== invenio_records_resources.services.base.config ===
+=== invenio_records_resources.services.base.components ===
+from invenio_records_resources.services.files.service import FileService
+from invenio_records_resources.services.records.service import RecordService
+from typing import Union
+
+
+class BaseServiceComponent:
+    def __init__(
+        self,
+        service: Union[FileService, RecordService]
+    ): ...
+=== invenio_records_resources.resources.records.utils ===
+def search_preference() -> str: ...
+=== invenio_records_resources.resources.records.resource ===
+from invenio_records_resources.services.records.service import RecordService
+from tests.mock_module.resource import CustomRecordResourceConfig
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
+
+
+class RecordResource:
+    def __init__(
+        self,
+        config: Type[CustomRecordResourceConfig],
+        service: RecordService
+    ): ...
+    def create(
+        self
+    ) -> Union[Tuple[Dict[str, Union[str, Dict[str, str], int]], int], Tuple[Dict[str, Union[str, int, Dict[str, str], Dict[str, bool]]], int]]: ...
+    def create_url_rules(self) -> List[Dict[str, Optional[Union[str, List[str], Callable]]]]: ...
+    def delete(self): ...
+    def read(self) -> Tuple[Dict[str, Union[str, Dict[str, str], int]], int]: ...
+    def search(
+        self
+    ) -> Union[Tuple[Dict[str, Union[Dict[str, int], Dict[str, Dict[str, str]], str, Dict[str, str]]], int], Tuple[Dict[str, Union[Dict[str, int], Dict[str, Union[Dict[str, Union[List[Union[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]], Dict[str, Union[str, int, bool, Dict[str, List[Any]]]]]], str]], Dict[str, str]]], str, Dict[str, str]]], int], Tuple[Dict[str, Union[Dict[str, Union[List[Dict[str, Union[str, Dict[str, str], int, Dict[str, Union[Dict[str, str], str]]]]], int]], Dict[str, Union[Dict[str, Union[List[Union[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]], Dict[str, Union[str, int, bool, Dict[str, List[Any]]]]]], str]], Dict[str, str]]], str, Dict[str, str]]], int], Tuple[Dict[str, Union[Dict[str, Union[List[Dict[str, Union[str, Dict[str, str], int, Dict[str, Union[str, List[Dict[str, str]], List[str]]]]]], int]], Dict[str, Union[Dict[str, str], Dict[str, Union[List[Dict[str, Union[str, int, bool, Dict[str, List[Dict[str, Union[str, int, bool]]]]]]], str]]]], str, Dict[str, str]]], int], Tuple[Dict[str, Union[Dict[str, Union[List[Dict[str, Union[str, Dict[str, str], int]]], int]], Dict[str, Dict[str, str]], str, Dict[str, str]]], int]]: ...
+    def update(
+        self
+    ) -> Union[Tuple[Dict[str, Union[str, Dict[str, str], int]], int], Tuple[Dict[str, Union[str, int, Dict[str, str], Dict[str, bool]]], int], Tuple[Dict[str, Union[str, Dict[str, str], int, Dict[str, Union[str, bool]]]], int]]: ...
+=== invenio_records_resources.resources.records.headers ===
+from typing import (
+    Any,
+    Dict,
+)
+
+
+def etag_headers(obj_or_list: Dict[str, Any], code: int, many: bool = ...) -> Dict[str, str]: ...
+=== invenio_records_resources.resources.records.args ===
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Union,
+)
+from werkzeug.datastructures.structures import ImmutableMultiDict
+
+
+class SearchRequestArgsSchema:
+    def facets(
+        self,
+        data: Dict[str, Union[str, int]],
+        original_data: Optional[ImmutableMultiDict] = ...,
+        **kwargs
+    ) -> Dict[str, Union[Dict[str, List[str]], int, Dict[Any, Any], str]]: ...
+=== invenio_records_resources.resources.files.resource ===
+from flask.wrappers import Response
+from invenio_records_resources.services.files.service import FileService
+from tests.mock_module.resource import (
+    CustomDisabledUploadFileResourceConfig,
+    CustomFileResourceConfig,
+)
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
+
+
+def set_max_content_length(func: Callable) -> Callable: ...
+
+
+class FileResource:
+    def __init__(
+        self,
+        config: Union[Type[CustomDisabledUploadFileResourceConfig], Type[CustomFileResourceConfig]],
+        service: FileService
+    ): ...
+    def create(
+        self
+    ) -> Union[Tuple[Dict[str, Optional[Union[bool, Dict[str, str], List[Dict[str, Union[str, Dict[str, str], Dict[str, bool]]]]]]], int], Tuple[Dict[str, Optional[Union[bool, Dict[str, str], List[Dict[str, Optional[Union[str, Dict[str, bool], Dict[str, str]]]]]]]], int], Tuple[Dict[str, Optional[Union[bool, Dict[str, str], List[Dict[str, Optional[Union[str, Dict[str, str], Dict[str, bool], Dict[str, Union[str, List[Dict[str, Union[str, int]]]]], int, Dict[str, Union[str, int]]]]]]]]], int]]: ...
+    def create_commit(
+        self
+    ) -> Union[Tuple[Dict[str, Optional[Union[str, Dict[str, bool], Dict[str, str], int]]], int], Tuple[Dict[str, Union[str, int, Dict[str, str], Dict[str, bool]]], int]]: ...
+    def create_url_rules(self) -> List[Dict[str, Optional[Union[str, List[str], Callable]]]]: ...
+    def delete(self): ...
+    def read(
+        self
+    ) -> Union[Tuple[Dict[str, Union[str, Dict[str, str], Dict[str, bool]]], int], Tuple[Dict[str, Union[str, int, Dict[str, str], Dict[str, bool]]], int]]: ...
+    def read_archive(self) -> Response: ...
+    def read_content(self): ...
+    def search(
+        self
+    ) -> Union[Tuple[Dict[str, Optional[Union[bool, Dict[str, str], List[Dict[str, Union[str, int, Dict[str, str], Dict[str, bool]]]]]]], int], Tuple[Dict[str, Optional[Union[bool, Dict[str, str]]]], int]]: ...
+    def update(self) -> Tuple[Dict[str, Union[str, int, Dict[str, str], Dict[str, bool]]], int]: ...
+    def update_content(
+        self
+    ) -> Union[Tuple[Dict[str, Union[str, Dict[str, str], Dict[str, bool]]], int], Tuple[Dict[str, Optional[Union[str, Dict[str, bool], Dict[str, str]]]], int]]: ...
+    def upload_multipart_content(self) -> Tuple[Dict[str, Any], int]: ...
+=== invenio_records_resources.resources.files.parser ===
+from typing import (
+    Dict,
+    Union,
+)
+from werkzeug.wsgi import LimitedStream
+
+
+class RequestStreamParser:
+    def parse(self) -> Dict[str, Union[LimitedStream, int]]: ...
+=== invenio_records_resources.resources.errors ===
+from invenio_records_resources.services.errors import ValidationErrorGroup
+from marshmallow.exceptions import ValidationError
+from opensearchpy.exceptions import RequestError
+from typing import (
+    Callable,
+    Union,
+)
+
+
+def create_pid_redirected_error_handler() -> Callable: ...
+
+
+class HTTPJSONSearchRequestError:
+    def __init__(self, error: RequestError): ...
+
+
+class HTTPJSONValidationException:
+    def __init__(
+        self,
+        exception: Union[ValidationErrorGroup, ValidationError]
+    ): ...
+=== invenio_records_resources.registry ===
+from invenio_records_resources.services.files.service import FileService
+from invenio_records_resources.services.records.service import RecordService
+from typing import (
+    Callable,
+    List,
+    Optional,
+    Union,
+)
+
+
+class NotificationRegistry:
+    def __init__(self): ...
+    def get(self, record_type: str) -> List[Callable]: ...
+    def register(self, record_type: str, handler: Callable): ...
+
+
+class ServiceRegistry:
+    def __init__(self): ...
+    def get(self, service_id: str) -> FileService: ...
+    def get_service_id(self, instance: FileService) -> str: ...
+    def register(
+        self,
+        service_instance: Union[RecordService, FileService],
+        service_id: Optional[str] = ...
+    ): ...
+=== invenio_records_resources.records.transfer ===
+from tests.mock_module.api import FileRecord
+from typing import (
+    Dict,
+    Optional,
+    Type,
+    Union,
+)
+
+
+class TransferField:
+    def __get__(
+        self,
+        record: FileRecord,
+        owner: Optional[Type[FileRecord]] = ...
+    ) -> TransferFieldData: ...
+    def __set__(self, record: FileRecord, value: Dict[str, Union[str, int]]): ...
+
+
+class TransferFieldData:
+    def __getitem__(self, key: str) -> Union[Dict[str, int], Dict[str, Union[str, int]], str]: ...
+    def __init__(self, field: Dict[str, Union[str, int, Dict[str, int], Dict[str, Union[str, int]]]]): ...
+    def __setitem__(self, key: str, value: Dict[str, Union[str, int]]): ...
+    def get(self, key: str, default: Optional[str] = ...) -> Optional[str]: ...
+    def set(self, values: Dict[str, str]): ...
+=== invenio_records_resources.records.systemfields.relations ===
+from tests.mock_module.api import Record
+from typing import Optional
+
+
+class PIDRelation:
+    def __init__(self, *args, pid_field = ..., **kwargs): ...
+    def resolve(self, id_: str) -> Record: ...
+=== invenio_records_resources.records.systemfields.pid_statuscheck ===
+from invenio_pidstore.models import PIDStatus
+from tests.mock_module.api import (
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Type,
+    Union,
+)
+
+
+class PIDStatusCheckField:
+    def __get__(
+        self,
+        record: Optional[Record],
+        owner: Optional[Union[Type[RecordWithRelations], Type[RecordWithFiles], Type[Record]]] = ...
+    ) -> Union[bool, PIDStatusCheckField]: ...
+    def __init__(self, key: str = ..., status: Optional[PIDStatus] = ..., dump: bool = ...): ...
+    def pre_dump(
+        self,
+        record: Union[RecordWithFiles, RecordWithRelations, Record],
+        data: Dict[Any, Any],
+        **kwargs
+    ): ...
+    def pre_load(self, data: Dict[str, Any], **kwargs): ...
+=== invenio_records_resources.records.systemfields.pid ===
+from invenio_pidstore.models import PersistentIdentifier
+from invenio_pidstore.providers.recordid_v2 import RecordIdProviderV2
+from invenio_records_resources.records.providers import ModelPIDProvider
+from invenio_records_resources.records.resolver import ModelResolver
+from tests.mock_module.api import (
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Optional,
+    Type,
+    Union,
+)
+
+
+class ModelPIDField:
+    def __init__(
+        self,
+        model_field_name: str = ...,
+        provider: Type[ModelPIDProvider] = ...,
+        resolver_cls: Type[ModelResolver] = ...,
+        context_cls: Type[ModelPIDFieldContext] = ...
+    ): ...
+
+
+class PIDField:
+    def __init__(
+        self,
+        key: str = ...,
+        provider: Optional[Type[RecordIdProviderV2]] = ...,
+        pid_type: None = ...,
+        object_type: str = ...,
+        resolver_cls: None = ...,
+        delete: bool = ...,
+        create: bool = ...,
+        context_cls: Type[PIDFieldContext] = ...
+    ): ...
+    def create(
+        self,
+        record: Union[RecordWithFiles, RecordWithRelations, Record]
+    ) -> PersistentIdentifier: ...
+    def delete(self, record: Record): ...
+    @staticmethod
+    def dump_obj(
+        field: PIDField,
+        record: Union[RecordWithFiles, RecordWithRelations, Record],
+        pid: PersistentIdentifier
+    ): ...
+    @staticmethod
+    def load_obj(
+        field: PIDField,
+        record: Union[RecordWithFiles, RecordWithRelations, Record]
+    ) -> PersistentIdentifier: ...
+    def post_create(
+        self,
+        record: Union[RecordWithFiles, RecordWithRelations, Record]
+    ): ...
+    def post_delete(self, record: Record, force: bool = ...): ...
+
+
+class PIDFieldContext:
+    def resolve(
+        self,
+        pid_value: Optional[str],
+        registered_only: bool = ...,
+        with_deleted: bool = ...
+    ) -> Union[RecordWithFiles, RecordWithRelations, Record]: ...
+=== invenio_records_resources.records.systemfields.index ===
+from opensearch_dsl.index import Index
+from tests.mock_module.api import (
+    Record,
+    RecordWithFiles,
+    RecordWithRelations,
+)
+from typing import (
+    Optional,
+    Type,
+    Union,
+)
+
+
+class IndexField:
+    def __get__(
+        self,
+        record: Optional[Union[Record, RecordWithFiles, RecordWithRelations]],
+        owner: Optional[Union[Type[RecordWithRelations], Type[Record], Type[RecordWithFiles]]] = ...
+    ) -> Index: ...
+    def __init__(self, index_or_alias: str, search_alias: Optional[str] = ...): ...
+=== invenio_records_resources.records.systemfields.files.manager ===
+from io import (
+    BufferedReader,
+    BytesIO,
+)
+from invenio_files_rest.models import (
+    Bucket,
+    ObjectVersion,
+)
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Type,
+    Union,
+)
+from uuid import UUID
+from werkzeug.wsgi import LimitedStream
+
+
+def ensure_enabled(func: Callable) -> Callable: ...
+
+
+class FilesManager:
+    def __getitem__(self, key: str) -> FileRecord: ...
+    def __init__(
+        self,
+        record: RecordWithFiles,
+        file_cls: Optional[Type[FileRecord]] = ...,
+        bucket: None = ...,
+        enabled: bool = ...,
+        order: None = ...,
+        default_preview: Optional[str] = ...,
+        entries: None = ...,
+        options: Optional[Dict[str, str]] = ...
+    ): ...
+    def __len__(self) -> int: ...
+    def __setitem__(self, key: str, value: Any): ...
+    def _parse_set_value(self, value: Any) -> Any: ...
+    @property
+    def bucket(self) -> Bucket: ...
+    @property
+    def bucket_id(self) -> UUID: ...
+    def commit(self, file_key: str): ...
+    def copy(
+        self,
+        src_files: FilesManager,
+        copy_obj: bool = ...
+    ): ...
+    @property
+    def count(self) -> int: ...
+    def create(
+        self,
+        key: str,
+        *,
+        obj = ...,
+        stream = ...,
+        data = ...,
+        transfer = ...,
+        **kwargs
+    ) -> FileRecord: ...
+    def create_bucket(self): ...
+    def create_obj(
+        self,
+        key: str,
+        stream: Union[BytesIO, BufferedReader, LimitedStream],
+        data: None = ...,
+        **kwargs
+    ) -> ObjectVersion: ...
+    def delete(
+        self,
+        key: str,
+        remove_obj: bool = ...,
+        softdelete_obj: bool = ...,
+        remove_rf: bool = ...
+    ) -> FileRecord: ...
+    def delete_all(self, remove_obj: bool = ..., softdelete_obj: bool = ..., remove_rf: bool = ...): ...
+    @property
+    def entries(self) -> Dict[str, FileRecord]: ...
+    @property
+    def exts(self) -> List[Union[Any, str]]: ...
+    @property
+    def mimetypes(self) -> List[Union[Any, str]]: ...
+    def remove_bucket(self, force: bool = ...): ...
+    def set_bucket(self, bucket: Bucket, overwrite: bool = ...): ...
+    def sync(
+        self,
+        src_files: FilesManager,
+        delete_extras: bool = ...
+    ): ...
+    def teardown(self, full: bool = ...): ...
+    @property
+    def total_bytes(self) -> int: ...
+    def unset_bucket(self): ...
+    def update(
+        self,
+        key: str,
+        obj: Optional[ObjectVersion] = ...,
+        stream: Optional[BytesIO] = ...,
+        data: Optional[Dict[str, Dict[str, str]]] = ...,
+        **kwargs
+    ) -> FileRecord: ...
+=== invenio_records_resources.records.systemfields.files.field ===
+from invenio_records.dumpers.search import SearchDumper
+from invenio_records_resources.records.systemfields.files.manager import FilesManager
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Type,
+    Union,
+)
+
+
+class FilesField:
+    def __get__(
+        self,
+        record: Optional[RecordWithFiles],
+        owner: Optional[Type[RecordWithFiles]] = ...
+    ) -> Union[FilesManager, FilesField]: ...
+    def __init__(
+        self,
+        key: str = ...,
+        bucket_id_attr: str = ...,
+        bucket_attr: str = ...,
+        store: bool = ...,
+        dump: bool = ...,
+        dump_entries: bool = ...,
+        file_cls: Optional[Type[FileRecord]] = ...,
+        enabled: bool = ...,
+        bucket_args: None = ...,
+        create: bool = ...,
+        delete: bool = ...
+    ): ...
+    @property
+    def _manager_options(self) -> Dict[str, str]: ...
+    def dump(
+        self,
+        record: RecordWithFiles,
+        files: FilesManager,
+        include_entries: bool = ...
+    ) -> Dict[str, Union[bool, str]]: ...
+    @property
+    def file_cls(self) -> Type[FileRecord]: ...
+    def load(
+        self,
+        record: RecordWithFiles,
+        data: Dict[str, Union[bool, str]],
+        from_dump: bool = ...
+    ) -> FilesManager: ...
+    def obj(
+        self,
+        record: RecordWithFiles
+    ) -> FilesManager: ...
+    def post_create(self, record: RecordWithFiles): ...
+    def post_dump(self, record: RecordWithFiles, data: Dict[str, Any], **kwargs): ...
+    def pre_commit(self, record: RecordWithFiles): ...
+    def pre_load(
+        self,
+        data: Dict[str, Optional[Union[str, Dict[str, Union[str, int]], Dict[str, Union[bool, int, List[str], List[Dict[str, Union[str, Dict[str, str], int]]]]], int]]],
+        loader: Optional[SearchDumper] = ...
+    ): ...
+    def store(
+        self,
+        record: RecordWithFiles,
+        files: FilesManager
+    ): ...
+=== invenio_records_resources.records.resolver ===
+=== invenio_records_resources.records.dumpers ===
+from tests.mock_module.api import (
+    FileRecord,
+    Record,
+)
+from typing import (
+    Any,
+    Dict,
+    Type,
+    Union,
+)
+from uuid import UUID
+
+
+class CustomFieldsDumperExt:
+    def __init__(self, fields_var: str, key: str = ...): ...
+    def dump(self, record: None, data: Record): ...
+    def load(self, data: Record, record_cls: None): ...
+
+
+class PartialFileDumper:
+    def dump(
+        self,
+        record: FileRecord,
+        data: Dict[Any, Any]
+    ) -> Dict[str, Union[str, int, Dict[str, str], Dict[str, bool]]]: ...
+    def load(
+        self,
+        data: Dict[str, Union[str, int, Dict[str, str], UUID]],
+        record_cls: Type[FileRecord]
+    ) -> FileRecord: ...
+=== invenio_records_resources.records.api ===
+from io import BufferedReader
+from datetime import datetime
+from invenio_files_rest.models import (
+    FileInstance,
+    ObjectVersion,
+)
+from tests.mock_module.api import (
+    FileRecord,
+    RecordWithFiles,
+)
+from typing import (
+    Dict,
+    Optional,
+    Type,
+    Union,
+)
+from uuid import UUID
+
+
+class File:
+    def __getattr__(
+        self,
+        name: str
+    ) -> Union[UUID, int, str, datetime, FileInstance]: ...
+    def __init__(
+        self,
+        object_model: Optional[ObjectVersion] = ...,
+        file_model: Optional[FileInstance] = ...
+    ): ...
+    def dumps(self) -> Dict[str, Union[str, int]]: ...
+    @property
+    def ext(self) -> str: ...
+    @classmethod
+    def from_dump(
+        cls,
+        data: Dict[str, Union[str, int, Dict[str, str], UUID]]
+    ) -> File: ...
+
+
+class FileAccess:
+    def __init__(self, hidden: Optional[bool] = ...): ...
+    def dump(self) -> Dict[str, bool]: ...
+    @classmethod
+    def from_dict(cls, access_dict: Dict[str, bool]) -> FileAccess: ...
+
+
+class FileAccessField:
+    def __get__(
+        self,
+        record: FileRecord,
+        owner: Optional[Type[FileRecord]] = ...
+    ) -> FileAccess: ...
+    def __init__(self, key: None = ..., access_obj_class: Type[FileAccess] = ...): ...
+    def obj(self, instance: FileRecord) -> FileAccess: ...
+    def pre_commit(self, record: FileRecord): ...
+
+
+class FileRecord:
+    @property
+    def file(self) -> File: ...
+    @classmethod
+    def get_by_key(cls, record_id: UUID, key: str): ...
+    def get_stream(self, mode: str) -> BufferedReader: ...
+    @classmethod
+    def list_by_record(cls, record_id: UUID, with_deleted: bool = ...): ...
+    def open_stream(self, mode: str): ...
+    @property
+    def record(self) -> RecordWithFiles: ...
+    @classmethod
+    def remove_all(cls, record_id: UUID): ...
+
+
+class PersistentIdentifierWrapper:
+    def __init__(self, pid_value: str): ...
+=== invenio_records_resources.pagination ===
+from typing import Optional
+
+
+class Pagination:
+    def __init__(self, size: int, page: int, max_results: int): ...
+    @property
+    def from_idx(self) -> int: ...
+    @property
+    def has_next(self) -> bool: ...
+    @property
+    def has_prev(self) -> bool: ...
+    @property
+    def next_page(self) -> Optional[Pagination]: ...
+    @property
+    def prev_page(self) -> Optional[Pagination]: ...
+    @property
+    def to_idx(self) -> int: ...
+    def valid(self) -> bool: ...
+=== invenio_records_resources.factories.factory ===
+from invenio_records_resources.records.systemfields.pid import PIDField
+from tests.mock_module.schemas import RecordSchema
+from typing import (
+    Optional,
+    Type,
+)
+
+
+class RecordTypeFactory:
+    def __init__(
+        self,
+        record_type_name: str,
+        service_schema: Type[RecordSchema],
+        schema_version: str = ...,
+        endpoint_route: Optional[str] = ...,
+        record_dumper: None = ...,
+        record_relations: None = ...,
+        schema_path: Optional[str] = ...,
+        index_name: Optional[str] = ...,
+        search_options: None = ...,
+        service_components: None = ...,
+        permission_policy_cls: None = ...,
+        pid_field_cls: Type[PIDField] = ...,
+        pid_field_kwargs: None = ...,
+        model_cls_attrs: None = ...,
+        record_cls_attrs: None = ...,
+        resource_cls_attrs: None = ...,
+        service_id: None = ...
+    ): ...
+    def _build_index_name(self, index_name: Optional[str]) -> str: ...
+    def _build_schema_path(self, optional_schema_path: Optional[str]) -> str: ...
+    def create_metadata_model(self): ...
+    def create_record_class(self): ...
+    def create_record_type(self): ...
+    def create_resource_class(self): ...
+    def create_service_class(self): ...
+    def validate(self): ...
+=== invenio_records_resources.ext ===
+from flask.app import Flask
+from invenio_files_rest.app import Flask
+from typing import (
+    Optional,
+    Union,
+)
+
+
+class InvenioRecordsResources:
+    def __init__(self, app: Optional[Union[Flask, Flask]] = ...): ...
+    def init_app(self, app: Union[Flask, Flask]): ...
+    def init_config(self, app: Union[Flask, Flask]): ...
+=== invenio_records_resources.errors ===
+from marshmallow.exceptions import ValidationError
+from typing import (
+    Any,
+    Dict,
+    List,
+    Union,
+)
+
+
+def _iter_errors_dict(message_node: Any, fieldpath: str = ...): ...
+
+
+def validation_error_to_list_errors(
+    exception: ValidationError
+) -> List[Dict[str, Union[str, List[str]]]]: ...

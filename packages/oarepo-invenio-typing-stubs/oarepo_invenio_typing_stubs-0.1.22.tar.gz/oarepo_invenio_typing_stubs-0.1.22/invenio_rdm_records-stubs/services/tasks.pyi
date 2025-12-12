@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+from typing import Any
+
+StatsRDMReindexTask: dict[str, Any]
+
+def update_expired_embargos() -> None: ...
+def reindex_stats(stats_indices) -> str: ...
+def send_post_published_signal(pid) -> None: ...

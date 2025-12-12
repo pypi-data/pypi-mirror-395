@@ -1,0 +1,6 @@
+from invenio_records_resources.services.records.components import ServiceComponent
+
+class InternalIDComponent(ServiceComponent):
+    field: str
+    def create(self, identity, data=None, record=None, **kwargs) -> None: ...
+    def update(self, identity, data=None, record=None, **kwargs) -> None: ...

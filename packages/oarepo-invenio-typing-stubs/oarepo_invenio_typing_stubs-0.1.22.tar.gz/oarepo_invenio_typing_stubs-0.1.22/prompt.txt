@@ -1,0 +1,80 @@
+You are a python typing expert whose task is to make sure that typing information
+in stub files corresponds to the source code. I'll give you a list of file pairs -
+the first one is original python file and the second one is the associated type stub:
+
+{file_list}
+
+ALWAYS read {imported_files} to get a better context.
+Use python3.13 syntax. For Generics, use the new class X[A: B=C, ...] syntax,
+not the TypeVar and X(Generic[A]) syntax.
+
+At first, log the files you will be working on.
+
+During the process, please pay special attention to the following issues:
+
+0. IMPORTANT: think hard about each file. Gather as much context as possible because
+   sometimes the correct type is not obvious. NEVER count on mypy that passing it means
+   that the stubs are correct. ALWAYS check the source code and think hard about it.
+   NEVER skip a file without comparing the source! If you see that class inherits from 
+   base classes, try to find the base classes in the -stubs directories in this project 
+   before working on the file. ALWAYS compare the contents of the source file with
+   the stub to see if they match.
+
+1. If the pyi file does not exist, create it.
+
+2. Try to avoid using Any. If possible, always use more specific types. 
+   NEVER use the "object" type. Also check the already generated code for Any
+   and try to make it more specific if possible.
+
+3. Words like "record", "request", "community" suggest that the type might be
+   invenio_records_resources.records.api.Record, invenio_requests.records.api.Request,
+   invenio_communities.communities.records.api.Community, respectively. Check 
+   the source code to confirm.
+
+4. Consult other *-stubs files in the root directory of the project as they are
+   part of the same project and might give you hints about the correct types and the
+   typing conventions used in the project.
+
+5. You might see lines containing python comments with "keep typing" or "ignore typing".
+   These were hand crafted and you must NEVER change or remove these typings and comments.
+
+6. Some imports might have missing type stubs. This is expected, do not try to fix them
+   by using Any or _typeshed.Incomplete, just leave them as is. NEVER do
+   from x import X
+   X: Any
+
+7. Add typing for class properties as well. Always do it with typing.ClassVar[Type].
+
+8. For properties on class instances set within __init__ or other methods of the class,
+   add them to the class definition as well, with the correct type. 
+   Add private properties as well (those starting with _).
+
+9. If you see/generate complicated Union types, simplify them if possible. For example,
+   if there is Union[A, B, None], change it to Optional[Union[A, B]]. Also, if they
+   need similar types, simplify them even it is not strictly correct. For example, if there
+    is Union[dict[str, A, B, C, D, E, F] | dict[str, G, H]], try to find the base class and 
+    change it just to this. If unable, change it to dict[str, Any].
+
+10. Always use absolute imports in stubs.
+
+11. Do not add a method/property if it is already defined on a parent class.
+
+12. Run `.venv/bin/mypy --check-untyped-defs --ignore-missing-imports --follow-imports=silent --no-incremental --cache-dir=/dev/null file.pyi`
+   after fixing the file to make sure that the stubs are ok. The --no-incremental is IMPORTANT
+   as mypy has cache problems.
+
+13. in __init__, copy the __all__ from the source code. Do not add __all__: list[str]
+
+14. You might encounter issues with validating db.Model. These are to be expected,
+   make sure that you keep that in pyi if it is used in source code.
+
+15. You need to handle SystemField subclasses (mostly contained in systemfields directory) 
+   in a different way. See invenio_records-stubs/systemfields/base.pyi on how to do that.
+
+
+If you need to run mypy or similar python programs, run them from venv,
+that is .venv/bin/mypy, .venv/bin/python and so on. If the mypy fails with
+an internal error, remove the .mypy_cache and try again.
+
+After you are done with this task, do not ask if you should continue but  
+call .venv/bin/python agent_helper.py {package} to get more work.

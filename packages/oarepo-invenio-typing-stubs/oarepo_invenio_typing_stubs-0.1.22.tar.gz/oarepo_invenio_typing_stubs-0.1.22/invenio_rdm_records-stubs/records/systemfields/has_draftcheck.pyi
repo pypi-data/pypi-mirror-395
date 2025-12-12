@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+from typing import Any
+
+from invenio_records.systemfields import SystemField
+
+class HasDraftCheckField(SystemField):
+    draft_cls: Any | None
+
+    def __init__(self, draft_cls: Any | None = ..., key: str | None = ...) -> None: ...
+    def __get__(self, record, owner=None): ...
+    def pre_dump(self, record, data, dumper: Any | None = ...) -> None: ...
+    def post_load(self, record, data, loader: Any | None = ...) -> None: ...

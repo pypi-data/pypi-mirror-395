@@ -1,0 +1,6 @@
+from invenio_records_resources.registry import NotificationRegistry, ServiceRegistry
+from invenio_records_resources.services.files.transfer.registry import TransferRegistry
+
+current_service_registry: ServiceRegistry
+current_notifications_registry: NotificationRegistry
+current_transfer_registry: TransferRegistry

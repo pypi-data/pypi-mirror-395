@@ -1,0 +1,13 @@
+from typing import Any
+
+from invenio_db.uow import Operation
+
+class OAISetCommitOp(Operation):
+    _oai_set: Any
+    def __init__(self, oai_set) -> None: ...
+    def on_register(self, uow) -> None: ...
+
+class OAISetDeleteOp(Operation):
+    _oai_set: Any
+    def __init__(self, oai_set) -> None: ...
+    def on_register(self, uow) -> None: ...
