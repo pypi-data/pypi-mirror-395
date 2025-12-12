@@ -1,0 +1,70 @@
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from techui_builder.builder import Builder, JsonMap
+from techui_builder.generate import Generator
+from techui_builder.validator import Validator
+
+
+@pytest.fixture
+def builder():
+    ixx_services = Path(__file__).parent.joinpath(Path("t01-services"))
+    techui_path = ixx_services.joinpath("synoptic/techui.yaml")
+
+    b = Builder(techui_path)
+    b._services_dir = ixx_services.joinpath("services")
+    b._write_directory = ixx_services.joinpath("synoptic")
+    return b
+
+
+@pytest.fixture
+def builder_with_setup(builder: Builder):
+    with patch("techui_builder.builder.Generator") as mock_generator:
+        mock_generator.return_value = MagicMock()
+
+        builder.setup()
+        return builder
+
+
+@pytest.fixture
+def builder_with_test_files(builder: Builder):
+    builder._write_directory = Path("tests/test_files/").absolute()
+
+    return builder
+
+
+@pytest.fixture
+def test_files():
+    screen_path = Path("tests/test_files/test_bob.bob").absolute()
+    dest_path = Path("tests/test_files/").absolute()
+
+    return screen_path, dest_path
+
+
+@pytest.fixture
+def example_json_map():
+    # Create test json map with child json map
+    test_map_child = JsonMap("test_child_bob.bob", exists=False)
+    test_map = JsonMap("test_bob.bob")
+    test_map.children.append(test_map_child)
+
+    return test_map
+
+
+@pytest.fixture
+def generator():
+    synoptic_dir = Path(__file__).parent.joinpath(Path("t01-services/synoptic"))
+
+    g = Generator(synoptic_dir)
+
+    return g
+
+
+@pytest.fixture
+def validator():
+    test_bobs = [Path("tests/test_files/motor-edited.bob")]
+    v = Validator(test_bobs)
+
+    return v

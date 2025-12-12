@@ -1,0 +1,163 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm[toml]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "techui-builder"
+dynamic = ["version"]
+description = "A package for building Phoebus GUIs"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+urls = { GitHub = "https://github.com/DiamondLightSource/techui-builder" }
+authors = [
+    { name = "Oliver Copping", email = "oliver.copping@diamond.ac.uk" },
+    { name = "Adedamola Sode", email = "adedamola.sode@diamond.ac.uk" },
+    { name = "Niamh Dougan", email = "niamh.dougan@diamond.ac.uk" },
+]
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "pyyaml>=6.0.2",
+    "phoebusgen>=3.0.0",
+    "lxml>=5.4.0",
+    "typer>=0.16.0",
+    "rich>=14.1.0",
+    "pydantic>=2.11.7",
+]
+scripts = { techui-builder = "techui_builder.__main__:app" }
+
+[dependency-groups]
+dev = [
+    "copier",
+    "basedpyright>=1.27.1",
+    "pre-commit",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-faulthandler",
+    "pytest-forked",
+    "pytest-rerunfailures",
+    "pytest-timeout",
+    "requests>=2.32.5",
+    "ruff",
+    "tox-uv",
+    "types-lxml",
+    "types-mock",
+    "uv~=0.9.4",
+]
+
+[tool.setuptools_scm]
+version_file = "src/techui_builder/_version.py"
+
+[tool.pyright]
+typeCheckingMode = "standard"
+reportMissingImports = false  # Ignore missing stubs in imported modules
+
+[tool.pytest.ini_options]
+# Run pytest with all our checkers, and don't spam us with massive tracebacks on error
+addopts = """
+    --tb=native -vv --strict-markers --doctest-modules
+    --doctest-glob="*.rst" --doctest-glob="*.md"
+    --ignore=docs/examples
+    """
+# https://iscinumpy.gitlab.io/post/bound-version-constraints/#watch-for-warnings
+filterwarnings = "error"
+# Doctest python code in docs, python code in src docstrings, test functions in tests
+testpaths = "docs src tests"
+log_format = "%(asctime)s,%(msecs)03d %(levelname)s (%(threadName)s) %(message)s"
+log_date_format = "%H:%M:%S"
+
+markers = [
+    "motorsim: require the motorsim IOC to be running",
+    "adsim: require the ADsim IOC to be running",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+patch = ["subprocess"]
+data_file = "/tmp/techui_builder.coverage"
+
+[tool.coverage.paths]
+# Tests are run from installed location, map back to the src directory
+source = ["src", "**/site-packages/"]
+
+[tool.tox]
+skipsdist = true
+# envs to runs automatically with tox -p
+env_list = ["pre-commit", "type-checking", "tests"] # "docs"]
+
+[tool.tox.env_run_base]
+# Pass all environment variables to the test environments
+passenv = ["*"]
+
+[tool.tox.env.pre-commit]
+description = "Run pre-commit on all files"
+commands = [
+    [
+        "pre-commit",
+        "run",
+        "--all-files",
+        "--show-diff-on-failure",
+        { replace = "posargs", default = [
+        ], extend = true },
+    ],
+]
+
+[tool.tox.env.type-checking]
+description = "Run basedpyright"
+allowlist_externals = ["basedpyright"]
+# needed otherwise throws reportUnknownMemberType errors
+deps = ["pytest"]
+commands = [
+    [
+        "basedpyright",
+        "--pythonpath",
+        ".venv/bin/python",
+        "src",
+        "tests",
+        { replace = "posargs", default = [
+        ], extend = true },
+    ],
+]
+
+[tool.tox.env.tests]
+description = "Run tests with coverage"
+commands = [
+    [
+        "pytest",
+        "--cov=techui_builder",
+        "--cov-report",
+        "term",
+        "--cov-report",
+        "xml:cov.xml",
+        { replace = "posargs", default = [
+        ], extend = true },
+    ],
+]
+
+[tool.ruff]
+src = ["src", "tests", "system_tests"]
+line-length = 88
+lint.select = [
+    "B",   # flake8-bugbear - https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
+    "C4",  # flake8-comprehensions - https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
+    "E",   # pycodestyle errors - https://docs.astral.sh/ruff/rules/#error-e
+    "F",   # pyflakes rules - https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "N",   # pep8-naming - https://docs.astral.sh/ruff/rules/#pep8-naming-n
+    "W",   # pycodestyle warnings - https://docs.astral.sh/ruff/rules/#warning-w
+    "I",   # isort - https://docs.astral.sh/ruff/rules/#isort-i
+    "UP",  # pyupgrade - https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "SLF", # self - https://docs.astral.sh/ruff/settings/#lintflake8-self
+]
+
+[tool.ruff.lint.per-file-ignores]
+# By default, private member access is allowed in tests
+# See https://github.com/DiamondLightSource/python-copier-template/issues/154
+# Remove this line to forbid private member access in tests
+"tests/**/*" = ["SLF001"]
+# dependencies = ["sphinx-build", "sphinx-autobuild"]
