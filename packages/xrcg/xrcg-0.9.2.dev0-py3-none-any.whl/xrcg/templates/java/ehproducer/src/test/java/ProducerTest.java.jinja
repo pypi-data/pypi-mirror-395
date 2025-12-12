@@ -1,0 +1,309 @@
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "amqp.jinja.include" as amqp -%}
+{%- import "util.jinja.include" as util -%}
+{{ util.CommonFileHeader() }}
+
+{%- set messagegroups = root.messagegroups %}
+{%- set package_name = project_name | lower | replace('-', '_') | replace('.', '_') %}
+
+package {{ package_name }};
+
+import com.azure.messaging.eventhubs.EventHubProducerClient;
+import com.azure.messaging.eventhubs.EventHubClientBuilder;
+import com.azure.messaging.eventhubs.EventHubConsumerAsyncClient;
+import com.azure.messaging.eventhubs.EventHubConsumerClient;
+import com.azure.messaging.eventhubs.models.EventPosition;
+import com.azure.messaging.eventhubs.models.PartitionEvent;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
+import org.junit.jupiter.api.*;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.MountableFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
+{%- for messagegroupid, messagegroup in messagegroups.items() %}
+{%- set groupname = messagegroupid | pascal | strip_namespace %}
+{%- set group_package = (package_name ~ "." ~ messagegroupid) | lower | replace('-', '_') %}
+import {{ group_package }}.{{ groupname }}Producer;
+{%- endfor %}
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Integration tests for Event Hubs producer using Testcontainers.
+ * 
+ * This test uses the Azure Event Hubs Emulator and Azurite containers to run integration tests
+ * without requiring actual Azure resources.
+ */
+@Testcontainers
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class ProducerTest {
+    
+    private static final Logger logger = LogManager.getLogger(ProducerTest.class);
+    
+    private Network network;
+    private GenericContainer<?> azuriteContainer;
+    private GenericContainer<?> eventHubsEmulatorContainer;
+    private Path emulatorConfigPath;
+    
+    private String eventHubConnectionString;
+    private String blobStorageConnectionString;
+    
+    private static final String EMULATOR_CONFIG = """
+        {
+          "UserConfig": {
+            "NamespaceConfig": [
+              {
+                "Type": "EventHub",
+                "Name": "emulatorNs1",
+                "Entities": [
+                  {
+                    "Name": "eh1",
+                    "PartitionCount": "2",
+                    "ConsumerGroups": [
+                      {
+                        "Name": "cg1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "LoggingConfig": {
+              "Type": "File"
+            }
+          }
+        }
+        """;
+    
+    @BeforeAll
+    public void setUp() throws IOException {
+        logger.info("Setting up Event Hubs emulator testcontainers");
+        
+        // Create network for containers to communicate
+        network = Network.newNetwork();
+        
+        // Create temporary config file for Event Hubs emulator
+        emulatorConfigPath = Files.createTempFile("emulator-config", ".json");
+        Files.writeString(emulatorConfigPath, EMULATOR_CONFIG);
+        
+        // Start Azurite container (blob+table storage for Event Hubs checkpoints and metadata)
+        azuriteContainer = new GenericContainer<>("mcr.microsoft.com/azure-storage/azurite:latest")
+            .withNetwork(network)
+            .withNetworkAliases("azurite")
+            .withExposedPorts(10000, 10001, 10002)
+            .waitingFor(Wait.forListeningPorts(10000, 10001, 10002)
+                .withStartupTimeout(Duration.ofMinutes(2)));
+        
+        azuriteContainer.start();
+        
+        // Build Azurite connection string
+        blobStorageConnectionString = String.format(
+            "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://%s:%d/devstoreaccount1;",
+            azuriteContainer.getHost(),
+            azuriteContainer.getMappedPort(10000)
+        );
+        
+        logger.info("Azurite started at: {}", blobStorageConnectionString);
+        
+        // Start Event Hubs emulator container
+        eventHubsEmulatorContainer = new GenericContainer<>("mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest")
+            .withCopyFileToContainer(MountableFile.forHostPath(emulatorConfigPath), "/Eventhubs_Emulator/ConfigFiles/Config.json")
+            .withNetwork(network)
+            .withNetworkAliases("eventhubs-emulator")
+            .withExposedPorts(5672)
+            .withEnv("BLOB_SERVER", "azurite")
+            .withEnv("METADATA_SERVER", "azurite")
+            .withEnv("ACCEPT_EULA", "Y")
+            .waitingFor(Wait.forLogMessage(".*Emulator is launching with config.*", 1)
+                .withStartupTimeout(Duration.ofMinutes(3)));
+        
+        eventHubsEmulatorContainer.start();
+        
+        // Build Event Hubs connection string
+        eventHubConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;EntityPath=eh1;";
+        
+        logger.info("Event Hubs emulator started successfully");
+        
+        // Create blob container for checkpoints
+        try {
+            BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
+                .connectionString(blobStorageConnectionString)
+                .buildClient();
+            
+            BlobContainerClient containerClient = blobServiceClient.createBlobContainerIfNotExists("eventhub-checkpoints");
+            logger.info("Blob container created: {}", containerClient.getBlobContainerName());
+        } catch (Exception e) {
+            logger.error("Failed to create blob container", e);
+            throw e;
+        }
+    }
+    
+    @AfterAll
+    public void tearDown() {
+        logger.info("Tearing down Event Hubs emulator testcontainers");
+        
+        if (eventHubsEmulatorContainer != null) {
+            eventHubsEmulatorContainer.stop();
+        }
+        
+        if (azuriteContainer != null) {
+            azuriteContainer.stop();
+        }
+        
+        if (network != null) {
+            network.close();
+        }
+        
+        if (emulatorConfigPath != null) {
+            try {
+                Files.deleteIfExists(emulatorConfigPath);
+            } catch (IOException e) {
+                logger.warn("Failed to delete emulator config file", e);
+            }
+        }
+    }
+
+    {%- for messagegroupid, messagegroup in messagegroups.items() %}
+    {%- set groupname = messagegroupid | pascal | strip_namespace %}
+    {%- set group_package = (package_name ~ "." ~ messagegroupid) | lower | replace('-', '_') %}
+    
+    {%- for messageid, message in messagegroup.messages.items() %}
+    {%- set messagename = messageid | pascal | strip_namespace %}
+    {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+    
+    @Test
+    @DisplayName("Test {{ messagename }} message production")
+    public void test{{ messagename }}Message() throws Exception {
+        logger.info("Starting test{{ messagename }}Message");
+        
+        // Create producer
+        EventHubProducerClient producerClient = new EventHubClientBuilder()
+            .connectionString(eventHubConnectionString)
+            .buildProducerClient();
+        
+        {{ group_package }}.{{ groupname }}Producer producer = new {{ group_package }}.{{ groupname }}Producer(producerClient);
+        
+        try {
+            // Create test data
+            {%- if message_body_type == "byte[]" %}
+            {{ message_body_type }} testData = new byte[0];
+            {%- else %}
+            {{ message_body_type }} testData = new {{ message_body_type }}();
+            {%- endif %}
+            {%- set schemaObj = schema_object(root, message.get('dataschemauri') or message.get('dataschema')) %}
+            {%- if schemaObj %}
+                {#- Get the actual schema from the versions structure -#}
+                {%- if schemaObj.versions %}
+                    {%- set version_key = schemaObj.defaultversionid if schemaObj.defaultversionid else (schemaObj.versions.keys() | list | last) %}
+                    {%- set avroSchema = schemaObj.versions[version_key].schema %}
+                {%- elif schemaObj.schema %}
+                    {%- set avroSchema = schemaObj.schema %}
+                {%- else %}
+                    {%- set avroSchema = schemaObj %}
+                {%- endif %}
+                {#- Now process the Avro schema fields -#}
+                {%- if avroSchema and avroSchema.type == "record" and avroSchema.fields %}
+                    {%- for field in avroSchema.fields %}
+                        {%- set fieldtype = field.type if field.type is string else field.type.type if field.type is mapping and field.type.type is defined else "unknown" %}
+                        {%- if fieldtype == "string" %}
+            testData.set{{ field.name | pascal }}("test-{{ field.name }}");
+                        {%- elif fieldtype == "int" or fieldtype == "integer" %}
+            testData.set{{ field.name | pascal }}(42);
+                        {%- elif fieldtype == "long" %}
+            testData.set{{ field.name | pascal }}(42L);
+                        {%- elif fieldtype == "boolean" %}
+            testData.set{{ field.name | pascal }}(true);
+                        {%- elif fieldtype == "double" %}
+            testData.set{{ field.name | pascal }}(42.0);
+                        {%- elif fieldtype == "float" %}
+            testData.set{{ field.name | pascal }}(42.0f);
+                        {%- elif fieldtype == "enum" %}
+                            {%- set enum_namespace = field.type.namespace if field.type.namespace else avroSchema.namespace %}
+                            {%- set normalized_namespace = (data_project_name | lower | replace('-', '_')) + '.' + (enum_namespace | lower | replace('.', '.') if enum_namespace else '') %}
+            testData.set{{ field.name | pascal }}({{ normalized_namespace }}.{{ field.type.name }}.{{ field.type.symbols[0] | upper }});
+                        {%- endif %}
+                    {%- endfor %}
+                {%- endif %}
+            {%- endif %}
+            
+            // Send 5 messages to test proper message handling
+            for (int i = 0; i < 5; i++) {
+                producer.send{{ messagename }}(testData).get();
+            }
+            producer.flush();
+            
+            logger.info("5 messages sent, waiting for consumption");
+            
+            // Create consumer to verify messages
+            EventHubConsumerClient consumerClient = new EventHubClientBuilder()
+                .connectionString(eventHubConnectionString)
+                .consumerGroup("$Default")
+                .buildConsumerClient();
+            
+            try {
+                List<PartitionEvent> receivedEvents = new ArrayList<>();
+                int attempts = 0;
+                int maxAttempts = 15;
+                
+                // Get all partition IDs
+                String[] partitionIds = consumerClient.getPartitionIds().stream().toArray(String[]::new);
+                
+                // Try to receive messages from all partitions
+                while (receivedEvents.size() < 5 && attempts < maxAttempts) {
+                    for (String partitionId : partitionIds) {
+                        Iterable<PartitionEvent> events = consumerClient.receiveFromPartition(
+                            partitionId, 
+                            10, 
+                            EventPosition.earliest(), 
+                            Duration.ofSeconds(2)
+                        );
+                        
+                        for (PartitionEvent event : events) {
+                            logger.info("Received message {} from partition {} offset {}", 
+                                receivedEvents.size(), event.getPartitionContext().getPartitionId(), 
+                                event.getData().getOffset());
+                            
+                            assertNotNull(event.getData(), "Event data should not be null");
+                            assertNotNull(event.getData().getBody(), "Message body should not be null");
+                            assertTrue(event.getData().getBody().length > 0, "Message should have content");
+                            receivedEvents.add(event);
+                            
+                            if (receivedEvents.size() >= 5) {
+                                break;
+                            }
+                        }
+                        
+                        if (receivedEvents.size() >= 5) {
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+                
+                assertEquals(5, receivedEvents.size(), "Should receive all 5 {{ messagename }} messages");
+                logger.info("All 5 {{ messagename }} messages test completed successfully");
+                
+            } finally {
+                consumerClient.close();
+            }
+        } finally {
+            producer.close();
+        }
+    }
+    
+    {% endfor %}
+    {% endfor %}
+}

@@ -1,0 +1,18 @@
+{#- triggering generation of all schema-based elements with this loop #}
+{%- for messagegroupid, messagegroup in root.messagegroups.items() -%}
+   {%- for messageid, message in messagegroup.messages.items() %}
+    {%- if message.dataschemauri or message.dataschema -%}
+        {% set x=(message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( project_name, root, message.dataschemaformat) -%}
+    {%-endif -%}
+    {%- endfor -%}
+{%- endfor %}
+{
+    "name": "{{ project_name }}",
+    "startFile": "{{ project_name }}.asaql",
+    "configurations": [
+        {
+            "filePath": "JobConfig.json",
+            "subType": "JobConfig"
+        }
+    ]
+}
