@@ -1,0 +1,75 @@
+Metadata-Version: 2.4
+Name: livekit-ai-note-taker
+Version: 0.1.5
+Summary: AI note taker for LiveKit that listens to meeting audio, transcribes with Deepgram, and streams concise summaries via Groq/OpenRouter/OpenAI.
+Author: Oladunjoye Abiola Moses
+License: Proprietary
+Project-URL: Homepage, https://github.com/abiola814/Livekit-AI-note-taker
+Project-URL: Issues, https://github.com/abiola814/Livekit-AI-note-taker/issues
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: livekit==1.0.19
+Requires-Dist: livekit-agents==1.3.2
+Requires-Dist: livekit-api==1.0.7
+Requires-Dist: livekit-blingfire==1.0.0
+Requires-Dist: livekit-plugins-deepgram==1.3.2
+Requires-Dist: livekit-plugins-openai==1.3.2
+Requires-Dist: livekit-protocol==1.1.0
+Requires-Dist: opentelemetry-api<1.39,>=1.34.1
+Requires-Dist: opentelemetry-sdk<1.39,>=1.34.1
+Requires-Dist: opentelemetry-exporter-otlp-proto-http<1.39,>=1.34.1
+Requires-Dist: opentelemetry-exporter-otlp-proto-grpc<1.39,>=1.34.1
+Requires-Dist: aiohttp>=3.9
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: groq>=0.6
+Requires-Dist: httpx>=0.27
+Requires-Dist: requests>=2.31
+
+# AI Note Taker for LiveKit
+
+An installable Python package that runs a LiveKit agent which listens to room audio, transcribes with Deepgram, and publishes concise meeting notes/summaries using Groq, OpenRouter, or OpenAI-compatible models.
+
+## Installation
+
+```bash
+pip install .
+# or once published:
+pip install livekit-ai-note-taker
+```
+
+## Configuration
+
+Set the following environment variables (a `.env` file is supported via `python-dotenv`):
+
+- `LIVEKIT_URL` – LiveKit WebSocket URL (e.g. `wss://example.livekit.cloud`)
+- `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` – LiveKit credentials
+- `DEEPGRAM_API_KEY` – Deepgram STT key
+- `PROVIDER` – `groq`, `openrouter`, or `openai`
+- `GROQ_API_KEY` / `GROQ_MODEL_NAME` – when `PROVIDER=groq`
+- `OPENROUTER_API_KEY` / `OPENROUTER_MODEL_NAME` / `OPENROUTER_BASE_URL` – when `PROVIDER=openrouter`
+- `OPENAI_API_KEY` – when `PROVIDER=openai`
+- `SUMMARY_INTERVAL` – seconds between rolling summaries (default `150`)
+- `PROMPT_TYPE` – `small` or `big` prompt template (default `small`)
+- `AGENT_NAME` – LiveKit agent registration name (default `meeting_summarizer`)
+- `BACKEND_URL` – webhook endpoint that receives the final meeting summary (default `http://localhost:8000/meetings/meeting-note-webhook`)
+- `LIVEKIT_SUMMARIZER_DISABLE_SSL_VERIFY` – set to `true` to ignore TLS verification for aiohttp (development only)
+
+## Running the worker
+
+```bash
+
+livekit-ai-note-taker
+```
+
+The command validates configuration, connects to LiveKit, and starts publishing summaries to the room via `publish_data` on the local participant.
+
+## Using as a library
+
+```python
+import asyncio
+from livekit_ai_note_taker import run_worker
+
+asyncio.run(run_worker())
+```
+
+You can also import `NoteTakerAgent` if you want to wire custom events or prompts in your own application. Logging is left to the host application; configure it as needed (e.g. `logging.basicConfig(level=logging.INFO)`).
