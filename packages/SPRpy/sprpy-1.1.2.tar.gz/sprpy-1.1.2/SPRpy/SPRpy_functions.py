@@ -1,0 +1,134 @@
+# This file contains utility functions
+
+import numpy as np
+import tkinter
+from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory, asksaveasfilename
+import pandas as pd
+import re
+from fresnel_transfer_matrix import TIR_determination
+
+
+def select_folder(prompt, prompt_folder=None):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_folder = askdirectory(title=prompt, parent=root, initialdir=prompt_folder)
+    root.destroy()
+    return selected_folder
+
+
+def select_file(prompt, prompt_folder=None, file_types=[('Pickle files', '*.pickle')]):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_file = askopenfilename(title=prompt, filetypes=file_types, initialdir=prompt_folder, parent=root)
+    root.destroy()
+    return selected_file
+
+
+def select_files(prompt, prompt_folder=None, file_types=[('Pickle files', '*.pickle')]):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_files = askopenfilenames(title=prompt, filetypes=file_types, initialdir=prompt_folder, parent=root)
+    root.destroy()
+    return selected_files
+
+
+def save_file(prompt, prompt_folder=None, file_types=[('CSV files', '*.csv')], default_extension='.csv'):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    save_file = asksaveasfilename(title=prompt, filetypes=file_types, defaultextension=default_extension, initialdir=prompt_folder, parent=root)
+    root.destroy()
+    return save_file
+
+
+def load_csv_data(path=False, default_data_folder=None, prompt='Select the measurement data file (.csv)'):
+    if not path:
+        print(prompt)
+        data_path_ = select_file('Select the measurement data file (.csv)', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
+    else:
+        data_path_ = path
+
+    #  Determine the scanning speed/step length if present in the file
+    try:
+        with open(data_path_, 'r') as file:
+            step_length_pattern = re.compile(r'=\d{1,2}')
+            scanspeed = int(step_length_pattern.search(file.readline()).group().strip('='))
+
+    except AttributeError:  # I think .group().strip() should return AttributeError if .search() returns None
+        scanspeed = 5  # Assuming medium scanspeed if legacy spr2 to csv converter was used
+
+
+    # Load in the measurement data from a .csv file
+    data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
+    time_df = data_frame_.iloc[1:, 0]
+    angles_df = data_frame_.iloc[0, 1:]
+    ydata_df = data_frame_.iloc[1:, 1:]
+
+    # Select last scan as default reflectivity plot
+    reflectivity_df_ = pd.DataFrame(data={'angles': angles_df, 'ydata': ydata_df.iloc[-1, :]})
+
+    return data_path_, scanspeed, time_df, angles_df, ydata_df, reflectivity_df_
+
+
+def calculate_sensorgram(time, angles, ydata, SPR_TIR_fitting_parameters):
+
+    # Convert dataframes to numpy ndarrays
+    time = time.to_numpy()
+    angles = angles.to_numpy()
+    ydata = ydata.to_numpy()
+
+    # Calculating SPR and TIR angles
+    sensorgram_SPR_angles = np.empty(len(ydata))*np.nan
+    sensorgram_SPR_fit_y = [pd.Series(np.empty(SPR_TIR_fitting_parameters['SPR fit points'])*np.nan)]*len(ydata)
+    sensorgram_SPR_fit_x = [pd.Series(np.empty(SPR_TIR_fitting_parameters['SPR fit points'])*np.nan)]*len(ydata)
+
+    sensorgram_TIR_angles = np.empty(len(ydata))*np.nan
+    TIR_deriv_points = len(angles[(angles >= SPR_TIR_fitting_parameters['TIR range'][0]) & (angles <= SPR_TIR_fitting_parameters['TIR range'][1])])
+    sensorgram_TIR_deriv_x = [pd.Series(np.empty(TIR_deriv_points)*np.nan)]*len(ydata)
+    sensorgram_TIR_deriv_y = [pd.Series(np.empty(TIR_deriv_points)*np.nan)]*len(ydata)
+    sensorgram_TIR_deriv_fit_x = [pd.Series(np.empty(SPR_TIR_fitting_parameters['TIR fit points']) * np.nan)] * len(ydata)
+    sensorgram_TIR_deriv_fit_y = [pd.Series(np.empty(SPR_TIR_fitting_parameters['TIR fit points']) * np.nan)] * len(ydata)
+
+    for ind, val in enumerate(time):
+        reflectivity_spectrum = ydata[ind-1, :]
+        min_index = np.argmin(reflectivity_spectrum)
+
+        # SPR angles
+        try:
+            y_selection = reflectivity_spectrum[min_index - SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0]:min_index + SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][1]]
+
+            polynomial = np.polyfit(angles[min_index - SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0]:min_index + SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][1]],
+                                    y_selection, 3)
+            x_selection = np.linspace(angles[min_index - SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0]],
+                                      angles[min_index + SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][1]], SPR_TIR_fitting_parameters['SPR fit points'])
+            y_polyfit = np.polyval(polynomial, x_selection)
+            y_fit_min_ind = np.argmin(y_polyfit)
+
+            sensorgram_SPR_angles[ind-1] = x_selection[y_fit_min_ind]
+            sensorgram_SPR_fit_x[ind-1] = pd.Series(x_selection)
+            sensorgram_SPR_fit_y[ind-1] = pd.Series(y_polyfit)
+
+        except:
+            print('No SPR minimum found. Skipping measurement time point {}...'.format(val))
+
+
+        # TIR angles
+        try:
+            TIR_theta, TIR_xdata_filtered, deriv_ydata, TIR_theta_fit_x, TIR_theta_fit_y  = TIR_determination(angles, reflectivity_spectrum, SPR_TIR_fitting_parameters)
+            sensorgram_TIR_angles[ind-1] = TIR_theta
+            sensorgram_TIR_deriv_x[ind-1] = pd.Series(TIR_xdata_filtered)
+            sensorgram_TIR_deriv_y[ind-1] = pd.Series(deriv_ydata)
+            sensorgram_TIR_deriv_fit_x[ind-1] = pd.Series(TIR_theta_fit_x)
+            sensorgram_TIR_deriv_fit_y[ind-1] = pd.Series(TIR_theta_fit_y)
+
+        except:
+            print('No TIR found. Skipping measurement time point {}...'.format(val))
+
+
+    sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles, 'SPR fit x': sensorgram_SPR_fit_x, 'SPR fit y': sensorgram_SPR_fit_y, 'TIR deriv x': sensorgram_TIR_deriv_x, 'TIR deriv y': sensorgram_TIR_deriv_y, 'TIR deriv fit x': sensorgram_TIR_deriv_fit_x, 'TIR deriv fit y': sensorgram_TIR_deriv_fit_y})
+
+    return sensorgram_df
+
