@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.0
+    hooks:
+      - id: ruff
+        name: ruff lint
+        args: [--fix]
+      - id: ruff-format
+        name: ruff format
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        name: markdownlint docs
+        args: [--config, docs/.markdownlint.json]
+        files: ^docs/.*\.(md|mdx)$
+  - repo: local
+    hooks:
+      - id: pytest-docs
+        name: pytest docs
+        entry: uv run pytest --codeblocks docs/
+        language: system
+        pass_filenames: false
+        files: ^docs/.*\.md$
