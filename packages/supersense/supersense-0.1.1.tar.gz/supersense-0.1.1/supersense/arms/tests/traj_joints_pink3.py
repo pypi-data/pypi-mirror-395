@@ -1,0 +1,3 @@
+'''
+easier way to joints
+'''
