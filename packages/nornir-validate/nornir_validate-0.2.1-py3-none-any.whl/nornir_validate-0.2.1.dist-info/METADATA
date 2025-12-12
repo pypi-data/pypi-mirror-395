@@ -1,0 +1,109 @@
+Metadata-Version: 2.4
+Name: nornir-validate
+Version: 0.2.1
+Summary: Nornir plugin to validate network state on a per-device basis
+License-Expression: MIT
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Dist: napalm>=5.1.0
+Requires-Dist: nornir-jinja2>=0.2.0
+Requires-Dist: nornir-netmiko>=1.0.1
+Requires-Dist: nornir-rich
+Requires-Dist: nornir-utils>=0.2.0
+Requires-Dist: ntc-templates>=8.1.0
+Requires-Dist: pyaml>=25.7.0
+Requires-Dist: types-pyyaml>=6.0.12.20250915
+Requires-Dist: ipdb>=0.13.13 ; extra == 'dev'
+Requires-Dist: mypy>=1.18.2 ; extra == 'dev'
+Requires-Dist: pytest>=8.4.2 ; extra == 'dev'
+Requires-Dist: ruff>=0.14.4 ; extra == 'dev'
+Requires-Dist: sphinx>=8.2.3 ; extra == 'docs'
+Requires-Dist: sphinx-rtd-theme>=3.0.2 ; extra == 'docs'
+Requires-Python: >=3.12
+Project-URL: Homepage, https://github.com/sjhloco/nornir-validate
+Project-URL: Issues, https://github.com/sjhloco/nornir-validate/issues
+Project-URL: Repository, https://github.com/sjhloco/nornir-validate
+Provides-Extra: dev
+Provides-Extra: docs
+Description-Content-Type: text/markdown
+
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
+[![Documentation Status](https://readthedocs.org/projects/nornir-validate/badge/?version=latest)](https://nornir-validate.readthedocs.io/en/latest/?badge=latest)
+
+# Nornir Validate
+
+A Nornir plugin for validating network state (*actual state*) against YAML-based specifications (*desired state*). This project extends [napalm-validate](https://github.com/napalm-automation/napalm/blob/develop/napalm/base/validate.py) to perform command-based validation rather than relying solely on getters, providing greater flexibility in validating arbitrary command outputs. It leverages Nornir with `nornir-netmiko` to collect and format device data, then compares ***actual state*** against ***desired state*** to generate a ***compliance report***.
+
+For a complete list of supported validations, see the [validation reference](http://127.0.0.1:5500/_build/html/validations.html).
+
+## How It Works
+
+1. **Validation File**: The expected *desired state* specified in YAML format (can be automatically generated) is provided at runtime
+2. **Desired State**: The *validation file* is rendered by Jinja adding validation commands to the *desired state* and storing this as a Nornir host variable
+3. **Data Collection**: *Nornir* (*netmiko* plugin) executes commands against target devices parsing the outputs through `ntc-templates` to construct the *actual state*
+4. **Compliance Report**: The *desired state* and *actual state* are fed into *napalm_validate* generating a *compliance report* of the differences
+
+![Image](https://github.com/user-attachments/assets/879a2aaa-15a5-45f3-9f6d-37814f1703f4)
+
+## Installation
+
+```bash
+pip install nornir-validate
+```
+
+or
+
+```bash
+uv add nornir-validate
+```
+
+## Usage
+
+Below is just the bare minimum to get started, see the [documentation](https://nornir-validate.readthedocs.io/en/latest/index.html#) for more detailed information.
+
+### Generating a Compliance Report
+
+The compliance report is generated based on a YAML formatted validation file describing the desired state of the network. Comprehensive validation file examples for all supported operating systems and features can be found in the [example_validation_files](https://github.com/sjhloco/nornir-validate/tree/main/example_validation_files>) directory.
+
+```python
+import yaml
+from nornir import InitNornir
+from nr_val import validate, print_val_result
+
+nr = InitNornir(config_file="config.yml")
+
+with open("input_val_data.yml") as tmp_data:
+    input_data = yaml.load(tmp_data, Loader=yaml.Loader)
+
+result = nr.run(task=validate, input_data=input_data)
+print_val_result(result)
+```
+
+By default the full compliance report will be printed to the screen if the validation fails, add the `save_report=""` argument to also save it to file.
+
+### Auto-generation of Validation Files
+
+Rather than defining validation files manually from scratch they can be automatically generated from a devices actual state based of an **index of sub-features**. If no index file is specified (omit the `input_data=` argument), validations will be generated for **all enabled sub-features** on the device.
+
+```python
+from nornir import InitNornir
+from nr_val import val_file_builder, print_build_result
+
+nr = InitNornir(config_file="config.yml")
+
+with open("CORE_index.yml") as tmp_data:
+    input_idx = yaml.load(tmp_data, Loader=yaml.Loader)
+
+result = nr.run(task=val_file_builder, input_data=input_idx)
+print_build_result(result, nr)
+```
+
+Validations that have *environment-specific* elements (such as VRF route table) must be manually defined in the index file, if not it will only generate validations for the global elements (the global routing table).
+
+## Contributing
+
+If you want to help add any validations to the project the [Contribution Guidelines](https://nornir-validate.readthedocs.io/en/latest/contribute/index.html) walk through the steps.

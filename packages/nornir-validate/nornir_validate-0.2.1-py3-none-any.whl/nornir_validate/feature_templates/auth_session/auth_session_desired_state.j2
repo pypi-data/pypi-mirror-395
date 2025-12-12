@@ -1,0 +1,42 @@
+{# ####### CMD: Set command variables on a per-os_type basis ####### #}
+{% if 'ios' in os_type |string %}
+{% set mab_count_cmd = "show authentication sessions | count mab" %}
+{% set dot1x_count_cmd = "show authentication sessions | count dot1x" %}
+{% elif 'nxos' in os_type |string %}
+{% elif 'asa' in os_type |string %}
+{% set conn_count_cmd = "show conn count" %}
+{% elif 'wlc' in os_type |string %}
+{% set wifi_total_count_cmd = "show client summary" %}
+{% set wifi_wlan_count_cmd = "show client wlan xxx" %}
+{% endif %}
+
+
+{# ##### VAL_CMDS/DESIRED_STATE: Build a dict of validation commands or desired state of each sub-feature ##### #}
+- {{ feature }}:
+{% set generate_val_file = sub_features.__class__.__name__ == 'list' %}
+{% set desired_state = sub_features.__class__.__name__ == 'dict' %}
+{% for sub_feat in (sub_features if generate_val_file else sub_features.items()) %}
+{% set input_vars = None if generate_val_file else sub_feat[1] %}
+{% set sub_feat = sub_feat if generate_val_file else sub_feat[0] %}
+
+{# ### MAB_COUNT: {cmd: xx} ### #}
+{% if sub_feat == 'mab_count' and mab_count_cmd is defined %}
+    mab_count: 
+      {{ mab_count_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        {{ input_vars }}
+{% endif %}
+{# ### DOT1X_COUNT: {cmd: xx} ### #}
+{% elif sub_feat == 'dot1x_count' and dot1x_count_cmd is defined %}
+    dot1x_count: 
+      {{ dot1x_count_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        {{ input_vars }}
+{% endif %}
+
+{# ##### End statements: for sub_feature and sub_feature conditional  ##### #}
+{% endif %}{% endfor %}
