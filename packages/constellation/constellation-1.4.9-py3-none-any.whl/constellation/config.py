@@ -1,0 +1,171 @@
+import copy
+import os
+import re
+
+import yaml
+
+from constellation import vault
+from constellation.util import ImageReference
+
+
+def read_yaml(filename):
+    with open(filename) as f:
+        dat = yaml.load(f, Loader=yaml.SafeLoader)
+    dat = parse_env_vars(dat)
+    return dat
+
+
+def config_build(path, data, extra=None, options=None):
+    data = copy.deepcopy(data)
+    if extra:
+        data_extra = read_yaml(f"{path}/{extra}.yml")
+        config_check_additional(data_extra)
+        combine(data, data_extra)
+    if options:
+        if isinstance(options, list):
+            options = collapse(options)
+        config_check_additional(options)
+        combine(data, options)
+    return data
+
+
+# Utility function for centralising control over pulling information
+# out of the configuration.
+def config_value(data, path, data_type, is_optional, default=None):
+    if isinstance(path, str):
+        path = [path]
+    for i, p in enumerate(path):
+        try:
+            data = data[p]
+            if data is None:
+                raise KeyError()
+        except KeyError as e:
+            if is_optional:
+                return default
+            e.args = (":".join(path[: (i + 1)]),)
+            raise e
+
+    expected = {
+        "string": str,
+        "integer": int,
+        "boolean": bool,
+        "dict": dict,
+        "list": list,
+    }
+    if type(data) is not expected[data_type]:
+        msg = "Expected {} for {}".format(data_type, ":".join(path))
+        raise ValueError(msg)
+    return data
+
+
+# TODO: This can be made better with respect to optional values (e.g.,
+# if url is present other keys are required).
+def config_vault(data, path):
+    url = config_string(data, [*path, "addr"], True)
+    auth_method = config_string(data, [*path, "auth", "method"], True)
+    auth_args = config_dict(data, [*path, "auth", "args"], True)
+    return vault.VaultConfig(url, auth_method, auth_args)
+
+
+def config_acme(data, path):
+    from constellation import acme
+
+    if isinstance(path, str):
+        path = [path]
+    return acme.AcmeBuddyConfig(data, path)
+
+
+def config_string(data, path, is_optional=False, default=None):
+    return config_value(data, path, "string", is_optional, default)
+
+
+def config_integer(data, path, is_optional=False, default=None):
+    return config_value(data, path, "integer", is_optional, default)
+
+
+def config_boolean(data, path, is_optional=False, default=None):
+    return config_value(data, path, "boolean", is_optional, default)
+
+
+def config_dict(data, path, is_optional=False, default=None):
+    return config_value(data, path, "dict", is_optional, default)
+
+
+def config_dict_strict(data, path, keys, is_optional=False, default=None):
+    d = config_dict(data, path, is_optional)
+    if not d:
+        return default
+    if set(keys) != set(d.keys()):
+        msg = "Expected keys {} for {}".format(", ".join(keys), ":".join(path))
+        raise ValueError(msg)
+    for k, v in d.items():
+        if not isinstance(v, str):
+            msg = "Expected a string for {}".format(":".join([*path, k]))
+            raise ValueError(msg)
+    return d
+
+
+def config_list(data, path, is_optional=False, default=None):
+    return config_value(data, path, "list", is_optional, default)
+
+
+def config_enum(data, path, values, is_optional=False, default=None):
+    value = config_string(data, path, is_optional, default)
+    if value not in values:
+        msg = "Expected one of [{}] for {}".format(
+            ", ".join(values), ":".join(path)
+        )
+        raise ValueError(msg)
+    return value
+
+
+def config_image_reference(dat, path, name="name"):
+    if isinstance(path, str):
+        path = [path]
+    repo = config_string(dat, [*path, "repo"])
+    name = config_string(dat, [*path, name])
+    tag = config_string(dat, [*path, "tag"])
+    return ImageReference(repo, name, tag)
+
+
+def config_check_additional(options):
+    if "container_prefix" in options:
+        msg = "'container_prefix' may not be modified"
+        raise Exception(msg)
+
+
+def combine(base, extra):
+    """Combine exactly two dictionaries recursively, modifying the first
+    argument in place with the contets of the second"""
+    for k, v in extra.items():
+        if k in base and isinstance(base[k], dict) and v is not None:
+            combine(base[k], v)
+        else:
+            base[k] = v
+
+
+def collapse(options):
+    """Combine a list of dictionaries recursively, combining from left to
+    right so that later dictionaries override values in earlier ones"""
+    ret = {}
+    for o in options:
+        combine(ret, o)
+    return ret
+
+
+def parse_env_vars(data):
+    if isinstance(data, (dict, list)):
+        for k, v in data.items() if isinstance(data, dict) else enumerate(data):
+            if isinstance(v, (dict, list)):
+                data[k] = parse_env_vars(v)
+            if isinstance(v, str) and re.search("^\\$[0-9A-Z_]+$", v):
+                data[k] = get_envvar(v[1:])
+    return data
+
+
+def get_envvar(name):
+    try:
+        return os.environ[name]
+    except KeyError:
+        msg = f"Did not find env var '{name}'"
+        raise KeyError(msg) from None
