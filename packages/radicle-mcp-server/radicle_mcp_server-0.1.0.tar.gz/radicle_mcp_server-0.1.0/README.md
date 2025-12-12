@@ -1,0 +1,137 @@
+# Radicle MCP Server
+
+![PyPI version](https://img.shields.io/pypi/v/radicle-mcp-server)
+![PyPI license](https://img.shields.io/pypi/l/radicle-mcp-server)
+![Python versions](https://img.shields.io/pypi/pyversions/radicle-mcp-server)
+
+A Model Context Protocol (MCP) server for Radicle CLI with versioning support.
+
+## Features
+
+- **Version Detection**: Automatically detects Radicle CLI version at startup
+- **Version Management**: Supports semantic versioning with base definitions and incremental updates
+- **Command Validation**: Validates commands against version definitions
+- **Deprecation Handling**: Warns about deprecated/obsolete features
+- **Hybrid Tool Approach**: Dedicated tools for common commands + generic executor
+- **Error Handling**: Structured error responses with JSON output when possible
+
+## Supported Commands
+
+### Dedicated Tools
+The server automatically generates dedicated MCP tools for all Radicle commands and subcommands based on the installed version. For Radicle 1.5.0, this includes **71 dedicated tools**:
+
+**Main Commands:**
+- `rad_auth`, `rad_block`, `rad_checkout`, `rad_clean`, `rad_clone`
+- `rad_cob`, `rad_config`, `rad_follow`, `rad_fork`, `rad_help`
+- `rad_id`, `rad_inbox`, `rad_init`, `rad_inspect`, `rad_issue`
+- `rad_ls`, `rad_node`, `rad_patch`, `rad_path`, `rad_remote`
+- `rad_seed`, `rad_self`, `rad_stats`, `rad_sync`, `rad_unblock`
+- `rad_unfollow`, `rad_unseed`
+
+**Subcommand Examples:**
+- `rad_issue_open`, `rad_issue_list`, `rad_issue_show`, `rad_issue_edit`
+- `rad_patch_open`, `rad_patch_list`, `rad_patch_show`, `rad_patch_merge`
+- `rad_node_start`, `rad_node_stop`, `rad_node_status`, `rad_node_logs`
+- `rad_config_get`, `rad_config_set`, `rad_config_schema`
+- `rad_cob_create`, `rad_cob_show`, `rad_cob_update`, `rad_cob_log`
+
+### Generic Tool
+- `rad_execute`: Execute any rad command (fallback for unsupported commands)
+
+### Version Support
+- **Supported Versions**: 1.1.0, 1.2.0, 1.3.0, 1.4.0, 1.5.0
+- **Version Resolution**: Falls back to closest available version if exact match not found
+- **Warning System**: One-time warnings for version mismatches and deprecated features
+- **Dynamic Tool Generation**: Tools are generated based on the specific version's capabilities
+
+## Installation
+
+### PyPI (Recommended)
+```bash
+pip install radicle-mcp-server
+```
+
+### Development
+```bash
+# Clone the repository
+git clone <repository-url>
+
+# Install dependencies
+cd radicle-mcp-server
+uv sync
+```
+
+## Running the Server
+
+### Using Just (Recommended)
+```bash
+just run                    # Stdio transport (default)
+just run-http              # HTTP transport on localhost:8000
+```
+
+### Using UV Directly
+```bash
+uv run python -m src.server                    # Stdio transport
+uv run python -m src.server --transport http   # HTTP transport
+```
+
+## MCP Client Configuration
+
+### OpenCode
+Add to your MCP configuration:
+```json
+{
+  "mcpServers": {
+    "radicle": {
+      "command": "radicle-mcp-server"
+    }
+  }
+}
+```
+
+### Claude Desktop
+Add to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "radicle": {
+      "command": "radicle-mcp-server"
+    }
+  }
+}
+```
+
+### Development (from source)
+If you're developing from source, use:
+```json
+{
+  "mcpServers": {
+    "radicle": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "src.server"],
+      "cwd": "/path/to/radicle-mcp-server"
+    }
+  }
+}
+```
+
+## Usage
+
+The server provides MCP tools that can be used with any MCP-compatible client. It automatically detects the installed Radicle CLI version and adapts its behavior accordingly.
+
+## Development
+
+This project uses:
+- **FastMCP**: For MCP server implementation
+- **uv**: For dependency management
+- **Python 3.13+**: For modern type annotations
+
+## Versioning System
+
+The versioning system uses YAML definitions stored in `src/definitions/`:
+
+- `radicle-1.1.0.yaml` through `radicle-1.5.0.yaml`: Complete command definitions for each version
+- `schema.py`: Validation schema and data structures
+- Each version file contains all available commands, subcommands, options, and examples
+
+This design allows for efficient handling of semantic versioning while maintaining backward compatibility.
