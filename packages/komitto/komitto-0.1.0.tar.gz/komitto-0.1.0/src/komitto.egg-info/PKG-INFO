@@ -1,0 +1,91 @@
+Metadata-Version: 2.4
+Name: komitto
+Version: 0.1.0
+Summary: A CLI tool that generates semantic Japanese commit message prompts for LLMs from Git diff information.
+Author: mxcake
+License: MIT License
+        
+        Copyright (c) 2025 MXCAKE
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/mxcake3893/komitto
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pyperclip
+Dynamic: license-file
+
+# komitto(コミット)
+
+`git diff`の情報から、セマンティックな日本語のコミットメッセージプロンプトを生成するためのCLIツールです。生成されたプロンプトは自動的にクリップボードにコピーされ、LLMに貼り付けることで、コミットメッセージを作成できます。
+
+## 主な機能
+
+- ステージングされた変更（`git diff --staged`）を解析
+- 変更内容をLLMが理解しやすいXML形式に変換
+- コミットメッセージ生成用のシステムプロンプトと結合
+- 生成された最終的なプロンプトをクリップボードにコピー
+- 変更に関する追加のコンテキスト（補足情報）をコマンドライン引数で付与する機能
+
+## インストール
+
+```bash
+pip install .
+```
+
+もし開発用にインストールする場合は、以下のコマンドを使用してください。
+
+```bash
+pip install -e .
+```
+
+## 使い方
+
+1.  リポジトリで変更を行い、`git add`でファイルをステージングします。
+
+    ```bash
+    git add <変更したファイル>
+    ```
+
+2.  `komitto`コマンドを実行します。
+
+    ```bash
+    komitto
+    ```
+
+3.  `✅ プロンプトをクリップボードにコピーしました！` と表示されたら、お使いのLLMのインターフェースにプロンプトを貼り付けてください。
+
+### 追加コンテキストを渡す
+
+変更の意図や特記事項など、プロンプトに含めたい補足情報がある場合は、引数として渡すことができます。
+
+```bash
+komitto "この変更は緊急のバグ修正です"
+```
+
+## 仕組み
+
+1.  `git diff --staged` を実行し、ステージングされたファイルの差分を取得します。
+2.  差分情報を、ファイルパス、関数/クラス名、変更の種類（追加、修正、削除）などを含む構造化されたXML形式に変換します。
+3.  あらかじめ定義されたシステムプロンプト、ユーザーが指定した追加コンテキスト、XML形式の差分情報を結合して、最終的なプロンプTプを生成します。
+4.  生成されたプロンプトをクリップボードにコピーします。
