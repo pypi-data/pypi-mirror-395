@@ -1,0 +1,495 @@
+"""
+MCPStore Base Context Module
+Core context classes and basic functionality
+"""
+
+import logging
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
+
+from .agent_service_mapper import AgentServiceMapper
+from .tool_transformation import get_transformation_manager
+from ..performance import get_performance_optimizer
+from ..integration.openapi_integration import get_openapi_manager
+from mcpstore.extensions.monitoring import MonitoringManager
+from mcpstore.extensions.monitoring.analytics import get_monitoring_manager
+from ..utils.async_sync_helper import get_global_helper
+
+# Create logger instance
+logger = logging.getLogger(__name__)
+
+from .types import ContextType
+
+if TYPE_CHECKING:
+    from ...adapters.langchain_adapter import LangChainAdapter
+    from ..configuration.unified_config import UnifiedConfigManager
+
+
+
+# Import mixin classes
+from .service_operations import ServiceOperationsMixin
+from .tool_operations import ToolOperationsMixin
+from .service_management import ServiceManagementMixin
+from .session_management import SessionManagementMixin
+from .advanced_features import AdvancedFeaturesMixin
+from .resources_prompts import ResourcesPromptsMixin
+from .agent_statistics import AgentStatisticsMixin
+from .service_proxy import ServiceProxy
+from .internal.context_kernel import create_kernel
+from .store_proxy import StoreProxy
+
+class MCPStoreContext(
+    ServiceOperationsMixin,
+    ToolOperationsMixin,
+    ServiceManagementMixin,
+    SessionManagementMixin,
+    AdvancedFeaturesMixin,
+    ResourcesPromptsMixin,
+    AgentStatisticsMixin
+):
+    """
+    MCPStore context class
+    Responsible for handling specific business operations and maintaining operational context environment
+    """
+    def __init__(self, store: 'MCPStore', agent_id: Optional[str] = None):
+        self._store = store
+        self._agent_id = agent_id
+        self._context_type = ContextType.STORE if agent_id is None else ContextType.AGENT
+
+        # Async/sync compatibility helper
+        self._sync_helper = get_global_helper()
+
+        # Initialize wait strategy for service operations
+        from .service_operations import AddServiceWaitStrategy
+        self.wait_strategy = AddServiceWaitStrategy()
+
+        # Initialize session management
+        SessionManagementMixin.__init__(self)
+
+        # New feature manager
+        self._transformation_manager = get_transformation_manager()
+        self._openapi_manager = get_openapi_manager()
+        self._performance_optimizer = get_performance_optimizer()
+        self._monitoring_manager = get_monitoring_manager()
+
+        # Monitoring manager - unified behavior for both branches
+        from pathlib import Path
+        if hasattr(self._store, '_data_space_manager') and self._store._data_space_manager:
+            # Use data space manager path - consistent with fallback branch
+            workspace_dir = self._store._data_space_manager.workspace_dir
+            data_dir = workspace_dir / "monitoring"
+        else:
+            # Use default path (backward compatibility)
+            config_dir = Path(self._store.config.json_path).parent
+            data_dir = config_dir / "monitoring"
+
+        self._monitoring = MonitoringManager(
+            data_dir,
+            self._store.tool_record_max_file_size,
+            self._store.tool_record_retention_days
+        )
+
+        # Agent service name mapper
+        # global_agent_store does not use service mapper as it uses original service names
+        if agent_id and agent_id != "global_agent_store":
+            self._service_mapper = AgentServiceMapper(agent_id)
+        else:
+            self._service_mapper = None
+
+        # Extension reserved
+        self._metadata: Dict[str, Any] = {}
+        self._config: Dict[str, Any] = {}
+        self._cache: Dict[str, Any] = {}
+        # Per-tool overrides (e.g., flags consumed by adapters like LangChain)
+        # Keyed by "{service_name}:{tool_name}" -> { flag_name: value }
+        self._tool_overrides: Dict[str, Dict[str, Any]] = {}
+
+        # Phase 1: internal kernel for read paths (no external API change)
+        try:
+            self._kernel = create_kernel(self)
+        except Exception:
+            self._kernel = None
+
+    # ---- Objectified entries ----
+    def for_store(self) -> 'StoreProxy':
+        """Return StoreProxy for objectified store-view."""
+        return StoreProxy(self)
+
+    def find_agent(self, agent_id: str) -> 'AgentProxy':
+        """
+        Find agent proxy with unified caching.
+
+        Uses the centralized AgentProxy caching system to ensure that the same
+        agent_id always returns the same AgentProxy instance across all access
+        methods in the MCPStore.
+
+        Args:
+            agent_id: Unique identifier for the agent
+
+        Returns:
+            AgentProxy: Cached or newly created AgentProxy instance
+        """
+        # Use unified AgentProxy caching system from the store
+        return self._store._get_or_create_agent_proxy(self, agent_id)
+
+    def for_langchain(self, response_format: str = "text") -> 'LangChainAdapter':
+        """Return a LangChain adapter. If a session is active (within with_session),
+        return a session-aware adapter bound to that session; otherwise return the
+        standard context adapter.
+
+        Args:
+            response_format: Adapter-only rendering mode for tool outputs. Supported:
+                - "text" (default): Return merged TextContent as string
+                - "content_and_artifact": Return dict {"text": str, "artifacts": list}
+        """
+        # Avoid top-level import cycles
+        from ...adapters.langchain_adapter import LangChainAdapter, SessionAwareLangChainAdapter
+
+        active = getattr(self, "_active_session", None)
+        if active is not None and getattr(active, "is_active", False):
+            # Implicit session routing: with_session scope auto-binds LangChain tools
+            return SessionAwareLangChainAdapter(self, active, response_format=response_format)
+
+        return LangChainAdapter(self, response_format=response_format)
+
+    def for_llamaindex(self) -> 'LlamaIndexAdapter':
+        """Return a LlamaIndex adapter (FunctionTool) for MCP tools."""
+        from ...adapters.llamaindex_adapter import LlamaIndexAdapter
+        return LlamaIndexAdapter(self)
+
+    def for_crewai(self) -> 'CrewAIAdapter':
+        """Return a CrewAI adapter that reuses LangChain tools for compatibility."""
+        from ...adapters.crewai_adapter import CrewAIAdapter
+        return CrewAIAdapter(self)
+
+    def for_langgraph(self, response_format: str = "text") -> 'LangGraphAdapter':
+        """Return a LangGraph adapter that reuses LangChain tools.
+        Args:
+            response_format: Same as for_langchain(); forwarded to LangChain adapter.
+        """
+        from ...adapters.langgraph_adapter import LangGraphAdapter
+        return LangGraphAdapter(self, response_format=response_format)
+
+    def for_autogen(self) -> 'AutoGenAdapter':
+        """Return an AutoGen adapter that produces Python functions for registration."""
+        from ...adapters.autogen_adapter import AutoGenAdapter
+        return AutoGenAdapter(self)
+
+    def for_semantic_kernel(self) -> 'SemanticKernelAdapter':
+        """Return a Semantic Kernel adapter that produces native function callables."""
+        from ...adapters.semantic_kernel_adapter import SemanticKernelAdapter
+        return SemanticKernelAdapter(self)
+
+    def for_openai(self) -> 'OpenAIAdapter':
+        """Return an OpenAI adapter that produces OpenAI function calling format tools."""
+        from ...adapters.openai_adapter import OpenAIAdapter
+        return OpenAIAdapter(self)
+
+    # === Hub Services Extension ===
+
+    def hub_services(self) -> 'HubServicesBuilder':
+        """
+        Create Hub services packaging builder
+
+        Packages cached services in current context as independent Hub service processes.
+        Based on existing service data without new service registration.
+
+        Returns:
+            HubServicesBuilder: Hub services builder with chainable method calls
+
+        Example:
+            # Store-level Hub
+            hub = store.for_store().hub_services()\\
+                .with_name("global-hub")\\
+                .with_description("Global services hub")\\
+                .build()
+
+            # Agent-level Hub
+            hub = store.for_agent("team1").hub_services()\\
+                .with_name("team-hub")\\
+                .filter_services(category="api")\\
+                .build()
+        """
+        from mcpstore.extensions.hub.builder import HubServicesBuilder
+        return HubServicesBuilder(self, self._context_type.value, self._agent_id)
+
+    def hub_tools(self) -> 'HubToolsBuilder':
+        """
+        Create Hub tools packaging builder
+
+        Packages tools at tool level as Hub services.
+        Note: This feature is a placeholder implementation in current version,
+        full functionality will be available in later versions.
+
+        Returns:
+            HubToolsBuilder: Hub tools builder
+
+        Raises:
+            NotImplementedError: Feature not implemented in current version
+        """
+        from mcpstore.extensions.hub.builder import HubToolsBuilder
+        return HubToolsBuilder(self, self._context_type.value, self._agent_id)
+
+    def find_service(self, service_name: str) -> 'ServiceProxy':
+        """
+        Find specified service and return service proxy object
+
+        Further narrows scope to specific service, providing all operation methods
+        for that service.
+
+        Args:
+            service_name: Service name
+
+        Returns:
+            ServiceProxy: Service proxy object containing all operation methods for the service
+
+        Example:
+            # Store-level usage
+            weather_service = store.for_store().find_service('weather')
+            weather_service.service_info()      # Get service details
+            weather_service.list_tools()       # List tools
+            weather_service.check_health()     # Check health status
+
+            # Agent-level usage
+            demo_service = store.for_agent('demo1').find_service('service1')
+            demo_service.service_info()        # Get service details
+            demo_service.restart_service()     # Restart service
+        """
+        from .service_proxy import ServiceProxy
+        try:
+            effective = service_name
+            if self._context_type == ContextType.AGENT and getattr(self, '_service_mapper', None):
+                effective = self._service_mapper.to_global_name(service_name)
+            logger.info(f"[FIND_SERVICE] context={self._context_type.name} agent_id={self._agent_id} input='{service_name}' effective='{effective}'")
+        except Exception as e:
+            logger.warning(f"[FIND_SERVICE] mapping_info_failed name='{service_name}' error={e}")
+        return ServiceProxy(self, service_name)
+
+    def find_tool(self, tool_name: str) -> 'ToolProxy':
+        """
+        Find specified tool and return tool proxy object
+
+        Search for tools within current context scope:
+        - Store context: Search tools from all global services
+        - Agent context: Search tools from all services of that Agent
+
+        Args:
+            tool_name: Tool name
+
+        Returns:
+            ToolProxy: Tool proxy object containing all operation methods for the tool
+
+        Example:
+            # Store-level usage
+            weather_tool = store.for_store().find_tool('get_current_weather')
+            weather_tool.tool_info()        # Get tool details
+            weather_tool.call_tool({...})   # Call tool
+            weather_tool.usage_stats()      # Usage statistics
+
+            # Agent-level usage
+            demo_tool = store.for_agent('demo1').find_tool('search_tool')
+            demo_tool.tool_info()           # Get tool details
+            demo_tool.test_call({...})      # Test call
+        """
+        from .tool_proxy import ToolProxy
+        return ToolProxy(self, tool_name, scope='context')
+
+    @property
+    def context_type(self) -> ContextType:
+        """Get context type"""
+        return self._context_type
+
+    @property
+    def agent_id(self) -> Optional[str]:
+        """Get current agent_id"""
+        return self._agent_id
+
+    def get_unified_config(self) -> 'UnifiedConfigManager':
+        """Get unified configuration manager
+
+        Returns:
+            UnifiedConfigManager: Unified configuration manager instance
+        """
+        return self._store._unified_config
+
+    def setup_config(self) -> Dict[str, Any]:
+        """Return a read-only snapshot of setup-time configuration.
+
+        This reflects the effective configuration used during MCPStore.setup_store().
+        The snapshot includes:
+        - mcp_json: Path to mcp.json configuration file
+        - debug_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF)
+        - static_config: Static configuration dict (monitoring, network, features, etc.)
+        - cache_config: Cache configuration object (MemoryConfig or RedisConfig)
+
+        Returns:
+            Dict[str, Any]: Configuration snapshot dictionary
+        """
+        from copy import deepcopy
+        snap = getattr(self._store, "_setup_snapshot", None)
+        if isinstance(snap, dict):
+            return deepcopy(snap)
+        # Fallback minimal snapshot
+        try:
+            lvl = logging.getLogger().getEffectiveLevel()
+            level_name = (
+                "DEBUG" if lvl <= logging.DEBUG else
+                "INFO" if lvl <= logging.INFO else
+                "WARNING" if lvl <= logging.WARNING else
+                "ERROR" if lvl <= logging.ERROR else
+                "CRITICAL" if lvl <= logging.CRITICAL else "OFF"
+            )
+        except Exception:
+            level_name = "OFF"
+        return {
+            "mcp_json": getattr(self._store.config, "json_path", None),
+            "debug_level": level_name,
+            "static_config": {}
+        }
+
+    # === Monitoring and statistics functionality ===
+
+    def record_api_call(self, response_time: float):
+        """Record API call"""
+        self._monitoring.record_api_call(response_time)
+
+    def increment_active_connections(self):
+        """Increment active connection count"""
+        self._monitoring.increment_active_connections()
+
+    def decrement_active_connections(self):
+        """Decrement active connection count"""
+        self._monitoring.decrement_active_connections()
+
+    def get_tool_records(self, limit: int = 50) -> Dict[str, Any]:
+        """Get tool execution records"""
+        return self._monitoring.get_tool_records(limit)
+
+    async def get_tool_records_async(self, limit: int = 50) -> Dict[str, Any]:
+        """Asynchronously get tool execution records"""
+        return self.get_tool_records(limit)
+
+    # === Internal helper methods ===
+
+    def _tool_override_key(self, service_name: str, tool_name: str) -> str:
+        """Compose stable key for tool overrides."""
+        service_safe = service_name or ""
+        return f"{service_safe}:{tool_name}"
+
+    def _set_tool_override(self, service_name: str, tool_name: str, flag: str, value: Any) -> None:
+        """Set an override flag for a specific tool.
+
+        Args:
+            service_name: The service that provides the tool (agent-local or global depending on context view)
+            tool_name: Tool name as exposed by current context's tools view
+            flag: Override flag name, e.g., "return_direct"
+            value: Override value
+        """
+        try:
+            key = self._tool_override_key(service_name, tool_name)
+            if key not in self._tool_overrides:
+                self._tool_overrides[key] = {}
+            self._tool_overrides[key][flag] = value
+            logger.debug(f"[TOOL_OVERRIDE] set {flag}={value} for {key}")
+        except Exception as e:
+            logger.warning(f"[TOOL_OVERRIDE] failed to set override for {service_name}:{tool_name} flag={flag}: {e}")
+
+    def _get_tool_override(self, service_name: str, tool_name: str, flag: str, default: Any = None) -> Any:
+        """Get an override flag value for a tool, or default if not set."""
+        try:
+            key = self._tool_override_key(service_name, tool_name)
+            return self._tool_overrides.get(key, {}).get(flag, default)
+        except Exception:
+            return default
+
+    def _get_all_tool_overrides(self) -> Dict[str, Dict[str, Any]]:
+        """Return a snapshot of all tool overrides."""
+        return dict(self._tool_overrides)
+
+    def _get_available_services(self) -> List[str]:
+        """Get available service list"""
+        try:
+            if self._context_type == ContextType.STORE:
+                services = self._store.for_store().list_services()
+            else:
+                services = self._store.for_agent(self._agent_id).list_services()
+            names: List[str] = []
+            for service in services or []:
+                if isinstance(service, dict):
+                    name = service.get("name")
+                    if isinstance(name, str):
+                        names.append(name)
+                else:
+                    try:
+                        n = getattr(service, "name", None)
+                        if isinstance(n, str):
+                            names.append(n)
+                    except Exception:
+                        pass
+            return names
+        except Exception:
+            return []
+
+    def _extract_original_tool_name(self, display_name: str, service_name: str) -> str:
+        """
+        Extract original tool name from display name
+
+        Args:
+            display_name: Display name (e.g., "weather-api_get_weather")
+            service_name: Service name (e.g., "weather-api")
+
+        Returns:
+            str: Original tool name (e.g., "get_weather")
+        """
+        # Remove service name prefix
+        if display_name.startswith(f"{service_name}_"):
+            return display_name[len(service_name) + 1:]
+        elif display_name.startswith(f"{service_name}__"):
+            return display_name[len(service_name) + 2:]
+        else:
+            return display_name
+
+    def _cleanup_reconnection_queue_for_client(self, client_id: str):
+        """Clean up reconnection queue entries related to specified client"""
+        try:
+            # Find all reconnection entries related to this client
+            if hasattr(self._store.orchestrator, 'smart_reconnection') and self._store.orchestrator.smart_reconnection:
+                reconnection_manager = self._store.orchestrator.smart_reconnection
+
+                # Get all reconnection entries
+                all_entries = reconnection_manager.entries.copy()
+
+                # Find entries to be cleaned up
+                entries_to_remove = []
+                for service_key, entry in all_entries.items():
+                    if entry.client_id == client_id:
+                        entries_to_remove.append(service_key)
+
+                # Remove entries
+                for service_key in entries_to_remove:
+                    reconnection_manager.remove_service(service_key)
+                    logger.debug(f"Removed reconnection entry for {service_key}")
+
+        except Exception as e:
+            logger.warning(f"Failed to cleanup reconnection queue for client {client_id}: {e}")
+
+    def _create_validation_function(self, rule: Dict[str, Any]) -> callable:
+        """Create validation function"""
+        def validate(value):
+            if "min_length" in rule and len(str(value)) < rule["min_length"]:
+                raise ValueError(f"Value too short, minimum length: {rule['min_length']}")
+            if "max_length" in rule and len(str(value)) > rule["max_length"]:
+                raise ValueError(f"Value too long, maximum length: {rule['max_length']}")
+            if "pattern" in rule:
+                import re
+                if not re.match(rule["pattern"], str(value)):
+                    raise ValueError(f"Value doesn't match pattern: {rule['pattern']}")
+        return validate
+
+    def _extract_service_name(self, tool_name: str) -> str:
+        """Extract service name from tool name"""
+        if "_" in tool_name:
+            return tool_name.split("_")[0]
+        elif "__" in tool_name:
+            return tool_name.split("__")[0]
+        else:
+            return ""
