@@ -1,0 +1,259 @@
+import logging
+import os
+from typing import Any, cast
+import numpy as np
+from PySide6 import QtWidgets, QtCore  # type: ignore
+from astropy.io import fits
+from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+
+os.environ["QT_API"] = "PySide6"
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from qfitswidget import QFitsWidget  # type: ignore
+
+from pyobs.comm import Proxy
+from pyobs.events import NewImageEvent, NewSpectrumEvent, Event
+from pyobs.interfaces import IData, ISpectrograph
+from pyobs.utils.enums import ImageType
+from pyobs.vfs import VirtualFileSystem
+from .base import BaseWidget
+from .qt.datadisplaywidget_ui import Ui_DataDisplayWidget
+
+log = logging.getLogger(__name__)
+
+
+class DataDisplayWidget(BaseWidget, Ui_DataDisplayWidget):
+    signal_update_gui = QtCore.Signal()
+
+    def __init__(self, parent: Any, **kwargs: Any):
+        BaseWidget.__init__(self, **kwargs)
+        self.setupUi(self)  # type: ignore
+
+        # variables
+        self.new_data = False
+        self.data_filename: str | None = None
+        self.data: fits.HDUList | None = None
+        self.imageLayout: QtWidgets.QVBoxLayout | None = None
+        self.imageView: QFitsWidget | None = None
+        self.figure: Figure | None = None
+        self.ax: Axes | None = None
+        self.canvas: FigureCanvas | None = None
+        self.plotTools: NavigationToolbar2QT | None = None
+
+        # before first update, disable mys
+        self.setEnabled(False)
+
+        # set headers for fits header tab
+        self.tableFitsHeader.setColumnCount(3)
+        self.tableFitsHeader.setHorizontalHeaderLabels(["Key", "Value", "Comment"])
+
+        # connect signals
+        self.signal_update_gui.connect(self.update_gui)
+        self.checkAutoSave.stateChanged.connect(lambda x: self.textAutoSavePath.setEnabled(x))
+        self.butAutoSave.clicked.connect(self.select_autosave_path)
+        self.butSaveTo.clicked.connect(self.save_data)
+
+    async def open(self, **kwargs: Any) -> None:  # type: ignore
+        """Open module."""
+        await BaseWidget.open(self, **kwargs)
+
+        # add image panel
+        self.imageLayout = QtWidgets.QVBoxLayout(self.tabImage)
+        if isinstance(self.module, ISpectrograph):
+            self.figure, self.ax = plt.subplots()
+            self.canvas = FigureCanvas(self.figure)
+            self.plotTools = NavigationToolbar2QT(self.canvas, self.tabImage)
+            self.imageLayout.addWidget(self.plotTools)
+            self.imageLayout.addWidget(self.canvas)
+        elif isinstance(self.module, IData):
+            self.imageView = QFitsWidget()
+            self.imageLayout.addWidget(self.imageView)
+        else:
+            raise ValueError("Unknown type")
+
+        # subscribe to events
+        if self.comm is not None:
+            await self.comm.register_event(NewImageEvent, self._on_new_data)
+            await self.comm.register_event(NewSpectrumEvent, self._on_new_data)
+
+    async def grab_data(self, broadcast: bool, image_type: ImageType = ImageType.OBJECT) -> None:
+        """Grab data."""
+        module = self.module
+
+        # expose
+        if isinstance(module, IData):
+            filename = await module.grab_data(broadcast=broadcast)
+        else:
+            raise ValueError("Unknown type")
+
+        # if we're not broadcasting the filename, we need to signal it manually
+        if not broadcast:
+            if isinstance(module, ISpectrograph):
+                await self._on_new_data(NewSpectrumEvent(filename), cast(Proxy, cast(object, module)).name)
+            elif isinstance(module, IData):
+                await self._on_new_data(NewImageEvent(filename, image_type), cast(Proxy, cast(object, module)).name)
+            else:
+                raise ValueError("Unknown type")
+
+        # signal GUI update
+        self.signal_update_gui.emit()
+
+    def plot(self) -> None:
+        """Show data."""
+        if self.data is None:
+            return
+
+        if isinstance(self.module, ISpectrograph):
+            self._plot_spectrum()
+        elif isinstance(self.module, IData) and self.imageView is not None:
+            self.imageView.display(self.data[0])
+
+    def _plot_spectrum(self) -> None:
+        """Plot spectrum."""
+        if self.data is None:
+            return
+
+        # get shortcuts
+        hdr = self.data[0].header
+        data = self.data[0].data
+
+        # build wavelength array
+        wave = np.arange(hdr["CRVAL1"], hdr["CRVAL1"] + hdr["CDELT1"] * hdr["NAXIS1"], hdr["CDELT1"])
+
+        # plot it
+        if self.figure is not None and self.ax is not None and self.canvas is not None:
+            self.figure.delaxes(self.ax)
+            self.ax = self.figure.add_subplot(111)
+            self.ax.plot(wave, data)
+            self.canvas.draw()
+
+    def update_gui(self) -> None:
+        """Update the GUI."""
+
+        # enable myself
+        self.setEnabled(True)
+
+        # trigger image update
+        if self.new_data and self.data_filename is not None:
+            # set filename
+            self.tabWidget.setTabText(0, os.path.basename(self.data_filename))
+
+            # plot image
+            self.plot()
+
+            # set fits headers
+            self.show_fits_headers()
+
+            # reset
+            self.new_data = False
+
+    def show_fits_headers(self) -> None:
+        if self.data is None:
+            return
+
+        # get all header cards
+        headers = {}
+        for card in self.data[0].header.cards:
+            headers[card.keyword] = (card.value, card.comment)
+
+        # prepare table
+        self.tableFitsHeader.setRowCount(len(headers))
+
+        # set headers
+        for i, key in enumerate(sorted(headers.keys())):
+            self.tableFitsHeader.setItem(i, 0, QtWidgets.QTableWidgetItem(key))
+            self.tableFitsHeader.setItem(i, 1, QtWidgets.QTableWidgetItem(str(headers[key][0])))
+            self.tableFitsHeader.setItem(i, 2, QtWidgets.QTableWidgetItem(headers[key][1]))
+
+        # adjust column widths
+        self.tableFitsHeader.resizeColumnToContents(0)
+        self.tableFitsHeader.resizeColumnToContents(1)
+
+    async def _on_new_data(self, event: Event, sender: str) -> bool:
+        """Called when new image is ready.
+
+        Args:
+            event: Status change event.
+            sender: Name of sender.
+        """
+
+        # ignore events from wrong sender
+        if sender != self.module.name:
+            return False
+
+        # wrong type
+        if not isinstance(event, NewImageEvent) and not isinstance(event, NewSpectrumEvent):
+            return False
+
+        # don't update?
+        if not self.checkAutoUpdate.isChecked():
+            return False
+
+        # autosave?
+        autosave = self.textAutoSavePath.text() if self.checkAutoSave.isChecked() else None
+
+        # download data
+        if self.vfs is None or not isinstance(self.vfs, VirtualFileSystem):
+            return False
+        data = await self.vfs.read_fits(event.filename)
+
+        # auto save?
+        if autosave is not None:
+            # get path and check
+            if not os.path.exists(autosave):
+                log.warning("Invalid path for auto-saving.")
+
+            else:
+                # save image
+                filename = os.path.join(
+                    autosave,
+                    os.path.basename(event.filename.replace(".fits.gz", ".fits")),
+                )
+                log.info("Saving image as %s...", filename)
+                data.writeto(filename, overwrite=True)
+
+        # store image and filename
+        self.data = data
+        self.data_filename = event.filename
+        self.new_data = True
+
+        # show image
+        self.update_gui()
+
+        # finish
+        return True
+
+    @QtCore.Slot()  # type: ignore
+    def select_autosave_path(self) -> None:
+        """Select path for auto-saving."""
+
+        # ask for path
+        path = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
+
+        # set it
+        if path:
+            self.textAutoSavePath.setText(path)
+        else:
+            self.textAutoSavePath.clear()
+
+    @QtCore.Slot()  # type: ignore
+    def save_data(self) -> None:
+        """Save image."""
+
+        # no image?
+        if self.data is None or self.data_filename is None:
+            return
+
+        # get initial filename
+        init_filename = os.path.basename(self.data_filename).replace(".fits.gz", ".fits")
+
+        # ask for filename
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Save image", init_filename, "FITS Files (*.fits *.fits.gz)"
+        )
+
+        # save
+        if filename:
+            self.data.writeto(filename, overwrite=True)
