@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=65.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wr-cloner"
+# Make sure this matches the description in GitHub, in the README.md and in the cli.
+description = "A tool to clone efficiently all the repos in an organization"
+readme = "README.md"
+authors = [{ "name" = "w0rmr1d3r" }]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: System",
+]
+# Make sure this matches the keywords in GitHub
+keywords = ["github", "python", "git", "clone", "organization", "multiprocessing", "multithreading", "python3"]
+# Make sure this matches the version in __version__.py
+# If major increases, update SECURITY.md
+version = "1.10.1"
+# Supported Python 3.9 and above
+# If supporting newer versions, update ->  CI & classifiers
+# If minimum version supported changes, update -> CI, classifiers & publish-release
+requires-python = ">=3.9.0"
+
+# Always try to be compatible with these versions and above
+dependencies = [
+    "click>=8.0.3",
+    "requests>=2.27.1"
+]
+
+[project.optional-dependencies]
+# Always try to be compatible with these versions and above
+dev = [
+    "coverage>=6.3.2",
+    "faker>=12.0.1",
+    "pip-tools>=6.5.0",
+    "pytest>=6.2.5",
+    "responses>=0.20.0",
+    "ruff==0.9.2" # still in 0.x introducing breaking changes
+]
+build = [
+    "build~=1.0"
+]
+
+[project.scripts]
+cloner = "cloner.cli:cli"
+
+[project.urls]
+"Homepage" = "https://github.com/w0rmr1d3r/cloner"
+"Repository" = "https://github.com/w0rmr1d3r/cloner"
+"Bug Tracker" = "https://github.com/w0rmr1d3r/cloner/issues"
+"Documentation" = "https://github.com/w0rmr1d3r/cloner"
+"Changelog" = "https://github.com/w0rmr1d3r/cloner/releases"
+"Funding" = "https://github.com/sponsors/w0rmr1d3r"
+
+[tool.setuptools]
+packages = ["cloner"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E", # default - pycodestyle error
+    "F", # default - pyflakes
+    "FIX", #flake8-fixme
+    "I", # isort
+    "RUF", # ruff specific rules
+    "D", # pydocstyle
+    "PL", # pylint - not 100% implemented, see: https://github.com/astral-sh/ruff/issues/970
+]
+
+ignore = [
+    "D100", # docstring in public module - does not yet apply
+    "D104", # docstring in public package - does not yet apply
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in `__init__`
+    "D203", # incorrect-blank-line-before-class - in favor of D211 no-blank-line-before-class
+    "D212", # multi-line-summary-first-line - in favor of D213 multi-line-summary-second-line
+    "D401", # First line of docstring should be in imperative mood
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+preview = true
+
+[tool.ruff.lint.per-file-ignores]
+"*test*.py" = [
+    "D", # ignore all docstring lints in tests
+    "PLR2004", # ignore magic numbers rule in tests
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+docstring-code-format = true
+
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = 90
