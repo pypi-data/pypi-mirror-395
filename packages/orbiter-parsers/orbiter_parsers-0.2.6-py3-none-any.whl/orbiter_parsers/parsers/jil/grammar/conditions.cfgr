@@ -1,0 +1,97 @@
+# https://lark-parser.readthedocs.io/en/latest/_static/lark_cheatsheet.pdf
+# https://lark-parser.readthedocs.io/en/latest/grammar.html
+# https://www.lark-parser.org/ide/
+# https://techdocs.broadcom.com/us/en/ca-enterprise-software/intelligent-automation/autosys-workload-automation/12-0-01/reference/ae-job-information-language/jil-job-definitions/condition-attribute-define-starting-conditions-for-a-job.html
+
+# --------- CONDITIONS -----------
+start: cond?
+
+cond: any_status
+    | and_cond
+    | or_cond
+
+any_status.9: status_cond
+    | status_cond_lookback
+    | exitcode_cond
+    | exitcode_cond_lookback
+    | value_cond
+
+status_cond: status _LPAREN object_name _RPAREN
+status_cond_lookback: status _LPAREN object_name lookback _RPAREN
+status: STATUS_DONE | STATUS_FAILURE | STATUS_NOTRUNNING | STATUS_SUCCESS | STATUS_TERMINATED
+STATUS_DONE: "Done"i | "d"
+STATUS_FAILURE: "Failure"i | "f"
+STATUS_NOTRUNNING: "Notrunning"i | "n"
+STATUS_SUCCESS: "Success"i | "s"
+STATUS_TERMINATED: "Terminated"i | "t"
+
+and_cond: ungrouped_and | grouped_and
+ungrouped_and: any_status (_COND_AND any_status)+
+             | cond _COND_AND cond
+grouped_and: (_LPAREN ungrouped_and _RPAREN)
+_COND_AND: "AND" | "&"
+
+or_cond: ungrouped_or | grouped_or
+ungrouped_or: any_status (_COND_OR any_status)+
+             | cond _COND_OR cond
+grouped_or: (_LPAREN ungrouped_or _RPAREN)
+_COND_OR: "OR" | "|"
+
+lookback: lookback_hhhh
+        | lookback_period_hhhh_mm
+        | lookback_colon_hhhh_mm
+lookback_hhhh: _COMMA DIGITS
+lookback_period_hhhh_mm: _COMMA DIGITS _PERIOD DIGITS
+lookback_colon_hhhh_mm: _COMMA DIGITS _ESCAPED_COLON DIGITS
+
+exitcode_cond: _EXITCODE _LPAREN object_name _RPAREN OP object_name
+exitcode_cond_lookback: _EXITCODE _LPAREN object_name lookback _RPAREN OP object_name
+OP: "="
+  | "!="
+  | "<"
+  | ">"
+  | ">="
+  | "<="
+_EXITCODE: "EXITCODE"i
+
+value_cond: _VALUE _LPAREN object_name _RPAREN OP object_name
+_VALUE: "VALUE"i
+
+# Object names can only contain the following characters:
+# a-z, A-Z, 0-9, period (.), underscore (_), hyphen (-), and pound (#).
+# !note: added ^ for cross-instance
+object_name: OBJECT_NAME_CHAR+
+OBJECT_NAME_CHAR: /[-\w\d\._^#]+/
+
+# --------- CHARS -----------
+_LPAREN: "("
+_RPAREN: ")"
+_COMMA: ","
+_PERIOD: "."
+
+_ESCAPED_COLON.99: "\:"
+_DQUOTE.99: "\""
+
+DIGITS: DIGIT+
+
+# Import commmon grammar rules
+%import common.LETTER         -> LETTER
+%import common.DIGIT          -> DIGIT
+%import common.CNAME          -> NAME
+
+# --------- IGNORE -----------
+# Ignore whitespace within lines
+# (we need newlines to know if we are in the middle of something or not)
+%import common.WS_INLINE      -> WS_INLINE
+%ignore WS_INLINE
+
+# %ignore SPACE
+
+%import common.NEWLINE        -> NEWLINE
+%ignore NEWLINE
+
+# Ignore comments
+%import common.SH_COMMENT     -> SH_COMMENT
+%import common.C_COMMENT      -> C_COMMENT
+%ignore SH_COMMENT
+%ignore C_COMMENT
