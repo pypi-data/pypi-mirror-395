@@ -1,0 +1,191 @@
+Metadata-Version: 2.4
+Name: mcp-server-stdio
+Version: 0.1.6
+Summary: MCP Server for Claude / Stdio transport
+Requires-Python: >=3.10
+Requires-Dist: fastmcp>=2.13.1
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: keyring>=25.7.0
+Requires-Dist: mcp>=1.21.2
+Requires-Dist: python-dotenv>=1.2.1
+Requires-Dist: python-json-logger>=4.0.0
+Requires-Dist: starlette>=0.50.0
+Description-Content-Type: text/markdown
+
+# Billing Service MCP Server
+
+A Model Context Protocol (MCP) server that exposes billing information from your StackBill API.
+
+## Setup
+
+### Prerequisites
+- Python 3.14+
+- `uv` package manager (or `pip`)
+
+### Installation
+
+```bash
+# Install dependencies
+uv pip install -r requirements.txt
+```
+
+Or if using pip directly:
+```bash
+pip install fastmcp httpx
+```
+
+## Running the Server (stdio transport)
+
+This project now runs as an MCP stdio server (MCP messages over stdin/stdout). Start the server with:
+
+```bash
+python -m app.main
+```
+
+The server communicates over standard input/output and is intended to be launched by an MCP-capable client (for example, a desktop assistant or a tool runner that spawns the process and talks MCP over stdio). If you previously used `mcp-inspector` or other HTTP-based tools, note that those expect an HTTP endpoint; for stdio you should configure your MCP client to execute the command above.
+
+For Claude Desktop or a similar client that accepts a command, use the configuration example in the "Configuration" section below to point the client at this process.
+
+### 4. Query Billing Information
+
+In the mcp-inspector interface, call the `get_billing_summary` tool with your parameters:
+
+**Example 1: Get current month billing**
+```json
+{
+  "domain_uuid": "4ca-d-823",
+  "zone_uuid": "e5b0-50b-ff-8e2-f2817"
+}
+```
+
+**Example 2: Get billing for specific date range**
+```json
+{
+  "domain_uuid": "4ca-d-823",
+  "zone_uuid": "e5b0-50b-ff-8e2-f2817",
+  "from_date": "03-11-2025 00:00",
+  "to_date": "20-11-2025 00:00",
+  "lang": "en"
+}
+```
+
+## Tool Reference
+
+### `get_billing_summary`
+
+Fetch billing summary for a specified date range.
+
+**Parameters:**
+- `domain_uuid` (required): Your domain UUID (e.g., "4ca-d-823")
+- `zone_uuid` (required): Your zone UUID (e.g., "e5b0-50b-ff-8e2-f2817")
+- `from_date` (optional): Start date in format `DD-MM-YYYY HH:MM`. Defaults to 1st of current month
+- `to_date` (optional): End date in format `DD-MM-YYYY HH:MM`. Defaults to today
+- `lang` (optional): Language code (default: "en")
+- `auth_token` (optional): Bearer token or API key for authentication. Can be raw token or "Bearer <token>"
+
+**Returns:**
+```json
+{
+  "status": "success",
+  "data": { /* billing data from API */ },
+  "date_range": {
+    "from": "03-11-2025 00:00",
+    "to": "20-11-2025 00:00"
+  }
+}
+```
+
+### `get_usage_cost_details`
+
+Fetch usage cost details for a specific zone.
+
+**Parameters:**
+- `zone_id` (required): Zone ID (e.g., "1")
+- `lang` (optional): Language code (default: "en")
+- `auth_token` (optional): Bearer token or API key for authentication. Can be raw token or "Bearer <token>"
+
+**Returns:**
+```json
+{
+  "status": "success",
+  "data": { /* usage cost details from API */ },
+  "zone_id": "1"
+}
+```
+
+**Example in mcp-inspector:**
+```json
+{
+  "zone_id": "1",
+  "lang": "en",
+  "auth_token": "your-api-token-here"
+}
+```
+
+## How It Works
+
+1. **You ask via mcp-inspector**: "What is my billing for this month?"
+2. **mcp-inspector calls**: `get_billing_summary()` with your domain and zone UUIDs
+3. **The tool**:
+   - Sets default date range to current month if not specified
+   - Constructs the API request to: `http://demo.example.com/apidocs/api/usage/offeringusagereport/summaryreport`
+   - Passes parameters: `fromDate`, `toDate`, `domainUuid`, `zoneUuid`, `type`, `lang`
+   - Returns the billing summary response
+
+## Integration with Claude/Other AI Assistants
+
+Once this MCP server is configured in your AI assistant (Claude, etc.), you can ask questions like:
+
+- "What is my billing for this month?"
+- "Show me the usage charges from Nov 3 to Nov 20, 2025"
+- "What's my current bill for domain 4ca-d-823?"
+- "What are the usage cost details for zone 1?"
+- "Show me the cost breakdown for my zones"
+
+The assistant will automatically use this MCP tool to fetch the data.
+
+## Configuration
+
+To configure this with Claude Desktop, add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "billing": {
+      "command": "python",
+      "args": ["/path/to/main.py"]
+    }
+  }
+}
+```
+
+## Error Handling
+
+The tool returns a structured response:
+
+- **Success**: Returns billing data with status "success"
+- **Error**: Returns error details with status "error"
+
+### 401 Unauthorized Error
+
+If you receive a 401 error, the API requires authentication. Use the `auth_token` parameter:
+
+```json
+{
+  "zone_id": "1",
+  "auth_token": "your-api-token"
+}
+```
+
+The token will be sent as a Bearer token in the Authorization header. You can provide:
+- Just the token: `"your-token"` → becomes `Authorization: Bearer your-token`
+- Or pre-formatted: `"Bearer your-token"` → sent as-is
+
+## Testing
+
+You can test the endpoint directly:
+
+```bash
+curl "http://demo.example.com/apidocs/api/usage/offeringusagereport/summaryreport?fromDate=03-11-2025%2000:00&toDate=20-11-2025%2000:00&domainUuid=4ca-d-823&zoneUuid=e5b0-50b-ff-8e2-f2817&type=json&lang=en"
+```
+
