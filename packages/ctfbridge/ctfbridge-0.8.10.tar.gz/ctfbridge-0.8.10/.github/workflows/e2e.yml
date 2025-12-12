@@ -1,0 +1,43 @@
+name: E2E Tests
+
+on:
+  schedule:
+    - cron: "0 0 */14 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ctfd]
+        include:
+          - platform: ctfd
+            url: http://localhost:8000
+
+    steps:
+    - uses: docker/setup-compose-action@v1
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: pip install -e .[dev]
+
+    - name: Start service for ${{ matrix.platform }}
+      run: docker compose -f tests/e2e/${{ matrix.platform }}/docker-compose.yml up -d
+
+    - name: Wait for ${{ matrix.platform }} to be healthy
+      run: python3 -m tests.e2e.manager.healthcheck_main --platform ${{ matrix.platform }} --url ${{ matrix.url }}
+
+    - name: Seed ${{ matrix.platform }}
+      run: python3 -m tests.e2e.manager.seed_main --platform ${{ matrix.platform }} --url ${{ matrix.url }}
+
+    - name: Run E2E tests for ${{ matrix.platform }}
+      run: pytest -m e2e tests/e2e/platforms/test_${{ matrix.platform }}_e2e.py
