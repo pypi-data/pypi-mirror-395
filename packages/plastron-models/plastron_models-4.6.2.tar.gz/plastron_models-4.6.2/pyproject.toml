@@ -1,0 +1,60 @@
+[project]
+name = "plastron-models"
+description = "Content modelling built on the Plastron RDF to Python object mapper"
+authors = [
+    { name='University of Maryland Libraries', email='lib-ssdr@umd.edu' },
+    { name='Josh Westgard', email='westgard@umd.edu' },
+    { name='Peter Eichman', email='peichman@umd.edu' },
+    { name='Mohamed Abdul Rasheed', email='mohideen@umd.edu' },
+    { name='Ben Wallberg', email='wallberg@umd.edu' },
+    { name='David Steelman', email='dsteelma@umd.edu' },
+    { name='Marc Andreu Grillo Aguilar', email='aguilarm@umd.edu' },
+]
+readme = "README.md"
+requires-python = ">= 3.10"
+dependencies = [
+    "edtf_validate",
+    "importlib_metadata",
+    "lxml<6.0",
+    "requests",
+    "paramiko",
+    "pillow",
+    "plastron-client",
+    "plastron-rdf",
+    "plastron-utils",
+    "python-iso639",
+    # rdflib 6.0.0 fixed the 308 HTTP redirect bug
+    "rdflib >= 6.0.0",
+    "types-lxml",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+    "freezegun",
+    "httpretty",
+    "pytest",
+    "pytest-cov",
+]
+
+[project.entry-points.'plastron.content_models']
+AdminSet = "plastron.models.umd:AdminSet"
+File = "plastron.models.page:File"
+Issue = "plastron.models.newspaper:Issue"
+Item = "plastron.models.umd:Item"
+Letter = "plastron.models.letter:Letter"
+Page = "plastron.models.page:Page"
+Poster = "plastron.models.poster:Poster"
+
+[build-system]
+requires = ["setuptools>=66.1.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.ttl"]
+
+[tool.setuptools.dynamic]
+version = { "file" = "VERSION" }
