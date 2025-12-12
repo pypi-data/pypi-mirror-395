@@ -1,0 +1,252 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="bluequbit"
+description="Python SDK to BlueQubit app"
+license = "Apache-2.0"
+authors=[{name = "BlueQubit", email = "hovnatan@bluequbit.io"}]
+dynamic = ["version", "readme"]
+requires-python = ">=3.10"
+dependencies = [
+  "requests~=2.28",
+  "python-dateutil~=2.8",
+  "numpy>=1.21",
+  "packaging",
+]
+classifiers=[
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.optional-dependencies]
+qiskit = ["qiskit>=1.0"]
+cirq = ["cirq>=1.0"]
+pennylane = [
+  "pennylane>=0.39.0",
+  "pennylane-lightning>=0.39.0",
+]
+
+[project.urls]
+Homepage = "https://app.bluequbit.io"
+Documentation = "https://app.bluequbit.io/docs"
+"SDK Reference" = "https://app.bluequbit.io/sdk-docs"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"bluequbit.library.fidelity_estimator" = ["*.json.gz"]
+
+[project.entry-points."pennylane.plugins"]
+"bluequbit.cpu" = "bluequbit.pennylane_plugin:BluequbitCPU"
+
+[dependency-groups]
+dev = [
+  { include-group = "testing" },
+  { include-group = "testing-circuits" },
+  { include-group = "lint" },
+  { include-group = "docs" },
+  "ipython",
+  "ipykernel",
+  "dvc[gs]",
+]
+testing-circuits = [
+  "bluequbit[pennylane,qiskit,cirq]",
+  "qiskit~=1.4",
+  "qiskit_aer",
+  "qiskit-machine-learning~=0.8.2", # until it gets updated to qiskit 2.0
+  "qiskit-finance>=0.4.1",
+  "amazon-braket-sdk",
+  "cirq>=1.4.1",
+  "pennylane>=0.40",
+  "pennylane-lightning>=0.40",
+]
+lint = [
+  "codespell",
+  "tomli",
+  "ruff",
+  "mypy",
+  "types-python-dateutil",
+  "types-requests",
+  "types-pillow",
+  "pylint",
+  "pylint-json2html",
+]
+testing = [
+  "pytest",
+  "pytest-xdist",
+  "pytest-timeout",
+  "pytest-order",
+  "pytest-rerunfailures",
+  "pytest-randomly",
+  "pytest-cov",
+  "pytest-mock",
+  "pytest-asyncio",
+  "coverage",
+  "tox-uv",
+  "tox",
+  "psutil",
+]
+docs = [
+  "qiskit",
+  "sphinx",
+  "sphinx_rtd_theme",
+]
+bae_classifier_cpu = [
+  "pennylane-qiskit",
+  "qiskit[visualization]"
+]
+
+[tool.uv]
+default-groups = ["dev"]
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+
+[tool.pyright]
+pythonVersion = "3.10"
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  "**/.*",
+  "dist",
+]
+typeCheckingMode = "off"
+
+
+[tool.codespell]
+ignore-words-list = 'Braket,braket,ket,THIRDPARTY,nD,aer'
+skip="jquery*.js,.git,./docs/build/html,./.venv,./.venv2,./.gitignore,notebooks,htmlcov,.tox,debug*.py,*.ipynb,./dist,uv.lock"
+check-filenames = true
+
+[tool.pytest.ini_options]
+timeout = "900"
+timeout_method = "thread"
+addopts = "--capture=tee-sys -v -p no:xdist --strict-markers --durations=20"
+testpaths = [ "tests" ]
+markers = [ "hier_circuit", "slow" ]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+preview = false
+# See https://github.com/charliermarsh/ruff#rules for error code definitions.
+lint.select = [ "ALL" ]
+lint.extend-ignore = [
+    "E501", # line-too-long
+    "S101", # use of assert
+    "PLR0912", # Too many branches
+    "PLR2004", # Magic value used in comparison, consider replacing 2 with a constant variable
+    "PLR0913", # Too many arguments to function call
+    "PLR0915", # Too many statements
+    "PLR0911", # Too many return statements
+    "S311", # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "D", # docstrings
+    "ERA001", # commented-out code
+    "T201", # print was found
+    "ANN", # annotations
+    "INP001", # is part of an implicit namespace package.
+    "COM812", # Trailing comma missing
+    "TD", # TODO stuff
+    "FIX002", # todo fix warning
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "TRY002", # Create your own exception
+    "EM101", # exception must not use string literal
+    "EM102", # Exception must not use an f-string literal, assign to variable first
+    "C901", # function is too complex
+    "FBT001", # Boolean-typed positional argument in function definition
+    "FBT003", # Boolean positional value in function call
+    "FBT002", # Boolean default positional value in function call
+    "G004", # Logging statement uses f-string
+    "RET504", # Unnecessary assignment to `` before `return` statement
+    "TID252", # Prefer absolute imports over relative imports from parent modules
+    "ISC001", # single-line-implicit-string-concatenation
+    "PGH004", # use specific rules
+    "PLC0415", # `import` should be at the top-level of a file
+]
+extend-exclude = ["debug*.py", "debug", "notebooks", ".pytest_cache", ".mypy_cache", ".logs", "docs"]
+
+target-version = "py310"
+
+[tool.pylint.'SIMILARITIES']
+min-similarity-lines = 7
+
+[tool.pylint.'MASTER']
+init-hook = "sys.path.append('./src/bluequbit')"
+
+[tool.pylint.'MESSAGE_CONTROL']
+disable = "all"
+enable = "R0801"
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+    ]
+
+[tool.mypy]
+ignore_missing_imports = true
+files = [ "src/" ]
+check_untyped_defs = true
+exclude = ["debug.*\\.py$"]
+
+[tool.tox]
+isolated_build = true
+requires = ["tox>=4.22"]
+env_list = ["integration_tests"]
+skip_missing_interpreters = true
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+package = "wheel"
+passenv = [
+    "BLUEQUBIT_API_TOKEN",
+    "BLUEQUBIT_API_TOKEN_0",
+    "BLUEQUBIT_API_TOKEN_1",
+    "BLUEQUBIT_API_TOKEN_2",
+    "BLUEQUBIT_API_TOKEN_3",
+    "BLUEQUBIT_API_TOKEN_4",
+    "BLUEQUBIT_API_TOKEN_5",
+    "BLUEQUBIT_API_TOKEN_6",
+    "BLUEQUBIT_API_TOKEN_FREE_USER",
+    "BLUEQUBIT_MAIN_ENDPOINT",
+    "BLUEQUBIT_FORCE_GPU1_TEST",
+    "BLUEQUBIT_SDK_ADD_TRACEPARENT",
+    "PYTEST_ADDOPTS",
+    "PYTEST_XDIST_WORKERS"
+]
+setenv = { NO_COLOR = "true" }
+commands = [
+    ["pytest", "-p", "xdist", "-n", "{env:PYTEST_XDIST_WORKERS:2}", "--dist=worksteal", { replace = "posargs", extend = true }]
+]
+
+[tool.tox.env.linters]
+runner = "uv-venv-runner"
+dependency_groups = ["lint"]
+skip_install = true
+passenv = []
+commands = [
+    ["ruff", "check", "."],
+    ["ruff", "format", "--check", "--diff", "."],
+    ["codespell", "."],
+    ["mypy"]
+]
