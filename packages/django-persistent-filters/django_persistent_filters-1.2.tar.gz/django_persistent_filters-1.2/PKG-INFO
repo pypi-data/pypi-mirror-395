@@ -1,0 +1,76 @@
+Metadata-Version: 2.1
+Name: django-persistent-filters
+Version: 1.2
+Summary: Provide a django middleware that take care to persist the querystring in the browser cookies or in the Django session object.
+Home-page: https://github.com/LorenzoProd/django-persistent-filters
+Author: Lorenzo Prodon
+Author-email: lorenzo.prodon@gmail.com
+License: MIT
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 3.0
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django>=2.2
+Requires-Dist: urllib3>=2.5.0
+
+# Django Persistent Filters
+
+Django Persistent Filters is a Python package which provide a django middleware that take care to persist the
+querystring in the browser cookies or in the Django Request object.
+
+If you have a ListView with a Form for filter the objects, this package is perfect for you!
+
+## Installation
+
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install:
+
+```bash
+pip install django-persistent-filters
+```
+
+## Usage
+
+Put the middleware in the `settings.py` file:
+
+```python
+MIDDLEWARE = [
+    ...,
+    "persistent_filters.middleware.PersistentFiltersMiddleware"
+]
+```
+
+If you want to store filters in the session instead Cookies, add in the `settings.py` file:
+```python
+PERSISTENT_FILTERS_IN_SESSION = True
+```
+Add the urls with a filter form in `settings.py` file:
+
+```python
+PERSISTENT_FILTERS_URLS = [
+    # You can use name urls
+    reverse_lazy("user:list"),
+
+    # or you can write the path without domain
+    "/user/list"
+]
+```
+
+Add in the form the button for reset filters:
+
+```html
+<button type="submit" name="reset-filters">Reset</button>
+```
