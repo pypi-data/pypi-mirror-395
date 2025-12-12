@@ -1,0 +1,40 @@
+{% if maintenances or outages %}
+<div class="card">
+    <h2 class="card-header mb-2">Maintenance &amp; Outage History</h2>
+    <div class="card-body">        
+        <ul class="nav nav-tabs px-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-maintenances-tab" data-bs-toggle="tab" data-bs-target="#tab-maintenances" type="button" role="tab" aria-controls="tab-maintenances" aria-selected="true">
+                    Maintenances
+                    <span class="badge text-bg-secondary">{{ maintenances|length }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-outages-tab" data-bs-toggle="tab" data-bs-target="#tab-outages" type="button" role="tab" aria-controls="tab-outages" aria-selected="false">
+                    Outages
+                    <span class="badge text-bg-secondary">{{ outages|length }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab panes -->
+        <div id="tab-maintenances" class="tab-pane fade show active" role="tabpanel" aria-labelledby="tab-maintenances-tab">
+            {% if maintenances %}
+                {% include 'notices/event_history_table.html' with events=maintenances %}
+            {% else %}
+                <span class="text-muted">
+                    No maintenances in this period
+                </span>
+            {% endif %}
+        </div>
+        <div id="tab-outages" class="tab-pane fade" role="tabpanel" aria-labelledby="tab-outages-tab">
+            {% if outages %}
+                {% include 'notices/event_history_table.html' with events=outages %}
+            {% else %}
+                <span class="text-muted">
+                    No outages in this period
+                </span>
+            {% endif %}
+        </div>
+</div>
+</div>{% endif %}
