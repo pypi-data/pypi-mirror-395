@@ -1,0 +1,77 @@
+// config.ts
+
+import dotenv from 'dotenv';
+
+dotenv.config(); // Load environment variables from .env file
+
+interface DashboardConfig {
+  PORT: string | number;
+  KAFKA_SSL: string;
+  KAFKA_BROKERS: string;
+  KAFKA_TOPIC: string;
+  KAFKA_USERNAME: string;
+  KAFKA_PASSWORD: string;
+  CONSUMER_GROUP: string;
+  CONNECTION_STRING: string;
+  KQL_CONNECTION_STRING: string;
+  KQL_DATABASE_NAME: string;
+}
+
+export const config: DashboardConfig = {
+  PORT: process.env.PORT || 3000,
+  KAFKA_SSL: process.env.KAFKA_SSL || 'true',
+  KAFKA_BROKERS: process.env.KAFKA_BROKERS || '',
+  KAFKA_TOPIC: process.env.KAFKA_TOPIC || '',
+  KAFKA_USERNAME: process.env.KAFKA_USERNAME || '',
+  KAFKA_PASSWORD: process.env.KAFKA_PASSWORD || '',
+  CONSUMER_GROUP: process.env.CONSUMER_GROUP || '',
+  CONNECTION_STRING: process.env.CONNECTION_STRING || '',
+  KQL_CONNECTION_STRING: process.env.KQL_CONNECTION_STRING || '',
+  KQL_DATABASE_NAME: process.env.KQL_DATABASE_NAME || '',
+};
+
+
+export function parseConnectionString(connectionString: string): Record<string, string> {
+  const configDict: Record<string, string> = {
+    'KAFKA_USERNAME': '$ConnectionString',
+    'KAFKA_PASSWORD': connectionString.trim(),
+  };
+
+  try {
+    for (const part of connectionString.split(';')) {
+      if (part.includes('Endpoint')) {
+        configDict['KAFKA_BROKERS'] = part.split('=')[1].trim().replace('sb://', '').replace('/', '') + ':9093';
+      } else if (part.includes('EntityPath')) {
+        configDict['KAFKA_TOPIC'] = part.split('=')[1].trim();
+      }
+    }
+  } catch (e) {
+    throw new Error("Invalid connection string format");
+  }
+
+  return configDict;
+}
+
+// Validate configuration
+export function validateConfig(config: DashboardConfig): DashboardConfig {
+  const requiredConfigs: (keyof DashboardConfig)[] = [
+    'PORT',
+    'KAFKA_BROKERS',
+    'KAFKA_TOPIC',
+    'CONSUMER_GROUP'
+  ];
+
+  let validatedConfig = { ...config };
+  
+  if (config.CONNECTION_STRING) {
+    const connectionStringConfig = parseConnectionString(config.CONNECTION_STRING);
+    validatedConfig = { ...validatedConfig, ...connectionStringConfig };
+  }
+
+  for (const key of requiredConfigs) {
+    if (!validatedConfig[key]) {
+      throw new Error(`${key} is not defined`);
+    }
+  }
+  return validatedConfig;
+};

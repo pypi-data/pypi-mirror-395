@@ -1,0 +1,65 @@
+
+{%- if not uses_avro -%}
+{%- exit -%}
+{%- endif -%}
+{%- set schema_name = class_name -%}
+{%- set schema = root %}
+using System;
+
+{%- macro emitclass(type, type_name) -%}
+    {%- if type.type == 'record' or not type.type %}
+    public partial class {{ type_name }}
+    {
+        public static {{ type_name }}? FromData(object? data, string? contentType)
+        {
+            if ( data is {{ type_name }})
+            {
+                return ({{ type_name }})data;
+            }
+            contentType = contentType?.Split(';')[0].Trim().ToLowerInvariant();
+            var isJson = contentType != null && (contentType == System.Net.Mime.MediaTypeNames.Application.Json || contentType.EndsWith("+json"));
+            var stream = data switch
+            {
+                Stream s => s,
+                BinaryData bd => bd.ToStream(),
+                byte[] bytes => new MemoryStream(bytes),
+                _ => throw new NotSupportedException("Data is not of a supported type for conversion to Channel")
+            };
+            if ( isJson )
+            {
+                var decoder = new Avro.IO.JsonDecoder({{ type_name }}._SCHEMA, stream);
+                var reader = new Avro.Specific.SpecificDatumReader<{{ type_name }}>({{ type_name }}._SCHEMA, {{ type_name }}._SCHEMA);
+                return reader.Read(new {{ type_name }}(), decoder);
+            }
+            else 
+            {
+                var decoder = new Avro.IO.BinaryDecoder(stream);
+                var reader = new Avro.Specific.SpecificDatumReader<{{ type_name }}>({{ type_name }}._SCHEMA, {{ type_name }}._SCHEMA);
+                return reader.Read(new {{ type_name }}(), decoder);
+            }
+        }
+
+        public byte[] ToByteArray(string contentType) 
+        {
+            if ( contentType == "avro/binary" ) {
+                var stream = new MemoryStream();
+                var encoder = new Avro.IO.BinaryEncoder(stream);
+                var writer = new Avro.Specific.SpecificDatumWriter<{{ type_name }}>({{ type_name }}._SCHEMA);
+                writer.Write(this, encoder);
+                return stream.ToArray();
+            }
+            throw new NotSupportedException("Content type not supported for serialization");
+        }
+    }
+    {%- endif %}
+{%- endmacro %}
+
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace {{ schema_name | namespace(project_name) | pascal }}
+{
+    {{- emitclass( schema, schema_name | strip_namespace ) }}
+}

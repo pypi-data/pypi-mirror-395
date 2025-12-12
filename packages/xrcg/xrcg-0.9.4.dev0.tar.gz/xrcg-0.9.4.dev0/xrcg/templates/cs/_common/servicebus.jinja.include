@@ -1,0 +1,268 @@
+{#- Event Hubs macros -#}
+
+{%- macro ServiceBussHeaders() -%}
+using Azure;
+using Azure.Core;
+using Azure.Core.Amqp;
+using Azure.Messaging.ServiceBus;
+{%- endmacro -%}
+
+{%- macro EmitArguments(props) -%}
+{%- for propname, prop in props.items() %}
+{%- if prop.type == "uritemplate" -%}
+   {%- for placeholder in prop.value | regex_search('\\{([A-Za-z0-9_]+)\\}') -%}
+   , string {{ placeholder }}
+   {%- endfor -%}
+{%- elif prop.value is not defined -%}
+   , string {{ propname }}{%- if not prop.required %} = default {%- endif %}{% endif -%}
+{%- endfor -%}
+{%- endmacro -%}
+
+{#- Generates a list of arguments for "send" methods that correspond to placeholders in uritemplates -#}
+{%- macro DeclareUriTemplateArguments(message) -%}
+{%- if message.protocoloptions["header"] -%}{{ EmitArguments(message.protocoloptions["header"]) }}{%- endif -%}
+{%- if message.protocoloptions["footer"] -%}{{ EmitArguments(message.protocoloptions["footer"]) }}{%- endif -%}
+{%- if message.protocoloptions["message_annotations"] -%}{{ EmitArguments(message.protocoloptions["message_annotations"]) }}{%- endif -%}
+{%- if message.protocoloptions["delivery_annotations"] -%}{{ EmitArguments(message.protocoloptions["delivery_annotations"]) }}{%- endif -%}
+{%- if message.protocoloptions["properties"] -%}{{ EmitArguments(message.protocoloptions["properties"]) }}{%- endif -%}
+{%- if message.protocoloptions["application_properties"] -%}{{ EmitArguments(message.protocoloptions["application_properties"]) }}{%- endif -%}
+{%- endmacro %}
+
+{#- Helper macro for assigning properties -#}
+{%- macro AssignProps(target, props, as_dict = False) -%}
+{%- for propname, prop in props.items() -%}
+{%- if as_dict %}
+["{{ propname }}"] = {% else %}
+{{ target }}.{{ propname | pascal }} = {% endif -%}
+{%- if prop.value -%}
+   {%- if prop.type in ["integer", "number", "boolean"] -%}
+      {{ prop.value }}
+   {%- elif prop.type == "uri" or prop.type == "uritemplate" -%}
+      new Uri($"{{ prop.value }}", UriKind.RelativeOrAbsolute),
+   {%- else -%}
+      $"{{ prop.value }}"
+   {%- endif -%}
+{%- else -%}
+   {{ propname }}
+{%- endif -%},
+{%- endfor -%}
+{%- endmacro -%}
+
+{#- Generates AMQP message objects from amqpDefinition as message -#}
+{%- macro DeclareEventdata(variable, message) -%}
+{%- set header = message.protocoloptions["header"] %}
+{%- set footer = message.protocoloptions["footer"] %}
+{%- set messageAnnotations = message.protocoloptions["message_annotations"] %}
+{%- set deliveryAnnotations = message.protocoloptions["delivery_annotations"] %}
+{%- set properties = message.protocoloptions["properties"] %}
+{%- set applicationProperties = message.protocoloptions["application_properties"] %}
+ServiceBusMessage {{ variable }} = new ServiceBusMessage();
+AmqpAnnotatedMessage am = {{ variable }}.GetRawAmqpMessage();
+{%- if header %}
+{{- AssignProps("am.Header", header) | indent(6) }}
+{%- endif %}
+{%- if footer %}
+{{- AssignProps("am.Footer", footer, True) | indent(6) }}
+{%- endif %}
+{%- if messageAnnotations %}
+{{- AssignProps("am.MessageAnnotations", messageAnnotations, True) | indent(6) }}
+{%- endif %}
+{%- if deliveryAnnotations %}
+{{- AssignProps("am.DeliveryAnnotations", deliveryAnnotations, True) | indent(6) }}
+{%- endif %}
+{%- if properties %}
+{{- AssignProps("am.Properties", properties) | indent(6) }}
+{%- endif %}
+{%- if applicationProperties %}
+{{- AssignProps("am.ApplicationProperties", applicationProperties, True) | indent(6) }}
+{%- endif %}
+{%- endmacro -%}
+
+
+{%- macro DeclareDispatchObjectsArgs( project_name, messagegroups, withType) -%}
+{%- for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("protocol","AMQP/1.0")) -%}
+{%- set messagegroupname = messagegroupid  | pascal %}
+{%- if withType -%}global::{{ messagegroupname | namespace_dot(project_name) | pascal }}I{{ messagegroupname | strip_namespace }}Dispatcher {% endif %}{{ messagegroupid  | strip_namespace | camel }}ServiceBusDispatcher{%- if not loop.last %}, {%- endif -%}
+{%- endfor %}
+{%- endmacro-%}
+
+{%- macro DeclareDispatchObjectsFields(project_name,messagegroups) -%}
+{%- for messagegroupid, messagegroup in messagegroups.items() if messagegroup | exists("protocol","AMQP/1.0") -%}
+{%- set handlerName=(messagegroupid  | strip_namespace | camel)+"ServiceBusDispatcher" -%}
+{%- set handlerType=(messagegroupid  | namespace_dot(project_name) | pascal)+"I"+(messagegroupid  | strip_namespace | pascal)+"ServiceBusDispatcher" -%}
+{{ handlerType }} {{ handlerName }};
+{%- endfor %}
+{%- endmacro -%}
+
+{%- macro DeclareDispatchObjectsConstructor(project_name, class_name, messagegroups, args, body) -%}
+{%- if messagegroups | exists("protocol","AMQP/1.0") %}
+{%- for messagegroupid, messagegroup in messagegroups.items() if messagegroup | exists("protocol","AMQP/1.0") -%}
+{%- set messagegroupname = messagegroupid  | pascal %}
+{%- set handlerName=(messagegroupid  | strip_namespace | camel)+"ServiceBusDispatcher" -%}
+{%- set handlerType=(messagegroupid  | namespace_dot | pascal)+"I"+(messagegroupid  | strip_namespace | pascal)+"ServiceBusDispatcher" -%}
+{{ handlerType }} {{ handlerName }};
+{%- endfor %}
+
+public {{ class_name }}({{ args }}{%- if args %}, {%- endif -%}
+    {%- for messagegroupid, messagegroup in messagegroups.items() if messagegroup | exists("protocol","AMQP/1.0") -%}
+    {%- set messagegroupname = messagegroupid  | pascal -%} 
+    {%- set handlerName=(messagegroupid  | strip_namespace | camel)+"ServiceBusDispatcher" -%}
+    {%- set handlerType=(messagegroupid  | namespace_dot | pascal)+"I"+(messagegroupid  | strip_namespace | pascal)+"ServiceBusDispatcher" -%}
+    {{ handlerType }} {{ handlerName }}
+    {%- if not loop.last -%}, {%- endif -%}
+    {%- endfor -%})
+{
+    {% for messagegroupid, messagegroup in messagegroups.items() if messagegroup | exists("protocol","AMQP/1.0") -%}
+    {%- set messagegroupname = messagegroupid  | pascal %}
+    {%- set handlerName=(messagegroupid  | strip_namespace | camel)+"ServiceBusDispatcher" -%}
+    {%- set handlerType=(messagegroupid  | namespace_dot | pascal)+"I"+(messagegroupid  | strip_namespace | pascal)+"ServiceBusDispatcher" -%}
+    this.{{ handlerName }} = {{ handlerName }};
+    {%- endfor %}
+    {{ body | indent(4) }}
+}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro DispatchToDispatchObjects(project_name, data_project_name, root, message, messagegroups, logger) -%}
+{%- if messagegroups | exists("protocol","AMQP/1.0") %}
+var messageSubject = {{ message }}.Subject;
+switch (messageSubject)
+{
+   {% for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("protocol","AMQP/1.0")) -%}
+   {%- set handlerName=(messagegroupid  | strip_namespace | camel)+"ServiceBusDispatcher" -%}
+   {% for messageid, message in messagegroup.messages.items() if (message | exists("protocol","AMQP/1.0")) -%}
+   {% set messagename = messageid | pascal %}
+   case "{{ messageid }}":
+         if ( this.{{ handlerName }} != null )
+         {
+            await this.{{ handlerName }}.On{{ messagename | strip_namespace }}Async({{ message }},
+            {%- if message.dataschemauri or message.dataschema -%}
+            global::{{ ( message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( data_project_name, root, message.dataschemaformat)  | pascal }}.FromData({{ message }}.Body, {{ message }}.ContentType)
+            {%- else -%}
+            {{ message }}.Data
+            {%- endif %});
+            break;
+         }
+         break;
+   {% endfor %}
+   {% endfor %}
+   default:
+      {{ logger }}.LogError($"Unsupported message subject {messageSubject}");
+      break;
+}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro DeclareDispatchInterfaces(project_name, data_project_name, root) -%}
+{%- set messagegroups = root.messagegroups -%}
+{%- if messagegroups | exists("protocol","AMQP/1.0") %}
+{%- set function_name = project_name | pascal | strip_dots -%}
+{%- for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("protocol","AMQP/1.0")) -%}
+{%- set messagegroupname = messagegroupid  | pascal %}
+using System.Threading.Tasks;
+
+namespace {{ messagegroupname | concat_namespace(project_name) | pascal }}
+{
+   public interface I{{ messagegroupname | strip_namespace }}ServiceBusDispatcher
+   {
+      {%- for messageid, message in messagegroup.messages.items() if (message | exists("protocol","AMQP/1.0")) -%}
+      {%- set messagename = messageid | strip_namespace | pascal -%}
+      {%- if message.dataschemauri or message.dataschema -%}
+      {%- set dataType = 'global::' + (( message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( data_project_name, root, message.dataschemaformat)  | pascal) -%}
+      {%- else -%}
+      {%- set dataType = "object" -%}
+      {%- endif %}
+      {%- if message.description %}   
+      /// <summary>
+      /// {{ message.description }}
+      /// </summary>
+      {%- endif %}
+      Task On{{ messagename | strip_namespace }}Async(ServiceBusMessage eventData, {{ dataType }}? data);
+      {%- endfor %}
+   }
+}
+{%- endfor -%}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro CloudEventsUsings() -%}
+using CloudNative.CloudEvents;
+using CloudEvent = CloudNative.CloudEvents.CloudEvent;
+using CloudNative.CloudEvents.Core;
+using CloudNative.CloudEvents.SystemTextJson;
+using CloudNative.CloudEvents.Protobuf;
+using CloudNative.CloudEvents.Avro;
+using AvroEventFormatter = CloudNative.CloudEvents.Avro.AvroEventFormatter;
+{%- endmacro -%}
+
+{%- macro CloudEventsMethods() -%}
+private static string[] ceAttribs = ["specversion", "dataschema", "time", "source", "subject", "type", "id"];
+protected const string amqpCloudEventPrefix1 = "cloudEvents_";
+protected const string amqpCloudEventPrefix2 = "cloudEvents:";
+protected static readonly CloudEventFormatter jsonFormatter = new JsonEventFormatter();
+protected static readonly CloudEventFormatter protoFormatter = new ProtobufEventFormatter();
+protected static readonly CloudEventFormatter avroFormatter = new global::CloudNative.CloudEvents.Avro.AvroEventFormatter();
+
+protected string? GetCloudEventAttribute(ServiceBusReceivedMessage serviceBusMessage, string key)
+{
+   if (serviceBusMessage.ApplicationProperties.TryGetValue(amqpCloudEventPrefix1+key, out var value) ||
+         serviceBusMessage.ApplicationProperties.TryGetValue(amqpCloudEventPrefix2+key, out value))
+   {
+         return value as string;
+   }
+   return null;
+} 
+
+protected CloudEvent CloudEventFromServiceBusMessage(ServiceBusReceivedMessage serviceBusMessage) 
+{
+   CloudEventFormatter? formatter = null;
+   var contentType = serviceBusMessage.ContentType?.Split(';')[0];
+   if ( contentType != null && contentType.StartsWith("application/cloudevents") )
+   {
+         formatter = contentType.EndsWith("+proto") ? protoFormatter: contentType.EndsWith("+avro") ? avroFormatter : jsonFormatter;
+         return formatter.DecodeStructuredModeMessage(serviceBusMessage.Body.ToStream(), new System.Net.Mime.ContentType(contentType), null);
+   }
+   else
+   {
+         // binary mode
+         var cloudEvent = new CloudEvent()
+         {
+            Data = serviceBusMessage.Body,
+            DataContentType = contentType,
+         };
+         string? specVersion = GetCloudEventAttribute(serviceBusMessage, "specversion");
+         if (specVersion != "1.0") throw new Exception("Unsupported CloudEvent specversion: " + specVersion);
+         string? dataSchema = GetCloudEventAttribute(serviceBusMessage, "dataschema");
+         string? time = GetCloudEventAttribute(serviceBusMessage, "time");
+         string? source = GetCloudEventAttribute(serviceBusMessage, "source");
+         string? subject = GetCloudEventAttribute(serviceBusMessage, "subject");
+         string? type = GetCloudEventAttribute(serviceBusMessage, "type");
+         string? id = GetCloudEventAttribute(serviceBusMessage, "id");
+         if (dataSchema != null) cloudEvent.DataSchema = new Uri(dataSchema);
+         if (time != null) cloudEvent.Time = DateTime.Parse(time);
+         if (source != null) cloudEvent.Source = new Uri(source);
+         if (subject != null) cloudEvent.Subject = subject;
+         if (type != null) cloudEvent.Type = type;
+         if (id != null) cloudEvent.Id = id;
+         foreach (var key in serviceBusMessage.ApplicationProperties.Keys)
+         {
+            if (key.StartsWith(amqpCloudEventPrefix1) || key.StartsWith(amqpCloudEventPrefix2))
+            {
+               var attributeName = key.Substring(amqpCloudEventPrefix1.Length);
+               if (ceAttribs.Any(a=>a==attributeName))
+               {
+                  continue;
+               }
+               cloudEvent[attributeName] = serviceBusMessage.ApplicationProperties[key] as string;
+            }
+         }
+         return cloudEvent;
+   }
+   
+}
+
+public static bool IsCloudEvent(ServiceBusReceivedMessage serviceBusMessage) =>
+   MimeUtilities.IsCloudEventsContentType(serviceBusMessage.ContentType) ||
+   serviceBusMessage.ApplicationProperties.ContainsKey(amqpCloudEventPrefix1) ||
+   serviceBusMessage.ApplicationProperties.ContainsKey(amqpCloudEventPrefix2);
+{%- endmacro -%}
