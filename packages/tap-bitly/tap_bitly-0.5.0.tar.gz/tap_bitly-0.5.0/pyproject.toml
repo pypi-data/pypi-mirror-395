@@ -1,0 +1,165 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+  "hatch-vcs==0.5",
+  "hatchling==1.27",
+]
+
+[project]
+name = "tap-bitly"
+description = "Singer tap for Bitly, built with the Meltano SDK for Singer Taps."
+readme = "README.md"
+keywords = [
+  "Bitly",
+  "ELT",
+  "singer.io",
+]
+license = "Apache-2.0"
+license-files = [ "LICENSE" ]
+maintainers = [
+  { name = "Edgar Ramirez-Mondragon", email = "edgarrm358@gmail.com" },
+]
+authors = [
+  { name = "Edgar Ramirez-Mondragon", email = "edgarrm358@gmail.com" },
+]
+requires-python = ">=3.12"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "singer-sdk~=0.53.2",
+]
+urls.Documentation = "https://github.com/reservoir-data/tap-bitly#readme"
+urls.Homepage = "https://github.com/reservoir-data/tap-bitly"
+urls.Repository = "https://github.com/reservoir-data/tap-bitly"
+scripts.tap-bitly = "tap_bitly.tap:TapBitly.cli"
+
+[dependency-groups]
+dev = [
+  { include-group = "testing" },
+  { include-group = "typing" },
+]
+testing = [
+  "deptry>=0.23",
+  "pytest>=9",
+  "pytest-durations>=1.6",
+  "pytest-github-actions-annotate-failures>=0.3",
+  "singer-sdk[testing]",
+  "syrupy>=5",
+]
+typing = [
+  "mypy>=1.18",
+  "ty>=0.0.1a21",
+  "types-requests>=2.32",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.uv]
+prerelease = "allow"
+required-version = ">=0.8"
+
+[tool.ruff]
+line-length = 88
+preview = true
+
+lint.select = [
+  "ALL",
+]
+lint.ignore = [
+  "COM812", # missing-trailing-comma
+  "DJ",     # flake8-django
+  "FIX002", # line-contains-todo
+  "ISC001", # single-line-implicit-string-concatenation
+]
+lint.per-file-ignores."noxfile.py" = [
+  "ANN",
+]
+lint.per-file-ignores."tests/*" = [
+  "ANN201", # missing-return-type-public-function
+  "S101",   # assert
+  "SLF001", # private-member-access
+]
+lint.unfixable = [
+  "ERA001", # commented-out-code
+]
+lint.isort.known-first-party = [
+  "tap_bitly",
+]
+lint.isort.required-imports = [
+  "from __future__ import annotations",
+]
+lint.pydocstyle.convention = "google"
+
+[tool.deptry.package_module_name_map]
+mypy = "mypy"
+ty = "ty"
+types-requests = "requests"
+
+[tool.deptry.per_rule_ignores]
+DEP002 = [
+  "deptry",
+  "mypy",
+  "pytest",
+  "pytest-durations",
+  "pytest-github-actions-annotate-failures",
+]
+
+[tool.pyproject-fmt]
+max_supported_python = "3.14"
+
+[tool.pytest]
+addopts = [ "-vvv" ]
+filterwarnings = [
+  "error",
+  "default:No records were available to test:UserWarning",
+  "default:No records returned in stream 'bsds':UserWarning",
+  "default:No records returned in stream 'campaigns':UserWarning",
+  "default:No records returned in stream 'channels':UserWarning",
+  "default:Fields in transformed catalog but not in records:UserWarning",
+  "default:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+]
+
+[tool.tox]
+min_version = "4.22"
+requires = [ "tox", "tox-uv" ]
+env_list = [
+  "dependencies",
+  "typing",
+  "3.14",
+  "3.13",
+  "3.12",
+]
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+pass_env = [ "TAP_BITLY_*" ]
+set_env = { "PYO3_USE_ABI3_FORWARD_COMPATIBILITY" = "1" }
+dependency_groups = [ "testing" ]
+commands = [ [ "pytest", { replace = "posargs", default = [ "tests" ], extend = true } ] ]
+
+[tool.tox.env.dependencies]
+dependency_groups = [ "testing" ]
+commands = [ [ "deptry", "." ] ]
+
+[tool.tox.env.typing]
+dependency_groups = [ "testing", "typing" ]
+commands = [
+  [ "ty", "check" ],
+  [ "mypy", "--strict", "tap_bitly", "tests" ],
+]
+
+[tool.mypy]
+warn_redundant_casts = true
+warn_return_any = true
+warn_no_return = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
