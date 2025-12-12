@@ -1,0 +1,383 @@
+definitions:
+  name: "AFM_ELN_Example"
+  eln:
+    label: "AFM ELN Example"
+  sections:
+    ELN_for_AFM:
+      base_sections:
+        - pynxtools.nomad.dataconverter.NexusDataConverter
+        - nomad.datamodel.data.EntryData
+      m_annotations:
+        template:
+          reader: spm
+          nxdl: NXafm
+        eln:
+          hide: []
+          label: "ELN for AFM"
+      quantities:
+        default:
+          type: str
+          m_annotations:
+            eln:
+              component: StringEditQuantity
+          description: |
+            The name of the NXdata group that comes as child of the entry group for default plot
+            to be displayed upon the entry of NeXus file.
+        definition:
+          type:
+            type_kind: Enum
+            type_data:
+              - NXafm
+          m_annotations:
+            eln:
+              component: EnumEditQuantity
+          description: |
+            Name of the definitions from NeXus app def designed for STS experiments, one can use
+            NXsts or NXspm, but NXsts is recommended.
+        experiment_technique:
+          type:
+            type_kind: Enum
+            type_data:
+              - AFM
+          m_annotations:
+            eln:
+              component: EnumEditQuantity
+          description: |
+            Name of the technique used for the experiment, e.g. AFM.
+        scan_mode:
+          type:
+            type_kind: Enum
+            type_data:
+              - contact mode
+              - tapping mode
+              - non-contact mode
+              - Kelvin probe
+              - electric force
+          m_annotations:
+            eln:
+              component: EnumEditQuantity
+          description: |
+            Mode of scan in AFM experiment.
+        experiment_description:
+          type: str
+          m_annotations:
+            eln:
+              component: RichTextEditQuantity
+          description: |
+            Descriptive comments for this experiment, added by the experimenter in eln or
+            coming from the output file, e.g. Comment01 SYNC & Filter LP 8order WITHDRAW
+            600 steps, locked Au(111), 50pA, 100 mV set point, 1mV DCA, 973Hz,138
+            1st H, -84 2nd H.
+        identifier_experiment:
+          type: str
+          m_annotations:
+            eln:
+              component: StringEditQuantity
+          description: |
+            An unique identifier fot the experiment. e.g. the identifier
+            could be specific for a lab or experiment team.
+
+        identifier_collection:
+          type: str
+          m_annotations:
+            eln:
+              component: StringEditQuantity
+          description: |
+            An unique identifier of a collection. Use this
+            if the experiment if part of a collection of experiments
+      sub_sections:
+        User:
+          repeats: True
+          section:
+            m_annotations:
+              eln:
+                overview: true
+            quantities:
+              name:
+                type: str
+                m_annotations:
+                  eln:
+                    component: StringEditQuantity
+                description: |
+                  Name of the user who performed the experiment.
+              affiliation:
+                type: str
+                shape: "*"
+                m_annotations:
+                  eln:
+                    component: StringEditQuantity
+                description: |
+                  Affiliation of the user who performed the experiment.
+              email:
+                type: str
+                shape: "*"
+                m_annotations:
+                  eln:
+                    component: StringEditQuantity
+                description: |
+                  List of emails from users who performed the experiment.
+        Instrument:
+          section:
+            m_annotations:
+              eln:
+                overview: true
+            sub_sections:
+              hardware:
+                section:
+                  m_annotations:
+                    eln:
+                      overview: true
+                  quantities:
+                    vendor:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Name of the vendor of the hardware. (e.g. Nanonis).
+                    name:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Name of the hardware. (e.g. Nanonis).
+                    model:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Version or model of the component named by the manufacturer (e.g. Nanonis).
+                    model_version:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        If model has a distinquishable version (e.g. BP5e).
+              software:
+                section:
+                  m_annotations:
+                    eln:
+                      overview: true
+                  quantities:
+                    vendor:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Name of the vendor of the software. (e.g. Nanonis).
+                    name:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Name of the software. (e.g. Nanonis).
+                    model:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Version or model of the component named by the manufacturer (e.g. Generic 4).
+                        Note that this should be exacty the same as in experiment file.
+                    model_version:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        If model has a distinquishable version (e.g. BP5e).
+              height_piezo_sensor:
+                section:
+                  m_annotations:
+                    eln:
+                      overview: true
+                  sub_sections:
+                    piezo_configuration:
+                      section:
+                        m_annotations:
+                          eln:
+                            overview: true
+                        sub_sections:
+                          piezo_material:
+                            section:
+                              m_annotations:
+                                eln:
+                                  overview: true
+                              quantities:
+                                identifier_piezo_material:
+                                  type: str
+                                  m_annotations:
+                                    eln:
+                                      component: StringEditQuantity
+                                  description: |
+                                    An unique identifier for the piezo material.
+              Scan_environment:
+                section:
+                  m_annotations:
+                    eln:
+                      overview: true
+                  quantities:
+                    head_temperature:
+                      type: np.float64
+                      unit: kelvin
+                      m_annotations:
+                        eln:
+                          component: NumberEditQuantity
+                          defaultDisplayUnit: K
+                      description: |
+                        Temperature of STM head. Note: At least one field from head_temperature,
+                        cryo_bottom_temperature and cryo_shield_temperature must be provided.
+                        At least one field from tip_temperature, cryo_bottom_temperature and cryo_shield_temperature must be provided.
+                    cryo_bottom_temperature:
+                      type: np.float64
+                      unit: kelvin
+                      m_annotations:
+                        eln:
+                          component: NumberEditQuantity
+                          defaultDisplayUnit: K
+                      description: |
+                        Temperature of the cold tail of the cryostat. Note:
+                        At least one field from tip_temperature, cryo_bottom_temperature and cryo_shield_temperature must be provided.
+                    cryo_shield_temperature:
+                      type: np.float64
+                      unit: kelvin
+                      m_annotations:
+                        eln:
+                          component: NumberEditQuantity
+                          defaultDisplayUnit: K
+                      description: |
+                        Temperature of liquid nitrogen shield. Note: At
+                        least one field from head_temperature, cryo_bottom_temperature and cryo_shield_temperature must be provided.
+        Sample:
+          section:
+            m_annotations:
+              eln:
+                overview: true
+            quantities:
+              name:
+                type: str
+                m_annotations:
+                  eln:
+                    component: StringEditQuantity
+                description: |
+                  Name of the sample.
+              chemical_formula:
+                type: str
+                m_annotations:
+                  eln:
+                    component: StringEditQuantity
+                description: |
+                  The chemical formula specified using CIF conventions.
+                  Abbreviated version of CIF standard:
+
+                  * Only recognized element symbols may be used.
+                  * Each element symbol is followed by a 'count' number. A count of '1' may be omitted.
+                  * A space or parenthesis must separate each cluster of (element symbol + count).
+                  * Where a group of elements is enclosed in parentheses, the multiplier for the
+                    group must follow the closing parentheses. That is, all element and group
+                    multipliers are assumed to be printed as subscripted numbers.
+                  * Unless the elements are ordered in a manner that corresponds to their chemical
+                    structure, the order of the elements within any group or moiety depends on
+                    whether or not carbon is present.
+                  * If carbon is present, the order should be:
+
+                    - C, then H, then the other elements in alphabetical order of their symbol.
+                    - If carbon is not present, the elements are listed purely in alphabetic order of their symbol.
+
+                  * This is the *Hill* system used by Chemical Abstracts.
+              description:
+                type: str
+                m_annotations:
+                  eln:
+                    component: RichTextEditQuantity
+                description: |
+                  Description of the sample or sample preparation.
+            sub_sections:
+              Sample_component:
+                section:
+                  m_annotations:
+                    eln:
+                      overview: true
+                  description: |
+                    A sample component is a part of the sample that is of interest.
+                    For example, a sample component could be a layer of a multilayer sample.
+                  quantities:
+                    name:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Name of the sample component.
+                    identifier_component:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        An unique identifier for the sample component.
+                    chemical_formula:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        The chemical formula specified using CIF conventions.
+                        Abbreviated version of CIF standard:
+
+                        * Only recognized element symbols may be used.
+                        * Each element symbol is followed by a 'count' number. A count of '1' may be omitted.
+                        * A space or parenthesis must separate each cluster of (element symbol + count).
+                        * Where a group of elements is enclosed in parentheses, the multiplier for the
+                          group must follow the closing parentheses. That is, all element and group
+                          multipliers are assumed to be printed as subscripted numbers.
+                        * Unless the elements are ordered in a manner that corresponds to their chemical
+                          structure, the order of the elements within any group or moiety depends on
+                          whether or not carbon is present.
+                        * If carbon is present, the order should be:
+
+                          - C, then H, then the other elements in alphabetical order of their symbol.
+                          - If carbon is not present, the elements are listed purely in alphabetic order of their symbol.
+
+                        * This is the *Hill* system used by Chemical Abstracts.
+                    description:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: RichTextEditQuantity
+                      description: |
+                        Description of the sample component or sample preparation.
+              history:
+                section:
+                  m_annotations:
+                    eln:
+                      overview: true
+                  sub_sections:
+                    Note:
+                      section:
+                        m_annotations:
+                          eln:
+                            overview: true
+                        description: |
+                          Notes about the sample history.
+                        quantities:
+                          description:
+                            type: str
+                            m_annotations:
+                              eln:
+                                component: RichTextEditQuantity
+                            description: |
+                              Title of an image or other details of the note.
+                  quantities:
+                    identifier_history:
+                      type: str
+                      m_annotations:
+                        eln:
+                          component: StringEditQuantity
+                      description: |
+                        Identifier for sample history.
