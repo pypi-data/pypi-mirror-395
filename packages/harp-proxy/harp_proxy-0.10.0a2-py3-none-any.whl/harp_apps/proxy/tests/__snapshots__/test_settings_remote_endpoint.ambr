@@ -1,0 +1,725 @@
+# serializer version: 1
+# name: TestRemoteEndpointSettings.test_jsonschema_for_serialization
+  dict({
+    '$defs': dict({
+      'IgnoreLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'ignore',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'IgnoreLivenessSettings',
+        'type': 'object',
+      }),
+      'InheritLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'inherit',
+            'default': 'inherit',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'title': 'InheritLivenessSettings',
+        'type': 'object',
+      }),
+      'LeakyBucketLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'capacity': dict({
+            'default': 60.0,
+            'title': 'Capacity',
+            'type': 'number',
+          }),
+          'rate': dict({
+            'default': 1.0,
+            'title': 'Rate',
+            'type': 'number',
+          }),
+          'threshold': dict({
+            'default': 10.0,
+            'title': 'Threshold',
+            'type': 'number',
+          }),
+          'type': dict({
+            'const': 'leaky',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'LeakyBucketLivenessSettings',
+        'type': 'object',
+      }),
+      'NaiveLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'failure_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Failure Threshold',
+            'type': 'integer',
+          }),
+          'success_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Success Threshold',
+            'type': 'integer',
+          }),
+          'type': dict({
+            'const': 'naive',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'NaiveLivenessSettings',
+        'type': 'object',
+      }),
+    }),
+    'additionalProperties': False,
+    'properties': dict({
+      'liveness': dict({
+        'discriminator': dict({
+          'mapping': dict({
+            'ignore': '#/$defs/IgnoreLivenessSettings',
+            'inherit': '#/$defs/InheritLivenessSettings',
+            'leaky': '#/$defs/LeakyBucketLivenessSettings',
+            'naive': '#/$defs/NaiveLivenessSettings',
+          }),
+          'propertyName': 'type',
+        }),
+        'oneOf': list([
+          dict({
+            '$ref': '#/$defs/IgnoreLivenessSettings',
+          }),
+          dict({
+            '$ref': '#/$defs/InheritLivenessSettings',
+          }),
+          dict({
+            '$ref': '#/$defs/LeakyBucketLivenessSettings',
+          }),
+          dict({
+            '$ref': '#/$defs/NaiveLivenessSettings',
+          }),
+        ]),
+        'title': 'Liveness',
+      }),
+      'pools': dict({
+        'default': list([
+          'default',
+        ]),
+        'items': dict({
+          'type': 'string',
+        }),
+        'title': 'Pools',
+        'type': 'array',
+      }),
+      'url': dict({
+        'format': 'uri',
+        'maxLength': 2083,
+        'minLength': 1,
+        'title': 'Url',
+        'type': 'string',
+      }),
+    }),
+    'required': list([
+      'url',
+    ]),
+    'title': 'RemoteEndpointSettings',
+    'type': 'object',
+  })
+# ---
+# name: TestRemoteEndpointSettings.test_jsonschema_for_validation
+  dict({
+    '$defs': dict({
+      'IgnoreLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'ignore',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'IgnoreLivenessSettings',
+        'type': 'object',
+      }),
+      'InheritLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'inherit',
+            'default': 'inherit',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'title': 'InheritLivenessSettings',
+        'type': 'object',
+      }),
+      'LeakyBucketLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'capacity': dict({
+            'default': 60.0,
+            'title': 'Capacity',
+            'type': 'number',
+          }),
+          'rate': dict({
+            'default': 1.0,
+            'title': 'Rate',
+            'type': 'number',
+          }),
+          'threshold': dict({
+            'default': 10.0,
+            'title': 'Threshold',
+            'type': 'number',
+          }),
+          'type': dict({
+            'const': 'leaky',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'LeakyBucketLivenessSettings',
+        'type': 'object',
+      }),
+      'NaiveLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'failure_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Failure Threshold',
+            'type': 'integer',
+          }),
+          'success_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Success Threshold',
+            'type': 'integer',
+          }),
+          'type': dict({
+            'const': 'naive',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'NaiveLivenessSettings',
+        'type': 'object',
+      }),
+    }),
+    'additionalProperties': False,
+    'properties': dict({
+      'liveness': dict({
+        'discriminator': dict({
+          'mapping': dict({
+            'ignore': '#/$defs/IgnoreLivenessSettings',
+            'inherit': '#/$defs/InheritLivenessSettings',
+            'leaky': '#/$defs/LeakyBucketLivenessSettings',
+            'naive': '#/$defs/NaiveLivenessSettings',
+          }),
+          'propertyName': 'type',
+        }),
+        'oneOf': list([
+          dict({
+            '$ref': '#/$defs/IgnoreLivenessSettings',
+          }),
+          dict({
+            '$ref': '#/$defs/InheritLivenessSettings',
+          }),
+          dict({
+            '$ref': '#/$defs/LeakyBucketLivenessSettings',
+          }),
+          dict({
+            '$ref': '#/$defs/NaiveLivenessSettings',
+          }),
+        ]),
+        'title': 'Liveness',
+      }),
+      'pools': dict({
+        'default': list([
+          'default',
+        ]),
+        'items': dict({
+          'type': 'string',
+        }),
+        'title': 'Pools',
+        'type': 'array',
+      }),
+      'url': dict({
+        'format': 'uri',
+        'maxLength': 2083,
+        'minLength': 1,
+        'title': 'Url',
+        'type': 'string',
+      }),
+    }),
+    'required': list([
+      'url',
+    ]),
+    'title': 'RemoteEndpointSettings',
+    'type': 'object',
+  })
+# ---
+# name: TestRemoteEndpointStateful.test_jsonschema_for_serialization
+  dict({
+    '$defs': dict({
+      'IgnoreLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'ignore',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'IgnoreLivenessSettings',
+        'type': 'object',
+      }),
+      'InheritLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'inherit',
+            'default': 'inherit',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'title': 'InheritLivenessSettings',
+        'type': 'object',
+      }),
+      'LeakyBucketLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'capacity': dict({
+            'default': 60.0,
+            'title': 'Capacity',
+            'type': 'number',
+          }),
+          'rate': dict({
+            'default': 1.0,
+            'title': 'Rate',
+            'type': 'number',
+          }),
+          'threshold': dict({
+            'default': 10.0,
+            'title': 'Threshold',
+            'type': 'number',
+          }),
+          'type': dict({
+            'const': 'leaky',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'LeakyBucketLivenessSettings',
+        'type': 'object',
+      }),
+      'NaiveLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'failure_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Failure Threshold',
+            'type': 'integer',
+          }),
+          'success_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Success Threshold',
+            'type': 'integer',
+          }),
+          'type': dict({
+            'const': 'naive',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'NaiveLivenessSettings',
+        'type': 'object',
+      }),
+      'RemoteEndpointSettings': dict({
+        'additionalProperties': False,
+        'description': '''
+          A ``HttpEndpoint`` is an instrumented target URL that a proxy will use to route requests. It is used as the
+          configuration parser for ``proxy.endpoints[].remote.endpoints[]`` settings.
+          
+          .. code-block:: yaml
+          
+              url: "http://my-endpoint:8080"
+              pools: [fallback]  # omit for default pool
+              failure_threshold: 3
+              success_threshold: 1
+        ''',
+        'properties': dict({
+          'liveness': dict({
+            'discriminator': dict({
+              'mapping': dict({
+                'ignore': '#/$defs/IgnoreLivenessSettings',
+                'inherit': '#/$defs/InheritLivenessSettings',
+                'leaky': '#/$defs/LeakyBucketLivenessSettings',
+                'naive': '#/$defs/NaiveLivenessSettings',
+              }),
+              'propertyName': 'type',
+            }),
+            'oneOf': list([
+              dict({
+                '$ref': '#/$defs/IgnoreLivenessSettings',
+              }),
+              dict({
+                '$ref': '#/$defs/InheritLivenessSettings',
+              }),
+              dict({
+                '$ref': '#/$defs/LeakyBucketLivenessSettings',
+              }),
+              dict({
+                '$ref': '#/$defs/NaiveLivenessSettings',
+              }),
+            ]),
+            'title': 'Liveness',
+          }),
+          'pools': dict({
+            'default': list([
+              'default',
+            ]),
+            'items': dict({
+              'type': 'string',
+            }),
+            'title': 'Pools',
+            'type': 'array',
+          }),
+          'url': dict({
+            'format': 'uri',
+            'maxLength': 2083,
+            'minLength': 1,
+            'title': 'Url',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'url',
+        ]),
+        'title': 'RemoteEndpointSettings',
+        'type': 'object',
+      }),
+    }),
+    'properties': dict({
+      'failure_reasons': dict({
+        'anyOf': list([
+          dict({
+            'items': dict({
+            }),
+            'type': 'array',
+            'uniqueItems': True,
+          }),
+          dict({
+            'type': 'null',
+          }),
+        ]),
+        'default': None,
+        'title': 'Failure Reasons',
+      }),
+      'settings': dict({
+        '$ref': '#/$defs/RemoteEndpointSettings',
+      }),
+      'status': dict({
+        'default': 0,
+        'title': 'Status',
+        'type': 'integer',
+      }),
+    }),
+    'required': list([
+      'settings',
+    ]),
+    'title': 'RemoteEndpoint',
+    'type': 'object',
+  })
+# ---
+# name: TestRemoteEndpointStateful.test_jsonschema_for_validation
+  dict({
+    '$defs': dict({
+      'IgnoreLiveness': dict({
+        'properties': dict({
+          'settings': dict({
+            '$ref': '#/$defs/IgnoreLivenessSettings',
+          }),
+        }),
+        'required': list([
+          'settings',
+        ]),
+        'title': 'IgnoreLiveness',
+        'type': 'object',
+      }),
+      'IgnoreLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'ignore',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'IgnoreLivenessSettings',
+        'type': 'object',
+      }),
+      'InheritLiveness': dict({
+        'description': '''
+          This is a placeholder for inheriting liveness, the parent stateful object will replace it. We do not need to
+          implement the BaseLiveness interface, as it won't exist anymore once everything is setup.
+        ''',
+        'properties': dict({
+          'settings': dict({
+            '$ref': '#/$defs/InheritLivenessSettings',
+          }),
+        }),
+        'required': list([
+          'settings',
+        ]),
+        'title': 'InheritLiveness',
+        'type': 'object',
+      }),
+      'InheritLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'type': dict({
+            'const': 'inherit',
+            'default': 'inherit',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'title': 'InheritLivenessSettings',
+        'type': 'object',
+      }),
+      'LeakyBucketLiveness': dict({
+        'properties': dict({
+          'settings': dict({
+            '$ref': '#/$defs/LeakyBucketLivenessSettings',
+          }),
+        }),
+        'required': list([
+          'settings',
+        ]),
+        'title': 'LeakyBucketLiveness',
+        'type': 'object',
+      }),
+      'LeakyBucketLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'capacity': dict({
+            'default': 60.0,
+            'title': 'Capacity',
+            'type': 'number',
+          }),
+          'rate': dict({
+            'default': 1.0,
+            'title': 'Rate',
+            'type': 'number',
+          }),
+          'threshold': dict({
+            'default': 10.0,
+            'title': 'Threshold',
+            'type': 'number',
+          }),
+          'type': dict({
+            'const': 'leaky',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'LeakyBucketLivenessSettings',
+        'type': 'object',
+      }),
+      'NaiveLiveness': dict({
+        'properties': dict({
+          'settings': dict({
+            '$ref': '#/$defs/NaiveLivenessSettings',
+          }),
+        }),
+        'required': list([
+          'settings',
+        ]),
+        'title': 'NaiveLiveness',
+        'type': 'object',
+      }),
+      'NaiveLivenessSettings': dict({
+        'additionalProperties': False,
+        'properties': dict({
+          'failure_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Failure Threshold',
+            'type': 'integer',
+          }),
+          'success_threshold': dict({
+            'default': 1,
+            'exclusiveMinimum': 0,
+            'title': 'Success Threshold',
+            'type': 'integer',
+          }),
+          'type': dict({
+            'const': 'naive',
+            'title': 'Type',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'type',
+        ]),
+        'title': 'NaiveLivenessSettings',
+        'type': 'object',
+      }),
+      'RemoteEndpointSettings': dict({
+        'additionalProperties': False,
+        'description': '''
+          A ``HttpEndpoint`` is an instrumented target URL that a proxy will use to route requests. It is used as the
+          configuration parser for ``proxy.endpoints[].remote.endpoints[]`` settings.
+          
+          .. code-block:: yaml
+          
+              url: "http://my-endpoint:8080"
+              pools: [fallback]  # omit for default pool
+              failure_threshold: 3
+              success_threshold: 1
+        ''',
+        'properties': dict({
+          'liveness': dict({
+            'discriminator': dict({
+              'mapping': dict({
+                'ignore': '#/$defs/IgnoreLivenessSettings',
+                'inherit': '#/$defs/InheritLivenessSettings',
+                'leaky': '#/$defs/LeakyBucketLivenessSettings',
+                'naive': '#/$defs/NaiveLivenessSettings',
+              }),
+              'propertyName': 'type',
+            }),
+            'oneOf': list([
+              dict({
+                '$ref': '#/$defs/IgnoreLivenessSettings',
+              }),
+              dict({
+                '$ref': '#/$defs/InheritLivenessSettings',
+              }),
+              dict({
+                '$ref': '#/$defs/LeakyBucketLivenessSettings',
+              }),
+              dict({
+                '$ref': '#/$defs/NaiveLivenessSettings',
+              }),
+            ]),
+            'title': 'Liveness',
+          }),
+          'pools': dict({
+            'default': list([
+              'default',
+            ]),
+            'items': dict({
+              'type': 'string',
+            }),
+            'title': 'Pools',
+            'type': 'array',
+          }),
+          'url': dict({
+            'format': 'uri',
+            'maxLength': 2083,
+            'minLength': 1,
+            'title': 'Url',
+            'type': 'string',
+          }),
+        }),
+        'required': list([
+          'url',
+        ]),
+        'title': 'RemoteEndpointSettings',
+        'type': 'object',
+      }),
+    }),
+    'properties': dict({
+      'failure_reasons': dict({
+        'anyOf': list([
+          dict({
+            'items': dict({
+            }),
+            'type': 'array',
+            'uniqueItems': True,
+          }),
+          dict({
+            'type': 'null',
+          }),
+        ]),
+        'default': None,
+        'title': 'Failure Reasons',
+      }),
+      'liveness': dict({
+        'anyOf': list([
+          dict({
+            '$ref': '#/$defs/IgnoreLiveness',
+          }),
+          dict({
+            '$ref': '#/$defs/InheritLiveness',
+          }),
+          dict({
+            '$ref': '#/$defs/LeakyBucketLiveness',
+          }),
+          dict({
+            '$ref': '#/$defs/NaiveLiveness',
+          }),
+        ]),
+        'default': None,
+        'title': 'Liveness',
+      }),
+      'settings': dict({
+        '$ref': '#/$defs/RemoteEndpointSettings',
+      }),
+      'status': dict({
+        'default': 0,
+        'title': 'Status',
+        'type': 'integer',
+      }),
+    }),
+    'required': list([
+      'settings',
+    ]),
+    'title': 'RemoteEndpoint',
+    'type': 'object',
+  })
+# ---
