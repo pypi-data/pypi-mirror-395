@@ -1,0 +1,25 @@
+{
+  "name": "trigdroid-frida-hooks",
+  "version": "2.0.0",
+  "description": "TypeScript Frida hooks for TrigDroid Android security testing framework",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc && frida-compile dist/main.js -o dist/main_bundle.js && npm run copy-to-package",
+    "build:bypass": "tsc -p tsconfig.bypass.json && frida-compile dist/trigdroid_bypass_rpc.js -o dist/trigdroid_bypass_bundle.js && npm run copy-to-package",
+    "build:all": "npm run build && npm run build:bypass",
+    "copy-to-package": "cp dist/*.js ../src/trigdroid/scripts/ && cp -r dist/hooks ../src/trigdroid/scripts/",
+    "watch": "tsc -w",
+    "clean": "rm -rf dist ../src/trigdroid/scripts/*.js ../src/trigdroid/scripts/hooks",
+    "rebuild": "npm run clean && npm run build:all"
+  },
+  "keywords": ["frida", "android", "security", "hooks", "malware-analysis"],
+  "author": "TrigDroid Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/frida-gum": "^18.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
