@@ -1,0 +1,125 @@
+Metadata-Version: 2.4
+Name: nsj_automacoesempresas
+Version: 2.2601.0.1
+Summary: Client em Python desenvolvido para orquestrar cálculos do RPA Nasajon.
+Home-page: https://github.com/Nasajon/pyRPA
+Author: Nasajon Sistemas
+Author-email: contact.dev@nasajon.com.br
+Project-URL: Source, https://github.com/Nasajon/pyRPA
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: SQLAlchemy==1.4.32
+Requires-Dist: pg8000==1.24.1
+Requires-Dist: sqlparams==3.0.0
+Requires-Dist: python-dotenv==0.21.1
+Requires-Dist: pywin32==306
+Requires-Dist: nsj_rest_lib>=2.13.0a16
+Requires-Dist: nsj_gcf_utils>=1.0.22
+Requires-Dist: urllib3==1.26.16
+Requires-Dist: python-dateutil==2.8.0
+Requires-Dist: croniter==6.0.0
+Requires-Dist: PyQt5==5.15.11
+
+# PyRPA
+
+### **Objetivo**
+
+Utilitário para orquestar e gerar automações de execuções do Persona SQL
+
+### **Configuração**
+> Clonar o repositório e abir o repositório com algum editor, sugerimos o **VSCode**
+
+> Copiar o arquivo **.env.dist** e renomea-lo para **.env**
+
+> Abrir o terminal e execute os seguintes comandos 
+
+    python -m venv ./.venv
+    ./.venv/Scripts/Activate.ps1
+    pip install -r .\requirements.txt
+
+> Se usar o VSCode, é recomendado criar um arquivo de execução *launch.json*, clicando no icone de **Run and Debug**(icone com um inseto e um play), em seguida em **create a launch.json** > **Python** > **Python File** e use o seguinte conteudo.
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Arquivo Atual",
+            "type": "python",
+            "request": "launch",
+            "program": "__main__.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-d", "integratto",  
+                "-u",  "MESTRE", 
+                "-p", "999999", 
+                ... //demais argumentos
+            ],
+            "env": {
+                "PATH_PERSONACLI": "C:\\Nasajon Sistemas\\Versao2502\\Integratto2\\personacli.exe"
+            },
+            "justMyCode": false //Informando "false" é possível depurar código que não pertençam ao projeto
+        }
+    ]
+}
+```
+### **IMPORTANTE**
+Para execução local durante do desenvolvimento, altere o valor do *PATH_PERSONACLI* no arquivo launch.json, para o caminho do personacli.exe do seu local.
+
+### **Escopo**
+
+Atualmente, o utilitário executa automações de processamento de cálculo de folha de funcionários e envio de eventos ao eSocial
+
+
+
+### **Funcionamento**
+
+O utilitário desenvolvido na linguagem Python e funciona através de linha de comando usando a biblioteca **argparse**.
+
+### Execução
+
+Para a execução do utilitário é necessário a passagem de parâmetros:
+
+**Conexão**
+
+| Parâmetro        | Curto | Descrição | Obrigatório? | Default |
+|------------------|-------| --------- | ------------ | ------- |
+| *-\-database* | *-d* | Nome do banco de dados para conexão | Sim * ||
+| *-\-user* | *-u* | Usuário para conexão com o banco de dados | Não | postgres|
+| *-\-password* | *-p* | Senha para conexão com o banco de dados | Não | postgres|
+| *-\-host* | *-t* | IP ou nome do servidor do banco de dados | Não | localhost|
+| *-\-port* | *-o* | Porta para conexão com o banco de dados | Não | 5432 |
+
+**Processo**
+
+| Parâmetro | Curto | Descrição | Obrigatório? |
+|------------------|-------| --------- | --------- |
+| *-\-rotina* | *-r* | Código da rotina que seja executada, a rotina é cadastrada no PersonaSQL. | Sim |
+| *-\-competencia* | *-c* | Competência de execução [Necessário para cálculo] | Não |
+| *-\-ano* | *-a* | Ano de execução [Necessário para cálculo] | Não |
+| *-\-semana* | *-s* | Semana de execução| Não |
+| *-\-escopo* | *-e* | Tipo de escopo de execução, atualmente só funciona para uma empresa, então não é obrigatório | Não |
+| *-\-faixa* | *-f* | Informar o código da empresa que será executada | Sim |
+
+### Exemplo
+> python main.py -d integratto_master -u MESTRE -p 999999 -t localhost -o 5432 -r 001 -c 6 -a 2025 -e EMPRESA -f 01 
+
+### **Algoritmo**
+1. 
+
+### **Gerar executável**
+
+Para compilar um executável do utilitário PyMeuRH, execute o seguinte comando no terminal:
+
+>pyinstaller --onefile src\nsj_pyRPA\main.py -n pyRPA --icon src\nsj_pyRPA\resources\Persona.ico --noconsole --version-file version_info.txt -p .\src --icon src\nsj_pyRPA\resources\Persona.ico --add-data "src/nsj_pyRPA/resources/Persona.ico;nsj_pyRPA/resources"
+
+Obs: No arquivo **version_info.txt** contém as informações relacionadas ao versionamento do executável, sempre que for feita uma alteração e em seguida for gerar um novo .exe para subir no instalador, deve-se alterar as informações de versão que existem nesse arquivo, considerando o padrão da Nasajon 2.YYMM.incremental, nos campos **filevers**, **prodvers** e **ProductVersion**.
+
+Adicione o argumento **--noconsole** para gerar um executável que não abra o terminal, para casos em que aplicações chamaram o utilitário.
+
+Também é possível gerar o executável usando o arquivo **build_local.bat** para executá-lo será necessário rodar o camanho pelo cmd.
+
