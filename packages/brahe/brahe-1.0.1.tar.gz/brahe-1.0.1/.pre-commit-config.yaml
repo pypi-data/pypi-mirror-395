@@ -1,0 +1,108 @@
+repos:
+  # Sync README.md to docs/index.md when README changes
+  # - repo: local
+  #   hooks:
+  #     - id: sync-readme-to-docs
+  #       name: Sync README.md to docs/index.md
+  #       language: system
+  #       entry: bash -c 'if git diff --cached --name-only | grep -q "^README.md$"; then cp README.md docs/index.md && git add docs/index.md; fi'
+  #       pass_filenames: false
+  #       always_run: false
+
+  - repo: https://github.com/EmbarkStudios/cargo-deny
+    rev: 0.18.5
+    hooks:
+      - id: cargo-deny
+        args: ["check", "licenses"] # optionally modify the arguments for cargo-deny (default arguments shown here)
+
+  # Sync CODE_OF_CONDUCT.md, CONTRIBUTING.md, and LICENSE.md to docs/
+  - repo: local
+    hooks:
+      - id: sync-code-of-conduct
+        name: Sync CODE_OF_CONDUCT.md to docs/
+        language: system
+        entry: bash -c 'if git diff --cached --name-only | grep -q "^CODE_OF_CONDUCT.md$"; then cp CODE_OF_CONDUCT.md docs/code_of_conduct.md && git add docs/code_of_conduct.md; fi'
+        pass_filenames: false
+        always_run: false
+      - id: sync-contributing
+        name: Sync CONTRIBUTING.md to docs/
+        language: system
+        entry: bash -c 'if git diff --cached --name-only | grep -q "^CONTRIBUTING.md$"; then cp CONTRIBUTING.md docs/contributing.md && git add docs/contributing.md; fi'
+        pass_filenames: false
+        always_run: false
+      - id: sync-license
+        name: Sync LICENSE.md to docs/
+        language: system
+        entry: bash -c 'if git diff --cached --name-only | grep -q "^LICENSE.md$"; then cp LICENSE.md docs/license.md && git add docs/license.md; fi'
+        pass_filenames: false
+        always_run: false
+      - id: sync-changelog
+        name: Sync CHANGELOG.md to docs/
+        language: system
+        entry: bash -c 'if git diff --cached --name-only | grep -q "^CHANGELOG.md$"; then cp CHANGELOG.md docs/changelog.md && git add docs/changelog.md; fi'
+        pass_filenames: false
+        always_run: false
+
+  # Format Rust code first
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt (auto-fix)
+        language: system
+        entry: cargo fmt --all
+        pass_filenames: false
+
+  # Format Python code
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.2
+    hooks:
+      - id: ruff-format
+        name: ruff format (auto-fix)
+        types_or: [ python, pyi ]
+      - id: ruff-check
+        name: ruff check (auto-fix)
+        types_or: [ python, pyi ]
+        args: [ --fix ]
+
+  # Check Rust code (after formatting)
+  - repo: local
+    hooks:
+      - id: cargo-fmt-check
+        name: cargo fmt --check
+        language: system
+        entry: cargo fmt --all -- --check
+        pass_filenames: false
+      - id: cargo-clippy
+        name: cargo clippy
+        language: system
+        entry: cargo clippy --all-targets --all-features -- -D warnings
+        pass_filenames: false
+
+  # Ensure documentation builds without warnings
+  # - repo: local
+  #   hooks:
+  #     - id: mkdocs-check
+  #       name: mkdocs build
+  #       language: system
+  #       entry: uv run mkdocs build --strict
+
+  # Additional useful hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks: 
+      # Python-specific checks
+      - id: debug-statements
+        name: check for debug statements
+      - id: name-tests-test
+        name: check test naming
+        args: [--pytest-test-first]
+        exclude: tests/utils.py
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly

@@ -1,0 +1,88 @@
+[package]
+name = "brahe"
+version = "1.0.1"
+authors = ["Duncan Eddy <duncan.eddy@gmail.com>"]
+edition = "2024"
+description = "Brahe is a modern satellite dynamics library for research and engineering applications designed to be easy-to-learn, high-performance, and quick-to-deploy. The north-star of the development is enabling users to solve meaningful problems and answer questions quickly, easily, and correctly."
+homepage = "https://duncaneddy.github.io/brahe/"
+documentation = "https://docs.rs/brahe/"
+repository = "https://github.com/duncaneddy/brahe/"
+keywords = ["space", "astrodynamics", "satellite"]
+categories = ["science"]
+readme = "README.md"
+license = "MIT"
+exclude = [# We need to keep the size down for crates.io these don't need to be included
+    "/test_data",
+    "/tests",
+    "/scripts",
+    "/docs",
+    "/brahe",
+    ".github",
+    "/examples",
+    "/plots",
+    "/test_assets",
+    "/data/textures/world.topo.200410.3x5400x2700.png", # Python-only
+    "make.py",
+    "mkdocs.yaml",
+    "uv.lock"
+]
+
+[lib]
+name = "brahe"
+# "cdylib" is necessary to produce a shared library for Python to import from.
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+rsofa = "0.5.0"
+nalgebra = { version = "0.34.0", features = ["serde-serialize"] }
+numpy = "0.27.0"
+once_cell = "1.21.3"
+num-traits = "0.2.19"
+regex = "1.11.1"
+is_close = "0.1.3"
+ureq = "3.1.4"
+strum = "0.27.1"
+strum_macros = "0.27.1"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.142"
+sgp4 = "2.3.0"
+uuid = { version = "1.11.0", features = ["v4", "serde"] }
+rayon = "1.10"
+num_cpus = "1.16"
+dirs = "6.0.0"
+anise = "0.8.0"
+
+[dependencies.pyo3]
+version = "0.27.1"
+# "abi3-py38" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.8
+features = ["extension-module"]
+
+[dev-dependencies]
+approx = "0.5.1"
+rstest = "0.26.1"
+serial_test = "3.1.1"
+httpmock = "0.8.2"
+tempfile = "3.13.0"
+cargo-deny = "0.18.5"
+mockall = "0.14.0"
+rv = "0.19"
+rand = "0.9"
+
+[features]
+ci = []
+manual = []  # For tests requiring network downloads (run with: cargo test --features manual)
+python = []
+
+# Build Profiles
+[profile.dev]
+opt-level = 0
+lto = "off"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "fat"
+
+[lints.rust]
+missing_docs = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)', 'cfg(feature, values("manual"))'] }

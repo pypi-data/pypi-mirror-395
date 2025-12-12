@@ -1,0 +1,1231 @@
+/*!
+ * This module defines the Python module for the Brahe library. It aggregates
+ * all the Python bindings for the core library into a single module.
+ */
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use nalgebra as na;
+use nalgebra::{DMatrix, DVector, SVector, Vector3, Vector6};
+use numpy::{
+    IntoPyArray, Ix1, Ix2, PyArray, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2,
+    PyReadonlyArray3, PyUntypedArrayMethods, ToPyArray, ndarray,
+};
+
+use pyo3::panic::PanicException;
+use pyo3::prelude::*;
+use pyo3::pyclass::CompareOp;
+use pyo3::types::{
+    PyDateAccess, PyDateTime, PyDict, PyList, PyString, PyTimeAccess, PyTuple, PyType,
+};
+use pyo3::{IntoPyObjectExt, exceptions, wrap_pyfunction};
+
+use crate::math::interpolation::CovarianceInterpolationConfig;
+use crate::traits::*;
+use crate::utils::{
+    BraheError, format_time_string, get_brahe_cache_dir, get_brahe_cache_dir_with_subdir,
+    get_celestrak_cache_dir, get_eop_cache_dir, get_max_threads, set_max_threads, set_num_threads,
+};
+use crate::*;
+
+// NOTE: While it would be better if all bindings were in separate files,
+// currently pyo3 does not support this easily. This is a known issue where
+// classes defined in different rust modules cannot be passed between functions
+// in the same module. This is a known issue and is being worked on.
+//
+// See: https://github.com/PyO3/pyo3/issues/1444
+
+// Helper functions
+
+macro_rules! matrix_to_numpy {
+    ($py:expr,$mat:expr,$r:expr,$c:expr,$typ:ty) => {{
+        let flat_vec: Vec<$typ> = (0..$r)
+            .flat_map(|i| (0..$c).map(move |j| $mat[(i, j)]))
+            .collect();
+        flat_vec.into_pyarray($py).reshape([$r, $c]).unwrap()
+    }};
+}
+
+macro_rules! vector_to_numpy {
+    ($py:expr,$vec:expr,$l:expr,$typ:ty) => {{
+        let flat_vec: Vec<$typ> = (0..$l).map(|i| $vec[i]).collect();
+        flat_vec.into_pyarray($py)
+    }};
+}
+
+macro_rules! numpy_to_vector3 {
+    ($arr:expr) => {{
+        let vec = $arr.to_vec().map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err("Failed to convert numpy array to vector")
+        })?;
+        if vec.len() != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Expected array of length 3, got {}",
+                vec.len()
+            )));
+        }
+        nalgebra::Vector3::new(vec[0], vec[1], vec[2])
+    }};
+}
+
+macro_rules! numpy_to_vector6 {
+    ($arr:expr) => {{
+        let vec = $arr.to_vec().map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err("Failed to convert numpy array to vector")
+        })?;
+        if vec.len() != 6 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Expected array of length 6, got {}",
+                vec.len()
+            )));
+        }
+        nalgebra::Vector6::new(vec[0], vec[1], vec[2], vec[3], vec[4], vec[5])
+    }};
+}
+
+macro_rules! numpy_to_smatrix3 {
+    ($arr:expr) => {{
+        let shape = $arr.shape();
+        if shape[0] != 3 || shape[1] != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Expected 3x3 matrix, got {}x{}",
+                shape[0], shape[1]
+            )));
+        }
+        let mat_vec = $arr.to_vec().map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err("Failed to convert numpy array to matrix")
+        })?;
+        // numpy is row-major, nalgebra is column-major
+        nalgebra::SMatrix::<f64, 3, 3>::from_row_slice(&mat_vec)
+    }};
+}
+
+/// Convert a Python object to a 1D f64 array, automatically handling dtype conversion.
+///
+/// This function accepts any numpy array-like object and converts it to Vec<f64>,
+/// automatically converting integer arrays to float64 if needed.
+///
+/// # Arguments
+///
+/// * `arr` - Python object that should be a numpy array
+/// * `expected_len` - Optional expected length for validation
+///
+/// # Returns
+///
+/// * `PyResult<Vec<f64>>` - Converted vector or error
+fn pyany_to_f64_array1(arr: &Bound<'_, PyAny>, expected_len: Option<usize>) -> PyResult<Vec<f64>> {
+    // Try to extract as Vec<f64> first (handles Python lists)
+    if let Ok(vec) = arr.extract::<Vec<f64>>() {
+        // Validate length if expected
+        if let Some(len) = expected_len
+            && vec.len() != len
+        {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Expected array or list of length {}, got {}",
+                len,
+                vec.len()
+            )));
+        }
+        return Ok(vec);
+    }
+
+    // Fallback to numpy array conversion (handles int arrays and other numpy dtypes)
+    let py = arr.py();
+
+    // Import numpy
+    let np = py
+        .import("numpy")
+        .map_err(|_| exceptions::PyImportError::new_err("Failed to import numpy"))?;
+
+    // Get float64 dtype
+    let float64_dtype = np
+        .getattr("float64")
+        .map_err(|_| exceptions::PyAttributeError::new_err("Failed to get numpy.float64"))?;
+
+    // Convert to float64 dtype - this handles int arrays gracefully
+    let arr_f64 = arr
+        .call_method1("astype", (float64_dtype,))
+        .map_err(|_| exceptions::PyTypeError::new_err("Expected a numpy array or Python list"))?;
+
+    // Downcast to PyArray<f64, Ix1>
+    let pyarray = arr_f64
+        .cast::<PyArray<f64, Ix1>>()
+        .map_err(|_| exceptions::PyTypeError::new_err("Expected a 1-D numpy array or list"))?;
+
+    // Convert to vector
+    let vec = pyarray
+        .to_vec()
+        .map_err(|_| exceptions::PyValueError::new_err("Failed to convert array to vector"))?;
+
+    // Validate length if expected
+    if let Some(len) = expected_len
+        && vec.len() != len
+    {
+        return Err(exceptions::PyValueError::new_err(format!(
+            "Expected array or list of length {}, got {}",
+            len,
+            vec.len()
+        )));
+    }
+
+    Ok(vec)
+}
+
+/// Convert a Python object to a 2D f64 array, automatically handling dtype conversion.
+///
+/// This function accepts any numpy array-like object and converts it to Vec<Vec<f64>>,
+/// automatically converting integer arrays to float64 if needed.
+///
+/// # Arguments
+///
+/// * `arr` - Python object that should be a 2D numpy array
+/// * `expected_shape` - Optional expected shape (rows, cols) for validation
+///
+/// # Returns
+///
+/// * `PyResult<Vec<Vec<f64>>>` - Converted 2D vector or error
+fn pyany_to_f64_array2(
+    arr: &Bound<'_, PyAny>,
+    expected_shape: Option<(usize, usize)>,
+) -> PyResult<Vec<Vec<f64>>> {
+    // Try to extract as Vec<Vec<f64>> first (handles nested Python lists)
+    if let Ok(mat_vec) = arr.extract::<Vec<Vec<f64>>>() {
+        // Validate shape if expected
+        if let Some((exp_rows, exp_cols)) = expected_shape {
+            if mat_vec.len() != exp_rows {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Expected matrix or list with {} rows, got {}",
+                    exp_rows,
+                    mat_vec.len()
+                )));
+            }
+            for (i, row) in mat_vec.iter().enumerate() {
+                if row.len() != exp_cols {
+                    return Err(exceptions::PyValueError::new_err(format!(
+                        "Expected {} columns in row {}, got {}",
+                        exp_cols,
+                        i,
+                        row.len()
+                    )));
+                }
+            }
+        }
+        return Ok(mat_vec);
+    }
+
+    // Fallback to numpy array conversion (handles int arrays and other numpy dtypes)
+    let py = arr.py();
+
+    // Import numpy
+    let np = py
+        .import("numpy")
+        .map_err(|_| exceptions::PyImportError::new_err("Failed to import numpy"))?;
+
+    // Get float64 dtype
+    let float64_dtype = np
+        .getattr("float64")
+        .map_err(|_| exceptions::PyAttributeError::new_err("Failed to get numpy.float64"))?;
+
+    // Convert to float64 dtype
+    let arr_f64 = arr.call_method1("astype", (float64_dtype,)).map_err(|_| {
+        exceptions::PyTypeError::new_err("Expected a 2D numpy array or nested Python list")
+    })?;
+
+    // Downcast to PyArray<f64, Ix2>
+    let pyarray = arr_f64.cast::<PyArray<f64, Ix2>>().map_err(|_| {
+        exceptions::PyTypeError::new_err("Expected a 2-D numpy array or nested list")
+    })?;
+
+    // Get shape
+    let shape = pyarray.shape();
+    if shape.len() != 2 {
+        return Err(exceptions::PyValueError::new_err(format!(
+            "Expected 2-D array, got {}-D",
+            shape.len()
+        )));
+    }
+    let rows = shape[0];
+    let cols = shape[1];
+
+    // Validate shape if expected
+    if let Some((exp_rows, exp_cols)) = expected_shape
+        && (rows != exp_rows || cols != exp_cols)
+    {
+        return Err(exceptions::PyValueError::new_err(format!(
+            "Expected array or list of shape ({}, {}), got ({}, {})",
+            exp_rows, exp_cols, rows, cols
+        )));
+    }
+
+    // Convert to Vec<Vec<f64>>
+    let flat_vec = pyarray
+        .to_vec()
+        .map_err(|_| exceptions::PyValueError::new_err("Failed to convert array to vector"))?;
+
+    // Reshape into 2D Vec (row-major order)
+    let mut result = Vec::with_capacity(rows);
+    for i in 0..rows {
+        let row = flat_vec[i * cols..(i + 1) * cols].to_vec();
+        result.push(row);
+    }
+
+    Ok(result)
+}
+
+/// Convert a Python object to a statically-sized nalgebra vector with automatic dtype conversion.
+///
+/// This function accepts numpy arrays or Python lists and converts them to `SVector<f64, N>`,
+/// automatically converting integer arrays/lists to float64 if needed.
+///
+/// # Type Parameters
+///
+/// * `N` - The compile-time size of the vector
+///
+/// # Arguments
+///
+/// * `arr` - Python object that should be a numpy array or list
+///
+/// # Returns
+///
+/// * `PyResult<na::SVector<f64, N>>` - Static vector with compile-time size checking
+///
+/// # Examples
+///
+/// ```rust
+/// // Accept size-3 vector (position)
+/// let pos = pyany_to_svector::<3>(arr)?;
+///
+/// // Accept size-6 vector (state)
+/// let state = pyany_to_svector::<6>(arr)?;
+/// ```
+fn pyany_to_svector<const N: usize>(arr: &Bound<'_, PyAny>) -> PyResult<na::SVector<f64, N>> {
+    // Try to extract as Vec<f64> first (handles Python lists)
+    if let Ok(vec) = arr.extract::<Vec<f64>>() {
+        if vec.len() != N {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Expected array or list of length {}, got {}",
+                N,
+                vec.len()
+            )));
+        }
+        return Ok(na::SVector::<f64, N>::from_vec(vec));
+    }
+
+    // Fallback to numpy array conversion (handles int arrays and other numpy dtypes)
+    let py = arr.py();
+
+    // Import numpy
+    let np = py
+        .import("numpy")
+        .map_err(|_| exceptions::PyImportError::new_err("Failed to import numpy"))?;
+
+    // Get float64 dtype
+    let float64_dtype = np
+        .getattr("float64")
+        .map_err(|_| exceptions::PyAttributeError::new_err("Failed to get numpy.float64"))?;
+
+    // Convert to float64 dtype - this handles int arrays gracefully
+    let arr_f64 = arr
+        .call_method1("astype", (float64_dtype,))
+        .map_err(|_| exceptions::PyTypeError::new_err("Expected a numpy array or Python list"))?;
+
+    // Downcast to PyArray<f64, Ix1>
+    let pyarray = arr_f64
+        .cast::<PyArray<f64, Ix1>>()
+        .map_err(|_| exceptions::PyTypeError::new_err("Expected a 1-D numpy array or list"))?;
+
+    // Convert to vector
+    let vec = pyarray
+        .to_vec()
+        .map_err(|_| exceptions::PyValueError::new_err("Failed to convert array to vector"))?;
+
+    // Validate length
+    if vec.len() != N {
+        return Err(exceptions::PyValueError::new_err(format!(
+            "Expected array or list of length {}, got {}",
+            N,
+            vec.len()
+        )));
+    }
+
+    Ok(na::SVector::<f64, N>::from_vec(vec))
+}
+
+/// Convert a Python object to a statically-sized nalgebra matrix with automatic dtype conversion.
+///
+/// This function accepts numpy 2D arrays or nested Python lists and converts them to `SMatrix<f64, R, C>`,
+/// automatically converting integer arrays/lists to float64 and handling row-major to column-major conversion.
+///
+/// # Type Parameters
+///
+/// * `R` - The compile-time number of rows
+/// * `C` - The compile-time number of columns
+///
+/// # Arguments
+///
+/// * `arr` - Python object that should be a 2D numpy array or nested list
+///
+/// # Returns
+///
+/// * `PyResult<na::SMatrix<f64, R, C>>` - Static matrix with compile-time size checking
+///
+/// # Examples
+///
+/// ```rust
+/// // Accept 3x3 matrix (rotation matrix)
+/// let rot = pyany_to_smatrix::<3, 3>(arr)?;
+/// ```
+#[allow(dead_code)]
+fn pyany_to_smatrix<const R: usize, const C: usize>(
+    arr: &Bound<'_, PyAny>,
+) -> PyResult<na::SMatrix<f64, R, C>> {
+    // Try to extract as Vec<Vec<f64>> first (handles nested Python lists)
+    if let Ok(mat_vec) = arr.extract::<Vec<Vec<f64>>>() {
+        // Validate shape
+        if mat_vec.len() != R {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Expected matrix or list with {} rows, got {}",
+                R,
+                mat_vec.len()
+            )));
+        }
+        for (i, row) in mat_vec.iter().enumerate() {
+            if row.len() != C {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Expected {} columns in row {}, got {}",
+                    C,
+                    i,
+                    row.len()
+                )));
+            }
+        }
+
+        // Convert Vec<Vec<f64>> (row-major) to flat Vec<f64> (column-major) for nalgebra
+        let flat: Vec<f64> = (0..C)
+            .flat_map(|col| mat_vec.iter().map(move |row| row[col]))
+            .collect();
+
+        return Ok(na::SMatrix::<f64, R, C>::from_vec(flat));
+    }
+
+    // Fallback to numpy array conversion (handles int arrays and other numpy dtypes)
+    let py = arr.py();
+
+    // Import numpy
+    let np = py
+        .import("numpy")
+        .map_err(|_| exceptions::PyImportError::new_err("Failed to import numpy"))?;
+
+    // Get float64 dtype
+    let float64_dtype = np
+        .getattr("float64")
+        .map_err(|_| exceptions::PyAttributeError::new_err("Failed to get numpy.float64"))?;
+
+    // Convert to float64 dtype
+    let arr_f64 = arr.call_method1("astype", (float64_dtype,)).map_err(|_| {
+        exceptions::PyTypeError::new_err("Expected a 2D numpy array or nested Python list")
+    })?;
+
+    // Downcast to PyArray<f64, Ix2>
+    let pyarray = arr_f64.cast::<PyArray<f64, Ix2>>().map_err(|_| {
+        exceptions::PyTypeError::new_err("Expected a 2-D numpy array or nested list")
+    })?;
+
+    // Get shape and validate
+    let shape = pyarray.shape();
+    if shape.len() != 2 {
+        return Err(exceptions::PyValueError::new_err(format!(
+            "Expected 2-D array, got {}-D",
+            shape.len()
+        )));
+    }
+    let rows = shape[0];
+    let cols = shape[1];
+
+    if rows != R || cols != C {
+        return Err(exceptions::PyValueError::new_err(format!(
+            "Expected array or list of shape ({}, {}), got ({}, {})",
+            R, C, rows, cols
+        )));
+    }
+
+    // Convert to flat Vec (row-major from numpy)
+    let flat_vec = pyarray
+        .to_vec()
+        .map_err(|_| exceptions::PyValueError::new_err("Failed to convert array to vector"))?;
+
+    // Reshape into Vec<Vec<f64>> (row-major)
+    let mut mat_vec = Vec::with_capacity(R);
+    for i in 0..R {
+        let row = flat_vec[i * C..(i + 1) * C].to_vec();
+        mat_vec.push(row);
+    }
+
+    // Convert to column-major for nalgebra
+    let flat: Vec<f64> = (0..C)
+        .flat_map(|col| mat_vec.iter().map(move |row| row[col]))
+        .collect();
+
+    Ok(na::SMatrix::<f64, R, C>::from_vec(flat))
+}
+
+/// Create an S-type (static-sized) value function wrapper from a Python callable for 6D state vectors.
+///
+/// This wraps a Python callable that follows the value function signature:
+/// `(epoch, state) -> float` into an S-type value function for SValueEvent<6, 0>.
+///
+/// Used by SGPPropagator which requires static-sized events.
+#[allow(clippy::type_complexity)]
+#[allow(deprecated)]
+fn create_s_value_fn_wrapper_6(
+    py_value_fn: Py<PyAny>,
+) -> Box<dyn Fn(time::Epoch, &SVector<f64, 6>, Option<&SVector<f64, 0>>) -> f64 + Send + Sync> {
+    Box::new(
+        move |t: time::Epoch, state: &SVector<f64, 6>, _params: Option<&SVector<f64, 0>>| -> f64 {
+            Python::with_gil(|py| {
+                // Convert to Python
+                let py_epoch = match Py::new(py, PyEpoch { obj: t }) {
+                    Ok(e) => e,
+                    Err(e) => {
+                        eprintln!("Warning: Failed to create PyEpoch: {}", e);
+                        return 0.0;
+                    }
+                };
+                let state_array = state.as_slice().to_pyarray(py).to_owned();
+
+                // Call Python value function
+                let result = py_value_fn.bind(py).call1((py_epoch, state_array));
+
+                match result {
+                    Ok(val) => val.extract::<f64>().unwrap_or_else(|e| {
+                        eprintln!("Warning: value_fn must return float: {}", e);
+                        0.0
+                    }),
+                    Err(e) => {
+                        eprintln!("Warning: value_fn call failed: {}", e);
+                        0.0
+                    }
+                }
+            })
+        },
+    )
+}
+
+/// Create an S-type (static-sized) condition function wrapper from a Python callable for 6D state vectors.
+///
+/// This wraps a Python callable that follows the condition function signature:
+/// `(epoch, state) -> bool` into an S-type condition function for SBinaryEvent<6, 0>.
+///
+/// Used by SGPPropagator which requires static-sized events.
+#[allow(clippy::type_complexity)]
+#[allow(deprecated)]
+fn create_s_condition_fn_wrapper_6(
+    py_condition_fn: Py<PyAny>,
+) -> Box<dyn Fn(time::Epoch, &SVector<f64, 6>, Option<&SVector<f64, 0>>) -> bool + Send + Sync> {
+    Box::new(
+        move |t: time::Epoch, state: &SVector<f64, 6>, _params: Option<&SVector<f64, 0>>| -> bool {
+            Python::with_gil(|py| {
+                // Convert to Python
+                let py_epoch = match Py::new(py, PyEpoch { obj: t }) {
+                    Ok(e) => e,
+                    Err(e) => {
+                        eprintln!("Warning: Failed to create PyEpoch: {}", e);
+                        return false;
+                    }
+                };
+                let state_array = state.as_slice().to_pyarray(py).to_owned();
+
+                // Call Python condition function
+                let result = py_condition_fn.bind(py).call1((py_epoch, state_array));
+
+                match result {
+                    Ok(val) => val.extract::<bool>().unwrap_or_else(|e| {
+                        eprintln!("Warning: condition_fn must return bool: {}", e);
+                        false
+                    }),
+                    Err(e) => {
+                        eprintln!("Warning: condition_fn call failed: {}", e);
+                        false
+                    }
+                }
+            })
+        },
+    )
+}
+
+/// Create an S-type (static-sized) callback wrapper from a Python callback for 6D state vectors.
+///
+/// This wraps a Python callable that follows the standard event callback signature:
+/// `(epoch, state) -> (Optional[state], EventAction)` into an SEventCallback<6, 0>.
+///
+/// Used by SGPPropagator which requires static-sized callbacks for its event system.
+#[allow(deprecated)]
+fn create_s_callback_wrapper_6(py_callback: Py<PyAny>) -> events::SEventCallback<6, 0> {
+    Box::new(
+        move |t: time::Epoch,
+              state: &SVector<f64, 6>,
+              _params: Option<&SVector<f64, 0>>|
+              -> (
+            Option<SVector<f64, 6>>,
+            Option<SVector<f64, 0>>,
+            events::EventAction,
+        ) {
+            Python::with_gil(|py| {
+                // Convert to Python
+                let py_epoch = Py::new(py, PyEpoch { obj: t }).ok();
+                let state_array = state.as_slice().to_pyarray(py).to_owned();
+
+                if py_epoch.is_none() {
+                    return (None, None, events::EventAction::Continue);
+                }
+
+                // Call Python callback
+                let result = py_callback.bind(py).call1((py_epoch.unwrap(), state_array));
+
+                match result {
+                    Ok(tuple) => {
+                        // Extract (Optional[state], action) tuple
+                        let item0 = tuple.get_item(0).ok();
+                        let new_state: Option<SVector<f64, 6>> = item0.and_then(|item| {
+                            if item.is_none() {
+                                None
+                            } else {
+                                pyany_to_svector::<6>(&item).ok()
+                            }
+                        });
+
+                        let item1 = tuple.get_item(1).ok();
+                        let action: events::EventAction = item1
+                            .and_then(|item| item.extract::<PyRef<PyEventAction>>().ok())
+                            .map(|a| a.action)
+                            .unwrap_or(events::EventAction::Continue);
+
+                        (new_state, None, action)
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: callback failed: {}", e);
+                        (None, None, events::EventAction::Continue)
+                    }
+                }
+            })
+        },
+    )
+}
+
+/// Python wrapper for AngleFormat enum
+#[pyclass(module = "brahe._brahe")]
+#[pyo3(name = "AngleFormat")]
+#[derive(Clone)]
+pub struct PyAngleFormat {
+    pub(crate) value: constants::AngleFormat,
+}
+
+#[pymethods]
+impl PyAngleFormat {
+    #[classattr]
+    #[allow(non_snake_case)]
+    fn RADIANS() -> Self {
+        PyAngleFormat {
+            value: constants::AngleFormat::Radians,
+        }
+    }
+
+    #[classattr]
+    #[allow(non_snake_case)]
+    fn DEGREES() -> Self {
+        PyAngleFormat {
+            value: constants::AngleFormat::Degrees,
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{:?}", self.value)
+    }
+
+    fn __repr__(&self) -> String {
+        format!("AngleFormat.{:?}", self.value)
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp) -> PyResult<bool> {
+        match op {
+            CompareOp::Eq => Ok(self.value == other.value),
+            CompareOp::Ne => Ok(self.value != other.value),
+            _ => Err(exceptions::PyNotImplementedError::new_err(
+                "Comparison not supported",
+            )),
+        }
+    }
+}
+
+// We directly include the contents of the module-definition files as they need to be part of a
+// single module for the Python bindings to work correctly.
+
+include!("datasets.rs");
+include!("eop.rs");
+include!("space_weather.rs");
+include!("time.rs");
+include!("frames.rs");
+include!("coordinates.rs");
+include!("orbits.rs");
+include!("orbit_dynamics.rs"); // Must come before propagators.rs (uses PyEphemerisSource)
+include!("integrators.rs"); // Must come before propagators.rs (uses PyIntegratorConfig)
+include!("events.rs"); // Must come before propagators.rs (premade events used in add_event_detector)
+include!("propagators.rs");
+include!("attitude.rs");
+include!("trajectories.rs");
+include!("access.rs");
+include!("relative_motion.rs");
+include!("math.rs");
+include!("utils.rs");
+include!("earth_models.rs");
+
+// Define Module
+
+#[cfg(feature = "python")] // Gate this definition behind a feature flag so it doesn't interfere with non-python builds
+#[pymodule(name = "_brahe")] // See: https://www.maturin.rs/project_layout#import-rust-as-a-submodule-of-your-project
+pub fn _brahe(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
+    // Re-export PanicException so Python tests can catch Rust panics
+    module.add("PanicException", py.get_type::<PanicException>())?;
+
+    // Add version from Cargo.toml
+    module.add("__version__", env!("CARGO_PKG_VERSION"))?;
+
+    //* Constants *//
+    module.add("DEG2RAD", constants::DEG2RAD)?;
+    module.add("RAD2DEG", constants::RAD2DEG)?;
+    module.add("AS2RAD", constants::AS2RAD)?;
+    module.add("RAD2AS", constants::RAD2AS)?;
+    module.add("MJD_ZERO", constants::MJD_ZERO)?;
+    module.add("MJD2000", constants::MJD2000)?;
+    module.add("GPS_TAI", constants::GPS_TAI)?;
+    module.add("TAI_GPS", constants::TAI_GPS)?;
+    module.add("TT_TAI", constants::TT_TAI)?;
+    module.add("TAI_TT", constants::TAI_TT)?;
+    module.add("GPS_TT", constants::GPS_TT)?;
+    module.add("TT_GPS", constants::TT_GPS)?;
+    module.add("GPS_ZERO", constants::GPS_ZERO)?;
+    module.add("C_LIGHT", constants::C_LIGHT)?;
+    module.add("AU", constants::AU)?;
+    module.add("R_EARTH", constants::R_EARTH)?;
+    module.add("WGS84_A", constants::WGS84_A)?;
+    module.add("WGS84_F", constants::WGS84_F)?;
+    module.add("GM_EARTH", constants::GM_EARTH)?;
+    module.add("ECC_EARTH", constants::ECC_EARTH)?;
+    module.add("J2_EARTH", constants::J2_EARTH)?;
+    module.add("OMEGA_EARTH", constants::OMEGA_EARTH)?;
+    module.add("GM_SUN", constants::GM_SUN)?;
+    module.add("R_SUN", constants::R_SUN)?;
+    module.add("P_SUN", constants::P_SUN)?;
+    module.add("R_MOON", constants::R_MOON)?;
+    module.add("GM_MOON", constants::GM_MOON)?;
+    module.add("GM_MERCURY", constants::GM_MERCURY)?;
+    module.add("GM_VENUS", constants::GM_VENUS)?;
+    module.add("GM_MARS", constants::GM_MARS)?;
+    module.add("GM_JUPITER", constants::GM_JUPITER)?;
+    module.add("GM_SATURN", constants::GM_SATURN)?;
+    module.add("GM_URANUS", constants::GM_URANUS)?;
+    module.add("GM_NEPTUNE", constants::GM_NEPTUNE)?;
+    module.add("GM_PLUTO", constants::GM_PLUTO)?;
+
+    //* EOP *//
+
+    // Download
+    module.add_function(wrap_pyfunction!(py_download_c04_eop_file, module)?)?;
+    module.add_function(wrap_pyfunction!(py_download_standard_eop_file, module)?)?;
+
+    // Static Provider
+    module.add_class::<PyStaticEOPProvider>()?;
+
+    // File Provider
+    module.add_class::<PyFileEOPProvider>()?;
+
+    // Caching Provider
+    module.add_class::<PyCachingEOPProvider>()?;
+
+    // Global
+    module.add_function(wrap_pyfunction!(py_set_global_eop_provider, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_set_global_eop_provider_from_static_provider,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        py_set_global_eop_provider_from_file_provider,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        py_set_global_eop_provider_from_caching_provider,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_ut1_utc, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_pm, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_dxdy, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_lod, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_initialization, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_len, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_type, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_extrapolation, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_interpolation, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_mjd_min, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_mjd_max, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_mjd_last_lod, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_eop_mjd_last_dxdy, module)?)?;
+    module.add_function(wrap_pyfunction!(py_initialize_eop, module)?)?;
+
+    //* Space Weather *//
+
+    // Static Provider
+    module.add_class::<PyStaticSpaceWeatherProvider>()?;
+
+    // File Provider
+    module.add_class::<PyFileSpaceWeatherProvider>()?;
+
+    // Caching Provider
+    module.add_class::<PyCachingSpaceWeatherProvider>()?;
+
+    // Global
+    module.add_function(wrap_pyfunction!(
+        py_set_global_space_weather_provider,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_kp, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_kp_all, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_kp_daily, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_ap, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_ap_all, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_ap_daily, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_f107_observed, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_f107_adjusted, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_f107_obs_avg81, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_f107_adj_avg81, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_sunspot_number, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_last_kp, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_last_ap, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_last_daily_kp, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_last_daily_ap, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_last_f107, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_last_kpap_epochs, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_last_daily_epochs, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_sw_initialization, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_sw_len, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_sw_type, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_sw_extrapolation, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_sw_mjd_min, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_global_sw_mjd_max, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_get_global_sw_mjd_last_observed,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        py_get_global_sw_mjd_last_daily_predicted,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        py_get_global_sw_mjd_last_monthly_predicted,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_initialize_sw, module)?)?;
+
+    //* Time *//
+
+    module.add_class::<PyTimeSystem>()?;
+    module.add_class::<PyEpoch>()?;
+    module.add_class::<PyTimeRange>()?;
+    module.add_function(wrap_pyfunction!(py_mjd_to_datetime, module)?)?;
+    module.add_function(wrap_pyfunction!(py_datetime_to_mjd, module)?)?;
+    module.add_function(wrap_pyfunction!(py_jd_to_datetime, module)?)?;
+    module.add_function(wrap_pyfunction!(py_datetime_to_jd, module)?)?;
+    module.add_function(wrap_pyfunction!(py_time_system_offset_for_mjd, module)?)?;
+    module.add_function(wrap_pyfunction!(py_time_system_offset_for_jd, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_time_system_offset_for_datetime,
+        module
+    )?)?;
+
+    // Top-level time system constants
+    module.add(
+        "GPS",
+        PyTimeSystem {
+            ts: time::TimeSystem::GPS,
+        },
+    )?;
+    module.add(
+        "TAI",
+        PyTimeSystem {
+            ts: time::TimeSystem::TAI,
+        },
+    )?;
+    module.add(
+        "TT",
+        PyTimeSystem {
+            ts: time::TimeSystem::TT,
+        },
+    )?;
+    module.add(
+        "UTC",
+        PyTimeSystem {
+            ts: time::TimeSystem::UTC,
+        },
+    )?;
+    module.add(
+        "UT1",
+        PyTimeSystem {
+            ts: time::TimeSystem::UT1,
+        },
+    )?;
+
+    //* Frames *//
+    module.add_function(wrap_pyfunction!(py_bias_precession_nutation, module)?)?;
+    module.add_function(wrap_pyfunction!(py_earth_rotation, module)?)?;
+    module.add_function(wrap_pyfunction!(py_polar_motion, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_gcrf_to_itrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_itrf_to_gcrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_eci_to_ecef, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_ecef_to_eci, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_gcrf_to_itrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_itrf_to_gcrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_eci_to_ecef, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_ecef_to_eci, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_gcrf_to_itrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_itrf_to_gcrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_eci_to_ecef, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_ecef_to_eci, module)?)?;
+    module.add_function(wrap_pyfunction!(py_bias_eme2000, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_gcrf_to_eme2000, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_eme2000_to_gcrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_gcrf_to_eme2000, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_eme2000_to_gcrf, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_gcrf_to_eme2000, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_eme2000_to_gcrf, module)?)?;
+
+    //* Coordinates *//
+
+    // Coordinate Types
+    module.add_class::<PyEllipsoidalConversionType>()?;
+
+    // Cartesian
+    module.add_function(wrap_pyfunction!(py_state_koe_to_eci, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_eci_to_koe, module)?)?;
+
+    // Geocentric
+    module.add_function(wrap_pyfunction!(py_position_geocentric_to_ecef, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_ecef_to_geocentric, module)?)?;
+
+    // Geodetic
+    module.add_function(wrap_pyfunction!(py_position_geodetic_to_ecef, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_ecef_to_geodetic, module)?)?;
+
+    // Topocentric
+    module.add_function(wrap_pyfunction!(py_rotation_ellipsoid_to_enz, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_enz_to_ellipsoid, module)?)?;
+    module.add_function(wrap_pyfunction!(py_relative_position_ecef_to_enz, module)?)?;
+    module.add_function(wrap_pyfunction!(py_relative_position_enz_to_ecef, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_ellipsoid_to_sez, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_sez_to_ellipsoid, module)?)?;
+    module.add_function(wrap_pyfunction!(py_relative_position_ecef_to_sez, module)?)?;
+    module.add_function(wrap_pyfunction!(py_relative_position_sez_to_ecef, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_enz_to_azel, module)?)?;
+    module.add_function(wrap_pyfunction!(py_position_sez_to_azel, module)?)?;
+
+    //* Orbits *//
+    module.add_function(wrap_pyfunction!(py_orbital_period, module)?)?;
+    module.add_function(wrap_pyfunction!(py_orbital_period_general, module)?)?;
+    module.add_function(wrap_pyfunction!(py_orbital_period_from_state, module)?)?;
+    module.add_function(wrap_pyfunction!(py_mean_motion, module)?)?;
+    module.add_function(wrap_pyfunction!(py_mean_motion_general, module)?)?;
+    module.add_function(wrap_pyfunction!(py_semimajor_axis, module)?)?;
+    module.add_function(wrap_pyfunction!(py_semimajor_axis_general, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_semimajor_axis_from_orbital_period,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        py_semimajor_axis_from_orbital_period_general,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_perigee_velocity, module)?)?;
+    module.add_function(wrap_pyfunction!(py_periapsis_velocity, module)?)?;
+    module.add_function(wrap_pyfunction!(py_periapsis_distance, module)?)?;
+    module.add_function(wrap_pyfunction!(py_apogee_velocity, module)?)?;
+    module.add_function(wrap_pyfunction!(py_apoapsis_velocity, module)?)?;
+    module.add_function(wrap_pyfunction!(py_apoapsis_distance, module)?)?;
+    module.add_function(wrap_pyfunction!(py_periapsis_altitude, module)?)?;
+    module.add_function(wrap_pyfunction!(py_perigee_altitude, module)?)?;
+    module.add_function(wrap_pyfunction!(py_apoapsis_altitude, module)?)?;
+    module.add_function(wrap_pyfunction!(py_apogee_altitude, module)?)?;
+    module.add_function(wrap_pyfunction!(py_sun_synchronous_inclination, module)?)?;
+    module.add_function(wrap_pyfunction!(py_geo_sma, module)?)?;
+    module.add_function(wrap_pyfunction!(py_anomaly_eccentric_to_mean, module)?)?;
+    module.add_function(wrap_pyfunction!(py_anomaly_mean_to_eccentric, module)?)?;
+    module.add_function(wrap_pyfunction!(py_anomaly_true_to_eccentric, module)?)?;
+    module.add_function(wrap_pyfunction!(py_anomaly_eccentric_to_true, module)?)?;
+    module.add_function(wrap_pyfunction!(py_anomaly_true_to_mean, module)?)?;
+    module.add_function(wrap_pyfunction!(py_anomaly_mean_to_true, module)?)?;
+
+    // Propagator Support
+    module.add_class::<PySGPPropagator>()?;
+    module.add_class::<PyKeplerianPropagator>()?;
+    module.add_class::<PyIntegrationMethod>()?;
+    module.add_class::<PyAtmosphericModel>()?;
+    module.add_class::<PyEclipseModel>()?;
+    module.add_class::<PyNumericalPropagationConfig>()?;
+    module.add_class::<PyVariationalConfig>()?;
+    module.add_class::<PyParameterSource>()?;
+    module.add_class::<PyGravityConfiguration>()?;
+    module.add_class::<PyDragConfiguration>()?;
+    module.add_class::<PySolarRadiationPressureConfiguration>()?;
+    module.add_class::<PyThirdBody>()?;
+    module.add_class::<PyThirdBodyConfiguration>()?;
+    module.add_class::<PyForceModelConfig>()?;
+    module.add_class::<PyNumericalOrbitPropagator>()?;
+    module.add_class::<PyNumericalPropagator>()?;
+    module.add_class::<PyTrajectoryMode>()?;
+    module.add_function(wrap_pyfunction!(py_par_propagate_to, module)?)?;
+
+    // TLE Support
+    module.add_function(wrap_pyfunction!(py_validate_tle_lines, module)?)?;
+    module.add_function(wrap_pyfunction!(py_validate_tle_line, module)?)?;
+    module.add_function(wrap_pyfunction!(py_calculate_tle_line_checksum, module)?)?;
+    module.add_function(wrap_pyfunction!(py_parse_norad_id, module)?)?;
+    module.add_function(wrap_pyfunction!(py_norad_id_numeric_to_alpha5, module)?)?;
+    module.add_function(wrap_pyfunction!(py_norad_id_alpha5_to_numeric, module)?)?;
+
+    // New TLE conversion functions
+    module.add_function(wrap_pyfunction!(py_keplerian_elements_from_tle, module)?)?;
+    module.add_function(wrap_pyfunction!(py_keplerian_elements_to_tle, module)?)?;
+    module.add_function(wrap_pyfunction!(py_create_tle_lines, module)?)?;
+    module.add_function(wrap_pyfunction!(py_epoch_from_tle, module)?)?;
+
+    // Mean-osculating Keplerian element conversions
+    module.add_function(wrap_pyfunction!(py_state_koe_osc_to_mean, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_koe_mean_to_osc, module)?)?;
+
+    // Walker Constellation Generator
+    module.add_class::<PyWalkerPattern>()?;
+    module.add_class::<PyWalkerConstellationGenerator>()?;
+
+    //* Relative Motion *//
+    module.add_function(wrap_pyfunction!(py_rotation_rtn_to_eci, module)?)?;
+    module.add_function(wrap_pyfunction!(py_rotation_eci_to_rtn, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_eci_to_rtn, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_rtn_to_eci, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_oe_to_roe, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_roe_to_oe, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_eci_to_roe, module)?)?;
+    module.add_function(wrap_pyfunction!(py_state_roe_to_eci, module)?)?;
+
+    //* Trajectories *//
+    module.add_class::<PyOrbitFrame>()?;
+    module.add_class::<PyOrbitRepresentation>()?;
+    module.add_class::<PyAngleFormat>()?;
+    module.add_class::<PyInterpolationMethod>()?;
+    module.add_class::<PyCovarianceInterpolationMethod>()?;
+    module.add_class::<PyOrbitalTrajectory>()?;
+    module.add_class::<PyTrajectory>()?;
+
+    //* Attitude *//
+    module.add_class::<PyQuaternion>()?;
+    module.add_class::<PyEulerAxis>()?;
+    module.add_class::<PyEulerAngle>()?;
+    module.add_class::<PyEulerAngleOrder>()?;
+    module.add_class::<PyRotationMatrix>()?;
+
+    //* Datasets *//
+    module.add_function(wrap_pyfunction!(py_celestrak_get_tles, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_celestrak_get_tles_as_propagators,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_celestrak_download_tles, module)?)?;
+    module.add_function(wrap_pyfunction!(py_celestrak_get_tle_by_id, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_celestrak_get_tle_by_id_as_propagator,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_celestrak_get_tle_by_name, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_celestrak_get_tle_by_name_as_propagator,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_groundstations_load, module)?)?;
+    module.add_function(wrap_pyfunction!(py_groundstations_load_from_file, module)?)?;
+    module.add_function(wrap_pyfunction!(py_groundstations_load_all, module)?)?;
+    module.add_function(wrap_pyfunction!(py_groundstations_list_providers, module)?)?;
+    module.add_function(wrap_pyfunction!(py_naif_download_de_kernel, module)?)?;
+
+    //* Orbit Dynamics - Ephemerides *//
+    module.add_class::<PyEphemerisSource>()?;
+    module.add_function(wrap_pyfunction!(py_sun_position, module)?)?;
+    module.add_function(wrap_pyfunction!(py_moon_position, module)?)?;
+    module.add_function(wrap_pyfunction!(py_sun_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_moon_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_mercury_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_venus_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_mars_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_jupiter_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_saturn_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_uranus_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_neptune_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_solar_system_barycenter_position_de,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_ssb_position_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_initialize_ephemeris, module)?)?;
+
+    //* Orbit Dynamics - Acceleration Models *//
+
+    // Third-Body Accelerations
+    module.add_function(wrap_pyfunction!(py_accel_third_body_sun, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_moon, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_sun_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_moon_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_mercury_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_venus_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_mars_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_jupiter_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_saturn_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_uranus_de, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_third_body_neptune_de, module)?)?;
+
+    // Gravity Accelerations
+    module.add_function(wrap_pyfunction!(py_accel_point_mass_gravity, module)?)?;
+    module.add_class::<PyGravityModelType>()?;
+    module.add_class::<PyGravityModelTideSystem>()?;
+    module.add_class::<PyGravityModelErrors>()?;
+    module.add_class::<PyGravityModelNormalization>()?;
+    module.add_class::<PyGravityModel>()?;
+    module.add_function(wrap_pyfunction!(
+        py_accel_gravity_spherical_harmonics,
+        module
+    )?)?;
+
+    // Atmospheric Density Models
+    module.add_function(wrap_pyfunction!(py_density_harris_priester, module)?)?;
+    module.add_function(wrap_pyfunction!(py_density_nrlmsise00, module)?)?;
+    module.add_function(wrap_pyfunction!(py_density_nrlmsise00_geod, module)?)?;
+
+    // Drag, SRP, and Relativity
+    module.add_function(wrap_pyfunction!(py_accel_drag, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_solar_radiation_pressure, module)?)?;
+    module.add_function(wrap_pyfunction!(py_eclipse_conical, module)?)?;
+    module.add_function(wrap_pyfunction!(py_eclipse_cylindrical, module)?)?;
+    module.add_function(wrap_pyfunction!(py_accel_relativity, module)?)?;
+
+    //* Access *//
+
+    // Enums
+    module.add_class::<PyLookDirection>()?;
+    module.add_class::<PyAscDsc>()?;
+
+    // Constraints
+    module.add_class::<PyElevationConstraint>()?;
+    module.add_class::<PyElevationMaskConstraint>()?;
+    module.add_class::<PyOffNadirConstraint>()?;
+    module.add_class::<PyLocalTimeConstraint>()?;
+    module.add_class::<PyLookDirectionConstraint>()?;
+    module.add_class::<PyAscDscConstraint>()?;
+
+    // Constraint Composition
+    module.add_class::<PyConstraintAll>()?;
+    module.add_class::<PyConstraintAny>()?;
+    module.add_class::<PyConstraintNot>()?;
+
+    // Locations
+    module.add_class::<PyPointLocation>()?;
+    module.add_class::<PyPolygonLocation>()?;
+    module.add_class::<PyPropertiesDict>()?;
+
+    // Access Properties
+    module.add_class::<PyAccessWindow>()?;
+    module.add_class::<PyAccessProperties>()?;
+    module.add_class::<PyAccessSearchConfig>()?;
+    module.add_class::<PyAdditionalPropertiesDict>()?;
+    module.add_class::<PySamplingConfig>()?;
+    module.add_class::<PyDopplerComputer>()?;
+    module.add_class::<PyRangeComputer>()?;
+    module.add_class::<PyRangeRateComputer>()?;
+    module.add_class::<PyAccessPropertyComputer>()?;
+    module.add_class::<PyAccessConstraintComputer>()?;
+
+    // Access Computation
+    module.add_function(wrap_pyfunction!(py_location_accesses, module)?)?;
+
+    //* Event Detection *//
+    module.add_class::<PyEventDirection>()?;
+    module.add_class::<PyEdgeType>()?;
+    module.add_class::<PyEventAction>()?;
+    module.add_class::<PyEventType>()?;
+    module.add_class::<PyDetectedEvent>()?;
+    module.add_class::<PyEventQuery>()?;
+    module.add_class::<PyEventQueryIterator>()?;
+    module.add_class::<PyTimeEvent>()?;
+    module.add_class::<PyValueEvent>()?;
+    module.add_class::<PyBinaryEvent>()?;
+    module.add_class::<PyAltitudeEvent>()?;
+    // Orbital element events
+    module.add_class::<PySemiMajorAxisEvent>()?;
+    module.add_class::<PyEccentricityEvent>()?;
+    module.add_class::<PyInclinationEvent>()?;
+    module.add_class::<PyArgumentOfPerigeeEvent>()?;
+    module.add_class::<PyMeanAnomalyEvent>()?;
+    module.add_class::<PyEccentricAnomalyEvent>()?;
+    module.add_class::<PyTrueAnomalyEvent>()?;
+    module.add_class::<PyArgumentOfLatitudeEvent>()?;
+    // Node crossing events
+    module.add_class::<PyAscendingNodeEvent>()?;
+    module.add_class::<PyDescendingNodeEvent>()?;
+    // State-derived events
+    module.add_class::<PySpeedEvent>()?;
+    module.add_class::<PyLongitudeEvent>()?;
+    module.add_class::<PyLatitudeEvent>()?;
+    // Eclipse/shadow events
+    module.add_class::<PyUmbraEvent>()?;
+    module.add_class::<PyPenumbraEvent>()?;
+    module.add_class::<PyEclipseEvent>()?;
+    module.add_class::<PySunlitEvent>()?;
+    // AOI (Area of Interest) events
+    module.add_class::<PyAOIEntryEvent>()?;
+    module.add_class::<PyAOIExitEvent>()?;
+
+    //* Utils *//
+    // Cache Management
+    module.add_function(wrap_pyfunction!(py_get_brahe_cache_dir, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        py_get_brahe_cache_dir_with_subdir,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(py_get_eop_cache_dir, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_celestrak_cache_dir, module)?)?;
+
+    // Threading
+    module.add_function(wrap_pyfunction!(py_set_num_threads, module)?)?;
+    module.add_function(wrap_pyfunction!(py_set_max_threads, module)?)?;
+    module.add_function(wrap_pyfunction!(py_set_ludicrous_speed, module)?)?;
+    module.add_function(wrap_pyfunction!(py_get_max_threads, module)?)?;
+
+    // Formatting
+    module.add_function(wrap_pyfunction!(py_format_time_string, module)?)?;
+
+    //* Jacobian *//
+    module.add_class::<PyDifferenceMethod>()?;
+    module.add_class::<PyPerturbationStrategy>()?;
+    module.add_class::<PyDNumericalJacobian>()?;
+    module.add_class::<PyDAnalyticJacobian>()?;
+
+    //* Sensitivity *//
+    module.add_class::<PyDNumericalSensitivity>()?;
+    module.add_class::<PyDAnalyticSensitivity>()?;
+
+    //* Integrators *//
+    module.add_class::<PyIntegratorConfig>()?;
+    module.add_class::<PyAdaptiveStepDResult>()?;
+    module.add_class::<PyRK4DIntegrator>()?;
+    module.add_class::<PyRKF45DIntegrator>()?;
+    module.add_class::<PyDP54DIntegrator>()?;
+    module.add_class::<PyRKN1210DIntegrator>()?;
+
+    Ok(())
+}
