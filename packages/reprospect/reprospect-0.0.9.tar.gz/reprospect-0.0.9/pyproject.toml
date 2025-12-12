@@ -1,0 +1,109 @@
+[build-system]
+requires = [
+    "setuptools",
+    "mypy[mypyc]==1.19.0",
+
+    # mypyc requires that runtime dependencies are also installed
+    # during the build, since it parses the code base.
+    # For now, the only solution is to copy-paste the list here.
+    "attrs",
+    "backports.strenum",
+    "blake3",
+    "cmake-file-api==0.0.8.3",
+    "ijson",
+    "mypy_extensions",
+    "pandas",
+    "pyelftools==0.32",
+    "regex",
+    "rich",
+    "rich-tools",
+    "semantic_version",
+    "system-helpers>=0.0.3",
+    "typing-extensions>=4.4.0",
+
+    # Requirements from requirements/requirements.python.txt that are required by mypyc.
+    "types-regex",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = [
+    "reprospect",
+    "reprospect.installers",
+    "reprospect.test",
+    "reprospect.test.sass",
+    "reprospect.test.sass.matchers",
+    "reprospect.tools",
+    "reprospect.tools.binaries",
+    "reprospect.tools.sass",
+    "reprospect.utils",
+]
+
+[tool.setuptools.dynamic]
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html#dynamic-metadata
+dependencies = {file = ["requirements/requirements.txt"]}
+
+[project]
+name = "reprospect"
+description = "A framework for reproducible prospecting of CUDA applications."
+version = "0.0.9"
+license = "MIT"
+license-files = ["LICENSE"]
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">= 3.10"
+dynamic = [
+    "dependencies",
+]
+authors = [
+  {name = "Arnst Maarten"},
+  {name = "Tomasetti Romin"},
+]
+
+[project.urls]
+Homepage = "https://github.com/uliegecsm/reprospect"
+Documentation = "https://uliegecsm.github.io/reprospect/"
+
+[project.scripts]
+reprospect-install-cuda-bindings = "reprospect.installers.cuda_bindings:main"
+reprospect-install-nsight-systems = "reprospect.installers.nsight_systems:main"
+reprospect-utils-detect-gpus = "reprospect.utils.detect:main"
+
+[tool.mypy]
+follow_untyped_imports = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+packages = ["reprospect"]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/source/conf.py" = ["E402"]
+
+[tool.pylint.main]
+fail-on = [
+    "I",
+]
+fail-under = 10
+
+[tool.pylint."messages control"]
+enable = [
+    "useless-suppression",
+]
+disable = [
+    "c-extension-no-member",
+    "line-too-long",
+    "logging-fstring-interpolation",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-positional-arguments",
+]
+
+[tool.cibuildwheel]
+build = []
+archs = []
+
+build-verbosity = 1
