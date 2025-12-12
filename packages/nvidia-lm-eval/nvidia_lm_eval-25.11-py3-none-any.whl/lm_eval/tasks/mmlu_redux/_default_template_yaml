@@ -1,0 +1,58 @@
+dataset_path: edinburgh-dawg/mmlu-redux
+test_split: test
+output_type: generate_until
+process_docs: !function utils.process_docs
+instruction: |
+  ## Instruction:
+
+  Please answer this question by first reasoning and then selecting the correct choice.
+  Present your reasoning and solution in the following json format.
+  Please show your choice in the `answer` field with only the choice letter, e.g.,`"answer": "C"`.
+
+  ```json
+  {
+      "reasoning": "___",
+      "answer": "___"
+  }
+  ```
+doc_to_text: |-
+  ## Question:
+
+  {{ question }}
+
+  ## Choices:
+
+  {% for i in range(4) -%}
+  - ({{ ["A", "B", "C", "D"][i] }}) {{ choices[i] }}
+  {% endfor %}
+  ## Answer:
+doc_to_target: '{{ ["A", "B", "C", "D"][correct_answer] }}'
+filter_list:
+  - name: "custom-extract"
+    filter:
+      - function: regex
+        # Matches a json answer, a Llama 3.1 "$\boxed{...}$" answer, or a single letter answer
+        # NOTE: Llama 3.1 can sometimes return the answer at the end in "$\boxed{...}$",
+        #       ignoring the instruction to output json, but Zero-Eval still parses it.
+        regex_pattern: |-
+          "?answer"?\s*:\s*"?([A-D])"?|\$\\boxed\{([A-D])\}\$|^\s*([A-D])\s*$
+        group_select: 0
+      - function: take_first
+generation_kwargs:
+  until:
+    - "</s>"
+    - "<|end|>"
+    - "<|im_end|>"
+  max_gen_toks: 2
+  do_sample: false
+  temperature: 0.0
+  top_p: 1.0
+num_fewshot: 5
+metric_list:
+  - metric: exact_match
+    aggregation: mean
+    higher_is_better: true
+    ignore_case: true
+    ignore_punctuation: true
+metadata:
+  version: 1.0

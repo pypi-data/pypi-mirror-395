@@ -1,0 +1,26 @@
+task: adlr_humaneval_average_pass_at_1
+dataset_path: openai/openai_humaneval
+output_type: generate_until
+test_split: test
+doc_to_text: !function utils.build_text
+doc_to_target: !function utils.build_references
+metric_list:
+  - metric: !function utils.pass_at_1
+    aggregation: mean
+    higher_is_better: true
+generation_kwargs:
+  until:
+    - "</s>"
+  max_gen_toks: 512
+  do_sample: true
+  temperature: 0.6
+  top_p: 0.95
+repeats: 20
+num_fewshot: 0
+filter_list:
+  - name: "n=1,k=20,average_evalplus_sanitized"
+    filter:
+      - function: custom
+        filter_fn: !function utils.build_predictions
+metadata:
+  version: 1.2

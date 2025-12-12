@@ -1,0 +1,1551 @@
+framework:
+  name: lm-evaluation-harness
+  pkg_name: lm_evaluation_harness
+  full_name: Language Model Evaluation Harness
+  description: This project provides a unified framework to test generative language models on a large number of different evaluation tasks.
+  url: https://github.com/EleutherAI/lm-evaluation-harness
+  source: https://gitlab-master.nvidia.com/swdl-nemollm-mlops/evals/lm-evaluation-harness
+defaults:
+  command: >-
+    {% if target.api_endpoint.api_key is not none %}OPENAI_API_KEY=${{target.api_endpoint.api_key}}{% endif %}
+    lm-eval --tasks {{config.params.task}}{% if config.params.extra.num_fewshot is defined %} --num_fewshot {{ config.params.extra.num_fewshot }}{% endif %}
+    --model {% if target.api_endpoint.type == "completions" %}local-completions{% elif target.api_endpoint.type == "chat" %}local-chat-completions{% endif %}
+    --model_args "base_url={{target.api_endpoint.url}},model={{target.api_endpoint.model_id}},tokenized_requests={{config.params.extra.tokenized_requests}},{% if config.params.extra.tokenizer is not none %}tokenizer={{config.params.extra.tokenizer}}{% endif %},tokenizer_backend={{config.params.extra.tokenizer_backend}},num_concurrent={{config.params.parallelism}},timeout={{ config.params.request_timeout }},max_retries={{ config.params.max_retries }},stream={{ target.api_endpoint.stream }}"
+    --log_samples --output_path {{config.output_dir}} --use_cache {{config.output_dir}}/lm_cache {% if config.params.limit_samples is not none %}--limit {{config.params.limit_samples}}{% endif %}
+    {% if target.api_endpoint.type == "chat" %}--fewshot_as_multiturn --apply_chat_template {% endif %} {% if config.params.extra.args is defined %} {{config.params.extra.args}} {% endif %}
+    {% if config.params.temperature is not none or config.params.top_p is not none or config.params.max_new_tokens is not none %}--gen_kwargs="{% if config.params.temperature is not none %}temperature={{ config.params.temperature }}{% endif %}{% if config.params.top_p is not none %},top_p={{ config.params.top_p}}{% endif %}{% if config.params.max_new_tokens is not none %},max_gen_toks={{ config.params.max_new_tokens }}{% endif %}"{% endif %}
+    {% if config.params.extra.downsampling_ratio is not none %}--downsampling_ratio {{ config.params.extra.downsampling_ratio }}{% endif %}
+  config:
+    params:
+      limit_samples: null
+      max_new_tokens: null
+      temperature: 0.0000001
+      top_p: 0.9999999
+      parallelism: 10
+      max_retries: 5
+      request_timeout: 30
+      extra:
+        tokenizer: null
+        # tokenizer_backend: None or huggingface/tiktoken for loglikelihoods. Use tokenizer arguments to provide tokenizer name or path.
+        # Otherwise model name is used.
+        tokenizer_backend: None
+        downsampling_ratio: null
+        tokenized_requests: false
+  target:
+    api_endpoint: # required to add: url, model_id, type
+      stream: false
+evaluations:
+  - name: MMLU
+    description: >-
+      - The MMLU (Massive Multitask Language Understanding) benchmark covers 57 subjects across various fields, testing both world knowledge and problem-solving abilities.
+      - This variant uses text generation.
+    defaults:
+      config:
+        type: "mmlu"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "mmlu_str"
+          extra:
+            num_fewshot: 5
+            args: "--trust_remote_code"
+  - name: MMLU-instruct
+    description: >-
+      - The MMLU (Massive Multitask Language Understanding) benchmark covers 57 subjects across various fields, testing both world knowledge and problem-solving abilities.
+      - This variant defaults to zero-shot evaluation and instructs the model to produce a single letter response.
+    defaults:
+      config:
+        type: "mmlu_instruct"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_str"
+          extra:
+            num_fewshot: 0
+            args: "--trust_remote_code --add_instruction"
+  - name: MMLU-tigerlab
+    description: >-
+      - The MMLU (Massive Multitask Language Understanding) benchmark covers 57 subjects across various fields, testing both world knowledge and problem-solving abilities.
+      - This variant defaults to chain-of-thought zero-shot evaluation.
+    defaults:
+      config:
+        type: "mmlu_cot_0_shot_chat"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "mmlu_cot_0_shot_chat"
+          extra:
+            args: "--trust_remote_code"
+  - name: IFEval
+    description: IFEval is a dataset designed to test a model's ability to follow explicit instructions, such as "include keyword x" or "use format y." The focus is on the model's adherence to formatting instructions rather than the content generated, allowing for the use of strict and rigorous metrics.
+    defaults:
+      config:
+        type: "ifeval"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "ifeval"
+  - name: MMLU-Pro
+    description: MMLU-Pro is a refined version of the MMLU dataset with 10 choices instead of 4.
+    defaults:
+      config:
+        type: "mmlu_pro"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_pro"
+          extra:
+            # This is default anyways, just pinning it here to distinguish against zero-shot
+            num_fewshot: 5
+  - name: MMLU-Pro-instruct
+    description: >-
+      - MMLU-Pro is a refined version of the MMLU dataset with 10 choices instead of 4.
+      - This variant applies a chat template and defaults to zero-shot evaluation.
+    defaults:
+      config:
+        type: "mmlu_pro_instruct"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "mmlu_pro"
+          max_new_tokens: 1024
+          extra:
+            num_fewshot: 0
+  - name: MMLU-Redux
+    description: MMLU-Redux is a subset of 3,000 manually re-annotated questions across 30 MMLU subjects.
+    defaults:
+      config:
+        type: "mmlu_redux"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "mmlu_redux"
+  - name: MMLU-Redux-instruct
+    description: >-
+      - MMLU-Redux is a subset of 3,000 manually re-annotated questions across 30 MMLU subjects.
+      - This variant applies a chat template and defaults to zero-shot evaluation.
+    defaults:
+      config:
+        type: "mmlu_redux_instruct"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "mmlu_redux"
+          max_new_tokens: 8192
+          extra:
+            num_fewshot: 0
+            args: "--add_instruction"
+  - name: indonesian_mmlu
+    description: >-
+      - The MMLU (Massive Multitask Language Understanding) benchmark translated to Indonesian with string-based evaluation.
+    defaults:
+      config:
+        type: "m_mmlu_id_str"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "m_mmlu_id_str"
+          extra:
+            num_fewshot: 0
+            args: "--trust_remote_code"
+  # Currently unsupported due to https://github.com/EleutherAI/lm-evaluation-harness/issues/2618
+  # - name: MathLvl5
+  #   description: MATH is a compilation of high-school level competition problems gathered from several sources, formatted consistently using Latex for equations and Asymptote for figures. Generations must fit a very specific output format. We keep only level 5 MATH questions and call it MATH Lvl 5.
+  #   defaults:
+  #     config:
+  #       type: "math"
+  #       supported_endpoint_types:
+  #       - chat
+  #       params:
+  #         task: "leaderboard_math_hard"
+  - name: GSM8K
+    description: The GSM8K benchmark evaluates the arithmetic reasoning of large language models using 1,319 grade school math word problems.
+    defaults:
+      config:
+        type: "gsm8k"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "gsm8k"
+  - name: GSM8K-instruct
+    description: >-
+      - The GSM8K benchmark evaluates the arithmetic reasoning of large language models using 1,319 grade school math word problems.
+      - This variant defaults to chain-of-thought zero-shot evaluation with custom instructions.
+    defaults:
+      config:
+        type: "gsm8k_cot_instruct"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "gsm8k_zeroshot_cot"
+          extra:
+            args: "--add_instruction"
+  - name: GSM8K-cot-zeroshot
+    description: >-
+      - The GSM8K benchmark evaluates the arithmetic reasoning of large language models using 1,319 grade school math word problems.
+      - This variant defaults to chain-of-thought zero-shot evaluation.
+    defaults:
+      config:
+        type: "gsm8k_cot_zeroshot"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "gsm8k_cot_zeroshot"
+          max_new_tokens: 1024
+  - name: GSM8K-cot-llama
+    description: >-
+      - The GSM8K benchmark evaluates the arithmetic reasoning of large language models using 1,319 grade school math word problems.
+      - This variant defaults to chain-of-thought evaluation - implementation taken from llama.
+    defaults:
+      config:
+        type: "gsm8k_cot_llama"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "gsm8k_cot_llama"
+          max_new_tokens: 1024
+  - name: GSM8K-cot-zeroshot-llama
+    description: >-
+      - The GSM8K benchmark evaluates the arithmetic reasoning of large language models using 1,319 grade school math word problems.
+      - This variant defaults to chain-of-thought zero-shot evaluation - implementation taken from llama.
+    defaults:
+      config:
+        type: "gsm8k_cot_zeroshot_llama"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "gsm8k_cot_llama"
+          max_new_tokens: 1024
+          extra:
+            num_fewshot: 0
+  - name: HumanEval-instruct
+    description: >-
+      - The HumanEval benchmark measures functional correctness for synthesizing programs from docstrings.
+      - Implementation taken from llama.
+    defaults:
+      config:
+        type: "humaneval_instruct"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "humaneval_instruct"
+  - name: MBPP EvalPlus
+    description: MBPP EvalPlus is an extension of the MBPP benchmark with 35x more test cases.
+    defaults:
+      config:
+        type: "mbpp_plus"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mbpp_plus"
+  - name: MGSM
+    description: >-
+      - The Multilingual Grade School Math (MGSM) benchmark consists of 250 grade-school math problems from the GSM8K dataset, translated into ten languages.
+    defaults:
+      config:
+        type: "mgsm"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "mgsm_direct"
+  - name: MGSM-CoT
+    description: >-
+      - The Multilingual Grade School Math (MGSM) benchmark consists of 250 grade-school math problems from the GSM8K dataset, translated into ten languages.
+      - This variant defaults to chain-of-thought evaluation.
+    defaults:
+      config:
+        type: "mgsm_cot"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mgsm_cot_native"
+          max_new_tokens: 1024
+          extra:
+            num_fewshot: 0
+  - name: WikiLingua
+    description: >-
+      - The WikiLingua benchmark is a large-scale, multilingual dataset designed for evaluating cross-lingual abstractive summarization systems.
+    defaults:
+      config:
+        type: "wikilingua"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "wikilingua"
+          extra:
+            args: "--trust_remote_code"
+  - name: winogrande
+    description: WinoGrande is a collection of 44k problems formulated as a fill-in-a-blank task with binary options testing commonsense reasoning.
+    defaults:
+      config:
+        type: "winogrande"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "winogrande"
+          extra:
+            num_fewshot: 5
+  - name: ARC Challenge
+    description: The ARC challenge dataset consists of 2,590 multiple-choice science exam questions.
+    defaults:
+      config:
+        type: "arc_challenge"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "arc_challenge"
+  - name: ARC Challenge-instruct
+    description: >-
+      - The ARC challenge dataset consists of 2,590 multiple-choice science exam questions.
+      - This variant applies a chat template and defaults to zero-shot evaluation.
+    defaults:
+      config:
+        type: "arc_challenge_chat"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "arc_challenge_chat"
+          max_new_tokens: 1024
+          extra:
+            num_fewshot: 0
+  - name: HellaSwag
+    description: The HellaSwag benchmark tests a language model's commonsense reasoning by having it choose the most logical ending for a given story.
+    defaults:
+      config:
+        type: "hellaswag"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "hellaswag"
+          extra:
+            num_fewshot: 10
+  - name: Truthful QA
+    description: >-
+      - The TruthfulQA benchmark measures the truthfulness of language models in generating answers to questions.
+      - It consists of 817 questions across 38 categories, such as health, law, finance, and politics, designed to test whether models can avoid generating false answers that mimic common human misconceptions.
+    defaults:
+      config:
+        type: "truthfulqa"
+        params:
+          task: "truthfulqa"
+  - name: BIG-Bench Hard
+    description: The BIG-Bench Hard (BBH) benchmark is a part of the BIG-Bench evaluation suite, focusing on 23 particularly difficult tasks that current language models struggle with.
+    defaults:
+      config:
+        type: "bbh"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "leaderboard_bbh"
+  - name: BIG-Bench Hard-instruct
+    description: >-
+      - The BIG-Bench Hard (BBH) benchmark is a part of the BIG-Bench evaluation suite, focusing on 23 particularly difficult tasks that current language models struggle with.
+      - This variant aaplies chat template and defaults to zero-shot evaluation.
+    defaults:
+      config:
+        type: "bbh_instruct"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "bbh_zeroshot"
+  - name: MuSR
+    description: The MuSR (Multistep Soft Reasoning) benchmark evaluates the reasoning capabilities of large language models through complex, multistep tasks specified in natural language narratives.
+    defaults:
+      config:
+        type: "musr"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "leaderboard_musr"
+  - name: GPQA
+    description: The GPQA (Graduate-Level Google-Proof Q&A) benchmark is a challenging dataset of 448 multiple-choice questions in biology, physics, and chemistry.
+    defaults:
+      config:
+        type: "gpqa"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "leaderboard_gpqa"
+  - name: GPQA-Diamond-CoT
+    description: >-
+      - The GPQA (Graduate-Level Google-Proof Q&A) benchmark is a challenging dataset of 448 multiple-choice questions in biology, physics, and chemistry.
+      - This variant uses the Diamond subset and defaults to zero-shot chain-of-thought evaluation.
+    defaults:
+      config:
+        type: "gpqa_diamond_cot"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "gpqa_diamond_cot_zeroshot"
+          max_new_tokens: 1024
+  - name: Frames Naive
+    description: Frames Naive uses the prompt as input without additional context
+    defaults:
+      config:
+        type: "frames_naive"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "frames_naive"
+          max_new_tokens: 2048
+          temperature: 0.0
+  - name: Frames Naive with Links
+    description: Frames Naive with Links provides the prompt and relevant Wikipedia article links
+    defaults:
+      config:
+        type: "frames_naive_with_links"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "frames_naive_with_links"
+          max_new_tokens: 2048
+          temperature: 0.0
+  - name: Frames Oracle
+    description: Frames Oracle (long context) provides prompts and relevant text from curated and processed Wikipedia articles from "parasail-ai/frames-benchmark-wikipedia".
+    defaults:
+      config:
+        type: "frames_oracle"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "frames_oracle"
+          max_new_tokens: 2048
+          temperature: 0.0
+          max_retries: 5
+          request_timeout: 1000
+
+  - name: CommonsenseQA
+    description: >-
+      - CommonsenseQA is a multiple-choice question answering dataset that requires different types of commonsense knowledge to predict the correct answers.
+      - It contains 12,102 questions with one correct answer and four distractor answers.
+    defaults:
+      config:
+        type: "commonsense_qa"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "commonsense_qa"
+          extra:
+            num_fewshot: 7
+
+  - name: OpenBookQA
+    description: >-
+      - OpenBookQA is a question-answering dataset modeled after open book exams for assessing human understanding of a subject.
+      - Answering OpenBookQA questions requires additional broad common knowledge, not contained in the book.
+      - The questions, by design, are answered incorrectly by both a retrieval-based algorithm and a word co-occurrence algorithm.
+    defaults:
+      config:
+        type: "openbookqa"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "openbookqa"
+
+  - name: MMLU-Logits
+    description: >-
+      - The MMLU (Massive Multitask Language Understanding) benchmark covers 57 subjects across various fields, testing both world knowledge and problem-solving abilities.
+      - This variant uses the logits of the model to evaluate the accuracy.
+    defaults:
+      config:
+        type: "mmlu_logits"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "mmlu"
+          extra:
+            num_fewshot: 5
+
+  # ADLR actually used the baber/piqa dataset instead of the original piqa dataset, but results are the same.
+  - name: PIQA
+    description: >-
+      - Physical Interaction: Question Answering (PIQA) is a physical commonsense reasoning benchmark designed to investigate the physical knowledge of large language models.
+    defaults:
+      config:
+        type: "piqa"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "piqa"
+
+  - name: Social IQA
+    description: >-
+      - Social IQa contains 38,000 multiple choice questions for probing emotional and social intelligence in a variety of everyday situations.
+    defaults:
+      config:
+        type: "social_iqa"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "social_iqa"
+          extra:
+            args: "--trust_remote_code"
+
+  # ADLR Tasks
+  # NOTE: These should override any gen. params that aren't null in
+  #       the framework-level defaults at the top.
+  - name: ADLR AGIEval-EN-CoT
+    description: Version of the AGIEval-EN-CoT benchmark used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_agieval_en_cot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_agieval_en_cot"
+          temperature: 0.0
+          top_p: 1.0e-05
+
+  - name: ADLR MATH-500 Sampled
+    description: MATH-500 Sampled version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_math_500_4_shot_sampled"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_math_500_4_shot_sampled"
+          temperature: 0.7
+          top_p: 1.0
+          extra:
+            num_fewshot: 4
+
+  - name: ADLR RACE
+    description: RACE version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_race"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_race"
+          # NOTE: Gen kwargs should be null, but nullifying them here don't take effect,
+          # so we set them to the vLLM sample defaults.
+          temperature: 1.0
+          top_p: 1.0
+
+  - name: ADLR TruthfulQA-MC2
+    description: TruthfulQA-MC2 version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_truthfulqa_mc2"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_truthfulqa_mc2"
+          # NOTE: Gen kwargs should be null, but nullifying them here don't take effect,
+          # so we set them to the vLLM sample defaults.
+          temperature: 1.0
+          top_p: 1.0
+
+  - name: ADLR ARC-Challenge-Llama
+    description: ARC-Challenge-Llama version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_arc_challenge_llama_25_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_arc_challenge_llama"
+          # NOTE: Gen kwargs should be null, but nullifying them here don't take effect,
+          # so we set them to the vLLM sample defaults.
+          temperature: 1.0
+          top_p: 1.0
+          extra:
+            num_fewshot: 25
+
+  - name: ADLR GPQA-Diamond-CoT
+    description: Version of the GPQA-Diamond-CoT benchmark used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_gpqa_diamond_cot_5_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_gpqa_diamond_cot_5_shot"
+          temperature: 0.0
+          top_p: 1.0e-05
+          extra:
+            num_fewshot: 5
+
+  - name: ADLR MMLU
+    description: MMLU version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_mmlu"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "mmlu_str"
+          temperature: 0.0
+          top_p: 1.0e-05
+          extra:
+            num_fewshot: 5
+            args: "--trust_remote_code"
+
+  - name: ADLR MMLU-Pro
+    description: MMLU-Pro 5-shot base version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_mmlu_pro_5_shot_base"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_mmlu_pro_5_shot_base"
+          temperature: 0.0
+          top_p: 1.0e-05
+          extra:
+            num_fewshot: 5
+
+  - name: ADLR Minerva-Math
+    description: Minerva-Math version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_minerva_math_nemo_4_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_minerva_math_nemo"
+          temperature: 0.0
+          top_p: 1.0e-05
+          extra:
+            num_fewshot: 4
+
+  - name: ADLR GSM8K-CoT
+    description: GSM8K-CoT version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_gsm8k_cot_8_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_gsm8k_fewshot_cot"
+          temperature: 0.0
+          top_p: 1.0e-05
+          extra:
+            num_fewshot: 8
+
+  - name: ADLR HumanEval Greedy
+    description: HumanEval Greedy version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_humaneval_greedy"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_humaneval_greedy"
+          temperature: 0.0
+          top_p: 1.0e-05
+
+  - name: ADLR HumanEval Sampled
+    description: HumanEval Sampled version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_humaneval_sampled"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_humaneval_sampled"
+          temperature: 0.6
+          top_p: 0.95
+
+  - name: ADLR MBPP Greedy
+    description: MBPP Greedy version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_mbpp_sanitized_3_shot_greedy"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_mbpp_sanitized_3_shot_greedy"
+          temperature: 0.0
+          top_p: 1.0e-05
+          extra:
+            num_fewshot: 3
+
+  - name: ADLR MBPP Sampled
+    description: MBPP Sampled version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_mbpp_sanitized_3_shot_sampled"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_mbpp_sanitized_3shot_sampled"
+          temperature: 0.6
+          top_p: 0.95
+          extra:
+            num_fewshot: 3
+
+  - name: ADLR Global-MMLU
+    description: Global-MMLU subset (8 languages - es, de, fr, zh, it, ja, pt, ko) used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_global_mmlu_lite_5_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_global_mmlu"
+          # NOTE: Gen kwargs should be null, but nullifying them here don't take effect,
+          # so we set them to the vLLM sample defaults.
+          temperature: 1.0
+          top_p: 1.0
+          extra:
+            num_fewshot: 5
+
+  - name: ADLR MGSM-CoT
+    description: MGSM native CoT subset (6 languages - es, de, fr, zh, ja, ru) used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_mgsm_native_cot_8_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "adlr_mgsm_native_cot_8_shot"
+          temperature: 0.0
+          top_p: 1.0e-05
+          extra:
+            num_fewshot: 8
+
+  - name: ADLR CommonsenseQA
+    description: CommonsenseQA version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_commonsense_qa_7_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "commonsense_qa"
+          # NOTE: Gen kwargs should be null, but nullifying them here don't take effect,
+          # so we set them to the vLLM sample defaults.
+          temperature: 1.0
+          top_p: 1.0
+          extra:
+            num_fewshot: 7
+
+  - name: ADLR Winogrande
+    description: Winogrande version used by NVIDIA Applied Deep Learning Research team (ADLR).
+    defaults:
+      config:
+        type: "adlr_winogrande_5_shot"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "winogrande"
+          # NOTE: Gen kwargs should be null, but nullifying them here don't take effect,
+          # so we set them to the vLLM sample defaults.
+          temperature: 1.0
+          top_p: 1.0
+          extra:
+            num_fewshot: 5
+
+  - name: BBQ
+    description: The BBQ (Bias Benchmark for QA) is a benchmark designed to measure social biases in question answering systems. It contains ambiguous questions spanning 9 categories - disability, gender, nationality, physical appearance, race/ethnicity, religion, sexual orientation, socioeconomic status, and age.
+    defaults:
+      config:
+        type: "bbq"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "bbq_generate"
+  - name: ARC Multilingual
+    description: The multilingual versions of the ARC challenge dataset.
+    defaults:
+      config:
+        type: "arc_multilingual"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "arc_multilingual"
+  - name: HellaSwag Multilingual
+    description: The multilingual versions of the HellaSwag benchmark.
+    defaults:
+      config:
+        type: "hellaswag_multilingual"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "hellaswag_multilingual"
+          extra:
+            num_fewshot: 10
+  - name: MMLU-ProX
+    description: A Multilingual Benchmark for Advanced Large Language Model Evaluation
+    defaults:
+      config:
+        type: "mmlu_prox"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_prox"
+  - name: MMLU-ProX-French
+    description: A Multilingual Benchmark for Advanced Large Language Model Evaluation (French dataset)
+    defaults:
+      config:
+        type: "mmlu_prox_fr"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_prox_fr"
+  - name: MMLU-ProX-German
+    description: A Multilingual Benchmark for Advanced Large Language Model Evaluation (German dataset)
+    defaults:
+      config:
+        type: "mmlu_prox_de"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_prox_de"
+  - name: MMLU-ProX-Italian
+    description: A Multilingual Benchmark for Advanced Large Language Model Evaluation (Italian dataset)
+    defaults:
+      config:
+        type: "mmlu_prox_it"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_prox_it"
+  - name: MMLU-ProX-Japanese
+    description: A Multilingual Benchmark for Advanced Large Language Model Evaluation (Japanese dataset)
+    defaults:
+      config:
+        type: "mmlu_prox_ja"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_prox_ja"
+  - name: MMLU-ProX-Spanish
+    description: A Multilingual Benchmark for Advanced Large Language Model Evaluation (Spanish dataset)
+    defaults:
+      config:
+        type: "mmlu_prox_es"
+        supported_endpoint_types:
+          - chat
+          - completions
+        params:
+          task: "mmlu_prox_es"
+
+  # Global-MMLU Full Version Tasks
+  - name: Global-MMLU-Full
+    description: Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+    defaults:
+      config:
+        type: "global_mmlu_full"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full"
+  - name: Global-MMLU-Full-AM
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the AM subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_am"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_am"
+
+  - name: Global-MMLU-Full-AR
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the AR subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ar"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ar"
+
+  - name: Global-MMLU-Full-BN
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the BN subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_bn"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_bn"
+
+  - name: Global-MMLU-Full-CS
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the CS subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_cs"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_cs"
+
+  - name: Global-MMLU-Full-DE
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the DE subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_de"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_de"
+
+  - name: Global-MMLU-Full-EL
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the EL subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_el"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_el"
+
+  - name: Global-MMLU-Full-EN
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the EN subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_en"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_en"
+
+  - name: Global-MMLU-Full-ES
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the ES subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_es"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_es"
+
+  - name: Global-MMLU-Full-FA
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the FA subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_fa"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_fa"
+
+  - name: Global-MMLU-Full-FIL
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the FIL subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_fil"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_fil"
+
+  - name: Global-MMLU-Full-FR
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the FR subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_fr"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_fr"
+
+  - name: Global-MMLU-Full-HA
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the HA subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ha"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ha"
+
+  - name: Global-MMLU-Full-HE
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the HE subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_he"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_he"
+
+  - name: Global-MMLU-Full-HI
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the HI subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_hi"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_hi"
+
+  - name: Global-MMLU-Full-ID
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the ID subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_id"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_id"
+
+  - name: Global-MMLU-Full-IG
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the IG subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ig"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ig"
+
+  - name: Global-MMLU-Full-IT
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the IT subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_it"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_it"
+
+  - name: Global-MMLU-Full-JA
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the JA subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ja"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ja"
+
+  - name: Global-MMLU-Full-KO
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the KO subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ko"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ko"
+
+  - name: Global-MMLU-Full-KY
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the KY subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ky"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ky"
+
+  - name: Global-MMLU-Full-LT
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the LT subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_lt"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_lt"
+
+  - name: Global-MMLU-Full-MG
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the MG subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_mg"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_mg"
+
+  - name: Global-MMLU-Full-MS
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the MS subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ms"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ms"
+
+  - name: Global-MMLU-Full-NE
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the NE subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ne"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ne"
+
+  - name: Global-MMLU-Full-NL
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the NL subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_nl"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_nl"
+
+  - name: Global-MMLU-Full-NY
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the NY subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ny"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ny"
+
+  - name: Global-MMLU-Full-PL
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the PL subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_pl"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_pl"
+
+  - name: Global-MMLU-Full-PT
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the PT subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_pt"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_pt"
+
+  - name: Global-MMLU-Full-RO
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the RO subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ro"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ro"
+
+  - name: Global-MMLU-Full-RU
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the RU subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_ru"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_ru"
+
+  - name: Global-MMLU-Full-SI
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the SI subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_si"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_si"
+
+  - name: Global-MMLU-Full-SN
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the SN subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_sn"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_sn"
+
+  - name: Global-MMLU-Full-SO
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the SO subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_so"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_so"
+
+  - name: Global-MMLU-Full-SR
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the SR subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_sr"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_sr"
+
+  - name: Global-MMLU-Full-SV
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the SV subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_sv"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_sv"
+
+  - name: Global-MMLU-Full-SW
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the SW subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_sw"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_sw"
+
+  - name: Global-MMLU-Full-TE
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the TE subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_te"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_te"
+
+  - name: Global-MMLU-Full-TR
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the TR subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_tr"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_tr"
+
+  - name: Global-MMLU-Full-UK
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the UK subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_uk"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_uk"
+
+  - name: Global-MMLU-Full-VI
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the VI subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_vi"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_vi"
+
+  - name: Global-MMLU-Full-YO
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the YO subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_yo"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_yo"
+
+  - name: Global-MMLU-Full-ZH
+    description: >-
+      - Global-MMLU is a multilingual evaluation set spanning 42 languages, including English.
+      - This variant uses the ZH subset.
+    defaults:
+      config:
+        type: "global_mmlu_full_zh"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_full_zh"
+
+  # Global-MMLU Default Version Tasks
+  - name: Global-MMLU
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - It is designed for efficient evaluation of multilingual models in 15 languages (including English).
+    defaults:
+      config:
+        type: "global_mmlu"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu"
+  - name: Global-MMLU-AR
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the AR subset.
+    defaults:
+      config:
+        type: "global_mmlu_ar"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_ar"
+
+  - name: Global-MMLU-BN
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the BN subset.
+    defaults:
+      config:
+        type: "global_mmlu_bn"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_bn"
+
+  - name: Global-MMLU-DE
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the DE subset.
+    defaults:
+      config:
+        type: "global_mmlu_de"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_de"
+
+  - name: Global-MMLU-EN
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the EN subset.
+    defaults:
+      config:
+        type: "global_mmlu_en"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_en"
+
+  - name: Global-MMLU-ES
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the ES subset.
+    defaults:
+      config:
+        type: "global_mmlu_es"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_es"
+
+  - name: Global-MMLU-FR
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the FR subset.
+    defaults:
+      config:
+        type: "global_mmlu_fr"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_fr"
+
+  - name: Global-MMLU-HI
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the HI subset.
+    defaults:
+      config:
+        type: "global_mmlu_hi"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_hi"
+
+  - name: Global-MMLU-ID
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the ID subset.
+    defaults:
+      config:
+        type: "global_mmlu_id"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_id"
+
+  - name: Global-MMLU-IT
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the IT subset.
+    defaults:
+      config:
+        type: "global_mmlu_it"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_it"
+
+  - name: Global-MMLU-JA
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the JA subset.
+    defaults:
+      config:
+        type: "global_mmlu_ja"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_ja"
+
+  - name: Global-MMLU-KO
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the KO subset.
+    defaults:
+      config:
+        type: "global_mmlu_ko"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_ko"
+
+  - name: Global-MMLU-PT
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the PT subset.
+    defaults:
+      config:
+        type: "global_mmlu_pt"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_pt"
+
+  - name: Global-MMLU-SW
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the SW subset.
+    defaults:
+      config:
+        type: "global_mmlu_sw"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_sw"
+
+  - name: Global-MMLU-YO
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the YO subset.
+    defaults:
+      config:
+        type: "global_mmlu_yo"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_yo"
+
+  - name: Global-MMLU-ZH
+    description: >-
+      - Global-MMLU-Lite is a balanced collection of culturally sensitive and culturally agnostic MMLU tasks.
+      - This variant uses the ZH subset.
+    defaults:
+      config:
+        type: "global_mmlu_zh"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "global_mmlu_zh"
+
+  - name: AGIEval
+    description: AGIEval - A Human-Centric Benchmark for Evaluating Foundation Models
+    defaults:
+      config:
+        type: "agieval"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "agieval"

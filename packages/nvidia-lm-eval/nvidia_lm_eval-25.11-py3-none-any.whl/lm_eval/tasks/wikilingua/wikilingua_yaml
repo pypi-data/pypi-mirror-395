@@ -1,0 +1,33 @@
+# This file will be included in the generated language-specific task configs.
+# It doesn't have a yaml file extension as it is not meant to be imported directly
+# by the harness.
+tag: wikilingua
+dataset_path: GEM/wiki_lingua
+output_type: generate_until
+training_split: train
+validation_split: validation
+test_split: test
+doc_to_text: "Article: {{source}}\nSummary:"
+doc_to_target: target
+target_delimiter: " "
+should_decontaminate: True
+doc_to_decontamination_query: source
+generation_kwargs:
+  until:
+    - "\n"
+    - "\n\n"
+  do_sample: false
+  temperature: 0.0
+process_results: !function utils.process_results
+metric_list:
+  - metric: rouge1
+    aggregation: mean
+    higher_is_better: true
+  - metric: rouge2
+    aggregation: mean
+    higher_is_better: true
+  - metric: rougeL
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0

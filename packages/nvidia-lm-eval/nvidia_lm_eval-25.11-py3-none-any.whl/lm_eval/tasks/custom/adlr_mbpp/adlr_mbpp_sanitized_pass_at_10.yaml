@@ -1,0 +1,32 @@
+task: adlr_mbpp_sanitized_pass_at_10
+dataset_path: mbpp
+dataset_name: sanitized
+output_type: generate_until
+fewshot_split: prompt
+test_split: test
+doc_to_text: !function utils.build_text
+doc_to_target: !function utils.build_references
+target_delimiter: ""  # the original " " would cause improper fewshot context that has a leading space
+metric_list:
+  - metric: !function utils.pass_at_10
+    aggregation: mean
+    higher_is_better: true
+generation_kwargs:
+  until:
+    - "</s>"
+  max_gen_toks: 768
+  do_sample: true
+  temperature: 0.1
+  top_p: 0.95
+  top_k: 0.
+repeats: 10
+num_fewshot: 0
+fewshot_config:
+  sampler: !function utils.FewShotSampler
+filter_list:
+  - name: "n=10,evalplus_sanitize" # number of samples to estimate pass@k
+    filter:
+      - function: custom
+        filter_fn: !function utils.build_predictions
+metadata:
+  version: 1.3
