@@ -1,0 +1,252 @@
+Metadata-Version: 2.4
+Name: fake-py-mcp
+Version: 0.2.2
+Summary: MCP server for fake.py.
+Author-email: Artur Barseghyan <artur.barseghyan@gmail.com>
+Maintainer-email: Artur Barseghyan <artur.barseghyan@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/barseghyanartur/fake-py-mcp/
+Project-URL: Issues, https://github.com/barseghyanartur/fake-py-mcp/issues
+Project-URL: Documentation, https://fake-py-mcp.readthedocs.io/
+Project-URL: Repository, https://github.com/barseghyanartur/fake-py-mcp/
+Project-URL: Changelog, https://fake-py-mcp.readthedocs.io/en/latest/changelog.html
+Keywords: fake data,test data
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: Software Development
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: fake.py
+Requires-Dist: fastmcp
+Provides-Extra: all
+Requires-Dist: fake-py-mcp[dev,docs,test]; extra == "all"
+Provides-Extra: dev
+Requires-Dist: build; extra == "dev"
+Requires-Dist: detect-secrets; extra == "dev"
+Requires-Dist: doc8; extra == "dev"
+Requires-Dist: ipython; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: pkginfo; extra == "dev"
+Requires-Dist: pydoclint; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Requires-Dist: uv; extra == "dev"
+Requires-Dist: wheel; extra == "dev"
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-cov; extra == "test"
+Requires-Dist: pytest-codeblock; extra == "test"
+Requires-Dist: pytest-asyncio; extra == "test"
+Requires-Dist: inline-snapshot; extra == "test"
+Provides-Extra: docs
+Requires-Dist: sphinx<6.0; extra == "docs"
+Requires-Dist: sphinx-autobuild; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=1.3.0; extra == "docs"
+Requires-Dist: sphinx-no-pragma; extra == "docs"
+Requires-Dist: PyYAML; extra == "docs"
+Dynamic: license-file
+
+===========
+fake-py-mcp
+===========
+.. External references
+
+.. _fake.py: https://github.com/barseghyanartur/fake.py
+.. _MCP Inspector: https://github.com/modelcontextprotocol/inspector
+.. _mcpo: https://github.com/open-webui/mcpo
+
+.. Internal references
+
+.. _Read the Docs: http://fake-py-mcp.readthedocs.io/
+.. _Contributor guidelines: https://fakepy.readthedocs.io/en/latest/contributor_guidelines.html
+.. _llms.txt: https://fake-py-mcp.readthedocs.io/en/latest/llms.txt
+
+This project exposes all `Faker` class methods from `fake.py`_ as MCP tools
+using FastMCP 2.0.
+
+.. image:: https://img.shields.io/pypi/v/fake-py-mcp.svg
+   :target: https://pypi.python.org/pypi/fake-py-mcp
+   :alt: PyPI Version
+
+.. image:: https://img.shields.io/pypi/pyversions/fake-py-mcp.svg
+    :target: https://pypi.python.org/pypi/fake-py-mcp/
+    :alt: Supported Python versions
+
+.. image:: https://github.com/barseghyanartur/fake-py-mcp/actions/workflows/test.yml/badge.svg?branch=main
+   :target: https://github.com/barseghyanartur/fake-py-mcp/actions
+   :alt: Build Status
+
+.. image:: https://readthedocs.org/projects/fake-py-mcp/badge/?version=latest
+    :target: http://fake-py-mcp.readthedocs.io
+    :alt: Documentation Status
+
+.. image:: https://img.shields.io/badge/docs-llms.txt-blue
+    :target: https://fake-py-mcp.readthedocs.io/en/latest/llms.txt
+    :alt: llms.txt - documentation for LLMs
+
+.. image:: https://img.shields.io/badge/license-MIT-blue.svg
+   :target: https://github.com/barseghyanartur/fake-py-mcp/#License
+   :alt: MIT
+
+.. image:: https://coveralls.io/repos/github/barseghyanartur/fake-py-mcp/badge.svg?branch=main&service=github
+    :target: https://coveralls.io/github/barseghyanartur/fake-py-mcp?branch=main
+    :alt: Coverage
+
+Features
+========
+
+- 80+ `fake.py`_ fake data methods (names, text, internet, files,
+  primitives, dates, geo, books, banking, file content), dynamically
+  registered (no manual boilerplate), categorised and documented.
+- Binary outputs (e.g., images, PDFs) are returned as base64-encoded strings.
+- ``server_info`` tool for introspection.
+
+Prerequisites
+=============
+Python 3.10+
+
+Installation
+============
+
+   .. code-block:: sh
+
+      uv tool install fake-py-mcp
+
+Usage
+=====
+Run the server
+--------------
+
+STDIO
+~~~~~
+
+   .. code-block:: sh
+
+      fake-py-mcp
+
+HTTP
+~~~~
+
+   .. code-block:: sh
+
+      fake-py-mcp http
+
+SSE
+~~~
+
+   .. code-block:: sh
+
+      fake-py-mcp sse
+
+Connect with any MCP client to access all fake.py tools
+-------------------------------------------------------
+Developers need good tools. Unfortunately, FastMCP does not come with a
+GUI (like OpenAPI/Swagger), but there are good tools available.
+
+Option 1: MCP Inspector
+~~~~~~~~~~~~~~~~~~~~~~~
+**Installation**
+
+.. code-block:: sh
+
+   brew install mcp-inspector
+
+**Usage**
+
+Run `MCP Inspector`_ on port 8006:
+
+.. code-block:: sh
+
+   CLIENT_PORT=8006 mcp-inspector fake-py-mcp
+
+Or if you prefer no-auth option:
+
+.. code-block:: sh
+
+    DANGEROUSLY_OMIT_AUTH=true CLIENT_PORT=8006 mcp-inspector fake-py-mcp
+
+Open http://127.0.0.1:8006 and enjoy the `MCP Inspector`_ interface.
+
+Option 2: mcpo
+~~~~~~~~~~~~~~
+**Installation**
+
+.. code-block:: sh
+
+   uv tool install mcpo
+
+**Usage**
+
+Run `mcpo`_ on port 8006:
+
+.. code-block:: sh
+
+   mcpo --port 8006 -- fake-py-mcp
+
+Open http://127.0.0.1:8006/docs and enjoy OpenAPI Swagger comfort.
+
+Documentation
+=============
+- Documentation is available on `Read the Docs`_.
+
+Tests
+=====
+
+Run the tests:
+
+.. code-block:: sh
+
+    pytest
+
+Writing documentation
+=====================
+
+Keep the following hierarchy.
+
+.. code-block:: text
+
+    =====
+    title
+    =====
+
+    header
+    ======
+
+    sub-header
+    ----------
+
+    sub-sub-header
+    ~~~~~~~~~~~~~~
+
+    sub-sub-sub-header
+    ^^^^^^^^^^^^^^^^^^
+
+    sub-sub-sub-sub-header
+    ++++++++++++++++++++++
+
+    sub-sub-sub-sub-sub-header
+    **************************
+
+License
+=======
+
+MIT
+
+Support
+=======
+For security issues contact me at the e-mail given in the `Author`_ section.
+
+For overall issues, go to `GitHub <https://github.com/barseghyanartur/fake-py-mcp/issues>`_.
+
+Author
+======
+
+Artur Barseghyan <artur.barseghyan@gmail.com>
