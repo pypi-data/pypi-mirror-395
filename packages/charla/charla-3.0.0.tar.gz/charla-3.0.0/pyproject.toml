@@ -1,0 +1,108 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "charla"
+dynamic = ["version"]
+description = 'A terminal based chat application that works with language models.'
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = [
+  'chat-client',
+  'chatbot',
+  'chatgpt',
+  'cli',
+  'github models',
+  'llama',
+  'llm',
+  'ollama',
+  'terminal'
+]
+authors = [
+  { name = "Ramiro Gómez", email = "code@ramiro.org" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "azure-ai-inference",
+  "ollama>=0.6",
+  "html2text",
+  "httpx",
+  "markdown",
+  "platformdirs",
+  "prompt_toolkit"
+]
+
+[project.scripts]
+charla = "charla.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/yaph/charla#readme"
+Issues = "https://github.com/yaph/charla/issues"
+Source = "https://github.com/yaph/charla"
+
+[tool.hatch.version]
+path = "charla/__about__.py"
+
+[tool.hatch.envs.charla-dev]
+builder = true
+extra-dependencies = ["flake8", "ipdb", "mypy>=1.0.0", "pytest"]
+
+[tool.hatch.envs.charla-dev.env-vars]
+PYTHONBREAKPOINT = "ipdb.set_trace"
+
+[tool.hatch.envs.charla-dev.scripts]
+type_check = "mypy --install-types --non-interactive {args:charla tests}"
+qa = [
+  "hatch run type_check",
+  "hatch test",
+  "hatch fmt"
+]
+release = [
+  "hatch run qa",
+  "hatch build --clean",
+  "hatch publish",
+  "git tag -a $(hatch version) -m \"Create version $(hatch version)\"",
+  "git push --tags",
+  "git-changelog -o CHANGELOG.md",
+  "git commit -m 'Update CHANGELOG' CHANGELOG.md",
+  "git push"
+]
+test_release = [
+  "hatch run qa",
+  "hatch build --clean"
+]
+
+[tool.coverage.run]
+source_pkgs = ["charla", "tests"]
+branch = true
+parallel = true
+omit = [
+  "charla/__about__.py",
+]
+
+[tool.coverage.paths]
+charla = ["charla", "*/charla/charla"]
+tests = ["tests", "*/charla/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.ruff.lint]
+ignore = ["T201", "DTZ005", "FA100"]
+
+[tool.ruff.format]
+quote-style = "preserve"
