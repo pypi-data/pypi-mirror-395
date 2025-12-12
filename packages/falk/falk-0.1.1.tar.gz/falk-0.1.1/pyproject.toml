@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "falk"
+description = ""
+requires-python = ">=3.9"
+dynamic = ["version"]
+
+authors = [
+  { name="Florian Scherf", email="mail@florianscherf.de" },
+]
+
+readme = "README.md"
+license-files = ["LICENSE.txt"]
+
+dependencies = [
+  "jinja2",
+  "simple-logging-setup",
+  "aiofiles",
+]
+
+
+[project.optional-dependencies]
+dev = [
+  "uvicorn[standard]",
+  "watchfiles",
+  "rlpython",
+]
+
+pytest = [
+  "uvicorn[standard]",
+]
+
+test = [
+  "coverage==7.10.4",
+  "pytest==8.4.1",
+  "pytest-playwright==0.7.1",
+  "requests",
+  "rlpython",
+]
+
+docs = [
+  "mkdocs==1.6.1",
+  "mkdocstrings[python]==0.28.2",
+  "mkdocs-material==9.6.6",
+  "grip==4.6.2",
+]
+
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools_scm]
+version_file = "falk/version.py"
+
+[tool.setuptools.packages.find]
+include = ["falk*"]
+
+[tool.setuptools.package-data]
+"falk" = ["**"]
+
+[tool.setuptools.exclude-package-data]
+"*" = [
+  ".*",
+  "~*",
+  "*.swp",
+  "*.pyc",
+]
+
+[project.entry-points.pytest11]
+falk = "falk.pytest_plugin"

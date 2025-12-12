@@ -1,0 +1,29 @@
+services:
+  python:
+    build:
+      context: .
+      dockerfile: python.Dockerfile
+
+    volumes:
+      - ./:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix
+
+    ports:
+      - 8000:8000
+
+    user: 1000:1000
+    working_dir: /app
+
+    environment:
+      - DISPLAY=${DISPLAY}
+
+  node:
+    build:
+      context: .
+      dockerfile: node.Dockerfile
+
+    volumes:
+      - ./:/app
+
+    user: 1000:1000
+    working_dir: /app
