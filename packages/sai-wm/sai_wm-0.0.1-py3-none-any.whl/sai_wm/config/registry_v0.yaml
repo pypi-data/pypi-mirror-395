@@ -1,0 +1,27 @@
+world_models:
+  - name: "world_model"
+    entry_point: "sai_wm.world_models.world_model.world_model_v0:WorldModel_v0"
+  - name: "pwm"
+    entry_point: "sai_wm.world_models.pwm.pwm_v0:PWM_v0"
+
+environments:
+  - name: "CarRacing-v0"
+    entry_point: "sai_wm.envs.gym_envs.gym_envs_v0:GymEnv_v0"
+    base_env_name: "CarRacing-v3"
+    max_episode_steps: 1000
+    world_model:
+      - world_model:
+          use_base_env: True
+          dream: True
+          repo_id: "ShaswatRobotics/world_model_test"
+          model_file: "car_racing/world_model"
+
+  - name: "Ant-v0"
+    entry_point: "sai_wm.envs.gym_envs.gym_envs_v0:GymEnv_v0"
+    base_env_name: "Ant-v5"
+    max_episode_steps: 1000
+    world_model:
+      - pwm:
+          use_base_env: True
+          repo_id: "ShaswatRobotics/world_model_test"
+          model_file: "ant/pwm"
