@@ -1,0 +1,178 @@
+data:
+  # dir paths will be set as a relative path to hyperch4 package
+  absorption_dir:
+    resources/absorption
+  irradiance_dir:
+    resources/solar_irradiance
+  modtran_dir:
+    resources/modtran_full
+  rgb_dir:
+    resources/rgb
+  osm_dir:
+    # dir of water mask rasters generated from the OSM and WorldCover datasets 
+    # https://hyp3-docs.asf.alaska.edu/water_masking/
+    # aws s3 cp --recursive --no-sign-request s3://asf-dem-west/WATER_MASK/TILES/ resources/OSM_WorldCover/
+    resources/OSM_WorldCover
+  era5_dir:
+    # data structure should be: yyyy/sl*grib
+    # if you leave this empty, the package will try to load cloud data (not supported yet)
+    resources/ERA5
+  geosfp_dir:
+    # data structure should be: yyyy/mm/dd/GEOS.fp.asm.tavg1_2d_slv_Nx.*.V01.nc4
+    # if you leave this empty, the package will try to load cloud data (not supported yet)
+    resources/GEOS-FP
+  markers_filename:
+    # the csv file which saves pre-defined markers
+    #   it should contains at least two columns: "latitude" and "longitude"
+    #   the `l2b_plot.py` will add CircleMarkers on Map and click it to see correcponding DataFrame info
+    resources/markers/markers.csv
+  spacetrack_usename:
+    # only useful for PRISMA
+    <username>
+  spacetrack_password:
+    # only useful for PRISMA
+    <password>
+
+species:
+  ch4:
+    name: methane
+    wavelength: [2110, 2450]
+    full_wavelength: [1300, 2500]
+    rad_source: model  # "model" or "lut", note that "lut" only supports ch4 and co2
+    concentrations: [0, 0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4]  # for rad_source=="model", units: ppm
+    # concentrations: [0.0e+3, 1.0e+3, 2.0e+3, 4.0e+3, 8.0e+3, 1.6e+4, 3.2e+4, 6.4e+4]  # for rad_source=="lut", units: ppm m
+    units: ppb  # units of output product
+  co2:
+    name: carbon dioxide
+    wavelength: [1930, 2200]
+    full_wavelength: [1300, 2500]
+    rad_source: model
+    concentrations: [0, 2.5, 5.0, 10.0, 20.0, 40.0, 80.0, 160.0]  # for rad_source=="model", units: ppm
+    # concentrations: [0.0e+4, 2.0e+4, 4.0e+4, 8.0e+4, 1.6e+5, 3.2e+5, 6.4e+5, 1.28e+6] # for rad_source=="lut", units: ppm m
+    units: ppm
+  co:
+    name: carbon monoxide
+    wavelength: [2305, 2385]
+    full_wavelength: [1300,2500]
+    rad_source: model
+    concentrations: [0, 0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4]
+    units: ppb
+  no2:
+    name: nitrogen dioxide
+    wavelength: [400, 500]
+    full_wavelength: [400, 700]
+    rad_source: model
+    concentrations: [0.0e-3, 1.0e-3, 2.0e-3, 4.0e-3, 8.0e-3, 1.6e-2, 3.2e-2, 6.4e-2]  # ppm
+    units: ppb  #umol m-2
+
+sensor:
+  EMIT:
+    platform: 'EMIT'
+    instrument: 'emi'
+    provider: 'NASA-JPL'
+    pixel_res: 60
+  EnMAP:
+    platform: 'EnMAP'
+    instrument: 'hsi'
+    provider: 'DLR'
+    pixel_res: 30
+  PRISMA:
+    platform: 'PRISMA'
+    instrument: 'hsi'
+    provider: 'ASI'
+    pixel_res: 30
+
+ime_calibration: # ueff = alpha1*log(wspd) + alpha2 + alpha3*wspd
+  ch4:
+    point-source:
+      EMIT:
+        alpha1: 0.
+        alpha2: 0.43
+        alpha3: 0.35
+        resid: 0.05
+      EnMAP:
+        alpha1: 0.
+        alpha2: 0.45
+        alpha3: 0.32
+        resid: 0.05
+      PRISMA:
+        alpha1: 0.
+        alpha2: 0.43
+        alpha3: 0.31
+        resid: 0.06
+    area-source:
+      EMIT:
+        alpha1: 0.
+        alpha2: 0.63
+        alpha3: 0.39
+        resid: 0.12
+      EnMAP:
+        alpha1: 0.
+        alpha2: 0.68
+        alpha3: 0.37
+        resid: 0.21
+      PRISMA:
+        alpha1: 0.
+        alpha2: 0.69
+        alpha3: 0.37
+        resid: 0.33
+  co2:
+    point-source:
+      EMIT:
+        alpha1: 0.
+        alpha2: 0.44
+        alpha3: 0.34
+        resid: 0.05
+      EnMAP:
+        alpha1: 0.
+        alpha2: 0.46
+        alpha3: 0.31
+        resid: 0.04
+      PRISMA:
+        alpha1: 0.
+        alpha2: 0.44
+        alpha3: 0.32
+        resid: 0.07
+
+csf_calibration: # ueff = beta1*wspd + beta2
+  ch4:
+    point-source:
+      EMIT:
+        beta1: 1.12
+        beta2: 0
+        resid: -0.04
+      EnMAP:
+        beta1: 1.15
+        beta2: 0.
+        resid: -0.01
+      PRISMA:
+        beta1: 1.13
+        beta2: 0.
+        resid: 0.0005
+    area-source:
+      EMIT:
+        beta1: 1.22
+        beta2: 0.
+        resid: 0.05
+      EnMAP:
+        beta1: 1.30
+        beta2: 0.
+        resid: 0.18
+      PRISMA:
+        beta1: 1.29
+        beta2: 0.
+        resid: 0.28
+  co2:
+    point-source:
+      EMIT:
+        beta1: 1.10
+        beta2: 0.
+        resid: -0.03
+      EnMAP:
+        beta1: 1.15
+        beta2: 0.
+        resid: -0.01
+      PRISMA:
+        beta1: 1.13
+        beta2: 0.
+        resid: 0.004
