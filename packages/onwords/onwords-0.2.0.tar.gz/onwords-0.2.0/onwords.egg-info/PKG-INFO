@@ -1,0 +1,205 @@
+Metadata-Version: 2.4
+Name: onwords
+Version: 0.2.0
+Summary: Onwords - Gate Control Package for Smart Gate Systems
+Author-email: Onwords <contact@onwords.in>
+Maintainer-email: Onwords Team <dev@onwords.in>
+License: MIT
+Project-URL: Homepage, https://onwords.in
+Project-URL: Documentation, https://docs.onwords.in
+Project-URL: Repository, https://github.com/onwords/onwords-python
+Project-URL: Issues, https://github.com/onwords/onwords-python/issues
+Keywords: iot,smart-home,gate-control,sliding-gate,arm-gate,onwords,home-automation
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Home Automation
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: mqtt
+Requires-Dist: paho-mqtt>=1.6.0; extra == "mqtt"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Dynamic: license-file
+
+# <span style="color:#ff0000">On</span>words
+
+**Gate Control Package for Smart Gate Systems**
+
+[![PyPI version](https://badge.fury.io/py/onwords.svg)](https://badge.fury.io/py/onwords)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Control your Onwords smart gates (Sliding Gate, Arm Gate) via Python or CLI.
+
+---
+
+## Installation
+
+```bash
+pip install onwords
+```
+
+## Get Your API Key
+
+1. Visit [ostapi.onwords.in](https://ostapi.onwords.in)
+2. Click **"Get API Key"** from the menu
+3. Login with your email and password
+4. Select the devices you want to control
+5. Click **"Generate API Key"** and copy it
+
+> ⚠️ Store your API key securely. Never expose it in public code.
+
+## Quick Start
+
+### 1. Configure API Key
+
+```python
+import onwords
+
+onwords.configure("your-api-key")
+```
+
+Or via CLI:
+```bash
+onwords-config --api-key YOUR_API_KEY
+```
+
+### 2. List Your Products
+
+```python
+import onwords
+
+products = onwords.get_products()
+for product_id in products:
+    print(product_id)
+```
+
+Or via CLI:
+```bash
+onwords-list
+```
+
+### 3. Control Your Gate
+
+```python
+import onwords
+
+gate = onwords.control("your-product-id")
+
+# Sliding Gate (3chsg)
+gate.open()
+gate.close()
+gate.pause()       # or gate.stop()
+
+# Sliding Gate Advanced (3chsgsl)
+gate.open()
+gate.close()
+gate.pause()
+gate.partial_open()  # or gate.pedestrian()
+
+# Arm Gate - Single (3chag)
+gate.open_single_gate()
+gate.close_single_gate()
+gate.pause_single_gate()
+
+# Arm Gate - Double (3chag)
+gate.open_double_gate()
+gate.close_double_gate()
+gate.pause_double_gate()
+```
+
+Or via CLI:
+```bash
+onwords-control PRODUCT_ID open
+onwords-control PRODUCT_ID close
+onwords-control PRODUCT_ID pause
+```
+
+## Supported Gate Types
+
+| Gate Type | Product Prefix | Description |
+|-----------|----------------|-------------|
+| **Sliding Gate** | `3chsg` | Standard sliding gate |
+| **Sliding Gate Advanced** | `3chsgsl` | Sliding gate with pedestrian mode |
+| **Arm Gate** | `3chag` | Boom barrier / arm gate |
+
+## Supported Actions
+
+| Gate Type | Actions |
+|-----------|---------|
+| **Sliding Gate (3chsg)** | `open`, `close`, `pause` |
+| **Sliding Gate Advanced (3chsgsl)** | `open`, `close`, `pause`, `partial_open` |
+| **Arm Gate Single (3chag)** | `open_single_gate`, `close_single_gate`, `pause_single_gate` |
+| **Arm Gate Double (3chag)** | `open_double_gate`, `close_double_gate`, `pause_double_gate` |
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `onwords` | Show help and config status |
+| `onwords-config -k KEY` | Configure your API key |
+| `onwords-list` | List all your products |
+| `onwords-list --json` | List products as JSON |
+| `onwords-control ID ACTION` | Control a gate |
+
+## Python API Reference
+
+### `onwords.configure(api_key)`
+Save your API key for future use.
+
+### `onwords.get_products()`
+Fetch all product IDs from your account.
+
+### `onwords.control(product_id)`
+Get a controller for a specific product.
+
+### Controller Methods
+
+**Sliding Gate:**
+- `.open()` - Open the gate
+- `.close()` - Close the gate
+- `.pause()` / `.stop()` - Pause/stop the gate
+- `.partial_open()` / `.pedestrian()` - Partial opening (Advanced only)
+
+**Arm Gate:**
+- `.open_single_gate()` / `.close_single_gate()` / `.pause_single_gate()`
+- `.open_double_gate()` / `.close_double_gate()` / `.pause_double_gate()`
+
+**Generic:**
+- `.action(action_name)` - Send any action
+
+## Configuration
+
+Config is stored at `~/.onwords/config.json`
+
+## API Documentation
+
+Full API docs: [ostapi.onwords.in/api-documentation](https://ostapi.onwords.in/api-documentation)
+
+## Support
+
+📧 [contact@onwords.in](mailto:contact@onwords.in)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <strong><span style="color:#ff0000">On</span>words</strong> - Where Luxury Meets Innovation<br>
+  <a href="https://onwords.in">onwords.in</a>
+</p>
