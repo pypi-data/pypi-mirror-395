@@ -1,0 +1,229 @@
+"""
+Email normalization for HumanMint.
+
+Simple, functional, predictable.
+"""
+
+import re
+from functools import lru_cache
+from typing import Dict, Optional, Set
+from urllib.parse import urlsplit
+
+from email_validator import EmailNotValidError, validate_email
+
+from humanmint.data.utils import load_package_json_gz
+
+from .classifier import is_free_provider
+
+_GENERIC_INBOXES_CACHE: Optional[Set[str]] = None
+_EMPTY_EMAIL: Dict[str, Optional[str]] = {
+    "email": None,
+    "local": None,
+    "domain": None,
+    "local_base": None,
+    "is_generic": False,
+    "is_free_provider": False,
+    "is_valid": False,
+}
+
+
+def _load_generic_inboxes() -> Set[str]:
+    """
+    Load generic inboxes from generic_inboxes.json.gz package data.
+
+    Returns:
+        Set of generic inbox names (lowercased).
+    """
+    global _GENERIC_INBOXES_CACHE
+
+    if _GENERIC_INBOXES_CACHE is not None:
+        return _GENERIC_INBOXES_CACHE
+
+    try:
+        payload = load_package_json_gz("generic_inboxes.json.gz")
+        if isinstance(payload, (set, list, tuple)):
+            inboxes = {str(item).lower() for item in payload}
+            _GENERIC_INBOXES_CACHE = inboxes
+            return inboxes
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            "Generic inbox cache not found or unreadable. "
+            "Run scripts/build_caches.py to regenerate generic_inboxes.json.gz."
+        )
+    except Exception as e:
+        raise FileNotFoundError(
+            "Failed to load generic inboxes cache: " + str(e)
+        )
+
+
+def _clean(raw: str) -> str:
+    # Strip obvious wrappers and lowercase
+    cleaned = raw.strip().strip("<>").lower()
+    # Normalize common anti-scraping patterns like " [at] ", "(at)", "{dot}", etc.
+    cleaned = re.sub(r"[\[\(\{]\s*at\s*[\]\)\}]", "@", cleaned)
+    cleaned = re.sub(r"[\[\(\{]\s*dot\s*[\]\)\}]", ".", cleaned)
+    cleaned = re.sub(r"\bat\b", "@", cleaned)
+    cleaned = re.sub(r"\bdot\b", ".", cleaned)
+    cleaned = cleaned.replace(" ", "")
+
+    # Strip trailing parenthetical notes appended to emails (e.g., email@city.gov(johnsmith))
+    cleaned = re.sub(r"\([^)]*\)\s*$", "", cleaned)
+
+    # Handle mailto: and URL-style inputs
+    if cleaned.startswith("mailto:"):
+        cleaned = cleaned[len("mailto:") :]
+
+    # If there's no '@' but it looks like a URL, leave as-is for validator to fail fast
+    if "@" not in cleaned:
+        return cleaned
+
+    local, _, domain = cleaned.partition("@")
+
+    # Normalize domain: drop schemes, ports, paths, trailing dots, and duplicate dots
+    parsed = urlsplit(domain if "://" in domain else f"//{domain}")
+    domain_part = parsed.netloc or parsed.path
+    domain_part = domain_part.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    if ":" in domain_part and not domain_part.startswith("["):
+        domain_part = domain_part.split(":", 1)[0]
+    domain_part = re.sub(r"\.{2,}", ".", domain_part).strip(".")
+    if domain_part.startswith("www."):
+        domain_part = domain_part[4:]
+
+    return f"{local}@{domain_part}" if domain_part else cleaned
+
+
+def _validate(email: str) -> Optional[str]:
+    try:
+        # Skip DNS lookups for speed and offline resilience
+        return validate_email(email, check_deliverability=False).normalized
+    except EmailNotValidError:
+        return None
+
+
+def _extract_fields(email: str) -> Dict[str, str]:
+    local, _, domain = email.partition("@")
+    local_base = local.split("+", 1)[0]
+
+    # Strip +tag from local part for non-consumer domains
+    # Consumer domains (Gmail, Yahoo, etc.) use +tags intentionally, so keep them
+    if not is_free_provider(domain) and "+" in local:
+        local = local_base
+        email = f"{local}@{domain}"
+
+    return {
+        "email": email,
+        "local": local,
+        "domain": domain,
+        "local_base": local_base,
+    }
+
+
+def _enrich(
+    fields: Dict[str, str], generic_inboxes: Optional[Set[str]] = None
+) -> Dict[str, str]:
+    """
+    Enrich email fields with validity, genericity, and free provider checks.
+
+    Args:
+        fields: Email fields dict from _extract_fields().
+        generic_inboxes: Set of generic inbox names. If None, loads from package data.
+
+    Returns:
+        Enriched fields dict.
+
+    Raises:
+        TypeError: If generic_inboxes is not a set or None.
+    """
+    if generic_inboxes is None:
+        generic_inboxes = _load_generic_inboxes()
+    elif not isinstance(generic_inboxes, set):
+        raise TypeError(
+            f"generic_inboxes must be a set, got {type(generic_inboxes).__name__}"
+        )
+
+    fields["is_generic"] = fields["local_base"] in generic_inboxes
+    fields["is_free_provider"] = is_free_provider(fields["domain"])
+    fields["is_valid"] = True
+    return fields
+
+
+def _empty() -> Dict[str, Optional[str]]:
+    return _EMPTY_EMAIL.copy()
+
+
+@lru_cache(maxsize=4096)
+def _normalize_email_cached(cleaned: str) -> Dict[str, Optional[str]]:
+    """
+    Cached normalization path when using default inbox list.
+
+    This function uses @lru_cache(maxsize=4096) to cache email validation and parsing.
+    For batches with duplicate email addresses, caching avoids expensive email_validator
+    library calls.
+
+    To clear the cache if memory is a concern:
+        >>> _normalize_email_cached.cache_clear()
+
+    To check cache statistics:
+        >>> _normalize_email_cached.cache_info()
+    """
+    validated = _validate(cleaned)
+
+    if validated is None:
+        result = _EMPTY_EMAIL.copy()
+        result["email"] = cleaned
+        return result
+
+    fields = _extract_fields(validated)
+    return _enrich(fields)
+
+
+def normalize_email(
+    raw: Optional[str], generic_inboxes: Optional[Set[str]] = None
+) -> Dict[str, Optional[str]]:
+    """
+    Public API: normalize an email.
+
+    Always returns the same keys. Throws only on type validation errors for generic_inboxes.
+    Pure function.
+
+    Args:
+        raw: Email string to normalize.
+        generic_inboxes: Optional set of generic inbox names. If None, loads from package data.
+            Must be a set of strings if provided.
+
+    Returns:
+        Dict with keys: email, local, domain, local_base, is_generic, is_free_provider, is_valid.
+
+    Raises:
+        TypeError: If generic_inboxes is not a set or None.
+
+    Examples:
+        >>> normalize_email('info@gmail.com')
+        {'email': 'info@gmail.com', 'local': 'info', 'domain': 'gmail.com',
+         'local_base': 'info', 'is_generic': False, 'is_free_provider': True, 'is_valid': True}
+
+        >>> normalize_email('user@company.com', generic_inboxes={'custom', 'test'})
+        {'email': 'user@company.com', 'local': 'user', 'domain': 'company.com',
+         'local_base': 'user', 'is_generic': False, 'is_free_provider': False, 'is_valid': True}
+    """
+    if not raw or not isinstance(raw, str):
+        return _empty()
+
+    cleaned = _clean(raw)
+
+    # Early gate: if there's no '@' after cleaning, treat as invalid non-email input
+    if "@" not in cleaned:
+        return _empty() | {"email": None}
+
+    # Fast path: default inbox list can be cached
+    if generic_inboxes is None:
+        return _normalize_email_cached(cleaned).copy()
+
+    validated = _validate(cleaned)
+
+    if validated is None:
+        return _empty() | {"email": cleaned}  # keep original cleaned string
+
+    fields = _extract_fields(validated)
+    enriched = _enrich(fields, generic_inboxes)
+    return enriched
