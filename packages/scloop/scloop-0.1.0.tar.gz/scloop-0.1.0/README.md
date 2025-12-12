@@ -1,0 +1,78 @@
+# scloop - single-cell loop analysis
+
+[![Test Import](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-import.yml)
+[![Test Build](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml/badge.svg)](https://github.com/stanfish06/scLoop/actions/workflows/test-build.yml)
+
+**Note: this package is still under development.**
+
+scLoop is a library to identify statistically significant loops in single-cell RNA-seq data.
+
+<img src="examples/loop.png" alt="persistent homology" width="300"/>
+
+## Build Instructions
+```bash
+make build
+```
+
+or
+
+```bash
+make rebuild
+```
+
+## Virtual Envrionemnt
+```bash
+make sync
+```
+
+## Project Structure
+```
+src/scloop/
+├── analyzing
+│   └── __init__.py
+├── benchmarking
+│   └── __init__.py
+├── data
+│   ├── analysis_containers.py
+│   ├── containers.py
+│   ├── __init__.py
+│   ├── metadata.py
+│   ├── ripser.cpp
+│   ├── ripser.hpp
+│   ├── ripser_lib.cpp
+│   ├── ripser_lib.pyx
+│   ├── types.py
+│   └── utils.py
+├── __init__.py
+├── matching
+│   ├── data_modules.py
+│   ├── __init__.py
+│   ├── mlp.py
+│   └── nf.py
+├── plotting
+│   ├── __init__.py
+│   └── plot.py
+├── preprocessing
+│   ├── delve
+│   │   ├── delve.py
+│   │   ├── __init__.py
+│   │   └── kh.py
+│   ├── downsample.py
+│   ├── __init__.py
+│   └── prepare.py
+├── py.typed
+├── tools
+│   └── __init__.py
+└── utils
+    ├── distance_metrics
+    │   ├── discrete-frechet-distance
+    │   ├── frechet.cpp
+    │   ├── frechet.pyx
+    │   └── __init__.py
+    ├── __init__.py
+    └── linear_algebra_gf2
+        ├── gf2_toolkit_lib.pyx
+        ├── __init__.py
+        ├── m4ri_lib.c
+        └── m4ri_lib.pyx
+```
