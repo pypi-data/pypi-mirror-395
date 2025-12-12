@@ -1,0 +1,409 @@
+Metadata-Version: 2.3
+Name: yabra
+Version: 0.1.0
+Summary: Yet Another Brazilian library
+Author: Leandro de Souza
+Author-email: Leandro de Souza <leandrodesouzadev@gmail.com>
+Requires-Dist: click>=8.3.1 ; extra == 'cli'
+Requires-Python: >=3.12
+Provides-Extra: cli
+Description-Content-Type: text/markdown
+
+# YABRA (Yet Another Brazilian package)
+
+This package was designed to ease out the handling brazilian documents in python code.
+Maybe in the future this can also support more usecases for brazilian-like usecases (such as zipcodes).
+
+Currently we support the following document types:
+* [CPF](#cpf)
+* [CNPJ (numeric and alpha-numeric)](#cnpj)
+
+## Design
+
+Documents are objects that can be created from primitive values such as `string`, `bytes` and even `int` (for the wild users). Why objects? Well, if you ever dealt with python code that handled documents as primitives such as string, you can't be sure if that is a empty string, a invalid document, or anything really. By using a object, you can pass this object around safely knowing that has been validated before.
+
+## Why yabra?
+
+Well, you might be wondering why this was created in the first place, and the answer is that there weren't any such libraries for handling documents in such format, there are options, if you don't know them yet, you should check them out:
+
+* [validate-docbr](https://github.com/alvarofpp/validate-docbr)
+* [pycpfcnpj](https://github.com/matheuscas/pycpfcnpj)
+
+## Installation
+
+In order to use this package, you need to install. You can use the plain old pip:
+```sh
+pip install yabra
+```
+
+Or using modern tools like poetry/pdm/uv:
+```sh
+uv add yabra
+```
+
+If you're going to use this package to validate documents only, then there are no external dependencies. We support `python>=3.12`.
+
+If you're going to use this package to also [generate documents](#generating-documents), then you need to install the extra `cli` dependencies, using:
+```sh
+uv add yabra[cli]
+```
+
+## Validating documents
+
+Now that you have the package installed, let's start validating some documents.
+
+## None(null) value note
+
+Since None is not a valid document or something that should be treated as a document, you should handle nullable documents as None, and not as instances of a null document.
+
+```python
+from yabra.doc.cpf import CPF
+
+# Example for handling nullable document, from a unsafe source, such as a API View/Controller
+def a_function_that_might_have_a_nullable_document(primitive_cpf: Any | None) -> None:
+    if primitive_cpf is None:
+        return do_something()
+    # Since the value is not None, then we can create a instance of the CPF
+    # If you create a instance of CPF passing None, it will fail validation
+    cpf_obj = CPF(primitive_cpf)
+    print("Got valid CPF", cpf_obj.validated_value()) # Performs validation
+    do_something_with_expected_cpf(cpf_obj)
+
+```
+
+### CPF
+
+A CPF (Cadastro Pessoa Física) is a unique personal document, it identifies a single person on Brazil. A CPF is composed of 11 digits (only numbers), where the first 9 digits are used to identify the person, and the last 2 digits are used to check/verify the previous 9 using a Modulo 11 algorithm. A CPF is considered valid when it contains 11 digits, and the check digits matches the previous 9 digits algorithm calculation.
+
+You can provide several different formats of documents, we only consider the number digits of the string/bytes/int object.
+
+```python
+from yabra.doc.cpf import CPF
+
+# A normalized string or bytes
+CPF("12345678900")
+CPF(b"12345678900")
+
+# A masked/formatted string or bytes
+CPF("123.456.789-00")
+CPF(b"123.456.789-00")
+
+# And if you're a bad boy using `int`. `int` support is really poor though, we cast the `int` to a `str`
+# So you can't really use `int` for anything.
+CPF(12345678900)
+```
+
+When you create a instance of the `CPF` class, nothing happens. The value is only validated if you request. The CPF in the examples above aren't valid, but since we're not requestting for the validated
+value, then nothing happens. To get the validated value, use the `validated_value` method.
+
+```python
+from yabra.doc.cpf import CPF
+
+CPF("12345678900").validated_value()
+# raises InvalidDocumentError("Documento inválido: ...")
+
+CPF("33429493331").validated_value()
+# "33429493331"
+```
+
+Now that you had a validated value, you can also `mask` it, or `filter` (obsfucate) it. You can use the  `masked_value` and `filtered_value` methods:
+
+```python
+from yabra.doc.cpf import CPF
+
+CPF("12345678900").masked_value()
+# Attempting to mask a invalid document
+# raises InvalidDocumentError("Documento inválido: ...")
+
+CPF("33429493331").masked_value()
+# "334.294.933-31"
+
+# Obfuscating a document
+CPF("33429493331").filtered_value()
+# "334.***.***-31"
+
+# Obfuscating a document using a custom mask is also possible
+# The `mask` argument accepts any string that has placeholders for 0, 1, 2, 3
+# where each index is correspoding to a part of the CPF document as if with was masked
+CPF("33429493331").filtered_value(mask="{0}.XXX.XXX-{3}")
+# "334.XXX.XXX-31"
+
+CPF("33429493331").filtered_value(mask="@@@.{1}.{2}-@@")
+# "@@@.294.933-@@"
+
+# It's also possible to have no placeholders at all
+CPF("33429493331").filtered_value(mask="@@@.XXX.***-@@")
+# "@@@.XXX.***-@@"
+```
+
+If you want to customize the default behavior for validation/filtering check the `Customizing` section.
+
+
+### CNPJ
+
+A CNPJ (Cadastro Nacional de Pessoa Jurídica) is a unique company document, it identifies a single company on Brazil. A CNPJ is composed of 14 digits (previously only numbers, and starting on June/26 letters and numbers), where the first 8 digits are used to identify the company, the next 4 digits the branch number (such as 0001 the master branch) and the last 2 digits are used to check/verify the previous 12 using a Modulo 11 algorithm. A CNPJ is considered valid when it contains 14 digits, and the check digits matches the previous 12 digits algorithm calculation.
+
+You can provide several different formats of documents, we only consider the number digits of the string/bytes/int object.
+
+
+```python
+from yabra.doc.cnpj import CNPJ
+
+# A normalized string or bytes
+CNPJ("83612243000108")
+CNPJ(b"83612243000108")
+
+# A masked/formatted string or bytes
+CNPJ("83.612.243/0001-08")
+CNPJ(b"83.612.243/0001-08")
+
+# And if you're a bad boy using `int`. `int` support is really poor though, we cast the `int` to a `str`
+# So you can't really use `int` for anything.
+CNPJ(83612243000108)
+```
+
+When you create a instance of the `CNPJ` class, nothing happens. The value is only validated if you request. To get the validated value, use the `validated_value` method.
+
+```python
+from yabra.doc.cnpj import CNPJ
+
+CNPJ("83612243000100").validated_value()
+# raises InvalidDocumentError("Documento inválido: ...")
+
+CNPJ("83612243000108").validated_value()
+# "83612243000108"
+```
+
+Now that you had a validated value, you can also `mask` it, or `filter` (obsfucate) it. You can use the  `masked_value` and `filtered_value` methods:
+
+```python
+from yabra.doc.cnpj import CNPJ
+
+CNPJ("83612243000100").masked_value()
+# Attempting to mask a invalid document
+# raises InvalidDocumentError("Documento inválido: ...")
+
+CNPJ("83612243000108").masked_value()
+# "83.612.243/0001-08"
+
+# Obfuscating a document
+CNPJ("83612243000108").filtered_value()
+# "83.***.243/****-08"
+
+# Obfuscating a document using a custom mask is also possible
+# The `mask` argument accepts any string that has placeholders for 0, 1, 2, 3, 4
+# where each index is correspoding to a part of the CNPJ document as if with was masked
+CNPJ("83612243000108").filtered_value(mask="{0}.***.***/{3}-**")
+# "83.***.***/0001-**",
+
+CNPJ("83612243000108").filtered_value(mask="@@.{1}.{2}/@@@@-@@")
+# "@@.612.243/@@@@-@@"
+
+# It's also possible to have no placeholders at all
+CNPJ("83612243000108").filtered_value(mask="@@.@@@.@@@/@@@@-@@")
+# "@@.@@@.@@@/@@@@-@@"
+```
+
+By default the `CNPJ` class accepts alpha-numeric documents.
+If you want to customize the default behavior for validation/filtering check the `Customizing` section.
+
+## Customizing behavior
+
+Even though you can use yabra classes directly in your code, you probably want and should create your own subclasses of the documents. This is not required, but recommend doing that, because if you ever want to change or customize some behavior, you have only one place to change (DRY).
+So following this advice, you can create your document classes, just by subclassing our document classes, like:
+
+```python
+from yabra.doc.cpf import CPF
+from yabra.doc.cnpj import CNPJ
+
+class CPFDocument(CPF):
+    pass
+
+
+class CNPJDocument(CNPJ):
+    pass
+```
+
+Now that you have your own classes, how you customize the validation behavior? Read more below on how to customize some of the default behaviors.
+
+### Some introduction
+
+Before you get your hands dirty, let's understand how the library was designed.
+Both `CPF`, and `CNPJ` classes inherit from a `BaseDoc` class, that defines a few methods that are mutual to both document types. When you try to validate a value, what happens under the hood is:
+* We check if the value was previously validated already, if so, return it right away.
+* Call `perform_validation`
+* If the validation failed, the `raise_invalid_document_error` method is called, and an Exception is raised.
+* Otherwise, the validated value is stored and returned.
+
+The `perform_validation` does some checks, based on the `spec` class, that is set per document class.
+So if you want to change the behavior, the `spec` is where you want to change.
+
+### Changing the exception raised for invalid documents
+
+Normally in application code you might have a application-wide exception class, that you might want to use instead of our exception class: `yabra.doc.exc.InvalidDocumentError`. Or maybe you want to change the error messages, or just don't want to import our exception in a lot of different places in your code.
+In order to use your own exception class, you need to override the method `raise_invalid_document_error` on each document subclass. This function receives a `result` parameter, with the type of: yabra.doc.types.`PerformValidationErrorResult`, that's a `TypedDict` containing information about the error. More information about inheriting each document class is provided below. 
+
+### The `spec` class
+
+The `spec` attribute available in all document types is used to define the validation behavior of a document, and can be changed by subclasses. We expect that this attribute is a subclass of `yabra.doc.base_doc.DocumentSpecification`. The available attributes are:
+
+* `MAX_LENGTH` type: `int`
+The maximum number of digits allowed on this document.
+
+* `NUM_OF_CHECK_DIGITS` type: `int`
+The number of check digits used to validate this document
+
+* `VALID_DIGITS_RE` type: `re.Pattern[str]`
+A compiled regular expression that is used to keep only the valid digits of the given document.
+
+* `REPEATED_DIGITS_ALLOWED` type: `bool`
+A boolean flag that indicates where documents with only repeated digits are allowed, such as 00000000000 CPFs.
+
+* `DEFAULT_FILTERED_VALUE_MASK` type: `str`
+A string containing a mask that is used to filter/obfuscate a document when no explicit is mask is provided when calling `filtered_value`. It may contain numeric placeholder for each part of the documents.
+
+With this attributes you can customize most of the behaviors needed from your use case.
+
+### Customizing CPF
+
+Using the information we got above, let's customize our `CPFDocument` class, defined previously:
+```python
+from yabra.doc.cpf import CPF
+
+# Before, no customization already
+class CPFDocument(CPF):
+    pass
+```
+
+By default CPFs with repeated digits are not allowed, if you want to allow it, then you need to do the following:
+
+```python
+from yabra.doc.cpf import CPF, CPFSpecification
+
+class MyCustomCPFSpecification(CPFSpecification):
+    REPEATED_DIGITS_ALLOWED = True
+
+
+class CPFDocument(CPF):
+    spec = MyCustomCPFSpecification
+```
+
+Now you can accept repeated digits. If the government ever change how CPFs are validated, you can change some of the attributes of your `MyCustomCPFSpecification`, such as: `MAX_LENGTH`.
+
+Let's say that you want to customize the default filtered/obfuscated mask to use the "X" char instead of the "*" char when calling the `filtered_value` method with no explicit mask. For that you can do the following:
+
+```python
+from yabra.doc.cpf import CPF, CPFSpecification
+
+class MyCustomCPFSpecification(CPFSpecification):
+    DEFAULT_FILTERED_VALUE_MASK = "{0}.XXX.{2}-XX"
+
+
+class CPFDocument(CPF):
+    spec = MyCustomCPFSpecification
+```
+
+Note that you can provide placeholders entries for indexes: `0`, `1`, `2` and `3`.
+Where for the following CPF: `33429493331` the indexes will have the following value:
+* `0`: `334`
+* `1`: `294`
+* `2`: `933`
+* `3`: `31`
+
+### Customizing CNPJ
+
+By default we accept alpha-numeric CNPJs. If that's not what you want, you can easily customize this behavior. Using the same concept as before, we override the `spec` class on our `CNPJDocument` class.
+For that we've already created a few specifications for both classes, since the check digit calculation algorithm is slightly different. For that you do the following:
+
+```python
+from yabra.doc.cnpj import CNPJ, NumericCNPJSpecification, AlphaNumericCNPJSpecification
+
+# This is the same as not setting the `spec` attribute, but if you want to be explicit..
+class CNPJDocument(CNPJ):
+    spec = AlphaNumericCNPJSpecification
+
+# Accept only Numeric CNPJs
+class CNPJDocument(CNPJ):
+    spec = NumericCNPJSpecification
+```
+
+To customize the default filtered value mask, follow the same instructions from the `CPF` above. The key difference is that you have 5 available placeholder indexes: `0`, `1`, `2`, `3` and `4`.
+Where for the following CNPJ: `83612243000108` the indexes will have the following value:
+* `0`: `83`
+* `1`: `612`
+* `2`: `243`
+* `3`: `0001`
+* `4`: `08`
+
+
+## Generating documents
+
+A common task for development is to use a valid document, since is not easy to a human to create a valid document, we've a CLI utility to generate documents.
+> The intended usecase for this feature is when on some staging/QA environment you need a specific prefixed document for a mocked/succesful response, any malicious usage of this feature is not intended and against the main goal of this feature. We're not responsible for any of the information associated with any documents generated from this feature.
+
+Make sure you've installed this package with the `cli` extras, if you haven't install it:
+```sh
+uv add yabra[cli]
+```
+
+To generate a valid CPF document, you can do the following:
+
+```sh
+python -m yabra.doc generate cpf
+
+# or for CNPJ
+python -m yabra.doc generate cnpj
+```
+
+If you need a prefixed document, use the `prefix` option:
+
+```sh
+python -m yabra.doc generate cpf --prefix 0
+
+# or for CNPJ
+python -m yabra.doc generate cnpj --prefix 40
+
+# The prefix can have several digits
+python -m yabra.doc generate cpf --prefix 334294
+python -m yabra.doc generate cnpj --prefix 334294
+```
+
+If you need to generate more than one document at once, use the `number` option
+
+```sh
+python -m yabra.doc generate cpf --number 10
+python -m yabra.doc generate cnpj --number 10
+```
+
+By default, documents are generate using a pseudo-random number generator. You can use different algorithms in order to achieve different results
+
+```sh
+# Same as omitting
+python -m yabra.doc generate cpf --algorithm random
+
+# Follows a sequence that starts at 0
+python -m yabra.doc generate cpf --algorithm sequential
+
+# Alpha-numeric versions algorithms are also supported, the document type must support alpha numeric
+# digits in order to documents to be generated
+python -m yabra.doc generate cnpj --algorithm alpha_random
+python -m yabra.doc generate cnpj --algorithm alpha_sequential
+```
+
+You can also mask/format the documents on output:
+
+```sh
+python -m yabra.doc generate cpf --mask
+python -m yabra.doc generate cnpj --mask
+```
+
+All together are also supported:
+```sh
+python -m yabra.doc generate cpf --prefix 9 --number 100 --algorithm sequential --mask
+python -m yabra.doc generate cnpj --prefix 9 --number 100 --algorithm alpha_random --mask
+```
+
+Since the documents are outputted to `stdout`, you can use the shell redirects, to create a file for example:
+```sh
+python -m yabra.doc generate cpf --number 1000 > test.txt
+```
