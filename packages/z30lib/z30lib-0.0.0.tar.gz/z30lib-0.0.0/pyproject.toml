@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "z30lib"
+description = "A cross-platform system & hardware information library by Z30-Development"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "Z30-Development" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Operating System",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+dynamic = ["version"]
+
+dependencies = [
+    "psutil",
+    "py-cpuinfo",
+    "wmi; platform_system == 'Windows'",
+    "distro; platform_system == 'Linux'",
+]
+
+[project.optional-dependencies]
+network = [
+    "netifaces",
+]
+speedtest = [
+    "speedtest-cli",
+]
+
+[project.urls]
+Homepage = "https://github.com/Z30-Development/z30lib"
+"Issue tracker" = "https://github.com/Z30-Development/z30lib/issues"
+
+[tool.setuptools]
+packages = [
+    "z30lib",
+]
+include-package-data = true
+
+[tool.black]
+line-length = 125
+skip-string-normalization = true
+
+[tool.ruff]
+line-length = 125
+
+[tool.ruff.format]
+line-ending = "lf"
+quote-style = "single"
+
+[tool.coverage.run]
+omit = [
+    "z30lib/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "@overload",
+]
+
+[tool.isort]
+profile = "black"
+combine_as_imports = true
+combine_star = true
+line_length = 125
+
+[tool.pyright]
+include = [
+    "z30lib",
+]
+exclude = [
+    "**/__pycache__",
+    "build",
+    "dist",
+    "docs",
+]
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUnusedImport = "error"
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
