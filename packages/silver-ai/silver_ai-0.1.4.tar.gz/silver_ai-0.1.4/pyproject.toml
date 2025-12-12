@@ -1,0 +1,49 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "silver-ai"
+version = "0.1.4"
+description = "Deterministic State-Guardrails for Agentic Hardware"
+authors = ["Goh Chun Lin <chunlin@live.com.sg>"]
+readme = "README.md"
+license = "Apache-2.0"
+homepage = "https://github.com/gcl-team/SilverAi"
+repository = "https://github.com/gcl-team/SilverAi"
+keywords = ["ai", "agents", "safety", "guardrails", "robotics", "iot"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Framework :: Pydantic",
+]
+packages = [{include = "silver_ai", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+ruff = "^0.3.0"
+
+[tool.deptry]
+ignore_notebooks = true
+exclude = [".venv", "venv", ".git", "__pycache__", "tests", "demo.py"]
+
+# --- Ruff Configuration (Linting + Security) ---
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+# E: pycodestyle, F: pyflakes, I: isort, S: bandit (security)
+select = ["E", "F", "I", "S"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["silver_ai"]
+
+# Exclude security checks in tests (asserts are fine in tests)
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
