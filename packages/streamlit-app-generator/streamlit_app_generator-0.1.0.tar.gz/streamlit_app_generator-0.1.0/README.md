@@ -1,0 +1,282 @@
+# Streamlit App Generator
+
+🚀 Generate complete Streamlit applications with authentication and database templates in seconds!
+
+**Created by: Leandro Meyer Dal Cortivo**
+
+## Features
+
+- 🔐 **Multiple Auth Styles**: Basic, Modern, and Minimal login templates
+- 🗄️ **Database Templates**: PostgreSQL, MySQL, SQLite, MongoDB, Redis
+- 📄 **Multi-page Support**: Auto-generate page structure
+- 🎨 **Customizable Themes**: Light, Dark, and Custom themes
+- 🛡️ **Security First**: Password hashing, session management, role-based access
+- 📦 **Production Ready**: Clean code, type hints, comprehensive tests
+- ⚡ **Performance Optimized**: Caching, connection pooling, lazy loading
+
+## Installation
+
+```bash
+pip install streamlit-app-generator
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/leandrodalcortivo/streamlit-app-generator.git
+cd streamlit-app-generator
+pip install -e ".[dev]"
+```
+
+### Install with Database Support
+
+```bash
+# PostgreSQL
+pip install streamlit-app-generator[postgresql]
+
+# MySQL
+pip install streamlit-app-generator[mysql]
+
+# MongoDB
+pip install streamlit-app-generator[mongodb]
+
+# Redis
+pip install streamlit-app-generator[redis]
+
+# Oracle
+pip install streamlit-app-generator[oracle]
+
+# All databases
+pip install streamlit-app-generator[all-databases]
+```
+
+## Quick Start
+
+### Interactive Mode
+
+```bash
+streamlit-app-generator create my_app --interactive
+```
+
+### With Specific Options
+
+```bash
+streamlit-app-generator create my_app \
+    --database postgresql \
+    --auth modern \
+    --pages home,dashboard,settings
+```
+
+### Using Python API
+
+```python
+from streamlit_app_generator import AppGenerator
+
+generator = AppGenerator(
+    name="my_awesome_app",
+    database="postgresql",
+    auth_style="modern",
+    pages=["home", "dashboard", "analytics", "settings"],
+    theme="dark",
+    enable_multipage=True
+)
+
+generator.generate()
+```
+
+## Usage Examples
+
+### Create a Basic App
+
+```bash
+streamlit-app-generator create my_app
+```
+
+This creates a minimal Streamlit app with:
+- Basic authentication
+- SQLite database
+- Home page
+- Default theme
+
+### Create a Full-Featured App
+
+```bash
+streamlit-app-generator create my_app \
+    --database postgresql \
+    --auth modern \
+    --theme dark \
+    --pages home,dashboard,analytics,settings
+```
+
+### Add Components to Existing Project
+
+```bash
+cd my_app
+streamlit-app-generator add-database mysql
+streamlit-app-generator add-page analytics
+```
+
+## Generated Project Structure
+
+```
+my_app/
+├── .streamlit/
+│   ├── config.toml
+│   └── secrets.toml
+├── pages/
+│   ├── 1_🏠_Home.py
+│   ├── 2_📊_Dashboard.py
+│   └── 3_⚙️_Settings.py
+├── auth/
+│   ├── __init__.py
+│   ├── login.py
+│   └── session.py
+├── database/
+│   ├── __init__.py
+│   ├── connection.py
+│   └── models.py
+├── utils/
+│   ├── __init__.py
+│   └── helpers.py
+├── app.py
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
+```
+
+## Authentication Styles
+
+### Basic
+Simple and functional authentication with username/password.
+
+### Modern
+Beautiful UI with gradients, animations, and modern design.
+
+### Minimal
+Clean and minimalist design focused on simplicity.
+
+## Database Support
+
+### PostgreSQL
+Full support with SQLAlchemy ORM, connection pooling, and migrations.
+
+### MySQL
+Complete MySQL integration with connection management.
+
+### SQLite
+Lightweight embedded database, perfect for prototyping.
+
+### MongoDB
+NoSQL database support with pymongo.
+
+### Redis
+In-memory data structure store for caching and sessions.
+
+## Documentation
+
+- [Installation Guide](docs/installation.md)
+- [Quick Start](docs/quickstart.md)
+- [Configuration](docs/configuration.md)
+- [API Reference](docs/api_reference.md)
+
+## For Developers
+
+- [Publishing to PyPI](PUBLISHING.md) - Complete guide for publishing the package
+- [Quick Start Publishing](QUICK_START_PUBLISH.md) - Quick reference for PyPI publication
+
+## Development
+
+### Setup Development Environment
+
+```bash
+git clone https://github.com/leandrodalcortivo/streamlit-app-generator.git
+cd streamlit-app-generator
+pip install -e ".[dev]"
+pre-commit install
+```
+
+### Run Tests
+
+```bash
+pytest
+pytest --cov=streamlit_app_generator
+```
+
+### Code Quality
+
+```bash
+# Format code
+black .
+isort .
+
+# Lint
+flake8 .
+mypy .
+```
+
+### Using Makefile
+
+```bash
+make install       # Install dependencies
+make test          # Run tests
+make format        # Format code
+make lint          # Run linters
+make clean         # Clean build artifacts
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## Roadmap
+
+- [ ] Support for more authentication providers (OAuth, SAML)
+- [ ] GraphQL API template
+- [ ] Docker deployment templates
+- [ ] CI/CD pipeline generator
+- [ ] Admin dashboard template
+- [ ] Email integration
+- [ ] File upload/download components
+- [ ] Data visualization templates
+
+## Support the Project
+
+If you find this project useful and want to support its development, consider making a contribution!
+
+### PIX Donation (Brazil)
+
+You can support the developer via PIX:
+
+**Email PIX:** `lmdcorti@gmail.com`
+
+Your support helps maintain and improve this project with new features and updates!
+
+## License
+
+MIT License - Copyright (c) 2024 Leandro Meyer
+
+## Author
+
+**Leandro Meyer**
+
+- GitHub: [@leandrodalcortivo](https://github.com/leandrodalcortivo)
+- Email: lmdcorti@gmail.com
+
+## Acknowledgments
+
+- Built with [Streamlit](https://streamlit.io/)
+- CLI powered by [Click](https://click.palletsprojects.com/)
+- Templates using [Jinja2](https://jinja.palletsprojects.com/)
+
+---
+
+⭐ If you find this project useful, please consider giving it a star on GitHub!
+
+💖 Support via PIX: **lmdcorti@gmail.com**
