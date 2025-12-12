@@ -1,0 +1,118 @@
+# ----------------------------------------------------------------------
+# Copyright (c) 2025 Rafael Gonzalez.
+#
+# See the LICENSE file for details
+# ----------------------------------------------------------------------
+
+# --------------------
+# System wide imports
+# -------------------
+
+import json
+import asyncio
+import logging
+
+from dataclasses import dataclass, field
+from typing import Any
+
+# ---------------------------
+# Third-party library imports
+# ----------------------------
+
+
+import decouple
+import aiomqtt
+from aiomqtt.client import ProtocolVersion
+
+# --------------
+# local imports
+# -------------
+
+from . import logger
+from .constants import MessagePriority
+
+
+# ---------
+# CONSTANTS
+# ---------
+
+
+# ------------------
+# Additional Classes
+# ------------------
+
+
+@dataclass(slots=True)
+class State:
+    transport: str = decouple.config("MQTT_TRANSPORT")
+    host: str = decouple.config("MQTT_HOST")
+    port: int = decouple.config("MQTT_PORT", cast=int)
+    username: str = decouple.config("MQTT_USERNAME")
+    password: int = decouple.config("MQTT_PASSWORD")
+    client_id: str = decouple.config("MQTT_CLIENT_ID")
+    keepalive: int = 60
+    topic_register: str = decouple.config("MQTT_TOPIC")
+    topics: list[str] = field(default_factory=list)
+    log_level: int = 0
+    protocol_log_level: int = 0
+    timeout: int = 1800
+
+    def update(self, options: dict[str, Any]) -> None:
+        """Updates the mutable state"""
+
+        self.keepalive = options["keepalive"]
+        self.timeout = options["timeout"]
+        self.log_level = logger.level(options["log_level"])
+        log.setLevel(self.log_level)
+        self.protocol_log_level = logger.level(options["protocol_log_level"])
+        proto_log.setLevel(self.protocol_log_level)
+
+
+# ----------------
+# Global variables
+# ----------------
+
+log = logging.getLogger(logger.LogSpace.MQTT.value)
+proto_log = logging.getLogger("MQTT")
+state = State()
+
+# -----------------
+# Auxiliar functions
+# ------------------
+
+
+# --------------
+# The MQTT task
+# --------------
+
+
+async def publisher(options: dict[str, Any], queue: asyncio.PriorityQueue) -> None:
+    interval = 5
+    state.update(options)
+    log.setLevel(state.log_level)
+    log.debug("Connecting to MQTT Broker %s:%s:%s", state.host, state.port, state.transport)
+    client = aiomqtt.Client(
+        state.host,
+        state.port,
+        username=state.username,
+        password=state.password,
+        identifier=state.client_id,
+        logger=proto_log,
+        transport=state.transport,
+        keepalive=state.keepalive,
+        protocol=ProtocolVersion.V311,
+    )
+    while True:
+        try:
+            async with client:
+                get_future = queue.get()
+                priority, _, message = await asyncio.wait_for(get_future, state.timeout)
+                payload = json.dumps(message)
+                if priority == MessagePriority.MQTT_REGISTER:
+                    await client.publish(state.topic_register, payload=payload)
+                else:
+                    await client.publish(f"STARS4ALL/{message['name']}/reading", payload=payload)
+        except aiomqtt.MqttError as e:
+            log.error(e)
+            log.warning(f"Waiting {interval} seconds ...")
+            await asyncio.sleep(interval)
