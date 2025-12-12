@@ -1,0 +1,284 @@
+##############################################################################
+# Copyright 2019 IBM Corp.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##############################################################################
+
+from http import HTTPStatus
+
+import responses
+from responses import matchers
+
+from pyds8k.base import Resource, get_resource_and_manager_class_by_route
+from pyds8k.client.ds8k.v1.sc_client import SCClient
+from pyds8k.dataParser.ds8k import RequestParser, ResponseParser
+from pyds8k.resources.ds8k.v1.common import types
+from pyds8k.test.base import TestCaseWithConnect
+from pyds8k.test.data import (
+    create_mappings_response_json,
+    get_response_data_by_type,
+    get_response_json_by_type,
+    get_response_list_data_by_type,
+    get_response_list_json_by_type,
+)
+from pyds8k.test.test_resources.test_ds8k.base import TestUtils
+
+system_list_res_json = get_response_list_json_by_type(types.DS8K_SYSTEM)
+system_list_res = get_response_list_data_by_type(types.DS8K_SYSTEM)
+volume_list_res_json = get_response_list_json_by_type(types.DS8K_VOLUME)
+volume_list_res = get_response_list_data_by_type(types.DS8K_VOLUME)
+volume_a_res_json = get_response_json_by_type(types.DS8K_VOLUME)
+volume_a_res = get_response_data_by_type(types.DS8K_VOLUME)
+
+
+class TestClient(TestUtils, TestCaseWithConnect):
+    def setUp(self):
+        super().setUp()
+        self.rest_client = SCClient('https://localhost:8088/api/', 'admin', 'admin')
+
+    def _assert_equal_between_dicts(self, returned_dict, origin_dict):
+        for key, value in origin_dict.items():
+            if not isinstance(value, dict):
+                assert value == returned_dict.get(key)
+
+    def _assert_equal_between_obj_and_dict(self, returned_obj, origin_dict):
+        for key, value in origin_dict.items():
+            if not isinstance(value, dict):
+                assert value == getattr(returned_obj, key)
+
+    def _set_resource_list(self, route):
+        base_route = route.split('.')[-1]
+        resource_response = get_response_data_by_type(base_route)
+        prefix = f'{self.client.service_type}.{self.client.service_version}'
+        res_class, _ = get_resource_and_manager_class_by_route(
+            f"{prefix}.{str(route).lower()}"
+        )
+        if res_class.__name__ == Resource.__name__:
+            msg = f'Can not get resource class from route: {route}'
+            raise Exception(msg)
+        id_field = res_class.id_field
+        route_id = self._get_resource_id_from_resopnse(
+            base_route, resource_response, id_field
+        )
+        url = '/{}/{}'.format(route.replace('.', '/'), route_id)
+        responses.get(
+            self.domain + self.base_url + url,
+            body=get_response_json_by_type(base_route),
+            content_type='application/json',
+            status=HTTPStatus.OK.value,
+        )
+        return route_id
+
+    def _set_sub_resource(self, route, route_id, sub_route):
+        sub_route_url = f'/{route}/{route_id}/{sub_route}'
+        responses.get(
+            self.domain + self.base_url + sub_route_url,
+            body=get_response_list_json_by_type(sub_route),
+            content_type='application/json',
+            status=HTTPStatus.OK.value,
+        )
+
+    def _post_sub_resource(self, route, route_id, sub_route, body):
+        sub_route_url = f'/{route}/{route_id}/{sub_route}'
+        uri = f'{self.domain}{self.base_url}{sub_route_url}'
+
+        resq = RequestParser(body)
+
+        responses.post(
+            uri,
+            status=HTTPStatus.OK,
+            body=create_mappings_response_json,
+            content_type='application/json',
+            match=[matchers.json_params_matcher(resq.get_request_data())],
+        )
+
+    @responses.activate
+    def _test_resource_by_route(self, route, func, sub_resource=None):
+        if sub_resource is None:
+            sub_resource = []
+        base_route = route.split('.')[-1]
+        route_id = self._set_resource_list(route)
+        if sub_resource:
+            for sub_route in sub_resource:
+                self._set_sub_resource(route, route_id, sub_route)
+        res = getattr(self.rest_client, func)(route_id)[0]
+        assert isinstance(res, dict)
+        rep = ResponseParser(
+            get_response_data_by_type(base_route), base_route
+        ).get_representations()[0]
+        self._assert_equal_between_dicts(res, rep)
+
+    @responses.activate
+    def _test_sub_resource(self, route, sub_route, func):
+        route_id = self._set_resource_list(route)
+        self._set_sub_resource(route, route_id, sub_route)
+        res = getattr(self.rest_client, func)(route_id)[0]
+        assert isinstance(res, dict)
+        # print "&&&&&&&&&&&{}".format(res)
+        rep = ResponseParser(
+            get_response_data_by_type(sub_route), sub_route
+        ).get_representations()[0]
+        self._assert_equal_between_dicts(res, rep)
+
+    @responses.activate
+    def _test_resource_list_by_route(self, route, func=None):
+        prefix = f'{self.client.service_type}.{self.client.service_version}'
+        res_class, _ = get_resource_and_manager_class_by_route(
+            f"{prefix}.{str(route).lower()}"
+        )
+        if res_class.__name__ == Resource.__name__:
+            msg = f'Can not get resource class from route: {route}'
+            raise Exception(msg)
+        url = '/{}'.format(route.replace('.', '/'))
+        base_route = route.split('.')[-1]
+        responses.get(
+            self.domain + self.base_url + url,
+            body=get_response_list_json_by_type(base_route),
+            content_type='application/json',
+            status=HTTPStatus.OK.value,
+        )
+        func = func or 'get_{}'.format(route.replace('.', '_'))
+        res = getattr(self.rest_client, func)()
+        assert isinstance(res, list)
+        assert isinstance(res[0], dict)
+        rep = ResponseParser(
+            get_response_list_data_by_type(base_route), base_route
+        ).get_representations()[0]
+        self._assert_equal_between_dicts(res[0], rep)
+
+    @responses.activate
+    def _test_sub_resource_post(self, route, sub_route, func, body, *params):
+        route_id = self._set_resource_list(route)
+        self._post_sub_resource(route, route_id, sub_route, body)
+        func = func or f'get_{route}'
+        res = getattr(self.rest_client, func)(route_id, *params)[0]
+        rep = ResponseParser(
+            get_response_data_by_type(sub_route), sub_route
+        ).get_representations()[0]
+        self._assert_equal_between_obj_and_dict(res, rep)
+
+    @responses.activate
+    def test_get_system(self):
+        sys_url = '/systems'
+
+        responses.get(
+            self.domain + self.base_url + sys_url,
+            body=system_list_res_json,
+            content_type='application/json',
+        )
+
+        sys = self.rest_client.get_system()[0]
+        assert isinstance(sys, dict)
+        rep = ResponseParser(system_list_res, types.DS8K_SYSTEM).get_representations()[
+            0
+        ]
+        self._assert_equal_between_dicts(sys, rep)
+
+    def test_get_volume(self):
+        self._test_resource_by_route(types.DS8K_VOLUME, 'get_volume')
+
+    def test_get_extentpool(self):
+        self._test_resource_by_route(
+            types.DS8K_POOL,
+            'get_extentpool',
+            sub_resource=[
+                types.DS8K_ESEREP,
+            ],
+        )
+
+    def test_list_extentpools(self):
+        self._test_resource_list_by_route(types.DS8K_POOL, 'list_extentpools')
+
+    def test_list_extentpool_volumes(self):
+        self._test_sub_resource(
+            types.DS8K_POOL,
+            types.DS8K_VOLUME,
+            'list_extentpool_volumes',
+        )
+
+    def test_list_extentpool_virtualpool(self):
+        self._test_sub_resource(
+            types.DS8K_POOL,
+            types.DS8K_ESEREP,
+            'list_extentpool_virtualpool',
+        )
+
+    def test_list_flashcopies(self):
+        self._test_resource_list_by_route(types.DS8K_FLASHCOPY, 'list_flashcopies')
+
+    def test_list_cs_flashcopies(self):
+        self._test_resource_list_by_route(
+            f'{types.DS8K_COPY_SERVICE_PREFIX}.{types.DS8K_CS_FLASHCOPY}',
+            'list_cs_flashcopies',
+        )
+
+    def test_list_volume_flashcopies(self):
+        self._test_sub_resource(
+            types.DS8K_VOLUME,
+            types.DS8K_FLASHCOPY,
+            'list_volume_flashcopies',
+        )
+
+    def test_list_remotecopies(self):
+        self._test_resource_list_by_route(
+            f'{types.DS8K_COPY_SERVICE_PREFIX}.{types.DS8K_CS_PPRC}',
+            'list_remotecopies',
+        )
+
+    def test_list_volume_remotecopies(self):
+        self._test_sub_resource(
+            types.DS8K_VOLUME,
+            types.DS8K_PPRC,
+            'list_volume_remotecopies',
+        )
+
+    def test_get_cs_remotecopy(self):
+        self._test_resource_by_route(
+            f'{types.DS8K_COPY_SERVICE_PREFIX}.{types.DS8K_CS_PPRC}',
+            'get_remotecopy',
+        )
+
+    def test_list_logical_subsystems(self):
+        self._test_resource_list_by_route(types.DS8K_LSS, 'list_logical_subsystems')
+
+    def test_list_lss_volumes(self):
+        self._test_sub_resource(
+            types.DS8K_LSS,
+            types.DS8K_VOLUME,
+            'list_lss_volumes',
+        )
+
+    def test_list_fcports(self):
+        self._test_resource_list_by_route(types.DS8K_IOPORT, 'list_fcports')
+
+    def test_map_volume_to_host(self):
+        volume_id = '000B'
+        lunid = '09'
+        body = {"mappings": [{lunid: volume_id}]}
+        self._test_sub_resource_post(
+            types.DS8K_HOST,
+            types.DS8K_VOLMAP,
+            'map_volume_to_host',
+            body,
+            volume_id,
+            lunid,
+        )
+        body = {"volumes": [volume_id]}
+        self._test_sub_resource_post(
+            types.DS8K_HOST,
+            types.DS8K_VOLMAP,
+            'map_volume_to_host',
+            body,
+            volume_id,
+            '',
+        )
