@@ -1,0 +1,33 @@
+name: "postgres"
+version: "1.0.0"
+config-version: 2
+
+profile: "postgres"
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros", "dbt_packages/nesso_macros/macros"]
+docs-paths: ["models"]
+
+clean-targets: # directories to be removed by `nesso models clean`
+  - "target"
+
+models:
+  postgres:
+    # Automatically add/remove cols & load new data
+    # note this does not backfill data; for that you need to do `nesso models run --full-refresh`
+    on_schema_change: sync_all_columns
+    incremental_strategy: merge
+
+    conformed:
+      schema: conformed
+    marts:
+      sales:
+        schema: sales
+      marketing:
+        schema: marketing
+        # materialized: "{{ 'table' if target.name == 'prod' else 'view' }}"
+
+seeds:
+  postgres:
+    schema: staging

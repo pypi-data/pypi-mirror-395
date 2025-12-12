@@ -1,0 +1,47 @@
+project_name: {{project_name}}
+database_type: {{db_type}}
+bronze_schema: {{bronze_schema}}
+silver_schema: {{silver_schema}}
+silver_schema_prefix: "{{ silver_schema_prefix }}"
+gold_layer_name: {{gold_layer_name}}
+data_architecture: {{data_architecture}}
+macros_path: {{macros_path}}
+default_env: {{default_env}}
+snakecase_columns: {{snakecase_columns}}
+
+luma:
+  enabled: {{luma}}
+
+model_profiling:
+  enabled: true
+  # Layers where model profiling should be applied. Allowed values: "gold", "silver", "bronze".
+  # By default, only gold layer models are profiled.
+  layers: [gold]
+  meta_key: _luma_metrics
+
+metadata:
+  # Configure metadata fields.
+  fields:
+    owners:
+      default:
+        - type: Technical owner
+          email: ""
+        - type: Business owner
+          email: ""
+      inheritance_strategy: skip
+    domains:
+      default: []
+    SLA:
+      default: 24 hours
+
+  # Determine how metadata is inherited from upstream resources.
+  inheritance_strategies:
+    defaults:
+      - types: [list]
+        strategy: append
+      - types: [dict]
+        strategy: skip
+      - types: [str]
+        strategy: overwrite
+    # Default for all other types.
+    default_strategy: overwrite

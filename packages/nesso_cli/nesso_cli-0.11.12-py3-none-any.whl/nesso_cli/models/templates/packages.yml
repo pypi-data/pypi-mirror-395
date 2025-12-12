@@ -1,0 +1,20 @@
+packages:
+  - package: dbt-labs/codegen
+    version: 0.11.0
+  - package: calogica/dbt_expectations
+    version: 0.10.0
+  - package: data-mie/dbt_profiler
+    version: 0.8.1
+  {%- raw %}
+  - git: https://{{ env_var('DBT_ENV_SECRET_GITHUB_TOKEN') }}@github.com/dyvenia/nesso-cli.git
+  {%- endraw %}
+    subdirectory: src/nesso_cli/models/nesso_macros
+    revision: {{ nesso_cli_version }}
+{%- if db_type == "databricks" %}
+  - package: dbt-labs/spark_utils
+    version: 0.3.0
+{% endif -%}
+{%- if db_type == "sqlserver" %}
+  - package: dbt-msft/tsql_utils
+    version: 0.9.0
+{% endif -%}
