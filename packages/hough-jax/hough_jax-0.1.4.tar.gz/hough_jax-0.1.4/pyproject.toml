@@ -1,0 +1,41 @@
+[project]
+name = "hough-jax"
+dynamic = ["version"]
+description = "JAX implementation of the probabilistic Hough transform for lines"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["jax>=0.8.1", "jaxtyping>=0.3.3", "scikit-image>=0.25.2"]
+
+[project.optional-dependencies]
+dev = ["pre-commit>=4.3.0", "ruff>=0.12.11", "pytest>=8.0.0"]
+
+[build-system]
+requires = ["hatchling>=1.27.0", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { local_scheme = "no-local-version", version_scheme = "only-version" }
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["hough_jax"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+src = ["hough_jax"]
+
+[tool.ruff.lint]
+select = ["C", "E", "F", "I", "W", "D", "N"]
+ignore = ["E741", "W605", "C408", "E402", "F722", "N806", "N803", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
