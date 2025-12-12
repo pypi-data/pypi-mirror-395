@@ -1,0 +1,1 @@
+from loadstructure.main import ConfigManager
