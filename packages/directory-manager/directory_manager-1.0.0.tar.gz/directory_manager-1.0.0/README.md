@@ -1,0 +1,108 @@
+[![Python Version](https://img.shields.io/badge/python-3.12%2B-darkgreen)](https://www.python.org/) [![License](https://img.shields.io/badge/license-MIT-dc4c21)](LICENSE) [![OS](https://img.shields.io/badge/OS-windows,_linux,_macOS-5cb3e1)](#tests) [![Release](https://img.shields.io/badge/release-1.0.0-3673e1)](#tests)
+
+A pathlib-based python utility tool for directory management  
+
+___
+
+## Purpose
+
+This project was designed as a utility package for larger scaling projects, it serves as an initialization section or as an instance with quick and controlled access to content of files and directories.  
+
+___
+
+## Features
+
+- Fully mapped directory structures by the user
+- Quick repository/database setups
+- Basic files explorer features for directories and files within the module
+- visual mapping for directories as a Tree-map or as a Table
+
+___
+
+## Installation
+
+To install the package, make sure you have [python3](https://www.python.org/downloads/) (version 3.12 and above recommended) and [pip](https://pip.pypa.io/en/stable/installation/) installed in your system, then run the command on the console:
+
+```bash
+pip install directory_manager
+```
+
+Or clone the repository using [git](https://git-scm.com/install/) and install with the following commands:
+
+```bash
+git clone https://github.com/isme2121/directory_manager
+cd directory_manager
+pip install -e .
+```
+___
+
+## Usage
+
+Brief use case:
+
+```python
+from directory_manager.directory import *
+
+#creating an instance pointing to the current working directory
+directory = Directory()
+
+#add sub directories and sub files
+directory.add_directories("sub-directory1", "sub-directory2", "sub-directory3")
+directory.add_files("file.txt", "sub-directory1/data.json")
+
+#or mirror the cwd in the files system to the instance
+directory.image(rewrite=False) #keeping the data we already added with the argument
+
+#returning references to other directories/files
+sub_dir1 = directory["sub-directory1"]
+if sub_dir1 is not None:
+    data = sub_dir1.get_file("data.json")
+    data["key"] = "foo"
+
+#all previous execution had no effect on the files system
+#populate method is used to update the files system with the instance data
+directory.populate(rewrite=False, write_files=True) 
+#its important to keep rewrite as False in a sensitive directory
+#otherwise it would re-build the entire directory and replace it with the new data
+
+#results:
+    .
+    ├───file.txt
+    ├───sub-directory1
+    │   └───data.json
+    ├───sub-directory2
+    └───sub-directory3
+```
+
+___
+
+# CLI commands
+
+**Viewing a directory as a tree**, enter in the command line:
+
+```bash
+treeview .
+```
+
+or
+
+```bash
+treeview path/to/dir
+```
+
+**Viewing a directory as a table**, enter in the command line:
+
+```bash
+tableview . name type path parent size_kb latime
+```
+
+or
+
+```bash
+tableview path/to/dir name type path parent size_kb latime
+```
+
+To view the different keys for table view, run:
+```bash
+keysview
+```
