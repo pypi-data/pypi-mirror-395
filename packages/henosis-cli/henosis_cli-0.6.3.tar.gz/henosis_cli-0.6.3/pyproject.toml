@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "henosis-cli"
+version = "0.6.3"
+description = "henosis-cli — interactive CLI for the Henosis multi-provider streaming chat backend, with optional local tools."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+authors = [{ name = "henosis", email = "henosis@henosis.us" }]
+license = "LicenseRef-Proprietary"
+dependencies = [
+  # Core HTTP + version parsing
+  "httpx>=0.28.1",
+  "packaging>=24.0",
+  # Nice TUI/UX (the CLI has plain fallbacks, but we ship these for a good OOTB experience)
+  "rich>=14.1.0",
+  "prompt_toolkit>=3.0.52",
+  # Agent Mode WS bridge (optional at runtime, but small and useful)
+  "websockets>=11.0.0",
+]
+
+# Optional but recommended metadata for PyPI
+keywords = [
+  "henosis",
+  "tools",
+  "filesystem",
+  "sandbox",
+  "patch",
+  "subprocess",
+  "cli",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent",
+  "Environment :: Console",
+  "Topic :: Utilities",
+  "Intended Audience :: Developers",
+]
+
+[project.urls]
+Homepage = "https://henosis.us"
+Contact = "https://henosis.us/contact"
+
+[project.scripts]
+# Installable console command for the chat CLI
+henosis-cli = "cli:main"
+henosis-tools = "henosis_cli:main"
+
+[tool.setuptools]
+packages = ["henosis_cli_tools"]
+# Ship the chat CLI (cli.py), the standalone tools CLI (henosis_cli.py), and the shared tools library
+py-modules = ["cli", "henosis_cli"]
