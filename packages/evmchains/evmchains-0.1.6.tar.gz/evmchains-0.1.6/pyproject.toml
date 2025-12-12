@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=70.2.0", "wheel", "setuptools_scm[toml]>=5.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evmchains"
+dynamic = ["version"]
+description = "Packaged metadata on Ethereum Virtual Machine (EVM) chains"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+keywords = ["ethereum", "evm", "blockchain"]
+authors = [
+    { name = "ApeWorX", email = "admin@apeworx.io" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "pydantic>=2.5.3,<3",
+]
+
+[project.urls]
+Homepage = "https://github.com/ApeWorX/evmchains"
+Documentation = "https://github.com/ApeWorX/evmchains#readme"
+Issues = "https://github.com/ApeWorX/evmchains/issues"
+Source = "https://github.com/ApeWorX/evmchains"
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-xdist",
+]
+lint = [
+    "ruff",
+    "mypy",
+    "mdformat",
+]
+docs = [
+    "sphinx-ape",
+]
+dev = [
+    "requests",  # For scripts
+    "types-requests",
+    { include-group = "lint" },
+    { include-group = "test" },
+    { include-group = "docs" },
+]
+
+[tool.setuptools_scm]
+write_to = "evmchains/version.py"
+
+[tool.ruff]
+# Mimic's black's default line length
+line-length = 88
+
+[tool.ruff.lint]
+# Ref: https://docs.astral.sh/ruff/rules
+extend-select = [
+    "D",    # pydocstyle
+    "E501", # Line length
+    "I",    # isort
+    "N",    # PEP8 naming
+    "UP",   # pyupgrade
+    "RUF",  # ruf-specific rules
+    "W",    # warnings
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_*.py" = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-third-party = ["pydantic", "pytest"]
+
+[tool.mypy]
+exclude = "build/"
+
+[tool.commitlint]
+extends = ["@commitlint/config-conventional"]
+
+[tool.commitlint.rules]
+header-max-length = 100
