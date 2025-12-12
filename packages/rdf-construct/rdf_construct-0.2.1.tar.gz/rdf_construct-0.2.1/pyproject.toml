@@ -1,0 +1,140 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "rdf-construct"
+version = "0.2.1"
+description = "Semantic RDF manipulation toolkit - order, serialize, and diff RDF ontologies"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Dave Dyke", email = "23141680+aigora-de@users.noreply.github.com"}
+]
+maintainers = [
+    {name = "Dave Dyke", email = "23141680+aigora-de@users.noreply.github.com"}
+]
+keywords = [
+    "rdf",
+    "ontology",
+    "turtle",
+    "owl",
+    "rdfs",
+    "knowledge-graph",
+    "knowledge-base",
+    "serialization",
+    "ontology-engineering",
+    "ontology-management",
+    "sparql",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Text Processing :: Markup",
+    "Typing :: Typed",
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/aigora-de/rdf-construct"
+Repository = "https://github.com/aigora-de/rdf-construct.git"
+Documentation = "https://github.com/aigora-de/rdf-construct#readme"
+"Bug Tracker" = "https://github.com/aigora-de/rdf-construct/issues"
+Changelog = "https://github.com/aigora-de/rdf-construct/blob/main/CHANGELOG.md"
+
+[project.scripts]
+rdf-construct = "rdf_construct.cli:cli"
+
+[tool.poetry]
+packages = [{include = "rdf_construct", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+rdflib = "^7.0.0"
+click = "^8.1.0"
+pyyaml = "^6.0"
+rich = "^13.0.0"
+jinja2 = "^3.1.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.0.0"
+ruff = "^0.1.0"
+mypy = "^1.8.0"
+pytest = "^8.0.0"
+pytest-cov = "^4.1.0"
+types-pyyaml = "^6.0.0"
+pre-commit = "^3.6.0"
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+
+[tool.ruff.isort]
+known-first-party = ["rdf_construct"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["rdflib.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=rdf_construct",
+    "--cov-report=term-missing",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
