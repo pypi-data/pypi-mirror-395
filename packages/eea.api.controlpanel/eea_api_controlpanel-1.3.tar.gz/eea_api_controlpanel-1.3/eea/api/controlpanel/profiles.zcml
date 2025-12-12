@@ -1,0 +1,37 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:five="http://namespaces.zope.org/five"
+    i18n_domain="eea">
+
+  <five:registerPackage package="." initialize=".initialize" />
+  <subscriber
+      for="zope.processlifetime.IProcessStarting"
+      handler=".do_initialize"
+      />
+
+  <genericsetup:registerProfile
+      name="default"
+      title="eea.api.controlpanel"
+      directory="profiles/default"
+      description="Installs the eea.api.controlpanel add-on."
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      post_handler=".setuphandlers.post_install"
+      />
+
+  <genericsetup:registerProfile
+      name="uninstall"
+      title="eea.api.controlpanel (uninstall)"
+      directory="profiles/uninstall"
+      description="Uninstalls the eea.api.controlpanel add-on."
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      post_handler=".setuphandlers.uninstall"
+      />
+
+  <utility
+      factory=".setuphandlers.HiddenProfiles"
+      name="eea.api.controlpanel-hiddenprofiles"
+      />
+
+
+</configure>
