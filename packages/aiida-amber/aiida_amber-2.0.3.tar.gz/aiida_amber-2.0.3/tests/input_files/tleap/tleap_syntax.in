@@ -1,0 +1,34 @@
+# example file of tleap commands used for tests
+# File modified from this tutorial: https://manual.cp2k.org/trunk/methods/qm_mm/builtin.html
+# Generate starting structure for solvated protein and three ligands
+
+# check # multiple # hashes are ignored # load1 # load2
+
+# load force field files
+source leaprc.protein.ff14SB # for protein
+source leaprc.gaff2 # for ligands 
+source leaprc.water.tip3p # for water
+
+# load ligands
+ligA = loadmol2 dir1/LigandA.mol2
+ligB = loadmol2 dir1/LigandB.mol2
+ligC = loadmol2 dir1/LigandC.mol2
+
+# load extra parameters not included in FFs
+loadamberparams dir1/LigandA.frcmod
+loadamberparams dir1/LigandB.frcmod
+loadamberparams dir1/LigandC.frcmod
+
+# load pdb and add ligands
+protein = loadPDB dir2/Protein.pdb
+complex = combine {protein ligA ligB ligC}
+
+# Add surrounding water and ions # neutralise
+solvateBox complex TIP3PBOX 14.0 iso # 14 Angstrom layer of water
+addIonsRand complex  Na+ 0 # neutralise the system with sodium ions
+
+# Save topology and initial coordinates
+saveamberparm complex complex.prmtop complex.inpcrd
+
+# Exit tleap
+quit

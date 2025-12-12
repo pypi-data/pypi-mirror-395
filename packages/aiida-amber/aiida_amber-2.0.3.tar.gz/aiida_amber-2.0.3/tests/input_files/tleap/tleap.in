@@ -1,0 +1,20 @@
+source leaprc.protein.ff14SB
+source leaprc.gaff2
+source leaprc.water.tip3p
+
+ligA = loadmol2 LigandA.mol2
+ligB = loadmol2 LigandB.mol2
+ligC = loadmol2 LigandC.mol2
+
+loadamberparams LigandA.frcmod
+loadamberparams LigandB.frcmod
+loadamberparams LigandC.frcmod
+
+
+protein = loadPDB Protein.pdb
+complex = combine {protein ligA ligB ligC}
+
+solvateBox complex TIP3PBOX 14.0 iso
+addIonsRand complex  Na+ 0
+saveamberparm complex complex.prmtop complex.inpcrd
+quit
