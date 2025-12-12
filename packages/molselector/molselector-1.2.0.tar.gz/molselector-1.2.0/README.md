@@ -1,0 +1,76 @@
+# MolSelector
+
+MolSelector is a lightweight web app for triaging molecular structures (`.xyz`, `.mol`, `.mol2`). Point the app at a folder of files, explore each molecule in an interactive 3D viewer powered by [3Dmol.js](https://3dmol.csb.pitt.edu/), and rapidly tag it as **accept** or **decline**. Decisions are written to `selection_results.csv` in the chosen folder so they can be versioned or analyzed later.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nhadler/MolSelector/refs/heads/main/img/example.png" alt="toc" width="80%">
+</p>
+
+## Requirements
+
+- Python 3.12+
+- A modern browser with WebGL support (Chrome, Firefox, Safari, Edge)
+
+## Installation
+
+```bash
+pip install molselector
+```
+
+## Running the app
+
+Start a local server with the built-in CLI:
+
+```bash
+molselector launch
+```
+
+Open your browser to `http://127.0.0.1:8000` and MolSelector will be ready. The CLI exposes options such as `--host`, `--port`, and `--log-level`; use `molselector launch --help` to view them. You can still start the app manually with `uvicorn molselector.app:app` if you prefer.
+
+To preload a folder of molecules (skipping the manual selection step), supply the `--xyz-folder` option:
+
+```bash
+molselector launch --xyz-folder /path/to/molecules
+```
+
+## Usage
+
+### Keyboard shortcuts
+
+- `Enter`, `A`, or `→`: accept the current molecule
+- `D` or `←`: decline the current molecule
+- `Backspace`, `B`, or `↑`: go back to the previous molecule
+
+### Output format
+
+The CSV file (`selection_results.csv`) contains three columns:
+
+| column | description |
+| --- | --- |
+| `file` | Relative path to the molecule inside the selected folder |
+| `decision` | Either `accept` or `decline` |
+| `timestamp` | UTC timestamp recorded at the decision moment |
+
+## License
+
+MIT License
+
+Copyright (c) 2025 Nicholas Hadler
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
