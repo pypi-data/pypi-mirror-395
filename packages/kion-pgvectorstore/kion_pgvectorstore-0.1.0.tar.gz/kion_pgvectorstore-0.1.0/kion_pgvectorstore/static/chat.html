@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kion Consulting Vectorstore Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Inter for premium feel -->
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,700,900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --navy: #012044;
+      --blue: #2366b3;
+      --accent: #ff8700;
+      --accent-light: #ffd280;
+      --background: #e6eafd;
+      --glass1: rgba(255,255,255,0.90);
+      --glass2: rgba(230,240,255,0.73);
+      --glass3: rgba(255,255,255,0.72);
+      --glass4: rgba(255,255,255,0.56);
+      --border: #bed1ea;
+      --gold: #ffd280;
+      --error: #de4848;
+      --shadow: 0 4px 24px 1px #01204422;
+      --shadow2: 0 3px 18px 1px #ffd28022;
+      --sapphire: #2366b3;
+    }
+    html, body {
+      background: var(--background);
+      min-height: 100vh;
+      font-family: 'Inter', Arial, sans-serif;
+      color: var(--navy);
+      margin: 0; padding: 0;
+      letter-spacing: .01em;
+      overflow-x: hidden;
+      /* no scroll bounce effect */
+      overscroll-behavior: none;
+    }
+    /* --- SVG GEOMETRIC DECOR --- */
+    .page-geometry-bg {
+      position:fixed; z-index:0; left:0; top:0; width:100vw; height:100vh; pointer-events:none;
+    }
+    /* --- HEADER --- */
+    .topbar {
+      background: linear-gradient(90deg, var(--navy) 60%, var(--accent) 200%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0 44px 0 45px;
+      height: 60px;
+      position: sticky; top: 0; z-index: 1001;
+      font-weight: 900;
+      border-bottom: 2.5px solid var(--accent-light);
+    }
+    .brand {
+      display: flex; align-items:center; gap: 13px;
+    }
+    .brand-logo {
+      height: 38px;
+      border-radius: 0;
+      background: #fff;
+      padding: 1.5px 7px 1.5px 1.5px;
+      box-shadow: 0 2px 14px var(--accent-light);
+      border: 2.5px solid var(--accent-light);
+      object-fit: contain;
+    }
+    .header-labels { display:flex; flex-direction:column; gap: 1.5px; margin-left: 7px;}
+    .brand-name { font-weight: 900; font-size: 1.11em; letter-spacing: 1.7px; color: #fff; margin-top: 0.5px; }
+    .vectorstore-label {
+      font-size: 0.94em; color: var(--accent); font-weight: 700;
+      letter-spacing:1.3px; margin-top: 1px;
+    }
+    .nav {
+      margin-left:auto;
+      display: flex;
+      gap: 12px;
+    }
+    .nav-link {
+      padding: 7px 17px;
+      border-radius: 3px;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-decoration: none;
+      background: none;
+      font-size: 1.04em;
+      transition: background .2s,color .13s,border .2s;
+      border: 1.5px solid transparent;
+    }
+    .nav-link.active, .nav-link:hover {
+      background: var(--accent);
+      color: var(--navy);
+      border: 1.5px solid #fff7;
+      box-shadow: 0 1px 8px #ff870021;
+    }
+
+    /* --- PANEL GRID --- */
+    .main-container {
+      z-index:1;
+      max-width: none;
+      width: auto;
+      margin: 48px auto 0 auto;
+      min-height: 570px;
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    /* All three panels: allow to fill available width, never less than 320px */
+    .panel-sharp {
+      flex: 1 1 0;
+      min-width: 240px;
+      max-width: none; 
+      width: auto;
+      height: 510px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      border-radius: 0;
+      box-shadow: var(--shadow);
+      border: 2.4px solid var(--border);
+      background: var(--glass2);
+      position: relative;
+      z-index: 2;
+      overflow: visible;
+    }
+    /* Center panel (chat) can grow more if needed: */
+    .panel-sharp.panel2 {
+      flex: 1.4 1 0;
+      background: var(--glass4);
+      border-left: none;
+      border-right: none;
+      z-index: 3;
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(20px) saturate(1.20);
+    }
+    .panel-sharp.panel3 {
+      background: var(--glass1);
+      z-index:4;
+      box-shadow: 0 4px 38px #ffd28036;
+      border-left: none;
+    }
+    /* Keep content compact on small screens */
+    @media (max-width: 1200px) {
+      .main-container {
+        flex-direction: column;
+        gap: 26px;
+        align-items: stretch;
+      }
+      .panel-sharp, .panel-sharp.panel2, .panel-sharp.panel3 {
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+      }
+    }
+
+    /* Optionally, for desktop, set a max panel width (for HUGE screens) */
+    @media (min-width: 1300px) {
+      .panel-sharp { max-width: 480px; }
+    }    
+    /* --- Panel Geometry Overlay --- */
+    .panel-geom {
+      position: absolute; pointer-events:none;
+      right: 0; top:0; width:81px; height:70px; z-index:6;
+      opacity: 0.18; transform:rotate(6deg);
+    }
+    .panel-diag {
+      position:absolute; left:0; bottom:0; width:100%; height:32px;
+      z-index:7; opacity:0.11;
+    }
+    /* --- Panel Content --- */
+    .panel-content {
+      position:relative;
+      flex: 1 1 0;
+      display: flex; flex-direction: column;
+      padding: 32px 24px 25px 25px;
+      z-index:11;
+      background:none;
+      min-width:0;
+    }
+    .panel-sharp h3 {
+      margin: 0; font-size:1.19em; font-weight:850;
+      color: var(--sapphire);
+      letter-spacing:0.07em;
+      border-bottom:2px solid var(--gold);
+      padding-bottom:11px; margin-bottom:15px;
+      text-transform:uppercase;
+      background: linear-gradient(90deg, #ffd28033 32%,#fff0 100%);
+    }
+    /* --- High Contrast for Panel2 chat --- */
+    .panel-sharp.panel2 h3 {
+      color: var(--navy);
+      background: linear-gradient(92deg, #ff870012 52%, #ffd28026 100%);
+      border-bottom:2.8px solid var(--accent);
+    }
+
+    label {
+      font-weight: 800; color: var(--navy); font-size: 1.05em;
+      margin-bottom: 7px; display:block; text-shadow:0 2px 12px #edf6c833;
+      letter-spacing:0.04em;
+    }
+    textarea, input[type="text"], input[type="number"], input[type="range"], select {
+      width: 100%;
+      border: 1.5px solid #ccd9ef;
+      border-radius: 3px;
+      padding: 13px 12px;
+      font-size: 1.09em;
+      background: #fcfdffef;
+      font-family: inherit;
+      margin-bottom: 13px;
+      box-shadow: 0 1.5px 8px #dbe6f651;
+    }
+    textarea:focus, input:focus, select:focus {
+      border-color: var(--sapphire);
+      outline: none;
+      background: #fff;
+      box-shadow: 0 2px 18px #ffd28026;
+    }
+        textarea { resize: vertical; min-height:80px; }
+
+    button {
+      display: block;
+      margin: 27px auto 0 auto;
+      padding: 22px 38px;
+      border-radius: 3px;
+      background: linear-gradient(91deg,#ff8700 5%,#ffd280 92%);
+      border: none;
+      color: #002050;
+      font-weight: 900;
+      font-size: 1.17em;
+      letter-spacing: 0.1em;
+      box-shadow: 0 3px 18px #ffd28061;
+      text-shadow: 0 1px 4px #fff6;
+      transition: background .16s, box-shadow .12s, color .09s;
+      cursor: pointer;
+      min-width: 210px;
+      border: 2.2px solid #ffd280;
+      outline: none;
+    }
+    button:hover, button:focus {
+      background: linear-gradient(90deg,#ffd280 65%,#ffb000 100%);
+      color: #fff;
+      box-shadow: 0 8px 30px #ffd28085;
+      outline: none;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .answer-block {
+      margin-top:24px; padding:24px 26px 18px 24px;
+      background: linear-gradient(100deg,#eaf6ffea 89%,#fffbe4 100%);
+      font-size:1.15em;
+      color: #133251;
+      font-weight: 700;
+      line-height: 1.68;
+      border: 2px solid #ffd28065;
+      word-break: break-word;
+      white-space: pre-line;
+      font-family: inherit;
+      border-radius: 4px;
+      box-shadow: 0 3px 22px #ffd28044, 0 1.5px 10px #eaf0fe62;
+    }
+    .sources-block {
+      margin-top:14px;
+      background: #fff3eabb;
+      border-radius: 0;
+      font-size: 1.04em;
+      color:#574134;
+      font-family: inherit;
+      box-shadow: 0 1px 12px #efd89a22;
+      border: 1.2px solid #ffd280;
+      padding: 14px 13px 8px 16px;
+    }
+    .src-title {
+      font-weight: bold;
+      color: var(--accent);
+      margin-bottom: 6px;
+      font-size: 1.09em;
+    }
+    .error {
+      color: var(--error);
+      background: #fff3f0;
+      border-radius: 2.5px;
+      margin: 10px 0;
+      padding: 12px 13px;
+      font-weight: 700;
+      border-left: 5px solid var(--accent);
+      font-size: 1.04em;
+      box-shadow: 0 1px 8px #fbb6b611;
+    }
+    #collections-list label {
+      display: flex; align-items: center;
+      font-size: 1em;
+      gap: 8px;
+      color: #174e8f;
+      background: #f7fafde0;
+      padding: 5px 11px;
+      border-radius: 2.5px;
+      margin-bottom: 8px;
+      font-weight: 700;
+      border: 1.1px solid #dde6f8;
+      transition: background .13s, border .13s;
+      cursor: pointer;
+      box-shadow: 0 1px 3px #dbe6f655;
+    }
+    #collections-list label:hover {
+      background: #e8f0fe;
+      color: var(--accent);
+      border:1.1px solid var(--accent);
+    }
+    #collections-list input[type="checkbox"] {
+      accent-color: var(--sapphire);
+      width: 1.05em; height: 1.05em; margin-right: 5px;
+    }
+    .param-group {
+      margin-bottom: 17px;
+    }
+    @media (max-width:1150px) {
+      .main-container { flex-direction: column; gap:10px; align-items: stretch;}
+      .panel-sharp { max-width: none; min-width:0; width:100%;}
+    }
+    @media (max-width:700px) {
+      .topbar { padding:0 3vw; height:54px; font-size:0.96em;}
+      .main-container { margin-top:24px; }
+      .panel-content { padding: 13px 4vw;}
+      button {font-size:1em;}
+    }
+
+    /* --- Image grid for sources and answer --- */
+    .src-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .src-images img { max-width: 120px; max-height: 120px; border: 1px solid #ccd9ef; border-radius: 3px; box-shadow: 0 1px 8px #dbe6f6aa; }
+    .answer-images { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .answer-images img { max-width: 160px; max-height: 160px; border: 1px solid #ffd280; border-radius: 3px; box-shadow: 0 2px 12px #ffd28066; }
+    /* Inline image interleaving within the answer */
+    .answer-inline-image { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 8px 0 16px 0; }
+    .answer-inline-image img { display:block; max-width: 520px; width: 100%; height: auto; border: 1px solid #ffd280; border-radius: 3px; box-shadow: 0 2px 12px #ffd28066; }
+    .answer-inline-image .caption { font-size: 0.9em; color: #4b5563; }
+
+  </style>
+</head>
+<body>
+<svg class="page-geometry-bg" viewBox="0 0 1440 900" fill="none">
+  <!-- Geometric pattern: stripes, angular lines, triangles -->
+  <polygon points="1360,0 1440,120 1440,0" fill="#ffd28035"/>
+  <polygon points="0,900 80,800 0,800" fill="#2366b325"/>
+  <rect x="1080" y="80" width="390" height="8" fill="#2366b377" />
+  <rect x="90" y="220" width="490" height="11" fill="#ffd2803b" />
+  <line x1="0" y1="650" x2="1440" y2="590" stroke="#dbe6f6" stroke-width="31" stroke-opacity="0.12" />
+  <line x1="1100" y1="100" x2="1440" y2="340" stroke="#012044" stroke-width="3.2" stroke-opacity="0.19"/>
+  <rect x="1110" y="700" width="9" height="150" fill="#ff870032"/>
+  <rect x="0" y="810" width="200" height="5" fill="#ffd28044"/>
+  <polygon points="1440,900 1340,890 1440,800" fill="#2366b323"/>
+  <polygon points="25,35 50,90 70,20" fill="#2366b325"/>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="https://kion.co.za/wp-content/uploads/2022/10/Screenshot_2022-07-07_151429-removebg-preview.png" alt="Kion Consulting Logo" />
+    <div class="header-labels">
+      <span class="brand-name">Kion Consulting</span>
+      <span class="vectorstore-label">VECTORSTORE</span>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="file_loader_gui.html" class="nav-link" id="nav-upload">Upload</a>
+    <a href="file_remover_gui.html" class="nav-link" id="nav-delete">Delete</a>
+    <a href="chat.html" class="nav-link active" id="nav-chat">Assistant Chat</a>
+  </nav>
+</header>
+
+<main class="main-container">
+  <!-- Panel 1: Collections -->
+  <section class="panel-sharp panel1">
+    <svg class="panel-geom" viewBox="0 0 100 65">
+      <polygon points="62,0 100,65 0,65 12,0" fill="#ffd280" />
+      <polyline points="4,54 71,11" stroke="#012044" stroke-width="7" opacity="0.07"/>
+    </svg>
+    <svg class="panel-diag" viewBox="0 0 200 32">
+      <polygon points="0,32 200,8 200,32" fill="#01204488"/>
+    </svg>
+    <div class="panel-content">
+      <h3>Collections</h3>
+      <div id="collections-list"></div>
+      <div id="collections_error" style="display:none;"></div>
+    </div>
+  </section>
+  <!-- Panel 2: Chat -->
+  <section class="panel-sharp panel2">
+    <svg class="panel-geom" viewBox="0 0 80 70">
+      <polygon points="0,0 80,0 65,70" fill="#ff8700"/>
+      <polyline points="0,69 80,12" stroke="#ffd280" stroke-width="6" opacity="0.09"/>
+    </svg>
+    <svg class="panel-diag" viewBox="0 0 200 32">
+      <polygon points="0,32 120,0 200,32" fill="#ffd28077"/>
+    </svg>
+    <div class="panel-content">
+      <h3>Kion Assistant</h3>
+      <form id="assistantForm" autocomplete="off">
+        <label for="question">Ask your Question:</label>
+        <textarea id="question" rows="3" placeholder="e.g. How do I upload a PDF file to the database?" required autofocus></textarea>
+        <button id="askBtn" type="submit">Ask Assistant</button>
+      </form>
+      <div class="error" id="assistant_error" style="display:none"></div>
+           <div class="answer-block" id="assistant_answer" style="display:none"></div>
+      <div class="sources-block" id="assistant_sources" style="display:none"></div>
+    </div>
+  </section>
+  <!-- Panel 3: Parameters -->
+  <section class="panel-sharp panel3">
+    <svg class="panel-geom" viewBox="0 0 80 70">
+      <polygon points="0,12 80,0 80,70 18,54" fill="#2366b3" />
+      <polyline points="10,68 75,31" stroke="#ffd280" stroke-width="6" opacity="0.10"/>
+    </svg>
+    <svg class="panel-diag" viewBox="0 0 200 32">
+      <polygon points="0,0 200,32 0,32" fill="#2366b344"/>
+    </svg>
+    <div class="panel-content">
+      <h3>Parameters</h3>
+      <form id="paramsForm" autocomplete="off" onsubmit="return false;">
+        <div class="param-group">
+          <label for="param_k">Number of Retrieval Results (<span id="k_val">5</span>):</label>
+          <input type="number" id="param_k" name="param_k" min="1" max="20" value="5" required>
+        </div>
+        <div class="param-group">
+          <label for="param_temperature">Assistant Temperature (<span id="temp_val">0.7</span>):</label>
+          <input type="range" id="param_temperature" name="param_temperature" min="0" max="1" step="0.1" value="0.7">
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+<script>
+document.getElementById('nav-chat').classList.add('active');
+
+// --- Fetch and render collections on page load ---
+async function fetchCollections() {
+    try {
+        const resp = await fetch('/api/list_collections');
+        if (!resp.ok) throw new Error("Could not fetch collections");
+        const data = await resp.json();
+        return data.collections || [];
+    } catch (err) {
+        const eDiv = document.getElementById("collections_error");
+        if (eDiv) {
+            eDiv.style.display = "block";
+            eDiv.textContent = "Failed to load collections: " + err.message;
+        }
+        return [];
+    }
+}
+
+function renderCollections(checklist, collections) {
+    checklist.innerHTML = "";
+    if (!collections.length) {
+        checklist.innerHTML = "<div style='color:#b53524;font-weight:bold'>No collections found!</div>";
+        return;
+    }
+    collections.forEach(col => {
+        const id = "col_" + encodeURIComponent(col);
+        const label = document.createElement("label");
+        label.htmlFor = id;
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.id = id;
+        input.name = "collections";
+        input.value = col;
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(col));
+        checklist.appendChild(label);
+    });
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+    const checklist = document.getElementById("collections-list");
+    // fetch and display collections
+    const collections = await fetchCollections();
+    renderCollections(checklist, collections);
+
+    // Optional: Keep previously checked/remember selection as needed
+});
+
+// Add below: Helper to get selected collections when the assistant form is submitted
+function getSelectedCollections() {
+    return Array.from(document.querySelectorAll('input[name="collections"]:checked'))
+        .map(inp => inp.value);
+}
+
+// --- Chat form: hook up question submission ---
+document.getElementById('assistantForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const question = document.getElementById('question').value.trim();
+    const collections = getSelectedCollections();
+
+    document.getElementById('assistant_error').style.display = 'none';
+    document.getElementById('assistant_error').textContent = '';
+    document.getElementById('assistant_answer').style.display = 'none';
+    document.getElementById('assistant_answer').innerHTML = '';
+    document.getElementById('assistant_sources').style.display = 'none';
+    document.getElementById('assistant_sources').innerHTML = '';
+
+    if (!question) {
+        document.getElementById('assistant_error').textContent = "Please enter a question.";
+        document.getElementById('assistant_error').style.display = 'block';
+        return;
+    }
+    if (!collections.length) {
+        document.getElementById('assistant_error').textContent = "Please select at least one collection.";
+        document.getElementById('assistant_error').style.display = 'block';
+        return;
+    }
+
+    // Get params
+    const k = parseInt(document.getElementById('param_k').value) || 5;
+    const temperature = parseFloat(document.getElementById('param_temperature').value) || 0.7;
+
+    // Disable the button during request
+    const askBtn = document.getElementById('askBtn');
+    askBtn.disabled = true;
+
+    try {
+        // Make the RAG query
+        const resp = await fetch('/api/query_rag', {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                collection_names: collections,
+                query: question,
+                k,
+                temperature
+            })
+        });
+        const data = await resp.json();
+        if (!resp.ok || data.error) {
+            document.getElementById('assistant_error').style.display = 'block';
+            document.getElementById('assistant_error').textContent = data.error || "Query error";
+        } else {
+            // Show answer
+            document.getElementById('assistant_answer').style.display = 'block';
+            document.getElementById('assistant_answer').innerHTML = marked.parse(data.answer || "");
+            
+            // After rendering the markdown, interleave images under the most relevant paragraphs.
+            try {
+                const sources = Array.isArray(data.sources) ? data.sources : [];
+                // Preprocess: tokenize function and build image pool with tokens from image_meta.surrounding_text_snippet
+                const STOPWORDS = new Set(["the","is","and","a","an","to","of","in","for","on","at","as","by","be","are","or","with","that","this","it","its","from","into","over","through","your","you","we","us","our"]);
+                const tokenize = (str) => {
+                    if (!str) return [];
+                    return (str.toLowerCase()
+                                .replace(/[^a-z0-9\s]/g," ")
+                                .split(/\s+/)
+                                .filter(t => t && !STOPWORDS.has(t)));
+                };
+                const jaccard = (aSet, bSet) => {
+                    const a = new Set(aSet);
+                    const b = new Set(bSet);
+                    if (!a.size || !b.size) return 0;
+                    let inter = 0;
+                    a.forEach(x => { if (b.has(x)) inter++; });
+                    const union = a.size + b.size - inter;
+                    return inter / union;
+                };
+
+                // Build global image pool: each entry includes tokens from its own surrounding_text_snippet if present,
+                // otherwise fall back to the parent source text.
+                const imagePool = [];
+                sources.forEach(src => {
+                    const parentTokens = tokenize(src.page_content || "");
+                    const images = Array.isArray(src.images) ? src.images : [];
+                    images.forEach(im => {
+                        if (!im || !im.data_uri) return;
+                        const snippet = im.image_meta && typeof im.image_meta === "object" ? (im.image_meta.surrounding_text_snippet || "") : "";
+                        const tokens = tokenize(snippet) ;
+                        imagePool.push({
+                            img: im,
+                            tokens: tokens.length ? tokens : parentTokens,
+                            fileName: (src.metadata && src.metadata.file_name) ? src.metadata.file_name : "",
+                            page: (src.metadata && src.metadata.page) ? src.metadata.page : ""
+                        });
+                    });
+                });
+
+                // Walk rendered answer blocks and match best image by token overlap
+                const ansDiv = document.getElementById('assistant_answer');
+                const blocks = Array.from(ansDiv.querySelectorAll("p, li"));
+                const used = new Set();
+                blocks.forEach(block => {
+                    const text = (block.innerText || block.textContent || "").trim();
+                    if (!text) return;
+                    const tok = tokenize(text);
+                    let bestIdx = -1, bestScore = 0;
+                    for (let i=0;i<imagePool.length;i++) {
+                        const entry = imagePool[i];
+                        if (!entry.tokens.length) continue;
+                        if (used.has(entry.img.data_uri)) continue;
+                        const score = jaccard(tok, entry.tokens);
+                        if (score > bestScore) { bestScore = score; bestIdx = i; }
+                    }
+                    if (bestIdx !== -1 && bestScore >= 0.06) {
+                        const entry = imagePool[bestIdx];
+                        used.add(entry.img.data_uri);
+                        const wrapper = document.createElement("div");
+                        wrapper.className = "answer-inline-image";
+                        
+                        const link = document.createElement("a");
+                        link.href = entry.img.data_uri;
+                        link.target = "_blank";
+                        link.rel = "noopener noreferrer";
+                        const imgel = document.createElement("img");
+                        imgel.src = entry.img.data_uri;
+                        imgel.alt = entry.img.image_filename || "image";
+                        link.appendChild(imgel);
+                        const cap = document.createElement("div");
+                        cap.className = "caption";
+                        const pageStr = entry.page ? ` (p.${entry.page})` : "";
+                        cap.textContent = `Illustration from ${entry.fileName}${pageStr}`;
+                        wrapper.appendChild(link);
+                        wrapper.appendChild(cap);
+                        block.insertAdjacentElement("afterend", wrapper);
+
+                    }
+                });
+
+                // Optional: append any remaining images at the end
+                const leftovers = imagePool.filter(e => !used.has(e.img.data_uri)).slice(0,6);
+                if (leftovers.length) {
+                    const imgsHtml = "<div class='answer-images'>" + leftovers.map(e => `<a href='${e.img.data_uri}' target='_blank' rel='noopener noreferrer'><img src='${e.img.data_uri}' alt='${e.img.image_filename || "image"}'/></a>`).join("") + "</div>";
+                    ansDiv.innerHTML += "<div style='margin-top:10px; font-weight:800; color:#2366b3'>More related images</div>" + imgsHtml;
+                }
+            } catch (e) {
+                console.warn("Interleave images failed:", e);
+            }
+        
+
+            // Show sources (optional)
+            if (data.sources && data.sources.length > 0) {
+                document.getElementById('assistant_sources').style.display = 'block';
+                document.getElementById('assistant_sources').innerHTML =
+                  "<div class='src-title'>Sources:</div>" +
+                  data.sources.map(
+                    (s, idx) => {
+                      const imgs = Array.isArray(s.images) ? s.images : [];
+                      const imgHtml = imgs.length ? ("<div class='src-images'>" + imgs.map(im => im.data_uri ? `<a href='${im.data_uri}' target='_blank' rel='noopener noreferrer'><img src='${im.data_uri}' alt='${im.image_filename || "image"}'/></a>` : "").join("") + "</div>") : "";
+                      return `<div><b>File:</b> ${s.metadata && s.metadata.file_name ? s.metadata.file_name : "(unknown)"}${s.metadata && s.metadata.page ? " (p." + s.metadata.page + ")" : ""}</div>
+                                 <div style='color:#444'>${s.page_content ? s.page_content.slice(0,200) + (s.page_content.length>200?' ...':'') : ''}</div>
+                                 ${imgHtml}
+                                 <hr style='border:none;border-bottom:1px solid #ccc;margin:7px 0;'>`;
+                    }
+                  ).join("");
+            }
+        }
+    } catch (err) {
+        document.getElementById('assistant_error').style.display = 'block';
+        document.getElementById('assistant_error').textContent = "Network or backend error: " + err.message;
+    } finally {
+        askBtn.disabled = false;
+    }
+});
+
+// Keep parameter panel in sync
+document.getElementById('param_k').addEventListener("input", function(){
+    document.getElementById('k_val').textContent = this.value;
+});
+document.getElementById('param_temperature').addEventListener("input", function(){
+    document.getElementById('temp_val').textContent = this.value;
+});
+</script>
+</body>
+</html>
+    
