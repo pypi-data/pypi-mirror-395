@@ -1,0 +1,185 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Command-line POPxf Parser for validating and inspecting POPxf JSON files.
+
+This tool reads POPxf JSON files, validates them against the schema,
+and provides detailed information about the parsed data.
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import parser module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from popxf.validator import POPxfIOError, POPxfJSONError, POPxfValidationError
+from popxf.tools import POPxfParser
+
+
+def parse_arguments():
+    """
+    Parse command-line arguments.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description='Validate and parse POPxf JSON files.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s input.json
+  %(prog)s input.json --verbose
+  %(prog)s input.json --quiet
+  %(prog)s input.json --show-data
+        """
+    )
+
+    parser.add_argument(
+        'input_file',
+        type=str,
+        help='Path to the POPxf JSON file to parse'
+    )
+
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Print detailed information about the parsed data'
+    )
+
+    parser.add_argument(
+        '-q', '--quiet',
+        action='store_true',
+        help='Suppress output (only show errors)'
+    )
+
+    parser.add_argument(
+        '--show-data',
+        action='store_true',
+        help='Display polynomial data (can be large)'
+    )
+
+    parser.add_argument(
+        '--show-uncertainties',
+        action='store_true',
+        help='Display uncertainty information'
+    )
+
+    return parser.parse_args()
+
+
+def print_parser_info(
+  parser_obj,
+  verbose=False,
+  show_data=False,
+  show_uncertainties=False
+):
+    """
+    Print information about the parsed POPxf data.
+
+    Parameters
+    ----------
+    parser_obj : POPxfParser
+        The parsed POPxf object.
+    verbose : bool, optional
+        If True, print detailed information.
+    show_data : bool, optional
+        If True, display polynomial coefficients.
+    show_uncertainties : bool, optional
+        If True, display uncertainty details.
+    """
+    # Print basic info from the info() method
+    print(
+      parser_obj.info(
+        verbose=verbose,
+        show_data=show_data,
+        show_uncertainties=show_uncertainties
+      )
+    )
+    # print(f"{'='*70}")
+
+
+
+
+def print_error(e):
+    """
+    Print error information.
+
+    Parameters
+    ----------
+    e : Exception
+        The exception to print.
+    """
+    print(f"{'='*70}", file=sys.stderr)
+    print(f"{type(e).__name__}", file=sys.stderr)
+    print(f"{'='*70}", file=sys.stderr)
+    print(f"\n{e}\n", file=sys.stderr)
+    print(f"{'='*70}", file=sys.stderr)
+
+def main():
+    """
+    Main entry point for the command-line tool.
+
+    Returns
+    -------
+    int
+        Exit code (0 for success, 1 for error).
+    """
+    args = parse_arguments()
+
+    # Check for conflicting arguments
+    if args.quiet and args.verbose:
+        print("Error: --quiet and --verbose are mutually exclusive", file=sys.stderr)
+        return 1
+
+    # Load & validate POPxf file
+    try:
+        print(f"\n{'='*70}")
+        print(f"Reading JSON file: {args.input_file}")
+        parser_obj = POPxfParser.from_json(args.input_file)
+
+        # Print information unless quiet mode
+        if not args.quiet:
+            print(f"{'='*70}")
+            print(f"✓ {args.input_file} is valid")
+            print_parser_info(
+                parser_obj,
+                verbose=args.verbose,
+                show_data=args.show_data,
+                show_uncertainties=args.show_uncertainties
+            )
+        else:
+            # In quiet mode, just indicate success
+            print(f"{'='*70}")
+            print(f"✓ {args.input_file} is valid")
+            print(f"{'='*70}")
+
+        return 0
+
+    except (POPxfIOError, POPxfJSONError, POPxfValidationError) as e:
+        print_error(e)
+        return 1
+
+    except Exception as e:
+        print(f"\n{'='*70}", file=sys.stderr)
+        print("Unexpected Error", file=sys.stderr)
+        print(f"{'='*70}", file=sys.stderr)
+        print(f"\nAn unexpected error occurred: {e}", file=sys.stderr)
+        print(f"Type: {type(e).__name__}\n", file=sys.stderr)
+
+        if args.verbose:
+            import traceback
+            print("Traceback:", file=sys.stderr)
+            traceback.print_exc()
+
+        print(f"{'='*70}\n", file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
