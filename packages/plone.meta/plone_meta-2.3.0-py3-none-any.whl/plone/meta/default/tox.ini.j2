@@ -1,0 +1,46 @@
+[tox]
+# We need 4.4.0 for constrain_package_deps.
+min_version = 4.4.0
+envlist =
+    lint
+    test
+    %(plone_envlist_lines)s
+    dependencies
+%(envlist_lines)s
+%(config_lines)s
+##
+# Add extra configuration options in .meta.toml:
+# - to specify a custom testing combination of Plone and python versions, use `test_matrix`
+#   Use ["*"] to use all supported Python versions for this Plone version.
+# - to specify extra custom environments, use `envlist_lines`
+# - to specify extra `tox` top-level options, use `config_lines`
+#  [tox]
+#  test_matrix = {"6.2" = ["3.13", "3.12"], "6.1" = ["*"]}
+#  envlist_lines = """
+#      my_other_environment
+#  """
+#  config_lines = """
+#  my_extra_top_level_tox_configuration_lines
+#  """
+##
+
+{% include 'tox-init.j2' %}
+
+{% include 'tox-qa.j2' %}
+
+{% include 'tox-test-runner-specifics.j2' %}
+
+{% include 'tox-base.j2' %}
+
+{% include 'tox-test-coverage.j2' %}
+
+{% include 'tox-plone-depending-qa.j2' %}
+
+%(extra_lines)s
+##
+# Add extra configuration options in .meta.toml:
+#  [tox]
+#  extra_lines = """
+#  _your own configuration lines_
+#  """
+##
