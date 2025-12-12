@@ -1,0 +1,299 @@
+Metadata-Version: 2.4
+Name: nvidia-vlmeval
+Version: 25.11
+Summary: OpenCompass VLM Evaluation Kit - packaged by NVIDIA
+Keywords: AI,NLP,in-context learning
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7.0
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: decord; platform_machine != "arm64"
+Requires-Dist: eva-decord; platform_machine == "arm64"
+Requires-Dist: gradio
+Requires-Dist: huggingface_hub
+Requires-Dist: imageio
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: omegaconf
+Requires-Dist: openai
+Requires-Dist: opencv-python>=4.4.0.46
+Requires-Dist: openpyxl
+Requires-Dist: pandas
+Requires-Dist: pillow
+Requires-Dist: portalocker
+Requires-Dist: protobuf
+Requires-Dist: python-dotenv
+Requires-Dist: requests
+Requires-Dist: rich
+Requires-Dist: sentencepiece
+Requires-Dist: setuptools
+Requires-Dist: sty
+Requires-Dist: tabulate
+Requires-Dist: tiktoken
+Requires-Dist: timeout-decorator
+Requires-Dist: torch
+Requires-Dist: torchvision
+Requires-Dist: tqdm
+Requires-Dist: transformers
+Requires-Dist: typing_extensions
+Requires-Dist: validators
+Requires-Dist: xlsxwriter<=3.2.3
+Requires-Dist: nemo-evaluator
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: keywords
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# NVIDIA NeMo Evaluator
+
+The goal of NVIDIA NeMo Evaluator is to advance and refine state-of-the-art methodologies for model evaluation, and deliver them as modular evaluation packages (evaluation containers and pip wheels) that teams can use as standardized building blocks.
+
+# Quick start guide
+
+NVIDIA NeMo Evaluator provide you with evaluation clients, that are specifically built to evaluate model endpoints using our Standard API.
+
+## Launching an evaluation for an LLM
+
+1. Install the package
+    ```
+    pip install nvidia-vlmeval
+    ```
+
+3. (Optional) Set a token to your API endpoint if it's protected
+    ```bash
+    export MY_API_KEY="your_api_key_here"
+    ```
+4. List the available evaluations:
+    ```bash
+    $ nemo-evaluator ls
+    Available tasks:
+    * ai2d_judge (in vlmevalkit)
+    * chartqa (in vlmevalkit)
+    * mathvista-mini (in vlmevalkit)
+    * mmmu_judge (in vlmevalkit)
+    * ocrbench (in vlmevalkit)
+    * slidevqa (in vlmevalkit)
+    ...
+
+    ```
+5. Run the evaluation of your choice:
+   ```bash
+   nemo-evaluator run_eval \
+       --eval_type ocrbench \
+       --model_id microsoft/phi-4-multimodal-instruct \
+       --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+       --model_type vlm \
+       --api_key_name MY_API_KEY \
+       --output_dir /workspace/results
+   ```
+6. Gather the results
+    ```bash
+    cat /workspace/results/results.yml
+    ```
+
+# Command-Line Tool
+
+Each package comes pre-installed with a set of command-line tools, designed to simplify the execution of evaluation tasks. Below are the available commands and their usage for the `vlmevalkit`:
+
+## Commands
+
+### 1. **List Evaluation Types**
+
+```bash
+nemo-evaluator ls
+```
+
+Displays the evaluation types available within the harness.
+
+### 2. **Run an evaluation**
+
+The `nemo-evaluator run_eval` command executes the evaluation process. Below are the flags and their descriptions:
+
+### Required flags
+* `--eval_type <string>`
+The type of evaluation to perform
+* `--model_id <string>`
+The name or identifier of the model to evaluate.
+* `--model_url <url>`
+The API endpoint where the model is accessible.
+* `--model_type <string>`
+The type of the model to evaluate, currently either "chat", "completions", or "vlm".
+* `--output_dir <directory>`
+The directory to use as the working directory for the evaluation. The results, including the results.yml output file, will be saved here.
+
+### Optional flags
+* `--api_key_name <string>`
+The name of the environment variable that stores the Bearer token for the API, if authentication is required.
+* `--run_config <path>`
+Specifies the path to a  YAML file containing the evaluation definition.
+
+### Example
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type ocrbench \
+    --model_id my_model \
+    --model_type vlm \
+    --model_url http://localhost:8000/v1/chat/completions \
+    --output_dir ./evaluation_results
+```
+
+If the model API requires authentication, set the API key in an environment variable and reference it using the `--api_key_name` flag:
+
+```bash
+export MY_API_KEY="your_api_key_here"
+
+nemo-evaluator run_eval \
+    --eval_type ocrbench \
+    --model_id my_model \
+    --model_type vlm \
+    --model_url http://localhost:8000/v1/chat/completions \
+    --api_key_name MY_API_KEY \
+    --output_dir ./evaluation_results
+```
+
+# Configuring evaluations via YAML
+
+Evaluations in NVIDIA NeMo Evaluator are configured using YAML files that define the parameters and settings required for the evaluation process. These configuration files follow a standard API which ensures consistency across evaluations.
+
+Example of a YAML config:
+```yaml
+config:
+  type: ocrbench
+  params:
+    parallelism: 50
+    limit_samples: 20
+target:
+  api_endpoint:
+    model_id: microsoft/phi-4-multimodal-instruct
+    type: vlm
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+The priority of overrides is as follows:
+1. command line arguments
+2. user config (as seen above)
+3. task defaults (defined per task type)
+4. framework defaults 
+
+`--dry_run` option allows you to print the final run configuration and command without executing the evaluation.
+
+### Example:
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type ocrbench \
+    --model_id my_model \
+    --model_type vlm \
+    --model_url http://localhost:8000/v1/chat/completions \
+    --output_dir .evaluation_results \
+    --dry_run
+```
+
+Output:
+
+```bash
+Rendered config:
+
+command: "cat > {{config.output_dir}}/vlmeval_config.json << 'EOF'\n{\n  \"model\"\
+  : {\n    \"{{target.api_endpoint.model_id.split('/')[-1]}}\": {\n      \"class\"\
+  : \"CustomOAIEndpoint\",\n      \"model\": \"{{target.api_endpoint.model_id}}\"\
+  ,\n      \"api_base\": \"{{target.api_endpoint.url}}\",\n      \"api_key_var_name\"\
+  : \"{{target.api_endpoint.api_key}}\",\n      \"max_tokens\": {{config.params.max_new_tokens}},\n\
+  \      \"temperature\": {{config.params.temperature}},{% if config.params.top_p\
+  \ is not none %}\n      \"top_p\": {{config.params.top_p}},{% endif %}\n      \"\
+  retry\": {{config.params.max_retries}},\n      \"timeout\": {{config.params.request_timeout}}{%\
+  \ if config.params.extra.wait is defined %},\n      \"wait\": {{config.params.extra.wait}}{%\
+  \ endif %}{% if config.params.extra.img_size is defined %},\n      \"img_size\"\
+  : {{config.params.extra.img_size}}{% endif %}{% if config.params.extra.img_detail\
+  \ is defined %},\n      \"img_detail\": \"{{config.params.extra.img_detail}}\"{%\
+  \ endif %}{% if config.params.extra.system_prompt is defined %},\n      \"system_prompt\"\
+  : \"{{config.params.extra.system_prompt}}\"{% endif %}{% if config.params.extra.verbose\
+  \ is defined %},\n      \"verbose\": {{config.params.extra.verbose}}{% endif %}\n\
+  \    }\n  },\n  \"data\": {\n    \"{{config.params.extra.dataset.name}}\": {\n \
+  \     \"class\": \"{{config.params.extra.dataset.class}}\",\n      \"dataset\":\
+  \ \"{{config.params.extra.dataset.name}}\",\n      \"model\": \"{{target.api_endpoint.model_id}}\"\
+  \n    }\n  }\n}\nEOF\npython -m vlmeval.run \\\n  --config {{config.output_dir}}/vlmeval_config.json\
+  \ \\\n  --work-dir {{config.output_dir}} \\\n  --api-nproc {{config.params.parallelism}}\
+  \ \\\n  {%- if config.params.extra.judge is defined %}\n  --judge {{config.params.extra.judge.model}}\
+  \ \\\n  --judge-args '{{config.params.extra.judge.args}}' \\\n  {%- endif %}\n \
+  \ {% if config.params.limit_samples is not none %}--first-n {{config.params.limit_samples}}{%\
+  \ endif %}\n"
+framework_name: vlmevalkit
+pkg_name: vlmeval
+config:
+  output_dir: .evaluation_results
+  params:
+    limit_samples: null
+    max_new_tokens: 2048
+    max_retries: 5
+    parallelism: 4
+    task: null
+    temperature: 0.0
+    request_timeout: 60
+    top_p: null
+    extra:
+      dataset:
+        name: OCRBench
+        class: OCRBench
+  supported_endpoint_types:
+  - vlm
+  type: ocrbench
+target:
+  api_endpoint:
+    api_key: null
+    model_id: my_model
+    stream: null
+    type: vlm
+    url: http://localhost:8000/v1/chat/completions
+
+
+Rendered command:
+
+cat > .evaluation_results/vlmeval_config.json << 'EOF'
+{
+  "model": {
+    "my_model": {
+      "class": "CustomOAIEndpoint",
+      "model": "my_model",
+      "api_base": "http://localhost:8000/v1/chat/completions",
+      "api_key_var_name": "None",
+      "max_tokens": 2048,
+      "temperature": 0.0,
+      "retry": 5,
+      "timeout": 60
+    }
+  },
+  "data": {
+    "OCRBench": {
+      "class": "OCRBench",
+      "dataset": "OCRBench",
+      "model": "my_model"
+    }
+  }
+}
+EOF
+python -m vlmeval.run \
+  --config .evaluation_results/vlmeval_config.json \
+  --work-dir .evaluation_results \
+  --api-nproc 4 \
+
+```
+
+# FAQ
+
+## Deploying a model as an endpoint
+
+NVIDIA NeMo Evaluator utilize a client-server communication architecture to interact with the model. As a prerequisite, the **model must be deployed as an endpoint with a NIM-compatible API**.
+
+Users have the flexibility to deploy their model using their own infrastructure and tooling.
+
+Servers with APIs that conform to the OpenAI/NIM API standard are expected to work seamlessly out of the box.

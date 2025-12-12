@@ -1,0 +1,146 @@
+framework:
+  name: vlmevalkit
+  pkg_name: vlmevalkit
+  full_name: VLMEvalKit
+  description: VLMEvalKit is an open-source evaluation toolkit of large vision-language models (LVLMs). It enables one-command evaluation of LVLMs on various benchmarks, without the heavy workload of data preparation under multiple repositories. In VLMEvalKit, we adopt generation-based evaluation for all LVLMs, and provide the evaluation results obtained with both exact matching and LLM-based answer extraction.
+  url: https://github.com/open-compass/VLMEvalKit
+  source: https://gitlab-master.nvidia.com/dl/JoC/competitive_evaluation/core_evals_frameworks/VLMEvalKit
+defaults:
+  command: |
+    cat > {{config.output_dir}}/vlmeval_config.json << 'EOF'
+    {
+      "model": {
+        "{{target.api_endpoint.model_id.split('/')[-1]}}": {
+          "class": "CustomOAIEndpoint",
+          "model": "{{target.api_endpoint.model_id}}",
+          "api_base": "{{target.api_endpoint.url}}",
+          "api_key_var_name": "{{target.api_endpoint.api_key}}",
+          "max_tokens": {{config.params.max_new_tokens}},
+          "temperature": {{config.params.temperature}},{% if config.params.top_p is not none %}
+          "top_p": {{config.params.top_p}},{% endif %}
+          "retry": {{config.params.max_retries}},
+          "timeout": {{config.params.request_timeout}}{% if config.params.extra.wait is defined %},
+          "wait": {{config.params.extra.wait}}{% endif %}{% if config.params.extra.img_size is defined %},
+          "img_size": {{config.params.extra.img_size}}{% endif %}{% if config.params.extra.img_detail is defined %},
+          "img_detail": "{{config.params.extra.img_detail}}"{% endif %}{% if config.params.extra.system_prompt is defined %},
+          "system_prompt": "{{config.params.extra.system_prompt}}"{% endif %}{% if config.params.extra.verbose is defined %},
+          "verbose": {{config.params.extra.verbose}}{% endif %}
+        }
+      },
+      "data": {
+        "{{config.params.extra.dataset.name}}": {
+          "class": "{{config.params.extra.dataset.class}}",
+          "dataset": "{{config.params.extra.dataset.name}}",
+          "model": "{{target.api_endpoint.model_id}}"
+        }
+      }
+    }
+    EOF
+    python -m vlmeval.run \
+      --config {{config.output_dir}}/vlmeval_config.json \
+      --work-dir {{config.output_dir}} \
+      --api-nproc {{config.params.parallelism}} \
+      {%- if config.params.extra.judge is defined %}
+      --judge {{config.params.extra.judge.model}} \
+      --judge-args '{{config.params.extra.judge.args}}' \
+      {%- endif %}
+      {% if config.params.limit_samples is not none %}--first-n {{config.params.limit_samples}}{% endif %}
+  config:
+    supported_endpoint_types:
+      - vlm
+    params:
+      limit_samples: null
+      max_new_tokens: 2048
+      temperature: 0
+      top_p: null
+      parallelism: 4
+      max_retries: 5
+      request_timeout: 60
+  target:
+    api_endpoint: {} # required to add: url, model_id, api_key
+evaluations:
+- name: AI2D
+  description: A benchmark for evaluating diagram understanding capabilities of large vision-language models.
+  defaults:
+    config:
+      type: ai2d_judge
+      params:
+        extra:
+          dataset:
+            name: AI2D_TEST
+            class: ImageMCQDataset
+          judge:
+            model: gpt-4o
+            args: '{"use_azure": true}'
+- name: ChartQA
+  description: A Benchmark for Question Answering about Charts with Visual and Logical Reasoning
+  defaults:
+    config:
+      type: chartqa
+      params:
+        extra:
+          dataset:
+            name: ChartQA_TEST
+            class: ImageVQADataset
+- name: MathVista-MINI
+  description: Evaluating Math Reasoning in Visual Contexts
+  defaults:
+    config:
+      type: mathvista-mini
+      params:
+        extra:
+          dataset:
+            name: MathVista_MINI
+            class: MathVista
+          judge:
+            model: gpt-4o
+            args: '{"use_azure": true}'
+- name: MMMU
+  description: A benchmark for evaluating multimodal models on massive multi-discipline tasks demanding college-level subject knowledge and deliberate reasoning.
+  defaults:
+    config:
+      type: mmmu_judge
+      params:
+        extra:
+          dataset:
+            name: MMMU_DEV_VAL
+            class: MMMUDataset
+          judge:
+            model: gpt-4o
+            args: '{"use_azure": true}'
+- name: OCRBench
+  description: Comprehensive evaluation benchmark designed to assess the OCR capabilities of Large Multimodal Models
+  defaults:
+    config:
+      type: ocrbench
+      params:
+        extra:
+          dataset:
+            name: OCRBench
+            class: OCRBench
+- name: OCR-Reasoning
+  description: Comprehensive benchmark of 1,069 human-annotated examples designed to evaluate multimodal large language models on text-rich image reasoning tasks by assessing both final answers and the reasoning process across six core abilities and 18 practical tasks.
+  defaults:
+    config:
+      type: ocr_reasoning
+      params:
+        extra:
+          dataset:
+            name: OCR_Reasoning
+            class: OCR_Reasoning
+          judge:
+            model: gpt-4o
+            args: '{"use_azure": true}'
+- name: SlideVQA
+  description: Evaluates ability to answer questions about slide decks by selecting relevant slides from multiple images
+  defaults:
+    config:
+      type: slidevqa
+      params:
+        extra:
+          dataset:
+            name: SLIDEVQA
+            class: SlideVQA
+          judge:
+            model: gpt-4o
+            args: '{"use_azure": true}'
