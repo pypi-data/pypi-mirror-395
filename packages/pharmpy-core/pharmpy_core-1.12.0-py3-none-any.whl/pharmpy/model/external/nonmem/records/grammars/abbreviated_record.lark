@@ -1,0 +1,122 @@
+// from NONMEM 7.4 spec:
+//
+// $ABBREVIATED  [COMRES=n1] [COMSAV=n2]
+//               [DERIV2=NO] [DERIV2=NOCOMMON] [DERIV1=NO]
+//               [FASTDER | NOFASTDER]
+//               [CHECKMU | NOCHECKMU]
+//               [DES=COMPACT|DES=FULL]
+//               [REPLACE left_string = right_string ] ...
+//               [DECLARE [type] [DOWHILE] name [(dimension [,dimension])] ...
+//               [PROTECT]
+//               [FUNCTION function_name(input_vector_name,dimension[,usage])]
+//               [VECTOR input_vector_name(dimension)]
+
+root : option+
+
+// option rules
+?option : COMRES "="? SIGNED_INT                   -> comres
+        | COMSAV "="? SIGNED_INT                   -> comsav
+        | DERIV2 "="? (NO | NOCOMMON)              -> deriv2
+        | DERIV1 "="? NO                           -> deriv1
+        | FASTDER                                  -> fastder
+        | NOFASTDER                                -> nofastder
+        | CHECKMU                                  -> checkmu
+        | NOCHECKMU                                -> nocheckmu
+        | DES "="? (COMPACT | FULL)                -> des
+        | REPLACE ANY "="? ANY                     -> replace
+        | DECLARE _declarations                    -> declare
+        | PROTECT                                  -> protect
+        | FUNCTION SYMBOL "(" SYMBOL "," INT ")"   -> function
+        | VECTOR SYMBOL "(" INT ")"                -> vector
+
+_declarations: (_declarations ",")? declaration
+
+declaration: (INTEGER | DOWHILE)? CNAME _dimensions? -> declare
+_dimensions: "(" INT ("," INT)? ")"
+
+
+ANY: /[^ \x00\n\r\t=]+/
+
+// option terminals
+COMPACT: "COMPACT"
+FULL: "FULL"
+NO: "NO"
+NOCOMMON: "NOCOMMON"
+COMRES: "COMRES"
+      | "COMRE"
+      | "COMR"
+
+COMSAV: "COMSAV"
+      | "COMSA"
+      | "COMS"
+
+DERIV1: "DERIV1"
+DERIV2: "DERIV2"
+FASTDER: "FASTDER"
+       | "FASTDE"
+       | "FASTD"
+       | "FAST"
+       | "FAS"
+
+NOFASTDER: "NOFASTDER"
+         | "NOFASTDE"
+         | "NOFASTD"
+         | "NOFAST"
+         | "NOFAS"
+         | "NOFA"
+         | "NOF"
+
+CHECKMU: "CHECKMU"
+       | "CHECKM"
+       | "CHECK"
+       | "CHEC"
+       | "CHE"
+
+NOCHECKMU: "NOCHECKMU"
+         | "NOCHECKM"
+         | "NOCHECK"
+         | "NOCHEC"
+         | "NOCHE"
+         | "NOCH"
+         | "NOC"
+
+DES: "DES"
+REPLACE: "REPLACE"
+       | "REPLAC"
+       | "REPLA"
+       | "REPL"
+       | "REP"
+
+DECLARE: "DECLARE"
+       | "DECLAR"
+       | "DECLA"
+       | "DECL"
+       | "DEC"
+
+PROTECT: "PROTECT"
+       | "PROTEC"
+       | "PROTE"
+       | "PROT"
+       | "PRO"
+
+FUNCTION: "FUNCTION"
+        | "FUNCTIO"
+        | "FUNCTI"
+        | "FUNCT"
+        | "FUNC"
+        | "FUN"
+
+VECTOR: "VECTOR"
+      | "VECTO"
+      | "VECT"
+      | "VEC"
+
+INTEGER: "INTEGER"
+DOWHILE: "DOWHILE"
+
+%import .definitions (INT, SIGNED_INT, SYMBOL, WS, COMMENT, NEWLINE)
+%import common.CNAME
+
+%ignore WS
+%ignore COMMENT
+%ignore NEWLINE

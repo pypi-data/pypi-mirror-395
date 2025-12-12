@@ -1,0 +1,68 @@
+// $THETA  value1  [value2]  [value3] ...
+//          [(value)xn]
+//          [NUMBERPOINTS=n]
+//          [ABORT|NOABORT|NOABORTFIRST]
+//
+// 5 legal forms
+//   1. init [FIXED]
+//   2. ([low,] init [,up] [FIXED])
+//   3. ([low,] init [,up]) [FIXED]  // MUST have "low" if "up" exists
+//   4. (low,,up)  // has NO init
+//   5. (value)xn  // value is inside parenthesis of form 2-4
+//
+// Rules
+//   1. "low" and "up" can be skipped with -INF/INF (default).
+//   2. "FIXED" requires "low" & "up" to equal "init", insofar they appear.
+//   3. "FIXED" implied if "low"="init"="up".
+//   4. There can be multiple "FIXED" for one THETA
+//   5. "FIXED" can appear almost anywhere and multiple times in a row
+//      when parentheses are used
+
+root : _options?
+
+_options : _options? (theta | option)
+
+option : KEY "=" VALUE
+       | VALUE
+
+theta : init FIX?                    // form 1
+      | _lpar _inside _rpar _after?  // form 2+3+4+5
+
+_inside: _init_or_low _rest
+
+_rest:                                                          // (empty, NO rest) form 2+3+5 (init)
+     | (_sep _fixes?)? init _fixes? _sep?                       // form 2+3+5 (low, init)
+     | (_sep _fixes?)? init _fixes? (_sep _fixes?)? up _fixes?  // form 2+3+5 (low, init, up?)
+     | _sep _sep _fixes? up _fixes?                             // form 4+5 (low, up)
+
+_init_or_low : _fixes? init_or_low _fixes?
+
+_lpar : "("
+_rpar : ")"
+_sep : ","
+
+_after: n | FIX
+
+_fixes: _fixes? FIX
+
+
+init_or_low: NUMERIC | NEG_INF // Hack to get around LALR(1) limitations
+init : NUMERIC
+low  : NUMERIC | NEG_INF
+up   : NUMERIC | POS_INF
+n    : X INT
+X.1  : "x"
+
+NEG_INF: "-INF"i | "-1000000"
+POS_INF: "INF"i | "1000000"
+
+FIX : "FIXED" | "FIXE" | "FIX"
+
+// generic option terminals (key/value)
+KEY   : /(?!([0-9]|\(|FIX))\w+/
+VALUE : /(?!(,|[0-9]|\(|FIX))[^\s=;]+/
+
+%import .definitions (INT, NUMERIC, COMMENT, NEWLINE, WS)
+%ignore WS
+%ignore COMMENT
+%ignore NEWLINE

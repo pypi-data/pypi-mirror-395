@@ -1,0 +1,464 @@
+from __future__ import annotations
+
+import csv
+import re
+from io import StringIO
+from itertools import chain
+from pathlib import Path
+from typing import Iterable, Iterator, Literal, Optional, Protocol, Union
+
+from pharmpy.deps import numpy as np
+from pharmpy.deps import pandas as pd
+from pharmpy.internals.math import flattened_to_symmetric
+from pharmpy.workflows.results import dataclass
+
+from .dataset.nmtran import IOFromChunks
+from .records.table_record import DEFAULT_TABLE_RECORD_FORMAT
+
+OBJ = re.compile(r"[A-Z]*OBJ")
+DEFAULT_NONMEM_TABLE_FILE_FORMAT = DEFAULT_TABLE_RECORD_FORMAT
+
+
+def parse_format(format: str):
+    assert len(format) >= 1
+    sep = format[0].lower()
+    if sep == "s":
+        return NONMEMTableFileFormat(format, r"\s+")
+    elif sep == "t":
+        return NONMEMTableFileFormat(format, "\t")
+    elif sep == ",":
+        return NONMEMTableFileFormat(format, ",")
+    elif sep == "c":
+        return NONMEMTableFileFormat(format, ",")
+    elif sep == "q":
+        return NONMEMTableFileFormat(format, ",", quoted=True)
+    else:
+        raise NotImplementedError(format)
+
+
+NONMEMTableFileSeparator = Union[
+    Literal[r"\s+"],
+    Literal["\t"],
+    Literal[","],
+]
+
+
+@dataclass(frozen=True)
+class NONMEMTableFileFormat:
+    source: str
+    separator: NONMEMTableFileSeparator
+    quoted: bool = False
+
+
+class TableTape:
+    def __init__(self, title: str, lines: Iterable[str]):
+        self._title = title
+        self._lines = lines
+        self._next_title = None
+
+    def __iter__(self):
+        self._next_title = yield from self._iter_table()
+
+    def _iter_table(self):
+        yield self._title
+
+        for line in self._lines:
+            if line.startswith("TABLE NO."):
+                return line
+
+            yield line
+
+
+def _iter_tables(lines: Iterator[str]):
+    first_line = next(lines, None)
+
+    while first_line is not None:
+        tape = TableTape(first_line, lines)
+        it = iter(tape)
+        yield it
+        for _ in it:
+            pass
+        first_line = tape._next_title
+
+
+def _replace_obj_in_header(lines: Iterator[str]):
+    return chain([OBJ.sub("OBJ", next(lines))], lines)
+
+
+def _remove_repeated_header_lines(lines: Iterator[str]):
+    yield next(lines)
+
+    for line in lines:
+        if not re.match(r'\s[A-Za-z_]', line):
+            yield line
+
+
+class NONMEMTableFile:
+    """A NONMEM table file that can contain multiple tables"""
+
+    def __init__(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        tables: Optional[list[NONMEMTable]] = None,
+        notitle: bool = False,
+        nolabel: bool = False,
+        format: str = DEFAULT_NONMEM_TABLE_FILE_FORMAT,
+    ):
+        if path is not None:
+            path = Path(path)
+            suffix = path.suffix
+            tables = []
+            if path.stat().st_size == 0:
+                raise OSError("Empty table file")
+            with open(str(path), 'r') as tablefile:
+                if notitle:
+                    table = self._parse_table(
+                        tablefile,
+                        notitle=notitle,
+                        nolabel=nolabel,
+                        format=format,
+                    )
+                    tables.append(table)
+                else:
+                    for lines in _iter_tables(tablefile):
+                        table = self._parse_table(lines, suffix, format=format)
+                        tables.append(table)
+            self.tables = tables
+        elif tables is not None:
+            self.tables = tables
+        else:
+            raise ValueError('NONMEMTableFile: path and tables cannot be both None')
+
+    def _parse_table(
+        self,
+        content: Iterable[str],
+        suffix: Optional[str] = None,
+        notitle: bool = False,
+        nolabel: bool = False,
+        format: str = DEFAULT_NONMEM_TABLE_FILE_FORMAT,
+    ) -> NONMEMTable:
+        # NOTE: Content lines must contain endlines!
+
+        it = iter(content)
+        table_line = None if notitle else next(it)
+
+        it = _replace_obj_in_header(it)
+
+        if suffix == '.ext':
+            table = ExtTable(IOFromChunks(map(str.encode, it)), format=format)
+        elif suffix == '.phi':
+            table = PhiTable(IOFromChunks(map(str.encode, it)), format=format)
+        elif suffix == '.cov' or suffix == '.cor' or suffix == '.coi':
+            table = CovTable(IOFromChunks(map(str.encode, it)), format=format)
+        else:
+            it = _remove_repeated_header_lines(it)
+            table = NONMEMTable(
+                IOFromChunks(map(str.encode, it)),
+                format=format,
+            )  # Fallback to non-specific table type
+
+        if table_line is not None:
+            m = re.match(r'TABLE NO.\s+(\d+)', table_line)
+            if not m:
+                raise ValueError(f"Illegal {suffix}-file: missing TABLE NO.")
+            table.number = int(m.group(1))
+            table.is_evaluation = False
+            if re.search(r'(Evaluation)', table_line):
+                table.is_evaluation = True  # No estimation step was run
+
+            m = re.match(
+                r'TABLE NO.\s+\d+: (.*?)(?:: ([\w-]+))?: (?:Goal Function=(.*): )?Problem=(\d+) '
+                r'Subproblem=(\d+) Superproblem1=(\d+) Iteration1=(\d+) Superproblem2=(\d+) '
+                r'Iteration2=(\d+)',
+                table_line,
+            )
+
+            if m:
+                table.method = m.group(1)
+                table.design_optimality = m.group(2)
+                table.goal_function = m.group(3)
+                table.problem = int(m.group(4))
+                table.subproblem = int(m.group(5))
+                table.superproblem1 = int(m.group(6))
+                table.iteration1 = int(m.group(7))
+                table.superproblem2 = int(m.group(8))
+                table.iteration2 = int(m.group(9))
+
+        return table
+
+    def __iter__(self):
+        return iter(self.tables)
+
+    def __getitem__(self, i):
+        return self.tables[i]
+
+    def __len__(self):
+        return len(self.tables)
+
+    @property
+    def table(
+        self, problem=1, subproblem=0, superproblem1=0, iteration1=0, superproblem2=0, iteration2=0
+    ):
+        for t in self.tables:
+            if (
+                t.problem == problem
+                and t.subproblem == subproblem
+                and t.superproblem1 == superproblem1
+                and t.iteration1 == iteration1
+                and t.superproblem2 == superproblem2
+                and t.iteration2 == iteration2
+            ):
+                return t
+
+    def table_no(self, table_number=1):
+        for table in self.tables:
+            if table.number == table_number:
+                return table
+
+    def write(self, path):
+        with open(path, 'w') as df:
+            for table in self.tables:
+                print('TABLE NO.     1', file=df)
+                print(table.content, file=df, end='')
+
+
+class Readable(Protocol):
+    def read(self, n: int = -1) -> bytes: ...
+
+
+class NONMEMTable:
+    """A NONMEM output table."""
+
+    number: Optional[int] = None
+    is_evaluation: Optional[bool] = None
+    method: Optional[str] = None
+    design_optimality: Optional[str] = None
+    goal_function: Optional[str] = None
+    problem: Optional[int] = None
+    subproblem: Optional[int] = None
+    superproblem1: Optional[int] = None
+    iteration1: Optional[int] = None
+    superproblem2: Optional[int] = None
+    iteration2: Optional[int] = None
+
+    def __init__(
+        self,
+        content: Optional[Readable] = None,
+        df: Optional[pd.DataFrame] = None,
+        format=DEFAULT_NONMEM_TABLE_FILE_FORMAT,
+    ):
+        if content is not None:
+            _format = parse_format(format)
+            read_df = pd.read_table(
+                content,  # type: ignore
+                sep=_format.separator,
+                skipinitialspace=_format.separator != r"\s+",
+                quotechar='"',
+                quoting=csv.QUOTE_MINIMAL if _format.quoted else csv.QUOTE_NONE,
+                engine='c',
+                float_precision="round_trip",
+            )
+            assert isinstance(read_df, pd.DataFrame)
+            self._df = read_df
+        elif df is not None:
+            self._df = df
+        else:
+            raise ValueError('NONMEMTable: content and df cannot be both None')
+
+    @property
+    def data_frame(self) -> pd.DataFrame:
+        return self._df
+
+    @property
+    def content(self):
+        df = self._df.copy(deep=True)
+        df.reset_index(inplace=True)
+        df.insert(loc=0, column='SUBJECT_NO', value=np.arange(len(df)) + 1)
+        fmt = '%13d%13d' + '%13.5E' * (len(df.columns) - 2)
+
+        header_fmt = ' %-12s' * len(df.columns) + '\n'
+        header = header_fmt % tuple(df.columns)
+
+        with StringIO() as s:
+            np.savetxt(s, df.values, fmt=fmt)
+            body = s.getvalue()
+
+        return header + body
+
+    @staticmethod
+    def rename_index(df, ext=True):
+        """If columns rename also the row index"""
+        theta_labels = [x for x in df.columns if x.startswith('THETA')]
+        omega_labels = [x for x in df.columns if x.startswith('OMEGA')]
+        sigma_labels = [x for x in df.columns if x.startswith('SIGMA')]
+        labels = theta_labels + omega_labels + sigma_labels
+        if ext:
+            labels = ['ITERATION'] + labels + ['OBJ']
+        else:
+            df = df.reindex(labels)
+        df = df.reindex(labels, axis=1)
+        df.columns = df.columns.str.replace(r'THETA(\d+)', r'THETA(\1)', regex=True)
+        if not ext:
+            df.index = df.index.str.replace(r'THETA(\d+)', r'THETA(\1)', regex=True)
+        return df
+
+
+class CovTable(NONMEMTable):
+    @property
+    def data_frame(self):
+        df = self._df.copy(deep=True)
+        df.set_index('NAME', inplace=True)
+        df.index.name = None
+        df = NONMEMTable.rename_index(df, ext=False)
+        df = df.loc[(df != 0).any(axis=1), (df != 0).any(axis=0)]  # Remove FIX
+        return df
+
+
+class PhiTable(NONMEMTable):
+    @property
+    def iofv(self):
+        df = self._df.copy(deep=True)
+        # Remove all zero lines. These are from individuals with no observations
+        df = df.loc[df.iloc[:, 2:].any(axis=1)]
+        iofv = df[['ID', 'OBJ']]
+        iofv.set_index('ID', inplace=True)
+        iofv.columns = ['iOFV']
+        return iofv['iOFV']
+
+    @property
+    def etas(self):
+        df = self._df
+        df = df.loc[df.iloc[:, 2:].any(axis=1)]
+        eta_col_names = [col for col in df if col.startswith('ETA') or col.startswith('PHI')]
+        etas = df[eta_col_names]
+        etas.index = df['ID']
+        return etas
+
+    @property
+    def etcs(self):
+        ids, eta_col_names, matrix_array = self.etc_data()
+        etc_frames = [
+            pd.DataFrame(
+                matrix,
+                columns=eta_col_names,  # pyright: ignore [reportArgumentType]
+                index=eta_col_names,  # pyright: ignore [reportArgumentType]
+            )
+            for matrix in matrix_array
+        ]
+        etcs = pd.Series(etc_frames, index=ids, dtype='object')
+        return etcs
+
+    def etc_data(self):
+        # Note that PHC == ETC
+        df = self._df
+        df = df.loc[df.iloc[:, 2:].any(axis=1)]
+        eta_col_names = [col for col in df if col.startswith('ETA') or col.startswith('PHI')]
+        etc_col_names = [col for col in df if col.startswith('ETC') or col.startswith('PHC')]
+        vals = df[etc_col_names].values
+        matrix_array = [flattened_to_symmetric(x) for x in vals]
+        colnames = [f'ETA{name[3:]}' for name in eta_col_names]
+        return df['ID'], colnames, matrix_array
+
+
+class ExtTable(NONMEMTable):
+    @property
+    def data_frame(self):
+        df = self._df.copy(deep=True)
+        df = NONMEMTable.rename_index(df)
+        if df['ITERATION'].isnull().values.all():
+            raise ValueError('Broken table in ext-file')
+        return df
+
+    def _get_parameters(self, iteration, include_thetas=True) -> pd.Series:
+        df = self.data_frame
+        row = df.loc[df['ITERATION'] == iteration]
+        if row.empty:
+            raise KeyError(f'Row {iteration} not available in ext-file')
+
+        keep_cols = set(row.columns)
+        keep_cols.difference_update(('ITERATION', 'OBJ'))
+
+        if not include_thetas:
+            theta_cols = row.filter(regex='THETA', axis=1).columns
+            keep_cols.difference_update(theta_cols)
+
+        row = row[[column for column in row.columns if column in keep_cols]]
+        return row.squeeze()
+
+    def _get_ofv(self, iteration):
+        df = self.data_frame
+        row = df.loc[df['ITERATION'] == iteration]
+        if df['ITERATION'].isnull().values.all():
+            return np.nan
+        elif row.empty:
+            raise KeyError(f'Row {iteration} not available in ext-file')
+        row.squeeze()
+        return row['OBJ'].squeeze()
+
+    @property
+    def iterations(self):
+        """List of all iteration numbers (except the special negative)"""
+        it = self.data_frame['ITERATION']
+        return list(it[it >= 0])
+
+    @property
+    def final_parameter_estimates(self):
+        """Get the final parameter estimates as a Series
+        A specific parameter estimate can be retreived as
+        final_parameter_estimates['THETA1']
+        Fallback to estimates from last iteration in case
+        of an aborted or failed run.
+        """
+        try:
+            ser = self._get_parameters(-1000000000)
+        except KeyError:
+            final_iter = max(self.iterations)
+            ser = self._get_parameters(final_iter)
+        ser.name = 'estimates'
+        return ser
+
+    @property
+    def standard_errors(self):
+        """Get the standard errors of the parameter estimates as a Series"""
+        ser = self._get_parameters(-1000000001)
+        ser.name = 'SE'
+        return ser
+
+    @property
+    def condition_number(self):
+        """Get the condition number of the correlation matrix"""
+        ser = self._get_parameters(-1000000003)
+        return ser.values[0]
+
+    @property
+    def omega_sigma_stdcorr(self):
+        """Get the omegas and sigmas in standard deviation/correlation form"""
+        return self._get_parameters(-1000000004, include_thetas=False)
+
+    @property
+    def omega_sigma_se_stdcorr(self):
+        """The standard error of the omegas and sigmas in stdcorr form"""
+        return self._get_parameters(-1000000005, include_thetas=False)
+
+    @property
+    def fixed(self):
+        """What parameters were fixed?"""
+        fix = self._get_parameters(-1000000006)
+        return fix.apply(bool)
+
+    @property
+    def final_ofv(self):
+        try:
+            ser = self._get_ofv(-1000000000)
+        except KeyError:
+            final_iter = max(self.iterations)
+            ser = self._get_ofv(final_iter)
+        return ser
+
+    @property
+    def initial_ofv(self):
+        try:
+            ser = self._get_ofv(0)
+        except KeyError:
+            ser = self._get_ofv(-1000000000)
+        return ser
