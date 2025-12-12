@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{community.name}} - 选址分析报告</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .overall-score {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .score-circle .score {
+            font-size: 48px;
+            font-weight: bold;
+        }
+
+        .score-circle .rating {
+            font-size: 18px;
+            margin-top: 5px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .category-section {
+            margin-bottom: 40px;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .category-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .category-score {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .score-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .rating-badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .rating-excellent {
+            background: #28a745;
+            color: white;
+        }
+
+        .rating-good {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .rating-average {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .rating-poor {
+            background: #fd7e14;
+            color: white;
+        }
+
+        .rating-bad {
+            background: #dc3545;
+            color: white;
+        }
+
+        .score-bar {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 20px;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 1s ease;
+        }
+
+        .facilities-list {
+            padding: 20px;
+        }
+
+        .facility-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #f1f3f5;
+            transition: background 0.2s;
+        }
+
+        .facility-item:hover {
+            background: #f8f9fa;
+        }
+
+        .facility-item:last-child {
+            border-bottom: none;
+        }
+
+        .facility-info {
+            flex: 1;
+        }
+
+        .facility-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: #212529;
+            margin-bottom: 4px;
+        }
+
+        .facility-address {
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        .facility-meta {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .distance {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .walking-time {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🏘️ {{community.name}}</h1>
+        <div class="subtitle">{{community.address}}</div>
+    </div>
+
+    <div class="overall-score">
+        <div class="score-circle">
+            <div class="score">{{overall_score}}</div>
+            <div class="rating">{{overall_rating}}</div>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value">{{facilities_total}}</div>
+                <div class="stat-label">周边设施总数</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        {{#each categories}}
+            <div class="category-section">
+                <div class="category-header">
+                    <div class="category-title">{{name}} ({{count}}个)</div>
+                    <div class="category-score">
+                        <span class="score-badge">{{score}}分</span>
+                        <span class="rating-badge rating-{{#if (eq rating '优秀')}}excellent{{else}}{{#if (eq rating '良好')}}good{{else}}{{#if (eq rating '一般')}}average{{else}}{{#if (eq rating '较差')}}poor{{else}}bad{{/if}}{{/if}}{{/if}}{{/if}}">{{rating}}</span>
+                    </div>
+                </div>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width: {{score_bar_width}}%"></div>
+                </div>
+
+                {{#if facilities}}
+                    <div class="facilities-list">
+                        {{#each facilities}}
+                            <div class="facility-item">
+                                <div class="facility-info">
+                                    <div class="facility-name">📍 {{name}}</div>
+                                    <div class="facility-address">{{address}}</div>
+                                </div>
+                                <div class="facility-meta">
+                                    <div class="distance">{{distance}}m</div>
+                                    <div class="walking-time">🚶 {{walking_time}}分钟</div>
+                                </div>
+                            </div>
+                        {{/each}}
+                    </div>
+                {{else}}
+                    <div class="facilities-list">
+                        <div style="text-align: center; color: #6c757d; padding: 20px;">
+                            暂无相关设施
+                        </div>
+                    </div>
+                {{/if}}
+            </div>
+        {{/each}}
+    </div>
+</div>
+</body>
+</html>
