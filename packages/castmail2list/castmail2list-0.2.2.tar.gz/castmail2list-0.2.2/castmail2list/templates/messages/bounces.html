@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Bounce Messages') }}{% endblock %}
+{% block content %}
+<h2>{{ _('Bounce Messages') }}</h2>
+
+{%- include "flash.html" %} {# Show flash messages #}
+
+<table class="striped">
+    <thead>
+        <tr>
+            <th>{{ _('Subject') }}</th>
+            <th>{{ _('Received At') }}</th>
+            <th>{{ _('List') }}</th>
+            <th>{{ _('Bounced Recipients') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in messages %}
+        {% set bounced_recipient = m.error_info["bounced_recipients"] %}
+        <tr>
+            <td><a href="{{ url_for('messages.show', message_id=m.message_id)}}">{{ m.subject }}</a></td>
+            <td>{{ m.received_at.strftime("%Y-%m-%d %H:%M:%S UTC") }}</td>
+            <td>{{ m.list.name }}</td>
+            <td><a href="{{ url_for('subscribers.by_email', email=bounced_recipient) }}">{{ bounced_recipient }}</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
