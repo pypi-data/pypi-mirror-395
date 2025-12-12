@@ -1,0 +1,78 @@
+[project]
+name = "odf.sbe"
+description = "A tool for converting SeaBird .HEX data to engineering units"
+readme = "README.md"
+requires-python = ">=3.12"
+dynamic = ["version"]
+dependencies = [
+    "netcdf4>=1.7.2",
+    "xarray",
+]
+
+[project.urls]
+Documentation = "https://sio-odf.github.io/odfsbe/"
+Repository = "https://github.com/SIO-ODF/odfsbe.git"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools>=75.0",
+  "setuptools-scm>=7",
+]
+
+[tool.setuptools]
+license-files = ["LICENSE"]
+packages = ["odf.sbe"]
+package-dir = {"" = "src"}
+
+[tool.setuptools_scm]
+fallback_version = "9999"
+
+[dependency-groups]
+dev = [
+    "furo>=2024.8.6",
+    "ipykernel>=6.29.5",
+    "mypy>=1.15.0",
+    "myst-parser>=4.0.1",
+    "pandas-stubs>=2.2.3.241126",
+    "pre-commit>=4.1.0",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.9.6",
+    "sphinx>=8.2.1",
+    "sphinx-autoapi>=3.6.0",
+]
+
+# taken from xarray
+[tool.ruff.lint]
+extend-select = [
+  "F",    # Pyflakes
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "I",    # isort
+  "UP",   # pyupgrade
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "PIE",  # flake8-pie
+  "TID",  # flake8-tidy-imports (absolute imports)
+  "PGH",  # pygrep-hooks
+  "PERF", # Perflint
+  "RUF",
+]
+ignore = [
+  "E501"  # line too long
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+log_cli_level = "info"
+testpaths = [
+  "src",
+]
+
+[tool.mypy]
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
