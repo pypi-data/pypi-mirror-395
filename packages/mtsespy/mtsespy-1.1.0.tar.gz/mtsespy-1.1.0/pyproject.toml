@@ -1,0 +1,38 @@
+[build-system]
+requires = ["scikit-build-core>=0.11", "pybind11>=3.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "mtsespy"
+version = "1.1.0"
+description = "Python bindings for ODDSound MTS-ESP"
+authors = [
+  { name="Naren Ratan" },
+]
+license = {file = "LICENSE"}
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/narenratan/mtsespy"
+Issues = "https://github.com/narenratan/mtsespy/issues"
+
+[dependency-groups]
+test = ["pytest"]
+dev = [{ include-group = "test" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "wheel: Tests which work without libMTS (run during isolated wheel builds)",
+]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+
+[tool.cibuildwheel]
+build-frontend = "build[uv]"
+test-command = "python -m pytest -m wheel tests"
+test-sources = ["pyproject.toml", "tests"]
+test-groups = ["test"]
+skip = "cp3??t-win*"
