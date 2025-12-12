@@ -1,0 +1,130 @@
+"""Wrapper around the Apple App Store Connect APIs."""
+
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+import logging
+from typing import Any, Iterator
+
+from asconnect.httpclient import HttpClient
+from asconnect.models import App, AppStoreVersion, Platform, ReleaseType
+
+
+class AppClient:
+    """Wrapper class around the ASC API."""
+
+    log: logging.Logger
+    http_client: HttpClient
+
+    def __init__(
+        self,
+        *,
+        http_client: HttpClient,
+        log: logging.Logger,
+    ) -> None:
+        """Construct a new client object.
+
+        :param http_client: The API HTTP client
+        :param log: Any base logger to be used (one will be created if not supplied)
+        """
+
+        self.http_client = http_client
+        self.log = log.getChild("app")
+
+    def get_all(
+        self,
+        url: str | None = None,
+    ) -> Iterator[App]:
+        """Get all apps.
+
+        :param url: The URL to use (will be generated if not supplied)
+
+        :returns: A list of apps
+        """
+        self.log.debug("Getting all apps...")
+        url = self.http_client.generate_url("apps")
+        yield from self.http_client.get(url=url, data_type=list[App])
+
+    def get_from_bundle_id(self, bundle_id: str) -> App | None:
+        """Get a particular app.
+
+        :param bundle_id: The bundle ID of the app to get
+
+        :returns: The app if found, None otherwise
+        """
+        self.log.debug(f"Getting app with bundle id '{bundle_id}'...")
+        for app in self.get_all():
+            if app.bundle_id == bundle_id:
+                return app
+        return None
+
+    def create_new_version(
+        self,
+        *,
+        version: str,
+        app_id: str,
+        platform: Platform = Platform.IOS,
+        copyright_text: str | None = None,
+        uses_idfa: bool | None = None,
+        release_type: ReleaseType = ReleaseType.MANUAL,
+        earliest_release_date: str | None = None,
+    ) -> AppStoreVersion:
+        """Create a new version on the app store.
+
+        :param version: The version to create
+        :param app_id: The ID of the app
+        :param platform: The platform this app is (defaults to iOS)
+        :param copyright_text: The copyright string to use
+        :param uses_idfa: Set to True if this app uses the advertising ID, false otherwise
+        :param release_type: The release type to use (defaults to MANUAL)
+        :param earliest_release_date: The earliest date to release this app, required when release_type is SCHEDULED
+
+        :raises TypeError: If the release_type is SCHEDULED but earliest_release_date is not supplied
+        :raises AppStoreConnectError: On a failure response
+
+        :returns: An AppStoreVersion
+        """
+
+        self.log.info(f"Creating version {version} for {app_id}...")
+
+        attributes: dict[str, Any] = {
+            "platform": platform.value,
+            "versionString": version,
+            "releaseType": release_type.value,
+        }
+
+        if release_type == ReleaseType.SCHEDULED:
+            if not earliest_release_date:
+                raise TypeError(
+                    "earliest_release_date must be supplied when release_type is SCHEDULED"
+                )
+            attributes["earliestReleaseDate"] = earliest_release_date
+
+        if copyright_text:
+            attributes["copyright"] = copyright_text
+
+        if uses_idfa is not None:
+            attributes["usesIdfa"] = uses_idfa
+
+        data = {
+            "data": {
+                "attributes": attributes,
+                "type": "appStoreVersions",
+                "relationships": {
+                    "app": {
+                        "data": {
+                            "type": "apps",
+                            "id": app_id,
+                        }
+                    }
+                },
+            }
+        }
+
+        self.log.debug(f"Creation data: {data}")
+
+        return self.http_client.post(
+            endpoint="appStoreVersions",
+            data=data,
+            data_type=AppStoreVersion,
+        )
