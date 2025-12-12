@@ -1,0 +1,126 @@
+{% extends "basic/layout.html" %}
+
+{% macro bulma_sidebar() %}
+  <aside class="sidebar column is-{{ theme_sidebar_size }} is-hidden-mobile" role="navigation">
+  {% for item in sidebars %}
+    {% include item %}
+  {% endfor %}
+  </aside>
+{% endmacro %}
+
+{% block extrahead %}
+  {{ super() }}
+  <script src="{{ pathto('_static/theme.js', 1) }}"></script>
+{% endblock %}
+
+{%- block header %}
+<nav class="navbar is-sticky" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a class="navbar-item" style="font-weight: bold; font-size: 110%" href="{{ pathto(root_doc)|e }}">
+      {{ docstitle }}
+    </a>
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="site-navbar">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+
+  <div id="site-navbar" class="navbar-menu">
+    <div class="navbar-start">
+      {% for tree in root_toctree_dict() %}
+      <a class="navbar-item" href={{ tree.uri }}>
+        {{ tree.title }}
+      </a>
+      {% endfor %}
+      {% for site in theme_navbar_links %}
+      <a class="navbar-item" href={{ site.url }} target="_blank" rel="noreferrer noopener">
+        <span class="icon-text">
+          <span>
+            {{ site.title }}
+          </span>
+          <span class="icon">
+            <i class="fas fa-xs fa-external-link"></i>
+          </span>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+
+    <div class="navbar-end">
+      {% if theme_navbar_search %}
+      <div class="navbar-item">
+        <form method="get" action="{{ pathto('search') }}" role="search">
+          <div class="field has-addons">
+            <div class="control">
+              <input class="input" type="text" placeholder="{{ _('Search') }}" name="q" aria-label="{{ _('Search') }}">
+            </div>
+            <div class="control">
+              <button class="button is-info">
+                {{ _('Search') }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+      {% for item in theme_navbar_icons %}
+      <a class="navbar-item" href="{{ item.url }}" target="_blank" rel="noreferrer noopener">
+        <span class="icon-text">
+          <span class="icon">
+            <i class="fas {{ item.icon }}"></i>
+          </span>
+          <span>{{ item.label }}</span>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{%- block relbar1 %}{% endblock %}
+
+{% block body_tag %}
+  <body {% if theme_color_mode in ("light", "dark") %}data-theme="{{ theme_color_mode }}"{% endif %}>
+{% endblock %}
+
+{%- block content %}
+<div class="section">
+  <div class="columns">
+    {% if theme_sidebar_position == "left" %}
+    {{ bulma_sidebar() }}
+    {% endif %}
+    <main class="column content is-{{ 12 - theme_sidebar_size }}">
+    {% block body %} {% endblock %}
+    </main>
+    {% if theme_sidebar_position == "right" %}
+    {{ bulma_sidebar() }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{%- block relbar2 %}{% endblock %}
+
+{%- block footer %}
+<footer class="footer has-text-right">
+  <p>
+    {%- if show_copyright %}
+      {{- copyright_block() -}}
+    {%- endif %}
+    {%- if last_updated %}
+      {% trans last_updated=last_updated|e %}Last updated on {{ last_updated }}.{% endtrans %}
+    {%- endif %}
+  </p>
+  <p>
+    {%- if show_sphinx %}
+      {% trans sphinx_version=sphinx_version|e %}Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> {{ sphinx_version }}.{% endtrans %}
+    {%- endif %}
+    {%- if theme_show_theme_credit %}
+      Designed using <a href="https://pypi.org/project/atsphinx-bulma">atsphinx-bulma</a>.</p>
+    {%- endif %}
+  </p>
+</footer>
+{%- endblock %}
