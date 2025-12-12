@@ -1,0 +1,3 @@
+
+class StateOfDependency:
+    pass
