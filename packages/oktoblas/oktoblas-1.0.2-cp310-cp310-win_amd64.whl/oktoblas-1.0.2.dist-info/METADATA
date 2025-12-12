@@ -1,0 +1,204 @@
+Metadata-Version: 2.4
+Name: oktoblas
+Version: 1.0.2
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: Other/Proprietary License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Dist: numpy>=1.20
+Requires-Dist: torch>=2.0 ; extra == 'torch'
+Requires-Dist: pytest ; extra == 'dev'
+Requires-Dist: black ; extra == 'dev'
+Requires-Dist: mypy ; extra == 'dev'
+Provides-Extra: torch
+Provides-Extra: dev
+License-File: LICENSE.txt
+Summary: High-Performance BLAS Library by OktoSeek - Tensor Core GEMM and Fused Attention
+Keywords: blas,cuda,gpu,matrix,attention,transformer,deep-learning,tensor-cores
+Author-email: OktoSeek AI <contact@oktoseek.com>
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://www.oktoseek.com
+Project-URL: Repository, https://github.com/oktoseek/oktoblas
+Project-URL: PyPI, https://pypi.org/project/oktoblas/
+
+# OktoBLAS
+
+**The Independent BLAS Engine Powering OktoEngine**
+
+---
+
+## What is OktoBLAS?
+
+**OktoBLAS** is a proprietary, high-performance **Basic Linear Algebra Subprograms (BLAS)** engine developed by **OktoSeek**. It is the core computational backbone of **OktoEngine**, our native AI training and inference platform.
+
+Unlike wrapper libraries, OktoBLAS is built **entirely from scratch** using Rust and hand-tuned CUDA PTX assembly — with **zero dependency on NVIDIA cuBLAS**.
+
+### 🎯 Key Highlights
+
+| | |
+|---|---|
+| **100% Independent** | No cuBLAS, no external BLAS dependencies |
+| **Hand-Tuned PTX** | Every kernel optimized at assembly level |
+| **Tensor Core Native** | Built for NVIDIA Tensor Cores (WMMA) |
+| **Production Ready** | Powers OktoEngine in production |
+| **Python Available** | Also released as standalone Python package |
+
+---
+
+## 🏆 Performance
+
+All benchmarks on **NVIDIA RTX 4070 Laptop GPU** using CUDA Events.
+
+### FP16 GEMM (Tensor Cores)
+
+| Matrix Size | OktoBLAS | PyTorch | Performance |
+|:-----------:|:--------:|:-------:|:-----------:|
+| 1024×1024 | **29.1 TF** | 23.3 TF | **125%** ✓ |
+| 2048×2048 | **35.1 TF** | 34.6 TF | **101%** ✓ |
+| 4096×4096 | 36.5 TF | 38.9 TF | 94% |
+
+### Fused Attention
+
+| Config | OktoBLAS | PyTorch | Speedup |
+|:------:|:--------:|:-------:|:-------:|
+| B4 S256 D64 | **0.96 TF** | 0.28 TF | **3.4x** |
+| B4 S512 D64 | **1.22 TF** | 0.93 TF | **1.3x** |
+
+---
+
+## 📦 Installation
+
+```bash
+pip install oktoblas
+```
+
+---
+
+## 📖 Quick Start
+
+```python
+import oktoblas as ob
+import numpy as np
+
+# FP16 Matrix Multiplication (Tensor Cores)
+A = np.random.randn(2048, 2048).astype(np.float16)
+B = np.random.randn(2048, 2048).astype(np.float16)
+C = ob.matmul_fp16(A, B)  # 35+ TFLOPS
+
+# Fused Attention (3x faster)
+Q = np.random.randn(4, 512, 64).astype(np.float32)
+K = np.random.randn(4, 512, 64).astype(np.float32)
+V = np.random.randn(4, 512, 64).astype(np.float32)
+output = ob.attention(Q, K, V)
+
+# Library info
+ob.info()
+```
+
+### Output
+
+```
+============================================================
+OktoBLAS by OktoSeek
+High-Performance BLAS Library
+============================================================
+Version: 1.0.2
+License: Proprietary (c) 2025 OktoSeek AI
+Backend: CUDA PTX (Tensor Cores)
+
+Features:
+  - FP16/FP32 GEMM with Tensor Cores
+  - Fused Attention kernel
+  - 100% Independent (no cuBLAS)
+
+https://www.oktoseek.com
+============================================================
+```
+
+---
+
+## 🔥 API Reference
+
+```python
+# GEMM Operations
+ob.matmul(A, B)           # FP32 matrix multiplication
+ob.matmul_fp16(A, B)      # FP16 with Tensor Cores
+
+# Fused Operations
+ob.attention(Q, K, V)     # Fused Q×K^T×V attention
+
+# Utilities
+ob.info()                 # Library information
+ob.is_cuda_available()    # Check GPU availability
+ob.benchmark(op, size)    # Run benchmarks
+```
+
+---
+
+## 🧪 OktoScript Integration
+
+Within **OktoEngine**, OktoBLAS is configured through **OktoScript**:
+
+```okt
+BLAS {
+    backend: "oktoblas"
+    precision: "fp16"
+}
+
+ACCELERATE {
+    gemm: "oktoblas"
+    attention: "oktoblas"
+}
+
+TENSOR_CORES {
+    enabled: true
+}
+```
+
+---
+
+## 🌐 OktoSeek Ecosystem
+
+OktoBLAS is a core component of **OktoSeek AI**:
+
+| Component | Description |
+|:---------:|:------------|
+| **OktoScript** | AI programming language |
+| **OktoEngine** | Native AI training runtime |
+| **OktoBLAS** | High-performance BLAS engine |
+| **OkTensor** | GPU tensor library |
+| **OktoStudio** | AI development IDE |
+
+---
+
+## 📜 License
+
+**Proprietary License** — Free for personal and commercial use.
+
+Copyright © 2025 **OktoSeek AI**. All Rights Reserved.
+
+---
+
+## 🔗 Links
+
+- **Website**: [oktoseek.com](https://www.oktoseek.com)
+- **GitHub**: [github.com/oktoseek](https://github.com/oktoseek)
+- **PyPI**: [pypi.org/project/oktoblas](https://pypi.org/project/oktoblas/)
+
+---
+
+<p align="center">
+  <strong>OktoBLAS</strong> — The BLAS engine built for AI
+</p>
+
