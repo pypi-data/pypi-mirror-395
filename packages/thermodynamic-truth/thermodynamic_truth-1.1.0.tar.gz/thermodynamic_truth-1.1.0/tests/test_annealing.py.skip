@@ -1,0 +1,265 @@
+"""
+Unit tests for thermodynamic_truth.core.annealing module
+
+Tests cover:
+- Annealing schedules (exponential, linear, logarithmic)
+- Simulated annealing algorithm
+- Parallel tempering (replica exchange)
+- Convergence detection
+"""
+
+import pytest
+import numpy as np
+import sys
+
+sys.path.insert(0, "/home/ubuntu/thermo-truth-proto/src")
+
+from thermodynamic_truth.core.annealing import (
+    AnnealingSchedule,
+    ThermodynamicAnnealer,
+    ParallelTempering,
+)
+from thermodynamic_truth.core.state import ThermodynamicEnsemble, ConsensusState
+
+
+class TestAnnealingSchedule:
+    """Test annealing schedule classes."""
+
+    def test_exponential_schedule(self):
+        """Test exponential cooling schedule."""
+        schedule = AnnealingSchedule.exponential(T_initial=10.0, T_final=0.1, steps=100)
+
+        # Temperature should decrease
+        T_start = schedule.get_temperature(0)
+        T_mid = schedule.get_temperature(50)
+        T_end = schedule.get_temperature(100)
+
+        assert T_start > T_mid > T_end
+        assert abs(T_start - 10.0) < 0.01
+        assert T_end >= 0.1
+
+    def test_linear_schedule(self):
+        """Test linear cooling schedule."""
+        schedule = AnnealingSchedule.linear(T_initial=10.0, T_final=1.0, steps=100)
+
+        T_start = schedule.get_temperature(0)
+        T_end = schedule.get_temperature(100)
+
+        assert abs(T_start - 10.0) < 0.01
+        assert abs(T_end - 1.0) < 0.01
+
+    def test_logarithmic_schedule(self):
+        """Test logarithmic cooling schedule."""
+        schedule = AnnealingSchedule.logarithmic(T_initial=10.0, steps=100)
+
+        T_start = schedule.get_temperature(0)
+        T_mid = schedule.get_temperature(50)
+
+        assert T_start > T_mid
+        assert T_start == 10.0
+
+
+class TestThermodynamicAnnealer:
+    """Test thermodynamic annealer algorithm."""
+
+    def test_create_annealer(self):
+        """Test annealer creation."""
+        ensemble = ThermodynamicEnsemble()
+        annealer = ThermodynamicAnnealer(ensemble, schedule_type="exponential")
+
+        assert annealer.ensemble == ensemble
+        assert annealer.schedule is not None
+
+    def test_anneal_empty_ensemble(self):
+        """Test annealing with empty ensemble."""
+        ensemble = ThermodynamicEnsemble()
+        annealer = ThermodynamicAnnealer(ensemble, schedule_type="exponential")
+
+        result = annealer.anneal(steps=10)
+
+        # Should return zero vector for empty ensemble
+        assert result is not None
+
+    def test_anneal_single_state(self):
+        """Test annealing with single state."""
+        ensemble = ThermodynamicEnsemble()
+        ensemble.add_state(
+            ConsensusState(
+                state_vector=np.array([1.0, 2.0, 3.0]),
+                energy=0.0,
+                timestamp=0.0,
+                proposer_id="test",
+                nonce=0,
+                difficulty=0.0,
+            )
+        )
+
+        annealer = ThermodynamicAnnealer(ensemble, schedule_type="exponential")
+        result = annealer.anneal(steps=10)
+
+        # Should return the single state
+        np.testing.assert_array_almost_equal(result, np.array([1.0, 2.0, 3.0]))
+
+    def test_anneal_multiple_states(self):
+        """Test annealing with multiple states."""
+        ensemble = ThermodynamicEnsemble()
+
+        # Add states clustered around [1, 1]
+        for i in range(5):
+            ensemble.add_state(
+                ConsensusState(
+                    state_vector=np.array(
+                        [1.0 + np.random.randn() * 0.1, 1.0 + np.random.randn() * 0.1]
+                    ),
+                    energy=0.0,
+                    timestamp=0.0,
+                    proposer_id=f"node_{i}",
+                    nonce=0,
+                    difficulty=0.0,
+                )
+            )
+
+        annealer = ThermodynamicAnnealer(ensemble, schedule_type="exponential")
+        result = annealer.anneal(steps=50)
+
+        # Result should be close to [1, 1]
+        assert abs(result[0] - 1.0) < 0.5
+        assert abs(result[1] - 1.0) < 0.5
+
+    def test_convergence_detection(self):
+        """Test convergence detection."""
+        ensemble = ThermodynamicEnsemble()
+
+        # Add identical states (should converge immediately)
+        for i in range(5):
+            ensemble.add_state(
+                ConsensusState(
+                    state_vector=np.array([1.0, 1.0]),
+                    energy=0.0,
+                    timestamp=0.0,
+                    proposer_id=f"node_{i}",
+                    nonce=0,
+                    difficulty=0.0,
+                )
+            )
+
+        annealer = ThermodynamicAnnealer(ensemble, schedule_type="exponential")
+        result = annealer.anneal(steps=100, convergence_threshold=0.01)
+
+        # Should converge to [1, 1]
+        np.testing.assert_array_almost_equal(result, np.array([1.0, 1.0]), decimal=2)
+
+
+class TestParallelTempering:
+    """Test parallel tempering algorithm."""
+
+    def test_create_parallel_tempering(self):
+        """Test parallel tempering creation."""
+        ensemble = ThermodynamicEnsemble()
+        pt = ParallelTempering(ensemble, n_replicas=4)
+
+        assert pt.ensemble == ensemble
+        assert pt.n_replicas == 4
+
+    def test_parallel_tempering_empty_ensemble(self):
+        """Test parallel tempering with empty ensemble."""
+        ensemble = ThermodynamicEnsemble()
+        pt = ParallelTempering(ensemble, n_replicas=4)
+
+        result = pt.run(steps=10)
+
+        # Should return zero vector
+        assert result is not None
+
+    def test_parallel_tempering_convergence(self):
+        """Test parallel tempering convergence."""
+        ensemble = ThermodynamicEnsemble()
+
+        # Add states
+        for i in range(10):
+            ensemble.add_state(
+                ConsensusState(
+                    state_vector=np.array([1.0 + np.random.randn() * 0.1]),
+                    energy=0.0,
+                    timestamp=0.0,
+                    proposer_id=f"node_{i}",
+                    nonce=0,
+                    difficulty=0.0,
+                )
+            )
+
+        pt = ParallelTempering(ensemble, n_replicas=4)
+        result = pt.run(steps=50)
+
+        # Should converge near 1.0
+        assert abs(result[0] - 1.0) < 0.5
+
+
+class TestEdgeCases:
+    """Test edge cases."""
+
+    def test_zero_steps_annealing(self):
+        """Test annealing with zero steps."""
+        ensemble = ThermodynamicEnsemble()
+        ensemble.add_state(
+            ConsensusState(
+                state_vector=np.array([1.0]),
+                energy=0.0,
+                timestamp=0.0,
+                proposer_id="test",
+                nonce=0,
+                difficulty=0.0,
+            )
+        )
+
+        annealer = ThermodynamicAnnealer(ensemble, schedule_type="exponential")
+        result = annealer.anneal(steps=0)
+
+        # Should still return a result
+        assert result is not None
+
+    def test_high_temperature_annealing(self):
+        """Test annealing with high initial temperature."""
+        ensemble = ThermodynamicEnsemble()
+
+        for i in range(5):
+            ensemble.add_state(
+                ConsensusState(
+                    state_vector=np.array([float(i)]),
+                    energy=0.0,
+                    timestamp=0.0,
+                    proposer_id=f"node_{i}",
+                    nonce=0,
+                    difficulty=0.0,
+                )
+            )
+
+        annealer = ThermodynamicAnnealer(ensemble, schedule_type="exponential", T_initial=1000.0)
+        result = annealer.anneal(steps=100)
+
+        # Should still converge
+        assert result is not None
+
+    def test_single_replica_parallel_tempering(self):
+        """Test parallel tempering with single replica."""
+        ensemble = ThermodynamicEnsemble()
+        ensemble.add_state(
+            ConsensusState(
+                state_vector=np.array([1.0]),
+                energy=0.0,
+                timestamp=0.0,
+                proposer_id="test",
+                nonce=0,
+                difficulty=0.0,
+            )
+        )
+
+        pt = ParallelTempering(ensemble, n_replicas=1)
+        result = pt.run(steps=10)
+
+        # Should work with single replica
+        assert result is not None
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])

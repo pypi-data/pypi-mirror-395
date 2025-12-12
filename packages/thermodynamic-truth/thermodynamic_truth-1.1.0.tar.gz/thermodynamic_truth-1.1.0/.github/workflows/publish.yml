@@ -1,0 +1,270 @@
+name: Publish to PyPI and GitHub Packages
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v2.1.3, etc.
+
+permissions:
+  contents: write  # For creating GitHub releases
+  id-token: write  # REQUIRED for PyPI trusted publishing (OIDC)
+  packages: write  # For GitHub Packages
+  attestations: write  # For SLSA provenance
+
+jobs:
+  build:
+    name: Build distribution packages
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper versioning
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine check-wheel-contents
+      
+      - name: Build package
+        run: python -m build
+      
+      - name: Check distribution packages
+        run: |
+          twine check dist/*
+          check-wheel-contents dist/*.whl
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+          retention-days: 7
+
+  generate-sbom:
+    name: Generate SBOM (Software Bill of Materials)
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install SBOM generator
+        run: pip install cyclonedx-bom
+      
+      - name: Generate CycloneDX SBOM
+        run: |
+          cyclonedx-py requirements \
+            --requirements-file requirements.txt \
+            --output-format json \
+            --output-file sbom.json
+      
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 90
+
+  publish-pypi:
+    name: Publish to PyPI (Trusted Publishing)
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: pypi
+      url: https://pypi.org/p/thermodynamic-truth
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+      
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # No token needed! Uses OIDC trusted publishing
+          # Configure at: https://pypi.org/manage/account/publishing/
+          print-hash: true
+          verbose: true
+
+  publish-github-packages:
+    name: Publish to GitHub Packages
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      packages: write
+      contents: read
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+      
+      - name: Publish to GitHub Packages
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://maven.pkg.github.com/${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          print-hash: true
+          verbose: true
+
+  sign-and-attest:
+    name: Sign with Sigstore and Generate SLSA Provenance
+    runs-on: ubuntu-latest
+    needs: [build, publish-pypi]
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+      
+      - name: Sign distributions with Sigstore
+        uses: sigstore/gh-action-sigstore-python@v2.1.1
+        with:
+          inputs: ./dist/*
+          upload-signing-artifacts: true
+      
+      - name: Generate SLSA provenance attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: 'dist/*'
+      
+      - name: Upload signatures
+        uses: actions/upload-artifact@v4
+        with:
+          name: signatures
+          path: dist/*.sigstore
+          retention-days: 90
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [publish-pypi, publish-github-packages, sign-and-attest, generate-sbom]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## ThermoTruth Protocol v${{ steps.version.outputs.VERSION }}
+          
+          ### Installation
+          
+          **From PyPI (recommended):**
+          ```bash
+          pip install thermodynamic-truth==${{ steps.version.outputs.VERSION }}
+          ```
+          
+          **From GitHub Packages:**
+          ```bash
+          pip install thermodynamic-truth==${{ steps.version.outputs.VERSION }} \
+            --index-url https://pypi.pkg.github.com/Kuonirad/simple/
+          ```
+          
+          ### Verification
+          
+          This release is signed with [Sigstore](https://www.sigstore.dev/) and includes:
+          - ✅ **Cryptographic signatures** (`.sigstore` files)
+          - ✅ **SLSA Level 3 provenance** attestation
+          - ✅ **Software Bill of Materials** (SBOM) in CycloneDX format
+          
+          **Verify signatures:**
+          ```bash
+          pip install sigstore
+          sigstore verify identity \
+            thermodynamic_truth-${{ steps.version.outputs.VERSION }}-py3-none-any.whl \
+            --cert-identity https://github.com/Kuonirad/thermo-truth-proto/.github/workflows/publish.yml@refs/tags/v${{ steps.version.outputs.VERSION }} \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com
+          ```
+          
+          ### What's Changed
+          
+          See [CHANGELOG.md](https://github.com/Kuonirad/thermo-truth-proto/blob/main/CHANGELOG.md) for details.
+          
+          ### Security
+          
+          - **SLSA Provenance**: This package was built on GitHub Actions with SLSA Level 3 provenance
+          - **Sigstore Signatures**: All distributions are signed with keyless signing
+          - **SBOM**: Full dependency tree available in `sbom.json`
+          
+          ### Links
+          
+          - 📦 [PyPI Package](https://pypi.org/project/thermodynamic-truth/${{ steps.version.outputs.VERSION }}/)
+          - 📚 [Documentation](https://github.com/Kuonirad/thermo-truth-proto#readme)
+          - 🐛 [Issue Tracker](https://github.com/Kuonirad/thermo-truth-proto/issues)
+          - 💬 [Discussions](https://github.com/Kuonirad/thermo-truth-proto/discussions)
+          EOF
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release v${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.md
+          files: |
+            dist-packages/*
+            signatures/*
+            sbom/sbom.json
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  verify-publication:
+    name: Verify Publication
+    runs-on: ubuntu-latest
+    needs: [publish-pypi, publish-github-packages]
+    
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Wait for PyPI propagation
+        run: sleep 60
+      
+      - name: Verify PyPI installation
+        run: |
+          pip install thermodynamic-truth --no-cache-dir
+          python -c "import thermodynamic_truth; print(f'Installed version: {thermodynamic_truth.__version__}')"
+      
+      - name: Run basic smoke test
+        run: |
+          python -c "
+          from thermodynamic_truth.core import ThermodynamicTruth
+          import numpy as np
+          
+          protocol = ThermodynamicTruth(node_id='test', n_states=4)
+          state = protocol.create_genesis()
+          print(f'✅ Protocol initialized successfully')
+          print(f'Genesis state: {state.state_vector[:3]}...')
+          "

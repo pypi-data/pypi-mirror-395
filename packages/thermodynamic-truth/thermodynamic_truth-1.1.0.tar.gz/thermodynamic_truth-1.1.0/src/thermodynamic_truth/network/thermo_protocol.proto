@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package thermodynamic_truth;
+
+// Service definition for node-to-node communication
+service ThermoNode {
+    // Propose a new consensus state
+    rpc ProposeState(StateProposal) returns (StateResponse);
+    
+    // Request states from a peer
+    rpc RequestStates(StateRequest) returns (StateBundle);
+    
+    // Announce consensus achievement
+    rpc AnnounceConsensus(ConsensusAnnouncement) returns (AcknowledgeResponse);
+    
+    // Health check / peer discovery
+    rpc Ping(PingRequest) returns (PongResponse);
+    
+    // Synchronize state with peer
+    rpc SyncState(SyncRequest) returns (SyncResponse);
+}
+
+// Represents a consensus state proposal
+message StateProposal {
+    // State vector (serialized as bytes)
+    bytes state_vector = 1;
+    
+    // Proof-of-Work energy expenditure
+    double energy = 2;
+    
+    // Timestamp of proposal
+    double timestamp = 3;
+    
+    // Node that proposed this state
+    string proposer_id = 4;
+    
+    // Proof-of-Work nonce
+    int64 nonce = 5;
+    
+    // PoW difficulty level
+    double difficulty = 6;
+    
+    // Optional metadata
+    map<string, string> metadata = 7;
+}
+
+// Response to state proposal
+message StateResponse {
+    bool accepted = 1;
+    string message = 2;
+    
+    // Current ensemble metrics
+    double current_temperature = 3;
+    double current_entropy = 4;
+    int32 ensemble_size = 5;
+}
+
+// Request for states from a peer
+message StateRequest {
+    string requester_id = 1;
+    int32 round_number = 2;
+    int32 max_states = 3;
+}
+
+// Bundle of states
+message StateBundle {
+    repeated StateProposal states = 1;
+    int32 round_number = 2;
+    string provider_id = 3;
+}
+
+// Consensus announcement
+message ConsensusAnnouncement {
+    int32 round_number = 1;
+    bytes consensus_state = 2;
+    double final_variance = 3;
+    double final_temperature = 4;
+    double final_entropy = 5;
+    string announcer_id = 6;
+    double timestamp = 7;
+}
+
+// Acknowledgement response
+message AcknowledgeResponse {
+    bool acknowledged = 1;
+    string message = 2;
+}
+
+// Ping request for health check
+message PingRequest {
+    string sender_id = 1;
+    double timestamp = 2;
+}
+
+// Pong response
+message PongResponse {
+    string responder_id = 1;
+    double timestamp = 2;
+    
+    // Node status
+    int32 current_round = 3;
+    int32 ensemble_size = 4;
+    double temperature = 5;
+}
+
+// State synchronization request
+message SyncRequest {
+    string requester_id = 1;
+    int32 last_known_round = 2;
+}
+
+// State synchronization response
+message SyncResponse {
+    int32 current_round = 1;
+    repeated ConsensusAnnouncement consensus_history = 2;
+    repeated StateProposal pending_states = 3;
+}
