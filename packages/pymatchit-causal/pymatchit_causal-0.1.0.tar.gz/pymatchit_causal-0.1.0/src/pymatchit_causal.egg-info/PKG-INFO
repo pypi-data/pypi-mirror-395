@@ -1,0 +1,113 @@
+Metadata-Version: 2.4
+Name: pymatchit-causal
+Version: 0.1.0
+Summary: Propensity Score Matching (PSM), Coarsened Exact Matching (CEM), and Causal Inference in Python. A port of R's MatchIt.
+Author-email: Jonas Tünnermann <jonas.tuennermann@freenet.de>
+License: MIT License
+        
+        Copyright (c) 2025 Jonas Tünnermann
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+Project-URL: Homepage, https://github.com/jtuenner/pymatchit
+Project-URL: Bug Tracker, https://github.com/jtuenner/pymatchit/issues
+Keywords: causal-inference,propensity-score-matching,psm,matching,cem,coarsened-exact-matching,mahalanobis,observational-studies,matchit
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy~=1.21
+Requires-Dist: pandas~=1.3
+Requires-Dist: scipy~=1.7
+Requires-Dist: statsmodels~=0.13
+Requires-Dist: matplotlib~=3.5
+Requires-Dist: scikit-learn~=1.0
+Requires-Dist: seaborn~=0.11
+Requires-Dist: patsy~=0.5
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: jupyter; extra == "dev"
+Dynamic: license-file
+
+# pymatchit-causal: Propensity Score Matching in Python
+
+**Scalable Causal Inference, Propensity Score Matching (PSM), and Coarsened Exact Matching (CEM).**
+
+`pymatchit-causal` is a Python port of the standard R package `MatchIt`. It allows data scientists to preprocess data for causal inference by balancing covariates between treated and control groups using state-of-the-art matching methods.
+
+## Why use pymatchit?
+If you are looking for **Propensity Score Matching** in Python, this library provides a robust, "R-style" workflow including:
+* **Propensity Score Estimation:** Logistic Regression (GLM), Random Forest, GBM, Neural Networks.
+* **Matching Algorithms:** Nearest Neighbor (Greedy), Exact, Subclassification, and Coarsened Exact Matching (CEM).
+* **Diagnostics:** Publication-ready Love Plots (Covariate Balance), Propensity Density Plots, and ECDF plots.
+
+## Features
+* **Matching Methods:** Nearest Neighbor, Exact, Coarsened Exact Matching (CEM), Subclassification.
+* **Distance Metrics:** Logistic Regression (GLM), Mahalanobis, Random Forest, GBM, Neural Networks, etc.
+* **Diagnostics:** Love Plots, ECDF Plots, Propensity Score Density Plots, and Summary Tables (SMD, Variance Ratios).
+* **Parity:** Designed to mirror the R `MatchIt` API (`matchit(formula, data, method=...)`).
+
+## Installation
+
+```bash
+pip install pymatchit-causal
+````
+
+## Quick Start
+
+```python
+from pymatchit import MatchIt, load_lalonde
+
+# 1. Load Data
+df = load_lalonde()
+
+# 2. Match (Nearest Neighbor with Caliper)
+m = MatchIt(df, method='nearest', caliper=0.2)
+m.fit("treat ~ age + educ + race + married + nodegree + re74 + re75")
+
+# 3. Assess Balance
+m.summary()
+m.plot(type='balance')
+
+# 4. Get Matched Data for Analysis
+matched_data = m.matches()
+```
+
+## Citation
+
+If you use `pymatchit-causal` in your research, please cite it.
+
+**Until the accompanying paper is published, please cite the software directly:**
+
+> Tünnermann, J. (2025). pymatchit: Propensity Score Matching and Causal Inference in Python (Version 0.1.0) [Computer software]. https://github.com/jtuenner/pymatchit
+
+**BibTeX:**
+```bibtex
+@software{pymatchit-causal,
+  author = {Tünnermann, Jonas},
+  title = {pymatchit: Propensity Score Matching and Causal Inference in Python},
+  url = {[https://github.com/jtuenner/pymatchit](https://github.com/jtuenner/pymatchit)},
+  version = {0.1.0},
+  year = {2025}
+}
+```
