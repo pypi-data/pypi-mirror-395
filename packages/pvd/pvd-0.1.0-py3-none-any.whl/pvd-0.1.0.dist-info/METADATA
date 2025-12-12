@@ -1,0 +1,87 @@
+Metadata-Version: 2.4
+Name: pvd
+Version: 0.1.0
+Summary: Paved SDK
+Author: Paved (https://hipaved.com)
+License: Proprietary
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.1
+Requires-Dist: PyYAML>=6.0.1
+Requires-Dist: requests>=2.31
+Provides-Extra: cli
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Provides-Extra: openai
+Requires-Dist: openai>=1.0.0; extra == "openai"
+Provides-Extra: anthropic
+Requires-Dist: anthropic>=0.18.0; extra == "anthropic"
+Provides-Extra: litellm
+Requires-Dist: litellm>=1.0.0; extra == "litellm"
+Provides-Extra: langchain
+Requires-Dist: langchain-core>=0.1.0; extra == "langchain"
+Provides-Extra: langgraph
+Requires-Dist: langgraph>=0.1.0; extra == "langgraph"
+Requires-Dist: langchain-core>=0.1.0; extra == "langgraph"
+Provides-Extra: langfuse
+Requires-Dist: langfuse>=2.0.0; extra == "langfuse"
+Provides-Extra: all
+Requires-Dist: openai>=1.0.0; extra == "all"
+Requires-Dist: anthropic>=0.18.0; extra == "all"
+Requires-Dist: litellm>=1.0.0; extra == "all"
+Requires-Dist: langchain-core>=0.1.0; extra == "all"
+Requires-Dist: langgraph>=0.1.0; extra == "all"
+Requires-Dist: langfuse>=2.0.0; extra == "all"
+
+# Paved SDK
+
+PVD SDK for Paved platform (the Firewall for AI Agents). All policy checks and telemetry route through the Paved Platform API (default: https://app.hipaved.com).
+
+## Install
+
+```bash
+pip install pvd
+```
+
+After installing, you can log in to the platform (assuming you have created an account in https://app.hipaved.com):
+
+```bash
+pvd login
+```
+
+## CLI Usage
+
+```bash
+# Init a starter agent project
+pvd init my-agent --template llm
+
+# Build a tarball to deploy
+cd my-agent
+pvd build . -o my-agent.tar.gz
+
+# Deploy to the platform
+pvd deploy my-agent.tar.gz --name my-agent
+
+# List and invoke
+pvd list
+pvd invoke <agent-id> --payload '{"message": "hello"}'
+pvd logs <invocation-id> --follow
+```
+
+## SDK Usage
+
+```python
+from pvd.sdk import Agent, PolicyDeniedError
+
+agent = Agent(
+    agent_id="my-remote-agent",
+    policies=["pii_strict"],
+)
+
+try:
+    text = agent.llm("Summarize our Q3 performance.")
+finally:
+    agent.complete(result={"ok": True})
+```
