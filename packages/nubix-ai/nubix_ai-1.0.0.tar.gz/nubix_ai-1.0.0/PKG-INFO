@@ -1,0 +1,60 @@
+Metadata-Version: 2.4
+Name: nubix-ai
+Version: 1.0.0
+Summary: AI library used for document processing and LLM calls.
+Project-URL: Repository, https://git.nubix.online/python/ai.git
+Author-email: Nubix <l.laarveld@nubix.nl>
+License: MIT
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.11
+Requires-Dist: openai>=2.9.0
+Requires-Dist: pydantic>=2.12.5
+Requires-Dist: requests>=2.32.5
+Description-Content-Type: text/markdown
+
+# nubix-ai
+
+AI library used for document processing and LLM calls.
+
+## Installation
+
+```bash
+pip install nubix-ai
+```
+
+## Usage
+
+```python
+from pydantic import BaseModel
+from nubix_ai import NubixAI
+
+# Initialize the client
+client = NubixAI(
+    docling_api_key="your-docling-api-key",
+    openai_api_key="your-openai-api-key"
+)
+
+# Process a document
+markdown, metadata = client.call_docling_process_file("document.pdf")
+
+# Extract structured data with LLM
+class MySchema(BaseModel):
+    field1: str
+    field2: int
+
+result = client.extract_with_llm(
+    markdown_text=markdown,
+    prompt_input="Extract the following information:",
+    PydanticInput=MySchema
+)
+```
+
+## License
+
+MIT
