@@ -1,0 +1,154 @@
+<p align="center">
+    <a href="https://woodpecker.afpy.org/ChristopheNan/poffuzy-helper"><img src="https://woodpecker.afpy.org/api/badges/ChristopheNan/pofuzzy-helper/status.svg"></a>
+    <img src="https://img.shields.io/pypi/v/pofuzzy-helper?color=green" alt="pypi">
+    <img src="https://img.shields.io/badge/python-v3.10+-green.svg" alt="Python >= 3.10">
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT licence">
+</p>
+
+## What is it ?
+
+Pofuzzy-helper shows diffs of .po file entries associated to a fuzzy flag.
+
+
+## Installation
+
+```sh
+pip install pofuzzy-helper
+```
+
+## Terminal usage example
+
+In the [french CPython documentation
+translation](https://git.afpy.org/AFPy/python-docs-fr/) run:
+
+```sh
+$ potodo tutorial/ 
+1 directory  85.34% done
+└── tutorial/  85.34% done
+    ├── appendix.po                       70.0% translated   17/24,  3 fuzzy
+    ├── controlflow.po                    96.0% translated 146/152,  5 fuzzy
+    ├── datastructures.po                 85.0% translated   78/91, 12 fuzzy
+    ├── errors.po                         94.0% translated   66/70,  3 fuzzy
+    ├── floatingpoint.po                  41.0% translated   20/48, 26 fuzzy
+    ├── index.po                          77.0% translated     7/9,  1 fuzzy
+    ├── inputoutput.po                    88.0% translated   62/70,  7 fuzzy
+    ├── interactive.po                    71.0% translated     5/7,  2 fuzzy
+    ├── introduction.po                   89.0% translated   68/76,  3 fuzzy
+    ├── modules.po                        83.0% translated   69/83, 13 fuzzy
+    ├── stdlib.po                         93.0% translated   43/46,  2 fuzzy
+    ├── stdlib2.po                        91.0% translated   41/45,  4 fuzzy
+    └── venv.po                           93.0% translated   28/30,  2 fuzzy
+```
+Let's run pofuzzy-helper on stdlib2.po:
+
+```
+$ pofuzzy-helper tutorial/interactive.po
+319b063d01216961795cef8b82685334b294ace5 2024-10-29 21:59:51+01:00 by Julien Palard
+line: 42
+  Completion of variable and module names is :ref:`automatically enabled
+  <rlcompleter-config>` at interpreter startup so that the :kbd:`Tab` key
+  invokes the completion function; it looks at Python statement names, the
+  current local variables, and the available module names.  For dotted
+  expressions such as ``string.a``, it will evaluate the expression up to the
+  final ``'.'`` and then suggest completions from the attributes of the
+  resulting object.  Note that this may execute application-defined code if an
+- object with a :meth:`__getattr__` method is part of the expression.  The
+?                                                                    -----
+
++ object with a :meth:`~object.__getattr__` method is part of the expression.
+?                      ++++++++
+
+- default configuration also saves your history into a file named
++ The default configuration also saves your history into a file named
+? ++++
+
+  :file:`.python_history` in your user directory. The history will be available
+  again during the next interactive interpreter session.
+
+d7dacbde03452a1258c38b16364a703ab87d706b 2025-10-17 09:58:44+02:00 by Julien Palard
+line: 75
+  This facility is an enormous step forward compared to earlier versions of the
+  interpreter; however, some wishes are left: It would be nice if the proper
+  indentation were suggested on continuation lines (the parser knows if an
+- indent token is required next).  The completion mechanism might use the
+? ^^ ^^ ^                                                        --------
+
++ :data:`~token.INDENT` token is required next).  The completion mechanism might
+? ^ ^ ^^^^     ++++++++++++++
+
+- interpreter's symbol table.  A command to check (or even suggest) matching
+?                                                                  ---------
+
++ use the interpreter's symbol table.  A command to check (or even suggest)
+? ++++++++
+
+- parentheses, quotes, etc., would also be useful.
++ matching parentheses, quotes, etc., would also be useful.
+? +++++++++
+```
+
+### Interactive mode
+
+The interactive mode shows one diff at a time and asks whether to move on next diff, previous diff or to quit.
+
+```
+$ pofuzzy-helper --interactive tutorial/interactive.po
+319b063d01216961795cef8b82685334b294ace5 2024-10-29 21:59:51+01:00 by Julien Palard
+line: 42
+  Completion of variable and module names is :ref:`automatically enabled
+  <rlcompleter-config>` at interpreter startup so that the :kbd:`Tab` key
+  invokes the completion function; it looks at Python statement names, the
+  current local variables, and the available module names.  For dotted
+  expressions such as ``string.a``, it will evaluate the expression up to the
+  final ``'.'`` and then suggest completions from the attributes of the
+  resulting object.  Note that this may execute application-defined code if an
+- object with a :meth:`__getattr__` method is part of the expression.  The
+?                                                                    -----
+
++ object with a :meth:`~object.__getattr__` method is part of the expression.
+?                      ++++++++
+
+- default configuration also saves your history into a file named
++ The default configuration also saves your history into a file named
+? ++++
+
+  :file:`.python_history` in your user directory. The history will be available
+  again during the next interactive interpreter session.
+
+diff 1/2 -> (N)ext - (P)rev - (W)idth - (Q)uit ? [N]
+```
+
+### GUI mode
+
+`pofuzzy-helper-gui` provides a tkinter/html display, side by side, of the diffs. 
+
+```sh
+$ pofuzzy-helper-gui tutorial/interactive.po
+```
+
+<img src="./screenshots/screenshot-1.png">
+
+
+## Development setup
+
+Create a virtual environment:
+
+```sh
+python3 -m venv .venv
+```
+
+Activate it:
+
+```sh
+source .venv/bin/activate
+```
+
+Install the dev requirements:
+
+```sh
+pip install -e .[dev]
+```
+
+## Release History
+* v0.1.0
+  * first release

@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools >= 70.1.0", "setuptools-scm[simple]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pofuzzy_helper"
+version = "0.1.0"
+description = "Helping translators to find differences in msgids between versions"
+authors = [
+    { name = "Christophe Nanteuil", email = "christophe.nanteuil@email.com" },
+]
+keywords = ["poutils", "gettext", "i18n"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pygit2",
+]
+
+[project.optional-dependencies]
+gui = [
+    "tkinterweb",
+]
+
+dev = [
+    "black",
+    "pylint",
+    "tox",
+    "coverage",
+    "mypy",
+]
+
+[project.scripts]
+pofuzzy-helper = "pofuzzy_helper.cli:main"
+
+[project.gui-scripts]
+pofuzzy-helper-gui = "pofuzzy_helper.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pofuzzy_helper*"]
+exclude = ["screenshots"]
+
+[tool.black]
+line-length = 88
+target-version = ['py314']
+
+[tool.tox]
+envlist = ["py314", "mypy", "black", "pylint", "isort", "coverage"]
+skip_missing_interpreters = true
+
+[tool.tox.env_run_base]
+deps = ["pytest", "coverage"]
+description = "Run test under {base_python}"
+commands = [["python", "-m", "coverage", "run", "-m", "pytest"]]
+setenv = { COVERAGE_FILE = "{toxworkdir}/.coverage.{envname}" }
+
+[tool.tox.env.coverage]
+deps = ["coverage"]
+depends = [ "py314"]
+parallel_show_output = true
+skip_install = true
+setenv = { COVERAGE_FILE = "{toxworkdir}/.coverage" }
+commands = [
+  ["coverage", "combine"],
+  ["coverage", "report", "--fail-under", "60"]
+]
+
+[tool.tox.env.mypy]
+deps = [".[dev]"]
+commands = [["mypy", "pofuzzy_helper/"]]
+allowlist_externals = ["mypy",]
+
+[tool.tox.env.black]
+deps = ["black"]
+commands = [["black", "--check", "--diff", "pofuzzy_helper/", "tests/"]]
+
+[tool.tox.env.pylint]
+deps = [".[dev]"]
+commands = [["pylint", "pofuzzy_helper/", "tests/"]]
+
+[tool.tox.env.isort]
+deps = ["isort"]
+commands = [["isort", "--check", "pofuzzy_helper/", "tests/"]]
+
+[tool.isort]
+profile = "black"
