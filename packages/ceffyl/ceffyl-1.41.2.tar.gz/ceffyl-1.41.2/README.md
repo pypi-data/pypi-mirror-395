@@ -1,0 +1,73 @@
+# ceffyl
+[![PyPI version](https://badge.fury.io/py/ceffyl.svg)](https://badge.fury.io/py/ceffyl)
+[![conda-forge](https://anaconda.org/conda-forge/ceffyl/badges/version.svg)](https://anaconda.org/conda-forge/ceffyl/)
+[![DOI](https://zenodo.org/badge/474781623.svg)](https://zenodo.org/badge/latestdoi/474781623)
+
+Pronounced /ˈkɛfɨ̞l/ **('keff-ill')**, meaning 'horse' in Cymraeg/Welsh 🏴󠁧󠁢󠁷󠁬󠁳󠁿🐎 
+
+A software package to rapidly and flexibly analyse pulsar timing array (PTA) data via refiting to pulsar timing free spectra.
+
+This can be done by fitting to a free spectrum of the entire PTA or individual pulsars!
+
+## Installation
+
+It is *highly recommended* that you install enterprise-pulsar first via conda-forge before installing ceffyl
+
+To install via `pip'
+```bash
+conda create -n new_env python=3.10
+conda activate <new_env>
+pip install ceffyl
+pip install --no-deps enterprise-pulsar
+```
+
+To install via Anaconda:
+```bash
+conda create -n <new_env> python enterprise-pulsar
+conda activate <new_env>
+conda install -c conda-forge ceffyl
+```
+**Then update to the latest version using github and pip!**
+
+This is because we use enterprise as a dependency. Enterprise requires tempo2. Tempo2 is notoriously difficult to install directly...
+We plan to remove this dependency in a future update.
+
+## data
+Download representations of PTA data to accurately fit spectral models with ceffyl!
+
+- 🆕 **NANOGrav 15-year data set** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8060824.svg)](https://doi.org/10.5281/zenodo.8060824)
+    - [PTA free spectrum refit data](https://zenodo.org/record/8060824)
+
+- **IPTA DR2** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5787557.svg)](https://doi.org/10.5281/zenodo.5787557)
+    - [PTA free spectrum refit data](https://github.com/astrolamb/ceffyl/tree/main/data/IPTA_DR2)
+
+- **NANOGrav 12.5-year data set** [![DOI](https://zenodo.org/badge/DOI/10.3847/2041-8213/abd401.svg)](https://doi.org/10.3847/2041-8213/abd401)
+    - [PTA free spectrum refit data (zipped)](https://zenodo.org/records/10519423)
+
+## examples
+
+- [**PTA free spectrum refit example**](https://github.com/astrolamb/ceffyl/blob/main/examples/PTA_freespec_ex1.ipynb)
+    - This is the **fastest** and **most accurate** refit technique. Fit any GWB spectrum that you'd like in < 5 minutes!
+    
+- [**GFL Lite refit example**](https://github.com/astrolamb/ceffyl/blob/main/examples/gfl_lite_ex2.ipynb)
+    - Fit GWB models quickly and accurately to different combinations of pulsars!
+    
+- [**GFL refit example**](https://github.com/astrolamb/ceffyl/blob/main/examples/gfl_ex3.ipynb)
+    - Fit GWB and custom intrinsic red noise models to different pulsars quickly! **Experimental** - use with caution!
+
+Do you have your own free spectrum posteriors that you want to work in ceffyl? Learn about making your own KDE posteriors [here](https://github.com/astrolamb/ceffyl/tree/main/examples)
+
+## Attribution
+
+```bash
+@article{lamb2023rapid,
+  title={Rapid refitting techniques for Bayesian spectral characterization of the gravitational wave background using pulsar timing arrays},
+  author={Lamb, William G and Taylor, Stephen R and van Haasteren, Rutger},
+  journal={Physical Review D},
+  volume={108},
+  number={10},
+  pages={103019},
+  year={2023},
+  publisher={APS}
+}
+```
