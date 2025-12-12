@@ -1,0 +1,525 @@
+.. _sig-menu-processing:
+
+Processing Signals
+==================
+
+This section describes the signal processing features available in DataLab.
+
+.. seealso::
+
+    :ref:`sig-menu-operations` for more information on operations that can be performed
+    on signals, or :ref:`sig-menu-analysis` for information on analysis features on
+    signals.
+
+.. figure:: /images/shots/s_processing.png
+
+    Screenshot of the "Processing" menu.
+
+When the "Signal Panel" is selected, the menus and toolbars are updated to
+provide signal-related actions.
+
+The "Processing" menu allows you to perform various processing on the
+selected signals, such as smoothing, normalization, or interpolation.
+
+Axis transformation
+^^^^^^^^^^^^^^^^^^^
+
+Linear calibration
+~~~~~~~~~~~~~~~~~~
+
+Create a new signal which is a linear calibration of each selected signal
+with respect to X or Y axis:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 40, 60
+
+    * - Parameter
+      - Linear calibration
+    * - X-axis
+      - :math:`x_{1} = a.x_{0} + b`
+    * - Y-axis
+      - :math:`y_{1} = a.y_{0} + b`
+
+Swap X/Y axes
+~~~~~~~~~~~~~
+
+Create a new signal which is the result of swapping X/Y data.
+
+Reverse X-axis
+~~~~~~~~~~~~~~
+
+Create a new signal which is the result of reversing X data.
+
+Replace X by other signal's Y
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a new signal by combining two signals, using Y values from the second signal
+as X coordinates for the first signal's Y values.
+
+This feature is particularly useful for calibration scenarios, such as:
+
+- Applying wavelength calibration to spectroscopy data
+- Using a calibrated reference signal to rescale measurement data
+- Combining signals where one contains calibration points
+
+The two signals must have the same number of points. The operation directly uses
+the Y arrays without interpolation.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 40, 60
+
+    * - Input
+      - Description
+    * - Signal 1
+      - Provides the Y data for the output signal
+    * - Signal 2
+      - Provides the Y data that becomes the X coordinates of the output signal
+
+X-Y mode
+~~~~~~~~
+
+Create a new signal by simulating the X-Y mode of an oscilloscope.
+
+This operation plots one signal as a function of another by:
+
+1. Finding the overlapping X range between both signals
+2. Resampling both signals onto a common X grid within that overlap
+3. Using the resampled Y values as coordinates (first signal's Y as X, second signal's Y as Y)
+
+.. note::
+
+  This is different from "Replace X by other signal's Y" as it performs interpolation to handle signals
+  with different X arrays.
+
+Convert to Cartesian coordinates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a new signal which is the result of converting polar coordinates to Cartesian coordinates.
+
+This function assumes that the x-axis represents the radius and the y-axis the angle.
+
+.. warning::
+
+    A radius cannot be negative. Any negative value is clipped to 0.
+
+
+Convert to polar coordinates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a new signal which is the result of converting Cartesian coordinates to polar coordinates.
+
+Level adjustment
+^^^^^^^^^^^^^^^^
+
+Normalize
+~~~~~~~~~
+
+Create a new signal which is the normalization of each selected signal
+by maximum, amplitude, sum, energy or RMS:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Parameter
+      - Normalization
+    * - Maximum
+      - :math:`y_{1}= \dfrac{y_{0}}{\max\left(y_{0}\right)}`
+    * - Amplitude
+      - :math:`y_{1}= \dfrac{y_{0}'}{\max\left(y_{0}'\right)}` with :math:`y_{0}'=y_{0}-\min\left(y_{0}\right)`
+    * - Area
+      - :math:`y_{1}= \dfrac{y_{0}}{\sum_{n=0}^{N}y_{0}[n]}`
+    * - Energy
+      - :math:`y_{1}= \dfrac{y_{0}}{\sqrt{\sum_{n=0}^{N}\left|y_{0}[n]\right|^2}}`
+    * - RMS
+      - :math:`y_{1}= \dfrac{y_{0}}{\sqrt{\dfrac{1}{N}\sum_{n=0}^{N}\left|y_{0}[n]\right|^2}}`
+
+Clipping
+~~~~~~~~
+
+Create a new signal which is the result of clipping each selected signal.
+
+Offset correction
+~~~~~~~~~~~~~~~~~
+
+Create a new signal which is the result of offset correction of each selected signal.
+This operation is performed by subtracting the signal baseline which is estimated by
+the mean value of a user-defined range.
+
+Noise addition
+^^^^^^^^^^^^^^
+
+Generate new signals by adding the same noise to each selected signal.
+The available noise types are:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Noise
+      - Description
+    * - Gaussian
+      - Normal distribution
+    * - Uniform
+      - Uniform distribution
+    * - Poisson
+      - Poisson distribution
+
+Noise reduction
+^^^^^^^^^^^^^^^
+
+Create a new signal which is the result of noise reduction of each selected signal.
+
+The following filters are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Filter
+      - Formula/implementation
+    * - Gaussian filter
+      - `scipy.ndimage.gaussian_filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html>`_
+    * - Moving average
+      - `scipy.ndimage.uniform_filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.uniform_filter.html>`_
+    * - Moving median
+      - `scipy.ndimage.median_filter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.median_filter.html>`_
+    * - Wiener filter
+      - `scipy.signal.wiener <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.wiener.html>`_
+
+Fourier analysis
+^^^^^^^^^^^^^^^^
+
+Zero padding
+~~~~~~~~~~~~
+
+Create a new signal which is the result of zero padding of each selected signal.
+
+The following parameters are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Parameter
+      - Description
+    * - Strategy
+      - Zero padding strategy (see below)
+    * - Number of points
+      - Custom length (if `strategy` is "custom")
+
+Zero padding strategy refers to the method used to increase the length of the signal, and it can be one of the following:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Strategy
+      - Description
+    * - next_pow2
+      - Next power of 2 (e.g. 1024 → 2048)
+    * - double
+      - Double the length (e.g. 1024 → 2048)
+    * - triple
+      - Triple the length (e.g. 1024 → 3072)
+    * - custom
+      - Custom length (user-defined)
+
+FFT related functions
+~~~~~~~~~~~~~~~~~~~~~
+
+Create a new signal which is the result of a Fourier analysis of each selected signal.
+
+The following functions are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 20, 30, 50
+
+    * - Function
+      - Description
+      - Formula/implementation
+    * - FFT
+      - Fast Fourier Transform
+      - `numpy.fft.fft <https://docs.scipy.org/doc/numpy/reference/generated/numpy.fft.fft.html>`_
+    * - Inverse FFT
+      - Inverse Fast Fourier Transform
+      - `numpy.fft.ifft <https://docs.scipy.org/doc/numpy/reference/generated/numpy.fft.ifft.html>`_
+    * - Magnitude spectrum
+      - Optional: output in decibels (dB)
+      - | :math:`y_{1} = \left|\FFT\left(y_{0}\right)\right|` or
+        | :math:`y_{1} = 20 \log_{10} \left(\left|\FFT\left(y_{0}\right)\right|\right)` (dB)
+    * - Phase spectrum
+      - Phase of the FFT expressed in degrees, using `numpy.angle <https://docs.scipy.org/doc/numpy/reference/generated/numpy.angle.html>`_
+      - :math:`y_{1} = \angle \FFT\left(y_{0}\right)`
+    * - Power spectral density (PSD)
+      - Optional: output in decibels (dB). PSD is estimated using Welch's method
+        (see `scipy.signal.welch <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html>`_)
+      - | :math:`y_{1} = \PSD\left(y_{0}\right)` or
+        | :math:`y_{1} = 10 \log_{10} \left(\PSD\left(y_{0}\right)\right)` (dB)
+
+.. note::
+
+    FFT and inverse FFT are performed using frequency shifting if the option is enabled
+    in DataLab settings (see :ref:`settings`).
+
+Frequency filters
+^^^^^^^^^^^^^^^^^
+
+Create a new signal which is the result of applying a frequency filter to each selected signal.
+
+The following filters are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Filter
+      - Description
+    * - |lowpass| Low-pass
+      - Filter out high frequencies, above a cutoff frequency
+    * - |highpass| High-pass
+      - Filter out low frequencies, below a cutoff frequency
+    * - |bandpass| Band-pass
+      - Filter out frequencies outside a range
+    * - |bandstop| Band-stop
+      - Filter out frequencies inside a range
+
+.. |lowpass| image:: ../../../datalab/data/icons/processing/lowpass.svg
+    :width: 24px
+    :height: 24px
+    :class: dark-light no-scaled-link
+
+.. |highpass| image:: ../../../datalab/data/icons/processing/highpass.svg
+    :width: 24px
+    :height: 24px
+    :class: dark-light no-scaled-link
+
+.. |bandpass| image:: ../../../datalab/data/icons/processing/bandpass.svg
+    :width: 24px
+    :height: 24px
+    :class: dark-light no-scaled-link
+
+.. |bandstop| image:: ../../../datalab/data/icons/processing/bandstop.svg
+    :width: 24px
+    :height: 24px
+    :class: dark-light no-scaled-link
+
+For each filter, the following methods are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Method
+      - Description
+    * - Bessel
+      - Bessel filter, using SciPy's `scipy.signal.bessel <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.bessel.html>`_ function
+    * - Brick wall
+      - Ideal (rectangular) filter in the frequency domain
+    * - Butterworth
+      - Butterworth filter, using SciPy's `scipy.signal.butter <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html>`_ function
+    * - Chebyshev I
+      - Chebyshev type I filter, using SciPy's `scipy.signal.cheby1 <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.cheby1.html>`_ function
+    * - Chebyshev II
+      - Chebyshev type II filter, using SciPy's `scipy.signal.cheby2 <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.cheby2.html>`_ function
+    * - Elliptic
+      - Elliptic filter, using SciPy's `scipy.signal.ellip <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ellip.html>`_ function
+
+Fitting
+^^^^^^^
+
+Fit a model to each selected signal.
+This can be done automatically or through an interactive curve fitting dialog.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 20, 80
+
+    * - Model
+      - Equation
+    * - Linear
+      - :math:`y = c_{0} + c_{1} \cdot x`
+    * - Polynomial
+      - :math:`y = c_{0} + c_{1} \cdot x + c_{2} \cdot x^2 + ... + c_{n} \cdot x^n`
+    * - Gaussian
+      - :math:`y = y_{0} + \dfrac{A}{\sqrt{2 \pi} \sigma} \exp\left(-\dfrac{1}{2} \left(\dfrac{x - x_{0}}{\sigma}\right)^2\right)`
+    * - Lorentzian
+      - :math:`y = y_{0} + \dfrac{A}{\pi \sigma} \cdot \dfrac{1}{1+\left(\dfrac{x-x_{0}}{\sigma}\right)^2}`
+    * - Voigt
+      - :math:`y = y_{0} + A \cdot \dfrac{\Re\left(\exp(-z^2) \cdot \operatorname{erfc}(-j \cdot z)\right)}{\sqrt{2 \pi} \sigma}` with :math:`z = \dfrac{x - x_{0} - j \cdot \sigma}{\sqrt{2} \sigma}`
+    * - Multi-Gaussian
+      - :math:`y = y_{0} + \sum_{i=0}^{N}\dfrac{A_{i}}{\sqrt{2 \pi} \sigma_{i}} \exp\left(-\dfrac{1}{2} \left(\dfrac{x - x_{0,i}}{\sigma_{i}}\right)^2\right)`
+    * - Multi-Lorentzian
+      - :math:`y = y_{0} + \sum_{i=0}^{N}\dfrac{A_{i}}{\pi \sigma_{i}} \cdot \dfrac{1}{1 + \left(\dfrac{x - x_{0,i}}{\sigma_{i}}\right)^2}`
+    * - Planck
+      - :math:`y = y_{0} + A\cdot \dfrac{2h \cdot c^2}{\lambda^5} \cdot \left(\exp\left(\dfrac{h \cdot c}{\lambda \cdot k \cdot T}\right)-1\right)^{-1}`
+    * - Two half Gaussians
+      - | :math:`y = y_{0} + A \cdot \dfrac{1}{\sqrt{2 \pi} \sigma_{0}} \cdot \exp\left(-\dfrac{1}{2}\left(\dfrac{x - x_{0}}{\sigma_{0}}\right)^2\right)` if :math:`x < x_{0}`
+        | :math:`y = y_{0} + A \cdot \dfrac{1}{\sqrt{2 \pi} \sigma_{1}} \cdot \exp\left(-\dfrac{1}{2}\left(\dfrac{x - x_{1}}{\sigma_{1}}\right)^2\right)` otherwise
+    * - Two back-to-back exponentials
+      - | :math:`y = y_{0} + A_{1} \cdot \exp\left(-x/\tau_{1}\right)` if :math:`x < 0`
+        | :math:`y = y_{0} + A_{2} \cdot \exp(-x/\tau_{2})` otherwise
+    * - Exponential
+      - :math:`y = y_{0} + A \exp\left(B \cdot x\right)`
+    * - Sinusoidal
+      - :math:`y = y_{0} + A \sin\left(2 \pi f \cdot x + \phi\right)`
+    * - Cumulative Distribution Function (CDF)
+      - :math:`y = y_{0} + A \erf\left(\dfrac{x - x_{0}}{\sqrt{2} \sigma}\right)`
+
+Windowing
+^^^^^^^^^
+
+Create a new signal which is the result of applying a window function to each selected signal.
+
+The following window functions are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 20, 80
+
+    * - Window function
+      - Reference
+    * - Barthann
+      - :py:func:`scipy.signal.windows.barthann`
+    * - Bartlett
+      - :py:func:`numpy.bartlett`
+    * - Blackman
+      - :py:func:`scipy.signal.windows.blackman`
+    * - Blackman-Harris
+      - :py:func:`scipy.signal.windows.blackmanharris`
+    * - Bohman
+      - :py:func:`scipy.signal.windows.bohman`
+    * - Boxcar (rectangular)
+      - :py:func:`scipy.signal.windows.boxcar`
+    * - Cosine
+      - :py:func:`scipy.signal.windows.cosine`
+    * - Exponential
+      - :py:func:`scipy.signal.windows.exponential`
+    * - Flat top
+      - :py:func:`scipy.signal.windows.flattop`
+    * - Gaussian
+      - :py:func:`scipy.signal.windows.gaussian`
+    * - Hamming
+      - :py:func:`numpy.hamming`
+    * - Hann
+      - :py:func:`numpy.hanning`
+    * - Kaiser
+      - :py:func:`scipy.signal.windows.kaiser`
+    * - Lanczos
+      - :py:func:`scipy.signal.windows.lanczos`
+    * - Nuttall
+      - :py:func:`scipy.signal.windows.nuttall`
+    * - Parzen
+      - :py:func:`scipy.signal.windows.parzen`
+    * - Taylor
+      - :py:func:`scipy.signal.windows.taylor`
+    * - Tukey
+      - :py:func:`scipy.signal.windows.tukey`
+
+Detrending
+^^^^^^^^^^
+
+Create a new signal which is the detrending of each selected signal.
+This features is based on SciPy's `scipy.signal.detrend <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.detrend.html>`_ function.
+
+The following parameters are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Parameter
+      - Description
+    * - Method
+      - Detrending method: 'linear' or 'constant'. See SciPy's `scipy.signal.detrend <https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.detrend.html>`_ function.
+
+Interpolation
+^^^^^^^^^^^^^
+
+Create a new signal which is the interpolation of each selected signal
+with respect to a second signal X-axis (which might be the same as one of
+the selected signals).
+
+The following interpolation methods are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Method
+      - Description
+    * - Linear
+      - Linear interpolation, using using NumPy's `interp <https://docs.scipy.org/doc/numpy/reference/generated/numpy.interp.html>`_ function
+    * - Spline
+      - Cubic spline interpolation, using using SciPy's `scipy.interpolate.splev <https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.splev.html>`_ function
+    * - Quadratic
+      - Quadratic interpolation, using using NumPy's `polyval <https://docs.scipy.org/doc/numpy/reference/generated/numpy.polyval.html>`_ function
+    * - Cubic
+      - Cubic interpolation, using using SciPy's `Akima1DInterpolator <https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.Akima1DInterpolator.html>`_ class
+    * - Barycentric
+      - Barycentric interpolation, using using SciPy's `BarycentricInterpolator <https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.BarycentricInterpolator.html>`_ class
+    * - PCHIP
+      - Piecewise Cubic Hermite Interpolating Polynomial (PCHIP) interpolation, using using SciPy's `PchipInterpolator <https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.PchipInterpolator.html>`_ class
+
+Resampling
+^^^^^^^^^^
+
+Create a new signal which is the resampling of each selected signal.
+
+The following parameters are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Parameter
+      - Description
+    * - Method
+      - Interpolation method (see previous section)
+    * - Fill value
+      - Interpolation fill value (see previous section)
+    * - Xmin
+      - Minimum X value
+    * - Xmax
+      - Maximum X value
+    * - Mode
+      - Resampling mode: step size or number of points
+    * - Step size
+      - Resampling step size
+    * - Number of points
+      - Resampling number of points
+
+Stability analysis
+^^^^^^^^^^^^^^^^^^
+
+Create a new signal which is the result of a stability analysis of each selected signal.
+
+The following stability analysis methods are available:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25, 75
+
+    * - Function
+      - Description
+    * - Allan variance
+      - Measure of the stability of a signal: defined as the variance of the difference between two successive measurements as a function of the time interval between them.
+    * - Allan deviation
+      - Square root of the Allan variance.
+    * - Overlapping Allan deviation
+      - A more robust version of the Allan variance that overlaps successive segments to improve statistical confidence.
+    * - Modified Allan variance
+      - A variation of the Allan variance that accounts for phase noise by introducing a filtering operation.
+    * - Hadamard variance
+      - An alternative to Allan variance, more robust to linear frequency drift in the signal
+    * - Total variance
+      - Extends the Allan variance concept to cover all possible averaging intervals.
+    * - Time deviation
+      - Derived from Allan deviation, quantifies stability in terms of time rather than frequency.
+
+.. note::
+
+    The "All stability features" option allows to compute all stability analysis methods at once.

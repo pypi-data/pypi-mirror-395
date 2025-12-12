@@ -1,0 +1,1702 @@
+# Copyright (c) DataLab Platform Developers, BSD 3-Clause license, see LICENSE file.
+
+"""
+Action handler
+==============
+
+The :mod:`datalab.gui.actionhandler` module handles all application actions
+(menus, toolbars, context menu). These actions point to DataLab panels, processors,
+objecthandler, ...
+
+Utility classes
+---------------
+
+.. autoclass:: SelectCond
+    :members:
+
+.. autoclass:: ActionCategory
+    :members:
+
+Handler classes
+---------------
+
+.. autoclass:: SignalActionHandler
+    :members:
+    :inherited-members:
+
+.. autoclass:: ImageActionHandler
+    :members:
+    :inherited-members:
+"""
+
+# pylint: disable=invalid-name  # Allows short reference names like x, y, ...
+
+from __future__ import annotations
+
+import abc
+import enum
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
+from functools import partial
+from typing import TYPE_CHECKING
+
+import sigima.objects as sio
+from guidata.configtools import get_icon
+from guidata.qthelpers import add_actions, create_action
+from qtpy import QtCore as QC
+from qtpy import QtGui as QG
+from qtpy import QtWidgets as QW
+
+from datalab.adapters_metadata import GeometryAdapter, TableAdapter, have_results
+from datalab.config import Conf, _
+from datalab.gui import newobject
+from datalab.widgets import fitdialog
+
+if TYPE_CHECKING:
+    from sigima.objects import ImageObj, SignalObj
+
+    from datalab.gui.panel.image import ImagePanel
+    from datalab.gui.panel.signal import SignalPanel
+    from datalab.objectmodel import ObjectGroup
+
+
+class SelectCond:
+    """Signal or image select conditions"""
+
+    @staticmethod
+    def __compat_groups(selected_groups: list[ObjectGroup], min_len: int = 1) -> bool:
+        """Check if groups are compatible"""
+        return (
+            len(selected_groups) >= min_len
+            and all(len(group) == len(selected_groups[0]) for group in selected_groups)
+            and all(len(group) > 0 for group in selected_groups)
+        )
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def always(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Always true"""
+        return True
+
+    @staticmethod
+    def exactly_one(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Exactly one signal or image is selected"""
+        return len(selected_groups) == 0 and len(selected_objects) == 1
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def exactly_one_group(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Exactly one group is selected"""
+        return len(selected_groups) == 1
+
+    @staticmethod
+    def exactly_one_group_or_one_object(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Exactly one group or one signal or image is selected"""
+        return len(selected_groups) == 1 or len(selected_objects) == 1
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def at_least_one_group_or_one_object(
+        sel_groups: list[ObjectGroup],
+        sel_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """At least one group or one signal or image is selected"""
+        return len(sel_objects) >= 1 or len(sel_groups) >= 1
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def at_least_one(
+        sel_groups: list[ObjectGroup],
+        sel_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """At least one signal or image is selected"""
+        return len(sel_objects) >= 1 or SelectCond.__compat_groups(sel_groups, 1)
+
+    @staticmethod
+    def at_least_two(
+        sel_groups: list[ObjectGroup],
+        sel_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """At least two signals or images are selected"""
+        return len(sel_objects) >= 2 or SelectCond.__compat_groups(sel_groups, 2)
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def with_roi(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """At least one signal or image has a ROI"""
+        return any(obj.roi is not None for obj in selected_objects)
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def exactly_one_with_roi(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Exactly one signal or image has a ROI"""
+        return (
+            len(selected_groups) == 0
+            and len(selected_objects) == 1
+            and selected_objects[0].roi is not None
+        )
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def exactly_one_with_annotations(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Exactly one signal or image has annotations"""
+        return (
+            len(selected_groups) == 0
+            and len(selected_objects) == 1
+            and selected_objects[0].has_annotations()
+        )
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def with_annotations(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """At least one signal or image has annotations"""
+        return any(obj.has_annotations() for obj in selected_objects)
+
+    @staticmethod
+    # pylint: disable=unused-argument
+    def with_results(
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """At least one signal or image has results"""
+        return have_results(selected_objects)
+
+
+class ActionCategory(enum.Enum):
+    """Action categories"""
+
+    FILE = enum.auto()
+    CREATE = enum.auto()
+    EDIT = enum.auto()
+    VIEW = enum.auto()
+    ROI = enum.auto()
+    OPERATION = enum.auto()
+    PROCESSING = enum.auto()
+    ANALYSIS = enum.auto()
+    CONTEXT_MENU = enum.auto()
+    PANEL_TOOLBAR = enum.auto()
+    VIEW_TOOLBAR = enum.auto()
+    SUBMENU = enum.auto()  # temporary
+    PLUGINS = enum.auto()  # for plugins actions
+
+
+class BaseActionHandler(metaclass=abc.ABCMeta):
+    """Object handling panel GUI interactions: actions, menus, ...
+
+    Args:
+        panel: Panel to handle
+        panel_toolbar: Panel toolbar (actions related to the panel objects management)
+        view_toolbar: View toolbar (actions related to the panel view, i.e. plot)
+    """
+
+    OBJECT_STR = ""  # e.g. "signal"
+    OBJECT_STR_PLURAL = ""  # e.g. "signals"
+
+    def __init__(
+        self,
+        panel: SignalPanel | ImagePanel,
+        panel_toolbar: QW.QToolBar,
+        view_toolbar: QW.QToolBar,
+    ):
+        self.panel = panel
+        self.panel_toolbar = panel_toolbar
+        self.view_toolbar = view_toolbar
+        self.feature_actions = {}
+        self.operation_end_actions = None
+        self.__category_in_progress: ActionCategory = None
+        self.__submenu_in_progress = False
+        self.__submenu_stack: list[dict[str, any]] = []  # Stack for nested submenus
+        self.__actions: dict[Callable, list[QW.QAction]] = {}
+        self.__submenus: dict[str, QW.QMenu] = {}
+        # Store reference to ROI remove submenu
+        self.roi_remove_submenu: QW.QMenu | None = None
+        # Store reference to results delete submenu
+        self.results_delete_submenu: QW.QMenu | None = None
+        # Store reference to metadata and annotations submenus (for screenshots)
+        self.metadata_submenu: QW.QMenu | None = None
+        self.annotations_submenu: QW.QMenu | None = None
+        # Store reference to show label action (for settings dialog)
+        self.show_label_action: QW.QAction | None = None
+
+    @property
+    def object_suffix(self) -> str:
+        """Object suffix (e.g. "sig" for signal, "ima" for image)"""
+        return self.__class__.__name__[:3].lower()
+
+    def populate_roi_remove_submenu(self) -> None:
+        """Populate the ROI Remove submenu dynamically based on current selection"""
+        submenu = self.roi_remove_submenu
+        if submenu is None:
+            return
+
+        # Clear existing actions
+        submenu.clear()
+
+        # Get current selected object
+        selected_objects = self.panel.objview.get_sel_objects()
+        if not selected_objects:
+            return
+
+        obj = selected_objects[0]
+        if obj.roi is None or obj.roi.is_empty():
+            return
+
+        # Add individual ROI removal actions
+        for i in range(len(obj.roi.single_rois)):
+            roi_title = obj.roi.get_single_roi_title(i)
+            action = QW.QAction(roi_title, submenu)
+            # Use partial to avoid lambda closure issues
+            action.triggered.connect(partial(self._remove_single_roi_by_index, i))
+            submenu.addAction(action)
+
+        # Add separator and "Remove all" action
+        if len(obj.roi.single_rois) > 0:
+            submenu.addSeparator()
+            remove_all_action = QW.QAction(_("Remove all"), submenu)
+            remove_all_action.triggered.connect(
+                self.panel.processor.delete_regions_of_interest
+            )
+            submenu.addAction(remove_all_action)
+
+    def _remove_single_roi_by_index(self, roi_index: int) -> None:
+        """Helper method to remove a single ROI by index"""
+        self.panel.processor.delete_single_roi(roi_index)
+
+    def has_metadata_in_clipboard(
+        self,
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Check if metadata clipboard is not empty"""
+        # pylint: disable=unused-argument
+        return bool(self.panel.metadata_clipboard)
+
+    def has_annotations_in_clipboard(
+        self,
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> bool:
+        """Check if annotations clipboard is not empty"""
+        # pylint: disable=unused-argument
+        return bool(self.panel.annotations_clipboard)
+
+    def populate_results_delete_submenu(self) -> None:
+        """Populate the Results Delete submenu dynamically based on current selection"""
+        submenu = self.results_delete_submenu
+        if submenu is None:
+            return
+
+        # Clear existing actions
+        submenu.clear()
+
+        # Get current selected objects (including groups)
+        objs = self.panel.objview.get_sel_objects(include_groups=True)
+        if not objs:
+            submenu.setEnabled(False)
+            return
+
+        # Collect all results with their metadata keys and titles
+        result_items = []  # List of (metadata_key, title, obj, adapter)
+
+        for obj in objs:
+            # Get all adapters for this object
+            for adapter in list(GeometryAdapter.iterate_from_obj(obj)) + list(
+                TableAdapter.iterate_from_obj(obj)
+            ):
+                metadata_key = adapter.metadata_key
+                title = adapter.title
+                result_items.append((metadata_key, title, obj, adapter))
+
+        if not result_items:
+            submenu.setEnabled(False)
+            return
+
+        # Enable submenu since we have results
+        submenu.setEnabled(True)
+
+        # Add individual result deletion actions
+        for metadata_key, title, obj, adapter in result_items:
+            action = QW.QAction(title, submenu)
+            # Use partial to avoid lambda closure issues
+            action.triggered.connect(partial(self._delete_single_result, obj, adapter))
+            submenu.addAction(action)
+
+        # Add separator and "Delete all results..." action
+        if result_items:
+            submenu.addSeparator()
+            delete_all_action = QW.QAction(_("Delete all results") + "...", submenu)
+            delete_all_action.triggered.connect(self.panel.delete_results)
+            submenu.addAction(delete_all_action)
+
+    def _delete_single_result(
+        self, obj: SignalObj | ImageObj, adapter: GeometryAdapter | TableAdapter
+    ) -> None:
+        """Helper method to delete a single result
+
+        Args:
+            obj: Object containing the result
+            adapter: Adapter for the result to delete
+        """
+        adapter.remove_from(obj)
+        # Update properties panel to reflect the removal
+        if obj is self.panel.objview.get_current_object():
+            self.panel.objprop.update_properties_from(obj)
+        # Update action states to reflect the removal
+        selected_groups = self.panel.objview.get_sel_groups()
+        selected_objects = self.panel.objview.get_sel_objects(include_groups=True)
+        self.selected_objects_changed(selected_groups, selected_objects)
+        # Refresh the plot to update the display
+        # Use the same refresh pattern as delete_results() method
+        self.panel.refresh_plot("selected", True, False)
+
+    @contextmanager
+    def new_category(self, category: ActionCategory) -> Generator[None, None, None]:
+        """Context manager for creating a new menu.
+
+        Args:
+            category: Action category
+
+        Yields:
+            None
+        """
+        self.__category_in_progress = category
+        try:
+            yield
+        finally:
+            self.__category_in_progress = None
+
+    @contextmanager
+    def new_menu(
+        self,
+        title: str,
+        icon_name: str | None = None,
+        store_ref: str | None = None,
+    ) -> Generator[None, None, None]:
+        """Context manager for creating a new menu.
+
+        Args:
+            title: Menu title
+            icon_name: Menu icon name. Defaults to None.
+            store_ref: Optional attribute name to store menu reference.
+             Defaults to None.
+
+        Yields:
+            None
+        """
+        # Create a unique key for this submenu level
+        parent_key = ""
+        if self.__submenu_stack:
+            parent_key = self.__submenu_stack[-1]["key"] + "/"
+        elif self.__category_in_progress:
+            parent_key = self.__category_in_progress.name + "/"
+
+        key = parent_key + title
+        is_new = key not in self.__submenus
+
+        if is_new:
+            self.__submenus[key] = menu = QW.QMenu(title)
+            if icon_name:
+                menu.setIcon(get_icon(icon_name))
+            # Store reference to menu if requested
+            if store_ref is not None:
+                setattr(self, store_ref, menu)
+        else:
+            menu = self.__submenus[key]
+
+        # Save current submenu state and push new submenu onto stack
+        submenu_state = {
+            "key": key,
+            "menu": menu,
+            "is_new": is_new,
+            "actions": [],  # Actions for this submenu level
+        }
+        self.__submenu_stack.append(submenu_state)
+        self.__submenu_in_progress = True
+
+        try:
+            yield
+        finally:
+            # Pop the current submenu from stack
+            current_submenu = self.__submenu_stack.pop()
+
+            # Get actions for this specific submenu level
+            submenu_actions = current_submenu.get("actions", [])
+
+            # Also get any actions that were added to the generic SUBMENU category
+            # while this submenu was the active one
+            generic_submenu_actions = self.feature_actions.pop(
+                ActionCategory.SUBMENU, []
+            )
+            submenu_actions.extend(generic_submenu_actions)
+
+            add_actions(current_submenu["menu"], submenu_actions)
+
+            # Update submenu in progress status BEFORE adding to parent
+            self.__submenu_in_progress = len(self.__submenu_stack) > 0
+
+            if current_submenu["is_new"]:
+                # Add this submenu to its parent (either category or parent submenu)
+                if self.__submenu_stack:
+                    # We're in a nested submenu, add to parent submenu's actions
+                    parent_submenu = self.__submenu_stack[-1]
+                    parent_submenu["actions"].append(current_submenu["menu"])
+                else:
+                    # We're at the top level, add to category actions
+                    # Force using the current category, not SUBMENU
+                    self.add_to_action_list(
+                        current_submenu["menu"], category=self.__category_in_progress
+                    )
+
+    # pylint: disable=too-many-positional-arguments
+    def new_action(
+        self,
+        title: str,
+        position: int | None = None,
+        separator: bool = False,
+        triggered: Callable | None = None,
+        toggled: Callable | None = None,
+        shortcut: QW.QShortcut | None = None,
+        icon_name: str | None = None,
+        tip: str | None = None,
+        select_condition: Callable | str | None = None,
+        context_menu_pos: int | None = None,
+        context_menu_sep: bool = False,
+        toolbar_pos: int | None = None,
+        toolbar_sep: bool = False,
+        toolbar_category: ActionCategory | None = None,
+    ) -> QW.QAction:
+        """Create new action and add it to list of actions.
+
+        Args:
+            title: action title
+            position: add action to menu at this position. Defaults to None.
+            separator: add separator before action in menu
+             (or after if pos is positive). Defaults to False.
+            triggered: triggered callback. Defaults to None.
+            toggled: toggled callback. Defaults to None.
+            shortcut: shortcut. Defaults to None.
+            icon_name: icon name. Defaults to None.
+            tip: tooltip. Defaults to None.
+            select_condition: selection condition. Defaults to None.
+             If str, must be the name of a method of SelectCond, i.e. one of
+             "always", "exactly_one", "exactly_one_group",
+             "at_least_one_group_or_one_object", "at_least_one",
+             "at_least_two", "with_roi".
+            context_menu_pos: add action to context menu at this position.
+             Defaults to None.
+            context_menu_sep: add separator before action in context menu
+             (or after if context_menu_pos is positive). Defaults to False.
+            toolbar_pos: add action to toolbar at this position. Defaults to None.
+            toolbar_sep: add separator before action in toolbar
+             (or after if toolbar_pos is positive). Defaults to False.
+            toolbar_category: toolbar category. Defaults to None.
+             If toolbar_pos is not None, this specifies the category of the toolbar.
+             If None, defaults to ActionCategory.VIEW_TOOLBAR if the current category
+             is ActionCategory.VIEW, else to ActionCategory.PANEL_TOOLBAR.
+
+        Returns:
+            New action
+        """
+        if isinstance(select_condition, str):
+            assert select_condition in SelectCond.__dict__
+            select_condition = getattr(SelectCond, select_condition)
+
+        action = create_action(
+            parent=self.panel,
+            title=title,
+            triggered=triggered,
+            toggled=toggled,
+            shortcut=shortcut,
+            icon=get_icon(icon_name) if icon_name else None,
+            tip=tip,
+            context=QC.Qt.WidgetWithChildrenShortcut,  # [1]
+        )
+        self.panel.addAction(action)  # [1]
+        # [1] This is needed to make actions work with shortcuts for active panel,
+        # because some of the shortcuts are using the same keybindings for both panels.
+        # (Fixes #10)
+
+        self.add_action(action, select_condition)
+        self.add_to_action_list(action, None, position, separator)
+        if context_menu_pos is not None:
+            self.add_to_action_list(
+                action, ActionCategory.CONTEXT_MENU, context_menu_pos, context_menu_sep
+            )
+        if toolbar_pos is not None:
+            if toolbar_category is None:
+                if self.__category_in_progress is ActionCategory.VIEW:
+                    toolbar_category = ActionCategory.VIEW_TOOLBAR
+                else:
+                    toolbar_category = ActionCategory.PANEL_TOOLBAR
+            self.add_to_action_list(action, toolbar_category, toolbar_pos, toolbar_sep)
+        return action
+
+    def action_for(
+        self,
+        function_or_name: Callable | str,
+        position: int | None = None,
+        separator: bool = False,
+        context_menu_pos: int | None = None,
+        context_menu_sep: bool = False,
+        toolbar_pos: int | None = None,
+        toolbar_sep: bool = False,
+        toolbar_category: ActionCategory | None = None,
+    ) -> QW.QAction:
+        """Create action for a feature.
+
+        Args:
+            function_or_name: function or name of the feature
+            position: add action to menu at this position. Defaults to None.
+            separator: add separator before action in menu
+            context_menu_pos: add action to context menu at this position.
+            context_menu_pos: add action to context menu at this position.
+             Defaults to None.
+            context_menu_sep: add separator before action in context menu
+             (or after if context_menu_pos is positive). Defaults to False.
+            toolbar_pos: add action to toolbar at this position. Defaults to None.
+            toolbar_sep: add separator before action in toolbar
+             (or after if toolbar_pos is positive). Defaults to False.
+            toolbar_category: toolbar category. Defaults to None.
+             If toolbar_pos is not None, this specifies the category of the toolbar.
+             If None, defaults to ActionCategory.VIEW_TOOLBAR if the current category
+             is ActionCategory.VIEW, else to ActionCategory.PANEL_TOOLBAR.
+
+        Returns:
+            New action
+        """
+        feature = self.panel.processor.get_feature(function_or_name)
+        if feature.pattern == "n_to_1":
+            condition = SelectCond.at_least_two
+        else:
+            condition = SelectCond.at_least_one
+        return self.new_action(
+            feature.action_title,
+            position=position,
+            separator=separator,
+            triggered=lambda: self.panel.processor.run_feature(feature.function),
+            select_condition=condition,
+            icon_name=feature.icon_name,
+            tip=feature.comment,
+            context_menu_pos=context_menu_pos,
+            context_menu_sep=context_menu_sep,
+            toolbar_pos=toolbar_pos,
+            toolbar_sep=toolbar_sep,
+            toolbar_category=toolbar_category,
+        )
+
+    def add_to_action_list(
+        self,
+        action: QW.QAction,
+        category: ActionCategory | None = None,
+        pos: int | None = None,
+        sep: bool = False,
+    ) -> None:
+        """Add action to list of actions.
+
+        Args:
+            action: action to add
+            category: action category. Defaults to None.
+             If None, action is added to the current category.
+            pos: add action to menu at this position. Defaults to None.
+             If None, action is added at the end of the list.
+            sep: add separator before action in menu
+             (or after if pos is positive). Defaults to False.
+        """
+        if category is None:
+            if self.__submenu_in_progress and self.__submenu_stack:
+                # Add directly to the current submenu's action list
+                current_submenu = self.__submenu_stack[-1]
+                actionlist = current_submenu["actions"]
+                if pos is None:
+                    pos = -1
+                add_separator_after = pos >= 0
+                if pos < 0:
+                    pos = len(actionlist) + pos + 1
+                actionlist.insert(pos, action)
+                if sep:
+                    if add_separator_after:
+                        pos += 1
+                    actionlist.insert(pos, None)
+                return
+            if self.__category_in_progress is not None:
+                category = self.__category_in_progress
+            else:
+                raise ValueError("No category specified")
+        if pos is None:
+            pos = -1
+        actionlist = self.feature_actions.setdefault(category, [])
+        add_separator_after = pos >= 0
+        if pos < 0:
+            pos = len(actionlist) + pos + 1
+        actionlist.insert(pos, action)
+        if sep:
+            if add_separator_after:
+                pos += 1
+            actionlist.insert(pos, None)
+
+    def add_action(
+        self, action: QW.QAction, select_condition: Callable | None = None
+    ) -> None:
+        """Add action to list of actions.
+
+        Args:
+            action: action to add
+            select_condition: condition to enable action. Defaults to None.
+             If None, action is enabled if at least one object is selected.
+        """
+        if select_condition is None:
+            select_condition = SelectCond.at_least_one
+        self.__actions.setdefault(select_condition, []).append(action)
+
+    def selected_objects_changed(
+        self,
+        selected_groups: list[ObjectGroup],
+        selected_objects: list[SignalObj | ImageObj],
+    ) -> None:
+        """Update actions based on selected objects.
+
+        Args:
+            selected_groups: selected groups
+            selected_objects: selected objects
+        """
+        for cond, actlist in self.__actions.items():
+            if cond is not None:
+                for act in actlist:
+                    act.setEnabled(cond(selected_groups, selected_objects))
+
+    def create_all_actions(self):
+        """Create all actions"""
+        self.create_first_actions()
+        self.create_last_actions()
+
+        # Connect ROI remove submenu signal after all actions are created
+        if self.roi_remove_submenu is not None:
+            self.roi_remove_submenu.aboutToShow.connect(
+                self.populate_roi_remove_submenu
+            )
+            # Add the submenu to the action management system with ROI condition
+            self.add_action(self.roi_remove_submenu, SelectCond.with_roi)
+
+        # Connect results delete submenu signal after all actions are created
+        if self.results_delete_submenu is not None:
+            self.results_delete_submenu.aboutToShow.connect(
+                self.populate_results_delete_submenu
+            )
+            # Add the submenu to the action management system
+            self.add_action(
+                self.results_delete_submenu,
+                SelectCond.at_least_one_group_or_one_object,
+            )
+
+        add_actions(
+            self.panel_toolbar, self.feature_actions.pop(ActionCategory.PANEL_TOOLBAR)
+        )
+        # For the view toolbar, we add the actions to the beginning of the toolbar:
+        before = self.view_toolbar.actions()[0]
+        for action in self.feature_actions.pop(ActionCategory.VIEW_TOOLBAR):
+            if action is None:
+                self.view_toolbar.insertSeparator(before)
+            else:
+                self.view_toolbar.insertAction(before, action)
+        self.view_toolbar.insertSeparator(before)
+
+    def create_first_actions(self):
+        """Create actions that are added to the menus in the first place"""
+        # MARK: FILE
+        with self.new_category(ActionCategory.FILE):
+            self.new_action(
+                _("Open %s...") % self.OBJECT_STR,
+                # Icon name is 'fileopen_sig.svg' or 'fileopen_ima.svg':
+                icon_name=f"fileopen_{self.object_suffix}.svg",
+                tip=_("Open one or more %s files") % self.OBJECT_STR,
+                triggered=self.panel.load_from_files,
+                shortcut=QG.QKeySequence(QG.QKeySequence.Open),
+                select_condition=SelectCond.always,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Open from directory..."),
+                icon_name="fileopen_directory.svg",
+                tip=_("Open all %s files from directory") % self.OBJECT_STR,
+                triggered=self.panel.load_from_directory,
+                select_condition=SelectCond.always,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Save %s...") % self.OBJECT_STR,
+                # Icon name is 'filesave_sig.svg' or 'filesave_ima.svg'
+                icon_name=f"filesave_{self.object_suffix}.svg",
+                tip=_("Save selected %s") % self.OBJECT_STR_PLURAL,
+                triggered=self.panel.save_to_files,
+                shortcut=QG.QKeySequence(QG.QKeySequence.Save),
+                select_condition=SelectCond.at_least_one,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Save to directory..."),
+                icon_name="save_to_directory.svg",
+                tip=_("Save selected %s using a filename pattern")
+                % self.OBJECT_STR_PLURAL,
+                triggered=self.panel.save_to_directory,
+                select_condition=SelectCond.at_least_two,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Import text file..."),
+                icon_name="import_text.svg",
+                triggered=self.panel.exec_import_wizard,
+                select_condition=SelectCond.always,
+            )
+
+        # MARK: EDIT
+        with self.new_category(ActionCategory.EDIT):
+            self.new_action(
+                _("Recompute"),
+                icon_name="recompute.svg",
+                shortcut="Ctrl+R",
+                tip=_("Recompute selected %s with its processing parameters")
+                % self.OBJECT_STR,
+                triggered=self.panel.recompute_processing,
+                select_condition=SelectCond.at_least_one_group_or_one_object,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Select source objects"),
+                icon_name="goto_source.svg",
+                tip=_("Select source object(s) used to create the selected %s")
+                % self.OBJECT_STR,
+                triggered=self.panel.select_source_objects,
+                select_condition=SelectCond.exactly_one,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Rename"),
+                icon_name="rename.svg",
+                shortcut="F2",
+                tip=_("Edit title of selected %s or group") % self.OBJECT_STR,
+                triggered=self.panel.rename_selected_object_or_group,
+                select_condition=SelectCond.exactly_one_group_or_one_object,
+                context_menu_pos=-1,
+                separator=True,
+            )
+            self.new_action(
+                _("New group..."),
+                icon_name="new_group.svg",
+                tip=_("Create a new group"),
+                triggered=self.panel.new_group,
+                select_condition=SelectCond.always,
+                context_menu_pos=-1,
+            )
+            self.new_action(
+                _("Move up"),
+                icon_name="move_up.svg",
+                tip=_("Move up selection (groups or objects)"),
+                triggered=self.panel.objview.move_up,
+                select_condition=SelectCond.at_least_one_group_or_one_object,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Move down"),
+                icon_name="move_down.svg",
+                tip=_("Move down selection (groups or objects)"),
+                triggered=self.panel.objview.move_down,
+                select_condition=SelectCond.at_least_one_group_or_one_object,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Duplicate"),
+                icon_name="duplicate.svg",
+                tip=_("Duplicate selected %s") % self.OBJECT_STR,
+                separator=True,
+                triggered=self.panel.duplicate_object,
+                shortcut=QG.QKeySequence(QG.QKeySequence.Copy),
+                select_condition=SelectCond.at_least_one_group_or_one_object,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Remove"),
+                icon_name="delete.svg",
+                tip=_("Remove selected %s") % self.OBJECT_STR,
+                triggered=self.panel.remove_object,
+                shortcut=QG.QKeySequence(QG.QKeySequence.Delete),
+                select_condition=SelectCond.at_least_one_group_or_one_object,
+                context_menu_pos=-1,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Delete all"),
+                select_condition=SelectCond.always,
+                shortcut="Shift+Ctrl+Suppr",
+                tip=_("Delete all groups and objects"),
+                icon_name="delete_all.svg",
+                triggered=self.panel.delete_all_objects,
+                toolbar_pos=-1,
+            )
+            with self.new_menu(
+                _("Metadata"), icon_name="metadata.svg", store_ref="metadata_submenu"
+            ):
+                self.new_action(
+                    _("Copy metadata"),
+                    icon_name="metadata_copy.svg",
+                    tip=_("Copy metadata from selected %s") % self.OBJECT_STR,
+                    triggered=self.panel.copy_metadata,
+                    select_condition=SelectCond.exactly_one,
+                    toolbar_pos=-1,
+                )
+                self.new_action(
+                    _("Paste metadata"),
+                    icon_name="metadata_paste.svg",
+                    tip=_("Paste metadata into selected %s") % self.OBJECT_STR,
+                    triggered=self.panel.paste_metadata,
+                    select_condition=self.has_metadata_in_clipboard,
+                    toolbar_pos=-1,
+                )
+                self.new_action(
+                    _("Add metadata") + "...",
+                    separator=True,
+                    icon_name="metadata_add.svg",
+                    tip=_("Add a metadata item to selected %s") % self.OBJECT_STR,
+                    triggered=self.panel.add_metadata,
+                    select_condition=SelectCond.at_least_one,
+                    toolbar_pos=-1,
+                )
+                self.new_action(
+                    _("Import metadata") + "...",
+                    icon_name="metadata_import.svg",
+                    tip=_("Import metadata into %s") % self.OBJECT_STR,
+                    triggered=self.panel.import_metadata_from_file,
+                    select_condition=SelectCond.exactly_one,
+                    toolbar_pos=-1,
+                )
+                self.new_action(
+                    _("Export metadata") + "...",
+                    icon_name="metadata_export.svg",
+                    tip=_("Export selected %s metadata") % self.OBJECT_STR,
+                    triggered=self.panel.export_metadata_from_file,
+                    select_condition=SelectCond.exactly_one,
+                    toolbar_pos=-1,
+                )
+                self.new_action(
+                    _("Delete object metadata"),
+                    separator=True,
+                    icon_name="metadata_delete.svg",
+                    tip=_("Delete all that is contained in object metadata"),
+                    triggered=self.panel.delete_metadata,
+                    toolbar_pos=-1,
+                )
+            with self.new_menu(
+                _("Annotations"),
+                icon_name="annotations.svg",
+                store_ref="annotations_submenu",
+            ):
+                self.new_action(
+                    _("Copy annotations"),
+                    icon_name="annotations_copy.svg",
+                    tip=_("Copy annotations from selected %s") % self.OBJECT_STR,
+                    triggered=self.panel.copy_annotations,
+                    select_condition=SelectCond.exactly_one_with_annotations,
+                )
+                self.new_action(
+                    _("Paste annotations"),
+                    icon_name="annotations_paste.svg",
+                    tip=_("Paste annotations into selected %s") % self.OBJECT_STR,
+                    triggered=self.panel.paste_annotations,
+                    select_condition=self.has_annotations_in_clipboard,
+                )
+                self.new_action(
+                    _("Edit annotations") + "...",
+                    separator=True,
+                    icon_name="annotations_edit.svg",
+                    tip=_("Edit annotations of selected %s") % self.OBJECT_STR,
+                    triggered=lambda: self.panel.open_separate_view(
+                        edit_annotations=True
+                    ),
+                    select_condition=SelectCond.exactly_one,
+                )
+                self.new_action(
+                    _("Import annotations") + "...",
+                    icon_name="annotations_import.svg",
+                    tip=_("Import annotations into %s") % self.OBJECT_STR,
+                    triggered=self.panel.import_annotations_from_file,
+                    select_condition=SelectCond.exactly_one,
+                )
+                self.new_action(
+                    _("Export annotations") + "...",
+                    icon_name="annotations_export.svg",
+                    tip=_("Export selected %s annotations") % self.OBJECT_STR,
+                    triggered=self.panel.export_annotations_from_file,
+                    select_condition=SelectCond.exactly_one_with_annotations,
+                )
+                self.new_action(
+                    _("Delete annotations"),
+                    separator=True,
+                    icon_name="annotations_delete.svg",
+                    tip=_("Delete all annotations from selected %s") % self.OBJECT_STR,
+                    triggered=self.panel.delete_annotations,
+                    select_condition=SelectCond.with_annotations,
+                )
+            self.new_action(
+                _("Insert object title as annotation label"),
+                separator=True,
+                triggered=lambda: self.panel.add_label_with_title(ignore_msg=False),
+                tip=_(
+                    "Add the selected object's title as a label to the plot annotations"
+                ),
+            )
+            self.new_action(
+                _("Copy titles to clipboard"),
+                icon_name="copy_titles.svg",
+                tip=_("Copy titles of selected objects to clipboard"),
+                triggered=self.panel.copy_titles_to_clipboard,
+            )
+
+        # MARK: ROI
+        with self.new_category(ActionCategory.ROI):
+            self.new_action(
+                _("Edit graphically") + "...",
+                triggered=self.panel.processor.edit_roi_graphically,
+                icon_name="roi.svg",
+                context_menu_pos=-1,
+                context_menu_sep=True,
+                toolbar_pos=-1,
+                toolbar_category=ActionCategory.VIEW_TOOLBAR,
+                tip=_("Edit regions of interest graphically"),
+            )
+            self.new_action(
+                _("Edit numerically") + "...",
+                triggered=self.panel.processor.edit_roi_numerically,
+                select_condition=SelectCond.exactly_one_with_roi,
+                tip=_("Edit regions of interest numerically"),
+            )
+
+        # MARK: VIEW
+        with self.new_category(ActionCategory.VIEW):
+            self.new_action(
+                _("View in a new window") + "...",
+                icon_name="new_window.svg",
+                tip=_("View selected %s in a new window") % self.OBJECT_STR,
+                triggered=self.panel.open_separate_view,
+                context_menu_pos=0,
+                context_menu_sep=True,
+                toolbar_pos=0,
+            )
+
+        # MARK: OPERATION
+        with self.new_category(ActionCategory.OPERATION):
+            self.action_for("arithmetic")
+            with self.new_menu(_("Constant Operations"), icon_name="constant.svg"):
+                self.action_for("addition_constant")
+                self.action_for("difference_constant")
+                self.action_for("product_constant")
+                self.action_for("division_constant")
+            self.action_for("addition")
+            self.action_for("difference")
+            self.action_for("product")
+            self.action_for("division")
+            self.action_for("inverse", separator=True)
+            self.action_for("exp")
+            self.action_for("log10")
+
+        # MARK: PROCESSING
+        with self.new_category(ActionCategory.PROCESSING):
+            with self.new_menu(
+                _("Axis transformation"), icon_name="axis_transform.svg"
+            ):
+                self.action_for("calibration")
+            with self.new_menu(_("Level adjustment"), icon_name="level_adjustment.svg"):
+                self.action_for("normalize")
+                self.action_for("clip")
+                self.new_action(
+                    _("Offset correction"),
+                    triggered=self.panel.processor.compute_offset_correction,
+                    icon_name="offset_correction.svg",
+                    tip=_("Evaluate and subtract the offset value from the data"),
+                )
+            with self.new_menu(_("Noise addition"), icon_name="noise_addition.svg"):
+                self.action_for("add_gaussian_noise")
+                self.action_for("add_poisson_noise")
+                self.action_for("add_uniform_noise")
+            with self.new_menu(_("Noise reduction"), icon_name="noise_reduction.svg"):
+                self.action_for("gaussian_filter")
+                self.action_for("moving_average")
+                self.action_for("moving_median")
+                self.action_for("wiener")
+            with self.new_menu(_("Fourier analysis"), icon_name="fourier.svg"):
+                self.action_for("zero_padding")
+                self.action_for("fft")
+                self.action_for("ifft")
+                self.action_for("magnitude_spectrum")
+                self.action_for("phase_spectrum")
+                self.action_for("psd")
+
+        # MARK: ANALYSIS
+        with self.new_category(ActionCategory.ANALYSIS):
+            self.action_for("stats", context_menu_pos=-1, context_menu_sep=True)
+            self.action_for("histogram", context_menu_pos=-1)
+
+    def create_last_actions(self):
+        """Create actions that are added to the menus in the end"""
+        # MARK: ROI
+        with self.new_category(ActionCategory.ROI):
+            self.new_action(
+                _("Extract") + "...",
+                triggered=self.panel.processor.compute_roi_extraction,
+                # Icon name is 'roi_sig.svg' or 'roi_ima.svg':
+                icon_name=f"roi_{self.object_suffix}.svg",
+                separator=True,
+            )
+            self.new_action(
+                _("Copy"),
+                separator=True,
+                icon_name="roi_copy.svg",
+                tip=_("Copy regions of interest from selected %s") % self.OBJECT_STR,
+                triggered=self.panel.copy_roi,
+                select_condition=SelectCond.exactly_one_with_roi,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Paste"),
+                icon_name="roi_paste.svg",
+                tip=_("Paste regions of interest into selected %s") % self.OBJECT_STR,
+                triggered=self.panel.paste_roi,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Import") + "...",
+                icon_name="roi_import.svg",
+                tip=_("Import regions of interest into %s") % self.OBJECT_STR,
+                triggered=self.panel.import_roi_from_file,
+                select_condition=SelectCond.exactly_one,
+                toolbar_pos=-1,
+            )
+            self.new_action(
+                _("Export") + "...",
+                icon_name="roi_export.svg",
+                tip=_("Export selected %s regions of interest") % self.OBJECT_STR,
+                triggered=self.panel.export_roi_to_file,
+                select_condition=SelectCond.exactly_one_with_roi,
+                toolbar_pos=-1,
+            )
+
+            # Create dynamic "Remove" submenu
+            with self.new_menu(_("Remove"), icon_name="roi_delete.svg"):
+                # Store reference to the submenu for dynamic population
+                if self.__submenu_stack:
+                    current_submenu = self.__submenu_stack[-1]
+                    self.roi_remove_submenu = current_submenu["menu"]
+
+        # MARK: OPERATION
+        with self.new_category(ActionCategory.OPERATION):
+            self.action_for("absolute", separator=True)
+            self.action_for("phase")
+            self.action_for("complex_from_magnitude_phase")
+            self.action_for("real", separator=True)
+            self.action_for("imag")
+            self.action_for("complex_from_real_imag")
+            self.action_for("astype", separator=True)
+            self.action_for("average", separator=True)
+            self.action_for("standard_deviation")
+            self.action_for("quadratic_difference")
+            self.action_for("convolution", separator=True)
+            self.action_for("deconvolution")
+
+        # MARK: ANALYSIS
+        with self.new_category(ActionCategory.ANALYSIS):
+            self.new_action(
+                _("Show results") + "...",
+                triggered=self.panel.show_results,
+                icon_name="show_results.svg",
+                separator=True,
+                select_condition=SelectCond.at_least_one_group_or_one_object,
+            )
+            self.show_label_action = self.new_action(
+                _("Results label"),
+                toggled=self.panel.toggle_result_label_visibility,
+                tip=_("Show or hide the merged result label on the plot"),
+                select_condition=SelectCond.with_results,
+            )
+            self.show_label_action.setCheckable(True)
+            self.show_label_action.setChecked(Conf.view.show_result_label.get())
+            self.new_action(
+                _("Plot results") + "...",
+                triggered=self.panel.plot_results,
+                icon_name="plot_results.svg",
+                select_condition=SelectCond.at_least_one_group_or_one_object,
+            )
+
+            # Create dynamic "Delete results" submenu
+            with self.new_menu(_("Delete results"), icon_name="delete_results.svg"):
+                # Store reference to the submenu for dynamic population
+                if self.__submenu_stack:
+                    current_submenu = self.__submenu_stack[-1]
+                    self.results_delete_submenu = current_submenu["menu"]
+
+        # MARK: VIEW
+        with self.new_category(ActionCategory.VIEW):
+            self.new_action(
+                _("Edit annotations") + "...",
+                icon_name="annotations.svg",
+                tip=_("Edit annotations of selected %s") % self.OBJECT_STR,
+                triggered=lambda: self.panel.open_separate_view(edit_annotations=True),
+                context_menu_pos=1,
+                toolbar_pos=-1,
+            )
+            main = self.panel.mainwindow
+            for cat in (ActionCategory.VIEW, ActionCategory.VIEW_TOOLBAR):
+                for act in (main.autorefresh_action, main.showfirstonly_action):
+                    self.add_to_action_list(act, cat, -1)
+            self.new_action(
+                _("Refresh manually"),
+                icon_name="refresh-manual.svg",
+                tip=_("Refresh plot, even if auto-refresh is enabled"),
+                shortcut=QG.QKeySequence(QG.QKeySequence.Refresh),
+                triggered=self.panel.manual_refresh,
+                select_condition=SelectCond.always,
+                toolbar_pos=-1,
+            )
+            for cat in (ActionCategory.VIEW, ActionCategory.VIEW_TOOLBAR):
+                self.add_to_action_list(main.showlabel_action, cat, -1)
+
+
+class SignalActionHandler(BaseActionHandler):
+    """Object handling signal panel GUI interactions: actions, menus, ..."""
+
+    OBJECT_STR = _("signal")
+    OBJECT_STR_PLURAL = _("signals")
+
+    def create_first_actions(self):
+        """Create actions that are added to the menus in the first place"""
+        super().create_first_actions()
+
+        # MARK: CREATE
+        with self.new_category(ActionCategory.CREATE):
+            for label, pclass, icon_name, separator in (
+                (_("Zero"), sio.ZeroParam, "1d-zero.svg", False),
+                (
+                    _("Normal distribution"),
+                    sio.NormalDistribution1DParam,
+                    "1d-normal.svg",
+                    False,
+                ),
+                (
+                    _("Poisson distribution"),
+                    sio.PoissonDistribution1DParam,
+                    "1d-poisson.svg",
+                    False,
+                ),
+                (
+                    _("Uniform distribution"),
+                    sio.UniformDistribution1DParam,
+                    "1d-uniform.svg",
+                    False,
+                ),
+                (_("Gaussian"), sio.GaussParam, "gaussian.svg", True),
+                (_("Lorentzian"), sio.LorentzParam, "lorentzian.svg", False),
+                (_("Voigt"), sio.VoigtParam, "voigt.svg", False),
+                (_("Blackbody (Planck's law)"), sio.PlanckParam, "planck.svg", False),
+                (_("Sine"), sio.SineParam, "sine.svg", True),
+                (_("Cosine"), sio.CosineParam, "cosine.svg", False),
+                (_("Sawtooth"), sio.SawtoothParam, "sawtooth.svg", False),
+                (_("Triangle"), sio.TriangleParam, "triangle.svg", False),
+                (_("Square"), sio.SquareParam, "square.svg", False),
+                (_("Cardinal sine"), sio.SincParam, "sinc.svg", False),
+                (_("Linear chirp"), sio.LinearChirpParam, "linear_chirp.svg", False),
+                (_("Step"), sio.StepParam, "step.svg", True),
+                (_("Exponential"), sio.ExponentialParam, "exponential.svg", False),
+                (_("Logistic"), sio.LogisticParam, "logistic.svg", False),
+                (_("Pulse"), sio.PulseParam, "pulse.svg", False),
+                (_("Step pulse"), sio.StepPulseParam, "step_pulse.svg", False),
+                (_("Square pulse"), sio.SquarePulseParam, "square_pulse.svg", False),
+                (_("Polynomial"), sio.PolyParam, "polynomial.svg", True),
+                (_("Custom"), newobject.CustomSignalParam, None, False),
+            ):
+                self.new_action(
+                    label,
+                    tip=_("Create new %s") % label,
+                    triggered=lambda pclass=pclass: self.panel.new_object(pclass()),
+                    icon_name=icon_name,
+                    select_condition=SelectCond.always,
+                    separator=separator,
+                )
+
+        # MARK: OPERATION
+        with self.new_category(ActionCategory.OPERATION):
+            self.action_for("power", separator=True)
+            self.action_for("sqrt")
+
+        def cra_fit(title, fitdlgfunc, tip: str | None = None):
+            """Create curve fitting action"""
+            return self.new_action(
+                title,
+                triggered=lambda: self.panel.processor.compute_fit(title, fitdlgfunc),
+                icon_name=fitdlgfunc.__name__ + ".svg",
+                tip=tip,
+            )
+
+        # MARK: PROCESSING
+        with self.new_category(ActionCategory.PROCESSING):
+            with self.new_menu(_("Axis transformation")):
+                self.action_for("transpose")
+                self.action_for("reverse_x")
+                self.action_for("replace_x_by_other_y")
+                self.action_for("xy_mode")
+                self.action_for("to_cartesian", separator=True)
+                self.action_for("to_polar")
+            with self.new_menu(_("Frequency filters"), icon_name="highpass.svg"):
+                self.action_for("lowpass")
+                self.action_for("highpass")
+                self.action_for("bandpass")
+                self.action_for("bandstop")
+            with self.new_menu(_("Fitting"), icon_name="exponential_fit.svg"):
+                with self.new_menu(
+                    _("Interactive fitting"), icon_name="interactive_fit.svg"
+                ):
+                    cra_fit(_("Linear fit"), fitdialog.linear_fit)
+                    self.new_action(
+                        _("Polynomial fit"),
+                        triggered=self.panel.processor.compute_polyfit,
+                        icon_name="polynomial_fit.svg",
+                    )
+                    cra_fit(_("Gaussian fit"), fitdialog.gaussian_fit)
+                    cra_fit(_("Lorentzian fit"), fitdialog.lorentzian_fit)
+                    cra_fit(_("Voigt fit"), fitdialog.voigt_fit)
+                    self.new_action(
+                        _("Multi-Gaussian fit"),
+                        triggered=self.panel.processor.compute_multigaussianfit,
+                        icon_name="multigaussian_fit.svg",
+                    )
+                    self.new_action(
+                        _("Multi-Lorentzian fit"),
+                        triggered=self.panel.processor.compute_multilorentzianfit,
+                        icon_name="multilorentzian_fit.svg",
+                    )
+                    cra_fit(
+                        _("Planckian fit"),
+                        fitdialog.planckian_fit,
+                        tip=_("Planckian (blackbody radiation) fitting"),
+                    )
+                    cra_fit(
+                        _("Two half-Gaussian fit"),
+                        fitdialog.twohalfgaussian_fit,
+                        tip=_("Asymmetric peak fitting with two half-Gaussians"),
+                    )
+                    cra_fit(
+                        _("Piecewise exponential (raise-decay) fit"),
+                        fitdialog.piecewiseexponential_fit,
+                        tip=_(
+                            "Piecewise exponential fitting with raise and decay "
+                            "components"
+                        ),
+                    )
+                    cra_fit(_("Exponential fit"), fitdialog.exponential_fit)
+                    cra_fit(_("Sinusoidal fit"), fitdialog.sinusoidal_fit)
+                    cra_fit(
+                        _("CDF fit"),
+                        fitdialog.cdf_fit,
+                        tip=_(
+                            "Cumulative distribution function fit, "
+                            "related to Error function (erf)"
+                        ),
+                    )
+                separator_needed = True
+                for fit_name in (
+                    "linear_fit",
+                    "polynomial_fit",
+                    "gaussian_fit",
+                    "lorentzian_fit",
+                    "voigt_fit",
+                    "planckian_fit",
+                    "twohalfgaussian_fit",
+                    "piecewiseexponential_fit",
+                    "exponential_fit",
+                    "sinusoidal_fit",
+                    "cdf_fit",
+                    "sigmoid_fit",
+                ):
+                    self.action_for(fit_name, separator=separator_needed)
+                    separator_needed = False
+                self.action_for("evaluate_fit", separator=True)
+            self.action_for("derivative", separator=True)
+            self.action_for("integral")
+            self.action_for("apply_window", separator=True)
+            self.action_for("detrending")
+            self.action_for("interpolate")
+            self.action_for("resampling")
+            with self.new_menu(_("Stability analysis"), icon_name="stability.svg"):
+                self.action_for("allan_variance")
+                self.action_for("allan_deviation")
+                self.action_for("modified_allan_variance")
+                self.action_for("hadamard_variance")
+                self.action_for("total_variance")
+                self.action_for("time_deviation")
+                self.new_action(
+                    _("All stability features") + "...",
+                    triggered=self.panel.processor.compute_all_stability,
+                    separator=True,
+                    tip=_("Compute all stability features"),
+                )
+
+        # MARK: ANALYSIS
+        with self.new_category(ActionCategory.ANALYSIS):
+            self.action_for("fwhm")
+            self.action_for("fw1e2")
+            self.new_action(
+                _("Full width at y=..."),
+                triggered=self.panel.processor.compute_full_width_at_y,
+                tip=_("Compute the full width at a given y value"),
+            )
+            self.action_for("x_at_minmax")
+            self.new_action(
+                _("First abscissa at y=..."),
+                triggered=self.panel.processor.compute_x_at_y,
+                tip=_(
+                    "Compute the first abscissa at a given y value "
+                    "(linear interpolation)"
+                ),
+            )
+            self.new_action(
+                _("Ordinate at x=..."),
+                triggered=self.panel.processor.compute_y_at_x,
+                tip=_("Compute the ordinate at a given x value (linear interpolation)"),
+            )
+            self.action_for("extract_pulse_features")
+            self.new_action(
+                _("Peak detection"),
+                separator=True,
+                triggered=self.panel.processor.compute_peak_detection,
+                icon_name="peak_detect.svg",
+            )
+            self.action_for("sampling_rate_period", separator=True)
+            self.action_for("dynamic_parameters", context_menu_pos=-1)
+            self.action_for("bandwidth_3db", context_menu_pos=-1)
+            self.action_for("contrast")
+
+    def create_last_actions(self):
+        """Create actions that are added to the menus in the end"""
+        super().create_last_actions()
+        with self.new_category(ActionCategory.OPERATION):
+            self.action_for("signals_to_image", separator=True)
+
+        with self.new_category(ActionCategory.VIEW):
+            antialiasing_action = self.new_action(
+                _("Curve anti-aliasing"),
+                icon_name="curve_antialiasing.svg",
+                toggled=self.panel.toggle_anti_aliasing,
+                tip=_("Toggle curve anti-aliasing on/off (may slow down plotting)"),
+                toolbar_pos=-1,
+            )
+            antialiasing_action.setChecked(Conf.view.sig_antialiasing.get(True))
+            self.new_action(
+                _("Reset curve styles"),
+                select_condition=SelectCond.always,
+                icon_name="reset_curve_styles.svg",
+                triggered=self.panel.reset_curve_styles,
+                tip=_(
+                    "Curve styles are looped over a list of predefined styles.\n"
+                    "This action resets the list to its initial state."
+                ),
+                toolbar_pos=-1,
+            )
+
+
+class ImageActionHandler(BaseActionHandler):
+    """Object handling image panel GUI interactions: actions, menus, ..."""
+
+    OBJECT_STR = _("image")
+    OBJECT_STR_PLURAL = _("images")
+
+    def create_first_actions(self):
+        """Create actions that are added to the menus in the first place"""
+        # MARK: PROCESSING (1/2)
+        with self.new_category(ActionCategory.PROCESSING):
+            with self.new_menu(_("Geometry"), icon_name="rotate_right.svg"):
+                self.action_for("fliph", context_menu_pos=-1, context_menu_sep=True)
+                self.action_for("transpose", context_menu_pos=-1)
+                self.action_for("flipv", context_menu_pos=-1)
+                self.action_for("rotate270", context_menu_pos=-1)
+                self.action_for("rotate90", context_menu_pos=-1)
+                self.action_for("rotate")
+                self.new_action(
+                    _("Distribute on a grid..."),
+                    triggered=self.panel.processor.distribute_on_grid,
+                    icon_name="distribute_on_grid.svg",
+                    select_condition=SelectCond.at_least_two,
+                    separator=True,
+                )
+                self.new_action(
+                    _("Reset image positions"),
+                    triggered=self.panel.processor.reset_positions,
+                    icon_name="reset_positions.svg",
+                    select_condition=SelectCond.at_least_two,
+                )
+
+            with self.new_menu(
+                _("Axis transformation"), icon_name="axis_transform.svg"
+            ):
+                self.action_for("set_uniform_coords")
+
+        super().create_first_actions()
+
+        # MARK: CREATE
+        with self.new_category(ActionCategory.CREATE):
+            for label, pclass, icon_name, separator in (
+                (_("Zero"), sio.Zero2DParam, "2d-zero.svg", False),
+                (
+                    _("Normal distribution"),
+                    sio.NormalDistribution2DParam,
+                    "2d-normal.svg",
+                    False,
+                ),
+                (
+                    _("Poisson distribution"),
+                    sio.PoissonDistribution2DParam,
+                    "2d-poisson.svg",
+                    False,
+                ),
+                (
+                    _("Uniform distribution"),
+                    sio.UniformDistribution2DParam,
+                    "2d-uniform.svg",
+                    False,
+                ),
+                (_("Gaussian"), sio.Gauss2DParam, "2d-gaussian.svg", True),
+                (_("2D sinc"), sio.Sinc2DParam, "2d-sinc.svg", False),
+                (_("Ring pattern"), sio.Ring2DParam, "ring.svg", True),
+                (_("Ramp"), sio.Ramp2DParam, "2d-ramp.svg", False),
+                (_("Checkerboard"), sio.Checkerboard2DParam, "checkerboard.svg", False),
+                (
+                    _("Sinusoidal grating"),
+                    sio.SinusoidalGrating2DParam,
+                    "grating.svg",
+                    False,
+                ),
+                (_("Siemens star"), sio.SiemensStar2DParam, "siemens.svg", False),
+            ):
+                self.new_action(
+                    label,
+                    tip=_("Create new %s") % label,
+                    triggered=lambda pclass=pclass: self.panel.new_object(pclass()),
+                    icon_name=icon_name,
+                    select_condition=SelectCond.always,
+                    separator=separator,
+                )
+
+        # MARK: ROI
+        with self.new_category(ActionCategory.ROI):
+            self.new_action(
+                _("Create ROI grid") + "...",
+                triggered=self.panel.processor.create_roi_grid,
+                icon_name="roi_grid.svg",
+                tip=_("Create a grid of regions of interest"),
+            )
+
+        # MARK: OPERATION
+        with self.new_category(ActionCategory.OPERATION):
+            self.action_for("log10_z_plus_n")
+
+        # MARK: PROCESSING (2/2)
+        with self.new_category(ActionCategory.PROCESSING):
+            with self.new_menu(_("Frequency filters"), icon_name="noise_reduction.svg"):
+                self.action_for("butterworth")
+                self.action_for("gaussian_freq_filter")
+            with self.new_menu(_("Thresholding"), icon_name="thresholding.svg"):
+                self.action_for("threshold")
+                self.action_for("threshold_isodata")
+                self.action_for("threshold_li")
+                self.action_for("threshold_mean")
+                self.action_for("threshold_minimum")
+                self.action_for("threshold_otsu")
+                self.action_for("threshold_triangle")
+                self.action_for("threshold_yen")
+                self.new_action(
+                    _("All thresholding methods") + "...",
+                    triggered=self.panel.processor.compute_all_threshold,
+                    separator=True,
+                    tip=_("Apply all thresholding methods"),
+                )
+            with self.new_menu(_("Exposure"), icon_name="exposure.svg"):
+                self.action_for("adjust_gamma")
+                self.action_for("adjust_log")
+                self.action_for("adjust_sigmoid")
+                self.action_for("equalize_hist")
+                self.action_for("equalize_adapthist")
+                self.action_for("rescale_intensity")
+            with self.new_menu(_("Restoration"), icon_name="noise_reduction.svg"):
+                self.action_for("denoise_tv")
+                self.action_for("denoise_bilateral")
+                self.action_for("denoise_wavelet")
+                self.action_for("denoise_tophat")
+                self.new_action(
+                    _("All denoising methods") + "...",
+                    triggered=self.panel.processor.compute_all_denoise,
+                    separator=True,
+                    tip=_("Apply all denoising methods"),
+                )
+            with self.new_menu(_("Morphology"), icon_name="morphology.svg"):
+                self.action_for("white_tophat")
+                self.action_for("black_tophat")
+                self.action_for("erosion")
+                self.action_for("dilation")
+                self.action_for("opening")
+                self.action_for("closing")
+                self.new_action(
+                    _("All morphological operations") + "...",
+                    triggered=self.panel.processor.compute_all_morphology,
+                    separator=True,
+                    tip=_("Apply all morphological operations"),
+                )
+            with self.new_menu(_("Edge detection"), icon_name="edge_detection.svg"):
+                self.action_for("canny")
+                self.action_for("farid", separator=True)
+                self.action_for("farid_h")
+                self.action_for("farid_v")
+                self.action_for("laplace", separator=True)
+                self.action_for("prewitt", separator=True)
+                self.action_for("prewitt_h")
+                self.action_for("prewitt_v")
+                self.action_for("roberts", separator=True)
+                self.action_for("scharr", separator=True)
+                self.action_for("scharr_h")
+                self.action_for("scharr_v")
+                self.action_for("sobel", separator=True)
+                self.action_for("sobel_h")
+                self.action_for("sobel_v")
+                self.new_action(
+                    _("All edge detection filters..."),
+                    triggered=self.panel.processor.compute_all_edges,
+                    separator=True,
+                    tip=_("Compute all edge detection filters"),
+                )
+            self.new_action(
+                _("Erase area") + "...",
+                triggered=self.panel.processor.compute_erase,
+                icon_name="erase.svg",
+                separator=True,
+                tip=_("Erase area in the image as defined by a region of interest"),
+            )
+
+        # MARK: ANALYSIS
+        with self.new_category(ActionCategory.ANALYSIS):
+            with self.new_menu(_("Intensity profiles"), icon_name="profile.svg"):
+                self.new_action(
+                    _("Line profile..."),
+                    triggered=self.panel.processor.compute_line_profile,
+                    icon_name="profile.svg",
+                    tip=_("Extract horizontal or vertical profile"),
+                    context_menu_pos=-1,
+                    context_menu_sep=True,
+                )
+                self.new_action(
+                    _("Segment profile..."),
+                    triggered=self.panel.processor.compute_segment_profile,
+                    icon_name="profile_segment.svg",
+                    tip=_("Extract profile along a segment"),
+                    context_menu_pos=-1,
+                )
+                self.new_action(
+                    _("Average profile..."),
+                    triggered=self.panel.processor.compute_average_profile,
+                    icon_name="profile_average.svg",
+                    tip=_("Extract average horizontal or vertical profile"),
+                    context_menu_pos=-1,
+                )
+                self.new_action(
+                    _("Radial profile extraction..."),
+                    triggered=self.panel.processor.compute_radial_profile,
+                    icon_name="profile_radial.svg",
+                    tip=_("Radial profile extraction around image centroid"),
+                )
+            self.action_for("horizontal_projection", separator=True)
+            self.action_for("vertical_projection")
+            self.action_for("centroid", separator=True)
+            self.action_for("enclosing_circle")
+            self.new_action(
+                _("2D peak detection"),
+                separator=True,
+                triggered=self.panel.processor.compute_peak_detection,
+                tip=_("Compute automatic 2D peak detection"),
+            )
+            self.action_for("contour_shape")
+            self.action_for("hough_circle_peaks")
+            with self.new_menu(_("Blob detection")):
+                self.action_for("blob_dog")
+                self.action_for("blob_doh")
+                self.action_for("blob_log")
+                self.action_for("blob_opencv")
+
+    def create_last_actions(self):
+        """Create actions that are added to the menus in the end"""
+        # MARK: PROCESSING
+        with self.new_category(ActionCategory.PROCESSING):
+            self.new_action(
+                _("Resize") + "...",
+                triggered=self.panel.processor.compute_resize,
+                icon_name="resize.svg",
+                separator=True,
+            )
+            self.new_action(
+                _("Pixel binning") + "...",
+                triggered=self.panel.processor.compute_binning,
+                icon_name="binning.svg",
+            )
+            self.action_for("resampling")
+
+        # MARK: VIEW
+        with self.new_category(ActionCategory.VIEW):
+            self.new_action(
+                _("View images side-by-side") + "...",
+                icon_name="new_window.svg",
+                tip=_("View selected images side-by-side in a new window"),
+                triggered=self.panel.view_images_side_by_side,
+                select_condition=SelectCond.at_least_two,
+                context_menu_pos=-1,
+            )
+
+        super().create_last_actions()
+
+        # MARK: OPERATION
+        with self.new_category(ActionCategory.OPERATION):
+            self.action_for("flatfield", separator=True)
+
+        # MARK: VIEW
+        with self.new_category(ActionCategory.VIEW):
+            showcontrast_action = self.new_action(
+                _("Show contrast panel"),
+                icon_name="contrast.png",
+                tip=_("Show or hide contrast adjustment panel"),
+                select_condition=SelectCond.always,
+                toggled=self.panel.toggle_show_contrast,
+                toolbar_pos=-1,
+            )
+            showcontrast_action.setChecked(Conf.view.show_contrast.get(True))

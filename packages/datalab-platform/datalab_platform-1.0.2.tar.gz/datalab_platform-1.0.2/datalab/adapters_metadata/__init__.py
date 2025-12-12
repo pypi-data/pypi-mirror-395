@@ -1,0 +1,31 @@
+# Copyright (c) DataLab Platform Developers, BSD 3-Clause license, see LICENSE file.
+
+"""
+Adapters for Sigima's TableResult and GeometryResult, providing features
+for storing and retrieving those objects as metadata for DataLab's signal
+and image objects.
+"""
+
+from .base_adapter import BaseResultAdapter
+from .common import (
+    ResultData,
+    create_resultdata_dict,
+    have_geometry_results,
+    have_results,
+    resultadapter_to_html,
+    show_resultdata,
+)
+from .geometry_adapter import GeometryAdapter
+from .table_adapter import TableAdapter
+
+__all__ = [
+    "BaseResultAdapter",
+    "GeometryAdapter",
+    "ResultData",
+    "TableAdapter",
+    "create_resultdata_dict",
+    "have_geometry_results",
+    "have_results",
+    "resultadapter_to_html",
+    "show_resultdata",
+]
