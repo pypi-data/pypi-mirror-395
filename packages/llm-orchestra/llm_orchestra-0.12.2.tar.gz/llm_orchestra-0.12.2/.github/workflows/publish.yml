@@ -1,0 +1,106 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      current-version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current version
+        id: version
+        run: |
+          VERSION=$(grep -E '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    
+    - name: Install UV
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Build package
+      run: |
+        uv build
+    
+    - name: Check build artifacts
+      run: |
+        ls -la dist/
+        uv add twine
+        uv run python -m twine check dist/*
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+  publish-test-pypi:
+    needs: [get-version, build]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      continue-on-error: true
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        password: ${{ secrets.PYPI_TEST_API_KEY }}
+        skip-existing: true
+
+  publish-pypi:
+    needs: [get-version, build, publish-test-pypi]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/llm-orchestra/
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      continue-on-error: true
+      with:
+        password: ${{ secrets.PYPI_API_KEY }}
+        skip-existing: true
+        verbose: true
+
+  notify:
+    needs: [get-version, publish-test-pypi, publish-pypi]
+    if: always() && (needs.publish-pypi.result == 'success' || needs.publish-test-pypi.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify success
+        run: |
+          if [[ "${{ needs.publish-pypi.result }}" == "success" ]]; then
+            echo "🎉 Successfully published llm-orchestra v${{ needs.get-version.outputs.current-version }} to PyPI!"
+          elif [[ "${{ needs.publish-test-pypi.result }}" == "success" ]]; then
+            echo "🧪 Successfully published llm-orchestra v${{ needs.get-version.outputs.current-version }} to Test PyPI!"
+          fi
