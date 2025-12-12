@@ -1,0 +1,241 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agenticx"
+dynamic = ["version"]
+description = "A unified, scalable, production-ready multi-agent application development framework"
+authors = [
+    {name = "Ziran Li", email = "bingzhenli@hotmail.com"},
+]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: System :: Distributed Computing",
+]
+keywords = ["ai", "agents", "multi-agent", "framework", "automation", "llm", "workflow", "orchestration"]
+
+dependencies = [
+    # 核心依赖
+    "pydantic",
+    "typing-extensions",
+    "loguru",
+    "rich",
+    "click",
+    "PyYAML>=6.0",
+    "jinja2",
+    "python-dotenv",
+    "httpx",
+    "requests",
+    "pytest",
+    "pytest-asyncio",
+    "psutil",
+    "aiohttp",
+    "websockets",
+    "fastapi",
+    "uvicorn",
+    "aiofiles",
+    "structlog",
+    "typer",
+    "cryptography",
+    "psycopg2-binary",
+    "chardet",
+    "docstring_parser",
+    "SQLAlchemy",
+    "ujson",
+    "tqdm",
+    "joblib",
+    # 核心LLM依赖
+    "openai",
+    "litellm",
+    "tiktoken",
+    "tokenizers",
+    "huggingface-hub",
+    # 核心记忆系统依赖
+    "mem0ai",
+    "redis",
+    "pymilvus",
+    # LLM提供者（全部）
+    "anthropic",
+    "ollama",
+    # 记忆系统（全部）
+    "chromadb",
+    "qdrant-client",
+    # 监控和可观测性
+    "prometheus-client",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    # 数据处理
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    # 通信协议
+    "asyncio-mqtt",
+    "mcp",
+    # 文档处理
+    # 注意：以下功能需要额外的系统依赖，请参考 INSTALL.md 安装指南
+    # - pytesseract 需要 tesseract (brew install tesseract)
+    # - pdf2image 需要 poppler (brew install poppler)  
+    # - docx2txt 处理旧版 .doc 文件需要 antiword (brew install antiword)
+    "PyMuPDF",
+    "pypdf",
+    "PyPDF2",
+    "python-docx",
+    "python-pptx",
+    "docx2txt",
+    "pytesseract",
+    "pdf2image",
+    "easyocr",
+    "python-Levenshtein",
+    "RapidFuzz",
+    # 图分析和网络分析
+    "networkx",
+    "cdlib",
+    "wurlitzer",
+    "bayanpy", 
+    "infomap",
+    "neo4j",
+    "pyclustering",
+    "ASLPAw",
+    "leidenalg",
+    # 文档工具
+    "mkdocs",
+    "mkdocs-material",
+    "pydoc-markdown"
+]
+
+
+
+[project.urls]
+Homepage = "https://github.com/DemonDamon/AgenticX"
+Documentation = "https://agenticx.ai/docs"
+Repository = "https://github.com/DemonDamon/AgenticX"
+Issues = "https://github.com/DemonDamon/AgenticX/issues"
+Discussions = "https://github.com/DemonDamon/AgenticX/discussions"
+
+[project.scripts]
+agenticx = "agenticx.cli.main:main"
+agx = "agenticx.cli.main:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "agenticx.__version__"}
+
+[tool.setuptools.packages.find]
+# 只包含 agenticx 包，排除所有其他目录
+include = ["agenticx*"]
+exclude = ["tests*", "examples*", "docs*", "thirdparty*", "researches*", "markmap*", "exps*", "assets*"]
+
+[tool.setuptools.package-data]
+agenticx = [
+    "*.yaml", "*.yml", "*.json", "*.toml", "*.txt", "*.md",
+    "**/*.yaml", "**/*.yml", "**/*.json", "**/*.toml", "**/*.txt", "**/*.md"
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--cov=agenticx",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["agenticx"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/examples/*",
+    "*/benchmarks/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "docs/source/conf.py",
+    "old",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg",
+]
