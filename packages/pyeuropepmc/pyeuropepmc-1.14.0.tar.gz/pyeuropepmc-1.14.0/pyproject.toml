@@ -1,0 +1,208 @@
+[project]
+name = "pyeuropepmc"
+version = "1.14.0"
+description = "A Python package for working with the Europe PMC API to search and retrieve scientific literature."
+license = "file:LICENSE"
+readme = "README.md"
+authors = [
+  { name = "Jonas Heinicke (HZI)", email = "jonas.heinicke@helmholtz-hzi.de" },
+]
+requires-python = ">=3.10,<4.0"
+keywords = ["europe-pmc", "pubmed", "literature", "api", "scientific"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+urls = { Homepage = "https://github.com/JonasHeinickeBio/pyEuropePMC", Repository = "https://github.com/JonasHeinickeBio/pyEuropePMC" }
+dynamic = ["dependencies"]
+
+[tool.semantic_release]
+version_variable = ["src/pyeuropepmc/__init__.py:__version__"]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+upload_to_pypi = true
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
+commit_author = "Jonas Heinicke (HZI) <jonas.heinicke@helmholtz-hzi.de>"
+
+[[tool.poetry.packages]]
+include = "pyeuropepmc"
+from = "src"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+ipython = ">=7.30"
+ipykernel = ">=6.7"
+ipywidgets = ">=7.6"
+jupyterlab = ">=3.2"
+notebook = ">=6.4"
+numpy = ">=1.21"
+pandas = ">=1.4"
+rdflib-jsonld = ">=0.5"
+rdflib = ">=6.0"
+python-dotenv = ">=0.19"
+requests = "^2.32.5"
+typer = ">=0.12.5,<0.13.0"
+backoff = "^2.2.1"
+tornado = "^6.5.1"
+flask = "^3.1.1"
+defusedxml = "^0.7.1"
+tqdm = "^4.67.1"
+beautifulsoup4 = "^4.13.5"
+tabulate = "^0.9.0"
+xlsxwriter = "^3.2.9"
+diskcache = "^5.6.3"
+rapidfuzz = "^2.15.0"
+search-query = "^0.13.0"
+matplotlib = "^3.7.0"
+seaborn = "^0.12.0"
+cachetools = "^6.2.1"
+requests-cache = "^1.2.1"
+rdfizer = "^4.7.5.12.13"
+cryptography = "^46.0.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+pytest-cov = "^6.0.0"
+pre-commit = "^4.2.0"
+black = "^25.1.0"
+mypy = "^1.16.1"
+types-PyYAML = "6.0.12.20240311"
+types-requests = "^2.31.0"
+pytest-benchmark = "^5.2.3"
+coverage = "^7.11.3"
+bandit = "^1.8.5"
+ruff = "^0.14.4"
+typing-extensions = "^4.14.0"
+memory-profiler = "^0.61.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = ["tests"]
+markers = [
+  "slow: mark test as slow (use '-m \"not slow\"' to skip)",
+  "integration: mark test as integration (use '-m \"not integration\"' to skip)",
+  "unit: mark test as unit (use '-m \"not unit\"' to skip)",
+  "network: mark test that requires network access (use '-m \"not network\"' to skip)",
+  "functional: mark test as functional (use '-m \"not functional\"' to skip)",
+  "model: mark tests that require ML model dependencies (sentence-transformers, rapidfuzz, etc.)",
+]
+[tool.ruff]
+line-length = 99
+target-version = "py310"
+exclude = [
+  ".git",
+  ".venv",
+  "dist",
+  "build",
+  "docs",
+  "__pycache__",
+  ".pytest_cache",
+  ".vscode",
+  ".github",
+  ".idea",
+  "examples",
+  "tests",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "C90", # mccabe complexity
+  "I",   # isort
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+  "SIM", # flake8-simplify
+]
+ignore = ["E203", "E266", "E731"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"] # Allow unused imports in __init__.py
+"src/pyeuropepmc/ftp_downloader.py" = ["C901"] # Allow complex FTP operations
+"src/pyeuropepmc/fulltext_parser.py" = [
+  "C901",
+] # Allow complex XML parsing/analysis methods
+"src/pyeuropepmc/enrichment/enricher.py" = [
+  "C901",
+] # Allow complex merge operations
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = ["pyeuropepmc"]
+force-sort-within-sections = true
+
+[tool.black]
+line-length = 99
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.git
+  | \.venv
+  | dist
+  | build
+  | docs
+  | __pycache__
+  | \.pytest_cache
+  | \.vscode
+  | \.github
+  | \.idea
+)/
+'''
+preview = true
+skip-string-normalization = false
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+multiline-quotes = "double"
+docstring-quotes = "double"
+
+[tool.coverage.run]
+branch = true
+source = ["pyeuropepmc"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 50     # Set your desired test coverage threshold
+
+[tool.bandit]
+skips = ["B101", "B303"]
+exclude_dirs = [
+  "tests",
+  "docs",
+  "examples",
+  ".venv",
+  "dist",
+  "build",
+  ".git",
+  "__pycache__",
+  ".pytest_cache",
+  ".vscode",
+  ".github",
+  ".idea",
+]
+paths = ["src"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+exclude = "(tests/|examples/)"
+files = "src/"
+disable_error_code = ["misc", "import-untyped"]
