@@ -1,0 +1,218 @@
+package assemble;
+
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import kmer.AbstractKmerTableSet;
+import kmer.HashArray1D;
+import kmer.KmerNode;
+import kmer.KmerTableSet;
+import shared.Timer;
+import ukmer.HashArrayU1D;
+import ukmer.KmerNodeU;
+import ukmer.KmerTableSetU;
+
+/**
+ * Removes kmers with counts outside a certain range.
+ * @author Brian Bushnell
+ * @date Jul 20, 2015
+ */
+public abstract class AbstractRemoveThread extends Thread{
+
+	/**
+	 * Constructor
+	 */
+	public AbstractRemoveThread(int id_, int min_, int max_, AtomicInteger nextTable_){
+		id=id_;
+		min=min_;
+		max=max_;
+		nextTable=nextTable_;
+		assert(nextTable.get()==0);
+	}
+	
+	@Override
+	public final void run(){
+		while(processNextTable()){}
+	}
+	
+	/**
+	 * Processes the next available k-mer table for k-mer removal.
+	 * Implementation varies by k-mer table type (standard vs unlimited).
+	 * @return true if a table was processed, false if no tables remain
+	 */
+	abstract boolean processNextTable();
+	
+	/*--------------------------------------------------------------*/
+	
+	/**
+	 * Main entry point for multi-threaded k-mer removal processing.
+	 * Creates appropriate RemoveThread instances based on table type and coordinates their execution.
+	 *
+	 * @param threads Number of worker threads to create
+	 * @param min Minimum k-mer count to retain
+	 * @param max Maximum k-mer count to retain
+	 * @param tables K-mer table set to process
+	 * @param print Whether to print timing and removal statistics
+	 * @return Total number of k-mers removed across all threads
+	 */
+	public static long process(final int threads, final int min, final int max, AbstractKmerTableSet tables, boolean print){
+		Timer t=new Timer();
+		
+		final AtomicInteger nextTable=new AtomicInteger(0);
+		long kmersRemoved=0;
+		
+		/* Create Removethreads */
+		ArrayList<AbstractRemoveThread> alpt=new ArrayList<AbstractRemoveThread>(threads);
+		for(int i=0; i<threads; i++){
+			final AbstractRemoveThread art;
+			if(tables.getClass()==KmerTableSet.class){
+				art=new RemoveThread1(i, min, max, nextTable, (KmerTableSet)tables);
+			}else{
+				art=new RemoveThread2(i, min, max, nextTable, (KmerTableSetU)tables);
+			}
+			alpt.add(art);
+		}
+		for(AbstractRemoveThread pt : alpt){pt.start();}
+		
+		for(AbstractRemoveThread pt : alpt){
+			while(pt.getState()!=Thread.State.TERMINATED){
+				try {
+					pt.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			kmersRemoved+=pt.kmersRemovedT;
+		}
+
+		t.stop();
+		if(print){
+			outstream.println("Removed "+kmersRemoved+" kmers.");
+			outstream.println("Remove time: "+t);
+		}
+		
+		return kmersRemoved;
+	}
+	
+	/*--------------------------------------------------------------*/
+	
+	private static class RemoveThread1 extends AbstractRemoveThread{
+
+		/**
+		 * Constructor
+		 */
+		public RemoveThread1(int id_, int min_, int max_, AtomicInteger nextTable_, KmerTableSet tables_){
+			super(id_, min_, max_, nextTable_);
+			tables=tables_;
+		}
+		
+		@Override
+		boolean processNextTable(){
+			final int tnum=nextTable.getAndAdd(1);
+			if(tnum>=tables.ways){return false;}
+			final HashArray1D table=tables.getTable(tnum);
+			final int[] values=table.values();
+			final int lim=table.arrayLength();
+			for(int cell=0; cell<lim; cell++){
+				final int value=values[cell];
+				if(value<min || value>max){values[cell]=0;}
+			}
+			for(KmerNode kn : table.victims().array()){
+				if(kn!=null){traverseKmerNode(kn);}
+			}
+			
+			table.clearOwnership();
+			kmersRemovedT+=table.regenerate(0);
+			return true;
+		}
+		
+		/**
+		 * Recursively traverses k-mer collision chain nodes to remove out-of-range k-mers.
+		 * Performs in-order traversal of the binary tree structure.
+		 * @param kn K-mer node to process (may be null)
+		 */
+		private void traverseKmerNode(KmerNode kn){
+			if(kn==null){return;}
+			final int value=kn.count();
+			if(value<min || value>max){kn.set(0);}
+			traverseKmerNode(kn.left());
+			traverseKmerNode(kn.right());
+		}
+		
+		/** Standard k-mer table set being processed by this thread */
+		private final KmerTableSet tables;
+		
+	}
+	
+	/*--------------------------------------------------------------*/
+	
+	private static class RemoveThread2 extends AbstractRemoveThread{
+
+		/**
+		 * Constructor
+		 */
+		public RemoveThread2(int id_, int min_, int max_, AtomicInteger nextTable_, KmerTableSetU tables_){
+			super(id_, min_, max_, nextTable_);
+			tables=tables_;
+		}
+		
+		@Override
+		boolean processNextTable(){
+			final int tnum=nextTable.getAndAdd(1);
+			if(tnum>=tables.ways){return false;}
+			final HashArrayU1D table=tables.getTable(tnum);
+			final int[] values=table.values();
+			final int lim=table.arrayLength();
+			for(int cell=0; cell<lim; cell++){
+				final int value=values[cell];
+				if(value<min || value>max){values[cell]=0;}
+			}
+			for(KmerNodeU kn : table.victims().array()){
+				if(kn!=null){traverseKmerNode(kn);}
+			}
+			
+			table.clearOwnership();
+			kmersRemovedT+=table.regenerate(0);
+			return true;
+		}
+		
+		/**
+		 * Recursively traverses unlimited k-mer collision chain nodes to remove out-of-range k-mers.
+		 * Performs in-order traversal of the binary tree structure.
+		 * @param kn Unlimited k-mer node to process (may be null)
+		 */
+		private void traverseKmerNode(KmerNodeU kn){
+			if(kn==null){return;}
+			final int value=kn.count();
+			if(value<min || value>max){kn.set(0);}
+			traverseKmerNode(kn.left());
+			traverseKmerNode(kn.right());
+		}
+		
+		/** Unlimited k-mer table set being processed by this thread */
+		private final KmerTableSetU tables;
+		
+	}
+	
+	/*--------------------------------------------------------------*/
+	
+	/** Number of k-mers removed by this thread */
+	long kmersRemovedT=0;
+	
+	/** Thread identifier for coordination and debugging */
+	final int id;
+	/** Minimum k-mer count threshold for retention */
+	final int min;
+	/** Maximum k-mer count threshold for retention */
+	final int max;
+	
+	/** Atomic counter for coordinating table processing across threads */
+	final AtomicInteger nextTable;
+	
+	/** Print messages to this stream */
+	static PrintStream outstream=System.err;
+	
+}

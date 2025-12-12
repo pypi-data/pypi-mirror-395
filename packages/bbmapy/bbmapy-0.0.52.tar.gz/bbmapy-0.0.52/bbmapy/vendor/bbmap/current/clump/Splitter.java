@@ -1,0 +1,601 @@
+package clump;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map.Entry;
+
+import dna.AminoAcid;
+import shared.KillSwitch;
+import shared.Tools;
+import stream.Read;
+import structures.IntList;
+import structures.LongList;
+
+/**
+ * A tool for splitting clumps by allele.
+ * @author Brian Bushnell
+ * @date September 26, 2016
+ *
+ */
+class Splitter {
+	
+	/**
+	 * Splits a single clump by identifying optimal pivot positions for allelic separation.
+	 * Returns the original clump if it's too small to split or no suitable pivot is found.
+	 * @param c The clump to split
+	 * @return List containing either the original clump or its split components
+	 */
+	static ArrayList<Clump> splitOnPivot(Clump c){
+		ArrayList<Clump> list=new ArrayList<Clump>(3);
+		list.add(c);
+		if(c.size()<minSizeSplit){
+//			assert(findBestPivot(c)<0);
+			return list;
+		}
+		return splitOnPivot(list);
+	}
+	
+	/**
+	 * Processes a list of clumps, attempting to split each one by pivot analysis.
+	 * Clumps that cannot be split are added to the output unchanged.
+	 * Uses correlation-based pivot finding for improved accuracy.
+	 *
+	 * @param list Input list of clumps to process
+	 * @return List of split clumps and unsplittable clumps
+	 */
+	static ArrayList<Clump> splitOnPivot(ArrayList<Clump> list){
+		ArrayList<Clump> out=new ArrayList<Clump>();
+		
+		final IntList pivots=new IntList(2);
+		for(int i=0; i<list.size(); i++){
+			Clump clump=list.get(i);
+			list.set(i, null);
+			int pivot=findBestPivots(clump, FIND_CORRELATIONS, pivots);
+			if(pivot<0){
+				assert(pivots.size==0);
+				out.add(clump);
+			}else{
+				assert(pivots.size==1 || pivots.size==2) : pivot+", "+pivots.size+", "+pivots;
+				assert(pivots.get(0)==pivot);
+				int added=splitAndAdd(clump, pivots.get(0), (pivots.size>1 ? pivots.get(1) : -1), list);
+				if(added<2) {//Rare case that caused an assertion once
+					assert(added==1);
+					out.add(clump);
+					i++;
+				}
+			}
+		}
+		return out;
+	}
+	
+	/**
+	 * Splits a clump into major and minor subgroups based on variant presence.
+	 * Reads containing either var1 or var2 are assigned to the minor group,
+	 * while reads without these variants form the major group.
+	 *
+	 * @param c The clump to split
+	 * @param var1 First variant position and allele (packed as position<<2 | allele)
+	 * @param var2 Second variant position and allele, or -1 if unused
+	 * @param list Output list to receive the split clumps
+	 * @return Number of non-empty clumps added (1 or 2)
+	 */
+	static int splitAndAdd(Clump c, final int var1, final int var2, ArrayList<Clump> list) {
+		final int maxLeft=c.maxLeft();
+		
+		final Clump major=Clump.makeClump(c.kmer), minor=Clump.makeClump(c.kmer);
+		
+		for(Read r : c){
+			if(containsVar(var1, r, maxLeft) || (var2>=0 && containsVar(var2, r, maxLeft))){
+				minor.add(r);
+			}else{
+				major.add(r);
+			}
+		}
+		
+//		assert(major.size()>0) : c.size()+", "+major.size()+", "+minor.size()+
+//			", "+(var1>>2)+", "+(var1&alleleMask)+", "+(var2>>2)+", "+(var2&alleleMask)+
+//			", "+list.size()+", "+c.get(0);
+//		assert(minor.size()>0) : c.size()+", "+major.size()+", "+minor.size()+
+//			", "+(var1>>2)+", "+(var1&alleleMask)+", "+(var2>>2)+", "+(var2&alleleMask)+
+//			", "+list.size()+", "+c.get(0);
+//		assert(major.size()+minor.size()==c.size()) : c.size()+", "+major.size()+", "+minor.size()+
+//			", "+(var1>>2)+", "+(var1&alleleMask)+", "+(var2>>2)+", "+(var2&alleleMask)+
+//			", "+list.size()+", "+c.get(0);
+		
+//		Exception in thread "Thread-110" java.lang.AssertionError: 21, 0, 21, 163, 1, 104, 2, 71,      
+//		TTTTGGCAGCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGCGCCACGCCGCCCCCCCCCCCC <-90
+//		CCCCCCCCCCGGGGGGGGGGGGCAGGGGGGGGGGGGGGGGGGGGGGGCGCCCCCCCCCC
+//		        at clump.Splitter.splitAndAdd(Splitter.java:72)
+//		        at clump.Splitter.splitOnPivot(Splitter.java:46)
+//		        at clump.Splitter.splitOnPivot(Splitter.java:29)
+//		        at clump.Clump.splitAndErrorCorrect(Clump.java:612)
+//		        at clump.ClumpList$ProcessThread.run(ClumpList.java:342)
+		
+		
+		int added=(major.size()>0 ? 1 : 0)+(minor.size()>0 ? 1 : 0);
+		if(major.size()>0) {list.add(major);}
+		if(minor.size()>0) {list.add(minor);}
+		assert(added>0) : c.size()+", "+major.size()+", "+minor.size();
+		return added;
+	}
+	
+	//Returns the c
+	/**
+	 * Counts variants at each position and populates a sorted list by frequency.
+	 * Identifies positions where minority alleles occur with sufficient frequency
+	 * for potential use as splitting pivots.
+	 *
+	 * @param c The clump to analyze
+	 * @param varCounts Output list to receive variant data (count<<32 | position<<2 | allele)
+	 * @return Count of the most frequent variant
+	 */
+	static int countVariants(Clump c, LongList varCounts){
+		varCounts.clear();
+		final int[][] bcounts=c.baseCounts();
+		final int[][] qcounts=c.qualityCounts();
+		final int len=bcounts[0].length;
+		for(int i=0; i<len; i++){
+			final int major=c.getConsensusAtPosition(qcounts, i);
+			for(int x=0; x<4; x++){
+				final int bcount=bcounts[x][i];
+				if(bcount>1 && x!=major){
+					final long var=(((long)bcount)<<32)|((i<<shift)|x);
+					varCounts.add(var);
+				}
+			}
+		}
+		if(varCounts.size()<1){return 0;}
+		varCounts.sort();
+		varCounts.reverse();
+		return (int)(varCounts.get(0)>>>32);
+	}
+	
+	/**
+	 * Identifies variants in each read relative to the consensus sequence.
+	 * Builds mapping from variant positions to lists of reads containing those variants.
+	 * Only considers variants that occur multiple times across the clump.
+	 *
+	 * @param c The clump to analyze
+	 * @param makeMap Whether to build and return the variant-to-reads mapping
+	 * @return Map from variant IDs to lists of reads containing them, or null if no variants
+	 */
+	static LinkedHashMap<Integer, ArrayList<Read>> findReadVariants(Clump c, boolean makeMap){
+		if(c.size()<5){return null;} //Not really needed with tiny clumps
+//		assert(c.size()>3); //TODO
+		LinkedHashMap<Integer, ArrayList<Read>> map=null;
+		map=(makeMap ? new LinkedHashMap<Integer, ArrayList<Read>>() : null);
+//		if(makeMap){
+//			map=localMap.get();
+//			if(map==null){
+//				map=new LinkedHashMap<Integer, ArrayList<Read>>();
+//				localMap.set(map);
+//			}
+//			map.clear();
+//		}
+		
+		final int[][] bcounts=c.baseCounts();
+		final Read ref=c.consensusRead();
+		final byte[] rbases=ref.bases;
+		for(Read r : c){
+			final byte[] bases=r.bases;
+			final ReadKey key=(ReadKey) r.obj;
+			IntList list=key.vars;
+			if(list!=null){list.clear();}
+			
+			
+			final int cStart=0, rStart=c.maxLeft()-key.position;
+			
+			for(int i=cStart, j=rStart; i<bases.length; i++, j++){
+				final byte cb=bases[i], rb=rbases[j];
+				if(cb!=rb){
+					byte x=AminoAcid.baseToNumber[cb];
+					if(x>=0){
+						int count=bcounts[x][j];
+						if(count>1){
+							int var=(j<<2)|x;
+							if(list==null){list=key.vars=new IntList(4);}
+							list.add(var);
+							
+							if(map!=null){
+								Integer mapkey=var;//mapKeys[var];
+								ArrayList<Read> alr=map.get(mapkey);
+								if(alr==null){
+									alr=new ArrayList<Read>(4);
+									map.put(mapkey, alr);
+								}
+								alr.add(r);
+							}
+							
+						}
+					}
+				}
+			}
+		}
+		return map==null || map.isEmpty() ? null : map;
+	}
+	
+	/**
+	 * Finds the best pivot using correlation analysis between variants.
+	 * Identifies pairs of variants that co-occur in reads, indicating potential
+	 * linkage that can be used for more accurate clump splitting.
+	 *
+	 * @param c The clump to analyze
+	 * @param pivots Output list to receive the best pivot(s) found
+	 * @return The primary pivot variant, or -1 if none found
+	 */
+	static int findBestPivot_Correlated(Clump c, IntList pivots){
+		assert(pivots.size==0);
+		LinkedHashMap<Integer, ArrayList<Read>> map=findReadVariants(c, true);
+		if(map==null){return -1;}
+		
+		IntList collection=new IntList(32);
+		int[] rvector=KillSwitch.allocInt1D(5);
+		
+		int bestVar=-1;
+		int bestVarCount=-1;
+		int bestVar2=-1;
+		int bestVar2Count=-1;
+		int bestDifferent=-1;
+		float bestCorrelation=-1;
+		float bestScore=-1;
+		
+		final float minCorrelation=0.75f;
+		final int minVar2Count=2;
+		
+		int max=0;
+		for(Entry<Integer, ArrayList<Read>> entry : map.entrySet()){
+			max=Tools.max(max, entry.getValue().size());
+		}
+		if(max<2){return -1;}
+		final int thresh=Tools.max(2, max/2);
+		final int thresh2=max/4;
+		int numOverThresh=0;
+		ArrayList<Integer> remove=new ArrayList<Integer>();
+		for(Entry<Integer, ArrayList<Read>> entry : map.entrySet()){
+			int x=entry.getValue().size();
+			if(x>=thresh){numOverThresh++;}
+			else if(x<thresh2){remove.add(entry.getKey());}
+		}
+		for(Integer key : remove){map.remove(key);}
+		if(numOverThresh>MAX_CORRELATIONS){return -1;}
+		
+		for(Entry<Integer, ArrayList<Read>> entry : map.entrySet()){
+			final ArrayList<Read> rlist=entry.getValue();
+			final Integer key=entry.getKey();
+			final int var=key;
+			if(rlist.size()>=thresh){
+				
+				final int var2=examineVar(var, rlist, collection, rvector, map);
+
+				if(var2>=0){
+
+					final int varCount=rvector[1];
+					final int var2Count=rvector[3];
+					final int different=rvector[4];
+
+					final int var2reads;
+					final int var2ReadsWithoutVar;
+					{
+						ArrayList<Read> temp=map.get(var2);
+						var2reads=(temp==null ? 0 : temp.size());
+
+//						if(var2reads==var2Count){
+//							var2ReadsWithoutVar=0;
+//						}else{
+//							var2ReadsWithoutVar=countDifferentAlleles(var, temp);
+//						}
+
+						var2ReadsWithoutVar=var2reads-varCount;
+
+					}
+
+//					final float correlation=(var2Count-0.05f)/(float)varCount;
+//					final float correlation=(varCount-different)/(float)varCount;
+					final float correlation=(Tools.max(varCount, var2reads)-different)/(float)Tools.max(varCount, var2reads);
+					final int distance=Tools.absdif(var>>2, var2>>2);
+
+//					final float score=correlation*((var2Count-1)-0.5f*var2ReadsWithoutVar-different+1.0f*(varCount));
+
+					final float score=correlation*(var2reads/*var2Count*/+varCount-different+0.5f*var2ReadsWithoutVar)*(distance+250);
+
+//					final float score=correlation*((var2Count-1)-1.0f*var2ReadsWithoutVar+1.0f*(varCount));
+					if(correlation>=minCorrelation && var2Count>=minVar2Count){
+						if(score>bestScore || (score==bestScore && varCount>bestVarCount)){
+							bestVar=var;
+							bestVarCount=varCount;
+							bestVar2=var2;
+							bestVar2Count=var2Count;
+							bestCorrelation=correlation;
+							bestScore=score;
+							bestDifferent=different;
+						}
+					}
+				}
+			}
+		}
+		
+		if(bestVar2Count>=minVar2Count && bestCorrelation>=minCorrelation){
+			pivots.add(bestVar);
+			pivots.add(bestVar2);
+			return bestVar;
+		}
+		return -1;
+	}
+	
+	/**
+	 * Tests whether a read contains a specific variant at the expected position.
+	 * Accounts for read positioning within the clump alignment.
+	 *
+	 * @param var The variant to test (position<<2 | allele)
+	 * @param r The read to examine
+	 * @param maxLeft Maximum left offset in the clump alignment
+	 * @return true if the read contains the variant, false otherwise
+	 */
+	static boolean containsVar(final int var, final Read r, final int maxLeft){
+		final int varPos=var>>2;
+		final int varAllele=var&alleleMask;
+		final ReadKey rk=(ReadKey) r.obj;
+		final int rloc=toReadLocation(varPos, maxLeft, rk.position);
+		if(rloc<0 || rloc>=r.length()){
+			return false;
+		}
+		final int readAllele=AminoAcid.baseToNumber[r.bases[rloc]];
+		return readAllele==varAllele;
+	}
+	
+	/**
+	 * Tests whether a read has a different allele than the specified variant.
+	 * Used to identify reads that should be separated from variant carriers.
+	 *
+	 * @param var The reference variant (position<<2 | allele)
+	 * @param r The read to examine
+	 * @return true if the read has a different allele at this position
+	 */
+	static boolean hasDifferentAllele(final int var, final Read r/*, final Clump c*/){
+		final int varPos=var>>2;
+		final int varAllele=var&alleleMask;
+		final ReadKey rk=(ReadKey) r.obj;
+		final IntList vars=rk.vars;
+		final Clump c=rk.clump;
+		assert(c==rk.clump);
+		final int maxLeft=c.maxLeft();
+		final int rloc=toReadLocation(varPos, maxLeft, rk.position);
+		if(rloc<0 || rloc>=r.length()){
+			assert(!vars.contains(var));
+			return false;
+		}
+		final int readAllele=AminoAcid.baseToNumber[r.bases[rloc]];
+		assert((readAllele==varAllele)==vars.contains(var));
+		
+		return readAllele!=varAllele;
+	}
+	
+	/**
+	 * Counts reads in a list that have different alleles than the specified variant.
+	 * Used in correlation analysis to measure variant co-occurrence patterns.
+	 *
+	 * @param var The reference variant
+	 * @param list List of reads to examine
+	 * @return Number of reads with different alleles at the variant position
+	 */
+	static int countDifferentAlleles(final int var, ArrayList<Read> list){
+		if(list==null){return 0;}
+		int sum=0;
+		for(Read r : list){
+			if(hasDifferentAllele(var, r)){sum++;}
+		}
+		return sum;
+	}
+	
+	/**
+	 * Analyzes variant co-occurrence patterns to find the best correlated variant.
+	 * Examines all other variants present in reads carrying the specified variant
+	 * to identify the strongest correlation for splitting purposes.
+	 *
+	 * @param var The primary variant to analyze
+	 * @param list Reads containing the primary variant
+	 * @param collection Temporary storage for collecting co-occurring variants
+	 * @param rvector Output array [var, varCount, bestVar2, sharedCount, bestDifferent]
+	 * @param map Global variant-to-reads mapping for cross-validation
+	 * @return The best correlated variant, or -1 if none found
+	 */
+	static int examineVar(final int var, final ArrayList<Read> list, final IntList collection, final int[] rvector, LinkedHashMap<Integer, ArrayList<Read>> map){
+		collection.clear();
+		
+		for(Read r : list){
+			final ReadKey rk=(ReadKey) r.obj;
+			final IntList vars=rk.vars;
+			
+			for(int i=0; i<vars.size; i++){
+				final int v2=vars.get(i);
+				if(v2!=var){
+					collection.add(v2);
+				}
+			}
+		}
+		collection.sort();
+		
+		final int varCount=list.size();
+		
+		int lastVar2=-1, bestVar2=-1;
+		int sharedCount=0, bestSharedCount=0, bestDifferent=999;
+		for(int i=0; i<collection.size; i++){//TODO: Note that not all reads actually cover a given var
+			int currentVar2=collection.get(i);
+			if(currentVar2==lastVar2){sharedCount++;}
+			else{
+				if(sharedCount>bestSharedCount){
+					final int different1=(sharedCount==varCount ? 0 : countDifferentAlleles(lastVar2, list));
+					if(different1*8<varCount){
+						ArrayList<Read> list2=map.get(lastVar2);
+						final int varCount2=(list2==null ? 0 : list2.size());
+						final int different2=(sharedCount==varCount2 ? 0 : countDifferentAlleles(var, list2));
+						if(different2*8<varCount2){
+							bestVar2=lastVar2;
+							bestSharedCount=sharedCount;
+							bestDifferent=Tools.max(different1, different2);
+						}
+					}
+				}
+				sharedCount=1;
+			}
+			lastVar2=currentVar2;
+		}
+		if(sharedCount>bestSharedCount){
+			final int different1=(sharedCount==varCount ? 0 : countDifferentAlleles(lastVar2, list));
+			if(different1*8<varCount){
+				ArrayList<Read> list2=map.get(lastVar2);
+				final int varCount2=(list2==null ? 0 : list2.size());
+				final int different2=(sharedCount==varCount2 ? 0 : countDifferentAlleles(var, list2));
+				if(different2*8<varCount2){
+					bestVar2=lastVar2;
+					bestSharedCount=sharedCount;
+					bestDifferent=Tools.max(different1, different2);
+				}
+			}
+		}
+		rvector[0]=var;
+		rvector[1]=list.size();
+		rvector[2]=bestVar2;
+		rvector[3]=sharedCount;
+		rvector[4]=bestDifferent;
+		
+		return bestVar2;
+	}
+	
+	/**
+	 * Converts a clump alignment position to a read-relative position.
+	 *
+	 * @param clumpLocation Position in the clump coordinate system
+	 * @param maxLeft Maximum left offset in clump alignment
+	 * @param readPos Starting position of the read in clump coordinates
+	 * @return Position within the read sequence
+	 */
+	static final int toReadLocation(final int clumpLocation, final int maxLeft, final int readPos){
+		final int readLocation=clumpLocation+readPos-maxLeft;
+		return readLocation;
+	}
+	
+	/**
+	 * Converts a read-relative position to a clump alignment position.
+	 *
+	 * @param readLocation Position within the read sequence
+	 * @param maxLeft Maximum left offset in clump alignment
+	 * @param readPos Starting position of the read in clump coordinates
+	 * @return Position in the clump coordinate system
+	 */
+	static final int toClumpLocation(final int readLocation, final int maxLeft, final int readPos){
+		final int clumpLocation=readLocation-readPos+maxLeft;
+		assert(readLocation==toReadLocation(clumpLocation, maxLeft, readPos));
+		return clumpLocation;
+	}
+	
+	/**
+	 * Identifies the best pivot position(s) for splitting a clump.
+	 * First attempts correlation-based analysis if enabled, then falls back
+	 * to frequency-based analysis using quality scores and allele counts.
+	 *
+	 * @param c The clump to analyze
+	 * @param findCorrelations Whether to attempt correlation analysis first
+	 * @param pivots Output list to receive identified pivot positions
+	 * @return The best pivot variant found, or -1 if none suitable
+	 */
+	static int findBestPivots(Clump c, boolean findCorrelations, IntList pivots){
+		pivots.clear();
+		final int size=c.size();
+		if(size<minSizeSplit){return -1;}
+		
+		if(findCorrelations){
+			int x=findBestPivot_Correlated(c, pivots);
+			if(x>-1){return x;}
+		}
+		
+		final int[][] bcounts=c.baseCounts();
+		final int[][] qcounts=c.qualityCounts();
+		final float[][] qAvgs=c.qualityAverages();
+		final int width=c.width();
+		
+		int bestPosition=-1;
+		int bestVar=-1;
+		long bestBsecond=0;
+		long bestQsecond=0;
+
+//		final float bmult=8f, bmult2=15f, qmult=(c.useQuality() ? 1.5f : 100f);
+		final boolean useQuality=c.useQuality();
+		final float bmult=20f, bmult2=20f;
+		final float qmult=20f, qamult=1.5f;
+		
+		final int minPivotDepth=Tools.max(4, (int)(minSizeFractionSplit*size));
+//		final int minMinorAllele=Tools.max((conservative ? 1 : 2), (int)(0.25f+size/bmult2));
+		final int minMinorAllele=Tools.max(2, (int)(size/bmult2));
+		final int minMinorAlleleQ=minMinorAllele*10;
+		
+//		assert(false) : size+", "+minSizeSplit+", "+minPivotDepth+", "+minMinorAllele;
+		
+		for(int i=0; i<width; i++){
+			final long sum=c.getSumAtPosition(bcounts, i);
+			if(sum>=minPivotDepth){
+				final int pmajor=c.getConsensusAtPosition(bcounts, i);
+				final int pminor=c.getSecondHighest(bcounts, i);
+				if(pmajor>=0){
+					final long bmajor=bcounts[pmajor][i];
+					final long bsecond=bcounts[pminor][i];
+
+					final long qmajor=qcounts[pmajor][i];
+					final long qsecond=qcounts[pminor][i];
+
+					final float qamajor=qAvgs[pmajor][i];
+					final float qasecond=qAvgs[pminor][i];
+
+					if(bsecond*bmult>=bmajor && bsecond>=minMinorAllele){
+						if(!useQuality || (qsecond*qmult>=qmajor && qasecond*qamult>=qamajor && qsecond>=minMinorAlleleQ)){//candidate
+							if(bsecond>bestBsecond || (bsecond==bestBsecond && qsecond>bestQsecond)){//Perhaps Qsecond should be more important...?
+
+//								assert(false) : size+", "+minSizeSplit+", "+minPivotDepth+", "+minMinorAllele+", "+bmajor+", "+bsecond+", "+qmajor+", "+qsecond+", "+minMinorAlleleQ;
+								
+								bestBsecond=bsecond;
+								bestQsecond=qsecond;
+								bestPosition=i;
+								bestVar=(bestPosition<<2)|pminor;
+							}
+						}
+					}
+				}
+			}
+		}
+		
+//		if(bestVar<0 && findCorrelations){
+//			bestVar=findBestPivot_Correlated(c);
+//		}
+		
+		if(bestVar>=0){pivots.add(bestVar);}
+		return bestVar;
+	}
+
+	/** Minimum clump size required to attempt splitting */
+	static int minSizeSplit=4; //5 is actually better than 4 in allele separation tests...?
+	/** Minimum fraction of clump size required for pivot depth threshold */
+	static float minSizeFractionSplit=0.17f; //0.2 is substantially worse, 0.14 is a tiny bit better than 0.17
+	/** Whether to use conservative splitting parameters */
+	static boolean conservative=false;
+	
+	/** Bit mask for extracting allele bits from packed variant representation */
+	private static final int alleleMask=0x3;
+	/** Bit mask for extracting position bits from packed variant representation */
+	private static final int posMask=~alleleMask;
+	/**
+	 * Bit shift amount for packing position and allele into variant representation
+	 */
+	private static final int shift=2;
+	
+	/** Whether to enable correlation-based pivot finding */
+	static boolean FIND_CORRELATIONS=true;
+	/** Maximum number of variant correlations to analyze before giving up */
+	static int MAX_CORRELATIONS=12;
+	
+//	private static final ThreadLocal<LinkedHashMap<Integer, ArrayList<Read>>> localMap=new ThreadLocal<LinkedHashMap<Integer, ArrayList<Read>>>();
+//	private static final Integer[] mapKeys=new Integer[2000];
+//	static{
+//		for(int i=0; i<mapKeys.length; i++){mapKeys[i]=i;}
+//	}
+	
+}

@@ -1,0 +1,109 @@
+package ukmer;
+
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+import fileIO.ByteStreamWriter;
+import kmer.DumpThread;
+import shared.Shared;
+import shared.Tools;
+import structures.ByteBuilder;
+
+/**
+ * @author Brian Bushnell
+ * @date Nov 16, 2015
+ *
+ */
+public class DumpThreadU extends Thread{
+	
+	/**
+	 * Initiates parallel dumping of k-mers from multiple tables using worker threads.
+	 * Creates and manages a pool of DumpThreadU instances that coordinate via atomic counter
+	 * to process all tables without duplication.
+	 *
+	 * @param k K-mer length for output formatting
+	 * @param mincount Minimum count threshold for k-mer inclusion
+	 * @param maxcount Maximum count threshold for k-mer inclusion
+	 * @param tables Array of AbstractKmerTableU instances to dump
+	 * @param bsw ByteStreamWriter for output coordination
+	 * @param remaining AtomicLong counter tracking remaining k-mers to dump
+	 * @return true if all threads completed successfully, false otherwise
+	 */
+	public static boolean dump(final int k, final int mincount, final int maxcount, final AbstractKmerTableU[] tables, final ByteStreamWriter bsw, AtomicLong remaining){
+		final int threads=DumpThread.NUM_THREADS>0 ? DumpThread.NUM_THREADS : Tools.min(tables.length, (Tools.mid(1, Shared.threads()-1, 6)));
+		final AtomicInteger lock=new AtomicInteger(0);
+		final ArrayList<DumpThreadU> list=new ArrayList<DumpThreadU>(threads);
+		for(int i=0; i<threads; i++){
+			list.add(new DumpThreadU(k, mincount, maxcount, lock, tables, bsw, remaining));
+		}
+		for(DumpThreadU t : list){t.start();}
+		boolean success=true;
+		for(DumpThreadU t : list){
+			while(t.getState()!=Thread.State.TERMINATED){
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			success&=t.success;
+		}
+		return success;
+	}
+	
+	/**
+	 * Constructs a DumpThreadU worker thread with dumping parameters.
+	 * Thread will coordinate with others via the shared nextTable counter to
+	 * claim and process tables from the array.
+	 *
+	 * @param k_ K-mer length for output formatting
+	 * @param mincount_ Minimum count threshold for k-mer inclusion
+	 * @param maxcount_ Maximum count threshold for k-mer inclusion
+	 * @param nextTable_ Atomic counter for coordinating table assignment among threads
+	 * @param tables_ Array of AbstractKmerTableU instances to dump
+	 * @param bsw_ ByteStreamWriter for thread-safe output coordination
+	 * @param remaining_ AtomicLong counter tracking remaining k-mers to dump
+	 */
+	public DumpThreadU(final int k_, final int mincount_, final int maxcount_, final AtomicInteger nextTable_, final AbstractKmerTableU[] tables_, final ByteStreamWriter bsw_, AtomicLong remaining_){
+		k=k_;
+		mincount=mincount_;
+		maxcount=maxcount_;
+		nextTable=nextTable_;
+		tables=tables_;
+		bsw=bsw_;
+		remaining=remaining_;
+	}
+	
+	@Override
+	public void run(){
+		final ByteBuilder bb=new ByteBuilder(16300);
+		for(int i=nextTable.getAndIncrement(); i<tables.length; i=nextTable.getAndIncrement()){
+			AbstractKmerTableU t=tables[i];
+			t.dumpKmersAsBytes_MT(bsw, bb, k, mincount, maxcount, remaining);
+		}
+		if(bb.length()>0){
+			synchronized(bsw){bsw.addJob(bb);}
+		}
+		success=true;
+	}
+	
+	/** K-mer length for output formatting */
+	final int k;
+	/** Minimum count threshold for k-mer inclusion */
+	final int mincount;
+	/** Maximum count threshold for k-mer inclusion */
+	final int maxcount;
+	/** Atomic counter for coordinating table assignment among threads */
+	final AtomicInteger nextTable;
+	/** AtomicLong counter tracking remaining k-mers to dump */
+	final AtomicLong remaining;
+	/** Array of AbstractKmerTableU instances to dump */
+	final AbstractKmerTableU[] tables;
+	/** ByteStreamWriter for thread-safe output coordination */
+	final ByteStreamWriter bsw;
+	/** Flag indicating whether thread completed successfully */
+	boolean success=false;
+	
+}
