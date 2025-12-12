@@ -1,0 +1,513 @@
+Metadata-Version: 2.1
+Name: enn-iot-oc-sdk
+Version: 1.3.4
+Summary: IoC数据SDK - 提供工业物联网数据查询接口
+Home-page: https://github.com/enn-energy/enn-iot-oc-sdk
+Author: ENN Energy
+Author-email: developer@enn.com
+Project-URL: Bug Reports, https://github.com/enn-energy/enn-iot-oc-sdk/issues
+Project-URL: Source, https://github.com/enn-energy/enn-iot-oc-sdk
+Project-URL: Documentation, https://github.com/enn-energy/enn-iot-oc-sdk/wiki
+Keywords: iot,industrial,data,sdk,repository,query
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: dataclasses-json>=0.6.1
+Requires-Dist: typing-inspect>=0.9.0
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-cov>=2.0; extra == "dev"
+Requires-Dist: black>=21.0; extra == "dev"
+Requires-Dist: flake8>=3.8; extra == "dev"
+
+# ENN IoC SDK Generator
+
+> 🚀 工业物联网数据SDK自动化生成器 - 根据数据和实体定义完成SDK开发、发布、生成使用文档
+
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](#)
+
+## 📖 项目简介
+
+ENN IoC SDK Generator 是一个专为工业物联网场景设计的SDK自动化生成工具。它能够根据JSON数据源和YAML配置定义，自动生成完整的数据访问SDK，包括实体类、Repository接口、数据关联处理和使用文档。
+
+### 🎯 核心价值
+
+- **🤖 全自动化**: 从数据定义到SDK生成的完整自动化流程
+- **📊 数据驱动**: 基于实际JSON数据智能推断类型和结构
+- **🔗 关系映射**: 支持复杂的实体关系定义和自动数据关联
+- **📦 开箱即用**: 生成的SDK符合企业级标准，可直接投入使用
+- **🛠️ 零配置**: 无需手写代码，通过配置文件驱动整个开发流程
+
+---
+
+## ✨ 功能特性
+
+### 🏗️ SDK生成功能
+- ✅ **智能实体生成**: 根据JSON数据自动生成`@dataclass`实体类
+- ✅ **自动类型推断**: 智能识别字段类型（str, int, float, bool, list, dict）
+- ✅ **Repository接口生成**: 自动生成单行/多行实体的Repository接口
+- ✅ **关系映射支持**: 完整支持外键和嵌套对象关系
+- ✅ **数据关联处理**: 自动处理实体间的关联数据加载
+
+### 📋 配置驱动开发
+- ✅ **YAML配置**: 简洁明了的配置文件定义实体关系
+- ✅ **主键验证**: 强制主键定义，确保数据完整性
+- ✅ **灵活映射**: 支持表名映射和字段类型自定义
+- ✅ **关系定义**: 支持一对一、一对多等复杂关系
+
+### 🔧 企业级特性
+- ✅ **类型安全**: 完全类型化的实体和Repository接口
+- ✅ **错误处理**: 统一的异常处理和错误提示
+- ✅ **缓存机制**: 内置数据缓存，提供高性能数据访问
+- ✅ **标准兼容**: 符合企业SDK开发规范
+
+---
+
+## 🚀 快速开始
+
+### 1️⃣ 环境准备
+
+```bash
+# 克隆项目
+git clone <repository-url>
+cd ioc-sdk-generator
+
+# 安装依赖
+pip install -r requirements.txt
+```
+
+### 2️⃣ 准备数据
+
+将JSON数据文件放入 `data/your_project/source/` 目录：
+
+```
+data/
+└── your_project/
+    ├── relations.yaml          # 实体关系配置
+    └── source/                 # JSON数据源
+        ├── new_entity.json     # 实体数据
+        └── ref_entity.json
+```
+
+### 3️⃣ 配置实体关系
+详见  Relations配置指南.md
+创建 `relations.yaml` 定义实体关系：
+
+```yaml
+entities:
+  NewEntity:                     # 主实体
+    table: new_entity            # 对应JSON文件名
+    row_type: multiple           # 多行实体
+    fields:
+      id: {type: string, role: pk}                    # 主键字段
+      ref_id: {type: string, role: fk, to: RefEntity} # 外键字段
+      refObject: {                                         # 嵌入字段
+        type: object,
+        from: NewEntity.ref_id,
+        role: embed,
+        to: RefEntity
+      }
+
+  RefEntity:                     # 关联实体
+    table: ref_entity
+    row_type: multiple
+    fields:
+      id: {type: string, role: pk}                    # 主键字段
+```
+
+### 4️⃣ 生成SDK
+
+```bash
+python main.py --data-dir data/your_project --output-dir output
+```
+
+### 5️⃣ 使用生成的SDK
+
+```python
+# 导入生成的实体和Repository
+from output.infrastructure.model import NewEntity, NewEntityRepoImpl
+
+# 创建Repository实例
+repo = NewEntityRepoImpl(eo_id="your_enterprise_id")
+
+# 查询数据
+entities = repo.list()
+entity = repo.find_by_id("ENTITY_001")
+
+# 使用关联数据
+if entity and entity.refObject:
+    print(f"关联对象: {entity.refObject.description}")
+```
+
+---
+
+## 📁 项目结构
+
+```
+ioc-sdk-generator/
+├── README.md                      # 项目主介绍 📖
+├── main.py                        # SDK生成器入口 🚀
+├── requirements.txt               # 项目依赖 📦
+├── setup.py                       # 包配置和元数据 📦
+│
+├── generator/                     # 生成器模块 🔧
+│   ├── config_parser.py          # 配置解析器
+│   ├── repository_generator.py   # Repository生成器
+│   ├── type_inferencer.py        # 类型推断器
+│   └── entity_generator.py       # 实体生成器
+│
+├── enn_iot_oc/                   # SDK基础框架 🏗️
+│   ├── infrastructure/           # 基础设施层
+│   │   ├── repository/          # Repository基类
+│   │   │   ├── single_repo_base.py
+│   │   │   └── multi_repo_base.py
+│   │   └── util/                # 工具类
+│   └── __init__.py
+│
+├── data/                        # 数据和配置 📊
+│   ├── demo/                    # 示例数据
+│   │   ├── relations.yaml       # 示例关系配置
+│   │   └── source/              # 示例JSON数据
+│   └── copy/                    # 用户数据目录
+│
+├── output/                      # 生成的SDK输出 📦
+│   ├── infrastructure/
+│   │   └── model/               # 生成的实体和Repository
+│   └── __init__.py
+│
+├── pre_release_check.sh         # 发布前检查脚本 🔍
+├── release.sh                   # 完整发布脚本 🚀
+├── tt.py                        # 功能测试脚本 🧪
+│
+└── docs/                        # 文档目录 📚
+    ├── Relations配置指南.md      # 配置文件详细说明
+    └── ...                       # 其他文档
+```
+
+---
+
+## 🛠️ 详细使用指南
+
+### 配置文件说明
+
+#### relations.yaml 核心原则
+
+**只定义必要字段**：
+- `role: pk` - 主键字段（必需）
+- `role: fk` - 外键字段
+- `role: embed` - 嵌入字段
+
+**字段类型说明**：
+```yaml
+# 主键字段
+id: {type: string, role: pk}
+
+# 外键字段
+ref_id: {type: string, role: fk, to: TargetEntity}
+
+# 一对一嵌入
+refObject: {
+  type: object,
+  from: CurrentEntity.ref_id,
+  role: embed,
+  to: TargetEntity
+}
+
+# 一对多嵌入
+children: {
+  type: "list[object]",
+  from: ChildEntity.parent_id,
+  role: embed,
+  to: ChildEntity
+}
+```
+
+### 支持的实体类型
+
+| 实体类型 | row_type | Repository方法 | 使用场景 |
+|---------|----------|----------------|----------|
+| 单行实体 | single | `find()`, `save()` | 配置信息、系统设置 |
+| 多行实体 | multiple | `list()`, `find_by_id()`, `save_all()` | 业务数据、记录列表 |
+
+### 自动类型推断
+
+JSON数据自动映射为Python类型：
+
+| JSON示例 | 推断类型 | Python类型 |
+|---------|----------|------------|
+| `"text"` | string | `str` |
+| `123` | int | `int` |
+| `123.45` | float | `float` |
+| `true/false` | boolean | `bool` |
+| `[1,2,3]` | list | `List[T]` |
+| `{}` | dict | `Dict[str, Any]` |
+
+---
+
+## 📊 生成的内容
+
+运行生成器后，将在 `output/` 目录生成：
+
+### 1. 实体类 (`output/infrastructure/model/EntityName.py`)
+
+```python
+@dataclass
+class NewEntity:
+    """新实体"""
+    id: str = ""
+    ref_id: str = ""
+    name: str = ""
+    refObject: Optional[RefEntity] = None
+```
+
+### 2. Repository实现 (`output/infrastructure/model/EntityName.py`)
+
+```python
+class NewEntityRepoImpl(MultiRepoBase[NewEntity]):
+    """新实体Repository实现"""
+
+    def __init__(self, eo_id: str = "", instance_id: str = "") -> None:
+        super().__init__(model_code="new_entity", eo_id=eo_id, instance_id=instance_id, id_field="id")
+
+    def to_domain(self, row: Dict[str, Any]) -> NewEntity:
+        # 数据转换逻辑
+
+    def from_domain(self, entity) -> Dict[str, Any]:
+        # 实体转换逻辑
+
+    def empty_object(self) -> NewEntity:
+        # 空对象创建
+```
+
+### 3. 模块导出 (`output/__init__.py`)
+
+自动生成模块导入和导出，方便使用。
+
+### 4. 使用示例和测试
+
+自动生成使用示例代码和测试脚本。
+
+---
+
+## 🧪 测试和验证
+
+### 运行测试脚本
+
+```bash
+# 生成测试脚本
+python main.py --data-dir data/copy --output-dir output
+
+# 运行测试
+python tt.py
+```
+
+### 测试内容
+
+- ✅ Repository接口功能测试
+- ✅ 数据关联关系测试
+- ✅ 类型安全性验证
+- ✅ 错误处理测试
+
+---
+
+## 🚀 发布指南
+
+### 快速发布
+
+项目提供了完整的自动化发布脚本，支持版本参数自动发布：
+
+```bash
+# 完整发布流程 (推荐)
+./release.sh [version_type]
+
+# 仅执行发布前检查
+./pre_release_check.sh [version_type]
+```
+
+### 版本参数说明
+
+| 版本类型 | 说明 | 示例 |
+|---------|------|------|
+| `patch` | 补丁版本 - 修复bug | 1.1.0 → 1.1.1 |
+| `minor` | 次要版本 - 新功能 | 1.1.0 → 1.2.0 |
+| `major` | 主要版本 - 重大变更 | 1.1.0 → 2.0.0 |
+
+### 发布流程
+
+#### 方法1: 一键发布 (推荐)
+```bash
+# 发布补丁版本 (默认)
+./release.sh
+
+# 发布次要版本
+./release.sh minor
+
+# 发布主要版本
+./release.sh major
+
+# 试运行 (不实际上传PyPI)
+./release.sh patch true
+```
+
+#### 方法2: 分步发布
+```bash
+# 1. 执行发布前检查
+./pre_release_check.sh minor
+
+# 2. 构建分发包
+python setup.py sdist bdist_wheel
+
+# 3. 检查构建文件
+ls -la dist/
+
+# 4. 上传到PyPI
+twine upload dist/*
+
+# 5. 创建Git标签
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+### 自动化功能
+
+发布脚本会自动完成：
+
+✅ **版本管理**
+- 自动递增版本号
+- 更新 setup.py 和相关文件
+- 创建 Git 标签
+
+✅ **质量检查**
+- 验证数据文件存在
+- 检查 Repository 代码生成
+- 运行完整测试套件
+- 验证 setup.py 配置
+
+✅ **构建发布**
+- 清理旧的构建文件
+- 构建源码包和 wheel 包
+- 检查包完整性
+- 试运行上传到 TestPyPI
+
+✅ **文档生成**
+- 生成 CHANGELOG 条目
+- 创建发布摘要
+- 生成发布报告
+
+### 发布后检查
+
+发布完成后，可以：
+
+1. **验证PyPI包**: `pip install enn-iot-oc-sdk==新版本`
+2. **查看发布报告**: `release_report_v版本号.md`
+3. **创建GitHub Release**: 上传构建文件和更新日志
+4. **更新文档**: 如果有API变更
+
+---
+
+## ⚠️ 重要注意事项
+
+### 配置文件要求
+
+1. **主键必需**: 每个实体必须定义一个 `role: pk` 的主键字段
+2. **文件匹配**: JSON文件名必须与 `table` 值对应
+3. **关系完整**: 外键引用的目标实体必须在配置中定义
+
+### 数据完整性
+
+- 外键值在目标实体中必须存在
+- 关联字段名称拼写必须正确
+- 避免循环引用（A→B→A）
+
+### 错误处理
+
+生成器提供详细的错误提示：
+- ❌ 主键缺失告警
+- ❌ 配置语法错误
+- ❌ 数据文件不存在
+- ❌ 关系定义错误
+
+---
+
+## 🔧 高级配置
+
+### 自定义类型推断
+
+可通过修改 `generator/type_inferencer.py` 自定义类型推断规则。
+
+### 扩展Repository功能
+
+在 `enn_iot_oc/infrastructure/repository/` 目录下扩展基础Repository功能。
+
+### 批量处理
+
+支持批量处理多个项目和配置：
+
+```bash
+# 批量生成多个项目的SDK
+for project in project1 project2 project3; do
+    python main.py --data-dir data/$project --output-dir output/$project
+done
+```
+
+---
+
+## 📚 相关文档
+
+- [📋 Relations.yaml配置指南](Relations配置指南.md) - 详细的配置文件说明
+- [🏗️ SDK架构设计](docs/architecture.md) - 系统架构说明
+- [🧪 测试指南](docs/testing.md) - 测试方法和最佳实践
+
+---
+
+## 🤝 贡献指南
+
+1. Fork 项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+---
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+---
+
+## 🎉 总结
+
+ENN IoC SDK Generator 通过配置驱动的方式，彻底简化了IoC数据SDK的开发流程。您只需要：
+
+1. 📊 **准备JSON数据**
+2. ⚙️ **编写relations.yaml配置**
+3. 🚀 **运行生成器**
+4. 📦 **使用生成的SDK**
+
+无需手写任何实体类和Repository代码，自动获得类型安全、功能完整的企业级SDK！
+
+> 💡 **开始使用**: `python main.py --data-dir data/your_project --output-dir output`
+
+---
+
+<div align="center">
+
+**[⬆ 返回顶部](#enn-iot-sdk-generator)**
+
+Made with ❤️ by ENN Energy IoT Team
+
+</div>
