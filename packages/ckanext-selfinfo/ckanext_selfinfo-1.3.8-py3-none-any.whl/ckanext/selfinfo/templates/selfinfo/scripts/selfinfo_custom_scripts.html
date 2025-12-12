@@ -1,0 +1,124 @@
+<script defer>
+    function copyTextareaClip(id) {
+        let clip = document.getElementById(id);
+        clip.select();
+        navigator.clipboard.writeText(clip.value);
+    }
+
+    function copyElementContent(id) {
+        var preElement = document.getElementById(id);
+
+        var tempTextArea = document.createElement("textarea");
+        tempTextArea.value = preElement.textContent.trim();
+        document.body.appendChild(tempTextArea);
+
+        tempTextArea.select();
+        document.execCommand("copy");
+
+        document.body.removeChild(tempTextArea);
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const hash = window.location.hash;
+
+        if (hash) {
+            const secondLevelTab = document.querySelector(`[href="${hash}"]`);
+
+            if (secondLevelTab) {
+                const parentTabPane = secondLevelTab.closest('.tab-pane');
+                if (parentTabPane && parentTabPane.id) {
+                    const parentTabLink = document.querySelector(`[href="#${parentTabPane.id}"]`);
+                    if (parentTabLink) {
+                        new bootstrap.Tab(parentTabLink).show();
+                    }
+                }
+                new bootstrap.Tab(secondLevelTab).show();
+            }
+        }
+    });
+
+    grabRam = false;
+    var ram_monitor = document.getElementById("ram-monitor");
+
+    if (ram_monitor) {
+        document.getElementById("ram-monitor").addEventListener("click", function () {
+            if (this.classList.contains('active')) {
+                this.textContent = "Start monitoring";
+                grabRam = false;
+            } else {
+                this.textContent = "Stop monitoring";
+                grabRam = true;
+            }
+            this.classList.toggle('active');
+        });
+        function getRam() {
+            return grabRam;
+        }
+    }
+
+    function tableToJson(tableId) {
+        const table = document.getElementById(tableId);
+        const headers = [...table.querySelectorAll('thead th')].map(th => th.innerText.trim());
+        const rows = [...table.querySelectorAll('tbody tr')];
+
+        const data = rows
+            .filter(row => row.offsetParent !== null) // Only include visible rows
+            .map(row => {
+                const cells = [...row.querySelectorAll('td')];
+                const rowData = {};
+                headers.forEach((header, i) => {
+                    rowData[header] = cells[i]?.innerText.trim();
+                });
+                return rowData;
+            });
+
+        return data;
+    }
+
+    function copyTableJsonToClipboard(tableId) {
+        const json = tableToJson(tableId);
+        const prettyJson = JSON.stringify(json, null, 2);
+
+        navigator.clipboard.writeText(prettyJson)
+            .catch(err => {
+                console.error("Failed to copy: ", err);
+                alert("Failed to copy JSON to clipboard.");
+            });
+    }
+
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        const newEl = evt.target;
+        $(newEl).find('[data-module]').each(function () {
+            ckan.module.initializeElement(this);
+        });
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function () {
+        const openModals = document.querySelectorAll('.selftools-modal-confirmation.modal.show');
+        openModals.forEach(modalEl => {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+        });
+    });
+
+    document.body.addEventListener("htmx:beforeRequest", (evt) => {
+        const el = evt.target;
+        if (!el.classList.contains("htmx-pretty-load")) return;
+
+        const targetSelector = el.getAttribute("hx-target");
+        if (!targetSelector) return;
+
+        const targetEl = document.querySelector(targetSelector);
+        if (!targetEl) return;
+
+        targetEl.innerHTML = '';
+    });
+
+    function clearAutocomplete(target) {
+        const input = $(target);
+        input.val('').trigger('change');
+    }
+
+</script>

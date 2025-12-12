@@ -1,0 +1,36 @@
+{% set from_date = h.selftracking_get_date(30) %}
+{% set to_date = h.selftracking_get_date() %}
+{% set type = "api view" %}
+{% set data = h.selftracking_get_view_data(type, from_date, to_date) %}
+{% set type_machine = type|replace(' ', '-') %}
+
+{% snippet 'selftracking/snippets/forms/selftracking_views_search.html', data=data, type=type, type_machine=type_machine, from_date=from_date, to_date=to_date  %}
+
+<div class="p-3 mt-4">
+    <div class="table-responsive">
+        <div class="d-flex justify-content-between mb-3 align-items-center">
+          <button class="btn btn-dark" onclick="copyTableJsonToClipboard('selftracking-api-views-path')">
+            Copy as JSON
+          </button>
+        </div>
+        <div id="htmx-loader-{{ type_machine }}" class="htmx-indicator text-center my-5 fs-3">
+            <p>Loading...</p>
+        </div>
+        <div id="selftracking-views-type-table-{{ type_machine }}">
+            {% snippet 'selftracking/results/selftracking_type_views_table.html', data=data, type=type, type_machine=type_machine %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="api-view-item-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog mw-100 mx-3">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ modal_label_id }}">Path Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="api-view-item-modal-content" class="media-modal-content p-3">
+            </div>
+        </div>
+    </div>
+</div>
