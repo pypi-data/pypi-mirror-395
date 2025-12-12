@@ -1,0 +1,40 @@
+"""Test STU"""
+
+# -- Imports ------------------------------------------------------------------
+
+from icotronic.can import STU
+from pytest import mark
+
+from icotest.config import settings
+from icotest.test.support.node import (
+    check_firmware_upload,
+    check_connection,
+    check_eeprom_product_data,
+    check_eeprom_statistics,
+    check_eeprom_status,
+)
+
+# -- Functions ----------------------------------------------------------------
+
+
+@mark.anyio
+async def test_firmware_upload():
+    """Upload firmware"""
+
+    await check_firmware_upload(settings.stu)
+
+
+@mark.anyio
+async def test_connection(stu: STU):
+    """Test if connection to STU is possible"""
+
+    await check_connection(stu)
+
+
+@mark.anyio
+async def test_eeprom(stu: STU):
+    "Test if reading and writing of EEPROM values works"
+
+    await check_eeprom_product_data(stu, settings.stu)
+    await check_eeprom_statistics(stu, settings.stu)
+    await check_eeprom_status(stu)
