@@ -1,0 +1,194 @@
+Metadata-Version: 2.4
+Name: transelec-D_A-utils-core
+Version: 0.1.0
+Summary: Core utilities for data transformation and structured logging.
+Home-page: https://github.com/Transelec-repository/mv_utils
+Author: Luis Fuenzalida
+Author-email: bi-lfuenzalida@transelec.cl
+License: MIT
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: bq
+Requires-Dist: google-cloud-bigquery>=2.0.0; extra == "bq"
+Requires-Dist: google-api-core>=1.0.0; extra == "bq"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: provides-extra
+Dynamic: requires-python
+Dynamic: summary
+
+# utils-core: Librería Core de Utilidades y Logging para MV
+
+## 🚀 Descripción General
+
+`utils-core` es el paquete interno que centraliza las funciones de **Transformación de Datos** y el **Logueo de Eventos de Ejecución de Máquinas Virtuales (VM Execution Logging)**.
+
+El objetivo principal de esta librería es:
+1.  Proveer funciones de **transformación** robustas (normalización de nombres SQL, deduplicación, etc.).
+2.  Ofrecer un sistema de **logueo** estructuralizado (JSONL en archivo/consola) con control de verbosidad.
+3.  Implementar el **Logueo Centralizado de Eventos VM** en BigQuery, usando el modelo de **Inyección de Dependencias** para garantizar la autonomía y trazabilidad por proyecto.
+
+## 📦 Instalación
+
+La librería está diseñada para ser instalada con soporte opcional para BigQuery (necesario para la clase `BigQueryVMEventLogger`).
+
+### Instalación Estándar (Solo Utilerías y Log Básico)
+
+```bash
+pip install utils-core
+```
+
+### Instalación Completa (Con soporte BigQuery)
+
+Se recomienda usar el extra `[bq]` para asegurar que las dependencias de Google Cloud estén disponibles.
+
+```bash
+pip install utils-core[bq]
+```
+
+## 🛠️ Uso y Ejemplos
+
+### 1\. Logueo Básico y Contexto (`myutils.logx`)
+
+Este módulo proporciona el logueo estructurado que escribe en consola y en archivos de log (`logs/des.log` o `logs/prod.log`).
+
+| Función | Descripción |
+| :--- | :--- |
+| `emit(event, level, **fields)` | Registra un evento de log estructuralizado (JSONL). |
+| `emit_once(event, level, **fields)` | Registra un evento solo la primera vez que se llama por ejecución. |
+| `set_component(name)` | Define el componente actual (ej: `main`, `executor`). |
+| `set_context(**kwargs)` | Añade metadatos globales (ej: `gcp_project`, `env`) a todos los logs. |
+
+**Ejemplo de Log Básico:**
+
+```python
+from myutils.logx import emit, set_component, set_context
+import os
+
+# Controla la verbosidad por variable de entorno
+os.environ["LOG_LEVEL"] = "DEBUG" 
+
+set_component("API_HANDLER")
+set_context(gcp_project="mv-prod-01")
+emit("REQUEST_RECEIVED", level="INFO", http_status=200, user_id=1024)
+```
+
+-----
+
+### 2\. Logueo de Eventos VM en BigQuery (`myutils.logx`)
+
+Esta funcionalidad requiere que el proyecto consumidor **inyecte** la conexión de BigQuery para garantizar la autonomía del proyecto.
+
+**🚨 Principio Clave: Inyección de Dependencias**
+La librería no busca credenciales. Usted debe:
+
+1.  Crear una instancia de `google.cloud.bigquery.Client` (autenticada por el entorno de ejecución).
+2.  Pasar esta instancia y el `project_id` de destino a `BigQueryVMEventLogger`.
+
+El **Dataset** (`FWK_INGEST`) y la **Tabla** (`VM_EXECUTION_LOGS`) son **fijos** internamente, solo el `project_id` varía por ambiente.
+
+#### Estructura Crítica de Datos
+
+Para asegurar una correcta trazabilidad en la tabla centralizada, se deben respetar los siguientes formatos:
+
+| Campo | Descripción | Restricciones |
+| :--- | :--- | :--- |
+| **`VM_ID`** | Identificador único del proceso lógico. | **Formato:** `vm_{project_name}_{transaction_type}_{endpoint_alias}` |
+| **`transaction_type`** | Clasificación del tipo de ejecución. | Valores esperados: `ingesta` o `integracion`. |
+| **`STATUS`** | Estado final o intermedio de la ejecución. | Valores válidos: `Testing`, `Failed`, `Pending`, `Succeeded`, `Running`, `Error`. |
+
+#### Pasos para Loguear un Evento VM
+
+1.  **Inicialización del Logger (Una sola vez):**
+
+    ```python
+    from google.cloud import bigquery
+    from myutils.logx import BigQueryVMEventLogger
+
+    # 1. Crear el cliente BQ (usando credenciales del entorno)
+    bq_client = bigquery.Client()
+
+    # 2. Inyectar el cliente y el PROJECT_ID de destino (e.g., 'mv-prod')
+    TARGET_PROJECT_ID = "mv-dev-project-id" 
+    bq_logger = BigQueryVMEventLogger(
+        bq_client=bq_client,
+        project_id=TARGET_PROJECT_ID
+    )
+
+    # 3. (Opcional, pero recomendado) Asegurar que la tabla exista en ese proyecto
+    bq_logger.ensure_table()
+    ```
+
+2.  **Uso en la Ejecución (Por evento):**
+
+    ```python
+    from myutils.logx import start_vm_event, finish_vm_event_with_logger
+
+    # Ejemplo de construcción de VM_ID:
+    # Si transaction_type='ingesta', endpoint_alias='productos_bq'
+    # -> VM_ID: vm_nombre-logico-app_ingesta_productos_bq
+
+    vm_event = start_vm_event(
+        project_name="nombre-logico-app", 
+        transaction_type="ingesta", 
+        endpoint_alias="MAIN_PROCESS"
+    )
+
+    try:
+        # ... Lógica de negocio ...
+        
+        # Si tiene éxito (STATUS='Succeeded')
+        finish_vm_event_with_logger(vm_event, "Succeeded", bq_logger)
+    except Exception as e:
+        # Si falla (STATUS='Failed' o 'Error')
+        finish_vm_event_with_logger(vm_event, "Failed", bq_logger, error_detail=str(e))
+    ```
+
+-----
+
+### 3\. Transformaciones de Datos (`myutils.transform`)
+
+Este módulo contiene utilidades para la normalización de datos.
+
+| Función | Descripción |
+| :--- | :--- |
+| `strip_accents(text)` | Elimina acentos (ej: `á` -\> `a`). |
+| `sql_name_strict(s)` | Convierte un string en un nombre seguro para SQL/BigQuery. **Corrige "ANO" a "ANIO"** como palabra completa. |
+| `dedupe_names(names)` | Añade sufijos numéricos a nombres duplicados (ej: `[A, A]` -\> `[A, A_2]`). |
+| `file_safe_name(s, max_len)` | Convierte un string en un nombre seguro para archivos. |
+
+**Ejemplo de Uso:**
+
+```python
+from myutils.transform import sql_name_strict, dedupe_names
+
+# Normalización para BigQuery
+nombre_sucio = "Columna Año del Cliente"
+nombre_limpio = sql_name_strict(nombre_sucio) 
+# Resultado: COLUMNA_ANIO_DEL_CLIENTE
+
+# Manejo de columnas duplicadas
+nombres_repetidos = ["ID", "Fecha", "ID"]
+nombres_finales = dedupe_names(nombres_repetidos)
+# Resultado: ['ID', 'Fecha', 'ID_2']
+```
+
+-----
+
+## 🔒 Términos de Uso Internos (Ver `LICENSE`)
+
+Este software es de **Propiedad Interna**. Su uso está restringido únicamente a los proyectos de la organización.
+
