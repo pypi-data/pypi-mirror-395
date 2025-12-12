@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling", "hatch-regex-commit"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hypothesis-awkward"
+dynamic = ["version"]
+description = "Hypothesis strategies for Awkward Array"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Tai Sakuma" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+keywords = ["hypothesis", "awkward-array", "testing", "property-based testing"]
+dependencies = ["awkward>=2.8", "hypothesis>=6.147"]
+
+[project.optional-dependencies]
+pandas = ["pandas>=2.3"]
+arrow = ["pyarrow>=22.0"]
+all = ["hypothesis-awkward[pandas,arrow]"]
+
+[dependency-groups]
+dev = ["mypy>=1.18", "pytest>=9.0", "pytest-cov>=7.0", "ruff>=0.14.1"]
+print = ["rich>=14.2", "icecream>=2.1"]
+
+[tool.hatch.version]
+source = "regex_commit"
+path = "src/hypothesis_awkward/__about__.py"
+check_dirty = false
+tag_sign = false
+
+[tool.pytest]
+addopts = ["--doctest-modules", "--doctest-glob='*.md'"]
+doctest_optionflags = ["ELLIPSIS"]
+filterwarnings = ["ignore::hypothesis.errors.NonInteractiveExampleWarning"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+]
+ignore = [
+    "E501", # line too long
+    "E741", # ambiguous variable name 'l' (lowercase L)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["awkward"]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+
+
+[[tool.mypy.overrides]]
+module = ["awkward.*", "pyarrow.*", "pandas.*"]
+ignore_missing_imports = true
