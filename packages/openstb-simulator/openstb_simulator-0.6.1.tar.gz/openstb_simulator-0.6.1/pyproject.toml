@@ -1,0 +1,224 @@
+# SPDX-FileCopyrightText: openSTB contributors
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+
+[build-system]
+requires = ["hatchling", "hatch-vcs", "openstb-i18n"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openstb-simulator"
+description = "SONAR simulator"
+dynamic = ["version"]
+
+requires-python = ">=3.11"
+dependencies = [
+  "click",
+  "cryptography",
+  "dask[distributed]",
+  "numpy",
+  "openstb-i18n",
+  "quaternionic",
+  "rich",
+  "scipy",
+  "zarr>=3,<4",
+]
+
+[project.optional-dependencies]
+
+# Dask diagnostic tools (dashboard)
+dask-diagnostics = [
+  "dask[diagnostics]",
+]
+
+# Support for different cluster environments.
+MPI = [
+  "dask-mpi",
+  "mpi4py",
+]
+
+# Support for building the documentation.
+doc = [
+  "mkdocs",
+  "mkdocstrings[python]",
+  "mkdocs-material",
+  "mkdocs-api-autonav",
+]
+
+# Support for development and testing.
+tests = [
+  "pytest",
+  "pytest-cov",
+  "requests",
+]
+dev = [
+  "mypy",
+  "openstb-simulator[dask-diagnostics,doc,tests]",
+  "ruff",
+]
+
+[project.urls]
+Homepage = "https://openstb.dev"
+Documentation = "https://docs.openstb.dev"
+Repository = "https://github.com/openstb/simulator.git"
+Issues = "https://github.com/openstb/simulator/issues"
+
+
+#
+# Install the CLI.
+#
+
+[project.scripts]
+openstb-sim = "openstb.simulator.cli:openstb_sim"
+
+
+#
+# Register included plugins at the appropriate entry points.
+#
+
+[project.entry-points."openstb.simulator.config_loader"]
+toml = "openstb.simulator.config_loader.toml:TOMLLoader"
+
+[project.entry-points."openstb.simulator.dask_cluster"]
+local = "openstb.simulator.cluster.dask_local:DaskLocalCluster"
+mpi = "openstb.simulator.cluster.dask_mpi:DaskMPICluster"
+
+[project.entry-points."openstb.simulator.distortion"]
+anslie_mccolm_attenuation = "openstb.simulator.distortion.environmental:AnslieMcColmAttenuation"
+doppler = "openstb.simulator.distortion.doppler:DopplerDistortion"
+geometric_spreading = "openstb.simulator.distortion.environmental:GeometricSpreading"
+rectangular_beampattern = "openstb.simulator.distortion.beampattern:RectangularBeampattern"
+
+[project.entry-points."openstb.simulator.environment"]
+invariant = "openstb.simulator.environment.invariant:InvariantEnvironment"
+
+[project.entry-points."openstb.simulator.ping_times"]
+constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"
+constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
+
+[project.entry-points."openstb.simulator.point_targets"]
+random_point_rectangle = "openstb.simulator.target.points:RandomPointRect"
+random_point_triangle = "openstb.simulator.target.points:RandomPointTriangle"
+single_point = "openstb.simulator.target.points:SinglePoint"
+
+[project.entry-points."openstb.simulator.result_converter"]
+matlab = "openstb.simulator.result_converter.matlab:MATLABConverter"
+numpy = "openstb.simulator.result_converter.numpy:NumpyConverter"
+
+[project.entry-points."openstb.simulator.signal"]
+lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
+
+[project.entry-points."openstb.simulator.simulation"]
+points = "openstb.simulator.simulation.points:PointSimulation"
+
+[project.entry-points."openstb.simulator.signal_window"]
+blackman = "openstb.simulator.system.signal_windows:BlackmanWindow"
+blackman_harris = "openstb.simulator.system.signal_windows:BlackmanHarrisWindow"
+generalised_cosine = "openstb.simulator.system.signal_windows:GeneralisedCosineWindow"
+hamming = "openstb.simulator.system.signal_windows:HammingWindow"
+hann = "openstb.simulator.system.signal_windows:HannWindow"
+nuttall = "openstb.simulator.system.signal_windows:NuttallWindow"
+tukey = "openstb.simulator.system.signal_windows:TukeyWindow"
+
+[project.entry-points."openstb.simulator.system"]
+generic = "openstb.simulator.system:GenericSystem"
+
+[project.entry-points."openstb.simulator.trajectory"]
+linear = "openstb.simulator.system.trajectory:Linear"
+
+[project.entry-points."openstb.simulator.transducer"]
+generic = "openstb.simulator.system.transducer:GenericTransducer"
+
+[project.entry-points."openstb.simulator.travel_time"]
+iterative = "openstb.simulator.travel_time.iterative:Iterative"
+stop_and_hop = "openstb.simulator.travel_time.stop_and_hop:StopAndHop"
+
+
+#
+# Build system configuration.
+#
+
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "*.mo",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openstb"]
+exclude = [
+  ".gitignore",
+]
+
+[tool.hatch.build.targets.wheel.hooks.openstb-i18n]
+domain = "openstb.simulator"
+
+[tool.hatch.version]
+source = "vcs"
+
+#
+# Test configuration.
+#
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+  "--import-mode=importlib",
+  "--cov=openstb.simulator", "--cov-report=html:tests/coverage",
+]
+markers = [
+  "cluster: tests which involve starting a cluster (exclude with -m 'not cluster')",
+]
+filterwarnings = [
+  "ignore:Jupyter is migrating its paths:DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+  "*/openstb/i18n/*",
+  "*/test_plugin_modules/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma:no cover",
+  "^\\s*pass\\s*$",
+  "^\\s*@overload",
+]
+
+
+#
+# Configuration of linting tools.
+#
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [
+  "tests/test_plugin_modules/local/plugin_triple.py",
+]
+
+[tool.ruff.lint.flake8-annotations]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "I",    # isort
+  "NPY",  # NumPy-specific checks
+  "W",    # pycodestyle warnings
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+known-first-party = [
+  "openstb.i18n",
+]
+
+
+#
+# Static type checkers.
+#
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/extra/typing_stubs"
