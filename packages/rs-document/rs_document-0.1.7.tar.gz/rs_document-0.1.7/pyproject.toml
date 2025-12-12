@@ -1,0 +1,318 @@
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rs_document"
+version = "0.1.7"
+description = "High-performance Rust implementation of LangChain's Document model and Unstructured.io's text cleaners for RAG applications"
+requires-python = ">=3.10"
+license = {file = "LICENSE.md"}
+keywords = ["LangChain", "Document", "cleanup", "splitter", "rust", "maturin", "pyo3", "RAG", "Unstructured", "text-processing", "performance", "parallel"]
+authors = [
+  {name = "Cam Barts", email = "cam@coder.cam"},
+]
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing",
+    "Topic :: Text Processing :: Filters",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+homepage = "https://github.com/cam-barts/rs_document"
+documentation = "https://cam-barts.github.io/rs_document"
+repository = "https://github.com/cam-barts/rs_document"
+changelog = "https://github.com/cam-barts/rs_document/blob/main/CHANGELOG.md"
+"Issue Tracker" = "https://github.com/cam-barts/rs_document/issues"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "langchain-text-splitters>=0.0.1",
+    "hypothesis>=6.148.1",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "langchain-text-splitters>=0.0.1",
+    "ruff>=0.1.0",
+    "nox>=2023.4.0",
+    "prek>=0.2.0",
+]
+
+[tool.maturin]
+python-source = "python"
+features = ["pyo3/extension-module"]
+
+
+[tool.ruff]
+# Target Python 3.10+ compatibility
+target-version = "py310"
+line-length = 88
+
+# Exclude commonly ignored directories
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "target",
+]
+
+[tool.ruff.lint]
+# Enable comprehensive rule sets
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T10",   # flake8-debugger
+    "EM",    # flake8-errmsg
+    "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "G",     # flake8-logging-format
+    "PIE",   # flake8-pie
+    "PT",    # flake8-pytest-style
+    "Q",     # flake8-quotes
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "TCH",   # flake8-type-checking
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "PL",    # pylint
+    "TRY",   # tryceratops
+    "RUF",   # ruff-specific rules
+]
+
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "PLR0913", # too many arguments
+    "PLR2004", # magic value comparison
+    "PT001",   # use @pytest.fixture() with parentheses (project style)
+    "PT023",   # use @pytest.mark.foo() with parentheses (project style)
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"python/tests/test_*.py" = [
+    "S101",    # assert usage
+    "PLR2004", # magic values in tests
+    "ARG001",  # unused function arguments (fixtures)
+    "E402",    # module level import not at top of file
+    "N802",    # function name should be lowercase
+    "PTH123",  # open() should be replaced by Path.open()
+    "PTH118",  # os.path.join() should be replaced by Path
+    "PTH120",  # os.path.dirname() should be replaced by Path.parent
+    "N806",    # variable in function should be lowercase
+    "RUF001",  # ambiguous unicode characters (intentional in test strings)
+]
+"python/rs_document/__init__.py" = [
+    "F403",    # star imports from PyO3 module
+    "F405",    # names may be undefined from star imports
+]
+"python/rs_document/post_processors.py" = [
+    "ARG001",  # unused function arguments
+    "RET505",  # unnecessary else after return
+    "RET504",  # unnecessary assignment before return
+    "RUF001",  # ambiguous unicode characters (intentional in test strings)
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.isort]
+known-first-party = ["rs_document"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.coverage.run]
+source = ["python/rs_document"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+# Fail if coverage drops below 80% (considering the hybrid nature)
+fail_under = 80
+precision = 2
+show_missing = true
+skip_covered = false
+
+exclude_also = [
+    # Don't complain about missing debug-only code
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run
+    "if 0:",
+    "if __name__ == .__main__.:",
+
+    # Type checking
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
+disallow_untyped_defs = false  # Gradual typing
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "rs_document.*"
+ignore_errors = true  # PyO3 generated code
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.10.0",
+    "zensical",
+    "mkdocstrings[python]>=0.30.1",
+    "prek>=0.2.18",
+]
+
+[tool.commitizen]
+name = "cz_customize"
+version = "0.1.7"
+version_scheme = "semver"
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = true
+tag_format = "v$version"
+template = "dev/cz_changelog.md.j2"
+version_files = [
+    "pyproject.toml:version",
+    "Cargo.toml:version",
+]
+
+[tool.commitizen.customize]
+message_template = "{{prefix}}{% if scope %}({{scope}}){% endif %}{% if is_breaking_change %}!{% endif %}: {{subject}}{% if body %}\n\n{{body}}{% endif %}{% if footer %}\n\n{{footer}}{% endif %}"
+example = "fix: correct minor typos in code\n\nsee the issue for details on the typos fixed\n\ncloses issue #12"
+schema = "<type>(<scope>): <subject>\n<BLANK LINE>\n<body>\n<BLANK LINE>\n(BREAKING CHANGE: )<footer>"
+schema_pattern = "(?s)(build|bump|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\(\\S+\\))?!?: ([^\\n\\r]+)((\\n\\n.*)|(\\s*))?$"
+commit_parser = "^((?P<change_type>feat|fix|refactor|perf|docs|style|test|build|ci|chore|BREAKING CHANGE)(?:\\((?P<scope>[^()\\r\\n]*)\\)|\\()?(?P<breaking>!)?|\\w+!):\\s(?P<message>.*)?"
+changelog_pattern = "^((BREAKING[\\-\\ ]CHANGE|\\w+)(\\(.+\\))?!?):"
+change_type_map = {"feat" = "Feat", "fix" = "Fix", "refactor" = "Refactor", "perf" = "Perf", "docs" = "Docs", "style" = "Style", "test" = "Test", "build" = "Build", "ci" = "CI", "chore" = "Chore"}
+bump_pattern = "^((BREAKING[\\-\\ ]CHANGE|\\w+)(\\(.+\\))?!?):"
+bump_map_major_version_zero = {"^.+!$" = "MINOR", "^BREAKING[\\-\\ ]CHANGE" = "MINOR", "^feat" = "MINOR", "^fix" = "PATCH", "^refactor" = "PATCH", "^perf" = "PATCH", "^docs" = "PATCH", "^build" = "PATCH", "^ci" = "PATCH", "^test" = "PATCH", "^style" = "PATCH", "^chore" = "PATCH"}
+
+[tool.commitizen.customize.bump_map]
+"^.+!$" = "MAJOR"
+"^BREAKING[\\-\\ ]CHANGE" = "MAJOR"
+"^feat" = "MINOR"
+"^fix" = "PATCH"
+"^refactor" = "PATCH"
+"^perf" = "PATCH"
+"^docs" = "PATCH"
+"^build" = "PATCH"
+"^ci" = "PATCH"
+"^test" = "PATCH"
+"^style" = "PATCH"
+"^chore" = "PATCH"
+
+[[tool.commitizen.customize.questions]]
+type = "list"
+name = "prefix"
+message = "Select the type of change you are committing"
+choices = [
+    {value = "fix", name = "fix: A bug fix. Correlates with PATCH in SemVer", key = "x"},
+    {value = "feat", name = "feat: A new feature. Correlates with MINOR in SemVer", key = "f"},
+    {value = "docs", name = "docs: Documentation only changes", key = "d"},
+    {value = "style", name = "style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)", key = "s"},
+    {value = "refactor", name = "refactor: A code change that neither fixes a bug nor adds a feature", key = "r"},
+    {value = "perf", name = "perf: A code change that improves performance", key = "p"},
+    {value = "test", name = "test: Adding missing or correcting existing tests", key = "t"},
+    {value = "build", name = "build: Changes that affect the build system or external dependencies (example scopes: pip, docker, npm)", key = "b"},
+    {value = "ci", name = "ci: Changes to CI configuration files and scripts (example scopes: GitLabCI)", key = "c"},
+]
+
+[[tool.commitizen.customize.questions]]
+type = "input"
+name = "scope"
+message = "What is the scope of this change? (class or file name): (press [enter] to skip)\n"
+
+[[tool.commitizen.customize.questions]]
+type = "input"
+name = "subject"
+message = "Write a short and imperative summary of the code changes: (lower case and no period)\n"
+
+[[tool.commitizen.customize.questions]]
+type = "input"
+name = "body"
+message = "Provide additional contextual information about the code changes: (press [enter] to skip)\n"
+
+[[tool.commitizen.customize.questions]]
+type = "confirm"
+name = "is_breaking_change"
+message = "Is this a BREAKING CHANGE? Correlates with MAJOR in SemVer"
+default = false
+
+[[tool.commitizen.customize.questions]]
+type = "input"
+name = "footer"
+message = "Footer. Information about Breaking Changes and reference issues that this commit closes: (press [enter] to skip)\n"
