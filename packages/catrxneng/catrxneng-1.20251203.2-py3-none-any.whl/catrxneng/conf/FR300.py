@@ -1,0 +1,20 @@
+# Co2ToMeoh
+tags = {
+    "step_name": "step_name",
+    "step_num": "step_num",
+    "bed_temp": "TIC02",
+    "pressure": "PIC01",
+    "n2_mfc": "FIC01",
+    "co2_mfc": "FIC02",
+    "h2_mfc": "FIC03",
+    "co_mfc": "FIC04",
+    "ch3oh_mfc": "FIC05",
+    "h2o_mfc": "FIC06",
+    "n2_gc_conc": "N2",
+    "co2_gc_conc": "CO2",
+    "h2_gc_conc": "H2",
+    "ch3oh_gc_conc": "CH3OH",
+    "dme_gc_conc": "DME",
+    "co_gc_conc": "CO",
+    "ch4_gc_conc": "CH4",
+}
