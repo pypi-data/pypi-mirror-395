@@ -1,0 +1,149 @@
+<!-- extend from base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+
+  <p>Hello there! This interface is a proof of concept of what can be done with the Thumbtack server API.
+     It allows you to mount and unmount disk image files in a specified directory.
+     Once mounted, you are shown a tree view of all the image partitions that are available and where they are mounted on the server.
+     In order to more quickly be able to navigate to the mounted directory, you can copy the path to the clipboard as well.
+  </p>
+
+  <h2>Mount types</h2>
+  <p>The following mount types are supported on this Thumbtack server.
+     In order to enable more mount types from the unsupported list below, please reference the documentation for that type in
+     the <a href="https://imagemounter.readthedocs.io/en/latest/specifics.html">imagemounter documentation</a>.
+  </p>
+  <p><b>Supported:</b>
+  {% for mount_type in supported_mount_types %}
+    {{ mount_type }} {{ "-" if not loop.last }}
+  {% endfor %}
+  </p>
+  <p><b>Unsupported:</b>
+  {% for mount_type in unsupported_mount_types %}
+    {{ mount_type }} {{ "-" if not loop.last }}
+  {% endfor %}
+  </p>
+  <p><a href="{{ url_for('.supported') }}" >More info</a></p>
+
+  <h2>Path to disk images: <a href="{{ url_for('.mount') }}" >{{ image_dir }}</a></h2>
+
+  <table style="width:70%">
+    <tr>
+      <th>Filename</th>
+      <th>Status</th>
+      <th>Mount</th>
+      <th>Unmount</th>
+      <th>Mountpoints</th>
+      <th>Add existing mountpoint <div class="tooltip">&#9432;<span class="tooltiptext">If you manually mounted the image, add the path to the mounted image to the thumbtack database.</span></div></th>
+    </tr>
+    {% for image in images %}
+      <tr>
+        <!-- Filename -->
+        <td>
+          {% if image.status == 'Mounted' or image.status == 'Manual mount'%}
+            <a href="{{ url_for('.mount', image_path=image.rel_path) }}" >{{ image.rel_path }}</a>
+          {% else %}
+            {{ image.rel_path }}
+          {% endif %}
+        </td>
+
+        <!-- Status -->
+        <td>
+          {{ image.status }}
+          {% if image.status == 'Mounted' or image.status == 'Manual mount'%}
+          <br>
+            <div class="tooltip">&#9432;<span class="tooltiptext">Increases with each mount attempt, decreases with each unmount attempt. Will not unmount the image until the reference count is 0.</span></div>
+            Reference count: {{ image.ref_count }}
+            {% endif %}
+        </td>
+
+        <!-- Mount button -->
+        <td>
+          {% if image.status == 'Unmounted' %}
+          <form class="myForm" method="post" action="{{ url_for('.mount_form') }}">
+            <input type="hidden" name="img_to_mount" value="{{ image.rel_path }}">
+            <input type="hidden" name="operation" value="mount">
+            <span id="dec_caret" class="caret">Decryption options</span>
+              <ul class="nested">
+                <label for="decryption_method">Decryption Method:</label>
+                <select name="decryption method" id="decryption_method">
+                  <option value="none">---</option>
+                  <option value="bitlocker password">bitlocker password</option>
+                  <option value="bitlocker recovery key">bitlocker recovery key</option>
+                  <option value="bitlocker full volume encryption and tweak key">bitlocker full volume encryption and tweak key</option>
+                  <option value="luks passphrase">luks passphrase</option>
+                </select>
+                <br>
+                <label for="key">Decryption key:</label>
+                <input type="password" id="key" name="key">
+                <input type="checkbox" onclick="if (this.checked) {this.previousElementSibling.type = 'text'} else {this.previousElementSibling.type = 'password'};">Show key
+              </ul>
+            <button>Mount</button>
+          </form>
+          {% endif %}
+        </td>
+
+        <!-- Unount Button -->
+        <td>
+          {% if image.status == 'Mounted' or image.status == 'Manual mount'%}
+          <form class="myForm" method="post" action="{{ url_for('.mount_form') }}">
+            <input type="hidden" name="img_to_mount" value="{{ image.rel_path }}">
+            <input type="hidden" name="operation" value="unmount">
+            <button>Unmount</button>
+          </form>
+          {% endif %}
+        </td>
+
+        <!-- Mountpoint info -->
+        <td>
+          {% if image.status == 'Mounted' or image.status == 'Manual mount'%}
+          <ul class="myUL">
+            <li>
+	      <span>Disk mountpoint: <span id="{{ image.disk_mountpoint }}">{{ image.disk_mountpoint }}</span></span>
+	      <div class="tooltip">
+                <button onclick="copyByID('{{ image.disk_mountpoint }}')" onmouseout="outFunc('{{ image.disk_mountpoint }}Tooltip')">
+                  <span class="tooltiptext" id="{{ image.disk_mountpoint }}Tooltip">Copy to clipboard</span>
+                  Copy
+                </button>
+              </div>
+	      <br>
+	      <span>Volume mountpoints:</span>
+              <ul>
+                {% for volume in image.volume_info %}
+                  <li>
+                    [{{ volume.index }}] <span id="{{ volume.uid }}">{{ volume.mountpoint }}</span>
+                    {% if volume.mountpoint %}
+                    <div class="tooltip">
+                      <button onclick="copyByID('{{ volume.uid }}')" onmouseout="outFunc('{{ volume.uid }}Tooltip')">
+                        <span class="tooltiptext" id="{{ volume.uid }}Tooltip">Copy to clipboard</span>
+                        Copy
+                      </button>
+                    </div>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </li>
+          </ul>
+          {% endif %}
+        </td>
+
+	<!-- Add mountpoint -->
+        <td>
+          {% if image.status == 'Unmounted' %}
+          <form class="myForm" method="post" action="{{ url_for('.add_mountpoint_form') }}">
+	    <label for="mountpoint_path">Mountpoint: </label>
+	    <input type="text" id="mountpoint_path" name="mountpoint_path">
+            <input type="hidden" name="img_to_mount" value="{{ image.rel_path }}">
+            <input type="hidden" name="operation" value="add_mountpoint">
+
+            <button>Add mountpoint</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+
+{% endblock %}
