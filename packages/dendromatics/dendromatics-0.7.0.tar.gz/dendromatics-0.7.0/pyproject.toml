@@ -1,0 +1,116 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dendromatics"
+dynamic = ["version"]
+description = "Automatic dendrometry and forest inventory for terrestrial point clouds"
+readme = "README.rst"
+requires-python = ">=3.10,<3.15"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "Carlos Cabo", email = "carloscabo@uniovi.es" },
+    { name = "Diego Laino", email = "diegolainor@gmail.com" },
+]
+keywords = ["forestry", "lidar", "tls"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "csf_3dfin~=2.0.1",
+    "laspy~=2.5.4",
+    "numpy>=1.25",         #NEP 29
+    "pgeof~=0.3.4",
+    "scikit_learn>=1.6.0,<1.8.0",
+    "scipy>=1.15.0,<1.17.0",
+]
+
+[project.optional-dependencies]
+docs = ["sphinx", "sphinx-reference-rename", "sphinx-rtd-theme"]
+dendroptimized = ["dendroptimized~=0.2.2"]
+
+[project.urls]
+Source = "https://github.com/3DFin/dendromatics"
+Documentation = "https://dendromatics.readthedocs.io/en/latest/"
+Issues = "https://github.com/3DFin/dendromatics/issues"
+
+[tool.hatch.version]
+path = "src/dendromatics/__about__.py"
+python = ["310", "311", "312", "312", "313", "314"]
+
+[tool.hatch.envs.docs]
+detached = false
+dependencies = ["sphinx", "sphinx-reference-rename", "sphinx-rtd-theme"]
+[tool.hatch.envs.docs.scripts]
+build = "sphinx-build docs docs/_build"
+serve = "python -m http.server --directory docs/_build"
+
+[tool.hatch.envs.lint]
+detached = true
+
+[tool.hatch.envs.lint.scripts]
+# static analysis with ruff
+check-static = "hatch fmt -l --check"
+check-format = "hatch fmt -f --check"
+fix-static = "hatch fmt -l"
+fix-format = "hatch fmt -f"
+check-all = ["check-static", "check-format"]
+fix-all = ["fix-static", "fix-format", "check-all"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+# TODO Add D, PTH, RET, disabled for now as they collides with intial choices
+select = [
+    "E",
+    "W",
+    "YTT",
+    "NPY",
+    "PYI",
+    "Q",
+    "F",
+    "B",
+    "I",
+    "SIM",
+    "RUF",
+    "NPY201",
+]
+# TODO: for now we ignore "Line too long error (E501)"
+# because our comments are too longs
+# code formatting will take care of the line length in code anyway
+ignore = [
+    "E501",
+    # Ignore docstring in public package and module
+    "D100",
+    "D104",
+    # Blank line before class
+    "D203",
+    # multiline summary second line
+    "D213",
+    # yoda conditions
+    "SIM300",
+    # Temporary because relative imports seem to be a design choice
+    "F405",
+    "F403",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dendromatics", "dendroptimized"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[[tool.hatch.envs.hatch-test.matrix]]
+feature = ["dendroptimized"]
