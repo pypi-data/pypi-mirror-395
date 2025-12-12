@@ -1,0 +1,1 @@
+"""PatternForge test suite."""
