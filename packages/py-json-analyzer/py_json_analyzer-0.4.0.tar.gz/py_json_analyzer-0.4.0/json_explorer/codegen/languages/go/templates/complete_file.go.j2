@@ -1,0 +1,29 @@
+package {{ package_name }}
+{# #}
+{%- if imports %}
+{%- if imports|length == 1 %}
+import {{ imports[0] }}
+{%- else %}
+import (
+{%- for import_stmt in imports %}
+	{{ import_stmt }}
+{%- endfor %}
+)
+{%- endif %}
+{%- endif %}
+{# #}
+{%- for struct in structs %}
+{%- if struct.description %}
+// {{ struct.description }}
+{%- endif %}
+type {{ struct.struct_name }} struct {
+{%- for field in struct.fields %}
+{%- if field.comment %}
+	// {{ field.comment }}
+{%- endif %}
+	{{ field.name }} {{ field.type }}
+{%- if field.json_tag %} {{ field.json_tag }}{%- endif %}
+{%- endfor %}
+}
+{# #}
+{%- endfor %}
