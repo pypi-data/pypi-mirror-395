@@ -1,0 +1,831 @@
+import datetime
+import functools
+import importlib
+import logging
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    ParamSpec,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
+
+import click
+import redis
+import structlog
+from structlog.stdlib import BoundLogger
+
+from ._internal import (
+    ACTIVE,
+    ERROR,
+    QUEUED,
+    SCHEDULED,
+    classproperty,
+    g,
+    queue_matches,
+    serialize_func_name,
+)
+from .executor import Executor, ForkExecutor, SyncExecutor
+from .redis_scripts import RedisScripts
+from .redis_semaphore import Semaphore
+from .retry import fixed
+from .runner import BaseRunner
+from .task import Task
+from .worker import LOCK_REDIS_KEY, Worker
+
+__all__ = ["TaskTiger"]
+
+
+"""
+Redis keys:
+
+Set of all queues that contain items in the given state.
+SET <prefix>:queued
+SET <prefix>:active
+SET <prefix>:error
+SET <prefix>:scheduled
+
+Serialized task for the given task ID.
+STRING <prefix>:task:<task_id>
+
+List of (failed) task executions. The oldest entries
+could be truncated depending on the task parameters.
+LIST <prefix>:task:<task_id>:executions
+
+The total number of times a task was executed.
+STRING <prefix>:task:<task_id>:executions_count
+
+Task IDs waiting in the given queue to be processed, scored by the time the
+task was queued.
+ZSET <prefix>:queued:<queue>
+
+Task IDs being processed in the specific queue, scored by the time processing
+started.
+ZSET <prefix>:active:<queue>
+
+Task IDs that failed, scored by the time processing failed.
+ZSET <prefix>:error:<queue>
+
+Task IDs that are scheduled to be executed at a specific time, scored by the
+time they should be executed.
+ZSET <prefix>:scheduled:<queue>
+
+Channel that receives the queue name as a message whenever a task is queued.
+CHANNEL <prefix>:activity
+
+Task locks
+STRING <prefix>:lock:<lock_hash>
+
+Queue periodic tasks lock
+STRING <prefix>:queue_periodic_tasks_lock
+
+Queue locks scored by timeout
+ZSET <prefix>:qslock:<queue>
+STRING <prefix>:qlock:<queue> (Legacy queue locks that are no longer used)
+"""
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+@dataclass
+class TaskCallable(Generic[P, R]):
+    _func: Callable[P, R]
+    _tiger: "TaskTiger"
+
+    _task_hard_timeout: float | None = None
+    _task_queue: str | None = None
+    _task_unique: bool | None = None
+    _task_unique_key: Collection[str] | None = None
+    _task_lock: bool | None = None
+    _task_lock_key: Collection[str] | None = None
+    _task_retry: int | None = None
+    _task_retry_on: Collection[type[BaseException]] | None = None
+    _task_retry_method: (
+        Callable[[int], float] | Tuple[Callable[..., float], Tuple] | None
+    ) = None
+    _task_batch: bool | None = None
+    _task_schedule: Callable | None = None
+    _task_max_queue_size: int | None = None
+    _task_max_stored_executions: int | None = None
+    _task_runner_class: type | None = None
+
+    def __post_init__(self) -> None:
+        functools.update_wrapper(self, self._func)
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R:
+        return self._func(*args, **kwargs)
+
+    def delay(self, *args: P.args, **kwargs: P.kwargs) -> "Task":
+        return self._tiger.delay(self, args=args, kwargs=kwargs)
+
+
+class TaskTiger:
+    log: BoundLogger
+
+    def __init__(
+        self,
+        connection: Optional[redis.Redis] = None,
+        config: Optional[Dict] = None,
+        setup_structlog: bool = False,
+        lazy_init: bool = False,
+    ):
+        """
+        Initializes TaskTiger with the given Redis connection and config
+        options. Optionally sets up structlog.
+
+        Lazy initialization can be used to create a TaskTiger instance
+        and import decorated tasks before Redis connection and configuration
+        is available.
+
+        You will have to provide Redis and config before scheduling any tasks
+        using init method.
+        """
+
+        self.config: Dict[str, Any] = None  # type: ignore[assignment]
+
+        # List of task functions that are executed periodically.
+        self.periodic_task_funcs: Dict[str, Callable] = {}
+
+        if lazy_init:
+            assert connection is None and config is None and setup_structlog is False
+        else:
+            self.init(
+                connection=connection,
+                config=config,
+                setup_structlog=setup_structlog,
+            )
+
+    def init(
+        self,
+        connection: Optional[redis.Redis] = None,
+        config: Optional[Dict] = None,
+        setup_structlog: bool = False,
+    ) -> None:
+        """Provide Redis connection and config when lazy initialization is used."""
+
+        if self.config is not None:
+            raise RuntimeError("TaskTiger was already initialized")
+
+        self.config = {  # type: ignore[unreachable]
+            # String that is used to prefix all Redis keys
+            "REDIS_PREFIX": "t",
+            # Name of the Python (structlog) logger
+            "LOGGER_NAME": "tasktiger",
+            # Where to queue tasks that don't have an explicit queue
+            "DEFAULT_QUEUE": "default",
+            # After how many seconds time out on listening on the activity
+            # channel and check for scheduled or expired items.  The batch
+            # timeout will delay the specified seconds after the first message
+            # to wait for additional messages, useful for very active systems.
+            # Appropriate values: 0 <= SELECT_BATCH_TIMEOUT <= SELECT_TIMEOUT
+            "SELECT_TIMEOUT": 1,
+            "SELECT_BATCH_TIMEOUT": 0,
+            # If this is True, all tasks except future tasks (when=a future
+            # time) will be executed locally by blocking until the task
+            # returns. This is useful for testing purposes.
+            "ALWAYS_EAGER": False,
+            # If retry is True but no retry_method is specified for a given
+            # task, use the following default method.
+            "DEFAULT_RETRY_METHOD": fixed(60, 3),
+            # After how many seconds a task that can't acquire a lock is
+            # retried.
+            "LOCK_RETRY": 1,
+            # How many items to move at most from the scheduled queue to the
+            # active queue.
+            "SCHEDULED_TASK_BATCH_SIZE": 1000,
+            # After how many seconds a long-running task is killed. This can be
+            # overridden by the task or at queue time.
+            "DEFAULT_HARD_TIMEOUT": 300,
+            # The timer specifies how often the worker updates the task's
+            # timestamp in the active queue (in seconds). Tasks exceeding the
+            # timeout value are requeued periodically. This may happen when a
+            # worker crashes or is killed.
+            "ACTIVE_TASK_UPDATE_TIMER": 10,
+            "ACTIVE_TASK_UPDATE_TIMEOUT": 60,
+            # How often we requeue expired tasks (in seconds), and how many
+            # expired tasks we requeue at a time. The interval also determines
+            # the lock timeout, i.e. it should be large enough to have enough
+            # time to requeue a batch of tasks.
+            "REQUEUE_EXPIRED_TASKS_INTERVAL": 30,
+            "REQUEUE_EXPIRED_TASKS_BATCH_SIZE": 10,
+            # Time the scheduled tasks queue lock is held (in seconds). Other
+            # workers processing the same queues won't be scheduling tasks as
+            # long as the lock is held to prevent unnecessary load on Redis.
+            "QUEUE_SCHEDULED_TASKS_TIME": 1,
+            # Set up queues that will be processed in batch, i.e. multiple jobs
+            # are taken out of the queue at the same time and passed as a list
+            # to the worker method. Takes a dict where the key represents the
+            # queue name and the value represents the batch size. Note that the
+            # task needs to be declared as batch=True. Also note that any
+            # subqueues will be automatically treated as batch queues, and the
+            # batch value of the most specific subqueue name takes precedence.
+            "BATCH_QUEUES": {},
+            # How often to print stats.
+            "STATS_INTERVAL": 60,
+            # Single worker queues can reduce redis activity in some use cases
+            # by locking at the queue level instead of just at the task or task
+            # group level. These queues will only allow a single worker to
+            # access the queue at a time.  This can be useful in environments
+            # with large queues and many worker processes that need aggressive
+            # locking techniques.
+            "SINGLE_WORKER_QUEUES": [],
+            # The following settings are only considered if no explicit queues
+            # are passed in the command line (or to the queues argument in the
+            # run_worker() method).
+            # If non-empty, a worker only processes the given queues.
+            "ONLY_QUEUES": [],
+            # If non-empty, a worker excludes the given queues from processing.
+            "EXCLUDE_QUEUES": [],
+            # List of context manager instances that will be called in each
+            # forked child process. Useful to do things like close file handles
+            # or reinitialize crypto libraries.
+            "CHILD_CONTEXT_MANAGERS": [],
+            # Store traceback in execution history for failed tasks. This can
+            # increase Redis storage requirements and therefore can be disabled
+            # if that is a concern.
+            "STORE_TRACEBACKS": True,
+            # Set to > 0 to poll periodically for queues with tasks. Otherwise
+            # subscribe to the activity channel. Use for more efficient task
+            # processing with a large amount of workers.
+            "POLL_TASK_QUEUES_INTERVAL": 0,
+            # Whether to publish new tasks to the activity channel. Only set to
+            # False if all the workers are polling queues.
+            "PUBLISH_QUEUED_TASKS": True,
+        }
+        if config:
+            self.config.update(config)
+
+        if setup_structlog:
+            structlog.configure(
+                processors=[
+                    structlog.stdlib.add_log_level,
+                    structlog.stdlib.filter_by_level,
+                    structlog.processors.TimeStamper(fmt="iso", utc=True),
+                    structlog.processors.StackInfoRenderer(),
+                    structlog.processors.format_exc_info,
+                    structlog.processors.JSONRenderer(),
+                ],
+                context_class=dict,
+                logger_factory=structlog.stdlib.LoggerFactory(),
+                wrapper_class=structlog.stdlib.BoundLogger,
+                cache_logger_on_first_use=True,
+            )
+
+        self.log = structlog.get_logger(self.config["LOGGER_NAME"]).bind()
+
+        if setup_structlog:
+            self.log.setLevel(logging.DEBUG)
+            logging.basicConfig(format="%(message)s")
+
+        self.connection: redis.Redis = connection or redis.Redis(decode_responses=True)
+        self.scripts: RedisScripts = RedisScripts(self.connection)
+
+    def _get_current_task(self) -> Task:
+        if g["current_tasks"] is None:
+            raise RuntimeError("Must be accessed from within a task.")
+        if g["current_task_is_batch"]:
+            raise RuntimeError("Must use current_tasks in a batch task.")
+        return g["current_tasks"][0]
+
+    def _get_current_tasks(self) -> List[Task]:
+        if g["current_tasks"] is None:
+            raise RuntimeError("Must be accessed from within a task.")
+        if not g["current_task_is_batch"]:
+            raise RuntimeError("Must use current_task in a non-batch task.")
+        return g["current_tasks"]
+
+    def _get_current_serialized_func(self) -> str:
+        if g["current_tasks"] is None:
+            raise RuntimeError("Must be accessed from within a task.")
+        return g["current_tasks"][0].serialized_func
+
+    def _get_current_task_is_batch(self) -> bool:
+        if g["current_task_is_batch"] is None:
+            raise RuntimeError("Must be accessed from within a task.")
+        return g["current_task_is_batch"]
+
+    """
+    Properties to access the currently processing task (or tasks, in case of a
+    batch task) from within the task. They must be invoked from within a task.
+    """
+    current_task = property(_get_current_task)
+    current_tasks = property(_get_current_tasks)
+    current_serialized_func = property(_get_current_serialized_func)
+    current_task_is_batch = property(_get_current_task_is_batch)
+
+    @classproperty
+    def current_instance(self) -> "TaskTiger":
+        """
+        Access the current TaskTiger instance from within a task.
+        """
+        if g["tiger"] is None:
+            raise RuntimeError("Must be accessed from within a task.")
+        return g["tiger"]
+
+    def _key(self, *parts: str) -> str:
+        """
+        Internal helper to get a Redis key, taking the REDIS_PREFIX into
+        account. Parts are delimited with a colon. Individual parts shouldn't
+        contain colons since we don't escape them.
+        """
+        return ":".join([self.config["REDIS_PREFIX"]] + list(parts))
+
+    @overload
+    def task(
+        self,
+        _fn: Callable[P, R],
+        *,
+        queue: Optional[str] = ...,
+        hard_timeout: Optional[float] = ...,
+        unique: Optional[bool] = ...,
+        unique_key: Optional[Collection[str]] = ...,
+        lock: Optional[bool] = ...,
+        lock_key: Optional[Collection[str]] = ...,
+        retry: Optional[bool] = ...,
+        retry_on: Optional[Collection[Type[BaseException]]] = ...,
+        retry_method: Optional[
+            Union[Callable[[int], float], Tuple[Callable[..., float], Tuple]]
+        ] = ...,
+        schedule: Optional[Callable] = ...,
+        batch: bool = ...,
+        max_queue_size: Optional[int] = ...,
+        max_stored_executions: Optional[int] = ...,
+        runner_class: Optional[Type["BaseRunner"]] = ...,
+    ) -> TaskCallable[P, R]: ...
+
+    @overload
+    def task(
+        self,
+        _fn: None = None,
+        *,
+        queue: Optional[str] = ...,
+        hard_timeout: Optional[float] = ...,
+        unique: Optional[bool] = ...,
+        unique_key: Optional[Collection[str]] = ...,
+        lock: Optional[bool] = ...,
+        lock_key: Optional[Collection[str]] = ...,
+        retry: Optional[bool] = ...,
+        retry_on: Optional[Collection[Type[BaseException]]] = ...,
+        retry_method: Optional[
+            Union[Callable[[int], float], Tuple[Callable[..., float], Tuple]]
+        ] = ...,
+        schedule: Optional[Callable] = ...,
+        batch: bool = ...,
+        max_queue_size: Optional[int] = ...,
+        max_stored_executions: Optional[int] = ...,
+        runner_class: Optional[Type["BaseRunner"]] = ...,
+    ) -> Callable[[Callable[P, R]], TaskCallable[P, R]]: ...
+
+    def task(
+        self,
+        _fn: Optional[Callable[P, R]] = None,
+        *,
+        queue: Optional[str] = None,
+        hard_timeout: Optional[float] = None,
+        unique: Optional[bool] = None,
+        unique_key: Optional[Collection[str]] = None,
+        lock: Optional[bool] = None,
+        lock_key: Optional[Collection[str]] = None,
+        retry: Optional[bool] = None,
+        retry_on: Optional[Collection[Type[BaseException]]] = None,
+        retry_method: Optional[
+            Union[Callable[[int], float], Tuple[Callable[..., float], Tuple]]
+        ] = None,
+        schedule: Optional[Callable] = None,
+        batch: bool = False,
+        max_queue_size: Optional[int] = None,
+        max_stored_executions: Optional[int] = None,
+        runner_class: Optional[Type["BaseRunner"]] = None,
+    ) -> Callable[[Callable[P, R]], TaskCallable[P, R]] | TaskCallable[P, R]:
+        """
+        Function decorator that defines the behavior of the function when it is
+        used as a task. To use the default behavior, tasks don't need to be
+        decorated.
+
+        See README.rst for an explanation of the options.
+        """
+
+        # Periodic tasks are unique.
+        if schedule is not None:
+            unique = True
+
+        def _wrap(func: Callable[P, R]) -> TaskCallable[P, R]:
+            tc = TaskCallable(
+                _func=func,
+                _tiger=self,
+                _task_hard_timeout=hard_timeout,
+                _task_queue=queue,
+                _task_unique=unique,
+                _task_unique_key=unique_key,
+                _task_lock=lock,
+                _task_lock_key=lock_key,
+                _task_retry=retry,
+                _task_retry_on=retry_on,
+                _task_retry_method=retry_method,
+                _task_batch=batch,
+                _task_schedule=schedule,
+                _task_max_queue_size=max_queue_size,
+                _task_max_stored_executions=max_stored_executions,
+                _task_runner_class=runner_class,
+            )
+
+            if schedule is not None:
+                serialized_func = serialize_func_name(func)
+                assert serialized_func not in self.periodic_task_funcs, (
+                    "attempted duplicate registration of periodic task"
+                )
+                self.periodic_task_funcs[serialized_func] = tc
+
+            return tc
+
+        return _wrap if _fn is None else _wrap(_fn)
+
+    def run_worker_with_args(self, args: List[str]) -> None:
+        """
+        Runs a worker with the given command line args. The use case is running
+        a worker from a custom manage script.
+        """
+        run_worker(args=args, obj=self)
+
+    def run_worker(
+        self,
+        queues: Optional[str] = None,
+        module: Optional[str] = None,
+        exclude_queues: Optional[str] = None,
+        max_workers_per_queue: Optional[int] = None,
+        store_tracebacks: Optional[bool] = None,
+        executor_class: Optional[Type[Executor]] = None,
+        exit_after: Optional[datetime.timedelta] = None,
+    ) -> None:
+        """
+        Main worker entry point method.
+
+        The arguments are explained in the module-level run_worker() method's
+        click options.
+        """
+
+        try:
+            module_names = module or ""
+            for module_name in module_names.split(","):
+                module_name = module_name.strip()
+                if module_name:
+                    importlib.import_module(module_name)
+                    self.log.debug("imported module", module_name=module_name)
+
+            worker = Worker(
+                self,
+                queues.split(",") if queues else None,
+                exclude_queues.split(",") if exclude_queues else None,
+                max_workers_per_queue=max_workers_per_queue,
+                store_tracebacks=store_tracebacks,
+                executor_class=executor_class,
+            )
+            worker.run(exit_after=exit_after)
+        except Exception:
+            self.log.exception("Unhandled exception")
+            raise
+
+    def delay(
+        self,
+        func: Callable,
+        args: Any = None,
+        kwargs: Any = None,
+        queue: Optional[str] = None,
+        hard_timeout: Optional[float] = None,
+        unique: Optional[bool] = None,
+        unique_key: Optional[Collection[str]] = None,
+        lock: Optional[bool] = None,
+        lock_key: Optional[Collection[str]] = None,
+        when: Optional[Union[datetime.datetime, datetime.timedelta]] = None,
+        retry: Optional[bool] = None,
+        retry_on: Optional[Collection[Type[BaseException]]] = None,
+        retry_method: Optional[
+            Union[Callable[[int], float], Tuple[Callable[..., float], Tuple]]
+        ] = None,
+        max_queue_size: Optional[int] = None,
+        max_stored_executions: Optional[int] = None,
+        runner_class: Optional[Type["BaseRunner"]] = None,
+    ) -> Task:
+        """
+        Queues a task. See README.rst for an explanation of the options.
+        """
+
+        task = Task(
+            self,
+            func,
+            args=args,
+            kwargs=kwargs,
+            queue=queue,
+            hard_timeout=hard_timeout,
+            unique=unique,
+            unique_key=unique_key,
+            lock=lock,
+            lock_key=lock_key,
+            retry=retry,
+            retry_on=retry_on,
+            retry_method=retry_method,
+            max_stored_executions=max_stored_executions,
+            runner_class=runner_class,
+        )
+
+        task.delay(when=when, max_queue_size=max_queue_size)
+
+        return task
+
+    def get_queue_sizes(self, queue: str) -> Dict[str, int]:
+        """
+        Get the queue's number of tasks in each state.
+
+        Returns dict with queue size for the QUEUED, SCHEDULED, and ACTIVE
+        states. Does not include size of error queue.
+        """
+
+        states = [QUEUED, SCHEDULED, ACTIVE]
+        pipeline = self.connection.pipeline()
+        for state in states:
+            pipeline.zcard(self._key(state, queue))
+        results = pipeline.execute()
+        return dict(zip(states, results))
+
+    def get_sizes_for_queues_and_states(
+        self, queues_and_states: List[Tuple[str, str]]
+    ) -> List[int]:
+        """
+        Get the sizes for the specific queues and states.
+
+        queues_and_states: List of tuples (queue_name, state).
+
+        Returns a list of queue sizes in the order of the passed
+        queues_and_states.
+        """
+        pipeline = self.connection.pipeline()
+        for queue, state in queues_and_states:
+            pipeline.zcard(self._key(state, queue))
+        results = pipeline.execute()
+        return results
+
+    def get_total_queue_size(self, queue: str) -> int:
+        """Get total queue size for QUEUED, SCHEDULED, and ACTIVE states."""
+
+        return sum(self.get_queue_sizes(queue).values())
+
+    def get_queue_system_lock(self, queue: str) -> Optional[float]:
+        """
+        Get system lock timeout
+
+        Returns time system lock expires or None if lock does not exist
+        """
+
+        key = self._key(LOCK_REDIS_KEY, queue)
+        return Semaphore.get_system_lock(self.connection, key)
+
+    def set_queue_system_lock(self, queue: str, timeout: int) -> None:
+        """
+        Set system lock on a queue.
+
+        Max workers for this queue must be used for this to have any effect.
+
+        This will keep workers from processing tasks for this queue until
+        the timeout has expired. Active tasks will continue processing their
+        current task.
+
+        timeout is number of seconds to hold the lock
+        """
+
+        key = self._key(LOCK_REDIS_KEY, queue)
+        Semaphore.set_system_lock(self.connection, key, timeout)
+
+    def get_queue_stats(self) -> Dict[str, Dict[str, str]]:
+        """
+        Returns a dict with stats about all the queues. The keys are the queue
+        names, the values are dicts representing how many tasks are in a given
+        status ("queued", "active", "error" or "scheduled").
+
+        Example return value:
+        { "default": { "queued": 1, "error": 2 } }
+        """
+
+        states = (QUEUED, ACTIVE, SCHEDULED, ERROR)
+
+        pipeline = self.connection.pipeline()
+        for state in states:
+            pipeline.smembers(self._key(state))
+        queue_results = pipeline.execute()
+
+        pipeline = self.connection.pipeline()
+        for state, result in zip(states, queue_results):
+            for queue in result:
+                pipeline.zcard(self._key(state, queue))
+        card_results = pipeline.execute()
+
+        queue_stats: Dict[str, Dict[str, str]] = defaultdict(dict)
+        for state, result in zip(states, queue_results):
+            for queue in result:
+                queue_stats[queue][state] = card_results.pop(0)
+
+        return queue_stats
+
+    def purge_errored_tasks(
+        self,
+        queues: Optional[List[str]] = None,
+        exclude_queues: Optional[List[str]] = None,
+        last_execution_before: Optional[datetime.datetime] = None,
+        limit: int = 5000,
+    ) -> int:
+        """Purge failed tasks left in the ERROR state
+
+        Example usage::
+
+            limit = 500
+            n_processed = limit
+            while n_processed == limit:
+                n_processed = tiger.purge_errored_tasks(
+                    queues=['my-queue'],
+                    exclude_queues=['other-queue'],
+                    last_execution_before=(
+                        datetime.datetime.utcnow()
+                        - datetime.timedelta(days=14)
+                    ),
+                    limit=limit,
+                ):
+                time.sleep(.1)  # don't overload redis
+
+            # or to purge all in one go
+            tiger.purge_errored_tasks(limit=None)
+
+        :param iterable(str) queues: Queues to include
+        :param iterable(str) exclude_queues: Queues to exclude
+        :param datetime last_execution_before: If provided, only deletes tasks
+            older than this.
+        :param int limit: Stops after purging ``limit`` tasks. Can be
+            explicitly set to None to remove limit and purge all at once.
+
+        :returns: The total number of tasks purged
+        """
+        # some sanity checking and kind error messages for arguments
+        if last_execution_before:
+            assert isinstance(last_execution_before, datetime.datetime)
+        if limit is not None:
+            assert limit > 0, "If specified, limit must be greater than zero"
+
+        only_queues = set(queues or self.config["ONLY_QUEUES"] or [])
+        exclude_queues_ = set(exclude_queues or self.config["EXCLUDE_QUEUES"] or [])
+
+        def errored_tasks() -> Iterable[Task]:
+            queues_with_errors = self.connection.smembers(self._key(ERROR))
+            for queue in queues_with_errors:
+                if not queue_matches(
+                    queue,
+                    only_queues=only_queues,
+                    exclude_queues=exclude_queues_,
+                ):
+                    continue
+
+                skip = 0
+                total_tasks: Optional[int] = None
+                task_limit = 5000
+                while total_tasks is None or skip < total_tasks:
+                    total_tasks, tasks = Task.tasks_from_queue(
+                        self,
+                        queue,
+                        ERROR,
+                        skip=skip,
+                        limit=task_limit,
+                        include_not_found=True,
+                    )
+                    for task in tasks:
+                        if (
+                            last_execution_before
+                            and task.ts
+                            and task.ts > last_execution_before
+                        ):
+                            continue
+                        yield task
+                    skip += task_limit
+
+        total_processed = 0
+        for idx, task in enumerate(errored_tasks()):
+            task.delete()
+
+            total_processed = idx + 1
+            if limit and total_processed >= limit:
+                break
+
+        return total_processed
+
+    def would_process_configured_queue(self, queue_name: str) -> bool:
+        """
+        Return if a queue_name would be processed by this tasktiger instance. It does not consider explicit
+        --queue param.
+        """
+        return queue_matches(
+            queue_name,
+            self.config["ONLY_QUEUES"],
+            self.config["EXCLUDE_QUEUES"],
+        )
+
+
+@click.command()
+@click.option(
+    "-q",
+    "--queues",
+    help=(
+        "If specified, only the given queue(s) are processed. Multiple queues "
+        "can be separated by comma."
+    ),
+)
+@click.option(
+    "-m",
+    "--module",
+    help=(
+        "Module(s) to import when launching the worker. This improves task "
+        "performance since the module doesn't have to be reimported every "
+        "time a task is forked. Multiple modules can be separated by comma."
+    ),
+)
+@click.option(
+    "-e",
+    "--exclude-queues",
+    help=(
+        "If specified, exclude the given queue(s) from processing. Multiple "
+        "queues can be separated by comma."
+    ),
+)
+@click.option(
+    "-M",
+    "--max-workers-per-queue",
+    help="Maximum workers allowed to process a queue",
+    type=int,
+)
+@click.option(
+    "--store-tracebacks/--no-store-tracebacks",
+    help="Store tracebacks with execution history",
+    default=None,
+)
+@click.option("-h", "--host", help="Redis server hostname")
+@click.option("-p", "--port", help="Redis server port")
+@click.option("-a", "--password", help="Redis password")
+@click.option("-n", "--db", help="Redis database number")
+@click.option(
+    "--executor",
+    help="Task executor. Possible values are sync or fork (default).",
+)
+@click.option(
+    "--exit-after",
+    type=click.INT,
+    help="Exit TaskTiger after the time in minutes has elapsed.",
+)
+@click.pass_context
+def run_worker(
+    context: Any,
+    host: str,
+    port: Optional[int],
+    db: Optional[int],
+    password: Optional[str],
+    queues: Optional[str] = None,
+    module: Optional[str] = None,
+    exclude_queues: Optional[str] = None,
+    max_workers_per_queue: Optional[int] = None,
+    store_tracebacks: Optional[bool] = None,
+    executor: Optional[str] = "fork",
+    exit_after: Optional[int] = None,
+) -> None:
+    conn = redis.Redis(
+        host, int(port or 6379), int(db or 0), password, decode_responses=True
+    )
+    tiger = context.obj or TaskTiger(setup_structlog=True, connection=conn)
+
+    executor_class: Type[Executor]
+    if not executor or executor == "fork":
+        executor_class = ForkExecutor
+    elif executor == "sync":
+        executor_class = SyncExecutor
+    else:
+        raise click.ClickException("Invalid executor.")
+
+    if exit_after:
+        exit_after_td = datetime.timedelta(minutes=exit_after)
+    else:
+        exit_after_td = None
+
+    tiger.run_worker(
+        queues=queues,
+        module=module,
+        exclude_queues=exclude_queues,
+        max_workers_per_queue=max_workers_per_queue,
+        store_tracebacks=store_tracebacks,
+        executor_class=executor_class,
+        exit_after=exit_after_td,
+    )
