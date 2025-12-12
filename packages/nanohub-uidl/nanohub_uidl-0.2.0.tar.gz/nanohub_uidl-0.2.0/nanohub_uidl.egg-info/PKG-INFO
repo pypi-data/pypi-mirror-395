@@ -1,0 +1,124 @@
+Metadata-Version: 2.4
+Name: nanohub-uidl
+Version: 0.2.0
+Summary: A set of tools to run create Javascript Apps, using Teleporthq UIDL schema
+Home-page: https://github.com/denphi/nanohub-uidl
+Author: Nanohub
+Author-email: denphi@denphi.com
+License: BSD
+Keywords: IPython
+Platform: Linux
+Platform: Mac OS X
+Platform: Windows
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Framework :: Jupyter
+Description-Content-Type: text/markdown
+Requires-Dist: nanohub-remote>=0.1.0
+Requires-Dist: simtool
+Requires-Dist: jupyter_server
+Requires-Dist: notebook>=7
+Requires-Dist: ipywidgets<9,>=8.0.0
+Provides-Extra: test
+Provides-Extra: examples
+Provides-Extra: docs
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: platform
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: summary
+
+# Nanohub - UIDL
+
+# UIDL Stats
+
+<table>
+    <tr>
+        <td>Latest Release</td>
+        <td>
+            <a href="https://pypi.org/project/nanohub-uidl/"/>
+            <img src="https://badge.fury.io/py/nanohub-uidl.svg"/>
+        </td>
+    </tr>
+    <tr>
+        <td>PyPI Downloads</td>
+        <td>
+            <a href="https://pepy.tech/project/nanohub-uidl"/>
+            <img src="https://pepy.tech/badge/nanohub-uidl/month"/>
+            <img src="https://pepy.tech/badge/nanohub-uidl"/>
+        </td>
+    </tr>
+</table>
+
+A set of tools to create Javascript apps to consume nanohub WS
+
+## Installation
+
+
+```bashv
+pip install nanohub-uidl
+```
+
+## Usage
+
+
+```python
+from nanohubuidl.teleport import TeleportProject, TeleportElement
+from nanohubuidl.material import MaterialContent
+from nanohubuidl.auth import AUTH
+
+Project = TeleportProject("My App")
+Component = Project.root
+Component.addStateVariable("myvariable", {"type":"boolean", "defaultValue": True})
+
+STATE_LOADER_STATUS = "loader_status"
+STATE_LOADER_OPEN = "loader_open"
+STATE_ERROR_STATUS = "error_status"
+STATE_ERROR_OPEN = "error_open"
+
+Login, CLogin = Auth.Login(
+    Project,
+    Component,
+    client_id = "MYAPPID",
+    client_secret = "MYAPPSECRET",
+    url = "https://nanohub.org/api/developer/oauth/token",   
+    open_state = STATE_LOGIN_OPEN
+)
+
+Login.content.events["onError"]=[
+    { "type": "stateChange", "modifies": STATE_ERROR_OPEN, "newState": True},
+    { "type": "stateChange", "modifies": STATE_ERROR_STATUS, "newState": '$e'},
+]
+
+Login.content.events["onAuth"] = [ 
+    { "type": "stateChange", "modifies": STATE_ERROR_OPEN, "newState": False},
+    { "type": "stateChange", "modifies": STATE_LOADER_OPEN, "newState": False},
+]
+
+Grid = t.TeleportElement(MaterialContent(elementType="Grid"))
+Button= MaterialBuilder.Button(
+      title = "Reset Setting", 
+      variant = "text", 
+      onClickButton=[{ "type": "stateChange", "modifies": "parameters","newState": resetSettings}]
+)
+Grid.addContent(Button)
+
+Component.addNode(Grid)
+Project.buildReact("Myapp.html");
+
+```
+
+
