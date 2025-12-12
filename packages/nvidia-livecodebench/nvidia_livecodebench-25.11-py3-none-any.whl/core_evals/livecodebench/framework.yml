@@ -1,0 +1,236 @@
+framework:
+  name: livecodebench
+  pkg_name: livecodebench
+  full_name: LiveCodeBench
+  description: Holistic and Contamination Free Evaluation of Large Language Models for Code.
+  url: https://github.com/LiveCodeBench/LiveCodeBench
+defaults:
+  command: >
+    {% if target.api_endpoint.api_key is not none %}
+      export API_KEY=${{target.api_endpoint.api_key}} && 
+    {% endif %}
+    livecodebench --model {{target.api_endpoint.model_id}} \
+                --scenario {{config.params.task}} \
+                --release_version {{config.params.extra.release_version}} \
+                --url {{target.api_endpoint.url}} \
+                --temperature {{config.params.temperature}} \
+                --top_p {{config.params.top_p}} \
+                --evaluate \
+                --codegen_n {{config.params.extra.n_samples}} \
+                --use_cache \
+                --cache_batch_size {{config.params.extra.cache_batch_size}} \
+                --num_process_evaluate {{config.params.extra.num_process_evaluate}} \
+                --n {{config.params.extra.n_samples}} \
+                --max_tokens {{config.params.max_new_tokens}} \
+                --out_dir {{config.output_dir}} \
+                --multiprocess {{config.params.parallelism}} \
+                --max_retries {{config.params.max_retries}} \
+                --timeout {{config.params.request_timeout}}{% if config.params.extra.start_date is not none %} --start_date {{config.params.extra.start_date}} {% endif %} {% if config.params.extra.end_date is not none %} --end_date {{config.params.extra.end_date}} {% endif %} {% if config.params.extra.support_system_role %} --support_system_role {% endif %} {% if config.params.limit_samples is not none %} --first_n {{config.params.limit_samples}}{% endif %}{% if config.params.extra.cot_code_execution == true %} --cot_code_execution {% endif %}{% if config.params.extra.args is defined %} {{ config.params.extra.args }} {% endif %}
+  config:
+    params:
+      limit_samples: null
+      max_new_tokens: 4096
+      temperature: 0.0
+      top_p: 0.00001
+      parallelism: 10
+      max_retries: 5
+      request_timeout: 60
+      extra:
+        n_samples: 10
+        num_process_evaluate: 5
+        cache_batch_size: 10
+        support_system_role: false
+        start_date: null # format: YYYY-MM-DD
+        end_date : null # format: YYYY-MM-DD
+        cot_code_execution: false
+
+  target:
+    api_endpoint: {} # required to add: url, model_id, api_key
+evaluations:
+  - name: codegeneration_release_latest
+    description: Code generation latest version
+    defaults:
+      config:
+        type: codegeneration_release_latest
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            release_version: release_latest
+  - name: codegeneration_release_v1
+    description: The initial release of the dataset (v1) with problems released between May 2023 and Mar 2024 containing 400 problems.
+    defaults:
+      config:
+        type: codegeneration_release_v1
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            release_version: release_v1
+
+  - name: codegeneration_release_v2
+    description: The updated release of the dataset (v2) with problems released between May 2023 and May 2024 containing 511 problems.
+    defaults:
+      config:
+        type: codegeneration_release_v2
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            release_version: release_v2
+
+  - name: codegeneration_release_v3
+    description: The updated release of the dataset (v3) with problems released between May 2023 and Jul 2024 containing 612 problems.
+    defaults:
+      config:
+        type: codegeneration_release_v3
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            release_version: release_v3
+
+  - name: codegeneration_release_v4
+    description: The updated release of the dataset (v4) with problems released between May 2023 and Sep 2024 containing 713 problems.
+    defaults:
+      config:
+        type: codegeneration_release_v4
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            release_version: release_v4
+
+  - name: codegeneration_release_v5
+    description: The updated release of the dataset (v5) with problems released between May 2023 and Jan 2025 containing 880 problems.
+    defaults:
+      config:
+        type: codegeneration_release_v5
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            release_version: release_v5
+  - name: codegeneration_release_v6
+    description: The updated release of the dataset (v6) with problems released between May 2023 and Apr 2025 containing 1055 problems.
+    defaults:
+      config:
+        type: codegeneration_release_v6
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            release_version: release_v6
+  - name: codegeneration_notfast
+    description: Not fast version of code generation (v2).
+    defaults:
+      config:
+        type: codegeneration_notfast
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          extra:
+            args: "--not_fast"
+
+  - name: testoutputprediction
+    description: Solve the natural language task on a specified input, evaluating the ability to generate testing outputs. The model is given the natural language problem description and an input, and the output should be the output for the problem.
+    defaults:
+      config:
+        type: testoutputprediction
+        supported_endpoint_types:
+          - chat
+        params:
+          task: testoutputprediction
+          extra:
+            release_version: release_latest
+
+  - name: codeexecution_v2
+    description: “Execute” a program on an input, evaluating code comprehension ability. The model is given a program and an input, and the output should be the result.
+    defaults:
+      config:
+        type: codeexecution_v2
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codeexecution
+          extra:
+            release_version: release_v2
+  - name: codeexecution_v2_cot
+    description: “CoT. Execute” a program on an input, evaluating code comprehension ability. The model is given a program and an input, and the output should be the result. Chain-of-Thought version of the task.
+    defaults:
+      config:
+        type: codeexecution_v2_cot
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codeexecution
+          extra:
+            release_version: release_v2
+            cot_code_execution: true
+
+  - name: livecodebench_0724_0125
+    description: >-
+     - Code generation evaluating code comprehension ability. The model is given a program and an input, and the output should be the result.
+     - The data period and sampling parameters used by Artificial Analaysis (https://artificialanalysis.ai/methodology/intelligence-benchmarking)
+    defaults:
+      config:
+        type: livecodebench_0724_0125
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          temperature: 0.0
+          max_new_tokens: 4096
+          extra:
+            release_version: release_v5
+            n_samples: 3
+            start_date: 2024-07-01
+            end_date: 2025-01-01
+  
+  # duplicate of livecodebench_0724_0125 - params aligned with Artificial Analysis Index v2
+  - name: livecodebench_aa_v2
+    description: >-
+     - Code generation evaluating code comprehension ability. The model is given a program and an input, and the output should be the result.
+     - The data period and sampling parameters used by Artificial Analaysis (https://artificialanalysis.ai/methodology/intelligence-benchmarking)
+    defaults:
+      config:
+        type: livecodebench_aa_v2
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          max_new_tokens: 16384
+          temperature: 0.0
+          max_retries: 30
+          extra:
+            release_version: release_v5
+            n_samples: 3
+            start_date: 2024-07-01
+            end_date: 2025-01-01
+
+  - name: livecodebench_0824_0225
+    description:
+      - Code generation evaluating code comprehension ability. The model is given a program and an input, and the output should be the result.
+      - The data period and sampling parameters used by NeMo Alignment team.
+    defaults:
+      config:
+        type: livecodebench_0824_0225
+        supported_endpoint_types:
+          - chat
+        params:
+          task: codegeneration
+          temperature: 0.0
+          max_new_tokens: 4096
+          extra:
+            release_version: release_v5
+            n_samples: 3
+            start_date: 2024-08-01
+            end_date: 2025-02-01
