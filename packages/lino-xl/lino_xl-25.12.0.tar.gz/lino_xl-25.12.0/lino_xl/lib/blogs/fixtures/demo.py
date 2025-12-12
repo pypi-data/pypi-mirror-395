@@ -1,0 +1,1 @@
+from lino_xl.lib.blogs.fixtures.demo_blogs import objects

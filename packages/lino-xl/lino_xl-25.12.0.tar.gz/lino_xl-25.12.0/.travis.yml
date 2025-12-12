@@ -1,0 +1,40 @@
+dist: bionic
+language: python
+python:
+  #- "2.7"
+  - "3.6"
+  - "3.7"
+
+install:
+  - pip install -U setuptools
+  - pip install -U pip
+  - pip install coveralls
+  - # test -e "requirements.$TRAVIS_BRANCH.txt" && ( pip install -r "requirements.$TRAVIS_BRANCH.txt" ) || ( pip install -r requirements.txt )
+  - pip install -r requirements.txt
+  - pip install -e .
+
+# command to run tests, e.g. python setup.py test
+script:
+  - export LINO_CACHE_ROOT=$TRAVIS_BUILD_DIR/lino_cache
+  - mkdir $LINO_CACHE_ROOT
+  - # if [[ $TRAVIS_PYTHON_VERSION == 2* ]]; then inv cov; fi;
+  - inv prep test
+
+# after_success:
+#   - coveralls
+
+# Thanks to https://github.com/plume-lib/trigger-travis
+jobs:
+  include:
+    - stage: trigger downstream
+      script: |
+        echo "TRAVIS_BRANCH=$TRAVIS_BRANCH TRAVIS_PULL_REQUEST=$TRAVIS_PULL_REQUEST"
+        if [[ ($TRAVIS_BRANCH == master) &&
+              ($TRAVIS_PULL_REQUEST == false) ]] ; then
+          curl -LO --retry 3 https://raw.githubusercontent.com/plume-lib/trigger-travis/master/trigger-travis.sh
+          sh trigger-travis.sh lino-framework welfare $TRAVIS_ACCESS_TOKEN
+          sh trigger-travis.sh lino-framework presto $TRAVIS_ACCESS_TOKEN
+          sh trigger-travis.sh lino-framework ciao $TRAVIS_ACCESS_TOKEN
+          sh trigger-travis.sh lino-framework amici $TRAVIS_ACCESS_TOKEN
+          sh trigger-travis.sh lino-framework book $TRAVIS_ACCESS_TOKEN
+        fi
