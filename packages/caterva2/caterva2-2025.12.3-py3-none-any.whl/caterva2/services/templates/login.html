@@ -1,0 +1,43 @@
+{% extends "base_anon.html" %}
+
+{% block title %}Sign in{% endblock %}
+
+{% block main %}
+
+<h5 class="card-title float-end">Sign in</h5>
+
+<div id="result" class="alert alert-danger" style="display: none"></div>
+
+<form action="{{ url('auth/jwt/login') }}" method="post"
+      onsubmit="submitForm(this, '{{ url("") }}'); return false"
+>
+    <div class="form-floating mb-2">
+        <input type="email" name="username" class="form-control" placeholder="" required>
+        <label class="form-label">Email address</label>
+    </div>
+    <div class="form-floating mb-2">
+        <input type="password" name="password" class="form-control" placeholder="" required>
+        <label class="form-label">Password</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Sign in</button>
+</form>
+
+<p class="mt-2">
+    <a href="{{ url('forgot-password') }}">Reset your password</a>
+    {% if user_register_enabled %}
+    <br><a href="{{ url('register') }}">Sign up</a>
+    {% endif %}
+</p>
+
+<script>
+function setMessage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const message = urlParams.get('message');
+    if (message) {
+        displayMessage(message);
+    }
+}
+setMessage();
+</script>
+
+{% endblock %}
