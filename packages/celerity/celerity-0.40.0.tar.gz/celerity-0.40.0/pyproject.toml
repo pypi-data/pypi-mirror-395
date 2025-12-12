@@ -1,0 +1,83 @@
+[project]
+name = "celerity"
+version = "0.40.0"
+description = "Celerity is a lightweight, zero-dependency and type-safe Python library for astronomical calculations."
+authors = [{ name = "Michael J. Roberts", email = "michael@observerly.com" }]
+requires-python = "~=3.11"
+readme = "README.md"
+maintainers = [
+    { name = "Michael J. Roberts", email = "michael@observerly.com" },
+]
+keywords = [
+    "astrometry",
+    "astronomy",
+    "ephemeris",
+    "equatorial",
+    "galactic",
+    "heliocentric",
+    "horizontal",
+    "lunar",
+    "moon",
+    "planetary",
+    "planets",
+    "solar",
+    "stellar",
+    "sun",
+    "topocentric",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Repository = "https://github.com/michaelroberts/celerity"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.9.7",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/celerity",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+    "src/celerity/py.typed",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "src/celerity",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+    "src/celerity/py.typed",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/celerity" = "celerity"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# This configuration ensures the entire namespace of your brick is included when pytest 
+# does its test lookup. Without it, pytest will raise errors because of the default way
+# it does module lookups. This occurs when using Polylith with the TDD theme.
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+asyncio_default_fixture_loop_scope = "session"
