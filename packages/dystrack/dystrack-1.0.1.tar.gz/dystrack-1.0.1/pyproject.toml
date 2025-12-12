@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dystrack"
+version = "1.0.1"
+authors = [
+  { name="Jonas Hartmann", email="jonas.hartmann@ucl.ac.uk" },
+  { name="Zimeng Wu", email="zimeng.wu.18@ucl.ac.uk" },
+]
+description = "Microscope automation for dynamic sample tracking."
+readme = "README.md"
+requires-python = ">=3.10, <3.14"
+license = "MIT"
+license-files = ["LICENSE"]
+
+classifiers = [
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: Microsoft :: Windows",
+]
+
+dependencies = [
+
+  # Core dependencies
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "matplotlib>=3.7",
+  "scikit-image>=0.24.0",
+
+  # Bioimage file reading
+  "bioio>=3.0.0",
+  "bioio-tifffile>=1.3.0",
+  "bioio-czi>=2.4.0",
+  "bioio-nd2>=1.5.0",
+]
+
+[project.urls]
+homepage = "https://whoisjack.github.io/DySTrack/"
+source = "https://github.com/WhoIsJack/DySTrack"
+documentation = "https://whoisjack.github.io/DySTrack/"
+issues = "https://github.com/WhoIsJack/DySTrack/issues"
+
+[project.optional-dependencies]
+
+test = [
+  "pytest",
+  "pytest-mock",
+  "pytest-cov",
+  "coverage",
+  "fake-winreg"
+]
+
+dev = [
+  "jupyter",
+  "ipykernel",
+  "black[jupyter]",
+  "isort"
+]
+
+docs = [
+  "sphinx",
+  "nbsphinx",
+  "pydata-sphinx-theme",
+  "sphinx-toolbox",
+]
+
+full = [
+  "dystrack[test,dev,docs]"  # Combines all of the above; recommended default!
+]
+
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+    "--cov=src"
+]
+
+[tool.coverage.run]
+data_file = "tests/.coverage"
+
+[tool.black]
+skip-string-normalization = false
+line-length = 79
+
+[tool.isort]
+profile = "black"
