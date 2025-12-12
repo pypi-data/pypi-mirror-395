@@ -1,0 +1,968 @@
+Metadata-Version: 2.4
+Name: energysystemmodels
+Version: 20251205001
+Summary: Energy systems models are the mathematical models that are developed in order to represent as reliably as possible various energy-related problems.
+Author: Zoheir HADID
+Author-email: zoheir.hadid@gmail.com
+Project-URL: Documentation, https://energysystemmodels-tutorial.readthedocs.io/en/latest/
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pandas
+Requires-Dist: pyfluids
+Requires-Dist: pylab-sdk~=1.3.2
+Requires-Dist: matplotlib
+Requires-Dist: tkintertable~=1.3.3
+Requires-Dist: numpy
+Requires-Dist: pyqtgraph
+Requires-Dist: thermochem
+Requires-Dist: sip
+Requires-Dist: PyQt-builder
+Requires-Dist: PyQt5
+Requires-Dist: scikit-learn
+Requires-Dist: beautifulsoup4
+Requires-Dist: tqdm
+Requires-Dist: statsmodels
+Requires-Dist: python-docx
+Requires-Dist: pvlib
+Requires-Dist: gekko
+Requires-Dist: networkx
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+ï»¿# EnergySystemModels
+
+[![PyPI version](https://badge.fury.io/py/energysystemmodels.svg)](https://badge.fury.io/py/energysystemmodels)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Energy systems models** are mathematical models developed to reliably represent various energy-related problems. These models can be used for simulation, optimization, and analysis of energy systems to improve efficiency, reduce costs, minimize environmental impact, and achieve energy savings.
+
+**Les modeles de systemes energetiques** sont des modeles mathematiques developpes pour representer de maniere aussi fiable que possible divers problemes lies a l''energie. Ces modeles peuvent etre utilises pour la simulation, l''optimisation et l''analyse des systemes energetiques afin d''ameliorer l''efficacite, de reduire les couts et de minimiser l''impact environnemental, ainsi que pour realiser des economies d''energie.
+
+## Documentation
+
+- FR [Documentation francaise](https://energysystemmodels-fr.readthedocs.io/)
+- EN [English documentation](https://energysystemmodels-en.readthedocs.io/)
+
+## Installation
+
+```bash
+pip install energysystemmodels
+```
+
+## Modules disponibles / Available Modules
+
+### Cycles Thermodynamiques / Thermodynamic Cycles
+- **Source/Sink** - Sources et puits de fluides avec proprietes thermodynamiques (CoolProp)
+- **Compressor** - Modeles de compresseurs (isentropique, volumetrique)
+- **Pump** - Pompes hydrauliques avec courbes caracteristiques
+- **Evaporator/Condenser** - Evaporateurs et condenseurs pour cycles frigorifiques
+- **HEX** - Echangeurs de chaleur (NTU, DTLM, air-cooled)
+- **Expansion_Valve** - Detendeurs isenthalpiques
+- **Desuperheater** - Desurchauffeurs
+- **Chiller** - Cycles frigorifiques complets (GUI Tkinter disponible)
+
+### Hydraulique / Hydraulics
+- **StraightPipe** - Calcul de pertes de charge en conduite droite (Darcy-Weisbach)
+- **TA_Valve** - Vannes d''equilibrage IMI TA (120+ references, interpolation Kv)
+
+### CTA et Batiment / AHU and Building
+- **FreshAir** - Air neuf avec calcul des proprietes psychrometriques
+- **HeatingCoil** - Batteries de chauffage (NUT)
+- **Humidifier** - Humidification (vapeur, adiabatique)
+- **HeatExchanger** - Echangeurs rotatifs et a plaques
+- **BuildingRC** - Modele thermique dynamique de batiment (methode RC)
+
+### Transferts Thermiques / Heat Transfer
+- **CompositeWall** - Murs composites multicouches avec resistances thermiques
+- **PipeInsulation** - Analyse d''isolation de tuyauteries
+
+### Energie et Facturation / Energy and Billing
+- **TURPE** - Calcul du tarif d''utilisation des reseaux electriques (BT/HTA)
+- **CEE** - Certificats d''Economies d''Energie
+
+### Donnees Meteo / Weather Data
+- **OpenWeatherMap** - API temps reel (temperature, humidite)
+- **MeteoCiel** - Scraping donnees historiques avec calcul DJU
+
+### Optimisation Energetique / Energy Optimization
+- **PinchAnalysis** - Analyse Pinch pour integration energetique (GCC, courbes composites)
+- **IPMVP** - Protocole de mesure et verification des economies d''energie
+- **PV** - Simulation de production photovoltaique (pvlib)
+
+### Outils / Tools
+- **NodeEditor** - Editeur graphique de flux energetiques (PyQt5)
+- **TkinterGUI** - Interfaces graphiques pour chiller
+- **PyqtSimulator** - Simulateur temps reel
+
+---
+
+## Table des matieres / Table of Contents
+
+- [1. ThermodynamicCycles Package](#1-thermodynamiccycles-package)
+  * [1.1. Fluid Source](#11-fluid-source)
+  * [1.2. Sink](#12-sink)
+  * [1.3. Compressor](#13-compressor)
+  * [1.4. Water Heat Storage](#14-water-heat-storage)
+  * [1.5. Chiller](#15-chiller)
+  * [1.6. Echangeurs de chaleur](#16-echangeurs-de-chaleur)
+  * [1.7. Hydraulique](#17-hydraulique)
+- [2. AHU Modules](#2-ahu-modules)
+  * [2.1. Fresh AHU Example](#21-fresh-ahu-example)
+  * [2.2. Building RC Model](#22-building-rc-model)
+- [3. PinchAnalysis](#3-pinchanalysis)
+- [4. Donnees meteo](#4-donnees-meteo)
+  * [4.1. OpenWeatherMap](#41-openweathermap)
+  * [4.2. MeteoCiel](#42-meteociel)
+- [5. IPMVP](#5-ipmvp)
+- [6. Production solaire](#6-production-solaire)
+- [7. Calcul du TURPE](#7-calcul-du-turpe)
+- [8. Vannes d''equilibrage IMI TA](#8-vannes-dequilibrage-imi-ta)
+
+---
+
+# 1. ThermodynamicCycles Package
+
+Le package **ThermodynamicCycles** fournit des composants pour modeliser des cycles thermodynamiques complets : sources, puits, compresseurs, evaporateurs, condenseurs, vannes de detente, pompes, echangeurs de chaleur, etc.
+
+## 1.1. Fluid Source
+
+La classe `Source` represente une source de fluide avec des proprietes thermodynamiques definies.
+
+### 1.1.1. Parametres d''entree / Input parameters
+
+| Symbol   | Description      | SI Units | Used Units |
+|----------|:----------------:|----------|------------|
+| Ti_degC  | Inlet temperature | K | degC |
+| fluid    | Fluid/Refrigerant name | String | "air", "ammonia", "R134a", "water", ... |
+| F, F_Sm3s, F_m3s, F_Sm3h, F_m3h, F_kgh | Input Flow rate | kg/s | kg/s, Sm3/s, m3/s, Sm3/h, m3/h, kg/h |
+| Pi_bar   | Inlet Pressure | Pa | bara |
+
+### 1.1.2. Exemple / Example
+
+```python
+from ThermodynamicCycles.Source import Source
+
+# Create Source Object
+SOURCE = Source.Object()
+
+# Data Input
+SOURCE.Pi_bar = 1.01325
+SOURCE.fluid = "air"
+SOURCE.F = 1  # kg/s
+
+# Calculate Object
+SOURCE.calculate()
+
+# Data output
+print(SOURCE.df)
+```
+
+## 1.2. Sink
+
+La classe `Sink` represente un puits de fluide (sortie du systeme).
+
+### 1.2.1. Exemple / Example
+
+```python
+from ThermodynamicCycles.Sink import Sink
+
+# Create Sink object
+SINK = Sink.Object()
+
+# Input data
+SINK.Inlet.fluid = "air"
+SINK.Inlet.F = 0.334
+SINK.Inlet.P = 101325
+SINK.Inlet.h = 420000
+
+# Calculate SINK
+SINK.calculate()
+
+# Print result
+print(SINK.df)
+print(f"Outlet Temperature: {SINK.To_degC} degC")
+```
+
+## 1.3. Compressor
+
+Modele de compresseur avec rendement isentropique et refroidissement optionnel.
+
+### 1.3.1. Exemple / Example
+
+```python
+from ThermodynamicCycles.Source import Source
+from ThermodynamicCycles.Compressor import Compressor
+from ThermodynamicCycles.Sink import Sink
+from ThermodynamicCycles.Connect import Fluid_connect
+
+# Create Objects
+SOURCE = Source.Object()
+COMP = Compressor.Object()
+SINK = Sink.Object()
+
+# Data Input
+SOURCE.Ti_degC = 20
+SOURCE.fluid = "air"
+SOURCE.Pi_bar = 1
+SOURCE.F_Sm3h = 500
+
+COMP.eta_is = 0.80  # Isentropic efficiency
+COMP.Tdischarge_target = 80  # Discharge temperature in degC
+COMP.HP = 7.5 * 100000  # Discharge pressure in Pa
+COMP.Q_comp = 48745.761  # Power in W
+
+# Calculate and Connect Objects
+SOURCE.calculate()
+Fluid_connect(COMP.Inlet, SOURCE.Outlet)
+COMP.calculate()
+Fluid_connect(SINK.Inlet, COMP.Outlet)
+SINK.calculate()
+
+# Data output
+print(SOURCE.df)
+print(COMP.df)
+print(SINK.df)
+```
+
+## 1.4. Water Heat Storage
+
+Modele de stockage thermique avec reservoir melange.
+
+### 1.4.1. Mixed Tank
+
+```python
+from ThermodynamicCycles import MixedStorage
+from ThermodynamicCycles.Source import Source
+from ThermodynamicCycles.Sink import Sink
+from ThermodynamicCycles.Connect import Fluid_connect
+import pandas as pd
+import os
+
+# Read Excel file
+data = pd.read_excel(os.path.join(os.path.dirname(__file__), ''HotWaterStorage.xlsx''))
+data[''Timestamp''] = pd.to_datetime(data[''Timestamp''], format="%d/%m/%y %H:%M:%S")
+rows = data.shape[0]
+
+# Initialize result DataFrames
+df_result = pd.DataFrame()
+df_source = pd.DataFrame()
+df_str = pd.DataFrame()
+df_sink = pd.DataFrame()
+
+# Create Objects
+SOURCE = Source.Object()
+SINK = Sink.Object()
+STR = MixedStorage.Object()
+
+# Parameters
+STR.V = 4  # Volume in m3
+STR.Tinit_degC = 40  # Initial temperature
+STR.t = 3600  # Time step in seconds
+
+for r in range(1, rows):
+    SOURCE.Ti_degC = data["TdegC"][r]
+    SOURCE.fluid = "water"
+    SOURCE.Pi_bar = 1
+    SOURCE.F_m3h = data["F_m3h"][r]
+
+    SOURCE.Timestamp = data["Timestamp"][r]
+    STR.Timestamp = data["Timestamp"][r]
+    SINK.Timestamp = data["Timestamp"][r]
+
+    dt = (data["Timestamp"][r] - data["Timestamp"][r-1]).total_seconds()
+    STR.t = dt
+
+    SOURCE.calculate()
+    Fluid_connect(STR.Inlet, SOURCE.Outlet)
+    STR.calculate()
+    Fluid_connect(SINK.Inlet, STR.Outlet)
+    SINK.calculate()
+
+    df_str = pd.concat([df_str, STR.df.T], ignore_index=True)
+    df_source = pd.concat([df_source, SOURCE.df.T], ignore_index=True)
+    df_sink = pd.concat([df_sink, SINK.df.T], ignore_index=True)
+
+# Merge results
+df_result = df_str.merge(df_sink, on=[''Timestamp'']).merge(df_source, on=[''Timestamp''])
+print(df_result)
+```
+
+## 1.5. Chiller
+
+Cycle frigorifique complet avec evaporateur, compresseur, desurchauffeur, condenseur et detendeur.
+
+### 1.5.1. Interface graphique / GUI Application
+
+```python
+from TkinterGUI import Chiller
+```
+
+### 1.5.2. Modele oriente objet / Object-Oriented Model
+
+```python
+import CoolProp.CoolProp as CP
+from ThermodynamicCycles.Evaporator import Evaporator
+from ThermodynamicCycles.Compressor import Compressor
+from ThermodynamicCycles.Desuperheater import Desuperheater
+from ThermodynamicCycles.Expansion_Valve import Expansion_Valve
+from ThermodynamicCycles.Condenser import Condenser
+from ThermodynamicCycles.Connect import Fluid_connect
+
+# Create chiller components
+EVAP = Evaporator.Object()
+COMP = Compressor.Object()
+DESURCH = Desuperheater.Object()
+COND = Condenser.Object()
+DET = Expansion_Valve.Object()
+
+# Cycle parameters
+fluid = "R134a"
+EVAP.fluid = fluid
+EVAP.Inlet.F = 1  # kg/s
+EVAP.LP_bar = 2.930154  # bar
+EVAP.surchauff = 2  # superheating
+EVAP.Inlet.h = CP.PropsSI(''H'', ''P'', 1*1e5, ''T'', 40+273.15, fluid)
+
+# Compressor parameters
+COMP.Tcond_degC = 40
+COMP.eta_is = 0.8
+COMP.Tdischarge_target = 80  # degC
+COMP.Q_comp = 100000  # W
+
+# Condenser parameters
+COND.subcooling = 2  # degC
+
+# Calculation
+EVAP.calculate()
+Fluid_connect(COMP.Inlet, EVAP.Outlet)
+COMP.calculate()
+Fluid_connect(DESURCH.Inlet, COMP.Outlet)
+DESURCH.calculate()
+Fluid_connect(COND.Inlet, DESURCH.Outlet)
+COND.calculate()
+Fluid_connect(DET.Inlet, COND.Outlet)
+Fluid_connect(DET.Outlet, EVAP.Inlet)
+DET.calculate()
+Fluid_connect(EVAP.Inlet, DET.Outlet)
+EVAP.calculate()
+
+# Performance
+EER = EVAP.Q_evap / COMP.Q_comp
+Q_condTot = COND.Q_cond + DESURCH.Qdesurch
+COP = Q_condTot / COMP.Q_comp
+
+print(f"EER = {round(EER, 1)}")
+print(f"Q_condTot = {round(Q_condTot/1000, 1)} kW")
+print(f"COP = {round(COP, 1)}")
+```
+
+## 1.6. Echangeurs de chaleur / Heat Exchangers
+
+### 1.6.1. Air-Cooled Heat Exchanger (Aerorefrigerant)
+
+Modele de dimensionnement d''aerorefrigerant pour refroidir des fluides de procede par air ambiant.
+
+#### 1.6.1.1. Caracteristiques
+
+- **Fluides supportes** : eau, hydrocarbures legers, gasoil
+- **Coefficient U automatique** : 850 W/m2.K (eau), 540 W/m2.K (hydrocarbure), 400 W/m2.K (gasoil)
+- **Nombre de rangs** : calcule automatiquement selon deltaT (3 a 7 rangs)
+- **Vitesse d''air** : 2.5 a 3.55 m/s selon nombre de rangs
+- **Dimensionnement ventilateurs** : debit, diametre, puissance electrique
+
+#### 1.6.1.2. Exemple / Example
+
+```python
+from ThermodynamicCycles.HEX.AirCooled_HEX import Object as AirCooled_HEX
+import math
+
+# Creer l''aerorefrigerant / Create air-cooled heat exchanger
+AERO = AirCooled_HEX()
+
+# Parametres du fluide process / Process fluid parameters
+AERO.fluid = "water"
+AERO.Ti_fluid = 165  # Eau chaude a 165Â°C / Hot water at 165Â°C
+AERO.To_fluid = 80   # Refroidir a 80Â°C / Cool to 80Â°C
+AERO.F_fluid = 10    # 10 kg/s
+AERO.Cp_fluid = 4200  # J/kg.K (eau / water)
+
+# Parametres de l''air / Air parameters
+AERO.Ti_air = 35     # Air ambiant a 35Â°C / Ambient air at 35Â°C
+AERO.TminAmb = 10    # Temperature minimale de design / Design minimum temperature
+AERO.Cp_air = 1005   # J/kg.K
+AERO.rho_air = 1.15  # kg/m3
+
+# Geometrie / Geometry
+AERO.largeur_baie = 6  # Largeur de baie 6 m / Bay width 6 m
+AERO.L_tube = 12       # Longueur de tubes 12 m / Tube length 12 m
+AERO.nb_faisceaux = 2  # 2 bundles
+
+# Calcul de la puissance thermique / Calculate thermal duty
+AERO.Qth_fluid = AERO.F_fluid * AERO.Cp_fluid * (AERO.Ti_fluid - AERO.To_fluid)
+
+# Coefficient U pour l''eau / U coefficient for water
+AERO.U = 850  # W/m2.K
+
+# Determination du nombre de rangs / Determine number of rows
+deltaT = AERO.Ti_fluid - AERO.Ti_air
+if deltaT <= 10:
+    AERO.nb_rangs = 3
+elif deltaT <= 50:
+    AERO.nb_rangs = 4
+elif deltaT <= 90:
+    AERO.nb_rangs = 6
+else:
+    AERO.nb_rangs = 7
+
+# Voir test_AirCooled_HEX.py pour le calcul complet
+# See test_AirCooled_HEX.py for complete calculation
+print(f"Puissance thermique / Thermal duty: {AERO.Qth_fluid/1000:.1f} kW")
+print(f"Nombre de rangs / Number of rows: {AERO.nb_rangs}")
+```
+
+## 1.7. Hydraulique
+
+### 1.7.1. Straight Pipe (Darcy-Weisbach)
+
+```python
+from ThermodynamicCycles.Hydraulic import StraightPipe
+from ThermodynamicCycles.Source import Source
+from ThermodynamicCycles.Sink import Sink
+from ThermodynamicCycles.Connect import Fluid_connect
+
+# Create objects
+SOURCE = Source.Object()
+PIPE1 = StraightPipe.Object()
+PIPE2 = StraightPipe.Object()
+SINK = Sink.Object()
+
+# Source configuration
+SOURCE.fluid = "water"
+SOURCE.Ti_degC = 25
+SOURCE.Pi_bar = 1
+SOURCE.F_m3h = 100
+SOURCE.calculate()
+
+# Pipe 1 configuration
+PIPE1.d_hyd = 0.050  # m (DN50)
+PIPE1.L = 100  # m
+PIPE1.K = 0.00002  # m (roughness)
+
+# Pipe 2 configuration
+PIPE2.d_hyd = 0.2  # m (DN200)
+PIPE2.L = 100  # m
+PIPE2.K = 0.00002  # m
+
+# Connect and calculate
+Fluid_connect(PIPE1.Inlet, SOURCE.Outlet)
+PIPE1.calculate()
+Fluid_connect(PIPE2.Inlet, PIPE1.Outlet)
+PIPE2.calculate()
+Fluid_connect(SINK.Inlet, PIPE2.Outlet)
+SINK.calculate()
+
+# Results
+print(SOURCE.df)
+print(PIPE1.df)
+print(PIPE2.df)
+print(SINK.df)
+```
+
+---
+
+# 2. AHU Modules
+
+Modules pour centrales de traitement d''air (CTA).
+
+## 2.1. Fresh AHU Example
+
+Modele CTA avec air neuf, batterie de chauffage et humidificateur.
+
+```python
+from AHU import FreshAir
+from AHU import HeatingCoil
+from AHU.Humidification import Humidifier
+from AHU.Connect import Air_connect
+
+# Create Objects
+AN = FreshAir.Object()
+BC = HeatingCoil.Object()
+HMD = Humidifier.Object()
+
+# Fresh Air Input
+AN.F_m3h = 3000  # m3/h
+AN.T = 14  # degC
+AN.RH_FreshAir = 71  # %
+
+# Heating Coil Target
+BC.To_target = 15  # degC
+
+# Humidifier Target
+HMD.wo_target = 8  # g/kg dry air
+HMD.HumidType = "vapeur"  # or "adiabatique"
+
+# Calculate
+AN.calculate()
+Air_connect(BC.Inlet, AN.Outlet)
+BC.calculate()
+Air_connect(HMD.Inlet, BC.Outlet)
+HMD.calculate()
+
+# Results
+print(f"Fresh Air Absolute Humidity: {round(AN.w, 1)} g/kg")
+print(f"Fresh Air Wet-Bulb Temperature: {round(AN.T_hum, 1)} degC")
+print(f"Fresh Air Specific Enthalpy: {round(AN.h, 3)} kJ/kg")
+print(f"Heating Coil Thermal Power: {round(BC.Qth, 1)} kW")
+print(f"Heating Coil Relative Humidity: {round(BC.RH_out, 1)} %")
+print(f"Humidifier Steam mass flow rate: {round(HMD.F_water, 3)} kg/s")
+```
+
+## 2.2. Building RC Model
+
+Modele thermique dynamique de batiment base sur la methode RC (resistance-capacite).
+
+```python
+from AHU.Building.BuildingRC import Object as Building
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Building configuration
+building = Building()
+
+# Parameters
+building.e_mur = 0.4  # Wall thickness [m]
+building.lambda_mur = 1.2  # Thermal conductivity [W/m.K]
+building.rho_mur = 2100  # Density [kg/m3]
+building.cp_mur = 1000  # Specific heat [J/kg.K]
+building.V_int = 2000.0  # Interior volume [m3]
+building.A_env = 1000.0  # Envelope area [m2]
+building.A_sol = 400.0  # Floor area [m2]
+building.h_ext = 20.0  # External convection [W/m2.K]
+building.h_int = 5.0  # Internal convection [W/m2.K]
+
+# Temperature setpoints
+building.T_consigne_chaud = 19.0  # Heating setpoint [degC]
+building.T_consigne_froid = 25.0  # Cooling setpoint [degC]
+
+# Simulation
+hours = 24 * 5  # 5 days
+dt = 60  # Time step [s]
+building.T_int = 22  # Initial indoor [degC]
+building.T_mur = 19  # Initial wall [degC]
+
+# External temperature
+T_moy = 25  # Average [degC]
+Delta_T = 10  # Amplitude [degC]
+time_sim = np.arange(0, hours * 3600, dt) / 3600  # [h]
+T_ext = T_moy + Delta_T * np.sin(2 * np.pi * (time_sim - 6) / 48)
+
+# Air renewal
+taux_renouvellement = 0.5  # volumes/hour
+building.debit_soufflage = building.V_int * taux_renouvellement
+
+# Simulation loop
+for t, T_ext_t in zip(range(0, hours * 3600, dt), T_ext):
+    building.T_ext = T_ext_t
+    building.update(dt)
+
+# Results
+history = building.history
+time = np.arange(len(history[''T_int''])) * dt / 3600
+
+plt.figure(figsize=(14, 10))
+plt.subplot(3, 1, 1)
+plt.plot(time, history[''T_int''], label=''Indoor Temperature'', color=''blue'')
+plt.plot(time, history[''T_ext''], label=''Outdoor Temperature'', color=''red'', linestyle=''--'')
+plt.axhline(building.T_consigne_chaud, color=''cyan'', linestyle='':'', label=''Heating Setpoint'')
+plt.axhline(building.T_consigne_froid, color=''orange'', linestyle='':'', label=''Cooling Setpoint'')
+plt.xlabel(''Time (h)'')
+plt.ylabel(''Temperature (degC)'')
+plt.legend()
+plt.grid(True)
+
+plt.subplot(3, 1, 2)
+plt.plot(time, history[''P_chaud''], label=''Heating Power'', color=''red'')
+plt.plot(time, history[''P_froid''], label=''Cooling Power'', color=''blue'')
+plt.xlabel(''Time (h)'')
+plt.ylabel(''Power (W)'')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+# 3. PinchAnalysis
+
+Analyse Pinch pour l''integration energetique des procedes industriels.
+
+```python
+from PinchAnalysis.PinchCalculation import PinchCalculation
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Input DataFrame
+df = pd.DataFrame({
+    ''id'': [1, 2, 3, 4],
+    ''name'': [''stream1'', ''stream2'', ''stream3'', ''stream4''],
+    ''Ti'': [200, 50, 125, 45],
+    ''To'': [50, 250, 124, 195],
+    ''mCp'': [3, 2, 300, 4],
+    ''dTmin2'': [5, 5, 10, 10],
+    ''integration'': [True, True, True, True]
+})
+
+# Pinch Calculation
+T, plot_GCC, plot_ccf, plot_ccc, utilite_froide, utilite_chaude = PinchCalculation(df)
+
+# Print results
+print(f"Temperature: {T}")
+print(f"Cold utility: {utilite_froide} kW")
+print(f"Hot utility: {utilite_chaude} kW")
+
+# Plot Composite Curves
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+ax1.plot(plot_ccf[:, 0], T, color=''tab:blue'', label=''Cold Composite Curve'')
+ax1.plot(plot_ccc[:, 0], T, color=''tab:red'', label=''Hot Composite Curve'')
+ax1.set_xlabel(''Power (kW)'')
+ax1.set_ylabel(''Temperature (degC)'')
+ax1.legend()
+ax1.grid(True)
+ax1.set_title(''Composite Curves'')
+
+ax2.plot(plot_GCC[:, 0], T, color=''tab:orange'', linewidth=2)
+ax2.set_xlabel(''Power (kW)'')
+ax2.set_ylabel(''Temperature (degC)'')
+ax2.grid(True)
+ax2.set_title(''Grand Composite Curve'')
+
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+# 4. Donnees meteo
+
+## 4.1. OpenWeatherMap
+
+Recuperation de donnees meteo en temps reel via API OpenWeatherMap.
+
+```python
+from OpenWeatherMap import OpenWeatherMap_call_location
+
+# Get temperature and humidity from GPS coordinates
+df = OpenWeatherMap_call_location.API_call_location("48.862725", "2.287592")
+
+print(df)
+```
+
+**Resultat :**
+```
+                   Timestamp  T(degC)  RH(%)
+0 2023-03-09 14:09:01.941527  14.39     72
+```
+
+## 4.2. MeteoCiel
+
+Scraping de donnees meteo historiques depuis les stations MeteoCiel avec calcul automatique des DJU.
+
+```python
+from datetime import datetime
+from MeteoCiel.MeteoCiel_Scraping import MeteoCiel_histoScraping
+
+# Input data
+code2 = 10637  # Weather station code
+date_debut = datetime(2023, 1, 1)
+date_fin = datetime.now()
+
+# Scraping function
+df_histo, df_day, df_month, df_year = MeteoCiel_histoScraping(
+    code2, 
+    date_debut, 
+    date_fin,
+    base_chauffage=18,
+    base_refroidissement=23
+)
+
+# Save to Excel
+df_histo.to_excel(f"Meteociel_station_{date_debut.date()}_to_{date_fin.date()}.xlsx")
+df_day.to_excel(f"day_Meteociel_station_{date_debut.date()}_to_{date_fin.date()}.xlsx")
+df_month.to_excel(f"month_Meteociel_station_{date_debut.date()}_to_{date_fin.date()}.xlsx")
+df_year.to_excel(f"year_Meteociel_station_{date_debut.date()}_to_{date_fin.date()}.xlsx")
+```
+
+---
+
+# 5. IPMVP
+
+Protocole international de mesure et verification de la performance (IPMVP) pour quantifier les economies d''energie.
+
+```python
+from IPMVP.IPMVP import Mathematical_Models
+import os
+from datetime import datetime
+import pandas as pd
+
+# Data file
+filename = "Input-Data.xlsx"
+date_column = "Timestamp"
+
+# Read data
+directory = os.getcwd()
+file_directory = os.path.join(directory, filename)
+df = pd.read_excel(file_directory)
+
+# Convert date to datetime index
+df[date_column] = pd.to_datetime(df[date_column])
+df = df.set_index(df[date_column])
+
+# Define periods
+start_baseline_period = datetime(2018, 1, 1, hour=0)
+end_baseline_period = datetime(2021, 12, 31, hour=0)
+start_reporting_period = datetime(2022, 1, 1, hour=0)
+end_reporting_period = datetime(2023, 3, 1, hour=0)
+
+# Daily IPMVP Model
+df_daily = df.resample(''D'').sum()
+X = df_daily[["x1", "x2", "x3", "x4", "x5", "x6"]]
+y = df_daily["y"]
+
+day_model = Mathematical_Models(
+    y, X,
+    start_baseline_period, end_baseline_period,
+    start_reporting_period, end_reporting_period,
+    degree=3,
+    print_report=True,
+    seuil_z_scores=3
+)
+
+# Weekly IPMVP Model
+weekly_X = X.resample(''W'').sum()
+weekly_y = y.resample(''W'').sum()
+week_model = Mathematical_Models(
+    weekly_y, weekly_X,
+    start_baseline_period, end_baseline_period,
+    start_reporting_period, end_reporting_period
+)
+
+# Monthly IPMVP Model
+monthly_X = X.resample(''M'').sum()
+monthly_y = y.resample(''M'').sum()
+month_model = Mathematical_Models(
+    monthly_y, monthly_X,
+    start_baseline_period, end_baseline_period,
+    start_reporting_period, end_reporting_period
+)
+```
+
+---
+
+# 6. Production solaire
+
+Simulation de production photovoltaique avec pvlib.
+
+```python
+from PV.ProductionElectriquePV import SolarSystem
+
+# Create solar system
+system = SolarSystem(
+    latitude=48.8566,
+    longitude=2.3522,
+    location_name=''Paris'',
+    tilt=34,
+    timezone=''Etc/GMT-1'',
+    azimuth=180.0,
+    system_capacity=48.9  # kWp
+)
+
+# Retrieve data
+system.retrieve_module_inverter_data()
+system.retrieve_weather_data()
+
+# Calculate
+system.calculate_solar_parameters()
+
+# Plot
+system.plot_annual_energy()
+```
+
+---
+
+# 7. Calcul du TURPE
+
+Calcul du **Tarif d''Utilisation des Reseaux Publics d''Electricite** (TURPE) pour les differents domaines de tension.
+
+```python
+from Facture.TURPE import input_Contrat, TurpeCalculator, input_Facture, input_Tarif
+
+# Invoice data
+facture = input_Facture(
+    start="2022-09-01",
+    end="2022-09-30",
+    heures_depassement=0,
+    depassement_PS_HPB=64,
+    kWh_pointe=0,
+    kWh_HPH=0,
+    kWh_HCH=0,
+    kWh_HPB=26635,
+    kWh_HCB=12846
+)
+
+# Contract data
+contrat = input_Contrat(
+    domaine_tension="BT > 36 kVA",
+    PS_pointe=129,
+    PS_HPH=129,
+    PS_HCH=129,
+    PS_HPB=129,
+    PS_HCB=250,
+    version_utilisation="LU",
+    pourcentage_ENR=100
+)
+
+# Tariff data
+tarif = input_Tarif(
+    c_euro_kWh_pointe=0.2,
+    c_euro_kWh_HPB=0.15,
+    c_euro_kWh_HCB=0.12,
+    c_euro_kWh_HPH=0.18,
+    c_euro_kWh_HCH=0.16,
+    c_euro_kwh_CSPE_TICFE=0.05,
+    c_euro_kWh_certif_capacite=0.03,
+    c_euro_kWh_ENR=0.1,
+    c_euro_kWh_ARENH=0.09
+)
+
+# Create calculator
+turpe_calculator = TurpeCalculator(contrat, tarif, facture)
+
+# Calculate
+turpe_calculator.calculate_turpe()
+
+# Results
+print(f"Grid usage cost (euro): {turpe_calculator.euro_TURPE:.2f}")
+print(f"Taxes and contributions (euro): {turpe_calculator.euro_taxes_contrib:.2f}")
+```
+
+---
+
+# 8. Vannes d''equilibrage IMI TA
+
+Calcul de pertes de charge dans les **vannes d''equilibrage hydraulique IMI TA** avec interpolation lineaire automatique du coefficient Kv.
+
+## 8.1. Caracteristiques
+
+- **120+ references** : STAD, STAV, TBV, TBV-C, STAF, STAF-SG, STAF-R, STAG, STA, MDFO, STAP, STAM, STAZ, STAP-R
+- **Interpolation lineaire** : Calcul du Kv pour n''importe quelle position intermediaire (ex: 4.5 tours)
+- **DN 10 a DN 900** : Large gamme de diametres nominaux
+- **Donnees officielles** : Valeurs Kv issues des documentations IMI TA
+
+## 8.2. Exemple d''utilisation
+
+```python
+from ThermodynamicCycles.Hydraulic import TA_Valve
+from ThermodynamicCycles.Source import Source
+from ThermodynamicCycles.Connect import Fluid_connect
+
+# Create objects
+SOURCE = Source.Object()
+vanne = TA_Valve.Object()
+
+# Source configuration
+SOURCE.Ti_degC = 25
+SOURCE.Pi_bar = 3.0
+SOURCE.fluid = "Water"
+SOURCE.F_m3h = 70
+SOURCE.calculate()
+
+# Valve configuration
+vanne.dn = "STAF-DN100"
+vanne.nb_tours = 4.5
+
+# Connect and calculate
+Fluid_connect(vanne.Inlet, SOURCE.Outlet)
+vanne.calculate()
+
+# Display results
+print(vanne.df)
+print(f"Inlet pressure: {vanne.Inlet.P/100000:.3f} bar")
+print(f"Outlet pressure: {vanne.Outlet.P/100000:.3f} bar")
+print(f"Pressure drop: {vanne.delta_P/100000:.3f} bar")
+print(f"Flow rate: {SOURCE.F_m3h:.2f} m3/h")
+```
+
+## 8.3. Familles de vannes disponibles
+
+| Famille | Description | Plage DN |
+|---------|-------------|----------|
+| **STAD** | Vanne d''equilibrage manuelle filetee PN 25 | DN 10-50 |
+| **STAV** | Vanne d''equilibrage Venturi filetee PN 20 | DN 15-50 |
+| **TBV** | Vanne terminale d''equilibrage manuelle | DN 15-20 |
+| **TBV-C** | Vanne terminale + controle TA-Scope | DN 10-20 |
+| **STAF** | Vanne a brides fonte PN 16/25 | DN 20-400 |
+| **STAF-SG** | Variante STAF fonte GS PN 16/25 | DN 65-400 |
+| **STAF-R** | Vanne version retour PN 16/25 | DN 65-200 |
+| **STAG** | Vanne grooved Victaulic PN 16 | DN 65-300 |
+| **STA** | Ancienne vanne TA (archive) | DN 15-150 |
+| **MDFO** | Orifice fixe de mesure (Kv fixe) | DN 20-900 |
+| **STAP** | Regulateur deltaP differentielle | DN 15-100 |
+| **STAM** | Regulateur deltaP boucles/colonnes | DN 15-50 |
+| **STAZ/STAP-R** | Regulateurs deltaP legacy | DN 15-50 |
+
+---
+
+## Dependances / Dependencies
+
+Le package installe automatiquement les dependances suivantes :
+
+- **pandas** - Manipulation de donnees
+- **numpy** - Calculs numeriques
+- **matplotlib** - Visualisation
+- **CoolProp** (via pyfluids) - Proprietes thermodynamiques
+- **pvlib** - Simulation photovoltaique
+- **scikit-learn** - Machine learning (IPMVP)
+- **statsmodels** - Modeles statistiques
+- **beautifulsoup4** - Web scraping (MeteoCiel)
+- **PyQt5** - Interfaces graphiques
+- **tkintertable** - Tables Tkinter
+- **gekko** - Optimisation
+
+## License
+
+MIT License - Zoheir HADID
+
+## Contribution
+
+Les contributions sont les bienvenues ! N''hesitez pas a ouvrir une issue ou une pull request sur GitHub.
+
+## Contact
+
+**Auteur** : Zoheir HADID  
+**Email** : zoheir.hadid@gmail.com
+
+---
+
+**Version** : 20251118006  
+**Python** : >= 3.7
