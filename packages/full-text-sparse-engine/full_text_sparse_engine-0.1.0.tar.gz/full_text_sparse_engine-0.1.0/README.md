@@ -1,0 +1,109 @@
+# Full text search engine - LMDB/BM25 based
+
+This project is a simple, yet powerful, full-text search engine written in Python. It's designed to be easy to use, thread-safe, and efficient for a variety of search tasks.
+
+## Key Features
+
+* **Easy to Use:** The `SearchEngine` class provides a simple API for storing and searching documents.
+* **Metadata Support:** Store and query documents based on metadata fields.
+* **Fast:** Uses a combination of `FlashText` for quick keyword matching and a `BM25` vectorizer for more complex queries.
+* **Scalable:** The sharded storage backend allows the engine to handle large amounts of data.
+* **Thread-Safe:** The underlying LMDB storage is thread-safe, making it suitable for multi-threaded environments.
+
+## Usage
+
+Here's a quick example of how to use the search engine:
+
+```python
+from engine import SearchEngine
+import os
+import shutil
+
+# Define paths for the storage directories
+storage_path = "./db"
+metadata_path = "./db_metadata"
+metadata_index_path = "./db_metadata_index"
+matrix_path = "./matrix"
+
+# Clean up previous runs if they exist
+for path in [storage_path, metadata_path, metadata_index_path, matrix_path]:
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+# 1. Initialize the Search Engine
+search_engine = SearchEngine(
+    storage_base_path=storage_path,
+    metadata_storage_base_path=metadata_path,
+    metadata_index_storage_base_path=metadata_index_path,
+    matrix_path=matrix_path
+)
+
+# 2. Store some documents with metadata
+docs = [
+    ("The quick brown fox jumps over the lazy dog", {"source": "proverb"}),
+    ("A journey of a thousand miles begins with a single step", {"source": "proverb"}),
+    ("The early bird catches the worm", {"source": "proverb"}),
+    ("An apple a day keeps the doctor away", {"source": "health"}),
+]
+
+for text, metadata in docs:
+    search_engine.store_data(text, metadata)
+
+print("Stored 4 documents.")
+
+# 3. Pre-compute the index for optimal performance
+print("Building search index...")
+search_engine.index()
+print("Index built.")
+
+# 4. Perform a search
+query = "quick fox"
+results = search_engine.search(query, {})
+
+print(f"\nSearching for: '{query}'")
+for doc_id, text, metadata in results:
+    print(f"  - Found doc {doc_id[:8]} with metadata {metadata}: '{text}'")
+# Expected output:
+#   - Found doc ... with metadata {'source': 'proverb'}: 'The quick brown fox jumps over the lazy dog'
+
+# 5. Perform a search with a metadata filter
+query = "apple"
+metadata_query = {"source": "health"}
+results = search_engine.search(query, metadata_query)
+
+print(f"\nSearching for: '{query}' with metadata filter {metadata_query}")
+for doc_id, text, metadata in results:
+    print(f"  - Found doc {doc_id[:8]} with metadata {metadata}: '{text}'")
+# Expected output:
+#   - Found doc ... with metadata {'source': 'health'}: 'An apple a day keeps the doctor away'
+
+# Clean up the storage directories
+search_engine.storage.close()
+search_engine.metadata_storage.close()
+search_engine.metadata_index_storage.close()
+for path in [storage_path, metadata_path, metadata_index_path, matrix_path]:
+    if os.path.exists(path):
+        shutil.rmtree(path)
+```
+
+## Low-Memory Architecture
+
+This search engine is designed to be both fast and memory-efficient. It achieves this by using a memory-mapped sparse matrix for the search index.
+
+- **Indexing**: The `index()` method builds the full document-term matrix in memory (a one-time cost) and then saves it to disk.
+- **Searching**: For subsequent searches, the matrix is loaded back as a memory-mapped object. This allows the operating system to efficiently manage paging the index between RAM and disk, providing the speed of an in-memory index without requiring the entire matrix to be loaded into RAM at once.
+
+This approach provides a good balance between performance and memory usage, allowing the engine to handle large datasets with a small, predictable memory footprint.
+
+## Performance
+
+The following performance metrics were collected on a standard machine. The use of a memory-mapped index allows for fast search performance while keeping RAM usage low.
+
+| Metric                | Value           |
+|-----------------------|-----------------|
+| Number of documents   | 1000            |
+| Document size (chars) | 500             |
+| Storage throughput    | 742.73 docs/sec |
+| Search throughput     | 76.27 queries/sec|
+
+*These numbers are meant to be indicative. Actual performance will vary depending on the hardware and the nature of the data.*
