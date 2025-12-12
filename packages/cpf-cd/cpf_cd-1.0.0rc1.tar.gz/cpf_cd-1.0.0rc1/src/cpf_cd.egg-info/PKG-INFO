@@ -1,0 +1,312 @@
+Metadata-Version: 2.4
+Name: cpf-cd
+Version: 1.0.0rc1
+Summary: Utility resources to calculate check digits on CPF (Brazilian personal ID)
+Author: Julio L. Muller
+License-Expression: MIT
+Project-URL: Homepage, https://cnpj-utils.vercel.app/
+Project-URL: Source, https://github.com/LacusSolutions/br-utils-py
+Project-URL: Tracker, https://github.com/LacusSolutions/br-utils-py/issues
+Keywords: cpf,verificar,verificador,verify,verification,check,check-digit,check-digits,pt-br,br
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: English
+Classifier: Natural Language :: Portuguese (Brazilian)
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Utilities
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+![cpf-cd for Python](https://br-utils.vercel.app/img/cover_cpf-cd.jpg)
+
+[![PyPI Version](https://img.shields.io/pypi/v/cpf-cd)](https://pypi.org/project/cpf-cd)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/cpf-cd)](https://pypi.org/project/cpf-cd)
+[![Python Version](https://img.shields.io/pypi/pyversions/cpf-cd)](https://www.python.org/)
+[![Test Status](https://img.shields.io/github/actions/workflow/status/LacusSolutions/br-utils-py/ci.yml?label=ci/cd)](https://github.com/LacusSolutions/br-utils-py/actions)
+[![Last Update Date](https://img.shields.io/github/last-commit/LacusSolutions/br-utils-py)](https://github.com/LacusSolutions/br-utils-py)
+[![Project License](https://img.shields.io/github/license/LacusSolutions/br-utils-py)](https://github.com/LacusSolutions/br-utils-py/blob/main/LICENSE)
+
+Utility class to calculate check digits on CPF (Brazilian individual taxpayer ID).
+
+## Python Support
+
+| ![Python 3.10](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white) | ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white) | ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white) | ![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white) | ![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white) |
+|--- | --- | --- | --- | --- |
+| Passing ✔ | Passing ✔ | Passing ✔ | Passing ✔ | Passing ✔ |
+
+## Installation
+
+```bash
+$ pip install cpf-cd
+```
+
+## Import
+
+```python
+from cpf_cd import CpfCheckDigits
+```
+
+## Usage
+
+### Basic Usage
+
+```python
+# Calculate check digits from a 9-digit CPF base
+check_digits = CpfCheckDigits("054496519")
+
+print(check_digits.first_digit)    # returns 1
+print(check_digits.second_digit)   # returns 0
+print(check_digits.to_string())    # returns '05449651910'
+print(check_digits.to_list())      # returns [0, 5, 4, 4, 9, 6, 5, 1, 9, 1, 0]
+```
+
+### Input Formats
+
+The `CpfCheckDigits` class accepts multiple input formats:
+
+#### String Input
+
+```python
+# Plain string (non-numeric characters are automatically stripped)
+check_digits = CpfCheckDigits("054496519")
+check_digits = CpfCheckDigits("054.496.519-10")  # formatting is ignored
+check_digits = CpfCheckDigits("054496519")        # 9 digits
+check_digits = CpfCheckDigits("05449651910")     # 11 digits (only first 9 are used)
+```
+
+#### List of Strings
+
+```python
+# List of single-character strings
+check_digits = CpfCheckDigits(["0", "5", "4", "4", "9", "6", "5", "1", "9"])
+
+# List with multi-digit strings (automatically flattened)
+check_digits = CpfCheckDigits(["054496519"])      # flattens to individual digits
+check_digits = CpfCheckDigits(["054", "496", "519"])  # also flattens
+```
+
+#### List of Integers
+
+```python
+# List of single-digit integers
+check_digits = CpfCheckDigits([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+# List with multi-digit integers (automatically flattened)
+check_digits = CpfCheckDigits([123456789])         # flattens to individual digits
+check_digits = CpfCheckDigits([123, 456, 789])     # also flattens
+
+### Properties
+
+#### `first_digit: int`
+
+Returns the first check digit (10th digit of the CPF).
+
+```python
+check_digits = CpfCheckDigits("054496519")
+print(check_digits.first_digit)  # returns 1
+```
+
+#### `second_digit: int`
+
+Returns the second check digit (11th digit of the CPF).
+
+```python
+check_digits = CpfCheckDigits("054496519")
+print(check_digits.second_digit)  # returns 0
+```
+
+### Methods
+
+#### `to_list() -> list[int]`
+
+Returns the complete CPF as a list of integers (9 base digits + 2 check digits).
+
+```python
+check_digits = CpfCheckDigits("054496519")
+print(check_digits.to_list())  # returns [0, 5, 4, 4, 9, 6, 5, 1, 9, 1, 0]
+```
+
+#### `to_string() -> str`
+
+Returns the complete CPF as a string (9 base digits + 2 check digits).
+
+```python
+check_digits = CpfCheckDigits("054496519")
+print(check_digits.to_string())  # returns '05449651910'
+```
+
+### Examples
+
+```python
+from cpf_cd import CpfCheckDigits
+
+# Calculate check digits for a CPF base
+base = "054496519"
+check_digits = CpfCheckDigits(base)
+
+# Get individual check digits
+first = check_digits.first_digit    # 1
+second = check_digits.second_digit   # 0
+
+# Get complete CPF
+complete = check_digits.to_string()  # '05449651910'
+
+# Work with formatted input
+formatted = CpfCheckDigits("054.496.519-10")
+print(formatted.to_string())  # '05449651910'
+
+# Work with list input
+list_input = CpfCheckDigits([0, 5, 4, 4, 9, 6, 5, 1, 9])
+print(list_input.to_string())  # '05449651910'
+```
+
+## Error Handling
+
+The package raises specific exceptions for different error scenarios:
+
+### `CpfTypeError`
+
+Raised when the input type is not supported (must be `str`, `list[str]`, or `list[int]`).
+
+```python
+from cpf_cd import CpfCheckDigits, CpfTypeError
+
+try:
+    CpfCheckDigits(12345678901)  # int not allowed
+except CpfTypeError as e:
+    print(e)  # CPF input must be of type str, list[str] or list[int]. Got int.
+```
+
+### `CpfInvalidLengthError`
+
+Raised when the input does not contain 9 to 11 digits.
+
+```python
+from cpf_cd import CpfCheckDigits, CpfInvalidLengthError
+
+try:
+    CpfCheckDigits("12345678")  # only 8 digits
+except CpfInvalidLengthError as e:
+    print(e)  # Parameter "12345678" does not contain 9 to 11 digits. Got 8.
+```
+
+### `CpfCheckDigitsCalculationError`
+
+Raised when the check digit calculation fails due to invalid sequence length.
+
+```python
+from cpf_cd import CpfCheckDigits, CpfCheckDigitsCalculationError
+
+# This is an internal error that should not occur in normal usage
+# It happens when the sequence passed to _calculate() has invalid length
+```
+
+## Features
+
+- ✅ **Multiple Input Formats**: Accepts strings, lists of strings, or lists of integers
+- ✅ **Format Agnostic**: Automatically strips non-numeric characters from string input
+- ✅ **Auto-Expansion**: Automatically expands multi-digit numbers in lists to individual digits
+- ✅ **Lazy Evaluation**: Check digits are calculated only when accessed (via properties)
+- ✅ **Type Safety**: Built with Python 3.10+ type hints
+- ✅ **Zero Dependencies**: No external dependencies required
+- ✅ **Comprehensive Error Handling**: Specific exceptions for different error scenarios
+
+## API Reference
+
+### CpfCheckDigits Class
+
+#### Constructor
+
+```python
+CpfCheckDigits(cpf_digits: str | list[str] | list[int]) -> CpfCheckDigits
+```
+
+Creates a new `CpfCheckDigits` instance from the provided CPF base digits.
+
+**Parameters:**
+- `cpf_digits` (str | list[str] | list[int]): The CPF base digits (9-11 digits). Can be:
+  - A string with 9-11 digits (formatting characters are ignored)
+  - A list of strings (each string can be a single digit or multi-digit number)
+  - A list of integers (each integer can be a single digit or multi-digit number)
+
+**Raises:**
+- `CpfTypeError`: If the input type is not supported
+- `CpfInvalidLengthError`: If the input does not contain 9-11 digits
+
+**Returns:**
+- `CpfCheckDigits`: A new instance ready to calculate check digits
+
+#### Properties
+
+##### `first_digit: int`
+
+The first check digit (10th digit of the CPF). Calculated lazily on first access.
+
+##### `second_digit: int`
+
+The second check digit (11th digit of the CPF). Calculated lazily on first access.
+
+#### Methods
+
+##### `to_list() -> list[int]`
+
+Returns the complete CPF as a list of 11 integers (9 base digits + 2 check digits).
+
+##### `to_string() -> str`
+
+Returns the complete CPF as a string of 11 digits (9 base digits + 2 check digits).
+
+## Calculation Algorithm
+
+The package calculates CPF check digits using the official Brazilian algorithm:
+
+1. **First Check Digit (10th position)**:
+   - Uses digits 1-9 of the CPF base
+   - Applies weights: 10, 9, 8, 7, 6, 5, 4, 3, 2 (from left to right)
+   - Calculates: `sum(digit × weight) % 11`
+   - Result: `0` if remainder > 9, otherwise `11 - remainder`
+
+2. **Second Check Digit (11th position)**:
+   - Uses digits 1-9 + first check digit
+   - Applies weights: 11, 10, 9, 8, 7, 6, 5, 4, 3, 2 (from left to right)
+   - Calculates: `sum(digit × weight) % 11`
+   - Result: `0` if remainder > 9, otherwise `11 - remainder`
+
+## Dependencies
+
+- **Python**: >= 3.10
+
+No external dependencies required.
+
+## Contribution & Support
+
+We welcome contributions! Please see our [Contributing Guidelines](https://github.com/LacusSolutions/br-utils-py/blob/main/CONTRIBUTING.md) for details. But if you find this project helpful, please consider:
+
+- ⭐ Starring the repository
+- 🤝 Contributing to the codebase
+- 💡 [Suggesting new features](https://github.com/LacusSolutions/br-utils-py/issues)
+- 🐛 [Reporting bugs](https://github.com/LacusSolutions/br-utils-py/issues)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/LacusSolutions/br-utils-py/blob/main/LICENSE) file for details.
+
+## Changelog
+
+See [CHANGELOG](https://github.com/LacusSolutions/br-utils-py/blob/main/packages/cpf-cd/CHANGELOG.md) for a list of changes and version history.
+
+---
+
+Made with ❤️ by [Lacus Solutions](https://github.com/LacusSolutions)
