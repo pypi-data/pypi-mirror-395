@@ -1,0 +1,33 @@
+{
+    "auth_db": {
+        "$mirror": "database_service:auth_database",
+        "host": "auth.db.example.com",
+        "port": 5432,
+        "database_name": "auth_service"
+    },
+    "user_db": {
+        "$mirror": "database_service:user_database",
+        "host": "user.db.example.com",
+        "port": 5432,
+        "database_name": "user_service"
+    },
+    "auth_service": {
+        "$mirror": "user_service",
+        "database": "$auth_database",
+        "cache_enabled": true
+    },
+    "service_registry": {
+        "auth": {
+            "$mirror": "simple_service",
+            "name": "auth_microservice"
+        },
+        "notifications": {
+            "$mirror": "simple_service",
+            "name": "notification_microservice"
+        },
+        "payments": {
+            "$mirror": "simple_service",
+            "name": "payment_microservice"
+        }
+    }
+}
