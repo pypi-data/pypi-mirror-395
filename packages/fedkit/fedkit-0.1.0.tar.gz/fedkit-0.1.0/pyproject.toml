@@ -1,0 +1,62 @@
+[project]
+name = "fedkit"
+version = "0.1.0"
+description = "A reusable app to implement fediverse functionality."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Andreas Neumeier", email = "andreas@neumeier.org" }]
+requires-python = ">=3.11"
+classifiers = ["Framework :: Django", "Programming Language :: Python :: 3"]
+dependencies = [
+        "celery[redis]",
+        "Django>=5.2",
+        "djangorestframework",
+        "Pillow",
+        "pyld",
+        "requests",
+]
+
+
+[project.urls]
+Homepage = "https://pramari.de/@fedkit"
+Documentation = "https://docs.pramari.de"
+Repository = "https://codeberg.org/deltabps/fedkit"
+"Bug Tracker" = "https://codeberg.org/deltabps/fedkit/issues"
+Changelog = "https://codeberg.org/deltabps/fedkit/issues"
+
+[project.scripts]
+fedkit = "fedkit.cli:main"
+
+[build-system]
+requires = ["uv_build >= 0.9.5, <0.10.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+pythonpath = [
+  "src"
+]
+addopts = [
+    "--import-mode=importlib",
+]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes
+    "E",   # pycodestyle
+    "I",   # isort
+    "RUF", # ruff-specific rules
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

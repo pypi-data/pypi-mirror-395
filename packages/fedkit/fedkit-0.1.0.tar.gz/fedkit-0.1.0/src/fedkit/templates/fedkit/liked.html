@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Liked Objects{% endblock %}
+
+{% block content %}
+<div class="liked-container">
+    <h1>Liked Objects</h1>
+
+    <div class="liked-stats">
+        <p>Total Items: {{ totalItems }}</p>
+    </div>
+
+    {% if totalItems > 0 %}
+        <div id="liked-objects-container">
+            <ul class="liked-list">
+                <li class="liked-loading">Loading liked objects...</li>
+            </ul>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                try {
+                    // Parse the JSON items
+                    const items = JSON.parse('{{ items|escapejs }}');
+                    const container = document.querySelector('.liked-list');
+
+                    // Clear loading message
+                    container.innerHTML = '';
+
+                    // Add each liked object to the list
+                    items.forEach(function(item) {
+                        const li = document.createElement('li');
+                        li.className = 'liked-item';
+
+                        const a = document.createElement('a');
+                        a.href = item;
+                        a.textContent = item;
+                        a.className = 'liked-link';
+
+                        li.appendChild(a);
+                        container.appendChild(li);
+                    });
+
+                    // If no items were found
+                    if (items.length === 0) {
+                        container.innerHTML = '<li class="liked-empty">No liked objects found.</li>';
+                    }
+                } catch (error) {
+                    console.error('Error processing liked objects:', error);
+                    document.querySelector('.liked-list').innerHTML =
+                        '<li class="liked-error">Error loading liked objects.</li>';
+                }
+            });
+        </script>
+    {% else %}
+        <p class="no-items">No objects have been liked yet.</p>
+    {% endif %}
+</div>
+
+<style>
+    .liked-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .liked-list {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .liked-item {
+        margin-bottom: 10px;
+        padding: 10px;
+        border: 1px solid #eee;
+        border-radius: 4px;
+    }
+
+    .liked-link {
+        word-break: break-all;
+    }
+
+    .no-items, .liked-empty, .liked-loading, .liked-error {
+        color: #666;
+        font-style: italic;
+        padding: 10px;
+    }
+
+    .liked-error {
+        color: #c00;
+    }
+</style>
+{% endblock %}

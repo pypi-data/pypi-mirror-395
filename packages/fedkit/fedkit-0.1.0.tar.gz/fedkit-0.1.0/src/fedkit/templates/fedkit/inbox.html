@@ -1,0 +1,543 @@
+{% extends "base.html" %} {% load static %} {% block title %}
+{{actor.preferredUsername|default:actor.id }} - Inbox {% endblock %} {% block
+metadescription %} ActivityPub inbox for {{
+actor.preferredUsername|default:actor.id }} {% endblock %} {% block css %}
+<style>
+    .inbox-container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: var(--bs-body-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .inbox-header {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .inbox-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem auto;
+        font-size: 2rem;
+    }
+
+    .inbox-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .inbox-subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+    }
+
+    .inbox-stats {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-number {
+        display: block;
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    .inbox-body {
+        padding: 2rem;
+    }
+
+    .inbox-section {
+        margin-bottom: 2rem;
+    }
+
+    .inbox-section h3 {
+        color: var(--bs-primary);
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .inbox-section h3 i {
+        font-size: 1rem;
+    }
+
+    .actor-info-card {
+        background: var(--bs-light);
+        border-radius: 8px;
+        padding: 1.5rem;
+        border-left: 4px solid var(--bs-primary);
+    }
+
+    .actor-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--bs-body-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .actor-username {
+        color: var(--bs-secondary);
+        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .actor-type-badge {
+        display: inline-block;
+        background: var(--bs-primary);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .endpoint-info {
+        background: var(--bs-info-bg-subtle);
+        border: 1px solid var(--bs-info-border-subtle);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .endpoint-url {
+        font-family: "Monaco", "Consolas", monospace;
+        font-size: 0.9rem;
+        background: var(--bs-white);
+        padding: 0.8rem;
+        border-radius: 6px;
+        border: 1px solid var(--bs-border-color);
+        word-break: break-all;
+        margin: 1rem 0;
+    }
+
+    .endpoint-url a {
+        color: var(--bs-primary);
+        text-decoration: none;
+    }
+
+    .endpoint-url a:hover {
+        text-decoration: underline;
+    }
+
+    .activity-info {
+        background: var(--bs-success-bg-subtle);
+        border: 1px solid var(--bs-success-border-subtle);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .activity-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .activity-type {
+        background: white;
+        padding: 1rem;
+        border-radius: 6px;
+        border: 1px solid var(--bs-border-color);
+        text-align: center;
+    }
+
+    .activity-type-name {
+        font-weight: 600;
+        color: var(--bs-success);
+        margin-bottom: 0.3rem;
+    }
+
+    .activity-type-desc {
+        font-size: 0.85rem;
+        color: var(--bs-secondary);
+    }
+
+    .related-endpoints {
+        display: grid;
+        gap: 0.8rem;
+    }
+
+    .endpoint-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: var(--bs-light);
+        border-radius: 8px;
+        border: 1px solid var(--bs-border-color);
+        transition: all 0.2s ease;
+    }
+
+    .endpoint-item:hover {
+        background: var(--bs-secondary-bg);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .endpoint-label {
+        font-weight: 600;
+        color: var(--bs-body-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .endpoint-label i {
+        color: var(--bs-primary);
+    }
+
+    .endpoint-link {
+        color: var(--bs-primary);
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .endpoint-link:hover {
+        text-decoration: underline;
+    }
+
+    .privacy-notice {
+        background: var(--bs-warning-bg-subtle);
+        border: 1px solid var(--bs-warning-border-subtle);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 2rem;
+    }
+
+    .privacy-notice h4 {
+        color: var(--bs-warning-text-emphasis);
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .privacy-notice p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--bs-warning-text-emphasis);
+    }
+
+    @media (max-width: 768px) {
+        .inbox-container {
+            margin: 1rem;
+            border-radius: 8px;
+        }
+
+        .inbox-header {
+            padding: 1.5rem;
+        }
+
+        .inbox-body {
+            padding: 1.5rem;
+        }
+
+        .inbox-stats {
+            gap: 1rem;
+        }
+
+        .activity-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .endpoint-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="inbox-container">
+    <!-- Inbox Header -->
+    <div class="inbox-header">
+        <div class="inbox-icon">
+            <i class="bi bi-inbox"></i>
+        </div>
+
+        <div class="inbox-title">ActivityPub Inbox</div>
+        <div class="inbox-subtitle">
+            Inbox for @{{
+            actor.profile.preferredUsername|default:actor.profile.slug|default:"unknown"
+            }}
+        </div>
+
+        <div class="inbox-stats">
+            <div class="stat-item">
+                <span class="stat-number"
+                    >{{ actor.follows.count|default:"0" }}</span
+                >
+                <span class="stat-label">Following</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number"
+                    >{{ actor.followed_by.count|default:"0" }}</span
+                >
+                <span class="stat-label">Followers</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inbox Body -->
+    <div class="inbox-body">
+        <!-- Actor Information -->
+        <div class="inbox-section">
+            <h3><i class="bi bi-person-circle"></i> Actor Information</h3>
+            <div class="actor-info-card">
+                <div class="actor-name">
+                    {{
+                    actor.profile.name|default:actor.profile.preferredUsername|default:"Unknown
+                    Actor" }}
+                </div>
+                <div class="actor-username">
+                    @{{
+                    actor.profile.preferredUsername|default:actor.profile.slug|default:"unknown"
+                    }}
+                </div>
+                <span class="actor-type-badge"
+                    >{{ actor.type|default:"Person" }}</span
+                >
+
+                {% if actor.profile.summary %}
+                <p style="margin-top: 1rem; color: var(--bs-secondary)">
+                    {{ actor.profile.summary|linebreaks }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Inbox Endpoint Information -->
+        <div class="inbox-section">
+            <h3><i class="bi bi-inbox-fill"></i> Inbox Endpoint</h3>
+            <div class="endpoint-info">
+                <p
+                    style="
+                        margin-bottom: 1rem;
+                        color: var(--bs-info-text-emphasis);
+                    "
+                >
+                    This is the ActivityPub inbox endpoint for receiving
+                    activities. Other fediverse actors can send activities to
+                    this endpoint.
+                </p>
+
+                <div class="endpoint-url">
+                    <a href="{{ actor.inbox }}" target="_blank"
+                        >{{ actor.inbox }}</a
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary ms-2"
+                        onclick="copyToClipboard('{{ actor.inbox }}')"
+                        title="Copy URL"
+                    >
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+
+                <p
+                    style="
+                        margin: 0;
+                        font-size: 0.85rem;
+                        color: var(--bs-info-text-emphasis);
+                    "
+                >
+                    <strong>Supported Methods:</strong> POST (for receiving
+                    activities), GET (for viewing this page)
+                </p>
+            </div>
+        </div>
+
+        <!-- Supported Activity Types -->
+        <div class="inbox-section">
+            <h3><i class="bi bi-activity"></i> Supported Activities</h3>
+            <div class="activity-info">
+                <p
+                    style="
+                        margin-bottom: 1rem;
+                        color: var(--bs-success-text-emphasis);
+                    "
+                >
+                    This inbox accepts the following ActivityPub activity types:
+                </p>
+
+                <div class="activity-grid">
+                    <div class="activity-type">
+                        <div class="activity-type-name">Follow</div>
+                        <div class="activity-type-desc">Follow requests</div>
+                    </div>
+                    <div class="activity-type">
+                        <div class="activity-type-name">Accept</div>
+                        <div class="activity-type-desc">
+                            Accept follow requests
+                        </div>
+                    </div>
+                    <div class="activity-type">
+                        <div class="activity-type-name">Create</div>
+                        <div class="activity-type-desc">
+                            New content creation
+                        </div>
+                    </div>
+                    <div class="activity-type">
+                        <div class="activity-type-name">Delete</div>
+                        <div class="activity-type-desc">Content deletion</div>
+                    </div>
+                    <div class="activity-type">
+                        <div class="activity-type-name">Like</div>
+                        <div class="activity-type-desc">
+                            Likes and favorites
+                        </div>
+                    </div>
+                    <div class="activity-type">
+                        <div class="activity-type-name">Undo</div>
+                        <div class="activity-type-desc">
+                            Undo previous actions
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Endpoints -->
+        {% if not actor.remote %}
+        <div class="inbox-section">
+            <h3><i class="bi bi-link-45deg"></i> Related Endpoints</h3>
+            <div class="related-endpoints">
+                <div class="endpoint-item">
+                    <span class="endpoint-label">
+                        <i class="bi bi-send"></i> Outbox
+                    </span>
+                    <a
+                        href="{{ actor.outbox }}"
+                        class="endpoint-link"
+                        target="_blank"
+                    >
+                        View Outbox
+                    </a>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">
+                        <i class="bi bi-people"></i> Followers
+                    </span>
+                    <a
+                        href="{{ actor.followers }}"
+                        class="endpoint-link"
+                        target="_blank"
+                    >
+                        View Followers
+                    </a>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">
+                        <i class="bi bi-person-plus"></i> Following
+                    </span>
+                    <a
+                        href="{{ actor.following }}"
+                        class="endpoint-link"
+                        target="_blank"
+                    >
+                        View Following
+                    </a>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">
+                        <i class="bi bi-heart"></i> Liked
+                    </span>
+                    <a
+                        href="{{ actor.liked }}"
+                        class="endpoint-link"
+                        target="_blank"
+                    >
+                        View Liked
+                    </a>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">
+                        <i class="bi bi-person-badge"></i> Actor Profile
+                    </span>
+                    <a
+                        href="{{ actor.id }}"
+                        class="endpoint-link"
+                        target="_blank"
+                    >
+                        View Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Privacy Notice -->
+        <div class="privacy-notice">
+            <h4><i class="bi bi-shield-check"></i> Privacy & Security</h4>
+            <p>
+                This inbox uses HTTP Signature verification to authenticate
+                incoming activities. Only valid, signed activities from verified
+                fediverse actors are processed. {% if
+                actor.manuallyApprovesFollowers %} This actor requires manual
+                approval for follow requests. {% else %} This actor
+                automatically accepts follow requests. {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %} {% block js %}
+<script>
+    function copyToClipboard(text) {
+        navigator.clipboard
+            .writeText(text)
+            .then(function () {
+                // Show success feedback
+                const button = event.target.closest("button");
+                const icon = button.querySelector("i");
+                const originalClass = icon.className;
+
+                icon.className = "bi bi-check";
+                button.classList.remove("btn-outline-primary");
+                button.classList.add("btn-success");
+
+                setTimeout(function () {
+                    icon.className = originalClass;
+                    button.classList.remove("btn-success");
+                    button.classList.add("btn-outline-primary");
+                }, 2000);
+            })
+            .catch(function (err) {
+                console.error("Failed to copy: ", err);
+                alert("Failed to copy URL to clipboard");
+            });
+    }
+</script>
+{% endblock %}

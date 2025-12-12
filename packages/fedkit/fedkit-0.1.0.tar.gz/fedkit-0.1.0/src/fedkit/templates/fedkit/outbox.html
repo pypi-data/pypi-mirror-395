@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ActivityPub Outbox</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .outbox-header {
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .activity {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+        }
+        .activity-type {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .activity-content {
+            margin-left: 10px;
+        }
+        .activity-meta {
+            color: #777;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .pagination a {
+            color: #007bff;
+            text-decoration: none;
+            padding: 8px 12px;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+        }
+        .pagination a:hover {
+            background-color: #007bff;
+            color: white;
+        }
+        .pagination .disabled {
+            color: #ccc;
+            border-color: #ccc;
+            pointer-events: none;
+        }
+        .empty-state {
+            text-align: center;
+            color: #777;
+            font-style: italic;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="outbox-header">
+        <h1>ActivityPub Outbox</h1>
+        <p>Total Activities: {{ object.totalItems|default:"0" }}</p>
+    </div>
+
+    {% if object.orderedItems %}
+        <div class="activities">
+            {% for activity in object.orderedItems %}
+                <div class="activity">
+                    <div class="activity-type">{{ activity.type|default:"Activity" }}</div>
+                    <div class="activity-content">
+                        {% if activity.object %}
+                            {% if activity.object.content %}
+                                <p>{{ activity.object.content|truncatewords:50 }}</p>
+                            {% elif activity.object.name %}
+                                <p><strong>{{ activity.object.name }}</strong></p>
+                            {% elif activity.object.summary %}
+                                <p>{{ activity.object.summary|truncatewords:30 }}</p>
+                            {% endif %}
+
+                            {% if activity.object.url %}
+                                <p><a href="{{ activity.object.url }}" target="_blank">View Object</a></p>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if activity.target %}
+                            <p><em>Target: {{ activity.target.name|default:activity.target }}</em></p>
+                        {% endif %}
+                    </div>
+
+                    <div class="activity-meta">
+                        {% if activity.published %}
+                            <span>Published: {{ activity.published|date:"M d, Y H:i" }}</span>
+                        {% endif %}
+                        {% if activity.id %}
+                            <span> | <a href="{{ activity.id }}" target="_blank">View Activity</a></span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No activities found in this outbox.</p>
+        </div>
+    {% endif %}
+
+    <!-- Pagination -->
+    <div class="pagination">
+        <div>
+            {% if object.first and object.first != request.get_full_path %}
+                <a href="{{ object.first }}">« First</a>
+            {% else %}
+                <span class="disabled">« First</span>
+            {% endif %}
+
+            {% if object.prev %}
+                <a href="{{ object.prev }}">‹ Previous</a>
+            {% else %}
+                <span class="disabled">‹ Previous</span>
+            {% endif %}
+        </div>
+
+        <div>
+            {% if object.next %}
+                <a href="{{ object.next }}">Next ›</a>
+            {% else %}
+                <span class="disabled">Next ›</span>
+            {% endif %}
+
+            {% if object.last and object.last != request.get_full_path %}
+                <a href="{{ object.last }}">Last »</a>
+            {% else %}
+                <span class="disabled">Last »</span>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

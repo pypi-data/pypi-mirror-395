@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+{{object.preferredUsername|default:object.id }} - ActivityPub Actor
+{% endblock %}
+
+{% block metadescription %} ActivityPub actor profile for {{ object.preferredUsername|default:object.id }} {% endblock %}
+
+{% block css %}
+<style>
+    .actor-profile {
+        max-width: 800px;
+        margin: 0 auto;
+        background: var(--bs-body-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .actor-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .actor-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 1rem;
+        object-fit: cover;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        margin: 0 auto 1rem auto;
+    }
+
+    .actor-name {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .actor-username {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 0.5rem;
+    }
+
+    .actor-type {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .actor-body {
+        padding: 2rem;
+    }
+
+    .actor-section {
+        margin-bottom: 2rem;
+    }
+
+    .actor-section h3 {
+        color: var(--bs-primary);
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .actor-section h3 i {
+        font-size: 1rem;
+    }
+
+    .actor-endpoints {
+        display: grid;
+        gap: 0.8rem;
+    }
+
+    .endpoint-item {
+        display: flex;
+        align-items: center;
+        padding: 0.8rem;
+        background: var(--bs-light);
+        border-radius: 8px;
+        border-left: 4px solid var(--bs-primary);
+        transition: all 0.2s ease;
+    }
+
+    .endpoint-item:hover {
+        background: var(--bs-secondary-bg);
+        transform: translateX(2px);
+    }
+
+    .endpoint-label {
+        font-weight: 600;
+        color: var(--bs-primary);
+        min-width: 100px;
+        margin-right: 1rem;
+    }
+
+    .endpoint-url {
+        font-family: "Monaco", "Consolas", monospace;
+        font-size: 0.9rem;
+        color: var(--bs-secondary);
+        word-break: break-all;
+        flex: 1;
+    }
+
+    .endpoint-url a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .endpoint-url a:hover {
+        color: var(--bs-primary);
+        text-decoration: underline;
+    }
+
+    .actor-properties {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .property-card {
+        background: var(--bs-light);
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        border: 1px solid var(--bs-border-color);
+    }
+
+    .property-label {
+        font-size: 0.85rem;
+        color: var(--bs-secondary);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .property-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--bs-body-color);
+    }
+
+    .badge-discoverable {
+        background: #28a745;
+    }
+
+    .badge-manual-approval {
+        background: #ffc107;
+        color: #000;
+    }
+
+    .json-ld-info {
+        background: var(--bs-info-bg-subtle);
+        border: 1px solid var(--bs-info-border-subtle);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 2rem;
+    }
+
+    .json-ld-info h4 {
+        color: var(--bs-info-text-emphasis);
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .json-ld-info p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--bs-info-text-emphasis);
+    }
+
+    .stats-row {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-number {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    @media (max-width: 768px) {
+        .actor-profile {
+            margin: 1rem;
+            border-radius: 8px;
+        }
+
+        .actor-header {
+            padding: 1.5rem;
+        }
+
+        .actor-body {
+            padding: 1.5rem;
+        }
+
+        .actor-properties {
+            grid-template-columns: 1fr;
+        }
+
+        .endpoint-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .endpoint-label {
+            min-width: auto;
+            margin-right: 0;
+        }
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="actor-profile">
+    <!-- Actor Header -->
+    <div class="actor-header">
+        <div class="actor-avatar">
+            {% if object.imgurl %}
+            <img
+                src="{{ object.imgurl }}"
+                alt="{{ object.preferredUsername|default:'Actor' }} avatar"
+            />
+            {% else %}
+            <i class="bi bi-person-circle"></i>
+            {% endif %}
+        </div>
+
+        <div class="actor-name">
+            {{ object.name|default:object.preferredUsername|default:"Unknown Actor" }}
+        </div>
+
+        <div class="actor-username">
+            @{{ object.preferredUsername|default:object.profile.slug|default:"unknown" }}
+        </div>
+
+        <span class="actor-type">{{ actor.type }}</span>
+
+        {% if not object.remote %}
+        <div class="stats-row">
+            <div class="stat-item">
+                <a
+                    href="{% url 'actor-following' object.preferredUsername %}"
+                    class="stat-link"
+                >
+                    <span class="stat-number">{{ object.follows.count }}</span>
+                    <span class="stat-label">Following</span>
+                </a>
+            </div>
+            <div class="stat-item">
+                <a
+                    href="{% url 'actor-followers' object.preferredUsername %}"
+                    class="stat-link"
+                >
+                    <span class="stat-number"
+                        >{{ object.followed_by.count }}</span
+                    >
+                    <span class="stat-label">Followers</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Actor Body -->
+    <div class="actor-body">
+        <!-- Biography/Summary -->
+        {% if object.profile.summary %}
+        <div class="actor-section">
+            <h3><i class="bi bi-info-circle"></i> About</h3>
+            <p>{{ object.profile.summary|linebreaks }}</p>
+        </div>
+        {% endif %}
+
+        <!-- ActivityPub Endpoints -->
+        <div class="actor-section">
+            <h3><i class="bi bi-link-45deg"></i> ActivityPub Endpoints</h3>
+            <div class="actor-endpoints">
+                <div class="endpoint-item">
+                    <span class="endpoint-label">Actor ID</span>
+                    <span class="endpoint-url">
+                        <a href="{{ object.id }}" target="_blank"
+                            >{{ object.id }}</a
+                        >
+                    </span>
+                </div>
+
+                {% if not actor.remote %}
+                <div class="endpoint-item">
+                    <span class="endpoint-label">Inbox</span>
+                    <span class="endpoint-url">
+                        <a href="{{ object.inbox }}" target="_blank"
+                            >{{ object.inbox }}</a
+                        >
+                    </span>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">Outbox</span>
+                    <span class="endpoint-url">
+                        <a href="{{ object.outbox }}" target="_blank"
+                            >{{ object.outbox }}</a
+                        >
+                    </span>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">Followers</span>
+                    <span class="endpoint-url">
+                        <a href="{{ object.followers }}" target="_blank"
+                            >{{ object.followers }}</a
+                        >
+                    </span>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">Following</span>
+                    <span class="endpoint-url">
+                        <a href="{{ object.following }}" target="_blank"
+                            >{{ object.following }}</a
+                        >
+                    </span>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">Liked</span>
+                    <span class="endpoint-url">
+                        <a href="{{ object.liked }}" target="_blank"
+                            >{{ object.liked }}</a
+                        >
+                    </span>
+                </div>
+
+                <div class="endpoint-item">
+                    <span class="endpoint-label">Public Key</span>
+                    <span class="endpoint-url">{{ object.keyID }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Actor Properties -->
+        <div class="actor-section">
+            <h3><i class="bi bi-sliders"></i> Properties</h3>
+            <div class="actor-properties">
+                <div class="property-card">
+                    <div class="property-label">Type</div>
+                    <div class="property-value">{{ object.type }}</div>
+                </div>
+
+                <div class="property-card">
+                    <div class="property-label">Discoverable</div>
+                    <div class="property-value">
+                        {% if object.discoverable %}
+                        <span class="badge badge-discoverable">Yes</span>
+                        {% else %}
+                        <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="property-card">
+                    <div class="property-label">Manual Approval</div>
+                    <div class="property-value">
+                        {% if object.manuallyApprovesFollowers %}
+                        <span class="badge badge-manual-approval"
+                            >Required</span
+                        >
+                        {% else %}
+                        <span class="badge bg-success">Automatic</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="property-card">
+                    <div class="property-label">Instance</div>
+                    <div class="property-value">
+                        {% if object.remote %}
+                        <span class="badge bg-info">Remote</span>
+                        {% else %}
+                        <span class="badge bg-primary">Local</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- JSON-LD Information -->
+        <div class="json-ld-info">
+            <h4><i class="bi bi-code-square"></i> ActivityPub JSON-LD</h4>
+            <p>
+                To view this actor's ActivityPub JSON-LD representation, request
+                this page with
+                <code>Accept: application/ld+json</code> or
+                <code>Accept: application/activity+json</code> headers.
+            </p>
+            <p class="mt-2">
+                <a
+                    href="{{ object.id }}"
+                    class="btn btn-sm btn-outline-info"
+                    target="_blank"
+                >
+                    <i class="bi bi-download"></i> View JSON-LD
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
