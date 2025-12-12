@@ -1,0 +1,76 @@
+[build-system]
+requires = [
+    "setuptools>=77.0.3",
+    "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fscan"
+description = "Fscan tool for monitoring narrow spectral artifacts in LIGO data"
+readme = "README.md"
+authors = [
+  { name = "Evan Goetz", email = "evan.goetz@ligo.org" },
+  { name = "Ansel Neunzert", email = "ansel.neunzert@ligo.org" },
+  { name = "Sudhagar Suyamprakasam", email = "sudhagar.suyamprakasam@ligo.org" },
+]
+license = "GPL-3.0-or-later"
+license-files = [ "LICENSE" ]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Astronomy",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.10"
+dependencies = [
+  "bokeh>=3.7.2",
+  "gwdetchar",
+  "gpstime",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+  "flake8",
+]
+conda = [
+  "lalpulsar >= 7.1.1",
+  "lalframe",
+]
+docs = [
+  "sphinx",
+  "sphinx-immaterial-igwn",
+  "numpydoc",
+]
+
+[project.urls]
+"Source Code" = "https://git.ligo.org/CW/instrumental/fscan"
+"Bug Tracker" = "https://git.ligo.org/CW/instrumental/fscan/-/issues"
+
+[project.scripts]
+FscanDriver = "fscan:__main__.main"
+postProcess = "fscan:post.main"
+AnalysisSummary = "fscan:status.main"
+clean = "fscan:clean.main"
+FscanFineToothPlot = "fscan.plot.finetoothplot:main"
+FscanLineCountPlot = "fscan.plot.linecount:main"
+FscanStaticPlot = "fscan.plot.static:main"
+FscanAutoTag = "fscan.process.autotag:main"
+FscanCompileHistory = "fscan.process.history:main"
+FscanDTutils = "fscan.utils.dtutils:main"
+FscanSummaryPage = "fscan:html.main"
+
+[tool.setuptools.packages.find]
+include = [ "fscan*" ]
+exclude = [
+]
+
+[tool.setuptools_scm]
+write_to = "fscan/_version.py"
+
