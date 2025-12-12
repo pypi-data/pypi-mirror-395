@@ -1,0 +1,77 @@
+// SPDX-FileCopyrightText: 2020-2023 Jochem Rutgers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+Store:
+	objects*=Object
+;
+
+Object:
+	/\s*/-
+	( Variable | Function | Scope )
+	/\s*/-
+;
+
+Variable[noskipws]:
+	type=InitializedType name=Name
+;
+
+Function[noskipws]:
+	'(' type=Type ')' len=Array name=Name
+;
+
+Scope[noskipws]:
+	'{' objects*=Object '}' len=Array name=Name
+;
+
+InitializedType[noskipws]:
+	fixed=FixedTypeArray ('=' init=Immediate ) ? |
+	blob=StringType ('=' init=STRING ) ? |
+	blob=BlobType
+;
+
+Type[noskipws]:
+	fixed=FixedTypeArray | blob=StringType | blob=BlobType
+;
+
+FixedTypeArray[noskipws]:
+	type=FixedType len=Array
+;
+
+Array[noskipws]:
+	( '['- INT ']'- ) ?
+;
+
+FixedType[noskipws]:
+	'bool' |
+	'int8' | 'uint8' |
+	'int16' | 'uint16' |
+	'int32' | 'uint32' |
+	'int64' | 'uint64' |
+	'float' | 'double' |
+	'ptr32' | 'ptr64'
+;
+
+StringType[noskipws]:
+	type='string' ':' size=INT ( '[' len=INT ']' ) ?
+;
+
+BlobType[noskipws]:
+	type='blob' ':' size=INT ( '[' len=INT ']' ) ?
+;
+
+Name[noskipws]:
+	/\s+/-
+	/([ -.0-~]\/?)*[!-.0-~]/
+;
+
+Immediate[noskipws]:
+	value=/0x[0-9a-fA-F]+|0b[01]+/ |
+	value=NUMBER |
+	value=BOOL |
+	value=/[Nn]a[Nn]|-?[Ii]nf(inity)?/
+;
+
+Comment:
+	/\s*\/\/.*$/
+;

@@ -1,0 +1,58 @@
+# SPDX-FileCopyrightText: 2020-2025 Jochem Rutgers
+#
+# SPDX-License-Identifier: MPL-2.0
+
+@PACKAGE_INIT@
+
+include(GNUInstallDirs)
+
+if(NOT TARGET libzmq)
+	if(WIN32)
+		include(${CMAKE_CURRENT_LIST_DIR}/ZeroMQTargets.cmake OPTIONAL RESULT_VARIABLE _zmq)
+	else()
+		include(
+			${CMAKE_CURRENT_LIST_DIR}/../../../${CMAKE_INSTALL_LIBDIR}/cmake/ZeroMQ/ZeroMQTargets.cmake
+			OPTIONAL
+			RESULT_VARIABLE _zmq
+		)
+	endif()
+
+	if(_zmq STREQUAL "NOTFOUND" AND NOT CMAKE_CROSSCOMPILING)
+		# Win32 always builds from source. In case the include file was not found, we are on
+		# Linux or macOS, which may have it installed on the system. This can be found
+		# using pkg_config. Try that.
+		set(_zmq "@ZeroMQ_LINK_LIBRARIES@")
+		if(_zmq)
+			add_library(libzmq SHARED IMPORTED GLOBAL)
+			set_property(
+				TARGET libzmq PROPERTY IMPORTED_LOCATION @ZeroMQ_LINK_LIBRARIES@
+			)
+			set_property(
+				TARGET libzmq PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+						       @ZeroMQ_INCLUDE_DIRS@
+			)
+			set_property(
+				TARGET libzmq PROPERTY INTERFACE_COMPILE_OPTIONS @ZeroMQ_CFLAGS@
+			)
+			target_link_libraries(libzmq INTERFACE @ZeroMQ_LDFLAGS@)
+		endif()
+	endif()
+endif()
+
+if(WIN32)
+	set(LIBSTORED_STORES_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR})
+else()
+	set(LIBSTORED_STORES_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/../../libstored/cmake)
+endif()
+
+include(${LIBSTORED_STORES_CMAKE_PATH}/libstored.cmake OPTIONAL)
+include(${LIBSTORED_STORES_CMAKE_PATH}/heatshrink.cmake OPTIONAL)
+include(${LIBSTORED_STORES_CMAKE_PATH}/tinyaes.cmake OPTIONAL)
+find_package(Zth)
+
+file(GLOB _stores ${LIBSTORED_STORES_CMAKE_PATH}/*Store.cmake)
+foreach(f IN LISTS _stores)
+	include(${f})
+endforeach()
+
+check_required_components(LibstoredStores)

@@ -1,0 +1,58 @@
+{#
+# vim:filetype=python
+-#}
+# SPDX-FileCopyrightText: 2020-2023 Jochem Rutgers
+#
+# SPDX-License-Identifier: MPL-2.0
+
+from collections import namedtuple
+
+{{store.name}}ObjectMeta = namedtuple('{{store.name}}ObjectMeta', ['name', 'cname', 'type', 'ctype', 'size', 'isfunction', 'f', 'offset', 'init', 'axi'])
+
+class {{store.name}}Meta(object):
+    def __init__(self):
+        self._objects = [
+{% for o in store.objects %}
+            {{store.name}}ObjectMeta({{o.name|pystring}}, {{o.cname|pystring}}, {{o.type|pystring}}, '{{o|ctype}}', {{o.size}},
+{%-   if o is function %}
+ True, {{o.f}}, None, None, None
+{%-   else %}
+ False, None, {{o.offset}}, {{o.init|pyliteral}}, {{o.axi}}
+{%-    endif -%}
+)
+{%-   if not loop.last %},
+{% endif -%}
+{% endfor -%}
+        ]
+
+    @property
+    def name(self):
+        return {{store.name|pystring}}
+
+    @property
+    def hash(self):
+        return {{store.hash|pystring}}
+
+    @property
+    def objects(self):
+        return self._objects
+
+    @property
+    def functions(self):
+        return filter(lambda o: o.isfunction, self._objects)
+
+    @property
+    def variables(self):
+        return filter(lambda o: not o.isfunction, self._objects)
+
+    def __len__(self):
+        return len(self._objects)
+
+    def __getitem__(self, key):
+        return next(filter(lambda o: o.name == key, self._objects))
+
+    def __getattr__(self, name):
+        return next(filter(lambda o: o.cname == name, self._objects))
+
+    def __iter__(self):
+        return iter(self._objects)

@@ -1,0 +1,75 @@
+Metadata-Version: 2.4
+Name: libstored
+Version: 2.1.0
+Summary: Python generator and tools for libstored
+Home-page: https://github.com/DEMCON/libstored
+Author: Jochem Rutgers
+Author-email: jochem.rutgers@demcon.com
+License: MPLv2.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: C++
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Debuggers
+Classifier: Topic :: Software Development :: Embedded Systems
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiofiles
+Requires-Dist: crcmod
+Requires-Dist: filelock
+Requires-Dist: jinja2
+Requires-Dist: matplotlib
+Requires-Dist: natsort
+Requires-Dist: platformdirs
+Requires-Dist: pycryptodome
+Requires-Dist: pyserial>=3.1
+Requires-Dist: pyzmq
+Requires-Dist: textx
+Requires-Dist: tornado>=6.1; platform_system == "Windows"
+Dynamic: license-file
+
+﻿# (py)libstored -- Store generator and Embedded Debugger client
+
+[libstored](https://github.com/DEMCON/libstored) is a generator for a C++ class
+(store) with your application's variables, and a tool set to synchronize
+updates between processes (including FPGA), and debug it remotely. Refer to the
+[documentation](https://demcon.github.io/libstored/doc/py.html) for details and
+examples.
+
+This Python package contains:
+
+- The generator itself.
+- The client implementation of the Debugger protocol (version 2), and
+  a few helper classes and modules to debug your application.
+
+The synchronization protocol of libstored is not available in python (yet?).
+
+## Generator
+
+In short, to generate the store, run `python3 -m libstored.cmake`, which
+produces a `FindLibstored.cmake` for you. Then, call `find_package(Libstored)`
+in your `CMakeLists.txt`. Afterwards, the CMake function `libstored_generate()`
+can be used to create the store (C++ header/source files, VHDL package,
+documentation) for you and build it as a static library.
+
+This library includes the Debugger, which provides the server side of the
+Debugging client below.
+
+## Debugging client
+
+Execute these modules like `python3 -m libstored.gui`, optionally with `-h`
+argument to get some more help:
+
+- `libstored.gui`: a GUI that connects to a debug target.
+- `libstored.cli`: a command line interface that connects to a debug target.
+- `libstored.wrapper.stdio`: a stdin/stdout wrapper, which is a bridge between
+  Embedded Debugger messages within the stdin/stdout streams of the application
+  to a ZeroMQ socket interface, which in turn can be used to connect
+  `libstored.gui` or `libstored.cli` to.
+- `libstored.wrapper.serial`: like `libstored.wrapper.stdio`, but using
+  `pyserial` instead of stdin/stdout.
+- `libstored.log`: command line tool that connects to a debug target and logs
+  samples to CSV.  It is equivalent to passing `-f` to `libstored.gui`, but
+  this tool allows easier automation of a specific set of samples.
