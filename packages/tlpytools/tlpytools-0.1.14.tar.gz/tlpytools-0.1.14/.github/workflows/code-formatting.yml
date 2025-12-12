@@ -1,0 +1,16 @@
+name: black-action
+on: [push, pull_request]
+jobs:
+  linter_name:
+    name: runner / black formatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check files using the black formatter
+        uses: TransLinkForecasting/action-py-black-formatter@main
+        id: action_black
+        # with:
+        #   check_mode: "true"      
+      - name: Fail if formatting is needed
+        if: steps.action_black.outputs.is_formatted == 'true'
+        run: exit 1

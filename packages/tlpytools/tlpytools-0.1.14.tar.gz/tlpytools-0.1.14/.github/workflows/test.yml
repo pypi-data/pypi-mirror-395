@@ -1,0 +1,95 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        uv sync --extra orca
+        uv add --dev pytest pytest-cov
+
+    - name: Load environment variables for testing
+      run: |
+        # Copy .env.example to .env for tests to use required environment variables
+        cp .env.example .env
+        echo "Environment variables loaded from .env.example for testing"
+
+    - name: Run core functionality tests
+      run: |
+        .venv/bin/python -m pytest tests/test_basic.py -v --cov=tests --cov-report=term-missing
+
+    - name: Run ORCA unit tests
+      run: |
+        .venv/bin/python -m pytest tests/test_orca_unit.py -v --cov=tests --cov-report=term-missing --cov-append
+
+    - name: Run ORCA integration test
+      run: |
+        .venv/bin/python -m pytest tests/test_orca_integration.py::TestOrcaIntegration::test_01_local_testing_full_run -v
+
+    - name: Check package imports
+      run: |
+        .venv/bin/python -c "import tlpytools; print(f'TLPyTools version: {tlpytools.__version__}')"
+        .venv/bin/python -c "from tlpytools.orca import OrcaOrchestrator; print('ORCA import successful')"
+        .venv/bin/python -c "from tlpytools import data, config, log, data_store; print('Core modules import successful')"
+
+    - name: Test package installation
+      run: |
+        # Test that the package can be installed from wheel
+        uv build
+        uv pip install --python .venv/bin/python dist/*.whl --force-reinstall
+        .venv/bin/python -c "import tlpytools; print('Package installation test successful')"
+
+  test-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies (Windows - without geospatial)
+      run: |
+        uv sync --extra orca
+        uv add --dev pytest pytest-cov
+
+    - name: Load environment variables for testing (Windows)
+      run: |
+        # Copy .env.example to .env for tests to use required environment variables
+        copy .env.example .env
+        echo "Environment variables loaded from .env.example for testing"
+
+    - name: Run core tests on Windows
+      run: |
+        .venv/Scripts/python -m pytest tests/test_basic.py -v
+        .venv/Scripts/python -m pytest tests/test_orca_unit.py::TestOrcaLogger -v
+        .venv/Scripts/python -m pytest tests/test_orca_unit.py::TestOrcaState -v
+        .venv/Scripts/python -m pytest tests/test_orca_unit.py::TestOrcaDatabank -v

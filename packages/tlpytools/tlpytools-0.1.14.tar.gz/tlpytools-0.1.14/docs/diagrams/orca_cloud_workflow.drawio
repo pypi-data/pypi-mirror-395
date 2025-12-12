@@ -1,0 +1,160 @@
+<mxfile host="Electron" modified="2025-10-24T18:03:36.661Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.0.4 Chrome/120.0.6099.109 Electron/28.1.0 Safari/537.36" etag="_GsBQiRUsDE5pFZIcISW" version="24.0.4" type="device">
+  <diagram name="Cloud Production Workflow" id="cloud-workflow">
+    <mxGraphModel dx="1674" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="☁️ ORCA Cloud Production Workflow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1f4e79;" parent="1" vertex="1">
+          <mxGeometry x="300" y="20" width="569" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="phase1-title" value="📋 Phase 1: Local Preparation" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="80" y="80" width="280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd1-1" value="💻 Step 1: Initialize Databank&lt;br&gt;&lt;br&gt;python -m tlpytools.orca&lt;br&gt;--action initialize_databank&lt;br&gt;--databank db_scenario" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;verticalAlign=middle;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="80" y="120" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="review" value="🔍 Review &amp;amp; Update Data&lt;br&gt;• Check input data&lt;br&gt;• Modify configurations&lt;br&gt;• Validate scenarios" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=center;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="80" y="240" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tyeVJy3gDsCD05zbva-i-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#d79b00;" parent="1" source="cmd1-2" target="synapse" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd1-2" value="💻 Step 2: Upload to Cloud&lt;br&gt;&lt;br&gt;python -m tlpytools.orca&lt;br&gt;--action adls_sync&lt;br&gt;--databank db_scenario&lt;br&gt;--project proj_name&lt;br&gt;--sync-action upload" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;verticalAlign=middle;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="80" y="340" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="phase2-title" value="☁️ Phase 2: Cloud Execution" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="450" y="80" width="280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd2-1" value="💻 Cloud Production Run&lt;br&gt;&lt;br&gt;python -m tlpytools.orca&lt;br&gt;--action run_models&lt;br&gt;--databank db_scenario&lt;br&gt;--project proj_name&lt;br&gt;--mode cloud_production" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="450" y="120" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="auto-sync" value="🤖 Automatic Cloud Sync:&lt;br&gt;• Download existing data&lt;br&gt;• Run model steps&lt;br&gt;• Upload after each step&lt;br&gt;• Archive outputs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=center;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="450" y="345" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="synapse" value="🏢 Synapse Workspace&lt;br&gt;Trigger model run from&lt;br&gt;Azure Synapse Analytics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="450" y="240" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="phase3-title" value="📊 Phase 3: Monitoring &amp; Results" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="785" y="80" width="310" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd3-1" value="💻 Monitor Progress&lt;br&gt;&lt;br&gt;python -m tlpytools.orca&lt;br&gt;--action adls_sync&lt;br&gt;--databank db_scenario&lt;br&gt;--project proj_name&lt;br&gt;--sync-action list" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;verticalAlign=middle;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="800" y="120" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd3-2" value="💻 Download Results&lt;br&gt;&lt;br&gt;python -m tlpytools.orca&lt;br&gt;--action adls_sync&lt;br&gt;--databank db_scenario&lt;br&gt;--project proj_name&lt;br&gt;--sync-action download" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;verticalAlign=middle;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="800" y="240" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="resume" value="🔄 Resume Capability&lt;br&gt;Automatically resume from&lt;br&gt;last completed step if interrupted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="800" y="360" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="storage-title" value="🗄️ Azure Data Lake Storage Structure" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1f4e79;" parent="1" vertex="1">
+          <mxGeometry x="80" y="530" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cloud-structure" value="☁️ Azure ADLS: /orca_cloud_model_runs/db_scenario/&lt;br&gt;├── 📄 orca_model_config.yaml&lt;br&gt;├── 📊 orca_model_state.json&lt;br&gt;├── 📝 orca_20251030_172324.log&lt;br&gt;├── 🗜️ popsim.zip&lt;br&gt;├── 🗜️ activitysim.zip&lt;br&gt;├── 🗜️ cvm.zip&lt;br&gt;├── 🗜️ quetzal.zip&lt;br&gt;├── 📁 .cloud_sync_conflict/&lt;br&gt;├── 📁 .cloud_model_archive/&lt;br&gt;├── 📁 .error_dump/&lt;br&gt;└── 📦 outputs/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="80" y="570" width="400" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="sync-title" value="🧠 Smart Synchronization Features" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1f4e79;" parent="1" vertex="1">
+          <mxGeometry x="540" y="530" width="350" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="feature1" value="🗜️ Compression&lt;br&gt;Zip folders to reduce&lt;br&gt;transfer time" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="540" y="570" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="feature2" value="⚡ Differential Sync&lt;br&gt;Only upload new/changed&lt;br&gt;files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="680" y="570" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="feature3" value="🔄 Conflict Resolution&lt;br&gt;Move conflicts to&lt;br&gt;timestamped backup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="820" y="570" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="feature4" value="📋 Outputs Only Mode&lt;br&gt;&lt;font style=&quot;font-size: 8px;&quot;&gt;UPLOAD_OUTPUTS_ONLY=1&lt;/font&gt;&lt;br&gt;for reduced bandwidth" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="540" y="650" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="feature5" value="🎯 Step-wise Sync&lt;br&gt;Upload after each&lt;br&gt;model step completion" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="680" y="650" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="feature6" value="🛡️ Error Recovery&lt;br&gt;Dump problematic files&lt;br&gt;for debugging" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="820" y="650" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="benefits-title" value="🌟 Cloud Production Benefits" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1f4e79;" parent="1" vertex="1">
+          <mxGeometry x="80" y="780" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit1" value="🚀 Scalability&lt;br&gt;Unlimited cloud resources" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="80" y="820" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit2" value="💾 Persistence&lt;br&gt;Data backup &amp; recovery" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="220" y="820" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit3" value="👥 Collaboration&lt;br&gt;Shared model runs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="360" y="820" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit4" value="🔒 Security&lt;br&gt;Enterprise-grade protection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="500" y="820" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit5" value="📈 Performance&lt;br&gt;High-performance computing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="640" y="820" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit6" value="⏱️ Monitoring&lt;br&gt;Real-time progress tracking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="780" y="820" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="env-title" value="🔧 Environment Configuration" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1f4e79;" parent="1" vertex="1">
+          <mxGeometry x="80" y="890" width="250" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="env-vars" value="💻 Environment Variables:&lt;br&gt;• UPLOAD_OUTPUTS_ONLY=1&lt;br&gt;• ORCA_ACTIVITYSIM_ENV=path&lt;br&gt;• ORCA_QUETZAL_ENV=path&lt;br&gt;• ORCA_POPSIM_ENV=path&lt;br&gt;• ORCA_CVM_ENV=path" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="80" y="930" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="tools-title" value="🛠️ Alternative Tools" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1f4e79;" parent="1" vertex="1">
+          <mxGeometry x="400" y="890" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="utility1" value="📂 Unpack Landuse&lt;br&gt;&lt;br&gt;python -m tlpytools.orca&lt;br&gt;--action unpack_landuse&lt;br&gt;--model-year 2023" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;verticalAlign=middle;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="400" y="930" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="utility2" value="📋 List Cloud Contents&lt;br&gt;&lt;br&gt;python -m tlpytools.orca&lt;br&gt;--action adls_sync&lt;br&gt;--sync-action list" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;verticalAlign=middle;fontFamily=Courier New;" parent="1" vertex="1">
+          <mxGeometry x="620" y="930" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#d79b00;" parent="1" source="cmd1-1" target="review" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="250" as="sourcePoint" />
+            <mxPoint x="450" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow2" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#d79b00;" parent="1" source="review" target="cmd1-2" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="350" as="sourcePoint" />
+            <mxPoint x="450" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow4" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#d79b00;" parent="1" source="cmd2-1" target="cmd3-1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="750" y="200" as="sourcePoint" />
+            <mxPoint x="800" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow5" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#d79b00;" parent="1" source="cmd3-1" target="cmd3-2" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="900" y="200" as="sourcePoint" />
+            <mxPoint x="950" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tyeVJy3gDsCD05zbva-i-3" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#d79b00;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="synapse" target="cmd2-1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="230" y="220" as="sourcePoint" />
+            <mxPoint x="230" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tyeVJy3gDsCD05zbva-i-5" value="" style="image;sketch=0;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/mscae/Person.svg;" parent="1" vertex="1">
+          <mxGeometry x="470" y="254.73" width="30" height="40.54" as="geometry" />
+        </mxCell>
+        <mxCell id="tyeVJy3gDsCD05zbva-i-6" value="" style="image;sketch=0;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/mscae/Person.svg;" parent="1" vertex="1">
+          <mxGeometry x="90" y="150" width="30" height="40.54" as="geometry" />
+        </mxCell>
+        <mxCell id="tyeVJy3gDsCD05zbva-i-7" value="" style="image;sketch=0;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/mscae/Person.svg;" parent="1" vertex="1">
+          <mxGeometry x="90" y="373" width="30" height="40.54" as="geometry" />
+        </mxCell>
+        <mxCell id="tyeVJy3gDsCD05zbva-i-8" value="" style="image;sketch=0;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/mscae/Person.svg;" parent="1" vertex="1">
+          <mxGeometry x="90" y="254.73" width="30" height="40.54" as="geometry" />
+        </mxCell>
+        <mxCell id="tyeVJy3gDsCD05zbva-i-10" value="" style="image;sketch=0;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/mscae/Person.svg;" parent="1" vertex="1">
+          <mxGeometry x="810" y="264.73" width="30" height="40.54" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

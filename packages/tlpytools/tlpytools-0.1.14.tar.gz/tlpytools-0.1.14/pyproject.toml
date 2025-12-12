@@ -1,0 +1,252 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tlpytools"
+version = "0.1.14"
+description = "TransLink's Python Tools - A comprehensive toolkit for transportation modeling and forecasting"
+readme = "README.md"
+requires-python = ">=3.10.0, <3.11"
+# license = { file = "LICENSE.txt" }
+authors = [
+  { name = "Forecasting TransLink", email = "forecasting@translink.ca" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+# Runtime dependencies: these are installed when a user `pip install tlpytools`
+# and also when a developer runs `pip install -e .`
+dependencies = [
+    "pandas>=1.1",
+    "numpy>=1.18",
+    "sqlalchemy>=1.4",
+    "pyodbc>=4.0",
+    "pyyaml>=5.4",
+    "openmatrix>=0.3",
+    "azure-core>=1.34",
+    "azure-identity>=1.23",
+    "azure-storage-blob>=12.24",
+    "azure-storage-file-datalake>=12.18",
+    "cryptography>=3.4.7",
+    "cryptpandas>=0.1.1",
+    "python-dotenv>=1.0.0",
+    "coverage>=7.10.6",
+    "azure-identity-broker>=1.3.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/TransLinkForecasting/tlpytools"
+"Bug Tracker" = "https://github.com/TransLinkForecasting/tlpytools/issues"
+# You could also add "Repository" = "https://github.com/TransLinkForecasting/tlpytools"
+
+# Optional dependencies - Install with uv sync --extra <name> or pip install tlpytools[<name>]
+# Available extras:
+#   - orca: ORCA orchestrator dependencies for model coordination
+#   - dev: Development tools and geospatial analysis (GIS, visualization, testing)
+# Note: ActivitySim and PopulationSim are available through uv sync for development but
+#       not as PyPI extras due to direct git dependency restrictions
+[project.optional-dependencies]
+dev = [
+    # Geospatial analysis tools (excluding GDAL for Windows compatibility)
+    "contextily>=1.5.0",
+    "folium>=0.14.0",
+    "branca>=0.6.0",
+    "cycler>=0.11.0",
+    "kiwisolver>=1.4.0",
+    # "GDAL>=3.6.0",  # Commented out due to Windows compilation issues
+    "Shapely>=2.0.0",
+    "Fiona>=1.9.0",
+    "pyproj>=3.4.0",
+    "geopandas>=0.13.0",
+    "Rtree>=1.0.0",
+    "Cartopy>=0.21.0",
+    
+    # Visualization and dashboard tools    
+    "seaborn>=0.13.2",
+    "plotly>=5.17.0",
+    "dash>=2.14.0",
+    "dash-extensions>=1.0.0",
+    "dash-leaflet>=0.1.0",
+    "dash-bootstrap-components>=2.0.4",
+    "panel>=1.3.0",
+    
+    # Development and code quality tools
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.4.0",
+    
+    # Other utilities
+    "polars>=1.35.2",
+    "openpyxl>=3.1.5",
+    "polyline>=2.0.0",
+    "ipykernel>=6.25.0",
+    "jupyter>=1.0.0",
+    "notebook>=7.0.0",
+]
+orca = [
+    # ORCA orchestrator dependencies
+    "psutil>=5.8.0",
+    "unittest-xml-reporting>=3.2.0",
+]
+# You can add other groups like 'test' or 'docs' if needed
+# test = [
+#     "pytest>=7.0",
+# ]
+
+# --- Hatchling specific configuration ---
+# see https://hatch.pypa.io/1.9/config/metadata/#pyprojecttoml_16
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatchling.build.targets.wheel]
+packages = ["src/tlpytools"]
+
+[tool.hatchling.build.targets.sdist]
+include = [
+    "/src",
+    "/README.md",
+    "/README_ORCA.md",
+    "/DEVELOPER_GUIDE.md",
+]
+
+# If you had [options.entry_points] in setup.cfg, they would go here:
+[project.scripts]
+orca-orchestrator = "tlpytools.orca:main"
+
+# [project.gui-scripts]
+# gui-command-name = "your_package.module:function"
+
+# [project.entry-points."your.entrypoint.group"]
+# name = "your_package.module:object"
+
+# --- Tool Configurations ---
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = [
+    "tests",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pyodbc.*",
+    "openmatrix.*",
+    "cryptpandas.*",
+    "psutil.*",
+    "geopandas.*",
+    "shapely.*",
+    "fiona.*",
+    "contextily.*",
+    "folium.*",
+    "plotly.*",
+    "dash.*",
+    "panel.*",
+]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/tlpytools"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+]
+activitysim = [
+    # Activity-based modeling tools (TransLink Forecasting customized)
+    # Available for development only via 'uv sync --group activitysim'
+    "activitysim @ git+https://github.com/TransLinkForecasting/activitysim@main",
+    "populationsim @ git+https://github.com/TransLinkForecasting/populationsim@master",
+]

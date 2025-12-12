@@ -1,0 +1,293 @@
+name: Deploy to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number to release (e.g., 0.1.14)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies (for PyPI compatibility test)
+      run: |
+        uv sync --extra orca
+        uv add --dev pytest pytest-cov
+
+    - name: Load environment variables for testing
+      run: |
+        # Copy .env.example to .env for tests to use required environment variables
+        cp .env.example .env
+        echo "Environment variables loaded from .env.example for testing"
+
+    - name: Run tests (without ActivitySim - PyPI compatibility)
+      run: |
+        .venv/bin/python -m pytest tests/test_basic.py -v
+        .venv/bin/python -m pytest tests/test_core.py -v
+        .venv/bin/python -m pytest tests/test_orca_unit.py -v
+        .venv/bin/python -m pytest tests/test_orca_integration.py::TestOrcaIntegration::test_01_local_testing_full_run -v
+
+  test-with-activitysim:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies (with ActivitySim for development test)
+      run: |
+        uv sync --extra orca --group activitysim
+        uv add --dev pytest pytest-cov
+
+    - name: Load environment variables for testing
+      run: |
+        # Copy .env.example to .env for tests to use required environment variables
+        cp .env.example .env
+        echo "Environment variables loaded from .env.example for testing"
+
+    - name: Run tests (with ActivitySim - development compatibility)
+      run: |
+        .venv/bin/python -m pytest tests/test_basic.py -v
+        .venv/bin/python -m pytest tests/test_core.py -v
+        .venv/bin/python -m pytest tests/test_orca_unit.py -v
+        .venv/bin/python -m pytest tests/test_orca_integration.py::TestOrcaIntegration::test_01_local_testing_full_run -v
+
+  update-version:
+    needs: [test, test-with-activitysim]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Update version in pyproject.toml
+      run: |
+        sed -i 's/^version = "[^"]*"/version = "${{ inputs.version }}"/' pyproject.toml
+        echo "Updated version to ${{ inputs.version }}"
+        grep '^version = ' pyproject.toml
+
+    - name: Update version in __init__.py
+      run: |
+        sed -i 's/^__version__ = "[^"]*"/__version__ = "${{ inputs.version }}"/' src/tlpytools/__init__.py
+        echo "Updated __init__.py version to ${{ inputs.version }}"
+        grep '^__version__ = ' src/tlpytools/__init__.py
+
+    - name: Commit version changes and create pull request
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pyproject.toml src/tlpytools/__init__.py
+        
+        # Check if tag already exists first
+        if git tag -l "v${{ inputs.version }}" | grep -q "v${{ inputs.version }}"; then
+          echo "Tag v${{ inputs.version }} already exists - skipping all changes"
+          echo "Ready for deployment using existing tag"
+        else
+          # Tag doesn't exist, check if we have changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit, but tag doesn't exist"
+            echo "Creating tag from current state"
+            git tag -a "v${{ inputs.version }}" -m "Release version ${{ inputs.version }}"
+            git push origin "v${{ inputs.version }}"
+            echo "Tag v${{ inputs.version }} created and pushed"
+          else
+            # We have changes and protected branch - create PR
+            VERSION_BRANCH="release/v${{ inputs.version }}"
+            git checkout -b "$VERSION_BRANCH"
+            git commit -m "Bump version to ${{ inputs.version }}"
+            git push origin "$VERSION_BRANCH"
+            echo "Version changes committed to branch $VERSION_BRANCH"
+            
+            # Create pull request automatically
+            PR_TITLE="Release v${{ inputs.version }}"
+            PR_BODY="Automated version bump to ${{ inputs.version }}
+            
+            This PR was automatically created by the deployment workflow to bump the version before release.
+            
+            **Changes:**
+            - Updated version in pyproject.toml to ${{ inputs.version }}
+            - Updated version in src/tlpytools/__init__.py to ${{ inputs.version }}
+            
+            **Next steps:**
+            1. Review and approve this PR
+            2. Merge this PR 
+            3. Re-run the deployment workflow to complete the release"
+
+            # Use GitHub CLI to create PR
+            gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --head "$VERSION_BRANCH" \
+              --base "${{ github.ref_name }}" \
+              --reviewer "${{ github.actor }}"
+            
+            PR_URL=$(gh pr view "$VERSION_BRANCH" --json url --jq '.url')
+            echo "Pull request created: $PR_URL"
+            echo "::error::Version changes pushed to $VERSION_BRANCH and PR created at $PR_URL. Please review, approve, and merge the PR before rerunning deployment."
+            exit 1
+          fi
+        fi
+
+    - name: Verify tag creation
+      run: |
+        git fetch --tags
+        if git tag -l "v${{ inputs.version }}" | grep -q "v${{ inputs.version }}"; then
+          echo "Tag v${{ inputs.version }} verified successfully"
+        else
+          echo "Error: Tag v${{ inputs.version }} not found!"
+          exit 1
+        fi
+
+  build:
+    needs: update-version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.ref }}
+        fetch-depth: 0  # Fetch all history for tags
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Fetch latest changes and checkout tag
+      run: |
+        git fetch origin
+        git checkout "v${{ inputs.version }}"
+
+    - name: Create virtual environment
+      run: |
+        uv sync --extra orca
+
+    - name: Build package
+      run: |
+        uv build
+        ls -la dist/
+
+    - name: Load environment variables for testing
+      run: |
+        # Copy .env.example to .env for tests to use required environment variables
+        cp .env.example .env
+        echo "Environment variables loaded from .env.example for testing"
+
+    - name: Verify package contents
+      run: |
+        uv pip install --python .venv/bin/python dist/*.whl --force-reinstall
+        .venv/bin/python -c "import tlpytools; print(f'Package version: {tlpytools.__version__}')"
+        .venv/bin/python -c "from tlpytools.orca import OrcaOrchestrator; print('ORCA import successful')"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+
+  create-release:
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: v${{ inputs.version }}  # Checkout the specific tag
+        fetch-depth: 0
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ inputs.version }}
+        release_name: TLPyTools v${{ inputs.version }}
+        body: |
+          ## TLPyTools v${{ inputs.version }}
+          
+          This release includes updates to the TransLink Python Tools package.
+          
+          ### Advanced Installation Using UV (Recommended)
+          ```bash
+          git clone -b v${{ inputs.version }} https://github.com/TransLinkForecasting/tlpytools.git
+          cd tlpytools
+          uv sync --extra dev --extra orca --group activitysim
+          ```
+          
+          ### Custom Installation
+          ```bash
+          # with pip (for existing virtual environment)
+          pip install tlpytools==${{ inputs.version }}
+          # or, with uv (for existing uv environment)
+          uv add tlpytools==${{ inputs.version }}
+          ```
+          
+          ### Changes
+          - Version bump to ${{ inputs.version }}
+          - See commit history for detailed changes
+          
+          ### Documentation
+          - [README](https://github.com/TransLinkForecasting/tlpytools/blob/main/README.md)
+          - [ORCA Documentation](https://github.com/TransLinkForecasting/tlpytools/blob/main/src/tlpytools/orca/README.md)
+          - [Developer Guide](https://github.com/TransLinkForecasting/tlpytools/blob/main/DEVELOPER_GUIDE.md)
+        draft: false
+        prerelease: ${{ inputs.prerelease }}
