@@ -1,0 +1,221 @@
+Metadata-Version: 2.4
+Name: clonepulse
+Version: 1.0.5
+Summary: Your GitHub clone stats, visualized and celebrated.
+Project-URL: Homepage, https://github.com/per2jensen/clonepulse
+Project-URL: Issues, https://github.com/per2jensen/clonepulse/issues
+Author-email: Per Jensen <clonepulse@pm.me>
+License: MIT License
+        
+        Copyright (c) 2025 Per Jensen
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3.9
+Requires-Python: >=3.9
+Requires-Dist: matplotlib>=3.10.3
+Requires-Dist: pandas>=2.3.0
+Requires-Dist: requests>=2.32.2
+Provides-Extra: dev
+Requires-Dist: coverage>=7.8.2; extra == 'dev'
+Requires-Dist: matplotlib>=3.10.3; extra == 'dev'
+Requires-Dist: pandas>=2.3.0; extra == 'dev'
+Requires-Dist: pytest; extra == 'dev'
+Requires-Dist: pytest-cov>=6.1.1; extra == 'dev'
+Requires-Dist: pytest>=8.4.0; extra == 'dev'
+Requires-Dist: requests>=2.32.2; extra == 'dev'
+Requires-Dist: wheel>=0.45.1; extra == 'dev'
+Provides-Extra: packaging
+Requires-Dist: build>=1.2.2; extra == 'packaging'
+Requires-Dist: hatch>=1.14.1; extra == 'packaging'
+Requires-Dist: hatchling>=1.27.0; extra == 'packaging'
+Requires-Dist: twine>=6.1.0; extra == 'packaging'
+Description-Content-Type: text/markdown
+
+# ClonePulse
+
+**Your GitHub clone stats, visualized and celebrated.**  
+Track weekly trends, highlight milestones, and share visual dashboards—all automatically.
+
+[![Use this template](https://img.shields.io/badge/-Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/per2jensen/clonepulse/generate)  
+![Tests](https://github.com/per2jensen/clonepulse/actions/workflows/py-tests.yml/badge.svg)
+
+---
+
+## Add Badges to Your README
+
+ClonePulse can generate badges you can embed in your repo:
+
+[![# clones](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/per2jensen/clonepulse/main/clonepulse/badge_clones.json)](https://raw.githubusercontent.com/per2jensen/clonepulse/main/clonepulse/weekly_clones.png)  
+[![Milestone](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/per2jensen/clonepulse/main/clonepulse/milestone_badge.json)](https://raw.githubusercontent.com/per2jensen/clonepulse/main/clonepulse/weekly_clones.png)
+
+---
+
+## Example dashboards
+
+### Weekly dashboard (default)
+A weekly clone activity chart is automatically updated and saved in `clonepulse/weekly_clones.png`.
+
+- Runs every Monday morning
+- Discards partial weeks
+- Shows only complete Monday–Sunday periods
+
+![Standard clone dashboard, last 12 weeks](example/default.png)
+
+### Reproducible window (`--start` + `--weeks`)
+![Dashboard starting 2025-08-15 for 6 weeks](example/start-example.png)  
+<sub>Command: `python src/clonepulse/generate_clone_dashboard.py --start 2025-08-15 --weeks 6`</sub>
+
+### Calendar year (`--year`)
+![Dashboard for calendar year 2025 (to date)](example/year-example.png)  
+<sub>Command: `python src/clonepulse/generate_clone_dashboard.py --year 2025`</sub>
+
+---
+
+## Quick Setup
+
+1. **Create a GitHub Token**  
+   See [🔐 Token Setup](#-token-setup) below.
+
+2. **Drop essentials into your repo**  
+   Copy the contents of `clonepulse/` and `src/clonepulse/` plus the workflows in `.github/workflows/`.
+
+3. **Add badges to your README**  
+   Replace `your-username/your-repo`:
+
+   ```markdown
+   [![# clones](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/your-username/your-repo/main/clonepulse/badge_clones.json)](https://github.com/your-username/your-repo/blob/main/clonepulse/weekly_clones.png)
+
+   [![Milestone](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/your-username/your-repo/main/clonepulse/milestone_badge.json)](https://github.com/your-username/your-repo/blob/main/clonepulse/weekly_clones.png)
+   ```
+
+4. **Configure the workflow**  
+   Update `fetch_clones.yml` with your `--user` and `--repo`.
+
+   ```yaml
+   - name: Run fetch_clones.py
+     env:
+       TOKEN: ${{ secrets.CLONEPULSE_METRICS }}
+     run: |
+       PYTHONPATH=src python src/clonepulse/fetch_clones.py \
+         --user <your GitHub login> \
+         --repo <your repo>
+   ```
+
+5. **Generate the dashboard in your workflow**  
+
+   Default (last 12 weeks):
+
+   ```yaml
+   - name: Render dashboard
+     run: PYTHONPATH=src python src/clonepulse/generate_clone_dashboard.py
+   ```
+
+   Reproducible window:
+
+   ```yaml
+   - name: Render dashboard
+     run: |
+       PYTHONPATH=src python src/clonepulse/generate_clone_dashboard.py \
+         --start 2025-06-02 --weeks 8
+   ```
+
+   **Dashboard title & repo label**  
+   - Banner title always says “Weekly Clone Metrics”.  
+   - If you provide `--user` and `--repo`, the banner also shows `user/repo`.
+   - If only one is provided, that single value is shown.  
+   - If neither flag is passed, the script falls back to env vars `GITHUB_USER` / `GITHUB_REPO` for the label.
+
+   **Additional CLI options** (can also be used locally):
+
+   ```bash
+   PYTHONPATH=src python src/clonepulse/generate_clone_dashboard.py \
+     [--user your-username] \
+     [--repo your-repo] \
+     [--start YYYY-MM-DD --weeks N] \
+     [--year YYYY]
+   ```
+
+---
+
+## Token Setup
+
+ClonePulse fetches traffic stats from the GitHub API. This requires a Personal Access Token (PAT).
+
+### Permissions
+
+For **public repos**:
+- Administration: Read-only
+- Metadata: Read-only
+
+For **private repos**:
+- Administration: Read-only
+- Metadata: Read-only
+- Contents: Read-only
+- Traffic: Read-only
+
+### How to Create the Token
+
+1. Visit [https://github.com/settings/tokens](https://github.com/settings/tokens)  
+   Click **Generate new token → Fine-grained token**
+
+2. Configure:
+   - Name: e.g. `your-repo_ClonePulse`
+   - Expiration: e.g. 90 days
+   - Resource owner: Your user or organization
+   - Repository access: select your repo
+   - Permissions: set as above
+
+3. Generate and copy the token. (You only see it once.)
+
+### Add Token to Secrets
+
+1. Go to your GitHub repository:  
+   **Settings → Secrets and variables → Actions → New repository secret**
+
+2. Name the secret:  
+   `CLONEPULSE_METRICS`
+
+3. Paste the token and save.
+
+### Use in Workflow
+
+```yaml
+- name: Run fetch_clones.py
+  env:
+    TOKEN: ${{ secrets.CLONEPULSE_METRICS }}
+  run: python src/clonepulse/fetch_clones.py
+```
+
+---
+
+## Contributing
+
+Found a bug or want to suggest a feature?  
+[Open an issue](https://github.com/per2jensen/clonepulse/issues) or send a PR.
+
+---
+
+## License
+
+ClonePulse is licensed under [MIT](LICENSE).
