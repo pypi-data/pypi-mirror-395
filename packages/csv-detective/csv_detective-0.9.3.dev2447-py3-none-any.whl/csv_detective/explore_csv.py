@@ -1,0 +1,187 @@
+import logging
+from time import time
+
+import pandas as pd
+
+from csv_detective.detection.formats import detect_formats
+from csv_detective.output import generate_output
+from csv_detective.parsing.load import load_file
+from csv_detective.utils import display_logs_depending_process_time, is_url
+from csv_detective.validate import validate
+
+logging.basicConfig(level=logging.INFO)
+
+
+def routine(
+    file_path: str,
+    num_rows: int = 500,
+    tags: list[str] | None = None,
+    limited_output: bool = True,
+    save_results: bool | str = True,
+    encoding: str | None = None,
+    sep: str | None = None,
+    skipna: bool = True,
+    output_profile: bool = False,
+    output_schema: bool = False,
+    output_df: bool = False,
+    cast_json: bool = True,
+    verbose: bool = False,
+    sheet_name: str | int | None = None,
+) -> dict | tuple[dict, pd.DataFrame]:
+    """
+    Returns a dict with information about the table and possible column contents, and if requested the DataFrame with columns cast according to analysis.
+
+    Args:
+        file_path: local path or URL to file
+        num_rows: number of rows to sample from the file for analysis ; -1 for analysis of the whole file
+        tags: tags to filter formats (for instance ["geo", "fr] to run only the checks related to geo and French formats)
+        limited_output: whether or not to return all possible types or only the most likely one for each column
+        save_results: whether or not to save the results in a json file, or the path where to dump the output
+        output_profile: whether or not to add the 'profile' field to the output
+        output_schema: whether or not to add the 'schema' field to the output (tableschema)
+        output_df: whether or not to return the loaded DataFrame along with the analysis report
+        cast_json: whether or not to cast json columns into objects (otherwise they are returned as strings)
+        verbose: whether or not to print process logs in console
+        sheet_name: if reading multi-sheet file (xls-like), which sheet to consider
+        skipna: whether to keep NaN (empty cells) for tests
+
+    Returns:
+        dict: a dict with information about the csv and possible types for each column
+    """
+
+    if not (
+        isinstance(save_results, bool)
+        or (isinstance(save_results, str) and save_results.endswith(".json"))
+    ):
+        raise ValueError("`save_results` must be a bool or a valid path to a json file.")
+
+    if verbose:
+        start_routine = time()
+        if is_url(file_path):
+            logging.info("Path recognized as a URL")
+
+    table, analysis = load_file(
+        file_path=file_path,
+        num_rows=num_rows,
+        encoding=encoding,
+        sep=sep,
+        verbose=verbose,
+        sheet_name=sheet_name,
+    )
+
+    analysis, _col_values = detect_formats(
+        table=table,
+        analysis=analysis,
+        file_path=file_path,
+        tags=tags,
+        limited_output=limited_output,
+        skipna=skipna,
+        verbose=verbose,
+    )
+
+    try:
+        return generate_output(
+            table=table,
+            analysis=analysis,
+            file_path=file_path,
+            num_rows=num_rows,
+            limited_output=limited_output,
+            save_results=save_results,
+            output_profile=output_profile,
+            output_schema=output_schema,
+            output_df=output_df,
+            cast_json=cast_json,
+            verbose=verbose,
+            sheet_name=sheet_name,
+            _col_values=_col_values,
+        )
+    finally:
+        if verbose:
+            display_logs_depending_process_time(
+                f"Routine completed in {round(time() - start_routine, 3)}s", time() - start_routine
+            )
+
+
+def validate_then_detect(
+    file_path: str,
+    previous_analysis: dict,
+    num_rows: int = 500,
+    tags: list[str] | None = None,
+    limited_output: bool = True,
+    save_results: bool | str = True,
+    skipna: bool = True,
+    output_profile: bool = False,
+    output_schema: bool = False,
+    output_df: bool = False,
+    cast_json: bool = True,
+    verbose: bool = False,
+):
+    """
+    Performs a validation of the given file against the given analysis.
+    If the validation fails, performs a full analysis and return it.
+    Otherwise return the previous analysis (which is therefore still valid).
+    NB: if asked, the profile is recreated in both cases.
+
+    Args:
+        file_path: the path of the file to validate.
+        previous_analysis: the previous analysis to validate against (expected in the same structure as the output of the routine)
+        num_rows: number of rows to sample from the file for analysis ; -1 for analysis of the whole file
+        tags: tags to filter formats (for instance ["geo", "fr] to run only the checks related to geo and French formats)
+        limited_output: whether or not to return all possible types or only the most likely one for each column
+        save_results: whether or not to save the results in a json file, or the path where to dump the output
+        skipna: whether to ignore NaN values in the checks
+        output_profile: whether or not to add the 'profile' field to the output
+        output_schema: whether or not to add the 'schema' field to the output (tableschema)
+        output_df: whether or not to return the loaded DataFrame along with the analysis report
+        cast_json: whether or not to cast json columns into objects (otherwise they are returned as strings)
+        verbose: whether the code displays the steps it's going through
+    """
+    if verbose:
+        start_routine = time()
+        if is_url(file_path):
+            logging.info("Path recognized as a URL")
+
+    is_valid, table, analysis, col_values = validate(
+        file_path=file_path,
+        previous_analysis=previous_analysis,
+        verbose=verbose,
+        skipna=skipna,
+    )
+    if analysis is None:
+        # if loading failed in validate, we load it from scratch
+        table, analysis = load_file(
+            file_path=file_path,
+            num_rows=num_rows,
+            verbose=verbose,
+        )
+    if not is_valid:
+        analysis, col_values = detect_formats(
+            table=table,
+            analysis=analysis,
+            file_path=file_path,
+            tags=tags,
+            limited_output=limited_output,
+            skipna=skipna,
+            verbose=verbose,
+        )
+    try:
+        return generate_output(
+            table=table,
+            analysis=analysis,
+            file_path=file_path,
+            num_rows=num_rows,
+            limited_output=limited_output,
+            save_results=save_results,
+            output_profile=output_profile,
+            output_schema=output_schema,
+            output_df=output_df,
+            cast_json=cast_json,
+            verbose=verbose,
+            sheet_name=analysis.get("sheet_name"),
+            _col_values=col_values,
+        )
+    finally:
+        if verbose:
+            display_logs_depending_process_time(
+                f"Process completed in {round(time() - start_routine, 3)}s", time() - start_routine
+            )
