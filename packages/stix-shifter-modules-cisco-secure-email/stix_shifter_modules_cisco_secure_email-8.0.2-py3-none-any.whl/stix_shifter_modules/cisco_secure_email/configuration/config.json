@@ -1,0 +1,737 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Cisco Secure Email",
+            "group": "cisco",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "default": 443,
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources.html"
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 10000000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "batch_size": {
+                "default": 2000,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "optional": true,
+                "hidden": true
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 3600,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "config_map": {
+                        "like_supported_fields": [
+                            "envelopeRecipientfilterValue",
+                            "envelopeSenderfilterValue",
+                            "subjectfilterValue",
+                            "domainNameValue",
+                            "replyToValue",
+                            "attachmentNameValue"
+                        ],
+                        "in_supported_fields": [
+                            "contentFiltersDirection",
+                            "quarantinedTo",
+                            "urlCategories",
+                            "advancedMalwareProtectionMailflowDirection",
+                            "advancedMalwareProtection",
+                            "macroMailflowDirection",
+                            "macroFileTypesDetected",
+                            "webInteractionTrackingMailflowDirection",
+                            "mailPolicyDirection"
+                        ],
+                        "bool_supported_fields": [
+                            "message_delivered",
+                            "daneFailure",
+                            "graymail",
+                            "hardBounced",
+                            "containedMaliciousUrls",
+                            "containedNeutralUrls",
+                            "inOutbreakQuarantine",
+                            "softBounced",
+                            "spamPositive",
+                            "quarantinedAsSpam",
+                            "suspectSpam",
+                            "safeprintExt",
+                            "virusPositive"
+                        ],
+                        "int_supported_fields": [
+                            "ciscoMid",
+                            "ipReputation",
+                            "sdrCategories",
+                            "sdrThreatLevels"
+                        ],
+                        "enum_supported_fields": [
+                            "deliveryStatus",
+                            "appForwarding",
+                            "dlpViolationsSeverities",
+                            "ciscoHost",
+                            "appForwarding",
+                            "dlpAction",
+                            "dmarcAction",
+                            "etfIocs",
+                            "smime",
+                            "quarantineStatus",
+                            "contentFiltersDirection",
+                            "contentFiltersAction",
+                            "advancedMalwareProtectionMailflowDirection",
+                            "advancedMalwareProtection",
+                            "macroMailflowDirection",
+                            "webInteractionTrackingMailflowDirection",
+                            "mailPolicyDirection"
+                        ],
+                        "enum_supported_values": {
+                            "deliveryStatus": [
+                                "DELIVERED",
+                                "DROPPED",
+                                "ABORTED",
+                                "BOUNCED"
+                            ],
+                            "appForwarding": [
+                                "app_success",
+                                "app_failed"
+                            ],
+                            "dlpViolationsSeverities": [
+                                "critical",
+                                "high",
+                                "medium",
+                                "low"
+                            ],
+                            "ciscoHost": [
+                                "All_Hosts"
+                            ],
+                            "dlpAction": [
+                                "delivered",
+                                "encrypted",
+                                "dropped"
+                            ],
+                            "dmarcAction": [
+                                "none",
+                                "quarantine",
+                                "reject",
+                                "passed",
+                                "failed"
+                            ],
+                            "etfIocs": [
+                                "file_hash",
+                                "url",
+                                "domain"
+                            ],
+                            "smime": [
+                                "smime_successful",
+                                "smime_failed"
+                            ],
+                            "quarantineStatus": [
+                                "POLICY",
+                                "AMP",
+                                "AV",
+                                "UNCLASSIFIED",
+                                "DLP",
+                                "OUTBREAK"
+                            ],
+                            "contentFiltersDirection": [
+                                "inbound",
+                                "outbound"
+                            ],
+                            "contentFiltersAction": [
+                                "stopped"
+                            ],
+                            "advancedMalwareProtectionMailflowDirection": [
+                                "incoming",
+                                "outgoing"
+                            ],
+                            "advancedMalwareProtection": [
+                                "amp_clean",
+                                "amp_malicious",
+                                "amp_unknown",
+                                "amp_unscannable",
+                                "amp_lowrisk"
+                            ],
+                            "macroMailflowDirection": [
+                                "inbound",
+                                "outbound"
+                            ],
+                            "webInteractionTrackingMailflowDirection": [
+                                "inbound",
+                                "outbound"
+                            ],
+                            "mailPolicyDirection": [
+                                "inbound",
+                                "outbound"
+                            ]
+                        },
+                        "or_supported_values": [
+                            "advancedMalwareProtectionMailflowDirection",
+                            "advancedMalwareProtection",
+                            "appForwarding",
+                            "contentFiltersName",
+                            "contentFiltersDirection",
+                            "contentFiltersAction",
+                            "daneFailure",
+                            "deliveryStatus",
+                            "message_delivered",
+                            "dlpViolationsNames",
+                            "dlp_violations_severities",
+                            "dlpAction",
+                            "dmarcFrom",
+                            "dmarcAction",
+                            "etfSources",
+                            "etfIocs",
+                            "forgedEmailDetection",
+                            "geoLocation",
+                            "graymail",
+                            "hardBounced",
+                            "ipReputation",
+                            "macroMailflowDirection",
+                            "macroFileTypesDetected",
+                            "messageFilters",
+                            "containedMaliciousUrls",
+                            "containedNeutralUrls",
+                            "outbreakFiltersUrlRewrittenByOf",
+                            "outbreakFiltersVofThreatCategory",
+                            "inOutbreakQuarantine",
+                            "quarantinedTo",
+                            "smime",
+                            "sdrCategories",
+                            "sdrReputation",
+                            "softBounced",
+                            "spamPositive",
+                            "quarantinedAsSpam",
+                            "quarantineStatus",
+                            "threatName",
+                            "suspectSpam",
+                            "urlCategories",
+                            "urlReputation",
+                            "safeprintExt",
+                            "virusPositive",
+                            "webInteractionTrackingUrls",
+                            "webInteractionTrackingMailflowDirection",
+                            "mailPolicyName",
+                            "mailPolicyDirection"
+                        ],
+                        "grouped_fields": {
+                            "contentFiltersName": [
+                                "contentFiltersDirection",
+                                "contentFiltersAction"
+                            ],
+                            "contentFiltersDirection": [
+                                "contentFiltersName",
+                                "contentFiltersAction"
+                            ],
+                            "contentFiltersAction": [
+                                "contentFiltersDirection",
+                                "contentFiltersName"
+                            ],
+                            "advancedMalwareProtectionMailflowDirection": [
+                                "advancedMalwareProtection"
+                            ],
+                            "advancedMalwareProtection": [
+                                "advancedMalwareProtectionMailflowDirection"
+                            ],
+                            "macroMailflowDirection": [
+                                "macroFileTypesDetected"
+                            ],
+                            "macroFileTypesDetected": [
+                                "macroMailflowDirection"
+                            ],
+                            "webInteractionTrackingUrls": [
+                                "webInteractionTrackingMailflowDirection"
+                            ],
+                            "webInteractionTrackingMailflowDirection": [
+                                "webInteractionTrackingUrls"
+                            ],
+                            "mailPolicyDirection": [
+                                "mailPolicyName"
+                            ],
+                            "mailPolicyName": [
+                                "mailPolicyDirection"
+                            ]
+                        }
+                    },
+                    "to_stix_map": {
+                        "attributes": {
+                            "hostName": [
+                                {
+                                    "key": "x-oca-asset.hostname",
+                                    "object": "host"
+                                },
+                                {
+                                    "key": "email-message.x_cisco_host_ref",
+                                    "object": "email_message",
+                                    "references": "host"
+                                }
+                            ],
+                            "timestamp": [
+                                {
+                                    "key": "email-message.date",
+                                    "object": "email_message",
+                                    "transformer": "FormatDateTimeObjectToTimestamp"
+                                },
+                                {
+                                    "key": "first_observed",
+                                    "transformer": "FormatDateTimeObjectToTimestamp"
+                                },
+                                {
+                                    "key": "last_observed",
+                                    "transformer": "FormatDateTimeObjectToTimestamp"
+                                }
+                            ],
+                            "recipient": [
+                                {
+                                    "key": "email-addr.value",
+                                    "object": "recipient",
+                                    "unwrap": "true",
+                                    "transformer": "ValidateEmailTransformer"
+                                },
+                                {
+                                    "key": "email-message.to_refs",
+                                    "object": "email_message",
+                                    "references": [
+                                        "recipient"
+                                    ]
+                                }
+                            ],
+                            "friendly_from": [
+                                {
+                                    "key": "email-addr.value",
+                                    "object": "from",
+                                    "unwrap": "true",
+                                    "transformer": "ValidateEmailTransformer"
+                                },
+                                {
+                                    "key": "email-message.from_ref",
+                                    "object": "email_message",
+                                    "references": "from"
+                                }
+                            ],
+                            "sender": [
+                                {
+                                    "key": "email-addr.value",
+                                    "object": "sender",
+                                    "transformer": "ValidateEmailTransformer"
+                                },
+                                {
+                                    "key": "email-message.sender_ref",
+                                    "object": "email_message",
+                                    "references": "sender"
+                                }
+                            ],
+                            "replyTo": [
+                                {
+                                    "key": "email-addr.value",
+                                    "object": "replyto",
+                                    "transformer": "ValidateEmailTransformer"
+                                },
+                                {
+                                    "key": "x-cisco-email-msgevent.reply_to",
+                                    "object": "msgevent",
+                                    "references": "replyto"
+                                }
+                            ],
+                            "subject": [
+                                {
+                                    "key": "email-message.subject",
+                                    "object": "email_message"
+                                }
+                            ],
+                            "is_multipart": {
+                                "key": "email-message.is_multipart",
+                                "object": "email_message"
+                            },
+                            "messageID": {
+                                "key": "email-message.x_message_id_header",
+                                "object": "email_message",
+                                "transformer": "DictToValueTransformer"
+                            },
+                            "senderIp": [
+                                {
+                                    "key": "ipv4-addr.value",
+                                    "object": "source_ip"
+                                },
+                                {
+                                    "key": "ipv6-addr.value",
+                                    "object": "source_ip"
+                                },
+                                {
+                                    "key": "email-message.x_sender_ip_ref",
+                                    "object": "email_message",
+                                    "references": "source_ip"
+                                }
+                            ],
+                            "senderDomain": [
+                                {
+                                    "key": "domain-name.value",
+                                    "object": "domain_name"
+                                },
+                                {
+                                    "key": "domain-name.resolves_to_refs",
+                                    "object": "domain_name",
+                                    "references": [
+                                        "source_ip"
+                                    ]
+                                }
+                            ],
+                            "senderGroup": {
+                                "key": "email-message.x_sender_group",
+                                "object": "email_message"
+                            },
+                            "mid": {
+                                "key": "email-message.x_cisco_mid",
+                                "object": "email_message",
+                                "transformer": "ListToIDTransformer"
+                            },
+                            "icid": {
+                                "key": "email-message.x_cisco_icid",
+                                "object": "email_message"
+                            },
+                            "serialNumber": {
+                                "key": "email-message.x_serial_number",
+                                "object": "email_message"
+                            },
+                            "mailPolicy": {
+                                "key": "x-cisco-email-msgevent.mail_policy",
+                                "object": "msgevent"
+                            },
+                            "direction": {
+                                "key": "x-cisco-email-msgevent.direction",
+                                "object": "msgevent"
+                            },
+                            "messageStatus": {
+                                "key": "x-cisco-email-msgevent.message_status",
+                                "object": "msgevent",
+                                "transformer": "DictToValueTransformer"
+                            },
+                            "sbrs": {
+                                "key": "x-cisco-email-msgevent.sbrs_score",
+                                "object": "msgevent"
+                            }
+                        }
+                    },
+                    "from_stix_map": {
+                        "email-addr": {
+                            "fields": {
+                                "value": [
+                                    "envelopeRecipientfilterValue",
+                                    "envelopeSenderfilterValue"
+                                ]
+                            }
+                        },
+                        "email-message": {
+                            "fields": {
+                                "from_ref": [
+                                    "envelopeSenderfilterValue"
+                                ],
+                                "sender_ref": [
+                                    "envelopeSenderfilterValue"
+                                ],
+                                "to_refs": [
+                                    "envelopeRecipientfilterValue"
+                                ],
+                                "subject": [
+                                    "subjectfilterValue"
+                                ],
+                                "x_message_id_header": [
+                                    "messageIdHeader"
+                                ],
+                                "x_cisco_mid": [
+                                    "ciscoMid"
+                                ],
+                                "x_sender_ip_ref": [
+                                    "senderIp"
+                                ]
+                            }
+                        },
+                        "file": {
+                            "fields": {
+                                "name": [
+                                    "attachmentNameValue"
+                                ],
+                                "hashes.'SHA-256'": [
+                                    "fileSha256"
+                                ]
+                            }
+                        },
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "senderIp"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "fields": {
+                                "value": [
+                                    "senderIp"
+                                ]
+                            }
+                        },
+                        "domain-name": {
+                            "fields": {
+                                "value": [
+                                    "domainNameValue"
+                                ]
+                            }
+                        },
+                        "x-oca-host": {
+                            "fields": {
+                                "hostname": [
+                                    "ciscoHost"
+                                ]
+                            }
+                        },
+                        "x-cisco-email-msgevent": {
+                            "fields": {
+                                "advanced_malware_protection_mailflow_direction": [
+                                    "advancedMalwareProtectionMailflowDirection"
+                                ],
+                                "advanced_malware_protection": [
+                                    "advancedMalwareProtection"
+                                ],
+                                "app_forwarding": [
+                                    "appForwarding"
+                                ],
+                                "content_filters_name": [
+                                    "contentFiltersName"
+                                ],
+                                "content_filters_direction": [
+                                    "contentFiltersDirection"
+                                ],
+                                "content_filters_action": [
+                                    "contentFiltersAction"
+                                ],
+                                "dane_failure": [
+                                    "daneFailure"
+                                ],
+                                "message_status": [
+                                    "deliveryStatus"
+                                ],
+                                "message_delivered": [
+                                    "message_delivered"
+                                ],
+                                "dlp_violations_names": [
+                                    "dlpViolationsNames"
+                                ],
+                                "dlpViolationsSeverities": [
+                                    "dlpViolationsSeverities"
+                                ],
+                                "dlp_action": [
+                                    "dlpAction"
+                                ],
+                                "dmarc_from": [
+                                    "dmarcFrom"
+                                ],
+                                "dmarc_action": [
+                                    "dmarcAction"
+                                ],
+                                "etf_sources": [
+                                    "etfSources"
+                                ],
+                                "etf_iocs": [
+                                    "etfIocs"
+                                ],
+                                "forged_email_detection": [
+                                    "forgedEmailDetection"
+                                ],
+                                "geo_location": [
+                                    "geoLocation"
+                                ],
+                                "graymail": [
+                                    "graymail"
+                                ],
+                                "hard_bounced": [
+                                    "hardBounced"
+                                ],
+                                "ip_reputation": [
+                                    "ipReputation"
+                                ],
+                                "macro_mailflow_direction": [
+                                    "macroMailflowDirection"
+                                ],
+                                "macro_file_types_detected": [
+                                    "macroFileTypesDetected"
+                                ],
+                                "message_filters": [
+                                    "messageFilters"
+                                ],
+                                "contained_malicious_urls": [
+                                    "containedMaliciousUrls"
+                                ],
+                                "contained_neutral_urls": [
+                                    "containedNeutralUrls"
+                                ],
+                                "outbreak_filters_url_rewritten_byof": [
+                                    "outbreakFiltersUrlRewrittenByOf"
+                                ],
+                                "outbreak_filtersVofThreatCategory": [
+                                    "outbreakFiltersVofThreatCategory"
+                                ],
+                                "in_outbreak_quarantine": [
+                                    "inOutbreakQuarantine"
+                                ],
+                                "quarantined_to": [
+                                    "quarantinedTo"
+                                ],
+                                "reply_to": [
+                                    "replyToValue"
+                                ],
+                                "s_mime": [
+                                    "smime"
+                                ],
+                                "sdr_categories": [
+                                    "sdrCategories"
+                                ],
+                                "sdr_threat_levels": [
+                                    "sdrThreatLevels"
+                                ],
+                                "soft_bounced": [
+                                    "softBounced"
+                                ],
+                                "spam_positive": [
+                                    "spamPositive"
+                                ],
+                                "quarantined_as_spam": [
+                                    "quarantinedAsSpam"
+                                ],
+                                "quarantine_status": [
+                                    "quarantineStatus"
+                                ],
+                                "threat_name": [
+                                    "threatName"
+                                ],
+                                "suspect_spam": [
+                                    "suspectSpam"
+                                ],
+                                "url_categories": [
+                                    "urlCategories"
+                                ],
+                                "url_reputation": [
+                                    "urlReputation"
+                                ],
+                                "safeprint_ext": [
+                                    "safeprintExt"
+                                ],
+                                "virus_positive": [
+                                    "virusPositive"
+                                ],
+                                "web_interaction_tracking_urls": [
+                                    "webInteractionTrackingUrls"
+                                ],
+                                "web_interaction_tracking_mailflow_direction": [
+                                    "webInteractionTrackingMailflowDirection"
+                                ],
+                                "mail_policy": [
+                                    "mailPolicyName"
+                                ],
+                                "mail_policy_direction": [
+                                    "mailPolicyDirection"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "&",
+                        "ComparisonExpressionOperators.Or": " ",
+                        "ComparisonComparators.Equal": "=",
+                        "ComparisonComparators.In": "=",
+                        "ComparisonComparators.Like": "=",
+                        "ObservationOperators.Or": "",
+                        "ObservationOperators.And": ""
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "text"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
