@@ -1,0 +1,671 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>pycocoa.runtime.ObjCSubclass</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="pycocoa-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="https://GitHub.com/mrJean1/PyCocoa">pycocoa</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="pycocoa-module.html">Package&nbsp;pycocoa</a> ::
+        <a href="pycocoa.runtime-module.html">Module&nbsp;runtime</a> ::
+        Class&nbsp;ObjCSubclass
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="pycocoa.runtime.ObjCSubclass-class.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS DESCRIPTION ==================== -->
+<h1 class="epydoc">Class ObjCSubclass</h1><p class="nomargin-top"></p>
+<pre class="base-tree">
+          object --+        
+                   |        
+internals._Objectype --+    
+                       |    
+               _ObjCBase --+
+                           |
+                          <strong class="uidshort">ObjCSubclass</strong>
+</pre>
+
+<hr />
+<p>Python class creating an ObjC sub-class of an existing ObjC 
+  (super)class.</p>
+  <p>This class is used only to <i>define</i> the interface and 
+  implementation of an ObjC sub-class from Python.  It should not be used 
+  in any other way.  If you want a Python representation of the resulting 
+  class, create it with <a href="pycocoa.runtime.ObjCClass-class.html" 
+  class="link">ObjCClass</a>.</p>
+  <p><i>It consists primarily of function decorators which you use to add 
+  methods to the sub-class.</i></p>
+  <p><a href="pycocoa.runtime.ObjCSubclass-class.html" 
+  class="link">ObjCSubclass</a> is used to define an ObjC sub-class of an 
+  existing class registered with the runtime.  When you create an instance 
+  of <a href="pycocoa.runtime.ObjCSubclass-class.html" 
+  class="link">ObjCSubclass</a>, it registers the new sub-class with the 
+  ObjC runtime and creates a set of function decorators that you can use to
+  add instance methods or class methods to the sub-class.</p>
+  <p>Typical usage would be to first create and register the sub-class:</p>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>MySubclass = ObjCSubclass(<span class="py-string">'NSObject'</span>, <span class="py-string">'MySubclassName'</span>)</pre>
+  <p>and then add methods with:</p>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>@MySubclass.method(<span class="py-string">'v'</span>)
+<span class="py-prompt">&gt;&gt;&gt; </span><span class="py-keyword">def</span> <span class="py-defname">methodThatReturnsVoid</span>(self):
+<span class="py-prompt">&gt;&gt;&gt; </span>    <span class="py-keyword">pass</span></pre>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>@MySubclass.method(<span class="py-string">'Bi'</span>)
+<span class="py-prompt">&gt;&gt;&gt; </span><span class="py-keyword">def</span> <span class="py-defname">boolReturningMethodWithInt_</span>(self, x):
+<span class="py-prompt">&gt;&gt;&gt; </span>    return True</pre>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>@MySubclass.classmethod(<span class="py-string">'@'</span>)
+<span class="py-prompt">&gt;&gt;&gt; </span><span class="py-keyword">def</span> <span class="py-defname">classMethodThatReturnsId</span>(self):
+<span class="py-prompt">&gt;&gt;&gt; </span>    return self</pre>
+  <p>It is probably a good idea to organize the code related to a single 
+  sub-class by either (a) putting it in its own module (note that you don't
+  actually need to expose any of the method names or the <a 
+  href="pycocoa.runtime.ObjCSubclass-class.html" 
+  class="link">ObjCSubclass</a>) or (b) bundling it all up inside a Python 
+  class definition, perhaps called MySubclassImplementation.</p>
+  <p>It is also possible to add ObjC <i>ivars</i> to the sub-class, however
+  if you do so, you <i>must call</i> the <code>.__init__</code> method with
+  keyword argument <i>register=False</i>, and then call the 
+  <code>.register</code> method after the <i>ivars</i> have been added.</p>
+  <p>However, instead of creating the <i>ivars</i> in ObjC land, it is 
+  easier to just define Python-based <i>ivars</i> in your sub-class' 
+  <code>.__init__</code> method.</p>
+  <p>Instances are created as a pointer to the ObjC object by using:</p>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>myinstance = send_message(<span class="py-string">'MySubclassName'</span>, <span class="py-string">'alloc'</span>)
+<span class="py-prompt">&gt;&gt;&gt; </span>myinstance = send_message(myinstance, <span class="py-string">'init'</span>)</pre>
+  <p>or wrapped inside an <a href="pycocoa.runtime.ObjCInstance-class.html"
+  class="link">ObjCInstance</a> by using:</p>
+<pre class="py-doctest">
+<span class="py-prompt">&gt;&gt;&gt; </span>myclass = ObjCClass(<span class="py-string">'MySubclassName'</span>)
+<span class="py-prompt">&gt;&gt;&gt; </span>myinstance = myclass.alloc().init()</pre>
+
+<!-- ==================== INSTANCE METHODS ==================== -->
+<a name="section-InstanceMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Instance Methods</span></td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="pycocoa.runtime.ObjCSubclass-class.html#__init__" class="summary-sig-name">__init__</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">parent</span>,
+        <span class="summary-sig-arg">name</span>,
+        <span class="summary-sig-arg">register</span>=<span class="summary-sig-default">True</span>,
+        <span class="summary-sig-arg">**ivars</span>)</span><br />
+      New sub-class of the given (super-)class.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="pycocoa.runtime.ObjCSubclass-class.html#__str__" class="summary-sig-name">__str__</a>(<span class="summary-sig-arg">self</span>)</span><br />
+      str(x)</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="pycocoa.runtime.ObjCSubclass-class.html#add_ivar" class="summary-sig-name">add_ivar</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">name</span>,
+        <span class="summary-sig-arg">ctype</span>)</span><br />
+      Add an instance variable to the sub-class.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="pycocoa.runtime.ObjCSubclass-class.html#classmethod" class="summary-sig-name">classmethod</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">encoding</span>)</span><br />
+      Decorator for class methods.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="pycocoa.runtime.ObjCSubclass-class.html#method" class="summary-sig-name">method</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">encoding</span>)</span><br />
+      Decorator for instance methods.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="pycocoa.runtime.ObjCSubclass-class.html#rawmethod" class="summary-sig-name">rawmethod</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">encoding</span>)</span><br />
+      Decorator for instance methods without any fancy shenanigans.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="register"></a><span class="summary-sig-name">register</span>(<span class="summary-sig-arg">self</span>)</span><br />
+      Register this new class with the ObjC runtime.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>_ObjCBase</code></b>:
+      <code>__repr__</code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__delattr__</code>,
+      <code>__format__</code>,
+      <code>__getattribute__</code>,
+      <code>__hash__</code>,
+      <code>__new__</code>,
+      <code>__reduce__</code>,
+      <code>__reduce_ex__</code>,
+      <code>__setattr__</code>,
+      <code>__sizeof__</code>,
+      <code>__subclasshook__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== PROPERTIES ==================== -->
+<a name="section-Properties"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Properties</span></td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="pycocoa.runtime.ObjCSubclass-class.html#isregistered" class="summary-name">isregistered</a><br />
+      Check whether the (sub)class is registered (<code>bool</code>).
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="pycocoa.runtime.ObjCSubclass-class.html#name" class="summary-name">name</a><br />
+      Get the name of this ObjC sub-class (<code>str</code>).
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="pycocoa.runtime.ObjCSubclass-class.html#objc_class" class="summary-name">objc_class</a><br />
+      Get the ObjC class.
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="pycocoa.runtime.ObjCSubclass-class.html#objc_metaclass" class="summary-name">objc_metaclass</a><br />
+      Get the ObjC metaclass, or <code>None</code> if un-registered.
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" class="summary">
+    <p class="indent-wrapped-lines"><b>Inherited from <code>_ObjCBase</code></b>:
+      <code>description</code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code>internals._Objectype</code></b>:
+      <code>typename</code>
+      </p>
+    <p class="indent-wrapped-lines"><b>Inherited from <code>object</code></b>:
+      <code>__class__</code>
+      </p>
+    </td>
+  </tr>
+</table>
+<!-- ==================== METHOD DETAILS ==================== -->
+<a name="section-MethodDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Method Details</span></td>
+</tr>
+</table>
+<a name="__init__"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">__init__</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">parent</span>,
+        <span class="sig-arg">name</span>,
+        <span class="sig-arg">register</span>=<span class="sig-default">True</span>,
+        <span class="sig-arg">**ivars</span>)</span>
+    <br /><em class="fname">(Constructor)</em>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>New sub-class of the given (super-)class.</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>parent</code></strong> - The super-class (<code>str</code> or <code>ObjCClass</code>).</li>
+        <li><strong class="pname"><code>name</code></strong> - The sub-class name (<code>str</code>).</li>
+        <li><strong class="pname"><code>register</code></strong> - Register the new sub-class (<code>bool</code>).</li>
+        <li><strong class="pname"><code>ivars</code></strong> - Optionally, specify any number of instance variables to be added 
+          <i>before</i> registering the new class, each by a keyword 
+          argument <code>name=ctype</code> to specify the name and 
+          <code>ctype</code> of the instance variable.</li>
+    </ul></dd>
+    <dt>Overrides:
+        object.__init__
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="__str__"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">__str__</span>(<span class="sig-arg">self</span>)</span>
+    <br /><em class="fname">(Informal representation operator)</em>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>str(x)</p>
+  <dl class="fields">
+    <dt>Overrides:
+        object.__str__
+        <dd><em class="note">(inherited documentation)</em></dd>
+    </dt>
+  </dl>
+</td></tr></table>
+</div>
+<a name="add_ivar"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">add_ivar</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">name</span>,
+        <span class="sig-arg">ctype</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Add an instance variable to the sub-class.</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>name</code></strong> - Name of the ivar (<code>str</code>).</li>
+        <li><strong class="pname"><code>ctype</code></strong> - The ivar type (<code>ctypes</code>).</li>
+    </ul></dd>
+    <dt>Raises:</dt>
+    <dd><ul class="nomargin-top">
+        <li><code><strong class='fraise'>ValueError</strong></code> - This class is already registered.</li>
+    </ul></dd>
+  </dl>
+<div class="fields">      <p><strong>Note:</strong>
+        Instance variables can only be added BEFORE the class is 
+        registered.
+      </p>
+</div></td></tr></table>
+</div>
+<a name="classmethod"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">classmethod</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">encoding</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Decorator for class methods.</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>encoding</code></strong> - Signature of the method (<code>encoding</code>) without 
+          <code>Id/self</code> and <code>SEL/cmd</code> encoding.</li>
+    </ul></dd>
+    <dt>Returns:</dt>
+        <dd>Decorated class method.</dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="method"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">method</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">encoding</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Decorator for instance methods.</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>encoding</code></strong> - Signature of the method (<code>encoding</code>), <i>without</i> 
+          <code>Id/self</code> and <code>SEL/cmd</code> encoding.</li>
+    </ul></dd>
+    <dt>Returns:</dt>
+        <dd>Decorated instance method.</dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="rawmethod"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">rawmethod</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">encoding</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <p>Decorator for instance methods without any fancy shenanigans.</p>
+  <dl class="fields">
+    <dt>Parameters:</dt>
+    <dd><ul class="nomargin-top">
+        <li><strong class="pname"><code>encoding</code></strong> - Signature of the method (<code>encoding</code>) <i>without</i> 
+          <code>Id/self</code> and <code>SEL/cmd</code> encoding.</li>
+    </ul></dd>
+    <dt>Returns:</dt>
+        <dd>The instance method.</dd>
+  </dl>
+<div class="fields">      <p><strong>Note:</strong>
+        The method must have signature <i class="math">m(self, cmd, 
+        *args)</i> where both <code>Id/self</code> and <code>SEL/cmd</code>
+        are just pointers to ObjC objects of type <code>Id_t</code> 
+        respectively <code>SEL_t</code>.
+      </p>
+</div></td></tr></table>
+</div>
+<br />
+<!-- ==================== PROPERTY DETAILS ==================== -->
+<a name="section-PropertyDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Property Details</span></td>
+</tr>
+</table>
+<a name="isregistered"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <h3 class="epydoc">isregistered</h3>
+  <p>Check whether the (sub)class is registered (<code>bool</code>).</p>
+  <dl class="fields">
+    <dt>Get Method:</dt>
+    <dd class="value"><span class="summary-sig">isregistered(<span class="summary-sig-arg">self</span>)</span>
+        - Check whether the (sub)class is registered (<code>bool</code>).
+    </dd>
+    <dt>Set Method:</dt>
+    <dd class="value"><span class="summary-sig">Read_Only(<span class="summary-sig-arg">inst</span>,
+        <span class="summary-sig-arg">value</span>)</span>
+        - Throws an <code>AttributeError</code>, always.
+    </dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="name"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <h3 class="epydoc">name</h3>
+  <p>Get the name of this ObjC sub-class (<code>str</code>).</p>
+  <dl class="fields">
+    <dt>Get Method:</dt>
+    <dd class="value"><span class="summary-sig">name(<span class="summary-sig-arg">self</span>)</span>
+        - Get the name of this ObjC sub-class (<code>str</code>).
+    </dd>
+    <dt>Set Method:</dt>
+    <dd class="value"><span class="summary-sig">Read_Only(<span class="summary-sig-arg">inst</span>,
+        <span class="summary-sig-arg">value</span>)</span>
+        - Throws an <code>AttributeError</code>, always.
+    </dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="objc_class"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <h3 class="epydoc">objc_class</h3>
+  <p>Get the ObjC class.</p>
+  <dl class="fields">
+    <dt>Get Method:</dt>
+    <dd class="value"><span class="summary-sig">objc_class(<span class="summary-sig-arg">self</span>)</span>
+        - Get the ObjC class.
+    </dd>
+    <dt>Set Method:</dt>
+    <dd class="value"><span class="summary-sig">Read_Only(<span class="summary-sig-arg">inst</span>,
+        <span class="summary-sig-arg">value</span>)</span>
+        - Throws an <code>AttributeError</code>, always.
+    </dd>
+  </dl>
+</td></tr></table>
+</div>
+<a name="objc_metaclass"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <h3 class="epydoc">objc_metaclass</h3>
+  <p>Get the ObjC metaclass, or <code>None</code> if un-registered.</p>
+  <dl class="fields">
+    <dt>Get Method:</dt>
+    <dd class="value"><span class="summary-sig">objc_metaclass(<span class="summary-sig-arg">self</span>)</span>
+        - Get the ObjC metaclass, or <code>None</code> if un-registered.
+    </dd>
+    <dt>Set Method:</dt>
+    <dd class="value"><span class="summary-sig">Read_Only(<span class="summary-sig-arg">inst</span>,
+        <span class="summary-sig-arg">value</span>)</span>
+        - Throws an <code>AttributeError</code>, always.
+    </dd>
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="pycocoa-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Project homepage -->
+      <th class="navbar" align="right" width="100%">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr><th class="navbar" align="center"
+            ><a class="navbar" target="_top" href="https://GitHub.com/mrJean1/PyCocoa">pycocoa</a></th>
+          </tr></table></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Wed Dec  3 15:27:53 2025
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>
