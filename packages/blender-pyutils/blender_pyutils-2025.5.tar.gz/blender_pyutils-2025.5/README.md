@@ -1,0 +1,218 @@
+[insert: badges gitlab]: #
+
+[![Hatch](https://img.shields.io/badge/%F0%9F%A5%9A-Hatch-4051b5.svg)](https://github.com/pypa/hatch) [![Latest Release](https://gitlab.inria.fr/jrye/blender-pyutils/-/badges/release.svg)](https://gitlab.inria.fr/jrye/blender-pyutils/-/tags) [![License](https://img.shields.io/badge/license-MIT-9400d3.svg)](https://spdx.org/licenses/MIT.html) [![Pipeline Status](https://gitlab.inria.fr/jrye/blender-pyutils/badges/main/pipeline.svg)](https://gitlab.inria.fr/jrye/blender-pyutils/-/commits/main) [![Pylint](https://gitlab.inria.fr/jrye/blender-pyutils/-/jobs/artifacts/main/raw/pylint/pylint.svg?job=pylint)](https://gitlab.inria.fr/jrye/blender-pyutils/-/jobs/artifacts/main/raw/pylint/pylint.txt?job=pylint) [![PyPI](https://img.shields.io/badge/PyPI-blender--pyutils-006dad.svg)](https://pypi.org/project/blender-pyutils/) [![PyPI Downloads](https://static.pepy.tech/badge/blender-pyutils)](https://pepy.tech/projects/blender-pyutils)
+
+[/insert: badges gitlab]: #
+
+# Synopsis
+
+This is a small Python package that installs a command-line utility to facilitate extension installation in [Blender](https://www.blender.org/). It currently provides the following functionality:
+
+
+* Print information about Blender and its internal Python environment.
+* Validate and build Blender extensions, including their dependency wheels.
+* Install Python packages directly into Blender's modules directory.
+
+## Links
+
+[insert: links 2]: #
+
+### GitLab
+
+* [Homepage](https://gitlab.inria.fr/jrye/blender-pyutils)
+* [Source](https://gitlab.inria.fr/jrye/blender-pyutils.git)
+* [Issues](https://gitlab.inria.fr/jrye/blender-pyutils/issues)
+* [Documentation](https://jrye.gitlabpages.inria.fr/blender-pyutils)
+* [GitLab package registry](https://gitlab.inria.fr/jrye/blender-pyutils/-/packages)
+
+### Other Repositories
+
+* [Python Package Index (PyPI)](https://pypi.org/project/blender-pyutils/)
+* [Software Heritage](https://archive.softwareheritage.org/browse/origin/?origin_url=https%3A//gitlab.inria.fr/jrye/blender-pyutils.git)
+
+[/insert: links 2]: #
+
+
+
+# Usage
+
+Install this package, preferably in a Python virtual environment.
+
+~~~sh
+# Create the virtual environment.
+python3 -m venv
+
+# Activate it.
+source venv/bin/activate
+
+# Ensure that pip is installed and up-to-date.
+python3 -m ensure pip
+pip install -U pip
+
+# Install this package.
+pip install -U Blender Python Utils
+~~~
+
+## blender-pytuils Executable
+
+The package will install the `blender-pyutils` command that accepts different subcommands as arguments.
+
+[insert: command_output: blender-pyutils --help]: #
+
+~~~
+usage: blender-pyutils [-h] {build,env,info,pip} ...
+
+Utility script for validating and packaging Blender extensions.
+
+positional arguments:
+  {build,env,info,pip}
+
+options:
+  -h, --help            show this help message and exit
+
+~~~
+
+[/insert: command_output: blender-pyutils --help]: #
+
+### `build` Subcommand
+
+The `build` subommand will validate and build a Blender extension. If a `requirements.txt` file is found in the extension directory then it will also download the dependency wheels to the `wheels` subdirectory and add them to the `blender_manifest.toml`.
+
+[insert: command_output: blender-pyutils build --help]: #
+
+~~~
+usage: blender-pyutils build [-h] [-p PATH]
+
+Validate and build an extension. If a requirements.txt file is found in the
+extension directory then the wheels for its dependencies will be downloaded to
+the wheels directory and the manifest will be updated to include them.
+
+options:
+  -h, --help            show this help message and exit
+  -p PATH, --path PATH  The path to the extension's root directory. If not
+                        given, the current working directory is assumed.
+
+~~~
+
+[/insert: command_output: blender-pyutils build --help]: #
+
+### `env` Subcommand
+
+The `env` subcommand generates a sourceable shell file that can be used to match the shell's `PYTHONPATH` environment variable to Blender's internal Python path. Sourcing the file will allow scripts and code editors to find Blender's internal Python packages.
+
+[insert: command_output: blender-pyutils env --help]: #
+
+~~~
+usage: blender-pyutils env [-h] [--example] [-o OUT]
+
+Create a soureable shell configuration file that will set the Python path
+environment variable to match Blender's Python path. This will allow scripts
+and editors to detect Blender's internal Python modules.
+
+options:
+  -h, --help         show this help message and exit
+  --example          Mask user name in home directory paths for example
+                     output.
+  -o OUT, --out OUT  The output path. If not specified, the file will be
+                     printed to STDOUT.
+
+~~~
+
+[/insert: command_output: blender-pyutils env --help]: #
+
+#### Example Output
+
+[insert: command_output: blender-pyutils env --example]: #
+
+~~~
+#!/usr/bin/sh
+export PYTHONPATH=/usr/share/blender/4.5/scripts/startup:/usr/share/blender/4.5/scripts/modules:/usr/lib/python313.zip:/usr/lib/python3.13:/usr/lib/python3.13/lib-dynload:/usr/lib/python3.13/site-packages:/usr/share/blender/4.5/scripts/freestyle/modules:/home/user/.config/blender/4.5/scripts/addons/modules:/usr/share/blender/4.5/scripts/addons_core
+
+
+~~~
+
+[/insert: command_output: blender-pyutils env --example]: #
+
+### `info` Subcommand
+
+The `info` subcommand will print information about Blender's version, module directory path and configured Python executable.
+
+[insert: command_output: blender-pyutils info --help]: #
+
+~~~
+usage: blender-pyutils info [-h] [--example]
+
+Print Blender information.
+
+options:
+  -h, --help  show this help message and exit
+  --example   Mask user name in home directory paths for example output.
+
+~~~
+
+[/insert: command_output: blender-pyutils info --help]: #
+
+#### Example Output
+
+[insert: command_output: blender-pyutils info --example]: #
+
+~~~
+Blender module directory: /home/user/.config/blender/4.5/scripts/modules
+Blender version: 4.5.5 LTS
+Python executable: /usr/bin/python3.13
+Python path: /usr/share/blender/4.5/scripts/startup:/usr/share/blender/4.5/scripts/modules:/usr/lib/python313.zip:/usr/lib/python3.13:/usr/lib/python3.13/lib-dynload:/usr/lib/python3.13/site-packages:/usr/share/blender/4.5/scripts/freestyle/modules:/home/user/.config/blender/4.5/scripts/addons/modules:/usr/share/blender/4.5/scripts/addons_core
+Python version: 3.13.7
+
+~~~
+
+[/insert: command_output: blender-pyutils info --example]: #
+
+
+### `pip` Subcommand
+
+The `pip` subcommand will install Python packages directly to Blender's modules directory. It accepts the same commands as `pip`.
+
+~~~sh
+# Example: install scipy using pip
+blender-pyutils pip install scipy
+
+# Example: install scipy using uv
+blender-pyutils pip --uv install scipy
+
+# Example: use "--" to pass through options to pip, such as a requirements.txt file
+blender-pyutils pip -- install -U -r requirements.txt
+~~~
+
+[insert: command_output: blender-pyutils pip --help]: #
+
+~~~
+usage: blender-pyutils pip [-h] [--path PATH] [--uv] <PIP ARG> [<PIP ARG> ...]
+
+Install Python packages to Blender's module directory. Additional arguments as
+passed through to pip.
+
+positional arguments:
+  <PIP ARG>    Arguments to pass through to pip. Precede these arguments with
+               "--" if any of them begin with "-".
+
+options:
+  -h, --help   show this help message and exit
+  --path PATH  Installation directory for Python packages. If not given, the
+               default Blender module directory will be used. Use the "info"
+               command to show the path to the module directory.
+  --uv         Use "uv pip" instead of pip.
+
+~~~
+
+[/insert: command_output: blender-pyutils pip --help]: #
+
+#### Caveats
+
+* At the time or writing, Blender does not recognize packages installed with [pip's editable option (-e/--editiable)](https://pip.pypa.io/en/stable/cli/pip_install/).
+* Packages must be installed before launching Blender.
+
+
+#### Legacy Script
+
+This repository originally only provided [blender-pip_install.sh](blender-pip_install.sh) as a wrapper around `pip install` and `uv pip install`. It has been superceded by `blender-pyutils pip` and users should migrate accordingly.
+
