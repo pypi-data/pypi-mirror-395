@@ -1,0 +1,547 @@
+Metadata-Version: 2.4
+Name: fastpluggy-scheduled-query
+Version: 0.1.50
+Summary: Scheduled Query plugin for Fastpluggy
+Author: FastPluggy Team
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: fastpluggy-ui-tools
+Requires-Dist: fastpluggy-tasks-worker>=0.3.0
+Requires-Dist: loguru
+Requires-Dist: prometheus_client
+
+# Scheduled Query Plugin
+
+A powerful FastPluggy plugin for scheduling and executing SQL queries on a recurring basis with comprehensive monitoring, result history tracking, and Prometheus metrics integration.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+  - [Creating Scheduled Queries](#creating-scheduled-queries)
+  - [Managing Queries](#managing-queries)
+  - [Viewing Results](#viewing-results)
+- [API Endpoints](#api-endpoints)
+- [Web Interface](#web-interface)
+- [Data Models](#data-models)
+- [Prometheus Metrics](#prometheus-metrics)
+- [Security](#security)
+- [Examples](#examples)
+- [Dependencies](#dependencies)
+
+## Overview
+
+The Scheduled Query plugin allows you to:
+- Schedule SQL queries to run automatically using CRON syntax
+- Monitor query execution with detailed history tracking
+- Export query results as Prometheus metrics
+- View results in multiple formats (table, counter, metric, raw)
+- Set up query execution intervals with safety controls
+- Track execution duration and status
+
+## Features
+
+### Core Features
+- ✅ **CRON-based Scheduling**: Use standard CRON syntax for flexible scheduling
+- ✅ **Automatic Execution**: Background task worker executes queries every 60 seconds
+- ✅ **Query Safety**: Built-in keyword filtering to prevent dangerous operations
+- ✅ **History Tracking**: Complete execution history with timestamps, duration, and results
+- ✅ **Multiple Result Formats**: Auto-detect or force render types (table, counter, metric, raw)
+- ✅ **Error Handling**: Comprehensive error tracking and logging
+- ✅ **Real-time Execution**: Run queries immediately via the "Run Now" button
+
+### Monitoring & Metrics
+- 📊 **Prometheus Integration**: Export query results as Prometheus Gauge metrics
+- 📈 **Execution Dashboard**: Visual dashboard showing all queries and their status
+- ⏱️ **Performance Tracking**: Monitor query execution time in milliseconds
+- 📋 **Execution History**: Paginated history with filtering by status
+
+### UI Features
+- 🎨 **Result Widgets**: Customizable widgets for displaying query results
+- 🔍 **Advanced Filtering**: Filter execution history by date range and status
+- ✏️ **Edit Interface**: Easy-to-use forms for creating and editing queries
+- 📊 **Dashboard View**: Overview of all scheduled queries with real-time status
+
+## Installation
+
+### Using pip
+
+```bash
+pip install fastpluggy-scheduled-query
+```
+
+### From source
+
+```bash
+cd fastpluggy_plugin/scheduled_query
+pip install -e .
+```
+
+### Requirements
+
+- Python >= 3.10
+- fastpluggy-ui-tools
+- fastpluggy-tasks-worker >= 0.3.0
+- loguru
+- prometheus_client
+
+The plugin will be automatically discovered by FastPluggy through the entry point system.
+
+## Configuration
+
+The plugin can be configured through environment variables or the FastPluggy configuration system:
+
+### Available Settings
+
+```python
+class ScheduledQuerySettings(BaseDatabaseSettings):
+    # Enable notifications when queries run
+    notification_on_run: bool = False
+    
+    # Comma-separated list of forbidden SQL keywords
+    forbidden_keywords: str = "drop,delete,truncate,alter"
+    
+    # Minimum interval between query executions (seconds)
+    interval: int = 30
+    
+    # Enable execution history tracking
+    enable_history: bool = True
+    
+    # Maximum number of history records to keep (-1 = unlimited)
+    limit_history: int = -1
+    
+    # Enable Prometheus metrics export
+    prometheus_enabled: bool = True
+```
+
+### Environment Variables
+
+You can override these settings using environment variables with the prefix `SCHEDULED_QUERY_`:
+
+```bash
+export SCHEDULED_QUERY_FORBIDDEN_KEYWORDS="drop,delete,truncate,alter,update"
+export SCHEDULED_QUERY_INTERVAL=60
+export SCHEDULED_QUERY_ENABLE_HISTORY=true
+export SCHEDULED_QUERY_PROMETHEUS_ENABLED=true
+```
+
+## Usage
+
+### Creating Scheduled Queries
+
+#### Via Web Interface
+
+1. Navigate to **Scheduled Query → Scheduled Queries** in the menu
+2. Click the **Edit** button for an existing query or create a new one
+3. Fill in the form:
+   - **Name**: Descriptive name for the query
+   - **Query**: SQL query to execute (SELECT queries recommended)
+   - **CRON Schedule**: CRON expression (e.g., `0 6 * * *` for daily at 6 AM)
+   - **Enabled**: Toggle to enable/disable execution
+   - **Render Type**: Choose how to display results (auto, table, counter, metric, raw)
+
+#### Programmatically
+
+```python
+from fastpluggy.core.database import session_scope
+from fastpluggy_plugin.scheduled_query.src.models import ScheduledQuery
+from datetime import datetime
+
+with session_scope() as db:
+    query = ScheduledQuery(
+        name="Daily User Count",
+        query="SELECT COUNT(*) as total_users FROM users WHERE is_active = true",
+        cron_schedule="0 6 * * *",  # Daily at 6 AM
+        enabled=True,
+        render_type="counter"
+    )
+    db.add(query)
+    db.commit()
+```
+
+### Managing Queries
+
+#### Enable/Disable Queries
+
+Edit the query through the web interface and toggle the "Enabled" checkbox.
+
+#### Run Query Immediately
+
+Click the **Run Now** button next to any query in the list view to execute it immediately, bypassing the schedule.
+
+#### View Execution History
+
+Navigate to **Scheduled Query → Dashboard** to see:
+- Latest query results
+- Execution history with pagination
+- Performance metrics
+- Error messages for failed executions
+
+### Viewing Results
+
+#### Dashboard View
+
+The dashboard (`/scheduled_query/dashboard`) provides:
+- List of all scheduled queries
+- Latest execution results
+- Interactive history viewer with filters
+- Real-time status updates
+
+#### Result Widgets
+
+Visit `/scheduled_query/results-widgets` to see queries displayed as widgets with different rendering modes:
+
+- **Auto**: Automatically detects the best format
+- **Table**: Displays results in a table format
+- **Counter/Metric**: Shows numeric results as large numbers
+- **Raw**: Displays raw result text
+
+## API Endpoints
+
+All API endpoints require authentication.
+
+### Run Query Now
+
+```http
+GET /api/run-now/{query_id}
+```
+
+Executes a scheduled query immediately and redirects to the queries list.
+
+**Parameters:**
+- `query_id` (int): ID of the query to execute
+
+**Response:** Redirect to scheduled queries list (303)
+
+### Get Execution History
+
+```http
+GET /api/execution-history/{query_id}
+```
+
+Retrieves paginated execution history for a specific query.
+
+**Parameters:**
+- `query_id` (int): ID of the query
+- `page` (int, optional): Page number (default: 1)
+- `limit` (int, optional): Records per page (default: 50, max: 200)
+- `status_filter` (str, optional): Filter by status: "all", "success", "failed", "timeout"
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "executed_at": "2025-11-05 12:04:30",
+      "duration_ms": 245,
+      "result": "[(87, datetime.date(2025, 11, 05))]",
+      "result_key": ["count", "date"],
+      "status": "success",
+      "error_message": null,
+      "grafana_metrics_snapshot": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total_count": 150,
+    "total_pages": 3,
+    "has_next": true,
+    "has_prev": false
+  },
+  "query_info": {
+    "id": 1,
+    "name": "Daily User Activity"
+  }
+}
+```
+
+### Get Query Info
+
+```http
+GET /api/scheduled-queries/{query_id}
+```
+
+Returns detailed information about a specific scheduled query.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "Daily User Count",
+  "query": "SELECT COUNT(*) FROM users",
+  "cron_schedule": "0 6 * * *",
+  "last_executed": "2025-11-05 06:00:15",
+  "enabled": true,
+  "grafana_metric_config": null
+}
+```
+
+## Web Interface
+
+### Routes
+
+| Route | Menu Label | Description |
+|-------|-----------|-------------|
+| `/scheduled_query/` | Scheduled Queries | List and manage all scheduled queries |
+| `/scheduled_query/dashboard` | Dashboard | View query results and execution history |
+| `/scheduled_query/results-widgets` | Results Widgets | Display query results as widgets |
+| `/scheduled_query/edit/{query_id}` | - | Edit form for a specific query |
+
+All routes require authentication.
+
+## Data Models
+
+### ScheduledQuery
+
+Stores query definitions and configuration.
+
+```python
+class ScheduledQuery(Base):
+    __tablename__ = 'fp_scheduled_queries'
+    
+    id: int                          # Primary key
+    name: str                        # Query name
+    query: str                       # SQL query text
+    cron_schedule: str              # CRON expression
+    last_executed: datetime         # Last execution timestamp
+    grafana_metric_config: dict     # Prometheus metric configuration
+    enabled: bool                   # Enable/disable flag
+    last_result: str                # Latest query result
+    last_result_key: list           # Column names from result
+    render_type: str                # Display format: auto/table/counter/metric/raw
+```
+
+### ScheduledQueryResultHistory
+
+Tracks execution history for each query.
+
+```python
+class ScheduledQueryResultHistory(Base):
+    __tablename__ = 'fp_scheduled_query_results'
+    
+    id: int                         # Primary key
+    scheduled_query_id: int         # Foreign key to ScheduledQuery
+    executed_at: datetime           # Execution timestamp
+    duration_ms: int                # Execution duration in milliseconds
+    result: str                     # Query result
+    result_key: list                # Column names
+    status: str                     # 'success', 'failed', 'timeout'
+    error_message: str              # Error details if failed
+    grafana_metrics_snapshot: dict  # Metrics snapshot
+```
+
+## Prometheus Metrics
+
+When enabled, the plugin can export query results as Prometheus Gauge metrics.
+
+### Configuration
+
+Add Grafana metric configuration to a scheduled query:
+
+```python
+query.grafana_metric_config = {
+    "metric_name": "user_count_total",
+    "labels": {
+        "environment": "production",
+        "service": "api"
+    }
+}
+```
+
+### Requirements
+
+- Query must return a numeric value
+- The result is evaluated and the first numeric value is extracted
+- Metrics are updated after each successful query execution
+
+### Example
+
+```python
+# Query that counts active users
+query = ScheduledQuery(
+    name="Active Users Metric",
+    query="SELECT COUNT(*) FROM users WHERE is_active = true",
+    cron_schedule="*/5 * * * *",  # Every 5 minutes
+    enabled=True,
+    grafana_metric_config={
+        "metric_name": "active_users_total",
+        "labels": {"type": "active"}
+    }
+)
+```
+
+This will create a Prometheus metric accessible at `/metrics`:
+```
+# HELP active_users_total Metric for query SELECT COUNT(*) FROM users WHERE is_active = true
+# TYPE active_users_total gauge
+active_users_total 594.0
+```
+
+## Security
+
+### Query Safety
+
+The plugin includes built-in protection against dangerous SQL operations:
+
+- **Forbidden Keywords**: Configurable list of keywords that are blocked (default: drop, delete, truncate, alter)
+- **Keyword Detection**: Case-insensitive scanning of query text
+- **Rejection Logging**: Rejected queries are logged with the reason
+
+### Authentication
+
+All endpoints and routes require authentication through FastPluggy's authentication system.
+
+### Best Practices
+
+1. **Use SELECT queries**: Prefer read-only queries to avoid data modification
+2. **Limit result size**: Large result sets can impact performance
+3. **Test queries manually**: Verify queries before scheduling
+4. **Monitor execution time**: Set appropriate CRON schedules based on query duration
+5. **Review history regularly**: Check for failed executions and errors
+
+## Examples
+
+### Example 1: Daily Active Users
+
+```python
+ScheduledQuery(
+    name="Daily Active Users",
+    query="SELECT COUNT(*) as active_users FROM users WHERE last_login >= CURDATE()",
+    cron_schedule="0 8 * * *",  # Daily at 8 AM
+    enabled=True,
+    render_type="counter"
+)
+```
+
+### Example 2: Order Status Summary
+
+```python
+ScheduledQuery(
+    name="Order Status Summary",
+    query="""
+        SELECT status, COUNT(*) as count, SUM(total_amount) as revenue
+        FROM orders
+        WHERE created_at >= CURDATE() - INTERVAL 7 DAY
+        GROUP BY status
+    """,
+    cron_schedule="0 */4 * * *",  # Every 4 hours
+    enabled=True,
+    render_type="table"
+)
+```
+
+### Example 3: System Health Check
+
+```python
+ScheduledQuery(
+    name="Database Connection Pool",
+    query="SHOW STATUS LIKE 'Threads_connected'",
+    cron_schedule="*/5 * * * *",  # Every 5 minutes
+    enabled=True,
+    render_type="metric",
+    grafana_metric_config={
+        "metric_name": "mysql_threads_connected",
+        "labels": {"instance": "primary"}
+    }
+)
+```
+
+### Creating Test Data
+
+Use the included example script to create test queries:
+
+```bash
+cd /path/to/fastpluggy
+python fastpluggy_plugin/scheduled_query/examples/create_test_data.py
+```
+
+Options:
+- `--cleanup`: Remove all test data
+- `--recreate`: Clean up and recreate test data
+
+## Dependencies
+
+The plugin depends on the following FastPluggy plugins and libraries:
+
+### Plugin Dependencies
+- **tasks_worker** (>= 0.2.0): Background task execution
+- **ui_tools** (>= 0.0.4): UI components and widgets
+
+### Python Dependencies
+- **loguru**: Logging framework
+- **prometheus_client**: Prometheus metrics export
+- **sqlalchemy**: Database ORM
+- **fastapi**: Web framework
+
+## Architecture
+
+### Task Execution Flow
+
+1. **Task Scheduler**: Runs every 60 seconds via `collect_execute_scheduled_query`
+2. **Query Selection**: Fetches all enabled queries from the database
+3. **Safety Check**: Validates query against forbidden keywords
+4. **Execution**: Runs query and measures duration
+5. **Result Storage**: Saves results to the database and history table
+6. **Metrics Update**: Updates Prometheus metrics if configured
+7. **Interval Wait**: Sleeps for configured interval before next query
+
+### Result Rendering
+
+The plugin supports multiple render types for displaying results:
+
+- **auto**: Automatically detects the best format based on result structure
+- **table**: Forces table display for all results
+- **counter/metric**: Displays numeric results as large formatted numbers
+- **raw**: Shows raw text output
+
+## Troubleshooting
+
+### Query Not Executing
+
+1. Check if the query is enabled in the database
+2. Verify the tasks_worker plugin is running
+3. Check logs for error messages
+4. Ensure the query doesn't contain forbidden keywords
+
+### History Not Being Saved
+
+1. Verify `enable_history` is set to `true` in settings
+2. Check database permissions
+3. Review logs for database errors
+
+### Prometheus Metrics Not Updating
+
+1. Ensure `prometheus_enabled` is set to `true`
+2. Verify `grafana_metric_config` is properly configured
+3. Check that query returns numeric values
+4. Review logs for metric update errors
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+- Code follows the existing style
+- New features include tests
+- Documentation is updated
+- Changes are backward compatible
+
+## License
+
+This plugin is part of the FastPluggy framework.
+
+## Support
+
+For issues and questions:
+- Check the [FastPluggy documentation](https://github.com/fastpluggy/fastpluggy)
+- Review the example scripts in the `examples/` directory
+- Check the logs in `/var/log/fastpluggy/` or configured log directory
+
+---
+
+**Version**: 0.1.48  
+**Last Updated**: November 2025  
+**Maintained by**: FastPluggy Team
