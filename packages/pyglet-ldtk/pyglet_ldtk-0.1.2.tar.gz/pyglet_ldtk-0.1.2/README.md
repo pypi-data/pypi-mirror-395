@@ -1,0 +1,70 @@
+# pyglet-ldtk
+
+[![Tests](https://github.com/Kaleidosium/pyglet-ldtk/actions/workflows/tests.yml/badge.svg)](https://github.com/Kaleidosium/pyglet-ldtk/actions/workflows/tests.yml)
+![PyPI - License](https://img.shields.io/pypi/l/pyglet-ldtk)
+![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)
+![PyPI - Version](https://img.shields.io/pypi/v/pyglet-ldtk)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+A loader for [LDtk](https://ldtk.io/) (Level Designer Toolkit) maps, specifically designed for use with the [pyglet](https://pyglet.org/) game development library. This module simplifies the process of integrating your LDtk level designs into your pyglet applications, handling everything from parsing LDtk JSON files to rendering complex tile layers and entities.
+
+## Features
+
+- **LDtk Project Loading:** Parses standard `.ldtk` project files and supports external level files.
+- **Tileset Management:** Loads tileset images, extracts tile regions, and handles tile flipping.
+- **Entity Rendering:** Renders LDtk entities, including support for basic shapes, custom tile textures, and advanced 9-slice scaling.
+- **Layer Handling:** Processes various LDtk layer types: IntGrid, Entities, Tiles, and AutoLayers.
+- **Coordinate System Conversion:** Automatically converts LDtk's top-left origin coordinates to pyglet's bottom-left origin.
+- **Batch Rendering:** Optimized for pyglet's `Batch` system for efficient rendering.
+- **IntGrid Visualization:** Renders IntGrid layers as colored rectangles for easy debugging or visualization.
+
+## Installation
+
+```bash
+pip install pyglet-ldtk
+```
+
+## Usage
+
+(For detailed usage examples, please refer to the `tests/` directory for now. A more comprehensive guide will be added here eventually.)
+
+```python
+import pyglet
+from ldtk import Ldtk
+
+# Load your LDtk project
+ldtk_project = Ldtk("path/to/your/project.ldtk")
+
+# Get the first level
+level = ldtk_project.levels[0]
+
+# Create a pyglet batch
+batch = pyglet.graphics.Batch()
+
+# Add the level's content to the batch
+level.addToBatch(batch)
+
+# Basic window setup (example)
+window = pyglet.window.Window(level.sizePx[0], level.sizePx[1], caption="LDtk Level")
+
+@window.event
+def on_draw():
+    window.clear()
+    batch.draw()
+
+pyglet.app.run()
+```
+
+## Compatibility
+
+- Python 3.10+
+- Pyglet 2.1.11+
+
+## Acknowledgment
+
+This repository would not be possible without the following prior art:
+
+- [LGgameLAB/pyLdtk](https://github.com/LGgameLAB/pyLdtk)
+- [Tsunami014/Blaze-Sudio/ldtk](https://github.com/Tsunami014/Blaze-Sudio/blob/main/BlazeSudio/ldtk/)
+- [joeld42/pyldtk](https://github.com/joeld42/pyldtk)
+- [vanicat/arcadeLdtk](https://github.com/vanicat/arcadeLdtk)
