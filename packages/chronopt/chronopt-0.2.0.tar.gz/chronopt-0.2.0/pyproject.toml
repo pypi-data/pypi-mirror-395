@@ -1,0 +1,85 @@
+[build-system]
+requires = ["maturin>=1.9,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "chronopt"
+requires-python = ">=3.11"
+dynamic = ["version"]
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+    "numpy>=1.24.4",
+]
+
+[project.optional-dependencies]
+jax = [
+    "jax==0.4.38; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "jaxlib==0.4.38; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "diffrax>=0.7.0",
+]
+plotting = [
+    "matplotlib>=3.8",
+]
+diffeqpy = [
+    "diffeqpy",
+]
+
+[tool.maturin]
+manifest-path = "python/Cargo.toml"
+module-name = "chronopt._chronopt"
+features = ["extension-module"]
+python-source = "python/src"
+sdist-include = ["LICENSE", "README.md"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "scipy>=1.16.2",
+]
+examples = [
+    # macOS x86_64 + Python < 3.14: diffrax with pinned jax/jaxlib
+    "diffrax>=0.7.0; python_version < '3.14' and sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "jax==0.4.38; python_version < '3.14' and sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "jaxlib==0.4.38; python_version < '3.14' and sys_platform == 'darwin' and platform_machine == 'x86_64'",
+
+    # All other platforms + Python <= 3.14: diffrax only (jax/jaxlib as transitive deps)
+    "diffrax>=0.7.0; python_version <= '3.14' and (sys_platform != 'darwin' or platform_machine != 'x86_64')",
+
+    # Non-JAX dependencies
+    "matplotlib>=3.8",
+    "diffeqpy",
+]
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+extend-exclude = ["__init__.py"]
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "A",    # flake8-builtins: Check for Python builtins being used as variables or parameters
+    "B",    # flake8-bugbear: Find likely bugs and design problems
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: Detect various errors by parsing the source file
+    "I",    # isort: Check and enforce import ordering
+    "ISC",  # flake8-implicit-str-concat: Check for implicit string concatenation
+    "TID",  # flake8-tidy-imports: Validate import hygiene
+    "UP",   # pyupgrade: Automatically upgrade syntax for newer versions of Python
+    "SLF001",  # flake8-string-format: Check for private object name access
+]
+
+ignore = ["E501","E741"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SLF001"]
+"**.ipynb" = ["E402", "E703"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"

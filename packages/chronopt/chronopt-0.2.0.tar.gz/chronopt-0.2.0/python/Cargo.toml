@@ -1,0 +1,40 @@
+[package]
+name = "chronopt-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[package.metadata.maturin]
+name = "chronopt._chronopt"
+python-source = "src"
+artifact = "dist"
+
+[features]
+default = []
+extension-module = ["pyo3/extension-module"]
+stubgen = ["clap", "pyo3-stub-gen", "pyo3-stub-gen-derive"]
+
+[lib]
+name = "chronopt"
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+pyo3 = { workspace = true, default-features = false, features = ["macros"] }
+nalgebra.workspace = true
+numpy = "0.27"
+pyo3-stub-gen = { version = "0.17.2", optional = true }
+pyo3-stub-gen-derive = { version = "0.17.2", optional = true }
+clap = { version = "4.5", optional = true, features = ["derive"] }
+
+[target.'cfg(not(windows))'.dependencies]
+chronopt_core = { package = "chronopt", path = "../rust" }
+
+[target.'cfg(windows)'.dependencies]
+chronopt_core = { package = "chronopt", path = "../rust", default-features = false, features = ["cranelift-backend"] }
+
+[build-dependencies]
+pyo3-build-config = "0.27.1"
+
+[[bin]]
+name = "generate_stubs"
+path = "src/bin/generate_stubs.rs"
+required-features = ["stubgen"]
