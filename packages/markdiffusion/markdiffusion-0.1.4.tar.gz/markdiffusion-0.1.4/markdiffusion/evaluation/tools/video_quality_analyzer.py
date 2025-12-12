@@ -1,0 +1,1007 @@
+from typing import List
+from PIL import Image
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torchvision import transforms
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize, CenterCrop
+import numpy as np
+from tqdm import tqdm
+import cv2
+import os
+import subprocess
+from markdiffusion.utils.media_utils import pil_to_torch
+
+try:
+    from torchvision.transforms import InterpolationMode
+    BICUBIC = InterpolationMode.BICUBIC
+except ImportError:
+    BICUBIC = Image.BICUBIC
+
+from pathlib import Path
+CACHE_DIR = Path.home() / ".cache" / "markdiffusion"
+
+
+def dino_transform_Image(n_px):
+    """DINO transform for PIL Images."""
+    return Compose([
+        Resize(size=n_px, antialias=False),
+        ToTensor(),
+        Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    ])
+
+import requests
+# def download_file(url, dest):
+#     resp = requests.get(url, timeout=20)
+#     resp.raise_for_status()
+#     with open(dest, "wb") as f:
+#         f.write(resp.content)
+#     print(f"Downloaded file: {dest}")
+
+def download_recursive(api_url, local_dir):
+    local_dir.mkdir(parents=True, exist_ok=True)
+    listing = requests.get(api_url, timeout=20).json()
+    if isinstance(listing, dict) and listing.get("message", "").startswith("API rate limit"):
+        raise RuntimeError("GitHub API rate-limited. Try again later.")
+
+    for item in listing:
+        name = item["name"]
+        dest = local_dir / name
+
+        if item["type"] == "file":
+            if not dest.exists():
+                print(f"Downloading file: {item['download_url']}")
+                resp = requests.get(item["download_url"], timeout=20)
+                resp.raise_for_status()
+                with open(dest, "wb") as f:
+                    f.write(resp.content)
+
+        elif item["type"] == "dir":
+            dest.mkdir(exist_ok=True)
+            download_recursive(item["url"], dest)
+
+class VideoQualityAnalyzer:
+    """Video quality analyzer base class."""
+
+    def __init__(self):
+        pass
+
+    def analyze(self, frames: List[Image.Image]):
+        """Analyze video quality.
+        
+        Args:
+            frames: List of PIL Image frames representing the video
+            
+        Returns:
+            Quality score(s)
+        """
+        raise NotImplementedError("Subclasses must implement analyze method")
+
+
+class SubjectConsistencyAnalyzer(VideoQualityAnalyzer):
+    """Analyzer for evaluating subject consistency across video frames using DINO features.
+    
+    This analyzer measures how consistently the main subject appears across frames by:
+    1. Extracting DINO features from each frame
+    2. Computing cosine similarity between consecutive frames and with the first frame
+    3. Averaging these similarities to get a consistency score
+    """
+    def __init__(
+        self,
+        model_url: str = "https://dl.fbaipublicfiles.com/dino/dino_vitbase16_pretrain/dino_vitbase16_pretrain_full_checkpoint.pth",
+        model_path: str = "dino_vitb16_full.pth",
+        device: str = "cuda"
+    ):
+        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        self.model_path = model_path
+        self.model_url = model_url
+
+        # ensure weights exist / download automatically
+        self._download_weights()
+
+        # load model via timm
+        self.model = self._load_dino_model()
+        self.model.eval()
+        self.model.to(self.device)
+
+    def _download_weights(self):
+        if not os.path.exists(self.model_path):
+            import urllib
+            print("Downloading DINO ViT-B/16 weights...")
+            urllib.request.urlretrieve(self.model_url, self.model_path)
+            print("Download complete:", self.model_path)
+        else:
+            print("Weights already exist:", self.model_path)
+
+    def _load_dino_model(self):
+        import timm
+        # timm vit-base-p16 structure
+        model = timm.create_model(
+            "vit_base_patch16_224",
+            pretrained=False,
+            num_classes=0
+        )
+
+        # load full checkpoint
+        ckpt = torch.load(self.model_path, map_location="cpu")
+
+        # for full checkpoint the state dict is nested
+        if "teacher" in ckpt:
+            state_dict = ckpt["teacher"]
+        elif "student" in ckpt:
+            state_dict = ckpt["student"]
+        else:
+            state_dict = ckpt
+
+        # remove classifier head keys
+        state_dict = {k: v for k, v in state_dict.items() if "head" not in k}
+
+        model.load_state_dict(state_dict, strict=False)
+        return model
+    
+    def transform(self, img: Image.Image) -> torch.Tensor:
+        """Transform PIL Image to tensor for DINO model."""
+        transform = dino_transform_Image(224)
+        return transform(img)
+    
+    def analyze(self, frames: List[Image.Image]) -> float:
+        """Analyze subject consistency across video frames.
+        
+        Args:
+            frames: List of PIL Image frames representing the video
+            
+        Returns:
+            Subject consistency score (higher is better, range [0, 1])
+        """
+        if len(frames) < 2:
+            return 1.0  # Single frame is perfectly consistent with itself
+        
+        video_sim = 0.0
+        frame_count = 0
+        
+        # Process frames and extract features
+        with torch.no_grad():
+            for i, frame in enumerate(frames):
+                # Transform and prepare frame
+                frame_tensor = self.transform(frame).unsqueeze(0).to(self.device)
+                
+                # Extract features
+                features = self.model(frame_tensor)
+                features = F.normalize(features, dim=-1, p=2)
+                
+                if i == 0:
+                    # Store first frame features
+                    first_frame_features = features
+                else:
+                    # Compute similarity with previous frame
+                    sim_prev = max(0.0, F.cosine_similarity(prev_features, features).item())
+                    
+                    # Compute similarity with first frame
+                    sim_first = max(0.0, F.cosine_similarity(first_frame_features, features).item())
+                    
+                    # Average the two similarities
+                    frame_sim = (sim_prev + sim_first) / 2.0
+                    video_sim += frame_sim
+                    frame_count += 1
+                
+                # Store current features as previous for next iteration
+                prev_features = features
+        
+        # Return average similarity across all frame pairs
+        if frame_count > 0:
+            return video_sim / frame_count
+        else:
+            return 1.0
+
+from contextlib import contextmanager
+
+@contextmanager
+def isolated_import_context(code_dir, isolated_prefixes, prefix_tag=None):
+    """Context manager for isolated module imports to avoid conflicts with main project.
+
+    Args:
+        code_dir: External code directory to add to sys.path
+        isolated_prefixes: List of module name prefixes to isolate (e.g., ['utils', 'networks'])
+        prefix_tag: Tag to prefix external modules with after loading (default: code_dir.name + '_ext_')
+
+    Example:
+        with isolated_import_context(CODE_DIR, ['utils', 'networks']):
+            # imports here will use CODE_DIR's modules
+            spec = importlib.util.spec_from_file_location("entry", CODE_DIR / "main.py")
+            ...
+        # after exiting, main project's 'utils' is restored
+    """
+    import sys
+
+    if prefix_tag is None:
+        prefix_tag = code_dir.name + '_ext_'
+
+    original_path = sys.path.copy()
+    saved_modules = {}
+
+    # Remove potentially conflicting modules
+    for prefix in isolated_prefixes:
+        for mod_name in list(sys.modules.keys()):
+            if mod_name == prefix or mod_name.startswith(prefix + '.'):
+                saved_modules[mod_name] = sys.modules.pop(mod_name)
+
+    sys.path.insert(0, str(code_dir))
+
+    try:
+        yield
+    finally:
+        sys.path[:] = original_path
+
+        # Rename external modules with prefix tag to avoid future conflicts
+        for prefix in isolated_prefixes:
+            for mod_name in list(sys.modules.keys()):
+                if mod_name == prefix or mod_name.startswith(prefix + '.'):
+                    if mod_name not in saved_modules:
+                        sys.modules[prefix_tag + mod_name] = sys.modules.pop(mod_name)
+
+        # Restore main project modules
+        sys.modules.update(saved_modules)
+
+class MotionSmoothnessAnalyzer(VideoQualityAnalyzer):
+    """Analyzer for evaluating motion smoothness in videos using AMT-S model.
+    
+    This analyzer measures motion smoothness by:
+    1. Extracting frames at even indices from the video
+    2. Using AMT-S model to interpolate between consecutive frames
+    3. Comparing interpolated frames with actual frames to compute smoothness score
+    
+    The score represents how well the motion can be predicted/interpolated,
+    with smoother motion resulting in higher scores.
+    """
+    
+    # Remote sources
+
+    # Local cache dir OUTSIDE project (to avoid vendoring)
+    from pathlib import Path
+    CODE_DIR = CACHE_DIR / "amt"
+    GH_API = "https://api.github.com/repos/MCG-NKU/AMT/contents"
+    WEIGHT_URL = 'https://hf-mirror.com/lalala125/AMT/resolve/main/amt-s.pth'
+    WEIGHT_PATH = CACHE_DIR / "amt" / "amt-s.pth"
+
+    def __init__(self,
+                 device: str = "cuda", niters: int = 1):
+        """Initialize the MotionSmoothnessAnalyzer.
+
+        Args:
+            device: Device to run the model on ('cuda' or 'cpu')
+            niters: Number of interpolation iterations (default: 1)
+        """
+        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        self.niters = niters
+
+        # Initialize model parameters
+        self._initialize_params()
+
+        # Ensure model files exist → download if needed
+        self._ensure_files()
+
+        # Load AMT-S model
+        self.model = self._load_amt_model(str(self.WEIGHT_PATH))
+        self.model.eval()
+        self.model.to(self.device)
+
+    def _ensure_files(self):
+        """Download architecture and weight files if they do not exist."""
+        self.CODE_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Check if key file exists, not just directory
+        if not (self.CODE_DIR / "networks" / "AMT-S.py").exists():
+            print("Downloading AMT architecture...")
+            download_recursive(self.GH_API, self.CODE_DIR)
+
+        if not self.WEIGHT_PATH.exists():
+            print("Downloading AMT-S weights...")
+            self._download(self.WEIGHT_URL, self.CODE_DIR)
+            
+    def _download(self, url: str, local_dir: Path):
+        subprocess.run(['wget', url, '-P', local_dir], check=True)
+        
+    def _initialize_params(self):
+        """Initialize parameters for video processing."""
+        if self.device.type == 'cuda':
+            self.anchor_resolution = 1024 * 512
+            self.anchor_memory = 1500 * 1024**2
+            self.anchor_memory_bias = 2500 * 1024**2
+            self.vram_avail = torch.cuda.get_device_properties(self.device).total_memory
+        else:
+            # Do not resize in cpu mode
+            self.anchor_resolution = 8192 * 8192
+            self.anchor_memory = 1
+            self.anchor_memory_bias = 0
+            self.vram_avail = 1
+        
+        # Time embedding for interpolation (t=0.5)
+        self.embt = torch.tensor(1/2).float().view(1, 1, 1, 1).to(self.device)
+        
+    def _load_amt_model(self, model_path: str):
+        """Load AMT-S model.
+
+        Args:
+            model_path: Path to the model checkpoint
+
+        Returns:
+            Loaded AMT-S model
+        """
+        import importlib.util
+
+        isolated_prefixes = ["utils", "networks"]
+
+        with isolated_import_context(self.CODE_DIR, isolated_prefixes, prefix_tag="_amt_ext_"):
+            # Load AMT-S entry module
+            entry_py = self.CODE_DIR / "networks" / "AMT-S.py"
+            spec = importlib.util.spec_from_file_location("_amt_s_entry", entry_py)
+            amt_s_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(amt_s_module)
+            Model = amt_s_module.Model
+
+            # Also load utils functions needed later (store as instance attributes)
+            utils_py = self.CODE_DIR / "utils" / "utils.py"
+            spec_utils = importlib.util.spec_from_file_location("_amt_utils", utils_py)
+            utils_module = importlib.util.module_from_spec(spec_utils)
+            spec_utils.loader.exec_module(utils_module)
+            self._amt_img2tensor = utils_module.img2tensor
+            self._amt_tensor2img = utils_module.tensor2img
+            self._amt_check_dim_and_resize = utils_module.check_dim_and_resize
+            self._amt_InputPadder = utils_module.InputPadder
+
+            # Create model
+            model = Model(corr_radius=3, corr_lvls=4, num_flows=3)
+            if os.path.exists(model_path):
+                ckpt = torch.load(model_path, map_location="cpu", weights_only=False)
+                model.load_state_dict(ckpt['state_dict'])
+
+        return model
+    
+    def _extract_frames(self, frames: List[Image.Image], start_from: int = 0) -> List[np.ndarray]:
+        """Extract frames at even indices starting from start_from.
+        
+        Args:
+            frames: List of PIL Image frames
+            start_from: Starting index (default: 0)
+            
+        Returns:
+            List of extracted frames as numpy arrays
+        """
+        extracted = []
+        for i in range(start_from, len(frames), 2):
+            # Convert PIL Image to numpy array
+            frame_np = np.array(frames[i])
+            extracted.append(frame_np)
+        return extracted
+    
+    def _img2tensor(self, img: np.ndarray) -> torch.Tensor:
+        """Convert numpy image to tensor.
+
+        Args:
+            img: Image as numpy array (H, W, C)
+
+        Returns:
+            Image tensor (1, C, H, W)
+        """
+        return self._amt_img2tensor(img)
+
+    def _tensor2img(self, tensor: torch.Tensor) -> np.ndarray:
+        """Convert tensor to numpy image.
+
+        Args:
+            tensor: Image tensor (1, C, H, W)
+
+        Returns:
+            Image as numpy array (H, W, C)
+        """
+        return self._amt_tensor2img(tensor)
+
+    def _check_dim_and_resize(self, tensor_list: List[torch.Tensor]) -> List[torch.Tensor]:
+        """Check dimensions and resize tensors if needed.
+
+        Args:
+            tensor_list: List of image tensors
+
+        Returns:
+            List of resized tensors
+        """
+        return self._amt_check_dim_and_resize(tensor_list)
+    
+    def _calculate_scale(self, h: int, w: int) -> float:
+        """Calculate scaling factor based on available VRAM.
+        
+        Args:
+            h: Height of the image
+            w: Width of the image
+            
+        Returns:
+            Scaling factor
+        """
+        scale = self.anchor_resolution / (h * w) * np.sqrt((self.vram_avail - self.anchor_memory_bias) / self.anchor_memory)
+        scale = 1 if scale > 1 else scale
+        scale = 1 / np.floor(1 / np.sqrt(scale) * 16) * 16
+        return scale
+    
+    def _interpolate_frames(self, inputs: List[torch.Tensor], scale: float) -> List[torch.Tensor]:
+        """Interpolate frames using AMT-S model.
+
+        Args:
+            inputs: List of input frame tensors
+            scale: Scaling factor for processing
+
+        Returns:
+            List of interpolated frame tensors
+        """
+        # Pad inputs
+        padding = int(16 / scale)
+        padder = self._amt_InputPadder(inputs[0].shape, padding)
+        inputs = padder.pad(*inputs)
+
+        # Perform interpolation for specified iterations
+        for _ in range(self.niters):
+            outputs = [inputs[0]]
+            for in_0, in_1 in zip(inputs[:-1], inputs[1:]):
+                in_0 = in_0.to(self.device)
+                in_1 = in_1.to(self.device)
+                with torch.no_grad():
+                    imgt_pred = self.model(in_0, in_1, self.embt, scale_factor=scale, eval=True)['imgt_pred']
+                outputs += [imgt_pred.cpu(), in_1.cpu()]
+            inputs = outputs
+
+        # Unpad outputs
+        outputs = padder.unpad(*outputs)
+        return outputs
+    
+    def _compute_frame_difference(self, img1: np.ndarray, img2: np.ndarray) -> float:
+        """Compute average absolute difference between two images.
+        
+        Args:
+            img1: First image
+            img2: Second image
+            
+        Returns:
+            Average pixel difference
+        """
+        diff = cv2.absdiff(img1, img2)
+        return np.mean(diff)
+    
+    def _compute_vfi_score(self, original_frames: List[np.ndarray], interpolated_frames: List[np.ndarray]) -> float:
+        """Compute video frame interpolation score.
+        
+        Args:
+            original_frames: Original video frames
+            interpolated_frames: Interpolated frames
+            
+        Returns:
+            VFI score (lower difference means better interpolation)
+        """
+        # Extract frames at odd indices for comparison
+        ori_compare = self._extract_frames([Image.fromarray(f) for f in original_frames], start_from=1)
+        interp_compare = self._extract_frames([Image.fromarray(f) for f in interpolated_frames], start_from=1)
+        
+        scores = []
+        for ori, interp in zip(ori_compare, interp_compare):
+            score = self._compute_frame_difference(ori, interp)
+            scores.append(score)
+        
+        return np.mean(scores) if scores else 0.0
+    
+    def analyze(self, frames: List[Image.Image]) -> float:
+        """Analyze motion smoothness in video frames.
+        
+        Args:
+            frames: List of PIL Image frames representing the video
+            
+        Returns:
+            Motion smoothness score (higher is better, range [0, 1])
+        """
+        if len(frames) < 2:
+            return 1.0  # Single frame has perfect smoothness
+        
+        # Convert PIL Images to numpy arrays
+        np_frames = [np.array(frame) for frame in frames]
+        
+        # Extract frames at even indices
+        frame_list = self._extract_frames(frames, start_from=0)
+        
+        # Convert to tensors
+        inputs = [self._img2tensor(frame).to(self.device) for frame in frame_list]
+        
+        if len(inputs) <= 1:
+            return 1.0  # Not enough frames for interpolation
+        
+        # Check dimensions and resize if needed
+        inputs = self._check_dim_and_resize(inputs)
+        h, w = inputs[0].shape[-2:]
+        
+        # Calculate scale based on available memory
+        scale = self._calculate_scale(h, w)
+        
+        # Perform frame interpolation
+        outputs = self._interpolate_frames(inputs, scale)
+        
+        # Convert outputs back to images
+        output_images = [self._tensor2img(out) for out in outputs]
+        
+        # Compute VFI score
+        vfi_score = self._compute_vfi_score(np_frames, output_images)
+        
+        # Normalize score to [0, 1] range (higher is better)
+        # Original score is average pixel difference [0, 255], we normalize and invert
+        normalized_score = (255.0 - vfi_score) / 255.0
+        
+        return normalized_score
+
+
+class DynamicDegreeAnalyzer(VideoQualityAnalyzer):
+    """Analyzer for evaluating dynamic degree (motion intensity) in videos using RAFT optical flow.
+
+    This analyzer measures the amount and intensity of motion in videos by:
+    1. Computing optical flow between consecutive frames using RAFT
+    2. Calculating flow magnitude for each pixel
+    3. Extracting top 5% highest flow magnitudes
+    4. Determining if video has sufficient dynamic motion based on thresholds
+
+    The score represents whether the video contains dynamic motion (1.0) or is mostly static (0.0).
+    """
+    from pathlib import Path
+
+    # GitHub API endpoint to list directory content
+    GH_API = "https://api.github.com/repos/princeton-vl/RAFT/contents/core"
+
+    # Local cache directory (project-external)
+    CODE_DIR = CACHE_DIR / "raft" / "core"
+    WEIGHT_DIR = CACHE_DIR / "raft"
+
+    def __init__(self, model_name: str = "raft-things.pth",
+                 device: str = "cuda", sample_fps: int = 8):
+        """Initialize the DynamicDegreeAnalyzer.
+
+        Args:
+            model_name: Name of the RAFT model checkpoint
+            device: Device to run the model on ('cuda' or 'cpu')
+            sample_fps: Target FPS for frame sampling (default: 8)
+        """
+        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        self.sample_fps = sample_fps
+        self.weight_path = self.WEIGHT_DIR / "models" / model_name
+
+        self._ensure_files()
+
+        # Load RAFT model
+        self.model = self._load_raft_model(str(self.weight_path))
+        self.model.eval()
+        self.model.to(self.device)
+
+    def _ensure_files(self):
+        """Ensure RAFT model code + weights available locally"""
+        self.CODE_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Check if key file exists, not just directory
+        if not (self.CODE_DIR / "raft.py").exists():
+            print("Downloading RAFT architecture...")
+            download_recursive(self.GH_API, self.CODE_DIR)
+
+        # Download weights
+        if not self.weight_path.exists():
+            print("Downloading RAFT weights...")
+            self._download_file()
+
+    def _download_file(self):
+        self.WEIGHT_DIR.mkdir(parents=True, exist_ok=True)
+        wget_command = ['wget', '-P', str(self.WEIGHT_DIR), 'https://dl.dropboxusercontent.com/s/4j4z58wuv8o0mfz/models.zip']
+        unzip_command = ['unzip', '-o', '-d', str(self.WEIGHT_DIR), str(self.WEIGHT_DIR / 'models.zip')]
+        remove_command = ['rm', '-f', str(self.WEIGHT_DIR / 'models.zip')]
+
+        subprocess.run(wget_command, check=True)
+        subprocess.run(unzip_command, check=True)
+        subprocess.run(remove_command, check=True)
+
+    def _load_raft_model(self, model_path: str):
+        """Load RAFT optical flow model.
+
+        Args:
+            model_path: Path to the model checkpoint
+
+        Returns:
+            Loaded RAFT model
+        """
+        import importlib.util
+
+        # RAFT internal modules that may conflict with main project
+        isolated_prefixes = ["utils", "update", "extractor", "corr", "raft", "alt_cuda_corr"]
+
+        with isolated_import_context(self.CODE_DIR, isolated_prefixes, prefix_tag="_raft_ext_"):
+            # Load RAFT entry module
+            raft_py = self.CODE_DIR / "raft.py"
+            spec = importlib.util.spec_from_file_location("_raft_entry", raft_py)
+            raft_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(raft_module)
+            RAFT = raft_module.RAFT
+
+            # Load InputPadder for later use
+            utils_py = self.CODE_DIR / "utils" / "utils.py"
+            spec_utils = importlib.util.spec_from_file_location("_raft_utils", utils_py)
+            utils_module = importlib.util.module_from_spec(spec_utils)
+            spec_utils.loader.exec_module(utils_module)
+            self._raft_InputPadder = utils_module.InputPadder
+
+            from easydict import EasyDict as edict
+
+            # Configure RAFT arguments
+            args = edict({
+                "model": model_path,
+                "small": False,
+                "mixed_precision": False,
+                "alternate_corr": False
+            })
+
+            # Create and load model
+            model = RAFT(args)
+
+            if os.path.exists(model_path):
+                ckpt = torch.load(model_path, map_location="cpu")
+                # Remove 'module.' prefix if present (from DataParallel)
+                new_ckpt = {k.replace('module.', ''): v for k, v in ckpt.items()}
+                model.load_state_dict(new_ckpt)
+
+        return model
+    
+    def _extract_frames_for_flow(self, frames: List[Image.Image], target_fps: int = 8) -> List[torch.Tensor]:
+        """Extract and prepare frames for optical flow computation.
+        
+        Args:
+            frames: List of PIL Image frames
+            target_fps: Target sampling rate (default: 8 fps)
+            
+        Returns:
+            List of prepared frame tensors
+        """
+        # Estimate original FPS and calculate sampling interval
+        # Assuming 30fps original video, adjust sampling to get ~8fps
+        total_frames = len(frames)
+        assumed_fps = 30  # Common video fps
+        interval = max(1, round(assumed_fps / target_fps))
+        
+        # Sample frames at interval
+        sampled_frames = []
+        for i in range(0, total_frames, interval):
+            frame = frames[i]
+            # Convert PIL to numpy array
+            frame_np = np.array(frame)
+            # Convert to tensor and normalize
+            frame_tensor = torch.from_numpy(frame_np.astype(np.uint8)).permute(2, 0, 1).float()
+            frame_tensor = frame_tensor[None].to(self.device)
+            sampled_frames.append(frame_tensor)
+        
+        return sampled_frames
+    
+    def _compute_flow_magnitude(self, flow: torch.Tensor) -> float:
+        """Compute flow magnitude score from optical flow.
+        
+        Args:
+            flow: Optical flow tensor (B, 2, H, W)
+            
+        Returns:
+            Flow magnitude score
+        """
+        # Extract flow components
+        flow_np = flow[0].permute(1, 2, 0).cpu().numpy()
+        u = flow_np[:, :, 0]
+        v = flow_np[:, :, 1]
+        
+        # Compute flow magnitude
+        magnitude = np.sqrt(np.square(u) + np.square(v))
+        
+        # Get top 5% highest magnitudes
+        h, w = magnitude.shape
+        magnitude_flat = magnitude.flatten()
+        cut_index = int(h * w * 0.05)
+        
+        # Sort in descending order and take mean of top 5%
+        top_magnitudes = np.sort(-magnitude_flat)[:cut_index]
+        mean_magnitude = np.mean(np.abs(top_magnitudes))
+        
+        return mean_magnitude.item()
+    
+    def _determine_dynamic_threshold(self, frame_shape: tuple, num_frames: int) -> dict:
+        """Determine thresholds for dynamic motion detection.
+        
+        Args:
+            frame_shape: Shape of the frame tensor
+            num_frames: Number of frames in the video
+            
+        Returns:
+            Dictionary with threshold parameters
+        """
+        # Scale threshold based on image resolution
+        scale = min(frame_shape[-2:])  # min of height and width
+        magnitude_threshold = 6.0 * (scale / 256.0)
+        
+        # Scale count threshold based on number of frames
+        count_threshold = round(4 * (num_frames / 16.0))
+        
+        return {
+            "magnitude_threshold": magnitude_threshold,
+            "count_threshold": count_threshold
+        }
+    
+    def _check_dynamic_motion(self, flow_scores: List[float], thresholds: dict) -> bool:
+        """Check if video has dynamic motion based on flow scores.
+        
+        Args:
+            flow_scores: List of optical flow magnitude scores
+            thresholds: Threshold parameters
+            
+        Returns:
+            True if video has dynamic motion, False otherwise
+        """
+        magnitude_threshold = thresholds["magnitude_threshold"]
+        count_threshold = thresholds["count_threshold"]
+        
+        # Count frames with significant motion
+        motion_count = 0
+        for score in flow_scores:
+            if score > magnitude_threshold:
+                motion_count += 1
+            if motion_count >= count_threshold:
+                return True
+        
+        return False
+    
+    def analyze(self, frames: List[Image.Image]) -> float:
+        """Analyze dynamic degree (motion intensity) in video frames.
+        
+        Args:
+            frames: List of PIL Image frames representing the video
+            
+        Returns:
+            Dynamic degree score: 1.0 if video has dynamic motion, 0.0 if mostly static
+        """
+        if len(frames) < 2:
+            return 0.0  # Cannot compute optical flow with less than 2 frames
+        
+        # Extract and prepare frames for optical flow
+        prepared_frames = self._extract_frames_for_flow(frames, self.sample_fps)
+        
+        if len(prepared_frames) < 2:
+            return 0.0
+        
+        # Determine thresholds based on video characteristics
+        thresholds = self._determine_dynamic_threshold(
+            prepared_frames[0].shape, 
+            len(prepared_frames)
+        )
+        
+        # Compute optical flow between consecutive frames
+        flow_scores = []
+        
+        with torch.no_grad():
+            for frame1, frame2 in zip(prepared_frames[:-1], prepared_frames[1:]):
+                # Pad frames if necessary
+                padder = self._raft_InputPadder(frame1.shape)
+                frame1_padded, frame2_padded = padder.pad(frame1, frame2)
+
+                # Compute optical flow
+                _, flow_up = self.model(frame1_padded, frame2_padded, iters=20, test_mode=True)
+
+                # Calculate flow magnitude score
+                magnitude_score = self._compute_flow_magnitude(flow_up)
+                flow_scores.append(magnitude_score)
+        
+        # Check if video has dynamic motion
+        has_dynamic_motion = self._check_dynamic_motion(flow_scores, thresholds)
+        
+        # Return binary score: 1.0 for dynamic, 0.0 for static
+        return 1.0 if has_dynamic_motion else 0.0
+
+
+class BackgroundConsistencyAnalyzer(VideoQualityAnalyzer):
+    """Analyzer for evaluating background consistency across video frames using CLIP features.
+    
+    This analyzer measures how consistently the background appears across frames by:
+    1. Extracting CLIP visual features from each frame
+    2. Computing cosine similarity between consecutive frames and with the first frame
+    3. Averaging these similarities to get a consistency score
+    
+    Similar to SubjectConsistencyAnalyzer but focuses on overall visual consistency
+    including background elements, making it suitable for detecting background stability.
+    """
+    
+    def __init__(self, model_name: str = "ViT-B/32", device: str = "cuda"):
+        """Initialize the BackgroundConsistencyAnalyzer.
+        
+        Args:
+            model_name: CLIP model name (default: "ViT-B/32")
+            device: Device to run the model on ('cuda' or 'cpu')
+        """
+        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        
+        # Load CLIP model
+        self.model, self.preprocess = self._load_clip_model(model_name)
+        self.model.eval()
+        self.model.to(self.device)
+        
+        # Image transform for CLIP (when processing tensor inputs)
+        self.tensor_transform = self._get_clip_tensor_transform(224)
+        
+    def _load_clip_model(self, model_name: str):
+        """Load CLIP model.
+        
+        Args:
+            model_name: Name of the CLIP model to load
+            
+        Returns:
+            Tuple of (model, preprocess_function)
+        """
+        import clip
+        
+        model, preprocess = clip.load(model_name, device=self.device)
+        return model, preprocess
+    
+    def _get_clip_tensor_transform(self, n_px: int):
+        """Get CLIP transform for tensor inputs.
+        
+        Args:
+            n_px: Target image size
+            
+        Returns:
+            Transform composition for tensor inputs
+        """
+        try:
+            from torchvision.transforms import InterpolationMode
+            BICUBIC = InterpolationMode.BICUBIC
+        except ImportError:
+            BICUBIC = Image.BICUBIC
+            
+        return Compose([
+            Resize(n_px, interpolation=BICUBIC, antialias=False),
+            CenterCrop(n_px),
+            transforms.Lambda(lambda x: x.float().div(255.0)),
+            Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+        ])
+    
+    def _prepare_images_for_clip(self, frames: List[Image.Image]) -> torch.Tensor:
+        """Prepare PIL images for CLIP processing.
+        
+        Args:
+            frames: List of PIL Image frames
+            
+        Returns:
+            Batch tensor of preprocessed images
+        """
+        # Use CLIP's built-in preprocess for PIL images
+        images = []
+        for frame in frames:
+            processed = self.preprocess(frame)
+            images.append(processed)
+        
+        # Stack into batch tensor
+        return torch.stack(images).to(self.device)
+    
+    def analyze(self, frames: List[Image.Image]) -> float:
+        """Analyze background consistency across video frames.
+        
+        Args:
+            frames: List of PIL Image frames representing the video
+            
+        Returns:
+            Background consistency score (higher is better, range [0, 1])
+        """
+        if len(frames) < 2:
+            return 1.0  # Single frame is perfectly consistent with itself
+        
+        # Prepare images for CLIP
+        images = self._prepare_images_for_clip(frames)
+        
+        # Extract CLIP features
+        with torch.no_grad():
+            image_features = self.model.encode_image(images)
+            image_features = F.normalize(image_features, dim=-1, p=2)
+        
+        video_sim = 0.0
+        frame_count = 0
+        
+        # Compute similarity between frames
+        for i in range(len(image_features)):
+            image_feature = image_features[i].unsqueeze(0)
+            
+            if i == 0:
+                # Store first frame features
+                first_image_feature = image_feature
+            else:
+                # Compute similarity with previous frame
+                sim_prev = max(0.0, F.cosine_similarity(former_image_feature, image_feature).item())
+                
+                # Compute similarity with first frame
+                sim_first = max(0.0, F.cosine_similarity(first_image_feature, image_feature).item())
+                
+                # Average the two similarities
+                frame_sim = (sim_prev + sim_first) / 2.0
+                video_sim += frame_sim
+                frame_count += 1
+            
+            # Store current features as previous for next iteration
+            former_image_feature = image_feature
+        
+        # Return average similarity across all frame pairs
+        if frame_count > 0:
+            return video_sim / frame_count
+        else:
+            return 1.0
+        
+class ImagingQualityAnalyzer(VideoQualityAnalyzer):
+    """Analyzer for evaluating imaging quality of videos.
+    
+    This analyzer measures the quality of videos by:
+    1. Inputting frames into MUSIQ image quality predictor
+    2. Determining if the video is blurry or has artifacts
+    
+    The score represents the quality of the video (higher is better).
+    """
+    def __init__(self, model_path: str = "musiq_spaq_ckpt-358bb6af.pth", device: str = "cuda"):
+        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        self.model = self._load_musiq(model_path)
+        self.model.to(self.device)
+        self.model.eval()
+        
+    def _load_musiq(self, model_path: str):
+        """Load MUSIQ model.
+        
+        Args:
+            model_path: Path to the MUSIQ model checkpoint
+            
+        Returns:
+            MUSIQ model
+        """
+        model_path = CACHE_DIR / model_path
+        
+        # if the model_path not exists
+        # then makedir and wget
+        if not os.path.exists(model_path):
+            os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            wget_command = ['wget', 'https://github.com/chaofengc/IQA-PyTorch/releases/download/v0.1-weights/musiq_spaq_ckpt-358bb6af.pth', '-P', os.path.dirname(model_path)]
+            subprocess.run(wget_command, check=True)
+        try:
+            from pyiqa.archs.musiq_arch import MUSIQ
+        except ImportError:
+            raise ImportError("Please install pyiqa to use ImagingQualityAnalyzer: pip install pyiqa")
+        model = MUSIQ(pretrained_model_path=str(model_path))
+        
+        return model
+    
+    def _preprocess_frames(self, frames: List[Image.Image]) -> torch.Tensor:
+        """Preprocess frames for MUSIQ model.
+        
+        Args:
+            frames: List of PIL Image frames
+            
+        Returns:
+            Preprocessed frames as tensor
+        """
+        frames = [pil_to_torch(frame, normalize=False) for frame in frames] # [(C, H, W)]
+        frames = torch.stack(frames) # (T, C, H, W)
+        
+        _, _, h, w = frames.size()
+        if max(h, w) > 512:
+            scale = 512./max(h, w)
+            frames = F.interpolate(frames, size=(int(scale * h), int(scale * w)), mode='bilinear', align_corners=False)
+        
+        return frames
+    
+    def analyze(self, frames: List[Image.Image]) -> float:
+        """Analyze imaging quality of video frames.
+        
+        Args:
+            frames: List of PIL Image frames representing the video
+            
+        Returns:
+            Imaging quality score (higher is better, range [0, 1])
+        """
+        frame_tensor = self._preprocess_frames(frames)
+        acc_score_video = 0.0
+        for i in range(len(frame_tensor)):
+            frame = frame_tensor[i].unsqueeze(0).to(self.device)
+            score = self.model(frame)
+            acc_score_video += float(score)
+        return acc_score_video / (100 * len(frame_tensor))
