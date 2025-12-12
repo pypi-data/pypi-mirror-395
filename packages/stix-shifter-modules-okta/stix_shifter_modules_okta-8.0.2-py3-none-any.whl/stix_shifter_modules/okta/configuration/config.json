@@ -1,0 +1,720 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Okta",
+            "group": "okta",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources.html"
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 10000000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "batch_size": {
+                "default": 2000,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "optional": true,
+                "hidden": true
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 3600,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "config_map": {
+                        "severity": [
+                            "DEBUG",
+                            "INFO",
+                            "WARN",
+                            "ERROR"
+                        ],
+                        "outcome.result": [
+                            "SUCCESS",
+                            "FAILURE",
+                            "SKIPPED",
+                            "ALLOW",
+                            "DENY",
+                            "CHALLENGE",
+                            "UNKNOWN"
+                        ],
+                        "transaction.type": [
+                            "WEB",
+                            "JOB"
+                        ],
+                        "authenticationContext.authenticationProvider": [
+                            "OKTA_AUTHENTICATION_PROVIDER",
+                            "ACTIVE_DIRECTORY",
+                            "LDAP",
+                            "FEDERATION",
+                            "SOCIAL",
+                            "FACTOR_PROVIDER"
+                        ],
+                        "authenticationContext.credentialProvider": [
+                            "OKTA_CREDENTIAL_PROVIDER",
+                            "RSA",
+                            "SYMANTEC",
+                            "GOOGLE",
+                            "DUO",
+                            "YUBIKEY"
+                        ],
+                        "authenticationContext.credentialType": [
+                            "OTP",
+                            "SMS",
+                            "PASSWORD",
+                            "ASSERTION",
+                            "IWA",
+                            "EMAIL",
+                            "OAUTH2",
+                            "JWT",
+                            "CERTIFICATE",
+                            "PRE_SHARED_SYMMETRIC_KEY",
+                            "OKTA_CLIENT_SESSION",
+                            "DEVICE_UDID"
+                        ]
+                    },
+                    "to_stix_map": {
+                        "eventType": {
+                            "key": "x-oca-event.action",
+                            "object": "event"
+                        },
+                        "uuid": {
+                            "key": "x-oca-event.x_event_unique_id",
+                            "object": "event"
+                        },
+                        "outcome": {
+                            "result": {
+                                "key": "x-oca-event.outcome",
+                                "object": "event"
+                            },
+                            "reason": {
+                                "key": "x-oca-event.x_outcome_reason",
+                                "object": "event"
+                            }
+                        },
+                        "legacyEventType": {
+                            "key": "x-oca-event.x_legacy_event_type",
+                            "object": "event"
+                        },
+                        "displayMessage": {
+                            "key": "x-oca-event.x_event_description",
+                            "object": "event"
+                        },
+                        "severity": {
+                            "key": "x-oca-event.x_severity",
+                            "object": "event"
+                        },
+                        "request": {
+                            "ipChain": {
+                                "ip": [
+                                    {
+                                        "key": "ipv4-addr.value",
+                                        "object": "src_ip",
+                                        "unwrap": true
+                                    },
+                                    {
+                                        "key": "x-oca-event.ip_refs",
+                                        "object": "event",
+                                        "references": [
+                                            "src_ip"
+                                        ],
+                                        "group": true
+                                    }
+                                ]
+                            }
+                        },
+                        "securityContext": {
+                            "asNumber": [
+                                {
+                                    "key": "autonomous-system.number",
+                                    "object": "as",
+                                    "transformer": "ToInteger"
+                                },
+                                {
+                                    "key": "x-okta-client.autonomous_system_ref",
+                                    "object": "client",
+                                    "references": "as"
+                                }
+                            ],
+                            "asOrg": {
+                                "key": "autonomous-system.name",
+                                "object": "as"
+                            },
+                            "isp": {
+                                "key": "autonomous-system.x_isp",
+                                "object": "as"
+                            },
+                            "domain": [
+                                {
+                                    "key": "domain-name.value",
+                                    "object": "domain"
+                                },
+                                {
+                                    "key": "autonomous-system.x_domain_ref",
+                                    "object": "as",
+                                    "references": "domain"
+                                }
+                            ]
+                        },
+                        "actor": {
+                            "id": [
+                                {
+                                    "key": "user-account.user_id",
+                                    "object": "actor_user"
+                                },
+                                {
+                                    "key": "x-oca-event.x_actor_ref",
+                                    "object": "event",
+                                    "references": "actor_user"
+                                }
+                            ],
+                            "displayName": {
+                                "key": "user-account.display_name",
+                                "object": "actor_user"
+                            },
+                            "alternateId": {
+                                "key": "user-account.account_login",
+                                "object": "actor_user"
+                            },
+                            "type": {
+                                "key": "user-account.x_actor_type",
+                                "object": "actor_user"
+                            },
+                            "detailEntry": {
+                                "key": "user-account.x_detail_entry",
+                                "object": "actor_user"
+                            }
+                        },
+                        "target": {
+                            "id": {
+                                "key": "x-okta-target.target_id",
+                                "object": "target"
+                            },
+                            "displayName": {
+                                "key": "x-okta-target.display_name",
+                                "object": "target"
+                            },
+                            "alternateId": {
+                                "key": "x-okta-target.alternate_id",
+                                "object": "target"
+                            },
+                            "type": {
+                                "key": "x-okta-target.target_type",
+                                "object": "target"
+                            },
+                            "detailEntry": {
+                                "key": "x-okta-target.detail_entry",
+                                "object": "target"
+                            },
+                            "groupReference": {
+                                "key": "x-oca-event.x_target_refs",
+                                "object": "event",
+                                "references": [
+                                    "target"
+                                ],
+                                "group_ref": true
+                            }
+                        },
+                        "client": {
+                            "id": [
+                                {
+                                    "key": "x-okta-client.client_id",
+                                    "object": "client"
+                                },
+                                {
+                                    "key": "x-oca-event.x_client_ref",
+                                    "object": "event",
+                                    "references": "client"
+                                }
+                            ],
+                            "ipAddress": [
+                                {
+                                    "key": "ipv4-addr.value",
+                                    "object": "client_ip"
+                                },
+                                {
+                                    "key": "x-okta-client.ip_ref",
+                                    "object": "client",
+                                    "references": "client_ip"
+                                },
+                                {
+                                    "key": "x-oca-event.ip_refs",
+                                    "object": "event",
+                                    "references": [
+                                        "client_ip"
+                                    ],
+                                    "group": true
+                                }
+                            ],
+                            "userAgent": {
+                                "rawUserAgent": {
+                                    "key": "software.x_raw_user_agent",
+                                    "object": "software"
+                                },
+                                "os": {
+                                    "key": "software.x_client_os",
+                                    "object": "software"
+                                },
+                                "browser": [
+                                    {
+                                        "key": "software.name",
+                                        "object": "software"
+                                    },
+                                    {
+                                        "key": "x-okta-client.software_ref",
+                                        "object": "client",
+                                        "references": "software"
+                                    }
+                                ]
+                            },
+                            "device": [
+                                {
+                                    "key": "x-okta-client.device",
+                                    "object": "client"
+                                },
+                                {
+                                    "key": "x-oca-event.x_client_ref",
+                                    "object": "event",
+                                    "references": "client"
+                                }
+                            ],
+                            "geographicalContext": {
+                                "country": [
+                                    {
+                                        "key": "x-okta-client.geolocation_country",
+                                        "object": "client"
+                                    },
+                                    {
+                                        "key": "x-oca-event.x_client_ref",
+                                        "object": "event",
+                                        "references": "client"
+                                    }
+                                ],
+                                "city": {
+                                    "key": "x-okta-client.geolocation_city",
+                                    "object": "client"
+                                },
+                                "state": {
+                                    "key": "x-okta-client.geolocation_state",
+                                    "object": "client"
+                                },
+                                "postalCode": {
+                                    "key": "x-okta-client.geolocation_postalcode",
+                                    "object": "client"
+                                },
+                                "geolocation": {
+                                    "key": "x-okta-client.geolocation_coordinates",
+                                    "object": "client"
+                                }
+                            },
+                            "zone": {
+                                "key": "x-okta-client.network_zone_name",
+                                "object": "client"
+                            }
+                        },
+                        "transaction": {
+                            "id": {
+                                "key": "x-oca-event.x_transaction_id",
+                                "object": "event"
+                            },
+                            "type": {
+                                "key": "x-oca-event.category",
+                                "object": "event",
+                                "transformer": "ValueToList"
+                            },
+                            "detail": {
+                                "requestApiTokenId": {
+                                    "key": "x-oca-event.x_request_api_token_id",
+                                    "object": "event"
+                                }
+                            }
+                        },
+                        "debugContext": {
+                            "debugData": {
+                                "key": "x-okta-debug-context.debug_data",
+                                "object": "debug"
+                            },
+                            "groupReference": {
+                                "key": "x-oca-event.x_debug_ref",
+                                "object": "event",
+                                "references": "debug",
+                                "group_ref": true
+                            }
+                        },
+                        "authenticationContext": {
+                            "authenticationProvider": {
+                                "key": "x-okta-authentication-context.authentication_provider",
+                                "object": "auth"
+                            },
+                            "credentialProvider": {
+                                "key": "x-okta-authentication-context.credential_provider",
+                                "object": "auth"
+                            },
+                            "credentialType": {
+                                "key": "x-okta-authentication-context.credential_type",
+                                "object": "auth"
+                            },
+                            "externalSessionId": [
+                                {
+                                    "key": "x-okta-authentication-context.session_id",
+                                    "object": "auth"
+                                },
+                                {
+                                    "key": "x-oca-event.x_authentication_context_ref",
+                                    "object": "event",
+                                    "references": "auth"
+                                }
+                            ],
+                            "interface": {
+                                "key": "x-okta-authentication-context.interface",
+                                "object": "auth"
+                            },
+                            "issuer": {
+                                "id": {
+                                    "key": "x-okta-authentication-context.issuer_id",
+                                    "object": "auth"
+                                },
+                                "type": {
+                                    "key": "x-okta-authentication-context.issuer_type",
+                                    "object": "auth"
+                                }
+                            }
+                        },
+                        "published": [
+                            {
+                                "key": "first_observed"
+                            },
+                            {
+                                "key": "last_observed"
+                            }
+                        ]
+                    },
+                    "from_stix_map": {
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "request.ipChain.ip"
+                                ]
+                            }
+                        },
+                        "autonomous-system": {
+                            "fields": {
+                                "number": [
+                                    "securityContext.asNumber"
+                                ],
+                                "name": [
+                                    "securityContext.asOrg"
+                                ],
+                                "x_isp": [
+                                    "securityContext.isp"
+                                ],
+                                "x_domain_ref.name": [
+                                    "securityContext.domain"
+                                ]
+                            }
+                        },
+                        "domain-name": {
+                            "fields": {
+                                "value": [
+                                    "securityContext.domain"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "user_id": [
+                                    "actor.id"
+                                ],
+                                "display_name": [
+                                    "actor.displayName"
+                                ],
+                                "account_login": [
+                                    "actor.alternateId"
+                                ],
+                                "x_actor_type": [
+                                    "actor.type"
+                                ]
+                            }
+                        },
+                        "x-okta-target": {
+                            "fields": {
+                                "target_id": [
+                                    "target.id"
+                                ],
+                                "display_name": [
+                                    "target.displayName"
+                                ],
+                                "alternate_id": [
+                                    "target.alternateId"
+                                ],
+                                "target_type": [
+                                    "target.type"
+                                ]
+                            }
+                        },
+                        "software": {
+                            "fields": {
+                                "name": [
+                                    "client.userAgent.browser"
+                                ],
+                                "x_raw_user_agent": [
+                                    "client.userAgent.rawUserAgent"
+                                ],
+                                "x_client_os": [
+                                    "client.userAgent.os"
+                                ]
+                            }
+                        },
+                        "x-okta-client": {
+                            "fields": {
+                                "client_id": [
+                                    "client.id"
+                                ],
+                                "client_ip": [
+                                    "client.ipAddress"
+                                ],
+                                "device": [
+                                    "client.device"
+                                ],
+                                "network_zone_name": [
+                                    "client.zone"
+                                ],
+                                "software_ref.name": [
+                                    "client.userAgent.browser"
+                                ],
+                                "autonomous_system_ref.number": [
+                                    "securityContext.asNumber"
+                                ],
+                                "geolocation_country": [
+                                    "client.geographicalContext.country"
+                                ],
+                                "geolocation_city": [
+                                    "client.geographicalContext.city"
+                                ],
+                                "geolocation_state": [
+                                    "client.geographicalContext.state"
+                                ],
+                                "geolocation_postalcode": [
+                                    "client.geographicalContext.postalCode"
+                                ]
+                            }
+                        },
+                        "x-okta-authentication-context": {
+                            "fields": {
+                                "authentication_provider": [
+                                    "authenticationContext.authenticationProvider"
+                                ],
+                                "credential_provider": [
+                                    "authenticationContext.credentialProvider"
+                                ],
+                                "credential_type": [
+                                    "authenticationContext.credentialType"
+                                ],
+                                "issuer_id": [
+                                    "authenticationContext.issuer.id"
+                                ],
+                                "issuer_type": [
+                                    "authenticationContext.issuer.type"
+                                ],
+                                "session_id": [
+                                    "authenticationContext.externalSessionId"
+                                ],
+                                "interface": [
+                                    "authenticationContext.interface"
+                                ]
+                            }
+                        },
+                        "x-oca-event": {
+                            "fields": {
+                                "action": [
+                                    "eventType"
+                                ],
+                                "category[*]": [
+                                    "transaction.type"
+                                ],
+                                "outcome": [
+                                    "outcome.result"
+                                ],
+                                "ip_refs[*].value": [
+                                    "request.ipChain.ip"
+                                ],
+                                "x_event_unique_id": [
+                                    "uuid"
+                                ],
+                                "x_severity": [
+                                    "severity"
+                                ],
+                                "x_event_description": [
+                                    "displayMessage"
+                                ],
+                                "x_transaction_id": [
+                                    "transaction.id"
+                                ],
+                                "x_request_api_token_id": [
+                                    "transaction.detail.requestApiTokenId"
+                                ],
+                                "x_legacy_event_type": [
+                                    "legacyEventType"
+                                ],
+                                "x_outcome_reason": [
+                                    "outcome.reason"
+                                ],
+                                "x_actor_ref.account_login": [
+                                    "actor.alternateId"
+                                ],
+                                "x_actor_ref.user_id": [
+                                    "actor.id"
+                                ],
+                                "x_client_ref.client_ip": [
+                                    "client.ipAddress"
+                                ],
+                                "x_authentication_context_ref.session_id": [
+                                    "authenticationContext.externalSessionId"
+                                ],
+                                "x_target_refs[*].target_type": [
+                                    "target.type"
+                                ],
+                                "x_target_refs[*].display_name": [
+                                    "target.displayName"
+                                ],
+                                "x_target_refs[*].target_id": [
+                                    "target.id"
+                                ],
+                                "x_client_ref.id": [
+                                    "client.id"
+                                ]
+                            }
+                        },
+                        "x-okta-debug-context": {
+                            "fields": {
+                                "behaviors": [
+                                    "debugContext.debugData.behaviors"
+                                ],
+                                "request_uri": [
+                                    "debugContext.debugData.requestUri"
+                                ],
+                                "request_id": [
+                                    "debugContext.debugData.requestId"
+                                ],
+                                "risk": [
+                                    "debugContext.debugData.risk"
+                                ],
+                                "sign_on_mode": [
+                                    "debugContext.debugData.signOnMode"
+                                ],
+                                "agent_name": [
+                                    "debugContext.debugData.agentName"
+                                ],
+                                "threat_suspected": [
+                                    "debugContext.debugData.threatSuspected"
+                                ],
+                                "dt_hash": [
+                                    "debugContext.debugData.dtHash"
+                                ],
+                                "device_fingerprint": [
+                                    "debugContext.debugData.deviceFingerprint"
+                                ],
+                                "report_email_category": [
+                                    "debugContext.debugData.category"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "and",
+                        "ComparisonExpressionOperators.Or": "or",
+                        "ComparisonComparators.GreaterThan": "gt",
+                        "ComparisonComparators.GreaterThanOrEqual": "ge",
+                        "ComparisonComparators.LessThan": "lt",
+                        "ComparisonComparators.LessThanOrEqual": "le",
+                        "ComparisonComparators.Equal": "eq",
+                        "ComparisonComparators.NotEqual": "ne",
+                        "ComparisonComparators.Like": "co",
+                        "ComparisonComparators.In": "eq",
+                        "ComparisonComparators.Matches": "co",
+                        "ObservationOperators.Or": "or",
+                        "ObservationOperators.And": "or"
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "api_token": {
+                "type": "password"
+            }
+        }
+    }
+}
