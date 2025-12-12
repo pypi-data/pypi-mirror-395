@@ -1,0 +1,215 @@
+Metadata-Version: 2.4
+Name: video-tools-mcp
+Version: 0.1.1
+Summary: MCP Server for video processing - extract frames, metadata, audio and create GIFs
+Project-URL: Homepage, https://github.com/TiGRoNdev/video-tools-mcp
+Project-URL: Repository, https://github.com/TiGRoNdev/video-tools-mcp
+Project-URL: Documentation, https://github.com/TiGRoNdev/video-tools-mcp#readme
+Project-URL: Bug Tracker, https://github.com/TiGRoNdev/video-tools-mcp/issues
+Author-email: TiGRoN <tigron.dev@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: audio,ffmpeg,frames,gif,mcp,model-context-protocol,video
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Requires-Dist: mcp>=1.0.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Video Tools MCP Server
+
+[![PyPI version](https://badge.fury.io/py/video-tools-mcp.svg)](https://badge.fury.io/py/video-tools-mcp)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+FastMCP сервер для работы с видео. Предоставляет инструменты для извлечения кадров, метаданных, аудио и создания GIF.
+
+## Требования
+
+- Python 3.10+
+- FFmpeg (должен быть установлен и доступен в PATH)
+
+### Установка FFmpeg
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update && sudo apt install ffmpeg
+```
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
+
+**Windows:**
+Скачать с [ffmpeg.org](https://ffmpeg.org/download.html) и добавить в PATH.
+
+## Установка
+
+### Из PyPI (рекомендуется)
+
+```bash
+pip install video-tools-mcp
+```
+
+### Из исходников
+
+```bash
+git clone https://github.com/TiGRoNdev/video-tools-mcp.git
+cd video-tools-mcp
+pip install -e .
+```
+
+## Запуск
+
+```bash
+video-tools-mcp
+```
+
+Или напрямую:
+
+```bash
+python video_mcp_server.py
+```
+
+## Инструменты
+
+### `get_video_metadata`
+Получить полные метаданные видео: длительность, разрешение, FPS, кодек, битрейт, информацию об аудио.
+
+```python
+get_video_metadata(video_path="/path/to/video.mp4")
+```
+
+### `get_video_duration`
+Получить длительность видео в различных форматах.
+
+```python
+get_video_duration(video_path="/path/to/video.mp4")
+```
+
+### `extract_frame`
+Извлечь один кадр по указанному времени.
+
+```python
+extract_frame(
+    video_path="/path/to/video.mp4",
+    timestamp="00:01:30",  # или "90" для 90 секунд
+    output_path="/path/to/frame.png",  # опционально
+    width=1280,  # опционально
+    height=720,  # опционально
+    return_base64=True  # вернуть base64 данные
+)
+```
+
+### `extract_frames_interval`
+Извлечь кадры с заданным интервалом.
+
+```python
+extract_frames_interval(
+    video_path="/path/to/video.mp4",
+    interval_seconds=1.0,  # кадр каждую секунду
+    output_dir="/path/to/frames/",
+    start_time="00:00:10",
+    end_time="00:01:00",
+    max_frames=50
+)
+```
+
+### `extract_audio`
+Извлечь аудиодорожку из видео.
+
+```python
+extract_audio(
+    video_path="/path/to/video.mp4",
+    output_path="/path/to/audio.mp3",
+    format="mp3",  # mp3, wav, aac, flac, ogg
+    bitrate="192k",
+    start_time="00:00:00",
+    end_time="00:05:00"
+)
+```
+
+### `create_gif`
+Создать GIF из видео.
+
+```python
+create_gif(
+    video_path="/path/to/video.mp4",
+    output_path="/path/to/output.gif",
+    start_time="00:00:05",
+    duration=5.0,  # 5 секунд
+    fps=10,
+    width=480,
+    optimize=True  # оптимизация палитры
+)
+```
+
+## Конфигурация для Claude Desktop
+
+Добавьте в `claude_desktop_config.json`:
+
+### После установки из PyPI
+
+```json
+{
+  "mcpServers": {
+    "video-tools": {
+      "command": "video-tools-mcp"
+    }
+  }
+}
+```
+
+### Из исходников
+
+```json
+{
+  "mcpServers": {
+    "video-tools": {
+      "command": "python",
+      "args": ["/path/to/video_mcp_server.py"]
+    }
+  }
+}
+```
+
+## Пример использования
+
+После подключения к Claude Desktop или другому MCP клиенту:
+
+```
+Пользователь: Покажи информацию о видео /home/user/video.mp4
+
+Claude: Вызываю get_video_metadata...
+{
+  "duration_seconds": 125.5,
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "codec": "h264"
+  },
+  "audio": {
+    "codec": "aac",
+    "sample_rate": 48000
+  }
+}
+```
+
+## Лицензия
+
+MIT
