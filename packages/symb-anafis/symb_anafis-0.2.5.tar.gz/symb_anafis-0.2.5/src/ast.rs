@@ -1,0 +1,285 @@
+/// Abstract Syntax Tree for mathematical expressions
+use std::rc::Rc;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr {
+    /// Constant number (e.g., 3.14, 1e10)
+    Number(f64),
+
+    /// Variable or constant symbol (e.g., "x", "a", "ax")
+    Symbol(String),
+
+    /// Function call (built-in or custom)
+    FunctionCall { name: String, args: Vec<Expr> },
+
+    // Binary operations
+    /// Addition
+    Add(Rc<Expr>, Rc<Expr>),
+
+    /// Subtraction
+    Sub(Rc<Expr>, Rc<Expr>),
+
+    /// Multiplication
+    Mul(Rc<Expr>, Rc<Expr>),
+
+    /// Division
+    Div(Rc<Expr>, Rc<Expr>),
+
+    /// Exponentiation
+    Pow(Rc<Expr>, Rc<Expr>),
+}
+
+impl Expr {
+    // Convenience constructors
+
+    /// Create a number expression
+    pub fn number(n: f64) -> Self {
+        Expr::Number(n)
+    }
+
+    /// Create a symbol expression
+    pub fn symbol(s: impl Into<String>) -> Self {
+        Expr::Symbol(s.into())
+    }
+
+    /// Create an addition expression
+    pub fn add_expr(left: Expr, right: Expr) -> Self {
+        Expr::Add(Rc::new(left), Rc::new(right))
+    }
+
+    /// Create a subtraction expression
+    pub fn sub_expr(left: Expr, right: Expr) -> Self {
+        Expr::Sub(Rc::new(left), Rc::new(right))
+    }
+
+    /// Create a multiplication expression
+    pub fn mul_expr(left: Expr, right: Expr) -> Self {
+        Expr::Mul(Rc::new(left), Rc::new(right))
+    }
+
+    /// Create a division expression
+    pub fn div_expr(left: Expr, right: Expr) -> Self {
+        Expr::Div(Rc::new(left), Rc::new(right))
+    }
+
+    /// Create a power expression
+    pub fn pow(base: Expr, exponent: Expr) -> Self {
+        Expr::Pow(Rc::new(base), Rc::new(exponent))
+    }
+
+    /// Create a function call expression (single argument convenience)
+    pub fn func(name: impl Into<String>, content: Expr) -> Self {
+        Expr::FunctionCall {
+            name: name.into(),
+            args: vec![content],
+        }
+    }
+
+    /// Create a multi-argument function call expression
+    pub fn func_multi(name: impl Into<String>, args: Vec<Expr>) -> Self {
+        Expr::FunctionCall {
+            name: name.into(),
+            args,
+        }
+    }
+
+    // Analysis methods
+
+    /// Count the total number of nodes in the AST
+    pub fn node_count(&self) -> usize {
+        match self {
+            Expr::Number(_) | Expr::Symbol(_) => 1,
+            Expr::FunctionCall { args, .. } => {
+                1 + args.iter().map(|a| a.node_count()).sum::<usize>()
+            }
+            Expr::Add(l, r)
+            | Expr::Sub(l, r)
+            | Expr::Mul(l, r)
+            | Expr::Div(l, r)
+            | Expr::Pow(l, r) => 1 + l.node_count() + r.node_count(),
+        }
+    }
+
+    /// Get the maximum nesting depth of the AST
+    pub fn max_depth(&self) -> usize {
+        match self {
+            Expr::Number(_) | Expr::Symbol(_) => 1,
+            Expr::FunctionCall { args, .. } => {
+                1 + args.iter().map(|a| a.max_depth()).max().unwrap_or(0)
+            }
+            Expr::Add(l, r)
+            | Expr::Sub(l, r)
+            | Expr::Mul(l, r)
+            | Expr::Div(l, r)
+            | Expr::Pow(l, r) => 1 + l.max_depth().max(r.max_depth()),
+        }
+    }
+
+    /// Check if the expression contains a specific variable
+    pub fn contains_var(&self, var: &str) -> bool {
+        match self {
+            Expr::Number(_) => false,
+            Expr::Symbol(s) => s == var,
+            Expr::FunctionCall { args, .. } => args.iter().any(|a| a.contains_var(var)),
+            Expr::Add(l, r)
+            | Expr::Sub(l, r)
+            | Expr::Mul(l, r)
+            | Expr::Div(l, r)
+            | Expr::Pow(l, r) => l.contains_var(var) || r.contains_var(var),
+        }
+    }
+
+    /// Collect all variables in the expression
+    pub fn variables(&self) -> std::collections::HashSet<String> {
+        let mut vars = std::collections::HashSet::new();
+        self.collect_variables(&mut vars);
+        vars
+    }
+
+    fn collect_variables(&self, vars: &mut std::collections::HashSet<String>) {
+        match self {
+            Expr::Symbol(s) => {
+                vars.insert(s.clone());
+            }
+            Expr::FunctionCall { args, .. } => {
+                for arg in args {
+                    arg.collect_variables(vars);
+                }
+            }
+            Expr::Add(l, r)
+            | Expr::Sub(l, r)
+            | Expr::Mul(l, r)
+            | Expr::Div(l, r)
+            | Expr::Pow(l, r) => {
+                l.collect_variables(vars);
+                r.collect_variables(vars);
+            }
+            Expr::Number(_) => {}
+        }
+    }
+
+    /// Create a deep clone of the expression tree (no shared nodes)
+    pub fn deep_clone(&self) -> Expr {
+        match self {
+            Expr::Number(n) => Expr::Number(*n),
+            Expr::Symbol(s) => Expr::Symbol(s.clone()),
+            Expr::FunctionCall { name, args } => Expr::FunctionCall {
+                name: name.clone(),
+                args: args.iter().map(|arg| arg.deep_clone()).collect(),
+            },
+            Expr::Add(a, b) => Expr::Add(
+                Rc::new(a.as_ref().deep_clone()),
+                Rc::new(b.as_ref().deep_clone()),
+            ),
+            Expr::Sub(a, b) => Expr::Sub(
+                Rc::new(a.as_ref().deep_clone()),
+                Rc::new(b.as_ref().deep_clone()),
+            ),
+            Expr::Mul(a, b) => Expr::Mul(
+                Rc::new(a.as_ref().deep_clone()),
+                Rc::new(b.as_ref().deep_clone()),
+            ),
+            Expr::Div(a, b) => Expr::Div(
+                Rc::new(a.as_ref().deep_clone()),
+                Rc::new(b.as_ref().deep_clone()),
+            ),
+            Expr::Pow(a, b) => Expr::Pow(
+                Rc::new(a.as_ref().deep_clone()),
+                Rc::new(b.as_ref().deep_clone()),
+            ),
+        }
+    }
+}
+
+// Manual Eq implementation since f64 doesn't implement Eq
+// We treat NaN != NaN (standard IEEE 754), but for simplification
+// we can consider two NaN expressions as "equal" for cycle detection
+impl Eq for Expr {}
+
+// Manual Hash implementation for Expr
+// We need this for HashSet<Expr> in cycle detection
+impl std::hash::Hash for Expr {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Expr::Number(n) => {
+                // Hash the bit representation of f64
+                // NaN values will hash the same way
+                n.to_bits().hash(state);
+            }
+            Expr::Symbol(s) => s.hash(state),
+            Expr::FunctionCall { name, args } => {
+                name.hash(state);
+                args.hash(state);
+            }
+            Expr::Add(l, r)
+            | Expr::Sub(l, r)
+            | Expr::Mul(l, r)
+            | Expr::Div(l, r)
+            | Expr::Pow(l, r) => {
+                l.hash(state);
+                r.hash(state);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constructors() {
+        let val = 314.0 / 100.0;
+        let num = Expr::number(val);
+        assert_eq!(num, Expr::Number(val));
+
+        let sym = Expr::symbol("x");
+        assert_eq!(sym, Expr::Symbol("x".to_string()));
+
+        let add = Expr::add_expr(Expr::number(1.0), Expr::number(2.0));
+        match add {
+            Expr::Add(_, _) => (),
+            _ => panic!("Expected Add variant"),
+        }
+    }
+
+    #[test]
+    fn test_node_count() {
+        let x = Expr::symbol("x");
+        assert_eq!(x.node_count(), 1);
+
+        let x_plus_1 = Expr::add_expr(Expr::symbol("x"), Expr::number(1.0));
+        assert_eq!(x_plus_1.node_count(), 3); // Add + x + 1
+
+        let complex = Expr::mul_expr(
+            Expr::add_expr(Expr::symbol("x"), Expr::number(1.0)),
+            Expr::symbol("y"),
+        );
+        assert_eq!(complex.node_count(), 5); // Mul + (Add + x + 1) + y
+    }
+
+    #[test]
+    fn test_max_depth() {
+        let x = Expr::symbol("x");
+        assert_eq!(x.max_depth(), 1);
+
+        let nested = Expr::add_expr(
+            Expr::mul_expr(Expr::symbol("x"), Expr::symbol("y")),
+            Expr::number(1.0),
+        );
+        assert_eq!(nested.max_depth(), 3); // Add -> Mul -> x/y
+    }
+
+    #[test]
+    fn test_contains_var() {
+        let expr = Expr::add_expr(
+            Expr::mul_expr(Expr::symbol("x"), Expr::symbol("y")),
+            Expr::number(1.0),
+        );
+
+        assert!(expr.contains_var("x"));
+        assert!(expr.contains_var("y"));
+        assert!(!expr.contains_var("z"));
+    }
+}
