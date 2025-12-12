@@ -1,0 +1,102 @@
+[tool.poetry]
+name = "dblinter"
+version = "0.5.6"
+description = "A static analysis tool for postgresql databases"
+authors = [
+    "Stephane Defenin <stephane.defenin@gmail.com>",
+    "Pierre-Marie Petit",
+    "Grégoire Waymel",
+    "DBRE awesome contributors"
+    ]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/decathlon/dblinter"
+classifiers = [
+    'Topic :: Utilities',
+    'Topic :: Software Development :: Quality Assurance',
+    'Topic :: Software Development :: Testing',
+    'Topic :: Software Development :: Build Tools',
+    'Programming Language :: Python :: 3.12',
+    'License :: OSI Approved :: Apache Software License',
+    'Operating System :: OS Independent',
+    'Intended Audience :: Developers',
+    ]
+keywords = ["postgresql", "static analysis", "sonar", "sarif", "code quality", "sql", "database"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+rich = "^13.9.4"
+typer = "*"
+psycopg2-binary = "^2.9.10"
+google-cloud-storage = "^3.2.0"
+pyyaml = "^6.0"
+sarif-om = "^1.0.4"
+types-pyyaml = "^6.0.12.20250516"
+jschema-to-python = "^1.2.3"
+pydantic = "^2.11.7"
+pydantic-yaml = "^1.5.1"
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^3.3.7"
+black = "^25.1.0"
+isort = "^6.0.1"
+pytest = "^8.4.1"
+pytest-mock = "^3.14.1"
+freezegun = "^1.5.3"
+pep8-naming = "^0.15.1"
+testcontainers = "^4.10.0"
+pytest-cov = "^6.2.1"
+pre-commit = "^4.2.0"
+ruff = "^0.12.4"
+
+[tool.poetry.scripts]
+dblinter = "dblinter.__main__:cli"
+
+[tool.pytest.ini_options]
+addopts = ""
+filterwarnings = [
+# ignore deprecation warnings from setuptools required by typer
+"ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('.*'\\):DeprecationWarning",
+"ignore:pkg_resources is deprecated as an API\\.\\('.*'\\):DeprecationWarning",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+ignore = ["B008", "C901", "E203", "E266", "E501"]
+select = ["B","C","E","F","W"]
+
+[tool.pylint]
+max-line-length=120
+
+[tool.pylint.'MESSAGES CONTROL']
+disable=[
+    "line-too-long",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-branches",
+    "attribute-defined-outside-init",
+    "invalid-name",
+    "missing-class-docstring",
+    "missing-module-docstring",
+    "missing-function-docstring",
+    "duplicate-code",
+    "import-error",
+    "too-many-positional-arguments",
+    # sarif_om generate unsubscriptable-objecte error. This is fixed by this pull request:
+    # https://github.com/microsoft/sarif-python-om/pull/6/ not yet released
+    "unsubscriptable-object"
+]
+notes=[
+    "fixme",
+    "missing-function-docstring"
+]
+extension-pkg-whitelist = "pydantic"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry-core.masonry.api"
+
+[tool.black]
+extend-exclude = "dblinter.cfg"
