@@ -1,0 +1,9 @@
+from _typeshed import Incomplete
+from invenio_records_resources.services.records.params.base import ParamInterpreter
+
+class AllVersionsParam(ParamInterpreter):
+    field_name: Incomplete
+    def __init__(self, field_name, config) -> None: ...
+    @classmethod
+    def factory(cls, field): ...
+    def apply(self, identity, search, params): ...

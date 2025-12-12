@@ -1,0 +1,46 @@
+from typing import TYPE_CHECKING, Any, Dict, Optional, Self, Set, Type, Union, overload
+
+from invenio_records.systemfields import SystemField
+
+if TYPE_CHECKING:
+    from invenio_records_resources.records.api import Record
+
+class AttrProxy:
+    def __init__(
+        self,
+        record_cls: Type["Record"],
+        record: Optional["Record"],
+        data: Optional[Dict[str, Any]],
+        attrs: Optional[Set[str]] = None,
+    ) -> None: ...
+    def get_object(self) -> "Record": ...
+    def get_object_shim(self) -> "Record": ...
+    def __getattr__(self, attr: str) -> Any: ...
+    def __getitem__(self, attr: str) -> Any: ...
+
+class RelatedRecord(SystemField):  # in reality, the return value is attrproxy
+    def __init__(
+        self,
+        record_cls: Type["Record"],
+        *args: Any,
+        keys: Optional[Any] = None,
+        attrs: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None: ...
+    @property
+    def _proxy_attrs(self) -> Set[str]: ...
+    def _dump(self, proxy: AttrProxy) -> Dict[str, Any]: ...
+    def pre_commit(self, record: "Record") -> None: ...
+    def _unset_cache(self, record: "Record"): ...
+    def del_value(self, record: "Record") -> None: ...
+    def set_value(
+        self, record: "Record", record_or_id: Union["Record", str]
+    ) -> None: ...
+    def get_value(self, record: "Record") -> Optional[AttrProxy]: ...
+    @overload  # type: ignore[override]
+    def __get__(self, instance: None, owner: type[Record]) -> Self: ...  # type: ignore # keep typing tighter
+    @overload
+    def __get__(  # type: ignore # keep typing tighter
+        self, instance: Record, owner: type[Record]
+    ) -> Record: ...
+    def __set__(self, instance: Record, value: Record) -> None: ...  # type: ignore[override]

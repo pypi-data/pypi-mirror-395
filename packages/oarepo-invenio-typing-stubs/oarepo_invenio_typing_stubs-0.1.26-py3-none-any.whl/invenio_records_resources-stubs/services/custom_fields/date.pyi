@@ -1,0 +1,29 @@
+from time import struct_time
+from typing import Any, Dict, Union
+
+from invenio_records_resources.services.custom_fields.base import BaseListCF
+from marshmallow.fields import Field
+
+class ISODateStringCF(BaseListCF):
+    def __init__(self, name: str, **kwargs: Any) -> None: ...
+    @property
+    def mapping(self) -> Dict[str, str]: ...
+
+class EDTFDateStringCF(BaseListCF):
+    def __init__(self, name: str, **kwargs: Any) -> None: ...
+    @classmethod
+    def _calculate_date_range(
+        cls, date: str
+    ) -> Dict[str, Union[str, Dict[str, str]]]: ...
+    @classmethod
+    def _format_date(cls, date: struct_time) -> str: ...
+    def dump(self, record: Any, cf_key: str = ...) -> None: ...
+    @property
+    def field(self) -> Field: ...
+    def load(
+        self,
+        record: Any,
+        cf_key: str = ...,
+    ) -> None: ...
+    @property
+    def mapping(self) -> Dict[str, Any]: ...
