@@ -1,0 +1,146 @@
+[build-system]
+requires = ["poetry-core>=1.0.1"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "mlte"
+version = "2.4.0"
+description = "An infrastructure for machine learning test and evaluation."
+authors = [{name = "MLTE Engineers"}]
+readme = "README.md"
+requires-python = ">=3.9,<3.13"
+dependencies = [
+  "pydantic >= 2.10.5",
+  "pydantic-settings >=2.7.1",
+  "dill >=0.3.9",
+  "psutil >=6.1.1",
+  "StrEnum >=0.4.15",
+  "json-fix >=1.0.2",
+  "astunparse >=1.6.3",
+  "requests >=2.32.3",
+  "httpx >=0.28.1",
+  "bcrypt >=4.2.1",
+  "cryptography >=43.0.3",
+  "pip-system-certs >=4.0.0",
+  "pint >= 0.24.4",
+]
+
+[project.optional-dependencies]
+rdbs = [
+  "SQLAlchemy >=2.0.37",
+  "SQLAlchemy-Utils >=0.41.2",
+  "psycopg2-binary >=2.9.11",
+]
+frontend = [
+  "uvicorn >=0.34.0",
+  "fastapi >=0.115.6",
+  "python-multipart >=0.0.20",
+  "python-jose >=3.3.0",
+]
+gpu = [
+  "nvidia-ml-py >= 13.580.82",
+]
+
+[project.urls]
+repository = "https://github.com/mlte-team/mlte"
+documentation = "https://mlte.readthedocs.io/"
+
+[project.scripts]
+mlte = "mlte.cli:run"
+
+[tool.poetry]
+requires-poetry = ">=2.0.1"
+packages = [
+  { include = "mlte"}
+]
+include = [
+  "mlte/frontend/nuxt-app/.output/public/**/*"
+]
+exclude = [
+  "mlte/frontend/nuxt-app/**/**/*"
+]
+
+[tool.poetry.group.demo]
+optional = true
+
+[tool.poetry.group.demo.dependencies]
+numpy = "2.0.2"
+pandas = "2.2.2"
+pandas-stubs = "2.2.1.240316"
+scikit-learn = "1.6.1"
+matplotlib = "3.9.4"
+ipykernel = "6.29.5"
+notebook = "7.3.2"
+tensorflow = "2.18.0"
+pickleshare = "0.7.5"
+torch = "2.8.0"
+statsmodels = "0.14.5"
+openai = "2.6.1"
+langchain = "0.3.27"
+langchain-openai = "0.3.34"
+gymnasium = "1.1.1"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+# Docs
+mkdocs = "1.6.1"
+mkdocstrings-python = "1.16.10"
+mkdocs-material = "9.6.11"
+mkdocs-gen-files = "0.5.0"
+mkdocs-literate-nav = "0.6.2"
+
+# QA
+isort = "5.13.2"
+black = {extras = ["jupyter"], version = "24.10.0"}
+flake8 = "7.1.1"
+mypy = "1.14.1"
+types-requests = "2.32.0.20241016"
+types-PyYAML = "6.0.12.20241230"
+types-Pygments = "2.19.0.20250219"
+types-colorama = "0.4.15.20240311"
+types-decorator = "5.2.0.20250224"
+types-jsonschema = "4.23.0.20241208"
+types-psutil = "7.0.0.20250218"
+types-python-jose = "3.4.0.20250224"
+types-ujson = "5.10.0.20240515"
+
+# Testing
+pytest = "8.3.4"
+deepdiff = "8.1.1"
+pytest-cov = "6.0.0"
+jsonschema = "4.23.0"
+nbmake = "1.5.5"
+
+# Building
+bump2version = "1.0.1"
+twine = "6.0.1"
+
+[tool.isort]
+profile="black"
+line_length = 80
+known_first_party=["mlte", "test"]
+
+[tool.black]
+line-length = 80
+target-version = ['py38']
+include = '\.pyi?$|\.ipynb$'
+
+[tool.mypy]
+mypy_path = "src"
+check_untyped_defs = true
+disallow_any_generics = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
+
+[tool.pytest.ini_options]
+testpaths = [
+    "test",
+]

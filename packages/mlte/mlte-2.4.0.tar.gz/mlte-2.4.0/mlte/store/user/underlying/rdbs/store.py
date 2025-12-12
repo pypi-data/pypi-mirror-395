@@ -1,0 +1,319 @@
+"""Implementation of relational database system user store."""
+
+from __future__ import annotations
+
+import typing
+from typing import Any, List, Optional, Union
+
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import DeclarativeBase, Session
+
+import mlte.store.error as errors
+from mlte.store.base import StoreURI
+from mlte.store.common.rdbs_storage import RDBStorage
+from mlte.store.user.store import UserStore
+from mlte.store.user.store_session import (
+    GroupMapper,
+    PermissionMapper,
+    UserMapper,
+    UserStoreSession,
+)
+from mlte.store.user.underlying.rdbs.metadata import (
+    DBBase,
+    DBGroup,
+    DBPermission,
+    DBUser,
+    init_method_types,
+    init_role_types,
+)
+from mlte.store.user.underlying.rdbs.reader import DBReader
+from mlte.user.model import (
+    BasicUser,
+    Group,
+    Permission,
+    User,
+    UserWithPassword,
+    update_user_data,
+)
+
+# -----------------------------------------------------------------------------
+# RelationalDBUserStore
+# -----------------------------------------------------------------------------
+
+
+class RelationalDBUserStore(UserStore):
+    """A DB implementation of the MLTE user store."""
+
+    def __init__(
+        self,
+        uri: StoreURI,
+        add_default_data: bool = True,
+        **kwargs,
+    ) -> None:
+        self.storage = RDBStorage(
+            uri,
+            base_class=typing.cast(DeclarativeBase, DBBase),
+            init_tables_func=init_user_tables,
+            **kwargs,
+        )
+        """The relational DB storage."""
+
+        UserStore.__init__(self, uri, add_default_data)
+        """Basic user setup."""
+
+    def session(self) -> RelationalDBUserStoreSession:
+        """
+        Return a session handle for the store instance.
+        :return: The session handle
+        """
+        return RelationalDBUserStoreSession(storage=self.storage)
+
+
+def init_user_tables(engine: Engine):
+    """Pre-populate tables."""
+    with Session(engine) as session:
+        init_role_types(session)
+        init_method_types(session)
+
+
+# -----------------------------------------------------------------------------
+# RelationalDBUserStoreSession
+# -----------------------------------------------------------------------------
+
+
+class RelationalDBUserStoreSession(UserStoreSession):
+    """A relational DB implementation of the MLTE user store session."""
+
+    def __init__(self, storage: RDBStorage) -> None:
+        self.storage = storage
+        """RDB storage."""
+
+        self.user_mapper = RDBUserMapper(storage)
+        """The mapper to user CRUD."""
+
+        self.group_mapper = RDBGroupMapper(storage)
+        """The mapper to group CRUD."""
+
+        self.permission_mapper = RDBPermissionMapper(storage)
+        """The mapper to group CRUD."""
+
+    def close(self) -> None:
+        """Close the session."""
+        self.storage.close()
+
+
+# -----------------------------------------------------------------------------
+# RDBUserMapper
+# -----------------------------------------------------------------------------
+
+
+class RDBUserMapper(UserMapper):
+    """RDB mapper for the user resource."""
+
+    def __init__(self, storage: RDBStorage) -> None:
+        self.storage = storage
+        """A reference to underlying storage."""
+
+    def create(self, user: UserWithPassword, context: Any = None) -> User:
+        with Session(self.storage.engine) as session:
+            try:
+                _, _ = DBReader.get_user(user.username, session)
+                raise errors.ErrorAlreadyExists(
+                    f"User with identifier {user.username} already exists."
+                )
+            except errors.ErrorNotFound:
+                # If it was not found, it means we can create it.
+                # Hash password and create a user with hashed passwords to be stored.
+                hashed_user = user.to_hashed_user()
+                user_orm = self._build_user(hashed_user, session)
+                session.add(user_orm)
+                session.commit()
+                stored_user, _ = DBReader.get_user(user.username, session)
+                return stored_user
+
+    def edit(
+        self, user: Union[UserWithPassword, BasicUser], context: Any = None
+    ) -> User:
+        with Session(self.storage.engine) as session:
+            curr_user, user_orm = DBReader.get_user(user.username, session)
+            updated_user = update_user_data(curr_user, user)
+
+            # Update existing user.
+            user_orm = self._build_user(updated_user, session, user_orm)
+            session.commit()
+
+            stored_user, _ = DBReader.get_user(user.username, session)
+            return stored_user
+
+    def read(self, username: str, context: Any = None) -> User:
+        with Session(self.storage.engine) as session:
+            user, _ = DBReader.get_user(username, session)
+            return user
+
+    def list(self, context: Any = None) -> List[str]:
+        users: List[str] = []
+        with Session(self.storage.engine) as session:
+            user_orms = session.scalars(select(DBUser))
+            for user_orm in user_orms:
+                users.append(user_orm.username)
+        return users
+
+    def delete(self, username: str, context: Any = None) -> User:
+        with Session(self.storage.engine) as session:
+            user, user_orm = DBReader.get_user(username, session)
+            session.delete(user_orm)
+            session.commit()
+            return user
+
+    def _build_user(
+        self, user: User, session: Session, user_orm: Optional[DBUser] = None
+    ) -> DBUser:
+        """Creates or updeates a DB user object from a model."""
+        if user_orm is None:
+            user_orm = DBUser()
+
+        user_orm.username = user.username
+        user_orm.email = user.email
+        user_orm.full_name = user.full_name
+        user_orm.disabled = user.disabled
+        user_orm.hashed_password = user.hashed_password
+        user_orm.role_type = DBReader.get_role_type(user.role, session)
+        user_orm.groups = [
+            DBReader.get_group(group_model.name, session)[1]
+            for group_model in user.groups
+        ]
+        return user_orm
+
+
+# -----------------------------------------------------------------------------
+# RDBGroupMapper
+# -----------------------------------------------------------------------------
+
+
+class RDBGroupMapper(GroupMapper):
+    """RDB mapper for the group resource"""
+
+    def __init__(self, storage: RDBStorage) -> None:
+        self.storage = storage
+        """A reference to underlying storage."""
+
+    def create(self, new_group: Group, context: Any = None) -> Group:
+        with Session(self.storage.engine) as session:
+            try:
+                _, _ = DBReader.get_group(new_group.name, session)
+                raise errors.ErrorAlreadyExists(
+                    f"Group with identifier {new_group.name} already exists."
+                )
+            except errors.ErrorNotFound:
+                # If it was not found, it means we can create it.
+                group_orm = self._build_group(new_group, session)
+                session.add(group_orm)
+                session.commit()
+                return new_group
+
+    def edit(self, updated_group: Group, context: Any = None) -> Group:
+        with Session(self.storage.engine) as session:
+            _, group_orm = DBReader.get_group(updated_group.name, session)
+
+            # Update existing group.
+            group_orm = self._build_group(updated_group, session, group_orm)
+            session.commit()
+
+            return updated_group
+
+    def read(self, group_name: str, context: Any = None) -> Group:
+        with Session(self.storage.engine) as session:
+            group, _ = DBReader.get_group(group_name, session)
+            return group
+
+    def list(self, context: Any = None) -> List[str]:
+        groups: List[str] = []
+        with Session(self.storage.engine) as session:
+            group_orms = session.scalars(select(DBGroup))
+            for group_orm in group_orms:
+                groups.append(group_orm.name)
+        return groups
+
+    def delete(self, group_name: str, context: Any = None) -> Group:
+        with Session(self.storage.engine) as session:
+            group, group_orm = DBReader.get_group(group_name, session)
+            session.delete(group_orm)
+            session.commit()
+            return group
+
+    def _build_group(
+        self,
+        group: Group,
+        session: Session,
+        group_orm: Optional[DBGroup] = None,
+    ) -> DBGroup:
+        """Creates or updates a DB group object from a model."""
+        if group_orm is None:
+            group_orm = DBGroup()
+
+        all_permissions, all_permission_orms = DBReader.get_permissions(session)
+
+        group_orm.name = group.name
+        group_orm.permissions = [
+            all_permission_orms[i]
+            for i, permission in enumerate(all_permissions)
+            if permission in group.permissions
+        ]
+
+        return group_orm
+
+
+# -----------------------------------------------------------------------------
+# RDBPermissionMapper
+# -----------------------------------------------------------------------------
+
+
+class RDBPermissionMapper(PermissionMapper):
+    """A interface for mapping CRUD actions to store permissions."""
+
+    def __init__(self, storage: RDBStorage) -> None:
+        self.storage = storage
+        """A reference to underlying storage."""
+
+    def create(
+        self, new_permission: Permission, context: Any = None
+    ) -> Permission:
+        with Session(self.storage.engine) as session:
+            try:
+                _, _ = DBReader.get_permission(new_permission, session)
+                raise errors.ErrorAlreadyExists(
+                    f"{new_permission} already exists."
+                )
+            except errors.ErrorNotFound:
+                # If it was not found, it means we can create it.
+                permission_orm = DBPermission(
+                    resource_type=new_permission.resource_type,
+                    resource_id=new_permission.resource_id,
+                    method_type=DBReader.get_method_type(
+                        new_permission.method, session
+                    ),
+                )
+                session.add(permission_orm)
+                session.commit()
+                return new_permission
+
+    def read(self, permission: str, context: Any = None) -> Permission:
+        with Session(self.storage.engine) as session:
+            perm, _ = DBReader.get_permission(
+                Permission.from_str(permission), session
+            )
+            return perm
+
+    def list(self, context: Any = None) -> List[str]:
+        with Session(self.storage.engine) as session:
+            permissions, _ = DBReader.get_permissions(session)
+            return [permission.to_str() for permission in permissions]
+
+    def delete(self, permission: str, context: Any = None) -> Permission:
+        with Session(self.storage.engine) as session:
+            perm, permission_orm = DBReader.get_permission(
+                Permission.from_str(permission), session
+            )
+            session.delete(permission_orm)
+            session.commit()
+            return perm

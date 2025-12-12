@@ -1,0 +1,1 @@
+import{j as r,c as s,o,a as i,d as n,t}from"./B-k8Z1tc.js";const c=i("h3",{style:{display:"inline"}},"Last Modified by:",-1),m=r({__name:"creator-display",props:{creator:{type:String,required:!1,default:""},timestamp:{type:String,required:!0}},setup(a){const e=a;return(p,d)=>(o(),s("div",null,[c,n(" "+t(e.creator)+" - "+t(e.timestamp),1)]))}});export{m as _};

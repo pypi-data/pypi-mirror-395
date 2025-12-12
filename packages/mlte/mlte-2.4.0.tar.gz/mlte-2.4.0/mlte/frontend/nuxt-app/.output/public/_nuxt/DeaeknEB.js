@@ -1,0 +1,1 @@
+function e(){alert("One or more invalid fields in submission.")}function n(i){confirm("Are you sure you want to leave this page? All unsaved changes will be lost.")&&(location.href=i)}export{n as c,e as i};
