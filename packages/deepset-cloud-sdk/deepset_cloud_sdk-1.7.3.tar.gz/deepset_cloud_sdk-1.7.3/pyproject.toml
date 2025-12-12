@@ -1,0 +1,130 @@
+[build-system]
+requires = ["uv_build>=0.9.13,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "deepset-cloud-sdk"
+version = "1.7.3"
+description = 'deepset SDK'
+readme = "README.md"
+requires-python = ">= 3.9"
+license = "Apache-2.0"
+keywords = []
+authors = [{ name = "deepset", email = "rohan.janjua@deepset.ai" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "structlog>=24.0.0",
+  "httpx>=0.27.2",
+  "python-dotenv>=1.0.1",
+  "typer>=0.15.0",
+  "click<=8.2.0",          # fixed because of bug in 8.2.1, see https://github.com/pallets/click/issues/2939
+  "tenacity>=8.3.0",
+  "aiohttp>=3.10.10",
+  "aiofiles>=24.1.0",
+  "tabulate>=0.9.0",
+  "tqdm>=4.66.4",
+  "yaspin>=3.0.0",
+  "pyrate-limiter>=3.7.0",
+  "pydantic>=2.11.4",
+  "ruamel.yaml>=0.18.10",
+]
+
+[project.urls]
+Documentation = "https://github.com/deepset-ai/deepset-cloud-sdk#readme"
+Issues = "https://github.com/deepset-ai/deepset-cloud-sdk/issues"
+Source = "https://github.com/deepset-ai/deepset-cloud-sdk"
+
+[project.scripts]
+deepset-cloud = "deepset_cloud_sdk.cli:run_packaged"
+
+[dependency-groups]
+test = [
+  "pytest-cov==4.0.0",
+  "pytest==7.3.1",
+  "pytest-asyncio==0.21.0",
+  "haystack-ai>=2.13.2",    # only for testing
+  "respx==0.22.0",
+  "sniffio>=1.3.1",
+]
+code-quality = [
+  "ruff==0.8.4",
+  "mypy==1.1.1",
+  "pre-commit==2.20.0",
+  "types-aiofiles==23.1.0.2",
+  "types-tabulate==0.9.0.20241207",
+]
+
+[tool.uv.build-backend]
+module-name = "deepset_cloud_sdk"
+module-root = ""
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+ignore = [
+  "E501", # line too long
+]
+select = [
+  "E", # pycodestyle errors
+  "F", # pyflakes
+  "I", # isort
+]
+fixable = [
+  "E", # pycodestyle errors
+  "F", # pyflakes
+  "I", # isort
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["deepset_cloud_sdk"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length = 150
+disable = [
+  "fixme",
+  "c-extension-no-member",
+  "wrong-spelling-in-comment",
+  "wrong-spelling-in-docstring",
+  "missing-module-docstring",
+]
+
+[tool.pylint.'DESIGN']
+max-args = 9
+
+[tool.pylint.'SIMILARITIES']
+min-similarity-lines = 10
+
+[tool.pylint.'BASIC']
+good-names = ["i", "k", "v", "_", "f1"]
