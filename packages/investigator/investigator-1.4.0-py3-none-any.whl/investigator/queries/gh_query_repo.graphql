@@ -1,0 +1,70 @@
+query ($name: String!, $owner: String!) {
+  repository(name: $name, owner: $owner) {
+    id
+    databaseId
+    url
+    name
+    archivedAt
+    description
+    isTemplate
+    primaryLanguage {
+      name
+    }
+    isPrivate
+    pushedAt
+    createdAt
+    updatedAt
+    visibility
+    licenseInfo {
+      name
+    }
+    defaultBranchRef {
+      name
+      branchProtectionRule {
+        allowsDeletions
+        allowsForcePushes
+        dismissesStaleReviews
+        isAdminEnforced
+        requiresConversationResolution
+        requiredApprovingReviewCount
+        requiresCodeOwnerReviews
+        requiresCommitSignatures
+        requireLastPushApproval
+        requiresStrictStatusChecks
+      }
+      target {
+        ... on Commit {
+          oid
+        }
+      }
+    }
+    rulesets(first: 10) {
+      nodes {
+        name
+        enforcement
+      }
+    }
+    vulnerabilityAlerts(first: 100, states: OPEN, after: "") {
+      totalCount
+      nodes {
+        state
+        createdAt
+        dismissReason
+        dismissedAt
+        dismisser {
+          login
+        }
+        fixedAt
+        securityAdvisory {
+          summary
+          severity
+          permalink
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+}
