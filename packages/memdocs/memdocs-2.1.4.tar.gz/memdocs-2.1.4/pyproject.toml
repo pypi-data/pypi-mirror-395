@@ -1,0 +1,161 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memdocs"
+version = "2.1.4"
+description = "Persistent memory management for AI projects - Git-native documentation intelligence"
+authors = [{name = "Patrick Roebuck", email = "patrick.roebuck@smartaimemory.com"}]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = [
+    "ai-memory",
+    "documentation",
+    "git-native",
+    "claude",
+    "empathy-framework",
+    "code-intelligence",
+    "developer-tools"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "click>=8.1.0",              # CLI framework
+    "pydantic>=2.0.0",           # Data validation
+    "pyyaml>=6.0",               # YAML parsing
+    "anthropic>=0.34.0",         # Claude API (Sonnet 4.5)
+    "gitpython>=3.1.40",         # Git operations
+    "tree-sitter>=0.21.0",       # AST parsing (multi-language)
+    "pygments>=2.17.0",          # Syntax highlighting
+    "tiktoken>=0.7.0",           # Token counting
+    "python-dotenv>=1.0.0",      # Environment variables
+    "rich>=13.0.0",              # Beautiful terminal formatting
+    "tomli>=2.0.0; python_version < '3.11'",  # TOML parsing (backport)
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=24.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "types-pyyaml",
+]
+
+api = [
+    "fastapi>=0.112.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.27.0",
+]
+
+embeddings = [
+    "openai>=1.40.0",            # Embeddings API
+    "pinecone-client>=5.0.0",    # Vector DB
+    "numpy>=1.26.0",
+    "sentence-transformers>=2.0.0",  # Local embeddings
+    "faiss-cpu>=1.7.0",          # Local vector search
+]
+
+empathy = [
+    "empathy>=1.0.0",            # Empathy framework integration
+]
+
+mcp = [
+    "mcp>=1.0.0",                # Model Context Protocol SDK (for Claude Desktop integration)
+]
+
+docs = [
+    "mkdocs>=1.5.0",             # Documentation site generator
+    "mkdocs-material>=9.0.0",    # Material theme for MkDocs
+]
+
+all = [
+    "memdocs[dev,api,embeddings,empathy,mcp,docs]",
+]
+
+[project.scripts]
+memdocs = "memdocs.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Smart-AI-Memory/memdocs"
+Documentation = "https://docs.smartaimemory.com/memdocs"
+Repository = "https://github.com/Smart-AI-Memory/memdocs"
+Issues = "https://github.com/Smart-AI-Memory/memdocs/issues"
+Changelog = "https://github.com/Smart-AI-Memory/memdocs/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["memdocs*"]
+exclude = ["tests*", "examples*", "docs*", "memdocs.wizards*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "PT"]
+ignore = [
+    "E501",   # Line too long (handled by black)
+    "B904",   # Exception chaining (would change error handling behavior)
+    "B005",   # Strip with multi-character strings (false positive)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports
+"tests/**/*.py" = ["F841", "PT011", "I001", "F401", "A004", "N806"]  # Test style: unused vars, broad raises, import order, unused imports, shadowing, variable naming
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "tree_sitter.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mcp.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pygments.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "faiss.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "app.backend.services.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --cov=memdocs --cov-report=term-missing --cov-report=html"
+markers = [
+    "slow: marks tests as slow (e.g., integration tests with real embeddings)",
+    "api: marks tests that make real API calls (skipped by default, run with: pytest -m api)",
+]
