@@ -1,0 +1,105 @@
+type: object
+properties:
+    causalbench:
+        type: object
+        properties:
+            major:
+                type: string
+            minor:
+                type: string
+            build:
+                type: string
+        required:
+            - major
+            - minor
+            - build
+    type:
+        const: dataset
+    name:
+        type: string
+    source:
+        type: string
+    url:
+        type: string
+    description:
+        type: string
+    files:
+        type: object
+        patternProperties:
+            ^.*$:
+                type: object
+                properties:
+                    type:
+                        enum:
+                            - csv
+                    data:
+                        enum:
+                            - dataframe
+                            - graph.static
+                            - graph.temporal
+                    path:
+                        type: string
+                    headers:
+                        type: boolean
+                    index:
+                        type: object
+                        propertyNames:
+                            enum:
+                                - time
+                                - location
+                                - cause
+                                - effect
+                                - strength
+                                - lag
+                        patternProperties:
+                            ^.*$:
+                                type: string
+                    columns:
+                        type: object
+                        patternProperties:
+                            ^.*$:
+                                type: object
+                                properties:
+                                    index:
+                                        type: integer
+                                    header:
+                                        type: string
+                                    type:
+                                        anyOf:
+                                            - type: string
+                                            - type: 'null'
+                                    data:
+                                        enum:
+                                            - string
+                                            - integer
+                                            - decimal
+                                    unit:
+                                        anyOf:
+                                            - type: string
+                                            - type: 'null'
+                                    labels:
+                                        type: array
+                                        items:
+                                            type: integer
+                                    range:
+                                        type: object
+                                        properties:
+                                            start:
+                                                type: number
+                                            end:
+                                                type: number
+                                required:
+                                    - data
+                required:
+                    - type
+                    - data
+                    - path
+                    - columns
+required:
+    - causalbench
+    - type
+    - name
+    - source
+    - url
+    - description
+    - files

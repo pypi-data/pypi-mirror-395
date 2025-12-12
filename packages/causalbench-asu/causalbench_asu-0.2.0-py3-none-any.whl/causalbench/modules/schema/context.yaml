@@ -1,0 +1,115 @@
+type: object
+properties:
+    causalbench:
+        type: object
+        properties:
+            major:
+                type: string
+            minor:
+                type: string
+            build:
+                type: string
+        required:
+            - major
+            - minor
+            - build
+    type:
+        const: context
+    name:
+        type: string
+    description:
+        type: string
+    task:
+        type: object
+        properties:
+            id:
+                type: integer
+            version:
+                type: integer
+        required:
+            - id
+            - version
+    datasets:
+        type: array
+        items:
+            type: object
+            properties:
+                id:
+                    type: integer
+                version:
+                    type: integer
+                files:
+                    type: object
+                    patternProperties:
+                        ^.*$:
+                            type: object
+                            properties:
+                                index:
+                                    type: object
+                                    propertyNames:
+                                        enum:
+                                            - time
+                                            - location
+                                            - cause
+                                            - effect
+                                            - strength
+                                            - lag
+                                    patternProperties:
+                                        ^.*$:
+                                            type: string
+            required:
+                - id
+                - version
+    models:
+        type: array
+        items:
+            type: object
+            properties:
+                id:
+                    type: integer
+                version:
+                    type: integer
+#                parameters:
+#                    type: object
+#                    propertyNames:
+#                        enum:
+#                            - data
+#                            - target
+#                            - space
+#                    patternProperties:
+#                        ^.*$:
+#                            type: string
+            required:
+                - id
+                - version
+#                - parameters
+    metrics:
+        type: array
+        items:
+            type: object
+            properties:
+                id:
+                    type: integer
+                version:
+                    type: integer
+#                parameters:
+#                    type: object
+#                    propertyNames:
+#                        enum:
+#                            - ground_truth
+#                    patternProperties:
+#                        ^.*$:
+#                            type: string
+            required:
+                - id
+                - version
+#                - parameters
+required:
+    - causalbench
+    - type
+    - name
+    - description
+    - task
+    - datasets
+    - models
+    - metrics
