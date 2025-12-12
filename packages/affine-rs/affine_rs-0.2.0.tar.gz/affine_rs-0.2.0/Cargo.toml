@@ -1,0 +1,35 @@
+[package]
+name = "affiners"
+version = "0.2.0"
+edition = "2024"
+authors = ["Ilan Theodoro"]
+description = "Fast 3D affine transformations with trilinear interpolation using AVX2/AVX512 SIMD"
+license = "BSD-3-Clause"
+keywords = ["affine", "interpolation", "simd", "avx2", "image-processing"]
+readme = "README.md"
+
+[lib]
+name = "affiners"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ndarray = "0.17"
+rayon = "1.11"
+half = "2.7"
+numpy = { version = "0.27", optional = true }
+pyo3 = { version = "0.27", features = ["extension-module"], optional = true }
+
+[dev-dependencies]
+rand = "0.9"
+approx = "0.5"
+
+[features]
+default = ["parallel"]
+parallel = []
+python = ["pyo3", "numpy"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
