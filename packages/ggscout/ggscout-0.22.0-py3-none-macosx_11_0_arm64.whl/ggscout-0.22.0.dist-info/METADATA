@@ -1,0 +1,109 @@
+Metadata-Version: 2.4
+Name: ggscout
+Version: 0.22.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Security
+Classifier: Topic :: Software Development :: Version Control :: Git
+Summary: GitGuardian CLI tool that acts as an outpost to extract, hash, and transfer secrets metadata to GitGuardian Platform
+Keywords: cli,devops,gitguardian,secrets,security
+Author-email: GitGuardian <support@gitguardian.com>
+License: Proprietary
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://www.gitguardian.com
+Project-URL: Repository, https://github.com/GitGuardian/ggscout
+
+# ggscout
+
+**GitGuardian CLI tool for NHI (Non-Human Identity) discovery and remediation**
+
+ggscout is a Rust-powered command-line tool by [GitGuardian](https://gitguardian.com) that discovers and inventories Non-Human Identities (NHIs) across your production infrastructure. NHIs include services, applications, containers, and automation scripts that authenticate and access resources without human intervention. ggscout maps these identities, their permissions, and associated secrets to help organizations understand their NHI landscape and bootstrap incident remediation.
+
+## Installation
+
+```bash
+# Using uv (recommended)
+uv tool install ggscout
+
+# Using pip
+pip install ggscout
+```
+
+*Note: This is a Rust binary packaged for distribution via PyPI*
+
+## Basic Usage
+
+```bash
+# Display help
+ggscout --help
+
+# Fetch secrets from configuration
+ggscout fetch config.toml
+
+# Run with debug logging
+ggscout --verbose DEBUG fetch config.toml
+```
+
+## Supported Platforms
+
+ggscout inventories Non-Human Identities from:
+
+- **HashiCorp Vault** - KV stores, dynamic secrets, auth methods
+- **AWS Secrets Manager** - Secrets and associated IAM roles
+- **Azure Key Vault** - Keys, secrets, and managed identities
+- **Google Cloud Secret Manager** - Secrets and service accounts
+- **Kubernetes/OpenShift** - Secrets, ConfigMaps, Deployments, ServiceAccounts, Environment Variables
+- **Akeyless Vault** - Static and dynamic secrets
+- **CyberArk SaaS / CyberArk Self-Hosted** - Application identities and secrets
+- **Delinea Secret Server** - Machine accounts and credentials
+- **GitLab CI** - Project variables and pipeline identities
+
+## Key Features
+
+- **Comprehensive NHI Discovery** - Inventories services, roles, and secrets across platforms
+- **Production-ready** - Built for production environments with secure data handling
+- **Multi-platform Support** - Works with major secret management and orchestration platforms
+- **Secure Transfer** - Optional hashing before transmission to GitGuardian platform
+- **High Performance** - Rust implementation optimized for large-scale inventories
+- **Flexible Configuration** - TOML-based config with environment variable interpolation
+
+## Configuration Example
+
+```toml
+[sources.vault]
+type = "hashicorpvault"
+vault_address = "${VAULT_ADDR}"
+
+[sources.vault.auth]
+auth_mode = "token"
+token = "${VAULT_TOKEN}"
+
+[sources.k8s]
+type = "k8s"
+kubeconfig_path = "~/.kube/config"
+```
+
+## Documentation
+
+**[Official ggscout Documentation](https://docs.gitguardian.com/ggscout-docs/home)**
+
+## About GitGuardian
+
+[GitGuardian](https://gitguardian.com) is the code security platform for automated secrets detection and remediation across all environments from source code to production.
+
+ggscout integrates with GitGuardian's platform to provide comprehensive visibility and control over Non-Human Identities in your production infrastructure, enabling better security posture management and incident remediation.
+
+## License
+
+This project is licensed under a Proprietary License.
+
+## Support
+
+- [Documentation](https://docs.gitguardian.com/ggscout-docs/home)
+- [GitGuardian Support](https://www.gitguardian.com/support)
+- [Report Issues](https://github.com/GitGuardian/ggscout/issues)
