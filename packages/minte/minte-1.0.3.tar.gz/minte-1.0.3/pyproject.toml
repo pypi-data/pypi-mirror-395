@@ -1,0 +1,92 @@
+[project]
+name = "minte"
+version = "1.0.3"
+description = "Malaria Intervention Emulator (MINTe) - Neural network-based malaria scenario predictions"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Cosmo Santoni", email = "cosmo.santoni@imperial.ac.uk" }
+]
+keywords = ["malaria", "simulation", "emulator", "neural-network", "public-health"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+dependencies = [
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "torch>=2.0.0",
+    "scikit-learn==1.6.1",
+    "matplotlib>=3.7.0",
+    "scipy>=1.10.0",
+    "joblib>=1.3.0",
+    "estimint>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+xgboost = [
+    "xgboost>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/CosmoNaught/minte"
+Documentation = "https://github.com/CosmoNaught/minte#readme"
+Repository = "https://github.com/CosmoNaught/minte"
+Issues = "https://github.com/CosmoNaught/minte/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/minte"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+
+[tool.hatch.build]
+include = [
+    "src/minte/**/*.py",
+    "src/minte/**/*.csv",
+    "src/minte/**/*.json",
+    "src/minte/**/*.pkl",
+    "src/minte/**/*.pt",
+    "src/minte/py.typed",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
