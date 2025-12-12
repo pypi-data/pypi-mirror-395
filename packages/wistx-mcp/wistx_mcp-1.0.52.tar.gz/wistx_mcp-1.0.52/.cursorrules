@@ -1,0 +1,349 @@
+# WISTX - Cursor Rules
+
+## Project Overview
+WISTX is an MCP (Model Context Protocol) server providing compliance, pricing, and best practices context for DevOps infrastructure. The project consists of:
+- **MCP Server** (`wistx-mcp/`) - Native Claude Desktop integration via MCP protocol
+- **REST API** (`api/`) - FastAPI-based REST endpoints for non-MCP clients (CI/CD, scripts)
+- **Data Pipelines** (`data-pipelines/`) - Data collection, processing, and loading
+
+**Architecture:** MCP context server (no LLM hosting) - users use Claude/GPT-4 directly, we provide context via MCP.
+
+## Code Standards
+
+### Python Version
+- Use Python 3.11+ features
+- Target version: py311, py312, py313
+- Use modern type hints (PEP 604 syntax where possible)
+
+### Type Hints
+- Always use type hints for function parameters and return types
+- Use `from typing import` for complex types (Optional, List, Dict, etc.)
+- Use `dict[str, any]` instead of `Dict[str, Any]` (PEP 585)
+- Use `list[str]` instead of `List[str]`
+- Use `Optional[T]` for nullable types
+- Use `from __future__ import annotations` if needed for forward references
+
+### Code Style
+- Line length: 100 characters (enforced by black)
+- Use black for formatting
+- Use ruff for linting
+- Follow PEP 8 with ruff's specific rules
+- Use double quotes for strings consistently
+- No trailing commas unless needed for multi-line
+
+### No Code Comments
+- DO NOT add inline comments explaining what code does
+- Code should be self-documenting through clear naming
+- Only docstrings are allowed (for classes, functions, modules)
+- Docstrings should use triple double quotes
+- Docstrings should follow Google style or NumPy style
+
+### Import Organization
+- Standard library imports first
+- Third-party imports second
+- Local application imports last
+- Use isort (via ruff) for import sorting
+- Known first-party: `api`, `wistx_mcp`, `data_pipelines`
+- Use absolute imports:
+  - `from api.config import settings`
+  - `from wistx_mcp.tools.compliance import get_compliance_requirements`
+  - `from data_pipelines.collectors import ComplianceCollector`
+
+### Naming Conventions
+- Classes: PascalCase (e.g., `MongoDBManager`)
+- Functions/methods: snake_case (e.g., `get_database`)
+- Constants: UPPER_SNAKE_CASE (e.g., `MAX_RETRIES`)
+- Private methods: prefix with underscore (e.g., `_build_connection_string`)
+- Type variables: PascalCase (e.g., `T`, `ResponseType`)
+
+### FastAPI Best Practices
+- Use async/await for all route handlers
+- Use Pydantic models for request/response validation
+- Use dependency injection for shared resources (database, auth)
+- Use router prefixing: `/v1` for versioned endpoints
+- Return proper HTTP status codes
+- Use proper exception handling with HTTPException
+- Use response models explicitly
+
+### Pydantic Models
+- Use Pydantic v2 syntax
+- Use `Field()` for validation and documentation
+- Use `model_config = ConfigDict()` for model configuration
+- Use `@field_validator` for custom validation
+- Use `@model_validator` for model-level validation
+- Prefer `model_dump()` over `dict()`
+- Use `model_validate()` for creating from dict
+
+### MongoDB Best Practices
+- Use connection pooling (configured via settings)
+- Use retry logic with exponential backoff
+- Use circuit breaker pattern for resilience
+- Use health checks for monitoring
+- Use proper indexes (create via setup scripts)
+- Use bulk operations for batch inserts
+- Use transactions for multi-document operations
+- Handle connection errors gracefully
+- Use singleton pattern for connection manager
+
+### Error Handling
+- Use custom exception classes (inherit from base exceptions)
+- Raise specific exceptions, not generic Exception
+- Use try/except with specific exception types
+- Re-raise exceptions with `raise ... from e` for context
+- Log errors before raising
+- Use proper HTTP status codes in API responses
+
+### Logging
+- Use Python's logging module
+- Use lazy logging: `logger.info("Message: %s", value)` NOT `logger.info(f"Message: {value}")`
+- Use appropriate log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- Use structured logging with context
+- Include request IDs for tracing
+- Log at module level: `logger = logging.getLogger(__name__)`
+
+### Async/Await
+- Use async/await for I/O operations
+- Use `asyncio` utilities appropriately
+- Use `asyncio.gather()` for concurrent operations
+- Use proper async context managers
+- Don't mix sync and async unnecessarily
+
+### Environment Variables
+- All configuration via .env file
+- Use Pydantic Settings for configuration
+- Required variables must be set (use Field(...))
+- Provide defaults only when appropriate
+- Validate environment variables on startup
+
+### Testing
+- Use pytest for testing
+- Use pytest-asyncio for async tests
+- Use pytest fixtures for test setup
+- Test files: `test_*.py` or `*_test.py`
+- Test classes: `Test*`
+- Test functions: `test_*`
+- Use descriptive test names
+- Use markers: `@pytest.mark.slow`, `@pytest.mark.integration`
+
+### File Structure
+- Follow existing project structure
+- One class per file (unless closely related)
+- Group related functionality in modules
+- Use `__init__.py` for package exports
+- Keep files focused and cohesive
+
+### Database Patterns
+- Use dependency injection: `get_database()` helper
+- Use context managers for transactions
+- Use bulk operations for efficiency
+- Validate data before database operations
+- Use upsert operations for idempotency
+
+### API Patterns
+- Use FastAPI routers for endpoint organization
+- Use Pydantic models for request/response schemas
+- Use dependency injection for shared dependencies
+- Use middleware for cross-cutting concerns
+- Use proper HTTP methods (GET, POST, PUT, DELETE)
+- Use status codes appropriately
+
+### Security
+- Never commit secrets to code
+- Use environment variables for sensitive data
+- Validate all input data
+- Use proper authentication/authorization
+- Sanitize user input
+- Use parameterized queries (MongoDB handles this)
+
+### Performance
+- Use connection pooling
+- Use batch operations when possible
+- Use indexes for queries
+- Use async operations for I/O
+- Cache when appropriate
+- Monitor performance metrics
+
+### Code Quality
+- Write self-documenting code
+- Keep functions small and focused
+- Avoid deep nesting (max 3-4 levels)
+- Use early returns to reduce nesting
+- Extract complex logic into functions
+- Use meaningful variable names
+- Avoid magic numbers/strings
+
+### Specific Patterns Used in This Project
+
+#### Singleton Pattern
+```python
+_instance: Optional["ClassName"] = None
+
+def __new__(cls) -> "ClassName":
+    if cls._instance is None:
+        cls._instance = super().__new__(cls)
+    return cls._instance
+```
+
+#### Circuit Breaker Pattern
+- Use CircuitBreaker class for resilience
+- Track failure counts
+- Implement OPEN/CLOSED/HALF_OPEN states
+
+#### Retry Pattern
+- Use retry decorator with exponential backoff
+- Handle retryable vs non-retryable exceptions
+- Log retry attempts
+
+#### Health Checks
+- Implement health check endpoints
+- Monitor connection status
+- Track metrics
+
+### MCP Server Patterns
+- MCP tools are async functions (not classes)
+- Tools accept typed parameters and return dictionaries
+- Use `MongoDBClient` for database queries (async)
+- Use `VectorSearch` for semantic search (vector embeddings)
+- Use `ContextBuilder` to format responses for LLM
+- Tools should be stateless and idempotent
+- Handle errors gracefully and return structured error responses
+
+### Data Pipeline Patterns
+- Collectors inherit from `BaseCollector` or `BaseComplianceCollector`
+- Use `CollectionResult` for structured collection outcomes
+- Validate data with Pydantic models before processing
+- Use rate limiting for external API calls
+- Implement deduplication logic
+- Track metrics and errors in `CollectionMetrics`
+
+### What NOT to Do
+- DO NOT add inline comments explaining code
+- DO NOT use f-strings in logging (use lazy logging)
+- DO NOT catch bare `Exception` (be specific)
+- DO NOT ignore linter warnings without good reason
+- DO NOT use `any` type without justification
+- DO NOT hardcode configuration values
+- DO NOT commit `.env` file
+- DO NOT use `print()` for logging (use logger)
+- DO NOT mix sync and async unnecessarily
+- DO NOT create circular imports
+- DO NOT host LLM models (users use Claude/GPT-4 directly)
+- DO NOT create LLM chat endpoints (we provide context only)
+
+### Documentation
+- Use docstrings for all public classes and functions
+- Document complex algorithms or business logic
+- Keep docstrings concise and focused
+- Include parameter and return type information
+- Use type hints in docstrings if needed
+
+### Git Practices
+- Write clear commit messages
+- Keep commits focused and atomic
+- Use conventional commit format when possible
+- Don't commit generated files
+- Use .gitignore appropriately
+
+## Project-Specific Rules
+
+### Project Structure
+```
+wistx-model/
+├── api/                    # REST API (FastAPI)
+│   ├── routers/v1/        # REST endpoints (compliance, pricing, code)
+│   ├── database/          # MongoDB connection (singleton)
+│   ├── auth/              # API key authentication
+│   └── middleware/        # Logging, rate limiting, CORS
+├── wistx_mcp/             # MCP Server
+│   ├── server.py          # MCP server main entry point
+│   ├── config.py          # MCP server configuration
+│   └── tools/              # MCP tools (consolidated)
+│       ├── compliance.py  # get_compliance_requirements tool
+│       ├── pricing.py     # calculate_infrastructure_cost tool
+│       ├── code_examples.py  # get_code_examples tool
+│       ├── best_practices.py # search_best_practices tool
+│       └── lib/            # Shared utilities
+│           ├── mongodb_client.py    # MongoDB queries
+│           ├── vector_search.py     # Vector search (semantic)
+│           └── context_builder.py   # Format context for LLM
+├── data-pipelines/        # Data collection & processing
+│   ├── collectors/       # Data collectors (compliance, pricing, code)
+│   ├── processors/       # Data processors (standardization, validation)
+│   ├── loaders/          # MongoDB loaders
+│   └── models/           # Pydantic data models
+└── sdk/                   # Auto-generated REST API SDKs (via OpenAPI)
+    └── README.md          # SDK generation guide
+```
+
+### API Routes (REST API)
+- Version all routes: `/v1/...`
+- Use routers for organization
+- Group related endpoints together
+- Use proper HTTP status codes
+- Endpoints: `/v1/compliance`, `/v1/pricing`, `/v1/code-examples`, `/v1/best-practices`
+
+### MCP Server
+- MCP tools are async functions in `wistx-mcp/tools/`
+- Tools use shared utilities from `wistx-mcp/tools/lib/`
+- Tools return dictionaries (will be formatted by MCP server)
+- Use `MongoDBClient` and `VectorSearch` from `tools/lib/`
+- Format context using `ContextBuilder` for LLM consumption
+
+### Database
+- Use MongoDBManager singleton (in `api/database/`)
+- Use get_database() helper for dependency injection
+- Create indexes via setup scripts, not in code
+- Use proper error handling for connection issues
+- MCP server uses `MongoDBClient` (async, Motor-based)
+- REST API uses `MongoDBManager` (singleton, sync/async)
+
+### Middleware
+- Use FastAPI middleware for cross-cutting concerns
+- Log all requests with request ID
+- Handle errors gracefully
+- Add proper headers
+
+### Services
+- Keep business logic in services
+- Services should be stateless where possible
+- Use dependency injection
+- Handle errors appropriately
+
+### Models
+- Use Pydantic models for validation
+- Separate request/response models
+- Use proper field validation
+- Document models with descriptions
+- Data pipeline models in `data-pipelines/models/`
+- API models in `api/models/`
+
+## When Writing Code
+
+1. Write type hints first
+2. Write docstrings for public APIs
+3. Write self-documenting code (no comments)
+4. Use meaningful names
+5. Handle errors properly
+6. Log appropriately
+7. Test your code
+8. Follow existing patterns
+9. Keep it simple
+10. Make it maintainable
+
+## Code Review Checklist
+
+- [ ] Type hints present
+- [ ] No inline comments
+- [ ] Docstrings for public APIs
+- [ ] Proper error handling
+- [ ] Lazy logging (no f-strings)
+- [ ] Follows project structure
+- [ ] Uses existing patterns
+- [ ] Tests included
+- [ ] No hardcoded values
+- [ ] Environment variables used
+- [ ] MCP tools are async (if applicable)
+- [ ] Data collectors use BaseCollector (if applicable)
+- [ ] MongoDB queries use proper error handling
+- [ ] Vector search uses correct index names
+

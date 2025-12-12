@@ -1,0 +1,92 @@
+name: Deploy Backend to GCP
+
+on:
+  workflow_run:
+    workflows: ["Version API"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+
+env:
+  PROJECT_ID: metal-episode-478718-n3
+  REGION: europe-west1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'develop')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.workflow_run.head_branch }}
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Setup gcloud
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+        export_default_credentials: true
+  
+    - name: Verify Authenticated Service Account
+      run: gcloud auth list
+
+    - name: Get API version being deployed
+      id: api_version
+      run: |
+        if command -v python3 &> /dev/null; then
+          API_VERSION=$(python3 scripts/bump_version.py --get-api-version 2>/dev/null || python3 scripts/bump_version.py --get-current)
+        else
+          API_VERSION=$(python scripts/bump_version.py --get-api-version 2>/dev/null || python scripts/bump_version.py --get-current)
+        fi
+        echo "version=$API_VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Deploying API version: $API_VERSION"
+        echo "🔗 Triggered by workflow run: ${{ github.event.workflow_run.html_url }}"
+
+    - name: Build & Push Docker Image to Artifact Registry
+      run: |
+        TIMESTAMP=$(date +%Y%m%d%H%M)
+        IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/wistx-agent-dev-backend/backend:${TIMESTAMP}"
+        LATEST_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/wistx-agent-dev-backend/backend:latest"
+        
+        echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+        echo "LATEST_IMAGE=$LATEST_IMAGE" >> $GITHUB_ENV
+        
+        # Authenticate Docker with Artifact Registry
+        gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+        
+        # Build the Docker image
+        docker build -t $IMAGE -t $LATEST_IMAGE .
+        
+        # Push both tagged and latest images
+        docker push $IMAGE
+        docker push $LATEST_IMAGE
+
+    - name: Deploy to Cloud Run
+      run: |
+        # Deploy with new image to pre-provisioned Cloud Run service
+        # Note: Environment variables and port are managed by Terraform
+        # Cloud Run will automatically set PORT env var based on container_port configuration
+        gcloud run deploy dev-backend \
+          --image $IMAGE \
+          --region $REGION \
+          --platform managed \
+          --allow-unauthenticated \
+          --port 8080 \
+          --timeout 300 \
+          --cpu-boost
+
+    - name: Get Service URL
+      run: |
+        SERVICE_URL=$(gcloud run services describe dev-backend --region=$REGION --format='value(status.url)')
+        echo "🚀 Deployment successful!"
+        echo "📍 Service URL: $SERVICE_URL"
+        echo "🐳 Image: $IMAGE"
+        echo "📦 API Version: ${{ steps.api_version.outputs.version }}"

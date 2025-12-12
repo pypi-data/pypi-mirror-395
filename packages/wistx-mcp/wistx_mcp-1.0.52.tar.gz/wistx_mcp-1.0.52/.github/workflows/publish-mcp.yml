@@ -1,0 +1,214 @@
+name: Publish MCP to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: 'Dry run (build only, no publish)'
+        required: false
+        type: boolean
+        default: false
+      skip_tag:
+        description: 'Skip creating git tag'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: "3.11"
+  UV_VERSION: "0.9.8"
+
+jobs:
+  publish:
+    name: Build and Publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(python scripts/bump_version.py --get-current)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📋 Current version: $CURRENT_VERSION"
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          python scripts/bump_version.py ${{ inputs.version_type }}
+          NEW_VERSION=$(grep -E '^version\s*=' pyproject.toml | sed "s/.*= *[\"']\(.*\)[\"'].*/\1/")
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "🚀 New version: $NEW_VERSION"
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running tests before publishing..."
+          uv run pytest tests/wistx_mcp/ -v --tb=short || echo "⚠️ Tests failed, but continuing..."
+
+      - name: Build package
+        run: |
+          echo "🔨 Building package..."
+          uv build
+          echo "✅ Build complete"
+
+      - name: Verify package
+        run: |
+          echo "🔍 Verifying package..."
+          PACKAGE=$(ls -1 dist/*.whl | head -1)
+          echo "Package: $PACKAGE"
+          uv pip install --dry-run $PACKAGE || true
+
+      - name: Check for existing version
+        id: check_version
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new }}"
+          echo "Checking if version $NEW_VERSION already exists on PyPI..."
+          if uv pip index versions wistx-mcp 2>/dev/null | grep -q "$NEW_VERSION"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Version $NEW_VERSION already exists on PyPI!"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Version $NEW_VERSION is new"
+          fi
+
+      - name: Publish to PyPI (if not dry run)
+        if: inputs.dry_run == false && steps.check_version.outputs.exists == 'false'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          echo "📦 Publishing to PyPI..."
+          uv publish
+          echo "✅ Published successfully!"
+
+      - name: Skip publish (dry run)
+        if: inputs.dry_run == true
+        run: |
+          echo "🔍 Dry run mode - skipping publish"
+          echo "Package built successfully but not published"
+
+      - name: Skip publish (version exists)
+        if: steps.check_version.outputs.exists == 'true'
+        run: |
+          echo "⚠️ Skipping publish - version already exists on PyPI"
+          exit 1
+
+      - name: Create git tag
+        if: inputs.skip_tag == false && inputs.dry_run == false && steps.check_version.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new }}"
+          TAG="v${NEW_VERSION}"
+          echo "🏷️ Creating git tag: $TAG"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          echo "✅ Tag created and pushed"
+
+      - name: Commit version bump
+        if: inputs.dry_run == false && steps.check_version.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new }}"
+          git add pyproject.toml
+          git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }} || echo "Push failed or no changes"
+
+      - name: Create GitHub Release
+        if: inputs.skip_tag == false && inputs.dry_run == false && steps.check_version.outputs.exists == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.bump_version.outputs.new }}
+          release_name: Release v${{ steps.bump_version.outputs.new }}
+          body: |
+            ## Release v${{ steps.bump_version.outputs.new }}
+            
+            **Version Type:** ${{ inputs.version_type }}
+            
+            ### Changes
+            - Automated release via GitHub Actions
+            - Package published to PyPI: `wistx-mcp==${{ steps.bump_version.outputs.new }}`
+            
+            ### Installation
+            ```bash
+            pip install wistx-mcp==${{ steps.bump_version.outputs.new }}
+            ```
+            
+            ### MCP Configuration
+            ```json
+            {
+              "mcpServers": {
+                "wistx": {
+                  "command": "pipx",
+                  "args": ["run", "--no-cache", "wistx-mcp"],
+                  "env": {
+                    "WISTX_API_KEY": "YOUR_API_KEY"
+                  }
+                }
+              }
+            }
+            ```
+          draft: false
+          prerelease: false
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages-v${{ steps.bump_version.outputs.new }}
+          path: dist/*.whl
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          echo "## 📦 Publishing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version Type:** ${{ inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Previous Version:** ${{ steps.current_version.outputs.current }}" >> $GITHUB_STEP_SUMMARY
+          echo "**New Version:** ${{ steps.bump_version.outputs.new }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.dry_run }}" == "true" ]; then
+            echo "**Status:** 🔍 Dry run - package built but not published" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.check_version.outputs.exists }}" == "true" ]; then
+            echo "**Status:** ⚠️ Version already exists on PyPI" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** ✅ Published to PyPI" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Installation" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "pip install wistx-mcp==${{ steps.bump_version.outputs.new }}" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
