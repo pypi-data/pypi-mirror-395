@@ -1,0 +1,96 @@
+name: Run test suite
+
+###########################################################
+# Start the job on pushes to master and all pull requests #
+###########################################################
+on:
+  push:
+    branches: master
+    paths-ignore:
+      - 'docs/**'
+      - 'changelog.d/*'
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'changelog.d/*'
+      - 'README.md'
+  schedule: # Run daily at 08:00 CEST (06:00 UST)
+    - cron: '0 6 * * *'
+
+###############
+# Set the Job #
+###############
+jobs:
+  tests:
+    # Name the Job
+    name: "Test on Python ${{ matrix.python-version}}"
+    # Set the agent to run on
+    runs-on: ubuntu-latest
+
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Cache
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+
+      - name: "Set up Python ${{ matrix.python-version }}"
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox tox-gh-actions coverage
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends snmp libsnmp-dev
+
+      - name: Test with tox
+        run: tox
+
+      - name: Upload test reports (${{ matrix.python-version }})
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: reports-${{ matrix.python-version }}
+          path: |
+            reports/**/*
+
+  upload-pr-info:
+    name: Save extra PR info in artifact
+    runs-on: ubuntu-latest
+    if: ${{ github.event.number && always() }}
+    env:
+      PR_NUMBER: ${{ github.event.number }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      BASE_NAME: ${{ github.base_ref }}
+    steps:
+      - name: Make PR number file
+        run: |
+          mkdir -p ./extra
+          echo $PR_NUMBER > ./extra/pr_number
+      - name: Make base SHA file
+        run: |
+          echo $BASE_SHA > ./extra/base_sha
+      - name: Make base name file
+        run: |
+          echo $BASE_NAME > ./extra/base_name
+      - name: Upload PR info files
+        uses: actions/upload-artifact@v5
+        with:
+          name: extra
+          path: extra/
