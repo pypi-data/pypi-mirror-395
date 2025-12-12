@@ -1,0 +1,119 @@
+[project]
+name = "rootcause"
+version = "1.0.0"
+description = "Get something useful out your IntegrityErrors"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "django",
+]
+maintainers = [
+  { name = "Kevin Wetzels", email = "kevin@roam.be" },
+]
+authors = [
+  { name = "Kevin Wetzels", email = "kevin@roam.be" },
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Framework :: Django :: 5.2",
+  "Framework :: Django :: 6.0",
+  "Intended Audience :: Developers",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[project.urls]
+Homepage = "https://github.com/roam/rootcause/"
+Documentation = "https://github.com/roam/rootcause/blob/main/README.md"
+Repository = "https://github.com/roam/rootcause.git"
+Issues = "https://github.com/roam/rootcause/issues"
+Changelog = "https://github.com/roam/rootcause/blob/main/CHANGELOG.md"
+
+[tool.uv.build-backend]
+module-name = "rootcause"
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-django",
+    "pytest-randomly",
+    "psycopg[binary]",
+    "dj-database-url>=3.0.1",
+    "mysqlclient>=2.2.7",
+    "django-stubs[compatible-mypy]>=5.2.7",
+    "django-types>=0.22.0",
+    "ruff>=0.14.3",
+]
+django52 = [ "django>=5.2a1,<6; python_version>='3.10'" ]
+django60 = [ "django>=6a1,<6.1; python_version>='3.12'" ]
+
+
+[tool.pytest.ini_options]
+pythonpath = "tests"
+DJANGO_SETTINGS_MODULE = "dummy.settings"
+markers = [
+    "postgres",
+    "sqlite",
+    "mysql",
+    "any_db",
+]
+
+[tool.ruff]
+lint.select = [
+  # flake8-bugbear
+  "B",
+  # flake8-comprehensions
+  "C4",
+  # pycodestyle
+  "E",
+  # Pyflakes errors
+  "F",
+  # isort
+  "I",
+  # flake8-simplify
+  "SIM",
+  # flake8-tidy-imports
+  "TID",
+  # pyupgrade
+  "UP",
+  # Pyflakes warnings
+  "W",
+]
+lint.ignore = [
+  # flake8-bugbear opinionated rules
+  "B9",
+  # line-too-long
+  "E501",
+  # suppressible-exception
+  "SIM105",
+  # if-else-block-instead-of-if-exp
+  "SIM108",
+]
+lint.extend-safe-fixes = [
+  # non-pep585-annotation
+  "UP006",
+]
+lint.isort.required-imports = [ "from __future__ import annotations" ]
+
+[tool.pyproject-fmt]
+max_supported_python = "3.14"
+
+[tool.uv]
+conflicts = [
+  [
+    { group = "django52" },
+    { group = "django60" },
+  ],
+]

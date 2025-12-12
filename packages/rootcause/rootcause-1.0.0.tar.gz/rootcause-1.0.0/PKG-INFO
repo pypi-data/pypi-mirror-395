@@ -1,0 +1,525 @@
+Metadata-Version: 2.3
+Name: rootcause
+Version: 1.0.0
+Summary: Get something useful out your IntegrityErrors
+Author: Kevin Wetzels
+Author-email: Kevin Wetzels <kevin@roam.be>
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Framework :: Django :: 5.2
+Classifier: Framework :: Django :: 6.0
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Requires-Dist: django
+Maintainer: Kevin Wetzels
+Maintainer-email: Kevin Wetzels <kevin@roam.be>
+Requires-Python: >=3.10
+Project-URL: Changelog, https://github.com/roam/rootcause/blob/main/CHANGELOG.md
+Project-URL: Documentation, https://github.com/roam/rootcause/blob/main/README.md
+Project-URL: Homepage, https://github.com/roam/rootcause/
+Project-URL: Issues, https://github.com/roam/rootcause/issues
+Project-URL: Repository, https://github.com/roam/rootcause.git
+Description-Content-Type: text/markdown
+
+# Rootcause
+
+Let the database do the work and get some use out of an `IntegrityError`.
+
+Requires Django ≥ 5.1.
+
+Available on PyPI as [rootcause](https://pypi.org/project/rootcause/), so all you need is `uv add rootcause` or `pip install rootcause` or ...
+
+---
+
+## Purpose
+
+You can validate constraints in your forms and serializers to your heart's content, 
+but the data isn't stored until your database lets you. An `IntegrityError` can still be raised.
+
+The goal of this library is to turn those errors into something you can actually
+rely on and use to your advantage. Use Django's constraints on your models and then lean into it.
+
+A simple example:
+
+```python
+import rootcause
+from django.db import IntegrityError
+
+try:
+    ... # something raises an IntegrityError
+except IntegrityError as e:
+    cause = rootcause.of(e)
+    # Name and alias must be unique together.
+    if cause.is_unique("name", "alias"):
+        raise NameAliasMustBeUnique()
+    # The donated amount is too low.
+    if cause.is_check(name="donation_too_low"):
+        raise DonateMorePlease()
+    # We missed something. Reraise the error.
+    raise
+```
+
+The result of `rootcause.of` is a `cause`. It contains information about the kind of constraint violation and _can_ contain the name of the constraint and the columns involved. Check our compatibility tables at the bottom for more on that.
+
+In this case we've used its `is_unique` method to check if the operation violated our `UniqueConstraint` on the `name` and `alias` _columns_. Or perhaps the donated amount was too low, which is covered by a `CheckConstraint` named `donation_too_low` in our model.
+
+### Some background
+
+The information contained in an `IntegrityError` is provided by the database. This means the information provided differs from database to database. It might even differ from version to version of the _same_ database. The sample above works as intended on PostgreSQL and SQLite, but not on MySQL.
+
+**Fear not!** Rootcause also provides `rootcause.resolve` which irons out the details, 
+ with some slight overhead.
+
+We've included a table outlining every possible constraint and the available information by database a bit further on, so you can decide for yourself whether you should use `rootcause.of` or `rootcause.resolve`.
+
+## Quickstart
+
+Before we flesh out some examples of using Rootcause properly, let's focus on `of` and `resolve`, their most commonly used parameters and their return values.
+
+### Basic usage: `of(error)`
+
+Calling `of` with only the error results in a `BareCause` instance. Its properties are:
+
+- `kind`: one of `unique`, `check`, `not-null`, or `foreign-key`
+- `name`: the name of the constraint
+- `columns`: the names of the table **columns** (not _fields_) involved in the constraint
+
+The `name` and `columns` are not guaranteed to be included. It all depends on the type of constraint violation and the database being used. Yeah. Fun, right?
+
+Anyway, you can use the `BareCause` to check which constraint was violated like this:
+
+```python
+cause = rootcause.of(error)
+
+# Using the constraint name.
+cause.is_unique(name="uq_constraint_name")
+
+# Using the **COLUMN** names. All involved must be presented!
+cause.is_unique("name_", "alias")
+
+# Or a check by name.
+cause.is_check(name="my_custom_check")
+
+# Even a foreign key (again: COLUMN name).
+cause.is_foreign_key("my_relationship_id")
+
+# Or a NOT NULL.
+cause.is_not_null("name_")
+```
+
+### Improved usage: `of(error, model=MyModel)`
+If you pass in the model as well, you'll receive a `Cause` instance in return. This wraps the original `BareCause` and provides information about the involved _fields_. 
+
+Its properties include those from `BareCause`, plus:
+
+- `bare`: the original `BareCause`
+- `fields`: the field instances
+- `field_names`: the names of those instances
+
+The same caveats apply. If the `BareCause` can't provide the names of the columns, `Cause` cannot include information about the fields. Makes sense, right?
+
+This also means that our methods for checking which constraint was violated now by default accept field names. Not column names.
+
+```python
+cause = rootcause.of(error, model=MyModel)
+
+# Using the constraint name.
+cause.is_unique(name="uq_constraint_name")
+
+# Using the **FIELD** names. All involved must be presented!
+cause.is_unique("name", "alias")
+
+# Or a check by name.
+cause.is_check(name="my_custom_check")
+
+# Even a foreign key (again: FIELD name).
+cause.is_foreign_key("my_relationship")
+
+# Or a NOT NULL.
+cause.is_not_null("name")
+```
+
+### Max usage: `resolve(error, model=MyModel)`
+The `resolve` function tries to fill in the gaps for each database _without_ querying the database. 
+
+It examines the model to find a matching constraint listed in its `Meta` class. If there's no matching constraint defined, it will construct "virtual" constraints from the fields with `unique=True` or included in `Meta.unique_together`, and select the best match.
+
+This means it tries to resolve two scenarios using the metadata from the model:
+
+1. Name is present, but column names are missing: find the constraint by name and use those fields.
+2. Column names are present, but name is missing: find the constraint by fields and use its name.
+
+The `Cause` returned by `resolve` functions exactly as the one above. It simply includes more information, providing more cross-compatibility regardless of the database you're using.
+
+```python
+cause = rootcause.resolve(error, model=MyModel)
+
+# Using the constraint name.
+cause.is_unique(name="uq_constraint_name")
+
+# Using the **FIELD** names. All involved must be presented!
+cause.is_unique("name", "alias")
+
+# Or a check by name.
+cause.is_check(name="my_custom_check")
+
+# Even a foreign key (again: FIELD name).
+cause.is_foreign_key("my_relationship")
+
+# Or a NOT NULL.
+cause.is_not_null("name")
+```
+
+### Additional parameters
+
+Both `of` and `resolve` support these additional parameters:
+
+- `using`: database alias. Optional, defaults to `default`. Used to determine the type of database being used.
+- `reraise_if_unknown`: reraise the IntegrityError if Rootcause couldn't match the error. Otherwise Rootcause will raise `rootcause.Unmatched`. Defaults to `True`.
+
+---
+
+## Examples
+
+Our example (see [the game app](tests/dummy/game/models.py) and our [tests](tests/)) features a game with characters and players. We've got two versions of the game: the _classic_, and the _modern_ one. The first one uses `unique=True` and `unique_together`, the latter uses `Meta.constraints`.
+
+All of our examples use `rootcause.resolve`.
+
+### Using a form
+
+Let's start with the `ClassicCharacter` model:
+
+```python
+# models.py
+from django.db import models
+
+class ClassicCharacter(models.Model):
+    # Unique name.
+    name = models.CharField(max_length=50, unique=True, db_column="name_col")
+    # Unique nickname.
+    nickname = models.CharField(max_length=50, unique=True)
+    # Unique special skill.
+    special_skill = models.CharField(max_length=50, unique=True)
+    special_skill_level = models.PositiveSmallIntegerField()
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+```
+
+A classic character in the game must have a unique name, a unique nickname and a unique special skill. And in true classic fashion, we're going to add characters using a `ModelForm`, which also requires adding a view.
+
+```python
+# forms.py
+from django import forms
+from dummy.game.models import ClassicCharacter
+import rootcause
+
+class ClassicCharacterForm(forms.ModelForm):
+    class Meta:
+        model = ClassicCharacter
+        fields = (
+            "name",
+            "nickname",
+            "special_skill",
+            "special_skill_level",
+            "is_active",
+        )
+```
+
+The view:
+
+```python
+# views.py
+from dummy.game.forms import ClassicCharacterForm
+
+@transaction.atomic
+def create_classic_character(request):
+    if request.method == "POST":
+        form = ClassicCharacterForm(request.POST)
+        if form.is_valid():
+            # <--watch this-->
+            instance = form.save()
+            return redirect(
+                "classic-character-detail", 
+                pk=instance.pk
+            )
+    else:
+        form = ClassicCharacterForm()
+    return render(
+        request, 
+        "classic_character_form.html", 
+        {"form": form}
+    )
+```
+
+Nothing you haven't seen before. Well, except the `<--watch this-->` comment. That's the spot we often overlook. 
+
+Between (a) Django's marvelous validation ensuring nothing in our form violates a constraint, and (b) the moment we actually get the data _into the database_, someone else might beat us to it. That's when an `IntegrityError` is raised.
+
+Time to introduce `rootcause.resolve`. This isn't required, but for added clarity we'll add a custom `persist` method to our form:
+
+```python
+# forms.py
+# ...
+
+class ClassicCharacterForm(forms.ModelForm):
+    # ... as above
+
+    def persist(self) -> ClassicCharacter | None:
+        try:
+            with transaction.atomic():
+                return self.save()
+        except IntegrityError as e:
+            cause = rootcause.resolve(e, model=ClassicCharacter)
+            cause.add_to_form(self)
+            return None
+```
+
+This method tries to save our model instance, but if an exception is raised it will:
+
+1. Rollback the transaction.
+2. In case of an IntegrityError, use `rootcause.resolve` to get the actual cause.
+3. Add it to the form as a `ValidationError`. 
+
+The end user will thus be presented with the same validation error they would have seen if they'd hit the _Save_ button a few milliseconds later.
+
+Of course this means we need to change our view as well:
+
+```python
+# views.py
+
+# No more: @transaction.atomic
+def create_classic_character(request):
+    if request.method == "POST":
+        form = ClassicCharacterForm(request.POST)
+        if form.is_valid():
+            # Call persist instead of save
+            instance = form.persist()
+            # Persist doesn't return anything
+            # when we couldn't save the instance.
+            if instance:
+                return redirect(
+                    "classic-character-detail", 
+                    pk=instance.pk
+                )
+            # Display the form to the user as if
+            # the form was invalid (because now it is!)
+    else:
+        form = ClassicCharacterForm()
+    return render(
+        request, 
+        "classic_character_form.html", 
+        {"form": form}
+    )
+```
+
+Now any `IntegrityError` raised while saving the form will be presented to the user as a form validation error. Yes, you could also handle the error in the view, in a separate logic layer, in... You do you. This is an example.
+
+#### Aside: `add_to_form` and `validation_error`
+The `add_to_form` method of `Cause` will generate an appropriate validation error —using
+its `validation_error` method— and add it to the form using the form's `add_error` method.
+
+You can use the `validation_error` method directly as well. Its goal is to construct 
+an error that matches the one Django would have raised during validation. 
+
+### A more hands-on approach
+
+Let's examine how you can take more control over what's happening. We're going to use the modern `Character` model for this scenario, which eliminates the usage of `unique=True` and `unique_together`. We suggest you prefer `Meta.constraints` over those "classic" methods of ensuring uniqueness.
+
+> The `Character` model is used in our test cases. It's not an example of the most correct
+> constraints to apply, but a mix of different combinations. 
+>
+> Note that MySQL does not support conditions in constraints.
+
+Here it is:
+
+```python
+from django.db import models
+
+# models.py
+class Character(models.Model):
+    name = models.CharField(max_length=50, db_column="name_col")
+    nickname = models.CharField(max_length=50)
+    special_skill = models.CharField(max_length=50)
+    special_skill_level = models.PositiveSmallIntegerField()
+    is_active = models.BooleanField(default=True)
+    mentor = models.OneToOneField(
+        "self", null=True, related_name="mentee", on_delete=models.PROTECT
+    )
+
+    class Meta:
+        constraints = [
+            # No duplicate character names allowed!
+            # Unique constraint with expression and custom violation error.
+            models.UniqueConstraint(
+                Lower("name"),
+                name="uq_character_name",
+                violation_error_code="UQ:NAME",
+                violation_error_message="A character's name must be unique.",
+            ),
+            # No duplicate nicknames either.
+            # Unique constraint with one field.
+            # Similar to unique=True.
+            models.UniqueConstraint(
+                fields=("nickname",),
+                name="uq_character_nickname",
+            ),
+            # A special skill should be unique among active
+            # characters.
+            # Unique constraint with one field and condition.
+            models.UniqueConstraint(
+                fields=("special_skill",),
+                condition=models.Q(is_active=True),
+                name="uq_special_skill",
+            ),
+            # Ensure the special skill level lies between 60 and 100.
+            models.CheckConstraint(
+                condition=models.Q(special_skill_level__lte=100)
+                & models.Q(special_skill_level__gte=60),
+                name="special_skill_level_bounds",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+```
+
+Now suppose you've got a function somewhere that allows updating all of these values at once. Here's how you can turn an `IntegrityError` into something more useful (like custom exceptions) for callers:
+
+```python
+try:
+    ... # Constraint violation!
+except IntegrityError as e:
+    cause = rootcause.resolve(e, model=Character)
+    # Check by constraint name
+    if cause.is_unique(name="uq_character_name"):
+        raise DuplicateName()
+    # Check by field names
+    if cause.is_unique("nickname"):
+        raise DuplicateNickname()
+    if cause.is_unique("special_skill"):
+        raise DuplicateSpecialSkill()
+    # Check by name. Although this probably should have been
+    # handled by the caller.
+    if cause.is_check(name="special_skill_level_bounds"):
+        raise InvalidSpecialSkillLevel()
+    # Somebody removed our mentor!
+    if cause.is_foreign_key("mentor"):
+        raise MentorNotFound()
+    # This really should have been handled by the caller.
+    if cause.is_not_null():
+        raise ProgrammingError(f"Fix the validation! Got {cause}")
+    # There's a constraint we've missed. Raise the IntegrityError.
+    raise
+```
+
+And that's all there is to it! 
+
+**But we've got some recommendations.** 
+
+First: default to using `rootcause.resolve`. Unless you know exactly what you're doing (hint: look at the tables below) and want to eliminate any overhead, there's isn't much
+to gain from using `rootcause.of` instead.
+
+Second: ditch `unique_together` (and probably `unique=True` as well) before you have to because Django removed it. This makes your live easier when dealing with constraint violations. Plus: all your unique and check constraints are defined in a single spot.
+
+Third and final recommendation: when you call `is_unique` and `is_check`, prefer using the _name_ of the corresponding `UniqueConstraint` or `CheckConstraint` rather than the names of the fields. You might forget to include a field or the constraint might be changed to cover fewer, more or different fields, meaning your call will no longer return `True`.
+
+---
+
+## Database support
+
+### Important
+Rootcause tries its best to get something useful out of the `IntegrityError`.
+What you actually get back depends on the database you're using. Rootcause currently 
+supports recent versions of SQLite, PostgreSQL and MySQL. PostgreSQL is by far the most informative.
+
+> Different database versions might use different messages, which means 
+> Rootcause will start failing to resolve the cause.
+
+When the error could not be resolved/matched by Rootcause, it will either raise a `rootcause.Unmatched` exception or the original `IntegrityError`. This is controlled by the `reraise_if_unknown` parameter of `of` and `resolve` as detailed above.
+
+### Support using `of`
+When you're using different databases, for example using SQLite for quick testing, the
+most cross-compatible way of checking the actual cause is using the constraint (or index) name. This means you need to take control of naming your constraints. See our recommendations above.
+
+The table below is what you can expect when using `rootcause.of`. Reminder: if column names are available, the corresponding fields will be included if you pass in the model.
+
+Read on below to see how `rootcause.resolve` provides a better baseline by 
+using information about the Django model.
+
+
+| Constraint info                          | SQLite | PostgreSQL | MySQL |
+| ---------------------------------------- | ------ | ---------- | ----- |
+| **`UniqueConstraint` with expressions**  |        |            |       |
+| Name                                     | ✅      | ✅         | ✅(3) |     
+| Columns                                  | ❌      | ❌(1)      | ❌    |     
+| **`UniqueConstraint` with fields**       |        |            |       |     
+| Name                                     | ❌      | ✅         | ✅(3) |     
+| Columns                                  | ✅      | ✅         | ❌    |     
+| **`UniqueConstraint` with _one_ field**  |        |            |       |     
+| Name                                     | ❌      | ✅         | ✅(3) |     
+| Columns                                  | ✅      | ✅         | ❌    |     
+| **`unique=True`**                        |        |            |       |     
+| Name                                     | ❌      | ✅(2)      | ✅(2) |     
+| Columns                                  | ✅      | ✅         | ❌    |
+| **`unique_together`**                    |        |            |       |     
+| Name                                     | ❌      | ✅(2)      | ✅(2) |
+| Columns                                  | ✅      | ✅         | ❌    |
+| **`CheckConstraint`**                    |        |            |       |     
+| Name                                     | ✅      | ✅         | ✅    |
+| Columns                                  | ❌      | ❌         | ❌    |
+| **`NOT NULL`**                           |        |            |       |     
+| Name                                     | ❌      | ❌         | ❌    |
+| Columns                                  | ✅      | ✅         | ✅    |
+| **`FOREIGN KEY`**                        |        |            |       |     
+| Name                                     | ❌      | ✅         | ✅    |
+| Columns                                  | ❌      | ✅         | ✅    |
+
+1. PostgreSQL _does_ include information about the columns, but wrapped
+in expressions. 
+2. The name of the constraint is determined by the database.
+3. MySQL does not support expressions or conditions on constraints.
+
+These results have been verified with:
+
+- SQLite: with Python 3.10 up to 3.14.
+- PostgreSQL: 15.14, 16.10, 17.6 and 18.0.
+- MySQL: 8.0.43, 8.4.6, 9.4.0.
+
+### Support using `resolve`
+
+| Constraint info                          | SQLite | PostgreSQL | MySQL |
+| ---------------------------------------- | ------ | ---------- | ----- |
+| **`UniqueConstraint` with expressions**  |        |            |       |
+| Name                                     | ✅      | ✅         | ✅    |     
+| Columns                                  | ✅      | ✅         | ✅    |     
+| **`UniqueConstraint` with fields**       |        |            |       |     
+| Name                                     | ✅      | ✅         | ✅    |     
+| Columns                                  | ✅      | ✅         | ✅    |     
+| **`UniqueConstraint` with _one_ field**  |        |            |       |     
+| Name                                     | ✅      | ✅         | ✅    |     
+| Columns                                  | ✅      | ✅         | ✅    |     
+| **`unique=True`**                        |        |            |       |     
+| Name                                     | ❌      | ✅         | ✅    |     
+| Columns                                  | ✅      | ✅         | ✅    |
+| **`unique_together`**                    |        |            |       |     
+| Name                                     | ❌      | ✅         | ✅    |
+| Columns                                  | ✅      | ✅         | ✅    |
+| **`CheckConstraint`**                    |        |            |       |     
+| Name                                     | ✅      | ✅         | ✅    |
+| Columns                                  | ✅      | ✅         | ✅    |
+| **`NOT NULL`**                           |        |            |       |     
+| Name                                     | ❌      | ❌         | ❌    |
+| Columns                                  | ✅      | ✅         | ✅    |
+| **`FOREIGN KEY`**                        |        |            |       |     
+| Name                                     | ❌      | ✅         | ✅    |
+| Columns                                  | ❌      | ✅         | ✅    |
