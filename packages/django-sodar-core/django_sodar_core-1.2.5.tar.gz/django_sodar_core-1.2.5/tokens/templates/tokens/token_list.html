@@ -1,0 +1,115 @@
+{% extends 'projectroles/base.html' %}
+
+{% load projectroles_common_tags %}
+
+{% block title %}
+  API Tokens in {{ project.title }}
+{% endblock title %}
+
+{% block css %}
+  {{ block.super }}
+  <style type="text/css">
+    table#sodar-tk-list-table thead tr th:first-child,
+    table#sodar-tk-list-table tbody tr td:first-child {
+      width: 60px !important;
+    }
+    @media screen and (max-width: 650px) {
+      table#sodar-tk-list-table thead tr th:nth-child(2),
+      table#sodar-tk-list-table tbody tr td:nth-child(2) {
+        display: none;
+      }
+    }
+  </style>
+{% endblock css %}
+
+{% block projectroles %}
+
+{% get_app_setting 'projectroles' 'site_read_only' as site_read_only %}
+
+<div class="row sodar-subtitle-container bg-white sticky-top">
+  <h2><i class="iconify" data-icon="mdi:key-chain-variant"></i> API Tokens</h2>
+  {% if request.user.is_superuser or not site_read_only %}
+    <span class="d-inline-block ml-auto" tabindex="0" data-toggle="tooltip"
+          id="sodar-tk-btn-create-tooltip"
+          title="{{ token_create_msg }}">
+      <a role="button" class="btn btn-primary" id="sodar-tk-create-btn"
+         {% if not token_create_enable %}disabled="disabled"{% endif %}
+         href="{% url 'tokens:create' %}">
+        <i class="iconify" data-icon="mdi:plus-thick"></i> Create Token
+      </a>
+    </span>
+  {% endif %}
+</div>
+
+<div class="container-fluid sodar-page-container">
+  <div class="card" id="sodar-tk-token-list">
+    <div class="card-body p-0">
+      <table class="table table-striped sodar-card-table"
+             id="sodar-tk-table">
+        <thead>
+          <tr>
+            <th class="text-right">#</th>
+            <th>Created</th>
+            <th>Expires</th>
+            <th>Key</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if object_list.count > 0 %}
+            {% for token in object_list %}
+              {% include 'tokens/_token_item.html' with item=token %}
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td class="bg-faded font-italic text-center" colspan="5">
+                No API tokens
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock projectroles %}
+
+{% block javascript %}
+  {{ block.super }}
+  <!-- Tour content -->
+  <script type="text/javascript">
+    tourEnabled = true
+    tour.addStep('tokens', {
+      title: 'API Tokens App',
+      text: 'In this application you can create and manage API tokens to be ' +
+            'used with the REST API endpoints of the site. Tokens are user ' +
+            'specific and may have an expiry date.',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    tour.addStep('token_create', {
+      title: 'Create Token',
+      text: 'To create a new API token, click on this button and follow the ' +
+            'instructions in the displayed forms.',
+      attachTo: '#sodar-tk-create-btn left',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    tour.addStep('token_list', {
+      title: 'Token List',
+      text: 'Tokens assigned to you can be seen in this list.',
+      attachTo: '#sodar-tk-table top',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    if ($('.sodar-tk-item-dropdown').length) {
+      tour.addStep('token_dropdown', {
+        title: 'Token Dropdown',
+        text: 'Through this dropdown you can delete the corresponding token.',
+        attachTo: '.sodar-tk-item-dropdown left',
+        advanceOn: '.docs-link click',
+        showCancelLink: true
+      })
+    }
+  </script>
+{% endblock javascript %}

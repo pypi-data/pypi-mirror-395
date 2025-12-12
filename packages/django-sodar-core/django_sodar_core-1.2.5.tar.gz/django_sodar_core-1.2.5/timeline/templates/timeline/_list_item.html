@@ -1,0 +1,68 @@
+{% load rules %}
+{% load timeline_tags %}
+{# Projectroles dependency #}
+{% load projectroles_common_tags %}
+
+<tr class="sodar-tl-item"
+    id="sodar-tl-list-event-{{ event.sodar_uuid }}">
+  <td class="sodar-tl-item-details">
+    {% has_perm 'timeline.view_event_extra_data' request.user event.project as can_view_extra_data %}
+    {% get_timestamp event as event_time %}
+    {% if event.project %}
+      <a class="sodar-tl-link-detail text-primary"
+         data-url="{% url 'timeline:ajax_detail_project' timelineevent=event.sodar_uuid %}">
+        {{ event_time }}
+      </a>
+    {% else %}
+      <a class="sodar-tl-link-detail text-primary"
+         data-url="{% url 'timeline:ajax_detail_site' timelineevent=event.sodar_uuid %}">
+        {{ event_time }}
+      </a>
+    {% endif %}
+  </td>
+  <td class="sodar-tl-item-desc">
+    {% get_app_icon_html event plugin_lookup as event_icon %}
+    <span class="badge bg-secondary text-white sodar-obj-badge sodar-tl-event-badge mr-1">
+      {{ event_icon|safe }}
+      {% get_event_name event %}
+    </span>
+    {% if event.user %}
+      {% get_user_badge event.user 'mr-1' as user_badge %}
+      {{ user_badge | safe }}
+    {% endif %}
+    {% if event.project and user.is_superuser and timeline_mode == 'admin' %}
+      {% get_project_badge event.project extra_class='mr-1' as project_badge %}
+      {{ project_badge | safe }}
+    {% endif %}
+    {% get_event_description event plugin_lookup request as event_desc %}
+    {{ event_desc|safe|capfirst }}
+    {% if not details_card_mode and event.extra_data %}
+      {% if event.project and can_view_extra_data %}
+        <a class="sodar-tl-link-extra-data text-primary pull-right"
+           data-url="{% url 'timeline:ajax_extra_project' timelineevent=event.sodar_uuid %}">
+          <i class="iconify" data-icon="mdi:text-box" title="Extra Data"
+             data-toggle="tooltip" data-placement="right">
+          </i>
+        </a>
+      {% elif not event.project and user.is_superuser %}
+        <a class="sodar-tl-link-extra-data text-primary pull-right"
+           data-url="{% url 'timeline:ajax_extra_site' timelineevent=event.sodar_uuid %}">
+          <i class="iconify" data-icon="mdi:text-box" title="Extra Data"
+             data-toggle="tooltip" data-placement="right">
+          </i>
+        </a>
+      {% endif %}
+    {% endif %}
+    {% if event.classified %}
+      <span class="pull-right text-muted sodar-tl-item-classified">
+        <i class="iconify" data-icon="mdi:lock" title="Classified"
+           data-toggle="tooltip" data-placement="left">
+        </i>
+      </span>
+    {% endif %}
+  </td>
+  <td class="{% get_status_style event.get_status %} text-light
+             sodar-tl-item-status">
+    {{ event.get_status.status_type }}
+  </td>
+</tr>

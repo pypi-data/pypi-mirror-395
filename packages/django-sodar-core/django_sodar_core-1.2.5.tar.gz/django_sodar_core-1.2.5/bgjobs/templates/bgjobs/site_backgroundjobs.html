@@ -1,0 +1,27 @@
+{% extends 'projectroles/base.html' %}
+{% load projectroles_common_tags %}
+{% load rules %}
+{% load crispy_forms_tags %}
+{% load rules %}
+{% load bgjobs_tags %}
+
+{% block title %}
+  Site-Wide Background Jobs
+{% endblock title %}
+
+{% block projectroles %}
+
+{% has_perm 'bgjobs.site_view_data' request.user project as can_view_data %}
+
+<div class="row sodar-subtitle-container">
+  <h2><i class="iconify" data-icon="mdi:server"></i> Site-Wide Background Jobs</h2>
+  {% if can_clear_own_jobs or can_clear_all_jobs %}
+    {% include 'bgjobs/_list_buttons.html' %}
+  {% endif %}
+</div>
+
+<div class="container-fluid sodar-page-container">
+  {% include 'bgjobs/_backgroundjob_list.html' %}
+</div>
+
+{% endblock projectroles %}

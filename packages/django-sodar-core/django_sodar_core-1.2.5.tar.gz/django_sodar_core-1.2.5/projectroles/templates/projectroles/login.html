@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% load static %}
+{% load projectroles_tags %}
+{% load projectroles_common_tags %}
+
+{% block title %}Login{% endblock title %}
+
+{% block content %}
+{% get_django_setting 'PROJECTROLES_TEMPLATE_INCLUDE_PATH' as template_include_path %}
+
+<div class="container-fluid">
+  {# Django messages / site app messages #}
+  {% include 'projectroles/_messages.html' %}
+
+  {# Display error if login was unsuccessful. #}
+  {% if request.POST %}
+  <div class="alert alert-danger alert-dismissable fade show sodar-alert-top">
+    Login failed. Please make sure the user name, domain and password are correct.
+    <a href="#"
+       data-dismiss="alert"
+       class="pull-right sodar-alert-close-link">
+      <i class="iconify text-muted" data-icon="mdi:close-thick"></i>
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="col-md-4 mx-auto mt-5">
+    <h2 class="sodar-pr-content-title">Login</h2>
+    {% autoescape off %}
+      {% get_login_info %}
+    {% endautoescape %}
+
+    <form class="form-signin" method="post" id="sodar-form-login">
+      {% csrf_token %}
+      {% get_django_setting 'ENABLE_LDAP' as enable_ldap %}
+      <input type="text" name="username"
+             id="sodar-login-username" class="form-control"
+             placeholder="{% if enable_ldap %}username@DOMAIN{% else %}username{% endif %}"
+             required autofocus>
+      <input type="password" name="password" id="sodar-login-password"
+             class="form-control my-sm-2 mb-sm-2" placeholder="password"
+             required>
+      <button class="btn btn-md btn-primary btn-block" type="submit"
+              id="sodar-login-submit">
+        <i class="iconify" data-icon="mdi:login-variant"></i> Login
+      </button>
+    </form>
+  </div>
+
+  {# OpenID Connect (OIDC) auth #}
+  {% get_django_setting 'ENABLE_OIDC' as enable_oidc %}
+  {% if enable_oidc %}
+    <div class="col-md-4 mx-auto mt-4">
+      {% include 'projectroles/_login_oidc.html' %}
+    </div>
+  {% endif %}
+
+  {# Optional template for additional login page HTML #}
+  {% template_exists template_include_path|add:'/_login_extend.html' as login_extend %}
+  {% if login_extend %}
+    {% include template_include_path|add:'/_login_extend.html' %}
+  {% endif %}
+</div>
+
+{% endblock content %}
+
+{% block javascript %}
+  {{ block.super }}
+  <!-- Projectroles Javascript -->
+  <script type="text/javascript" src="{% static 'projectroles/js/projectroles.js' %}"></script>
+
+  <!-- Tour content -->
+  {% get_django_setting 'SITE_INSTANCE_TITLE' as site_title %}
+  {% get_django_setting 'ENABLE_LDAP' as enable_ldap %}
+  {% get_django_setting 'PROJECTROLES_ALLOW_LOCAL_USERS' as allow_local_users %}
+  <script type="text/javascript">
+    tourEnabled = true
+    tour.addStep('login_account', {
+      title: 'Log in to {{ site_title }}',
+      text: 'To use {{ site_title }}, you must log in. For this, you need to ' +
+            'use an existing account.',
+        attachTo: '#sodar-login-username bottom',
+        advanceOn: '.docs-link click',
+        showCancelLink: true
+    })
+    {% if enable_ldap %}
+      tour.addStep('login_domain', {
+      title: 'User Name and Domain',
+      text: 'For external accounts via LDAP, the user name must be supplied ' +
+            'in the format of "username@DOMAIN" when using an external ' +
+            'account.',
+      attachTo: '#sodar-login-username bottom',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    tour.addStep('login_multiple', {
+      title: 'Note on Multiple Accounts',
+      text: 'IMPORTANT: If you have external accounts for multiple domains, ' +
+            'note that these user accounts will not be connected. Please ' +
+            'choose one of your accounts and always use the same one to log ' +
+            'in to {{ site_title }}.',
+      attachTo: '#sodar-login-username bottom',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    {% endif %} {# if enable_ldap #}
+    {% if allow_local_users %}
+    tour.addStep('login_local', {
+        title: 'Local User Accounts',
+        text: 'This site allows local users. If you are using a local user ' +
+              'account created specifically for {{ site_title }}, providing ' +
+              'a domain name is not required.',
+        attachTo: '#sodar-login-username bottom',
+        advanceOn: '.docs-link click',
+        showCancelLink: true
+    })
+    {% endif %}
+  </script>
+{% endblock javascript %}

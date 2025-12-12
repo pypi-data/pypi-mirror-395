@@ -1,0 +1,44 @@
+{% load projectroles_common_tags %}
+
+<tr class="sodar-pr-remote-site-row">
+  <td class="sodar-pr-remote-site-title">
+    <a href="{% url 'projectroles:remote_projects' remotesite=site.sodar_uuid %}">
+      {{ site.name }}
+    </a>
+    {% if site.description %}
+      <span class="sodar-pr-remote-site-desc">
+        {% get_info_link site.description as info_link %}
+        {{ info_link | safe }}
+      </span>
+    {% endif %}
+  </td>
+  <td class="sodar-pr-remote-site-url">
+    <a href="{{ site.get_url }}" target="_blank">{{ site.get_url }}</a>
+  </td>
+  <td class="text-right sodar-pr-remote-site-count">
+    {{ site.projects.all.count }}
+  </td>
+  <td class="text-nowrap sodar-pr-remote-site-secret">
+    <code>{{ site.secret }}</code>
+    <button
+       class="btn btn-secondary ml-1 sodar-list-btn sodar-copy-btn
+              sodar-pr-btn-copy-secret"
+       data-clipboard-text="{{ site.secret }}"
+       title="Copy to clipboard" data-toggle="tooltip" data-placement="top">
+      <i class="iconify" data-icon="mdi:clipboard-multiple-outline"></i>
+    </button>
+  </td>
+  <td class="text-nowrap sodar-pr-remote-site-access">
+    {% if site.get_access_date %}
+      {{ site.get_access_date|date:'Y-m-d H:i' }}
+    {% else %}
+      <span class="text-muted">Never</span>
+    {% endif %}
+  </td>
+  {% if site_mode == 'SOURCE' %}
+    <td class="text-nowrap sodar-pr-remote-site-visible">
+      {% if site.user_display %}Yes{% else %}No{% endif %}
+    </td>
+  {% endif %}
+  <td>{% include 'projectroles/_remote_site_dropdown.html' %}</td>
+</tr>

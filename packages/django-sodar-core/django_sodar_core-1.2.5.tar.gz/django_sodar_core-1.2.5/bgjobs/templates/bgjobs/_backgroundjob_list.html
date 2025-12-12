@@ -1,0 +1,39 @@
+{% load projectroles_common_tags %}
+
+{# BackgroundJob list #}
+<div id="sodar-bg-job-list" class="card mb-3">
+  <div class="card-body p-0">
+    <table id="sodar-bg-table" class="table table-striped sodar-card-table">
+      <thead>
+        <tr>
+          <th>Started</th>
+          <th>Last Change</th>
+          <th>Type</th>
+          <th>State</th>
+          <th>Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in object_list %}
+          {% include 'bgjobs/_backgroundjob_item.html' with item=job details_card_mode=False %}
+        {% endfor %}
+        {% if not object_list %}
+          <tr>
+            <td class="bg-faded font-italic text-center" colspan="5">
+              {% if project %}
+                No background jobs found for
+                {% if related_type  %}{{ related_type }}{% else %}{% get_display_name 'PROJECT' %}{% endif %}.
+              {% else %}
+                No global background jobs found.
+              {% endif %}
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if is_paginated and object_list %}
+  {% include 'projectroles/_pagination.html' with pg_small=False %}
+{% endif %}

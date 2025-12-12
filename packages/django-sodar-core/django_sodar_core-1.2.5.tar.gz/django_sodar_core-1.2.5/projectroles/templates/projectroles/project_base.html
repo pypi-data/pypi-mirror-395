@@ -1,0 +1,37 @@
+{% extends 'projectroles/base.html' %}
+
+{% load rules %}
+{% load static %}
+{% load projectroles_tags %}
+{% load projectroles_common_tags %}
+
+{% block title %}
+  {% if project %}
+    {% get_display_name project.type title=True %} {{ project.title }}
+  {% endif %}
+{% endblock title %}
+
+{% block projectroles %}
+
+{% has_perm 'projectroles.view_project' request.user project as can_view_project %}
+
+{% if can_view_project %}
+  {% include 'projectroles/_project_header.html' %}
+
+  {% block projectroles_extend %}
+    {# Content from an app extending projectroles will go here #}
+  {% endblock projectroles_extend %}
+
+{% else %}
+  <div class="alert alert-danger" role="alert">
+    Insufficient permissions for viewing {% get_display_name 'PROJECT' %}!
+  </div>
+{% endif %}
+
+{% endblock projectroles %}
+
+{% block javascript %}
+  {{ block.super }}
+  <!-- Project starring -->
+  <script type="text/javascript" src="{% static 'projectroles/js/project_star.js' %}"></script>
+{% endblock javascript %}

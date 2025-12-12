@@ -1,0 +1,121 @@
+{% extends 'projectroles/base.html' %}
+
+{% load projectroles_common_tags %}
+
+{% block title %}User Profile for {{ request.user.get_full_name }}{% endblock %}
+
+{% block css %}
+  {{ block.super }}
+  <style type="text/css">
+    .table#sodar-user-email-table tr td:nth-child(1) {
+      width: 100%;
+    }
+    .table#sodar-user-email-table tr td:nth-child(5) {
+      width: 80px;
+    }
+    /* Responsive modifications */
+    @media screen and (max-width: 900px) {
+      .table#sodar-user-email-table tr th:nth-child(3),
+      .table#sodar-user-email-table tr td:nth-child(3) {
+        display: none;
+      }
+    }
+    @media screen and (max-width: 700px) {
+      .table#sodar-user-email-table tr th:nth-child(4),
+      .table#sodar-user-email-table tr td:nth-child(4) {
+        display: none;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block projectroles %}
+
+<div class="row sodar-pr-content-title pt-2">
+  <h2 class="sodar-pr-content-title">{{ request.user.get_full_name }}</h2>
+  <div class="sodar-pr-content-title-secondary text-muted">
+    User Profile
+  </div>
+</div>
+
+<div class="container-fluid sodar-page-container">
+  {# User detail card #}
+  {% include 'userprofile/_user_detail.html' %}
+  {# User settings card #}
+  {% include 'userprofile/_user_settings.html' %}
+  {# User additional emails card #}
+  {% if send_email %}
+    {% include 'userprofile/_user_email.html' %}
+  {% endif %}
+</div>
+
+{% endblock projectroles %}
+
+{% block javascript %}
+  {{ block.super }}
+  <!-- Tour content -->
+  <script type="text/javascript">
+    tourEnabled = true
+    tour.addStep('user_profile', {
+      title: 'User Profile',
+      text: 'In this app you can see your user profile and alter user ' +
+            'settings.',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    tour.addStep('user_details', {
+      title: 'User Details Card',
+      text: 'This card displays details of your user account.',
+      attachTo: '#sodar-user-details-card top',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    if ($('#sodar-user-btn-update').length) {
+      tour.addStep('user_details_update', {
+        title: 'Update User Details',
+        text: 'Click on this button to open a form to edit your user ' +
+              'details. This feature is only available for local user ' +
+              'accounts.',
+        attachTo: '#sodar-user-btn-update left',
+        advanceOn: '.docs-link click',
+        showCancelLink: true
+      })
+    }
+    tour.addStep('user_settings', {
+      title: 'User Settings Card',
+      text: 'This card displays site-wide user level settings and how they ' +
+            'are currently set for your user account.',
+      attachTo: '#sodar-user-settings-card top',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    if ($('#sodar-user-btn-settings').length) {
+      tour.addStep('user_settings_update', {
+        title: 'Update User Settings',
+        text: 'Click on this button to open a form for editing your user ' +
+              'settings.',
+        attachTo: '#sodar-user-btn-settings left',
+        advanceOn: '.docs-link click',
+        showCancelLink: true
+      })
+    }
+    tour.addStep('additional_email', {
+      title: 'Additional Email Addresses Card',
+      text: 'This card displays additional email addresses set for the user ' +
+            'and the ability to manage those addresses.',
+      attachTo: '#sodar-user-email-card top',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+    tour.addStep('additional_email_add', {
+      title: 'Add Email',
+      text: 'If you want email notifications sent to one or more ' +
+            'addresses other than your primary address, add those here. ' +
+            'Addresses must be validated by following a link received in ' +
+            'the initial email.',
+      attachTo: '#sodar-user-btn-email-add left',
+      advanceOn: '.docs-link click',
+      showCancelLink: true
+    })
+  </script>
+{% endblock javascript %}

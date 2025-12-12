@@ -1,0 +1,32 @@
+{% load timeline_tags %}
+{% load rules %}
+{% load static %}
+{% has_perm 'timeline.view_timeline' request.user project as can_view_timeline %}
+{% has_perm 'timeline.view_classified_event' request.user project as can_view_classified %}
+
+<link rel="stylesheet" type="text/css" href="{% static 'timeline/css/timeline.css' %}" />
+
+{% if can_view_timeline %}
+  {% get_plugin_lookup as plugin_lookup %}
+  <table class="table table-striped sodar-card-table" id="sodar-tl-table">
+    <thead>
+      {% include 'timeline/_list_header.html' with details_card_mode=True %}
+    </thead>
+    <tbody>
+      {% get_details_events project can_view_classified as events %}
+      {% if events|length > 0 %}
+        {% for event in events %}
+          {% include 'timeline/_list_item.html' with event=event details_card_mode=True %}
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td class="bg-faded font-italic text-center" colspan="3">
+            No events found.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+  {# Event list JQuery #}
+  <script type="text/javascript" src="{% static 'timeline/js/timeline.js' %}"></script>
+{% endif %}

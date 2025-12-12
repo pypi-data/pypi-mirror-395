@@ -1,0 +1,33 @@
+{% load projectroles_tags %}
+{% load projectroles_common_tags %}
+{% load rules %}
+
+{% allow_project_creation as allow_creation %}
+{% get_django_setting 'PROJECTROLES_DISABLE_CATEGORIES' as disable_categories %}
+{% has_perm 'projectroles.view_project_roles' request.user project as can_view_roles %}
+
+<div class="btn-group sodar-pr-sidebar-alt-btn pull-left collapse" role="group" id="sodar-pr-sidebar-alt-btn">
+  <button class="btn btn-dark dropdown-toggle btn-sm" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+    <i class="iconify mt-1" data-icon="mdi:menu" data-height="16"></i>
+  </button>
+  <div class="dropdown-menu">
+
+    {# Home #}
+    <a class="dropdown-item{% if request.resolver_match.url_name == 'home' %} active{% endif %}"
+        href="{% url 'home' %}"
+        title="Home"
+        id="sodar-pr-alt-link-home">
+      <i class="iconify" data-icon="mdi:home"></i> Home
+    </a>
+
+    {% get_project_app_links request project as dropdown_links %}
+    {% for link in dropdown_links %}
+      <a class="dropdown-item{% if link.active %} active{% endif %}"
+          href="{{ link.url }}"
+          title="{{ link.title }}"
+          id="sodar-pr-alt-link-{{ link.name }}">
+        <i class="iconify" data-icon="{{ link.icon }}"></i> {{ link.label }}
+      </a>
+    {% endfor %}
+  </div>
+</div>

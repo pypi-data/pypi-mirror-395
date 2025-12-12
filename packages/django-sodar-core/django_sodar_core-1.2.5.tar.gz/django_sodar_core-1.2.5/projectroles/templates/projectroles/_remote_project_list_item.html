@@ -1,0 +1,33 @@
+{% load projectroles_tags %}
+{% load projectroles_common_tags %}
+
+{% get_remote_project_obj site project as remote_project %}
+
+<tr>
+  <td class="align-middle">
+    <div class="sodar-overflow-container">
+      <a href="{% url 'projectroles:detail' project=project.sodar_uuid %}"
+         target="_blank">
+       {% get_project_title_html project %}
+      </a>
+    </div>
+  </td>
+  <td class="text-nowrap align-middle sodar-pr-remote-project-access">
+    {% if remote_project.date_access %}
+      {{ remote_project.date_access|date:'Y-m-d H:i' }}
+    {% else %}
+      <span class="text-muted">Never</span>
+    {% endif %}
+  </td>
+  {% if site_mode == 'SOURCE' %}
+    <td class="align-middle py-0 sodar-pr-remote-project-level">
+      {% autoescape off %}
+        {% get_target_project_select site project %}
+      {% endautoescape %}
+    </td>
+  {% else %}
+    <td class="text-nowrap sodar-pr-remote-project-level">
+      {% get_remote_access_legend remote_project.level %}
+    </td>
+  {% endif %}
+</tr>

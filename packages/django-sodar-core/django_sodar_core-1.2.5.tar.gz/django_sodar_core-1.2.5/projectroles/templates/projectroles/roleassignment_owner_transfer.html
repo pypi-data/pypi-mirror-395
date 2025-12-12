@@ -1,0 +1,37 @@
+{% extends 'projectroles/project_base.html' %}
+
+{% load crispy_forms_filters %}
+{% load projectroles_tags %}
+{% load static %}
+
+{% block title %}
+  Transfer ownership of {{ project.title }}
+{% endblock title %}
+
+{% block projectroles_extend %}
+
+<div class="row sodar-subtitle-container bg-white sticky-top">
+  <h3>Transfer Project Ownership from User {{ current_owner.username }}</h3>
+</div>
+
+<div class="container-fluid sodar-page-container">
+  <form method="post">
+    {% csrf_token %}
+    {# Add form.media for DAL #}
+    {{ form.media }}
+    {{ form | crispy }}
+    <div class="row">
+      <div class="btn-group ml-auto">
+        <a role="button" class="btn btn-secondary"
+           href="{{ request.session.real_referer }}">
+          <i class="iconify" data-icon="mdi:arrow-left-circle"></i> Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <i class="iconify" data-icon="mdi:account-switch"></i> Transfer
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% endblock projectroles_extend %}

@@ -1,0 +1,127 @@
+{# Site title bar for use with projectroles #}
+
+{% load static %}
+{% load projectroles_tags %}
+{% load projectroles_common_tags %}
+{% load rules %}
+
+{# Local variables #}
+{% get_django_setting 'SITE_TITLE' as site_title %}
+{% get_django_setting 'SITE_SUBTITLE' as site_subtitle %}
+{% get_django_setting 'PROJECTROLES_ENABLE_SEARCH' as enable_search %}
+{% get_django_setting 'PROJECTROLES_KIOSK_MODE' as kiosk_mode %}
+{% get_django_setting 'PROJECTROLES_ALLOW_ANONYMOUS' as allow_anon %}
+{% get_django_setting 'PROJECTROLES_TEMPLATE_INCLUDE_PATH' as template_include_path %}
+{% get_app_setting 'projectroles' 'site_read_only' as site_read_only %}
+{% static_file_exists 'images/logo_navbar.png' as logo_exists %}
+{% check_backend 'appalerts_backend' as appalerts_active %}
+
+<div class="m-b-1 sodar-titlebar-container">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sodar-base-navbar"
+       id="sodar-base-navbar">
+
+    {# Site title #}
+    <a class="navbar-brand" id="sodar-base-navbar-brand" href="/">
+      {% if logo_exists %}
+        <img id="sodar-navbar-logo" alt="{{ site_title }}"
+             src="{% static 'images/logo_navbar.png' %}" />
+      {% endif %}
+      {{ site_title }}
+      {% if site_subtitle %}<span class="text-warning">{{ site_subtitle }}</span>{% endif %}
+    </a>
+
+    {# Navbar responsive collapse toggle #}
+    <button class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false"
+            aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    {# Navbar content #}
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto" id="sodar-base-navbar-nav">
+
+        {# App alerts notification #}
+        {% if request.user.is_authenticated and appalerts_active %}
+          {% get_django_setting 'APPALERTS_STATUS_INTERVAL' 5 as alert_interval %}
+          <li class="nav-item"
+              id="sodar-app-alert-nav"
+              data-status-url="{% url 'appalerts:ajax_status' %}"
+              data-interval="{{ alert_interval }}">
+            <div id="sodar-app-alert-badge"
+                 style="{% if app_alerts == 0 %}display: none{% endif %}">
+              <a href="{% url 'appalerts:list' %}">
+                <div class="badge badge-pill bg-danger mr-4 mt-2">
+                  <i class="iconify" data-icon="mdi:alert-octagram"
+                     id="sodar-app-alert-icon"></i>
+                  <span id="sodar-app-alert-count">{{ app_alerts }}</span>
+                  <span id="sodar-app-alert-legend">alert{% if app_alerts != 1 %}s{% endif %}</span>
+                  {% if request.user.is_superuser or not site_read_only %}
+                    <a id="sodar-app-alert-badge-dismiss"
+                       class="text-white ml-1" role="button"
+                       title="Dismiss all" data-toggle="tooltip"
+                       data-dismiss-url="{% url 'appalerts:ajax_dismiss_all' %}">
+                      <i class="iconify" data-icon="mdi:close-thick"></i>
+                    </a>
+                  {% endif %}
+                </div>
+              </a>
+            </div>
+          </li>
+        {% endif %}
+
+        {# Search #}
+        {% if request.user.is_authenticated or allow_anon %}
+          {% if enable_search %}
+            <li class="nav-item">
+              <a class="btn btn-info mr-2" role="button"
+                 href="{% url 'projectroles:search_advanced' %}"
+                 title="Advanced search" data-toggle="tooltip" data-placement="left">
+                  <i class="iconify mt-1" data-icon="mdi:layers-search" data-height="18"></i>
+              </a>
+            </li>
+            <li class="nav-item">
+              <div class="sodar-navbar-search mr-3">
+                <form class="form-inline" method="get"
+                      action="{% url 'projectroles:search' %}">
+                  <div class="input-group sodar-input-group">
+                    <input class="form-control" type="text"
+                           placeholder="Search term" name="s" aria-label="Search term"
+                           id="sodar-nav-search-input" value="{{ search_input }}">
+                    <div class="input-group-append">
+                      <button class="btn btn-success" type="submit"
+                              id="sodar-nav-search-submit" disabled>
+                        Search
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </li>
+          {% endif %}
+        {% endif %}
+
+        {# Optional template for additional links #}
+        {% template_exists template_include_path|add:'/_titlebar_nav.html' as add_links_exist %}
+        {% if add_links_exist %}
+          {% include template_include_path|add:'/_titlebar_nav.html' %}
+        {% endif %}
+
+        {# Help link #}
+        <li class="nav-item">
+          <a class="nav-link {% get_help_highlight request.user %}"
+             id="site-help-link">
+            <i class="iconify" data-icon="mdi:information"></i> Help
+          </a>
+        </li>
+
+        {# User dropdown menu #}
+        {% if not kiosk_mode %}
+          {% include 'projectroles/_site_titlebar_dropdown.html' %}
+        {% endif %}
+      </ul>
+    </div>
+
+  </nav>
+</div>
