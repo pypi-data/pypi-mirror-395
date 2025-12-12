@@ -1,0 +1,26 @@
+[package]
+name = "python-groggy"
+version = "0.5.2"
+edition = "2021"
+
+[lib]
+name = "_groggy"
+crate-type = ["cdylib"]
+
+[features]
+default = []
+# Experimental delegation: enables prototype trait methods and PyGraph.experimental() API
+# Enable with: GROGGY_EXPERIMENTAL=1 or cargo build --features experimental-delegation
+experimental-delegation = []
+
+[lints.rust]
+non_local_definitions = "allow"
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+groggy = { path = "../" }  # Path to the main Rust library
+serde_json = "1.0"
+html-escape = "0.2"
+tokio = { version = "1.0", features = ["rt", "rt-multi-thread"] }
+tokio-tungstenite = "0.21"  # WebSocket client for sending control messages
+futures-util = "0.3"        # Futures utilities for WebSocket streams
