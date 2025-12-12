@@ -1,0 +1,158 @@
+Metadata-Version: 2.4
+Name: mrbs
+Version: 0.1.0
+Summary: Model-based Response surface optimization with Bootstrap Sampling - Surface interpolation with XGBoost, gradient ascent path finding, and clustering-based optimal point estimation
+Project-URL: Homepage, https://github.com/yutotakagi/MRBS
+Project-URL: Repository, https://github.com/yutotakagi/MRBS
+Project-URL: Bug Tracker, https://github.com/yutotakagi/MRBS/issues
+Author: Yuto Takagi
+License: MIT License
+        
+        Copyright (c) 2024 Yuto Takagi
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+License-File: LICENSE
+Keywords: clustering,gradient-ascent,machine-learning,optimization,response-surface,surrogate-model,xgboost
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.9
+Requires-Dist: matplotlib>=3.4
+Requires-Dist: numpy>=1.20
+Requires-Dist: pandas>=1.3
+Requires-Dist: scikit-learn>=1.0
+Requires-Dist: xgboost>=1.5
+Provides-Extra: dev
+Requires-Dist: build>=1.0; extra == 'dev'
+Requires-Dist: jupyter>=1.0; extra == 'dev'
+Requires-Dist: pytest>=7.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Requires-Dist: twine>=4.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# MRBS
+
+[![PyPI version](https://badge.fury.io/py/mrbs.svg)](https://badge.fury.io/py/mrbs)
+[![Python versions](https://img.shields.io/pypi/pyversions/mrbs.svg)](https://pypi.org/project/mrbs/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/yutotakagi/MRBS/actions/workflows/test.yml/badge.svg)](https://github.com/yutotakagi/MRBS/actions/workflows/test.yml)
+
+**Model-based Response surface optimization with Bootstrap Sampling**
+
+部分的なデータをXGBoostで補完し、勾配上昇法とクラスタリングで最適点を探索するPythonライブラリです。
+
+## 特徴
+
+- **XGBoost補完**: 部分的なサンプリングデータから曲面を補完
+- **勾配上昇法**: 近傍線形回帰による局所勾配推定で最適点を探索
+- **クラスタリング**: 複数の探索パスの終点をK-Meansでクラスタリングし、最適点候補を算出
+
+## インストール
+
+```bash
+pip install mrbs
+```
+
+開発版のインストール:
+
+```bash
+git clone https://github.com/yutotakagi/MRBS.git
+cd MRBS
+pip install -e ".[dev]"
+```
+
+## クイックスタート
+
+```python
+import numpy as np
+import pandas as pd
+from mrbs import SurfaceInterpolator, GradientAscentOptimizer, OptimalPointFinder
+from mrbs.visualization import plot_optimization_result
+
+# 1. データ読み込み・補完
+df = pd.read_csv("data/sphere_sampled_benchmark_xy_F.csv")
+X = df[["x", "y"]].values
+y = df["F"].values
+
+interpolator = SurfaceInterpolator(n_estimators=300)
+interpolator.fit(X, y)
+xx, yy, F_grid = interpolator.generate_grid(n_grid=100)
+
+# 2. 勾配上昇パス計算
+optimizer = GradientAscentOptimizer(interpolator, n_steps=10, radius=10)
+start_points = np.random.uniform(-100, 100, size=(20, 2))
+paths = optimizer.compute_paths(start_points)
+
+# 3. クラスタリング・最適点算出
+finder = OptimalPointFinder(k_min=1, k_max=5)
+result = finder.find_optimal_points(paths)
+
+# 4. 結果表示
+print("最適点候補:")
+for i, centroid in enumerate(result.centroids):
+    print(f"  Point {i+1}: x={centroid[0]:.4f}, y={centroid[1]:.4f}")
+
+# 5. 可視化
+plot_optimization_result(xx, yy, F_grid, result)
+```
+
+## モジュール構成
+
+| モジュール | 説明 |
+|-----------|------|
+| `mrbs.interpolator` | `SurfaceInterpolator` - XGBoostによる曲面補完 |
+| `mrbs.gradient_ascent` | `GradientAscentOptimizer` - 勾配上昇法による最適点探索 |
+| `mrbs.clustering` | `OptimalPointFinder` - クラスタリングによる最適点算出 |
+| `mrbs.visualization` | 可視化関数 |
+
+## 依存パッケージ
+
+- Python >= 3.9
+- numpy >= 1.20
+- pandas >= 1.3
+- xgboost >= 1.5
+- scikit-learn >= 1.0
+- matplotlib >= 3.4
+
+## コントリビューション
+
+コントリビューションを歓迎します！詳細は [CONTRIBUTING.md](CONTRIBUTING.md) をご覧ください。
+
+このプロジェクトは [Contributor Covenant](CODE_OF_CONDUCT.md) に基づく行動規範を採用しています。
+
+## ライセンス
+
+[MIT License](LICENSE)
+
+## 関連リンク
+
+- [PyPI](https://pypi.org/project/mrbs/)
+- [GitHub Repository](https://github.com/yutotakagi/MRBS)
+- [Issue Tracker](https://github.com/yutotakagi/MRBS/issues)
