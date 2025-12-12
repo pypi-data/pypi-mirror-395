@@ -1,0 +1,48 @@
+name: Test Build
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build package
+      run: python -m build
+
+    - name: Check package
+      run: twine check dist/*
+
+    - name: List package contents
+      run: |
+        echo "=== Source Distribution Contents ==="
+        tar -tzf dist/*.tar.gz | head -50
+        echo ""
+        echo "=== Wheel Contents ==="
+        python -m zipfile -l dist/*.whl
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-dist
+        path: dist/
+        retention-days: 7
+
+    - name: Test installation
+      run: |
+        pip install dist/*.whl
+        docfind --version
+        python -c "import docfind; print(f'DocFind {docfind.__version__} imported successfully')"

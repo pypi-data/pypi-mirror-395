@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docfind"
+version = "1.0.2"
+description = "A cross-platform document indexing and search tool"
+readme = "README.md"
+authors = [
+    {name = "CihanMertDeniz", email = "support@cmdeniz.dev"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business",
+    "Topic :: Text Processing :: Indexing",
+]
+keywords = ["search", "indexing", "documents", "pdf", "office", "fts", "full-text-search"]
+requires-python = ">=3.8"
+dependencies = [
+    "PyQt5>=5.15.0",
+    "pdfminer.six>=20220524",
+    "python-docx>=0.8.11",
+    "openpyxl>=3.0.0",
+    "python-pptx>=0.6.21",
+    "beautifulsoup4>=4.11.0",
+    "lxml>=4.9.0",
+    "charset-normalizer>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-qt>=4.2.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://cmdeniz.dev"
+
+[project.scripts]
+docfind = "docfind.cli:main"
+docfind-gui = "docfind.gui:main"
+
+[tool.setuptools]
+packages = ["docfind", "docfind.ui", "docfind.tests"]
+
+[tool.setuptools.package-data]
+docfind = [
+    "resources/qss/*.qss",
+    "resources/icons/*.svg",
+    "resources/icons/*.png",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["docfind/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["docfind"]
+omit = ["docfind/tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
