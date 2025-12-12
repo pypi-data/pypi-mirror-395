@@ -1,0 +1,71 @@
+.. _until-numcusts:
+
+=================================================
+How to Simulate For a Certain Number of Customers
+=================================================
+
+A simulation run may be terminated once a certain number of customers have passed through.
+This can be done using the :code:`simulate_until_max_customers` method.
+The method takes in a variable :code:`max_customers`.
+There are three methods of counting customers:
+
+ - :code:`'Complete'`: Simulates until :code:`max_customers` has reached the Exit Node due to completing their journey through the system.
+ - :code:`'Finish'`: Simulates until :code:`max_customers` has reached the Exit Node, regardless if the customer reaches there without completing their journey, for example by :ref:`baulking <baulking-functions>` or :ref:`reneging <reneging-customers>`.
+ - :code:`'Arrive'`: Simulates until :code:`max_customers` have spawned at the Arrival Node.
+ - :code:`'Accept'`: Simulates until :code:`max_customers` have been spawned and accepted (not rejected) at the Arrival Node.
+
+The method of counting customers is specified with the optional keyword argument :code:`method`. The default value is is :code:`'Complete'`.
+
+Consider an :ref:`M/M/1/3 <kendall-notation>` queue::
+
+	>>> import ciw
+	>>> N = ciw.create_network(
+	...     arrival_distributions=[ciw.dists.Exponential(rate=10)],
+	...     service_distributions=[ciw.dists.Exponential(rate=5)],
+	...     number_of_servers=[1],
+	...     queue_capacities=[3]
+	... )
+
+
+To simulate until 30 customers have completed::
+
+	>>> ciw.seed(1)
+	>>> Q = ciw.Simulation(N)
+	>>> Q.simulate_until_max_customers(30, method='Complete')
+	>>> recs = Q.get_all_records()
+	>>> len([r for r in recs if r.record_type=="service"])
+	30
+
+To simulate until 30 customers have finished::
+
+	>>> ciw.seed(1)
+	>>> Q = ciw.Simulation(N)
+	>>> Q.simulate_until_max_customers(30, method='Finish')
+	>>> recs = Q.get_all_records()
+	>>> len(recs)
+	30
+
+To simulate until 30 customers have arrived::
+
+	>>> ciw.seed(1)
+	>>> Q = ciw.Simulation(N)
+	>>> Q.simulate_until_max_customers(30, method='Arrive')
+	>>> recs = Q.get_all_records()
+	>>> (
+	...     len([r for r in recs if r.record_type=="service"]),
+	...     len(Q.nodes[1].all_individuals),
+	...     len([r for r in recs if r.record_type=="rejection"])
+	... )
+	(13, 4, 13)
+
+To simulate until 30 customers have been accepted::
+
+	>>> ciw.seed(1)
+	>>> Q = ciw.Simulation(N)
+	>>> Q.simulate_until_max_customers(30, method='Accept')
+	>>> recs = Q.get_all_records()
+	>>> (
+	...     len([r for r in recs if r.record_type=="service"]),
+	...     len(Q.nodes[1].all_individuals)
+	... )
+	(27, 3)
