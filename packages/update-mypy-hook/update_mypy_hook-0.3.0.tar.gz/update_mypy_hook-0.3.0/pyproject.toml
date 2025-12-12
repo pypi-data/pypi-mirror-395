@@ -1,0 +1,71 @@
+[project]
+name = "update-mypy-hook"
+version = "0.3.0"
+description = "Update the additional dependencies of mypy pre-commit hook from uv.lock"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "uv>=0.7.0",
+    "ruamel.yaml",
+    "typing-extensions; python_version < '3.11'",
+]
+license = "GPL-3.0-or-later"
+license-files = ["license.txt"]
+authors = [
+    { "name" = "HarryKane", "email" = "harrykane@gmx.de" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Source = "https://github.com/H4rryK4ne/update-mypy-hook"
+Changes = "https://github.com/H4rryK4ne/update-mypy-hook/blob/develop/CHANGELOG.md"
+
+[project.scripts]
+update-mypy-hook = "update_mypy_hook:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 120
+lint.select = [
+    "A", # flake8-builtin errors
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "C", # flake8-comprehensions
+    # "B", # flake8-bugbear
+]
+
+[tool.uv]
+default-groups = ["dev", "mypy"]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+publish-url = "https://pypi.org/legacy/"
+default = true
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+    "ruff>=0.12.0",
+]
+mypy = [
+    "mypy>=1.15.0",
+]
