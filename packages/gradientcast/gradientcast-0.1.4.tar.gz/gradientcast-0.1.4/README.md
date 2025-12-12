@@ -1,0 +1,317 @@
+# GradientCast Python SDK
+
+Official Python SDK for [GradientCast](https://gradientcast.com) AI Services - 0-shot time series forecasting and anomaly detection.
+
+## Features
+
+- **GradientCastFM** - Enterprise-level 0-shot time series forecasting using state-of-the-art foundation models
+- **GradientCastPulseAD** - Flagship plug-and-play anomaly detection
+- **GradientCastDenseAD** - Intelligent pattern anomaly detection with severity classification
+
+## Installation
+
+```bash
+pip install gradientcast
+```
+
+With pandas support:
+
+```bash
+pip install gradientcast[pandas]
+```
+
+## Quick Start
+
+### Forecasting (GradientCastFM)
+
+```python
+from gradientcast import GradientCastFM
+
+fm = GradientCastFM(api_key="your-api-key")
+
+result = fm.forecast(
+    input_data={"daily_sales": [100, 120, 115, 130, 125, 140]},
+    horizon_len=7,
+    freq="D"
+)
+
+print(result.forecast["daily_sales"])
+# [145.2, 148.7, 151.3, ...]
+
+print(f"Processing time: {result.model_info.processing_time}s")
+```
+
+#### Multi-series Forecasting
+
+```python
+result = fm.forecast(
+    input_data={
+        "product_a": [100, 120, 115, 130],
+        "product_b": [200, 220, 215, 230]
+    },
+    horizon_len=7,
+    freq="D"
+)
+
+# Access forecasts by series name
+print(result["product_a"])
+print(result["product_b"])
+```
+
+#### With Covariates
+
+```python
+result = fm.forecast(
+    input_data={"sales": [100, 120, 115, 130, 125, 140]},
+    horizon_len=7,
+    freq="D",
+    static_numerical_covariates={
+        "store_size": {"sales": 5000.0}
+    },
+    dynamic_numerical_covariates={
+        "temperature": {"sales": [72, 75, 78, 80, 82, 79, 76, 74, 77, 79, 81, 78, 75]}
+    }
+)
+```
+
+### Dense Anomaly Detection (GradientCastDenseAD)
+
+Historical data serves as context for pattern learning. Anomaly detection is performed only on the most recent data point(s) in the time series.
+
+```python
+from gradientcast import GradientCastDenseAD
+
+ad = GradientCastDenseAD(api_key="your-api-key")
+
+# Earlier points provide context; latest point(s) are evaluated for anomalies
+result = ad.detect([
+    {"timestamp": "01/01/2025, 12:00 AM", "value": 1500000},  # Context
+    {"timestamp": "01/01/2025, 01:00 AM", "value": 1520000},  # Context
+    {"timestamp": "01/01/2025, 02:00 AM", "value": 100000},   # <-- Evaluated for anomaly
+    # ... more data points
+])
+
+if result.has_anomaly:
+    print(f"Alert: {result.alert_severity}")
+    for point in result.anomalies:
+        print(f"  {point.timestamp}: {point.value} (severity: {point.magnitude.severity})")
+```
+
+#### Tuning Detection Parameters
+
+```python
+result = ad.detect(
+    data=[...],
+    contamination=0.05,        # Expected proportion of anomalies
+    n_neighbors=20,            # Density calculation neighbors
+    min_contiguous_anomalies=3 # Require 3+ consecutive anomalies
+)
+```
+
+### PulseAD Anomaly Detection (GradientCastPulseAD)
+
+Historical data serves as context for expected behavior. Anomaly detection is performed only on the most recent data point(s) in the time series.
+
+```python
+from gradientcast import GradientCastPulseAD, ThresholdConfig
+
+ad = GradientCastPulseAD(api_key="your-api-key")
+
+# Earlier points provide context; latest point(s) are evaluated for anomalies
+result = ad.detect(
+    time_series_data={
+        "user_count": [
+            {"timestamp": "01/01/2025, 12:00 AM", "value": 1500000.0},  # Context
+            {"timestamp": "01/01/2025, 01:00 AM", "value": 1520000.0},  # Context
+            {"timestamp": "01/01/2025, 02:00 AM", "value": 1480000.0},  # Context
+            {"timestamp": "01/01/2025, 03:00 AM", "value": 1510000.0},  # Context
+            {"timestamp": "01/01/2025, 04:00 AM", "value": 1530000.0},  # Context
+            {"timestamp": "01/01/2025, 05:00 AM", "value": 800000.0},   # <-- Evaluated
+        ]
+    }
+)
+
+if result.has_anomaly:
+    for anomaly in result.anomalies:
+        print(f"{anomaly.dimension}: {anomaly.percent_delta} deviation")
+        print(f"  Actual: {anomaly.actual_value}, Predicted: {anomaly.predicted_value}")
+```
+
+#### Custom Thresholds
+
+```python
+config = ThresholdConfig(
+    default_percentage=0.20,  # 20% deviation threshold
+    default_minimum=50000,
+    per_dimension_overrides={
+        "AllUp": {
+            "percentage_threshold": 0.10,  # Stricter for AllUp
+            "minimum_value_threshold": 3000000
+        }
+    }
+)
+
+result = ad.detect(time_series_data, threshold_config=config)
+```
+
+## Pandas Integration
+
+All clients support pandas DataFrames:
+
+```python
+import pandas as pd
+from gradientcast import GradientCastFM
+
+fm = GradientCastFM(api_key="your-api-key")
+
+# From DataFrame
+df = pd.DataFrame({
+    "date": pd.date_range("2024-01-01", periods=30, freq="D"),
+    "sales": [100 + i * 2 for i in range(30)],
+    "product": ["A"] * 15 + ["B"] * 15
+})
+
+result_df = fm.forecast_df(
+    df,
+    value_column="sales",
+    series_column="product",
+    horizon_len=7,
+    freq="D"
+)
+
+print(result_df)
+#     series  horizon_step  forecast
+# 0        A             1     130.5
+# 1        A             2     132.8
+# ...
+```
+
+## Configuration
+
+### Custom Endpoint Support
+
+```python
+# Production (default)
+fm = GradientCastFM(api_key="key", environment="production")
+
+# Custom endpoint
+fm = GradientCastFM(api_key="key", endpoint_url="https://custom.endpoint.com/score")
+```
+
+### Timeout and Retries
+
+```python
+fm = GradientCastFM(
+    api_key="key",
+    timeout=300,      # 5 minutes
+    max_retries=5     # Retry up to 5 times on transient failures
+)
+```
+
+### Context Manager
+
+```python
+with GradientCastFM(api_key="key") as fm:
+    result = fm.forecast(data, horizon_len=10, freq="H")
+# Session automatically closed
+```
+
+## Error Handling
+
+```python
+from gradientcast import GradientCastFM
+from gradientcast import (
+    GradientCastError,
+    AuthenticationError,
+    RateLimitError,
+    ValidationError,
+    TimeoutError,
+    APIError,
+)
+
+fm = GradientCastFM(api_key="key")
+
+try:
+    result = fm.forecast(data, horizon_len=10, freq="H")
+except AuthenticationError:
+    print("Invalid API key")
+except RateLimitError as e:
+    print(f"Rate limited. Retry after {e.retry_after}s")
+except ValidationError as e:
+    print(f"Invalid input: {e}")
+except TimeoutError:
+    print("Request timed out - try increasing timeout")
+except APIError as e:
+    print(f"API error [{e.status_code}]: {e.message}")
+except GradientCastError as e:
+    print(f"Unexpected error: {e}")
+```
+
+## Response Objects
+
+### ForecastResponse
+
+```python
+result = fm.forecast(...)
+
+result.forecast          # Dict[str, List[float]] - forecasts by series
+result.model_info        # ModelInfo - execution metadata
+result.raw               # Dict - raw API response
+result.to_dataframe()    # Convert to pandas DataFrame
+result["series_name"]    # Shorthand for result.forecast["series_name"]
+```
+
+### DenseADResponse
+
+```python
+result = dense_ad.detect(...)
+
+result.alert_status      # "no_alert" or "incident_active"
+result.alert_severity    # "none", "low", "medium", "high", "critical"
+result.has_anomaly       # bool - convenience property
+result.anomalies         # List[TimelinePoint] - confirmed anomalies only
+result.timeline          # List[TimelinePoint] - all points
+result.to_dataframe()    # Convert to pandas DataFrame
+```
+
+### ADResponse
+
+```python
+result = ad.detect(...)
+
+result.results           # List[ADResult] - all detection results
+result.has_anomaly       # bool - convenience property
+result.anomalies         # List[ADResult] - anomalies only
+result.processing_time_ms      # Total processing time
+result.fm_processing_time_ms   # FM endpoint time
+result.to_dataframe()    # Convert to pandas DataFrame
+```
+
+## Supported Frequencies
+
+| Code | Description |
+|------|-------------|
+| `H`  | Hourly |
+| `T` / `MIN` | Minute |
+| `D`  | Daily |
+| `B`  | Business day |
+| `W`  | Weekly |
+| `M`  | Monthly |
+| `Q`  | Quarterly |
+| `Y`  | Yearly |
+
+## Requirements
+
+- Python 3.8+
+- requests >= 2.25.0
+- pandas >= 1.3.0 (optional, for DataFrame support)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Support
+
+- Documentation: https://docs.gradientcast.com
+- Issues: https://github.com/GradientCast/gradientcast-sdk/issues
+- Email: support@gradientcast.com
