@@ -1,0 +1,1707 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "TURBO-TURTLE" "1" "Dec 05, 2025" "1.2.9" "turbo-turtle"
+.SH NAME
+turbo-turtle \- Turbo Turtle
+.SH SYNOPSIS
+.sp
+A collection of solid body modeling tools for 2D sketched, 2D axisymmetric, and 3D revolved models. Implemented for Abaqus, Cubit, and Gmsh (work\-in\-progress) as backend modeling and meshing software. Most of the interface options and descriptions use Abaqus modeling concepts and language. Turbo\-Turtle makes a best effort to maintain common behaviors and features across each third\-party software\(aqs modeling concepts.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle [\-h] [\-V] {subcommand} ...
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-V, \-\-version
+show program\(aqs version number and exit
+.UNINDENT
+.SS subcommands
+.INDENT 0.0
+.TP
+.B {subcommand}
+Possible choices: docs, fetch, print\-abaqus\-path, geometry, geometry\-xyplot, cylinder, sphere, partition, sets, mesh, merge, export, image
+.UNINDENT
+.SH DESCRIPTION
+.sp
+\X'tty: link https://lanl-aea.github.io/turbo-turtle/index.html'\fI\%Turbo\-Turtle\fP\X'tty: link' (LANL code O4765) is a collection of solid body modeling tools for 2D sketched, 2D axisymmetric, and 3D
+revolved models. It also contains general purpose meshing and image generation utilities appropriate for any model, not
+just those created with this package. Implemented for Abaqus and Cubit as backend modeling and meshing software. Orginal
+implementation targeted Abaqus so most options and descriptions use Abaqus modeling concepts and language.
+.sp
+Turbo\-Turtle makes a best effort to maintain common behaviors and features across each third\-party software\(aqs modeling
+concepts. As much as possible, the work for each subcommand is performed in Python 3 to minimize solution approach
+duplication in third\-party tools. The third\-party scripting interface is only accessed when creating the final tool
+specific objects and output. The tools contained in this project can be expanded to drive other meshing utilities in the
+future, as needed by the user community.
+.sp
+This project derives its name from the origins as a sphere partitioning utility following the turtle shell (or soccer
+ball) pattern.
+.SH TURBO TURTLE SUBCOMMANDS
+.SH DOCS
+.sp
+Open the packaged turbo\-turtle HTML documentation in the system default web browser
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle docs [\-h] [\-p]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-p, \-\-print\-local\-path
+Print the path to the locally installed documentation index file. As an alternative to the docs sub\-command, open index.html in a web browser (default: False)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH FETCH
+.sp
+Fetch and copy Turbo Turtle modsim template files and directories. If no \fBFILE\fP is specified, all available files will be created. Directories are recursively copied. \fBpathlib.Path\fP recursive pattern matching is possible. The source path is truncated to use the shortest common file prefix, e.g. requesting two files \fBcommon/source/file.1\fP and \fBcommon/source/file.2\fP will create \fB/destination/file.1\fP and \fB/destination/file.2\fP, respectively.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle fetch [\-h] [\-\-destination DESTINATION] [\-\-overwrite]
+                          [\-\-dry\-run] [\-\-print\-available]
+                          [FILE ...]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Positional Arguments
+.INDENT 0.0
+.TP
+.B FILE
+modsim template file or directory
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-destination
+Destination directory. Unless \fB\-\-overwrite\fP is specified, conflicting file names in the destination will not be copied. (default: PWD)
+.TP
+.B \-\-overwrite
+Overwrite any existing files (default: False)
+.TP
+.B \-\-dry\-run
+Print the destination tree and exit (default: False)
+.TP
+.B \-\-print\-available
+Print available modsim template files and exit (default: False)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH PRINT-ABAQUS-PATH
+.sp
+\fB*NOTE: this is an alpha feature for early adopters and developer testing of possible GUI support*\fP Print the absolute path to Turbo\-Turtle\(aqs Abaqus Python compatible package. If this directory is on your PYTHONPATH, you can directly import Turbo Turtle Abaqus Python packages in your own scrips (i.e. import turbo_turtle_abaqus.partition)
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle print\-abaqus\-path [\-h]
+.EE
+.UNINDENT
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH GEOMETRY
+.sp
+Create a 2D planar, 2D axisymmetric, or 3D body of revolution (about the global Y\-Axis) by sketching lines and splines in the XY plane. Line and spline definitions are formed by parsing an input file with [N, 2] array of XY coordinates. Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle geometry [\-h] \-\-input\-file INPUT_FILE [INPUT_FILE ...]
+                             \-\-output\-file OUTPUT_FILE
+                             [\-\-unit\-conversion UNIT_CONVERSION]
+                             [\-\-euclidean\-distance EUCLIDEAN_DISTANCE]
+                             [\-\-planar] [\-\-model\-name MODEL_NAME]
+                             [\-\-part\-name PART_NAME [PART_NAME ...]]
+                             [\-\-delimiter DELIMITER]
+                             [\-\-header\-lines HEADER_LINES]
+                             [\-\-revolution\-angle REVOLUTION_ANGLE]
+                             [\-\-y\-offset Y_OFFSET] [\-\-rtol RTOL] [\-\-atol ATOL]
+                             [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                             [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                             [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Name of an input file(s) with points in x\-y coordinate system
+.TP
+.B \-\-output\-file
+Name of the output model database file to save
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-unit\-conversion
+Unit conversion multiplication factor (default: 1.0)
+.TP
+.B \-\-euclidean\-distance
+Connect points with a straight line if the distance between them is larger than this in units \fIafter\fP the unit conversion (default: 4.0)
+.TP
+.B \-\-planar
+Switch to indicate that 2D model dimensionality is planar, not axisymmetric (default: False)
+.TP
+.B \-\-model\-name
+Model name in which to create the new part(s) (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name(s) or Cubit volume name(s). Cubit implementation converts hyphens to underscores for ACIS compatibility. (default: [None])
+.TP
+.B \-\-delimiter
+Delimiter character between columns in the points file(s) (default: \(aq,\(aq)
+.TP
+.B \-\-header\-lines
+Number of header lines to skip when parsing the points files(s) (default: 0)
+.TP
+.B \-\-revolution\-angle
+Revolution angle for a 3D part in degrees (default: 360.0)
+.TP
+.B \-\-y\-offset
+Offset along the global Y\-axis in units \fIafter\fP the unit conversion (default: 0.0)
+.TP
+.B \-\-rtol
+relative tolerance used by \fBnumpy.isclose\fP\&. If not provided, use numpy defaults (default: None)
+.TP
+.B \-\-atol
+absolute tolerance used by \fBnumpy.isclose\fP\&. If not provided, use numpy defaults (default: None)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH GEOMETRY-XYPLOT
+.sp
+Plot the lines\-and\-splines as parsed by the geometry subcommand. Lines are shown as solid lines with circle markers at the vertices. Splines are show as dashed lines with plus sign markers at the vertices. If there is more than one part, each part is shown in a unique color.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle geometry\-xyplot [\-h] \-\-input\-file INPUT_FILE
+                                    [INPUT_FILE ...] \-\-output\-file OUTPUT_FILE
+                                    [\-\-unit\-conversion UNIT_CONVERSION]
+                                    [\-\-euclidean\-distance EUCLIDEAN_DISTANCE]
+                                    [\-\-planar] [\-\-model\-name MODEL_NAME]
+                                    [\-\-part\-name PART_NAME [PART_NAME ...]]
+                                    [\-\-delimiter DELIMITER]
+                                    [\-\-header\-lines HEADER_LINES]
+                                    [\-\-revolution\-angle REVOLUTION_ANGLE]
+                                    [\-\-y\-offset Y_OFFSET] [\-\-rtol RTOL]
+                                    [\-\-atol ATOL]
+                                    [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                                    [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                                    [\-\-backend {abaqus,cubit,gmsh}]
+                                    [\-\-no\-markers] [\-\-annotate] [\-\-scale]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.TP
+.B \-\-no\-markers
+Exclude vertex markers and only plot lines (default: False)
+.TP
+.B \-\-annotate
+Annotate the vertex coordinates with their index from the source CSV file (default: False)
+.TP
+.B \-\-scale
+Change the plot aspect ratio to use the same scale for the X and Y axes (default: False)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Name of an input file(s) with points in x\-y coordinate system
+.TP
+.B \-\-output\-file
+Name of the output model database file to save
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-unit\-conversion
+Unit conversion multiplication factor (default: 1.0)
+.TP
+.B \-\-euclidean\-distance
+Connect points with a straight line if the distance between them is larger than this in units \fIafter\fP the unit conversion (default: 4.0)
+.TP
+.B \-\-planar
+Switch to indicate that 2D model dimensionality is planar, not axisymmetric (default: False)
+.TP
+.B \-\-model\-name
+Model name in which to create the new part(s) (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name(s) or Cubit volume name(s). Cubit implementation converts hyphens to underscores for ACIS compatibility. (default: [None])
+.TP
+.B \-\-delimiter
+Delimiter character between columns in the points file(s) (default: \(aq,\(aq)
+.TP
+.B \-\-header\-lines
+Number of header lines to skip when parsing the points files(s) (default: 0)
+.TP
+.B \-\-revolution\-angle
+Revolution angle for a 3D part in degrees (default: 360.0)
+.TP
+.B \-\-y\-offset
+Offset along the global Y\-axis in units \fIafter\fP the unit conversion (default: 0.0)
+.TP
+.B \-\-rtol
+relative tolerance used by \fBnumpy.isclose\fP\&. If not provided, use numpy defaults (default: None)
+.TP
+.B \-\-atol
+absolute tolerance used by \fBnumpy.isclose\fP\&. If not provided, use numpy defaults (default: None)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH CYLINDER
+.sp
+Accept dimensions of a right circular cylinder and generate an axisymmetric revolved geometry. Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle cylinder [\-h] \-\-inner\-radius INNER_RADIUS \-\-outer\-radius
+                             OUTER_RADIUS \-\-height HEIGHT \-\-output\-file
+                             OUTPUT_FILE [\-\-model\-name MODEL_NAME]
+                             [\-\-part\-name PART_NAME]
+                             [\-\-revolution\-angle REVOLUTION_ANGLE]
+                             [\-\-y\-offset Y_OFFSET]
+                             [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                             [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                             [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-inner\-radius
+Inner radius of hollow cylinder
+.TP
+.B \-\-outer\-radius
+Outer radius of cylinder
+.TP
+.B \-\-height
+Height of the right circular cylinder
+.TP
+.B \-\-output\-file
+Name of the output model database file to save
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-model\-name
+Model name in which to create the new part(s) (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name or Cubit volume name. Cubit implementation converts hyphens to underscores for ACIS compatibility. (default: \(aqPart\-1\(aq)
+.TP
+.B \-\-revolution\-angle
+Revolution angle for a 3D part in degrees (default: 360.0)
+.TP
+.B \-\-y\-offset
+Offset along the global Y\-axis (default: 0.0)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH SPHERE
+.sp
+Create a hollow, spherical geometry from a sketch in the X\-Y plane with upper (+X+Y), lower (+X\-Y), or both quadrants. Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle sphere [\-h] \-\-inner\-radius INNER_RADIUS \-\-outer\-radius
+                           OUTER_RADIUS \-\-output\-file OUTPUT_FILE
+                           [\-\-input\-file INPUT_FILE]
+                           [\-\-quadrant {both,upper,lower}]
+                           [\-\-revolution\-angle REVOLUTION_ANGLE]
+                           [\-\-y\-offset Y_OFFSET] [\-\-model\-name MODEL_NAME]
+                           [\-\-part\-name PART_NAME]
+                           [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                           [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                           [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-inner\-radius
+Inner radius (hollow size)
+.TP
+.B \-\-outer\-radius
+Outer radius (sphere size)
+.TP
+.B \-\-output\-file
+Model database to create
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Model database to open (default: None)
+.TP
+.B \-\-quadrant
+Possible choices: both, upper, lower
+.sp
+XY plane quadrant: both, upper (I), lower (IV) (default: \(aqboth\(aq)
+.TP
+.B \-\-revolution\-angle
+Angle of revolution about the +Y axis (default: 360.0)
+.TP
+.B \-\-y\-offset
+Offset along the global Y\-axis (default: 0.0)
+.TP
+.B \-\-model\-name
+Model name (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name or Cubit volume name. Cubit implementation converts hyphens to underscores for ACIS compatibility. (default: \(aqPart\-1\(aq)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH PARTITION
+.sp
+Partition hollow spheres into a turtle shell given a small number of locating, clocking, and partition plane angle parameters. Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle partition [\-h] \-\-input\-file INPUT_FILE
+                              [\-\-output\-file OUTPUT_FILE]
+                              [\-\-center CENTER CENTER CENTER]
+                              [\-\-xvector XVECTOR XVECTOR XVECTOR]
+                              [\-\-zvector ZVECTOR ZVECTOR ZVECTOR]
+                              [\-\-model\-name MODEL_NAME]
+                              [\-\-part\-name PART_NAME [PART_NAME ...]]
+                              [\-\-big\-number BIG_NUMBER]
+                              [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                              [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                              [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Model database to open (default: None)
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-output\-file
+Model database to save to. Defaults to the specified \-\-input\-file
+.TP
+.B \-\-center
+Center of the sphere (default: [0.0, 0.0, 0.0])
+.TP
+.B \-\-xvector
+Local x\-axis vector defined in global coordinates (default: [1.0, 0.0, 0.0])
+.TP
+.B \-\-zvector
+Local z\-axis vector defined in global coordinates (default: [0.0, 0.0, 1.0])
+.TP
+.B \-\-model\-name
+Model name (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name or Cubit volume name. Cubit implementation converts hyphens to underscores for ACIS compatibility. (default: [\(aqPart\-1\(aq])
+.TP
+.B \-\-big\-number
+Number larger than the outer radius of the part to partition (default: 1000000.0)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH SETS
+.sp
+Create geometric sets from mask strings. Primarly intended for use in scripted workflows with stable geometry creation order and features because masks are fragile with respect to geometric changes. The recommended workflow is to perform manual set creation on a nominal geometry model, record the set masks/IDs reported by the third\-party software, and write the CLI options into a scripted workflow file. Abaqus reports CAE operations in the \fBabaqus.rpy\fP replay file, e.g. \fBgrep \-A 1 \(aqmask=\(aq abaqus.rpy\fP\&. Cubit IDs can be found in the model tree. Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle sets [\-h] \-\-input\-file INPUT_FILE
+                         [\-\-output\-file OUTPUT_FILE] [\-\-model\-name MODEL_NAME]
+                         [\-\-part\-name PART_NAME] [\-\-face\-set name mask]
+                         [\-\-edge\-set name mask] [\-\-vertex\-set name mask]
+                         [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                         [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                         [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Model database input file
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-output\-file
+Model database output file (default: None)
+.TP
+.B \-\-model\-name
+Model name (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name unused by Cubit implementation.(default: \(aqPart\-1\(aq)
+.TP
+.B \-\-face\-set
+Face (surface) set (name, mask) pairs. Repeat once per set (default: None)
+.TP
+.B \-\-edge\-set
+Edge set (name, mask) pairs. Repeat once per set (default: None)
+.TP
+.B \-\-vertex\-set
+Vertex set (name, mask) pairs. Repeat once per set (default: None)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH MESH
+.sp
+Mesh a part from a global seed and optional edge seeds. The edge seeds must be positive numbers. If the seed is an integer, the edge will be seeded by number. If it is a float, the edge will be seeded by size. Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle mesh [\-h] \-\-input\-file INPUT_FILE \-\-element\-type
+                         ELEMENT_TYPE [\-\-output\-file OUTPUT_FILE]
+                         [\-\-model\-name MODEL_NAME] [\-\-part\-name PART_NAME]
+                         [\-\-global\-seed GLOBAL_SEED] [\-\-edge\-seed name number]
+                         [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                         [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                         [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Model database input file
+.TP
+.B \-\-element\-type
+Abaqus element type. Applied as a Cubit meshing scheme if it matches \(aqtetmesh\(aq or \(aqtrimesh\(aq. Otherwise ignored by Cubit implementation.
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-output\-file
+Model database output file (default: None)
+.TP
+.B \-\-model\-name
+Model name (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name or Cubit volume name. Cubit implementation converts hyphens to underscores for ACIS compatibility. (default: \(aqPart\-1\(aq)
+.TP
+.B \-\-global\-seed
+The global mesh seed size. Positive float.
+.TP
+.B \-\-edge\-seed
+Edge seed (name, number) pairs. Repeat once per edge set. (default: None)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH IMAGE
+.sp
+Save a part or assembly view image for a given Abaqus input file Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle image [\-h] \-\-input\-file INPUT_FILE \-\-output\-file
+                          OUTPUT_FILE [\-\-x\-angle X_ANGLE] [\-\-y\-angle Y_ANGLE]
+                          [\-\-z\-angle Z_ANGLE]
+                          [\-\-image\-size IMAGE_SIZE IMAGE_SIZE]
+                          [\-\-model\-name MODEL_NAME] [\-\-part\-name PART_NAME]
+                          [\-\-color\-map {Material,Section,Composite layup,Composite ply,Part,Part instance,Element set,Averaging region,Element type,Default,Assembly,Part geometry,Load,Boundary condition,Interaction,Constraint,Property,Meshability,Instance type,Set,Surface,Internal set,Internal surface,Display group,Selection group,Skin,Stringer,Cell,Face}]
+                          [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                          [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                          [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Abaqus input file. Supports \fB*.inp\fP and \fB*.cae\fP\&.
+.TP
+.B \-\-output\-file
+Output image from the Abaqus viewport. Supports \fB*.png\fP and \fB*.svg\fP\&.
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-x\-angle
+Viewer rotation about X\-axis in degrees (default: 0.0)
+.TP
+.B \-\-y\-angle
+Viewer rotation about Y\-axis in degrees (default: 0.0)
+.TP
+.B \-\-z\-angle
+Viewer rotation about Z\-axis in degrees (default: 0.0)
+.TP
+.B \-\-image\-size
+Image size in pixels (width, height) (default: [1920, 1080])
+.TP
+.B \-\-model\-name
+Model name. Unused by Cubit implementation. (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name. Unused by Cubit implementation. (default: None)
+.TP
+.B \-\-color\-map
+Possible choices: Material, Section, Composite layup, Composite ply, Part, Part instance, Element set, Averaging region, Element type, Default, Assembly, Part geometry, Load, Boundary condition, Interaction, Constraint, Property, Meshability, Instance type, Set, Surface, Internal set, Internal surface, Display group, Selection group, Skin, Stringer, Cell, Face
+.sp
+Color map. Unused by Cubit implementation. (default: \(aqMaterial\(aq)
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH MERGE
+.sp
+Supply multiple model database files, model names, and part names to merge the parts into a new model. Every model databse file is searched for every model/part name combination. If a part name is found in more than one model, return an error. Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle merge [\-h] \-\-input\-file INPUT_FILE [INPUT_FILE ...]
+                          \-\-output\-file OUTPUT_FILE
+                          [\-\-merged\-model\-name MERGED_MODEL_NAME]
+                          [\-\-model\-name MODEL_NAME [MODEL_NAME ...]]
+                          [\-\-part\-name PART_NAME [PART_NAME ...]]
+                          [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                          [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                          [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Model database input file(s)
+.TP
+.B \-\-output\-file
+Model database file to save the merged model
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-merged\-model\-name
+Model to create and merge parts into (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-model\-name
+Model name(s) to query in the input model database file(s) (default: [None])
+.TP
+.B \-\-part\-name
+Part name(s) to search for within model(s). Unused by Cubit implementation.  (default: [None])
+.UNINDENT
+.SH TURBO TURTLE SUBCOMMANDS
+.SH EXPORT
+.sp
+Export a part mesh as an orphan mesh Defaults to Abaqus, but can optionally run Cubit (Gmsh implementation is a work\-in\-progress). Cubit and Gmsh backends replace hyphens with underscores in part name(s) for ACIS compatibility. Cubit backend ignores model/assembly name arguments.
+
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+usage: turbo\-turtle export [\-h] \-\-input\-file INPUT_FILE
+                           [\-\-model\-name MODEL_NAME]
+                           [\-\-part\-name PART_NAME [PART_NAME ...]]
+                           [\-\-element\-type ELEMENT_TYPE [ELEMENT_TYPE ...]]
+                           [\-\-destination DESTINATION] [\-\-assembly ASSEMBLY]
+                           [\-\-output\-type {abaqus,genesis,genesis\-normal,genesis\-hdf5}]
+                           [\-\-abaqus\-command ABAQUS_COMMAND [ABAQUS_COMMAND ...]]
+                           [\-\-cubit\-command CUBIT_COMMAND [CUBIT_COMMAND ...]]
+                           [\-\-backend {abaqus,cubit,gmsh}]
+.EE
+.UNINDENT
+.UNINDENT
+.SS Named Arguments
+.INDENT 0.0
+.TP
+.B \-\-abaqus\-command
+Abaqus executable options (default: [\(aqabaqus\(aq, \(aqabq2024\(aq])
+.TP
+.B \-\-cubit\-command
+Cubit executable options (default: [\(aqcubit\(aq])
+.TP
+.B \-\-backend
+Possible choices: abaqus, cubit, gmsh
+.sp
+Back end software (default: \(aqabaqus\(aq)
+.UNINDENT
+.SS required arguments
+.INDENT 0.0
+.TP
+.B \-\-input\-file
+Model database input file
+.UNINDENT
+.SS optional arguments
+.INDENT 0.0
+.TP
+.B \-\-model\-name
+Model name (default: \(aqModel\-1\(aq)
+.TP
+.B \-\-part\-name
+Part name(s) or Cubit volume name(s). Cubit implementation converts hyphens to underscores for ACIS compatibility. (default: [\(aqPart\-1\(aq])
+.TP
+.B \-\-element\-type
+List of element types, one per part name or one global replacement for every part name (default: [None])
+.TP
+.B \-\-destination
+Write orphan mesh files to this output directory (default: PWD)
+.TP
+.B \-\-assembly
+Assembly file for exporting the assembly keyword block. If a file is provided, but no assembly instances are found, instance all provided part names and export assembly block (default: None)
+.TP
+.B \-\-output\-type
+Possible choices: abaqus, genesis, genesis\-normal, genesis\-hdf5
+.sp
+Cubit output type. When \(aqabaqus\(aq is selected, each part name is exported as an  orphan mesh to a \fBpart_name\fP\&.inp file. When \(aqgenesis\(aq is selected all blocks are output to a single file \fBinput_file\fP\&.g (default: \(aqabaqus\(aq)
+.UNINDENT
+.SH PYTHON PACKAGE API
+.SH SCONS EXTENSIONS
+.sp
+Provide common SCons builders wrapping the Turbo\-Turtle command\-line interface.
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.cli_builder(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aq\(aq, required: str = \(aq\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a generic Turbo\-Turtle CLI builder.
+.sp
+This builder provides a template action for the Turbo\-Turtle CLI. The default behavior will not do anything unless
+the \fBsubcommand\fP argument is updated to one of the Turbo\-Turtle CLI \fI\%Turbo Turtle Subcommands\fP\&.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+This builder and any builders created from this template will be most useful if the \fBoptions\fP argument places
+SCons substitution variables in the action string, e.g. \fB\-\-argument ${argument}\fP, such that the task definitions
+can modify the options on a per\-task basis. Any option set in this manner \fImust\fP be provided by the task definition.
+.sp
+\fIBuilder/Task keyword arguments\fP
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP: The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP: A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP: A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP: A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP: The Abaqus command line executable absolute or relative path. When provided as a task
+keyword argument, this must be a space delimited string, not a list.
+.IP \(bu 2
+\fBcubit_command\fP: The Cubit command line executable absolute or relative path. When provided as a task keyword
+argument, this must be a space delimited string, not a list.
+.IP \(bu 2
+\fBbackend\fP: The backend software, e.g. Abaqus or Cubit.
+.IP \(bu 2
+\fBcd_action_prefix\fP: Advanced behavior. Most users should accept the defaults.
+.IP \(bu 2
+\fBredirect_action_postfix\fP: Advanced behavior. Most users should accept the defaults.
+.UNINDENT
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend {backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleCLIBuilder\(dq: turbo_turtle.scons_extensions.cli_builder(
+        program=env[\(dqturbo_turtle],
+        subcommand=\(dqgeometry\(dq,
+        required=\(dq\-\-input\-file ${SOURCES.abspath} \-\-output\-file ${TARGET.abspath}\(dq
+    )
+})
+env.TurboTurtleCLIBuilder(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqsource.csv\(dq],
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.TP
+.B Returns
+SCons Turbo\-Turtle CLI builder
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.cylinder(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqcylinder\(aq, required: str = \(aq\-\-output\-file ${TARGET.abspath} \-\-inner\-radius ${inner_radius} \-\-outer\-radius ${outer_radius} \-\-height ${height}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle cylinder subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+Unless the \fBrequired\fP argument is overridden, the following task keyword arguments are \fIrequired\fP:
+.INDENT 7.0
+.IP \(bu 2
+\fBinner_radius\fP
+.IP \(bu 2
+\fBouter_radius\fP
+.IP \(bu 2
+\fBheight\fP
+.UNINDENT
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleCylinder\(dq: turbo_turtle.scons_extensions.cylinder(
+        program=env[\(dqturbo_turtle]
+    )
+})
+env.TurboTurtleCylinder(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqSConstruct\(dq],
+    inner_radius=1.,
+    outer_radius=2.,
+    height=1.
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.export(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqexport\(aq, required: str = \(aq\-\-input\-file ${SOURCE.abspath}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle export subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleExport\(dq: turbo_turtle.scons_extensions.export(
+        program=env[\(dqturbo_turtle]
+    )
+})
+env.TurboTurtleExport(
+    target=[\(dqtarget.inp\(dq],
+    source=[\(dqsource.cae\(dq],
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.geometry(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqgeometry\(aq, required: str = \(aq\-\-input\-file ${SOURCES.abspath} \-\-output\-file ${TARGET.abspath}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle geometry subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleGeometry\(dq: turbo_turtle.scons_extensions.geometry(
+        program=env[\(dqturbo_turtle],
+        options=\(dq\-\-part\-name ${part_name}\(dq
+    )
+})
+env.TurboTurtleGeometry(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqsource1.csv\(dq, \(dqsource2.csv\(dq],
+    part_name=\(dqsource1 source2\(dq
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.geometry_xyplot(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqgeometry\-xyplot\(aq, required: str = \(aq\-\-input\-file ${SOURCES.abspath} \-\-output\-file ${TARGET.abspath}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle geometry\-xyplot subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleGeometryXYPlot\(dq: turbo_turtle.scons_extensions.geometry_xyplot(
+        program=env[\(dqturbo_turtle],
+        options=\(dq\-\-part\-name ${part_name}\(dq
+    )
+})
+env.TurboTurtleGeometryXYPlot(
+    target=[\(dqtarget.png\(dq],
+    source=[\(dqsource1.csv\(dq, \(dqsource2.csv\(dq],
+    part_name=\(dqsource1 source2\(dq
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.image(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqimage\(aq, required: str = \(aq\-\-input\-file ${SOURCE.abspath} \-\-output\-file ${TARGET.abspath}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle image subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleImage\(dq: turbo_turtle.scons_extensions.image(
+        program=env[\(dqturbo_turtle]
+    )
+})
+env.TurboTurtleImage(
+    target=[\(dqtarget.png\(dq],
+    source=[\(dqsource.cae\(dq],
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.merge(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqmerge\(aq, required: str = \(aq\-\-input\-file ${SOURCES.abspath} \-\-output\-file ${TARGET.abspath}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle merge subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleMerge\(dq: turbo_turtle.scons_extensions.merge(
+        program=env[\(dqturbo_turtle]
+    )
+})
+env.TurboTurtleMerge(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqsource1.cae\(dq, \(dqsource2.cae\(dq],
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.mesh(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqmesh\(aq, required: str = \(aq\-\-input\-file ${SOURCE.abspath} \-\-output\-file ${TARGET.abspath} \-\-element\-type ${element_type}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle mesh subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+Unless the \fBrequired\fP argument is overridden, the following task keyword arguments are \fIrequired\fP:
+.INDENT 7.0
+.IP \(bu 2
+\fBelement_type\fP
+.UNINDENT
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleMesh\(dq: turbo_turtle.scons_extensions.mesh(
+        program=env[\(dqturbo_turtle]
+    )
+})
+env.TurboTurtleMesh(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqsource.cae\(dq],
+    element_type=\(dqC3D8R\(dq
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.partition(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqpartition\(aq, required: str = \(aq\-\-input\-file ${SOURCE.abspath} \-\-output\-file ${TARGET.abspath}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle partition subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtlePartition\(dq: turbo_turtle.scons_extensions.partition(
+        program=env[\(dqturbo_turtle]
+    )
+})
+env.TurboTurtlePartition(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqsource.cae\(dq],
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.sets(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqsets\(aq, required: str = \(aq\-\-input\-file ${SOURCE.abspath} \-\-output\-file ${TARGET.abspath}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle sets subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+One of the following options must be added to the \fBoptions\fP string or the subcommand will return an error:
+.INDENT 7.0
+.IP \(bu 2
+\fB\-\-face\-set\fP
+.IP \(bu 2
+\fB\-\-edge\-set\fP
+.IP \(bu 2
+\fB\-\-vertex\-set\fP
+.UNINDENT
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleSets\(dq: turbo_turtle.scons_extensions.sets(
+        program=env[\(dqturbo_turtle],
+        options=\(dq${face_sets} ${edge_sets} ${vertex_sets}\(dq,
+    )
+})
+env.TurboTurtleSets(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqsource.cae\(dq],
+    face_sets=\(dq\-\-face\-set top \(aq[#1 ]\(aq \-\-face\-set bottom \(aq[#2 ]\(aq\(dq,
+    edge_sets=\(dq\(dq,
+    vertex_sets=\(dq\-\-vertex\-set origin \(aq[#1 ]\(aq\(dq
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B turbo_turtle.scons_extensions.sphere(program: str = \(aqturbo\-turtle\(aq, subcommand: str = \(aqsphere\(aq, required: str = \(aq\-\-output\-file ${TARGET.abspath} \-\-inner\-radius ${inner_radius} \-\-outer\-radius ${outer_radius}\(aq, options: str = \(aq\(aq, abaqus_command: list[str] = [\(aqabaqus\(aq, \(aqabq2024\(aq], cubit_command: list[str] = [\(aqcubit\(aq], backend: str = \(aqabaqus\(aq) -> Builder
+Return a Turbo\-Turtle sphere subcommand CLI builder.
+.sp
+See the \fI\%Turbo Turtle Subcommands\fP CLI documentation for detailed subcommand usage and options.
+Builds subcommand specific options for the \fI\%turbo_turtle.scons_extensions.cli_builder()\fP function.
+.sp
+At least one target must be specified. The first target determines the working directory for the builder\(aqs action.
+The action changes the working directory to the first target\(aqs parent directory prior to execution.
+.sp
+The emitter will assume all emitted targets build in the current build directory. If the target(s) must be built in
+a build subdirectory, e.g. in a parameterized target build, then the first target must be provided with the build
+subdirectory, e.g. \fBparameter_set1/my_target.ext\fP\&. When in doubt, provide a STDOUT redirect file as a target, e.g.
+\fBtarget.stdout\fP\&.
+.sp
+Unless the \fBrequired\fP argument is overridden, the following task keyword arguments are \fIrequired\fP:
+.INDENT 7.0
+.IP \(bu 2
+\fBinner_radius\fP
+.IP \(bu 2
+\fBouter_radius\fP
+.UNINDENT
+.sp
+action string construction
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+${cd_action_prefix} ${program} ${subcommand} ${required} ${options} \-\-abaqus\-command ${abaqus_command} \-\-cubit\-command ${cubit_command} \-\-backend ${backend} ${redirect_action_postfix}
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+SConstruct
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.EX
+import waves
+import turbo_turtle
+env = Environment()
+env[\(dqturbo_turtle\(dq] = waves.scons_extensions.add_program(env, [\(dqturbo\-turtle\(dq])
+env.Append(BUILDERS={
+    \(dqTurboTurtleSphere\(dq: turbo_turtle.scons_extensions.sphere(
+        program=env[\(dqturbo_turtle]
+    )
+})
+env.TurboTurtleSphere(
+    target=[\(dqtarget.cae\(dq],
+    source=[\(dqSConstruct\(dq],
+    inner_radius=1.,
+    outer_radius=2.
+)
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBprogram\fP (\fIstr\fP) \-\- The Turbo\-Turtle command line executable absolute or relative path
+.IP \(bu 2
+\fBsubcommand\fP (\fIstr\fP) \-\- A Turbo\-Turtle subcommand
+.IP \(bu 2
+\fBrequired\fP (\fIstr\fP) \-\- A space delimited string of subcommand required arguments
+.IP \(bu 2
+\fBoptions\fP (\fIstr\fP) \-\- A space delimited string of subcommand optional arguments
+.IP \(bu 2
+\fBabaqus_command\fP (\fIlist\fP) \-\- The Abaqus command line executable absolute or relative path options
+.IP \(bu 2
+\fBcubit_command\fP (\fIlist\fP) \-\- The Cubit command line executable absolute or relative path options
+.IP \(bu 2
+\fBbackend\fP (\fIstr\fP) \-\- The backend software
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SH PYTHON PACKAGE API
+.SH GEOMETRY XY PLOT
+.sp
+Provide a public API for the internal implementation of the geometry plotting command\-line interface.
+.INDENT 0.0
+.TP
+.B turbo_turtle.geometry_xyplot.geometry_xyplot(coordinates_list: list, unit_conversion: float = 1.0, euclidean_distance: float = 4.0, y_offset: float = 0.0, rtol: float | None = None, atol: float | None = None, no_markers: bool = False, annotate: bool = False, scale: bool = False) -> Figure
+Return a matplotlib figure with the coordinates plotted consistently with geometry/geometry\-xyplot subcommands.
+.INDENT 7.0
+.TP
+.B Parameters
+.INDENT 7.0
+.IP \(bu 2
+\fBcoordinates_list\fP \-\- List of 2D numpy arrays of (X, Y) coordinates
+.IP \(bu 2
+\fBunit_conversion\fP \-\- multiplication factor applies to all coordinates
+.IP \(bu 2
+\fBeuclidean_distance\fP \-\- if the distance between two coordinates is greater than this, draw a straight line.
+Distance should be provided in units \fIafter\fP the unit conversion
+.IP \(bu 2
+\fBy_offset\fP \-\- vertical offset along the global Y\-axis. Offset should be provided in units \fIafter\fP the unit
+conversion.
+.IP \(bu 2
+\fBrtol\fP \-\- relative tolerance for vertical/horizontal line checks
+.IP \(bu 2
+\fBatol\fP \-\- absolute tolerance for vertical/horizontal line checks
+.IP \(bu 2
+\fBno_markers\fP \-\- Exclude vertex markers and only plot lines.
+.IP \(bu 2
+\fBannotate\fP \-\- Annotate the vertex coordinates with their index from the source CSV file.
+.IP \(bu 2
+\fBscale\fP \-\- Change the plot aspect ratio to use the same scale for the X and Y axes.
+.UNINDENT
+.TP
+.B Returns
+matplotlib figure
+.UNINDENT
+.UNINDENT
+.SH AUTHOR
+Kyle Brindley <kbrindley@lanl.gov>, Thomas Roberts <tproberts@lanl.gov>
+.SH COPYRIGHT
+2025 Triad National Security, LLC. All Rights Reserved.
+.\" Generated by docutils manpage writer.
+.

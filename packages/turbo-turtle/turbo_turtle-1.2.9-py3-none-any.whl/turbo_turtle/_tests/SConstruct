@@ -1,0 +1,349 @@
+#! /usr/bin/env python
+import os
+import inspect
+import pathlib
+
+import waves
+
+import turbo_turtle
+
+AddOption(
+    "--turbo-turtle-command",
+    dest="turbo_turtle_command",
+    default="turbo-turtle",
+    nargs=1,
+    type="string",
+    action="store",
+    metavar="COMMAND",
+    help="Override for the Turbo-Turtle command (default: '%default')"
+)
+AddOption(
+    "--abaqus-command",
+    dest="abaqus_command",
+    default="abaqus",
+    nargs=1,
+    type="string",
+    action="store",
+    metavar="COMMAND",
+    help="Override for the Abaqus command (default: '%default')",
+)
+AddOption(
+    "--cubit-command",
+    dest="cubit_command",
+    default="cubit",
+    nargs=1,
+    type="string",
+    action="store",
+    metavar="COMMAND",
+    help="Override for the Cubit command (default: '%default')",
+)
+AddOption(
+    "--backend",
+    dest="backend_list",
+    nargs=1,
+    type="string",
+    action="append",
+    metavar="BACKEND",
+    help="Backend task list. Repeat to specify more than one. If not specified, defaults to: [abaqus, cubit]."
+)
+
+project_configuration = pathlib.Path(inspect.getfile(lambda: None))
+project_directory = project_configuration.parent
+
+env = waves.scons_extensions.WAVESEnvironment(ENV=os.environ.copy())
+env.PrintBuildFailures()
+
+turbo_turtle_command = GetOption("turbo_turtle_command")
+abaqus_commands = [f'"{env.CheckProgram(GetOption("abaqus_command"))}"']
+cubit_commands = [f'"{env.CheckProgram(GetOption("cubit_command"))}"']
+backend_list_cli = GetOption("backend_list")
+backend_list = backend_list_cli if backend_list_cli is not None else ["abaqus", "cubit"]
+
+env.Append(BUILDERS={
+    "geometry": turbo_turtle.scons_extensions.geometry(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name}"
+    ),
+    "geometry_xyplot": turbo_turtle.scons_extensions.geometry_xyplot(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name}"
+    ),
+    "cylinder": turbo_turtle.scons_extensions.cylinder(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name}"
+    ),
+    "sphere": turbo_turtle.scons_extensions.sphere(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name}"
+    ),
+    "partition": turbo_turtle.scons_extensions.partition(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name}"
+    ),
+    "sets": turbo_turtle.scons_extensions.sets(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name} ${face_sets}"
+    ),
+    "mesh": turbo_turtle.scons_extensions.mesh(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name} --global-seed ${global_seed}"
+    ),
+    "image": turbo_turtle.scons_extensions.image(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name}"
+    ),
+    "merge": turbo_turtle.scons_extensions.merge(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name} --merged-model-name ${merged_model_name}"
+    ),
+    "export": turbo_turtle.scons_extensions.export(
+        program=turbo_turtle_command,
+        abaqus_command=abaqus_commands,
+        cubit_command=cubit_commands,
+        options="--model-name ${model_name} --part-name ${part_name}"
+    )
+})
+
+backend_extensions = {
+    "abaqus": "cae",
+    "cubit": "cub",
+}
+for backend in backend_list:
+    targets = list()
+    extension = backend_extensions[backend]
+
+    # Geometry
+    builder = "geometry"
+    part_name = ["scons-vase"]
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-vase.{extension}"],
+            source=[project_directory / "vase.csv"],
+            backend=backend,
+            output_file="${TARGET.abspath}",
+            model_name="scons-vase",
+            part_name=" ".join(part_name),
+        )
+    )
+    part_name = ["scons-washer"]
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-washer.{extension}"],
+            source=[project_directory / "washer.csv"],
+            backend=backend,
+            output_file="${TARGET.abspath}",
+            model_name="scons-washer",
+            part_name=" ".join(part_name),
+        )
+    )
+    part_name = ["scons-vase", "scons-washer"]
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-multi-part.{extension}"],
+            source=[
+                project_directory / "vase.csv",
+                project_directory / "washer.csv",
+            ],
+            backend=backend,
+            output_file="${TARGET.abspath}",
+            model_name="scons-multi-part",
+            part_name=" ".join(part_name),
+        )
+    )
+
+    # Geometry-XY Plot
+    builder = "geometry_xyplot"
+    part_name = ["scons-vase"]
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-vase.{extension}.png"],
+            source=[project_directory / "vase.csv"],
+            backend=backend,
+            output_file="${TARGET.abspath}",
+            model_name="scons-vase",
+            part_name=" ".join(part_name),
+        )
+    )
+    part_name = ["scons-washer"]
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-washer.{extension}.png"],
+            source=[project_directory / "washer.csv"],
+            backend=backend,
+            output_file="${TARGET.abspath}",
+            model_name="scons-washer",
+            part_name=" ".join(part_name),
+        )
+    )
+    part_name = ["scons-vase", "scons-washer"]
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-multi-part.{extension}.png"],
+            source=[
+                project_directory / "vase.csv",
+                project_directory / "washer.csv"
+            ],
+            backend=backend,
+            output_file="${TARGET.abspath}",
+            model_name="scons-multi-part",
+            part_name=" ".join(part_name),
+        )
+    )
+
+    # Merge
+    builder = "merge"
+    model_name = ["scons-vase", "scons-washer"]
+    part_name = ["scons-vase", "scons-washer"]
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-merge-multi-part.{extension}"],
+            source=[f"scons-vase.{extension}", f"scons-washer.{extension}"],
+            backend=backend,
+            output_file="${TARGET.abspath}",
+            model_name=" ".join(model_name),
+            part_name=" ".join(part_name),
+            merged_model_name="scons-merge-multi-part",
+        )
+    )
+
+    # Vase sets
+    if backend == "abaqus":
+        face_sets = '--face-set top "[#4 ]" --face-set bottom "[#40 ]"'
+        # TODO: Pick some Abaqus edge sets for the system tests
+        edge_sets = ""
+    elif backend == "cubit":
+        face_sets = '--face-set top 4 --face-set bottom 7 --face-set outer "2 3 8"'
+        edge_sets = "--top_outer 13"
+    builder = "sets"
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-vase-sets.{extension}"],
+            source=[f"scons-vase.{extension}"],
+            backend=backend,
+            model_name="scons-vase",
+            part_name="scons-vase",
+            face_sets=face_sets,
+            edge_sets=edge_sets
+        )
+    )
+
+    # TODO: Implement vase mesh edge seeds system tests
+    # https://re-git.lanl.gov/aea/python-projects/turbo-turtle/-/issues/174
+
+    # Cylinder
+    builder = "cylinder"
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-cylinder.{extension}"],
+            source=[project_configuration],
+            backend=backend,
+            inner_radius=1.,
+            outer_radius=2.,
+            height=1.,
+            model_name="scons-cylinder",
+            part_name="scons-cylinder"
+        )
+    )
+
+    # Sphere
+    builder = "sphere"
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-sphere.{extension}"],
+            source=[project_configuration],
+            backend=backend,
+            inner_radius=1.,
+            outer_radius=2.,
+            model_name=f"scons-sphere-{extension}",
+            part_name=f"scons-sphere-{extension}"
+        )
+    )
+
+    # Partition
+    builder = "partition"
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-partition.{extension}"],
+            source=[f"scons-sphere.{extension}"],
+            backend=backend,
+            model_name=f"scons-sphere-{extension}",
+            part_name=f"scons-sphere-{extension}"
+        )
+    )
+
+    # Mesh
+    builder = "mesh"
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[f"scons-mesh.{extension}"],
+            source=[f"scons-partition.{extension}"],
+            backend=backend,
+            model_name=f"scons-sphere-{extension}",
+            part_name=f"scons-sphere-{extension}",
+            element_type="C3D8R",
+            global_seed=0.15
+        )
+    )
+
+    # Image
+    # TODO: chase down why this fails in the CI jobs, but not locally
+    # https://re-git.lanl.gov/aea/python-projects/turbo-turtle/-/issues/129
+    #builder = "image"
+    #env["BUILDERS"][builder](env,
+    #    target=[f"scons-image-{extension}.png"],
+    #    source=[f"scons-mesh.{extension}"],
+    #    backend=backend,
+    #    model_name=f"scons-sphere-{extension}",
+    #    part_name=f"scons-sphere-{extension}"
+    #)
+
+    # Export
+    builder = "export"
+    input_file = f"scons-sphere-{extension}.inp"
+    if backend == "cubit":
+        input_file = input_file.replace("-", "_")
+    targets.extend(
+        env["BUILDERS"][builder](
+            env,
+            target=[input_file],
+            source=[f"scons-mesh.{extension}"],
+            backend=backend,
+            model_name=f"scons-sphere-{extension}",
+            part_name=f"scons-sphere-{extension}"
+        )
+    )
+
+    # Group tasks under backend named aliases
+    env.Alias(backend, targets)
+
+waves.scons_extensions.project_help()
