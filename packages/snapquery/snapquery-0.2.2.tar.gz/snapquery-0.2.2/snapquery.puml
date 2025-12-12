@@ -1,0 +1,75 @@
+@startuml
+' snapquery UML model
+' see https://github.com/WolfgangFahl/snapquery/blob/main/snapquery.puml
+hide circle
+package snapquery {
+    class NamedQuery {
+        - query_id : str
+        - namespace : str
+        - name : str
+        - sparql : str
+        - url : Optional[str]
+        - title : Optional[str]
+        - description : Optional[str]
+       + execute(endpoint_name: str, limit: int, timeout: float, result_format: str)
+    }
+    class Endpoint {
+        - name : string    - lang : string
+        - endpoint : string
+        - website : string
+        - database : string    - method : string
+        - prefixes : string
+    }
+
+
+    NamedQuery --> QueryStats : query_id
+    Endpoint --> QueryStats : endpoint_name
+
+    class QueryDetails {
+        - query_id : str
+        - params : str
+        - param_count : int
+        - lines : int
+        - size : int
+    }
+
+
+
+    QueryDetails --> ReferencedRessources : query_id
+    ReferencedRessources --> Property : property_identifier
+    ReferencedRessources --> QItem : qitem_identifier
+}
+
+note right of Endpoint
+  see [[https://github.com/WolfgangFahl/pyLoDStorage/blob/66a90ddf94d6ae7436914de330d000a63be75f41/lodstorage/query.py#L707 lodstorage.query]]
+
+  Represents an endpoint configuration for a SPARQL
+  query service, including connection details
+  and prefixes used in queries.
+end note
+
+note right of NamedQuery
+  The query_id is generated from namespace and name
+  and used as a primary key e.g. wikidata-examples.Cats
+end note
+
+note right of QueryStats
+  statistics about the execution of a query
+end note
+
+note right of Property
+  Represents a property with a label and identifier
+end note
+
+note right of QItem
+  Represents a QItem with a label and identifier
+end note
+
+note right of QueryDetails
+  Stores details for a named query
+end note
+
+note right of ReferencedRessources
+  Connects QueryDetails to Property and QItem
+end note
+@enduml
