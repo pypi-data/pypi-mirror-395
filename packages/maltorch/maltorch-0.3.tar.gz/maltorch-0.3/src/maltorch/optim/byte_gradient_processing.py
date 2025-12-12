@@ -1,0 +1,8 @@
+import torch
+from secmlt.optimization.gradient_processing import GradientProcessing
+
+
+class ByteGradientProcessing(GradientProcessing):
+    def __call__(self, grad: torch.Tensor) -> torch.Tensor:
+        # grad.data = normalize(grad.data, p=2, dim=2)
+        return grad
