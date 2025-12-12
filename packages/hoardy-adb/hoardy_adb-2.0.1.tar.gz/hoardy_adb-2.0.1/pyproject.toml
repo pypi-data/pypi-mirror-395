@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools]
+packages = ["hoardy_adb"]
+[project]
+name = "hoardy-adb"
+version = "2.0.1"
+authors = [{ name = "Jan Malakhovski", email = "oxij@oxij.org" }]
+description = "Backup and restore Android devices, list contents of, unpack, and convert Android Backup files to TAR files and back, decrypt, encrypt, split them into by-app pieces, etc. Android Backup files are `backup.ab`, `*.ab`, `*.adb`, and similarly named files produced by `adb shell bu backup`, `adb backup`, `bmgr`, and similar tools."
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Security :: Cryptography",
+    "Topic :: System :: Archiving",
+    "Topic :: System :: Archiving :: Backup",
+    "Topic :: System :: Recovery Tools",
+    "Operating System :: POSIX",
+    "Environment :: Console",
+]
+keywords = [
+    "android", "backup",
+    "android backup",
+    "adb", "ab",
+    "adb backup",
+]
+dependencies = [
+    "kisstdlib==0.0.12",
+    "cryptography",
+]
+requires-python = ">=3.11"
+[project.urls]
+"Homepage" = "https://oxij.org/software/hoardy-adb/"
+"GitHub" = "https://github.com/Own-Data-Privateer/hoardy-adb"
+"Support Development" = "https://oxij.org/#support"
+[project.scripts]
+hoardy-adb = "hoardy_adb.__main__:main"
+hyadb = "hoardy_adb.__main__:main"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+implicit_reexport = true
+explicit_package_bases = true
+files = [
+    "*.py",
+    "hoardy_adb/**/*.py"
+]
+[[tool.mypy.overrides]]
+module = [
+    "setuptools",
+]
+ignore_missing_imports = true
+
+[tool.black]
+line-length = 100
+
+[tool.pylint]
+disable = [
+    # `mypy` checks these more precisely
+    "arguments-renamed",
+    "inconsistent-return-statements",
+    "no-member",
+    "possibly-used-before-assignment",
+    "used-before-assignment",
+    "undefined-variable",
+
+    # `kisstdlib` uses this
+    "raising-format-tuple",
+
+    # annoying
+    "global-statement",
+    "import-outside-toplevel",
+    "invalid-name",
+    "line-too-long",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-boolean-expressions",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-nested-blocks",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+
+    # enable eventually
+    "broad-exception-caught",
+    "fixme",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "unused-wildcard-import",
+    "wildcard-import",
+]
+[tool.pylint.format]
+max-line-length = "100"
