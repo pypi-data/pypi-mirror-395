@@ -1,0 +1,66 @@
+defaults:
+  - _self_
+  - model: instanovoplus_base
+  - dataset: default
+  - residues: default
+
+run_name: instanovoplus
+tags:
+  - diffusion
+
+# Overwritten when using Aichor
+tb_summarywriter: "./logs/instanovo/instanovplus-base"
+
+# Training parameters
+seed: 101
+warmup_iters: 50_000
+learning_rate: 5e-5
+weight_decay: 0.0
+train_batch_size: 128
+grad_accumulation: 1
+gradient_clip_val: 10.0
+predict_batch_size: 128
+lr_scheduler: "cosine"
+
+# Data loading parameters
+num_workers: 6
+pin_memory: True
+prefetch_factor:
+
+compile_model: True
+fp16: True
+force_cpu: False
+mps: False
+force_fp32: False
+
+# Logging parameters
+# epochs: 30 #10
+training_steps: 10_000_000
+num_sanity_val_steps: 10
+console_logging_steps: 2000
+tensorboard_logging_steps: 500
+# x-axis for validation metrics on tensorboard/neptune
+# validation_axis_type: "epoch" # "epoch" or "step"
+use_neptune: True
+
+enable_verbose_logging: False
+enable_verbose_accelerate: True
+enable_verbose_s3: True
+
+# Training data parameters
+train_subset: 1.0
+valid_subset: 1.0
+
+# Number of model updates between validations
+validation_interval: 100_000 # roughly half an epoch
+
+# Checkpointing parameters
+save_model: True
+model_save_folder_path: "checkpoints/instanovoplus-base"
+save_weights_only: False
+# Number of model updates between checkpoints
+checkpoint_interval: 100_000
+# Accelerate checkpoint
+resume_accelerator_state:
+# Model checkpoint
+resume_checkpoint_path:
