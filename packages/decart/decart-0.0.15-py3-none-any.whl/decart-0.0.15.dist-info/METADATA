@@ -1,0 +1,200 @@
+Metadata-Version: 2.1
+Name: decart
+Version: 0.0.15
+Summary: Decart's Python SDK
+Project-URL: Homepage, https://github.com/decartai/decart-python
+Project-URL: Documentation, https://docs.platform.decart.ai/sdks/python
+Project-URL: Repository, https://github.com/decartai/decart-python
+Project-URL: Issues, https://github.com/decartai/decart-python/issues
+Author-email: Adir Amsalem <adir@decart.ai>
+License: MIT
+Keywords: ai,decart,generation,image,transformation,video
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Python: >=3.9
+Requires-Dist: aiofiles>=23.0.0
+Requires-Dist: aiohttp>=3.9.0
+Requires-Dist: numpy>=2.0.2
+Requires-Dist: opencv-python>=4.11.0.86
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: websockets>=15.0.1
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Provides-Extra: realtime
+Requires-Dist: aiortc>=1.9.0; extra == 'realtime'
+Requires-Dist: av>=12.0.0; extra == 'realtime'
+Requires-Dist: tenacity>=8.0.0; extra == 'realtime'
+Description-Content-Type: text/markdown
+
+# Decart Python SDK
+
+A Python SDK for Decart's models.
+
+## Installation
+
+### Using UV
+
+```bash
+uv add decart
+```
+
+### Using pip
+
+```bash
+pip install decart
+```
+
+## Documentation
+
+For complete documentation, guides, and examples, visit:
+**https://docs.platform.decart.ai/sdks/python**
+
+## Quick Start
+
+### Process Files
+
+```python
+import asyncio
+import os
+from decart import DecartClient, models
+
+async def main():
+    async with DecartClient(api_key=os.getenv("DECART_API_KEY")) as client:
+        # Generate a video from text
+        result = await client.process({
+            "model": models.video("lucy-pro-t2v"),
+            "prompt": "A cat walking in a lego world",
+        })
+
+        # Save the result
+        with open("output.mp4", "wb") as f:
+            f.write(result)
+
+asyncio.run(main())
+```
+
+### Async Processing (Queue API)
+
+For video generation jobs, use the queue API to submit jobs and poll for results:
+
+```python
+async with DecartClient(api_key=os.getenv("DECART_API_KEY")) as client:
+    # Submit and poll automatically
+    result = await client.queue.submit_and_poll({
+        "model": models.video("lucy-pro-t2v"),
+        "prompt": "A cat playing piano",
+        "on_status_change": lambda job: print(f"Status: {job.status}"),
+    })
+
+    if result.status == "completed":
+        with open("output.mp4", "wb") as f:
+            f.write(result.data)
+    else:
+        print(f"Job failed: {result.error}")
+```
+
+Or manage the polling manually:
+
+```python
+async with DecartClient(api_key=os.getenv("DECART_API_KEY")) as client:
+    # Submit the job
+    job = await client.queue.submit({
+        "model": models.video("lucy-pro-t2v"),
+        "prompt": "A cat playing piano",
+    })
+    print(f"Job ID: {job.job_id}")
+
+    # Poll for status
+    status = await client.queue.status(job.job_id)
+    print(f"Status: {status.status}")
+
+    # Get result when completed
+    if status.status == "completed":
+        data = await client.queue.result(job.job_id)
+        with open("output.mp4", "wb") as f:
+            f.write(data)
+```
+
+## Development
+
+### Setup with UV
+
+```bash
+# Clone the repository
+git clone https://github.com/decartai/decart-python
+cd decart-python
+
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install all dependencies (including dev dependencies)
+uv sync --all-extras
+
+# Run tests
+uv run pytest
+
+# Run linting
+uv run ruff check decart/ tests/ examples/
+
+# Format code
+uv run black decart/ tests/ examples/
+
+# Type check
+uv run mypy decart/
+```
+
+### Common Commands
+
+```bash
+# Install dependencies
+uv sync --all-extras
+
+# Run tests with coverage
+uv run pytest --cov=decart --cov-report=html
+
+# Run examples
+uv run python examples/process_video.py
+uv run python examples/realtime_synthetic.py
+
+# Update dependencies
+uv lock --upgrade
+```
+
+### Publishing a New Version
+
+The package is automatically published to PyPI when you create a GitHub release.
+
+#### Automated Release
+
+Use the release script to automate the entire process:
+
+```bash
+python release.py
+```
+
+The script will:
+
+1. Display the current version
+2. Prompt for the new version
+3. Update `pyproject.toml`
+4. Commit and push changes
+5. Create a GitHub release with release notes
+
+The GitHub Actions workflow will automatically build, test, and publish to PyPI.
+
+## License
+
+MIT
