@@ -1,0 +1,57 @@
+
+# Copyright © 2023-2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+from typing import Any
+from typing import Dict
+from typing import List
+
+from neuro_san.internals.interfaces.dictionary_validator import DictionaryValidator
+
+
+class CompositeDictionaryValidator(DictionaryValidator):
+    """
+    Implementation of the DictionaryValidator interface that uses multiple validators
+    """
+
+    def __init__(self, validators: List[DictionaryValidator]):
+        """
+        Constructor
+
+        :param validators: A list of validators to use
+        """
+        self.validators: List[DictionaryValidator] = validators
+
+    def validate(self, candidate: Dict[str, Any]) -> List[str]:
+        """
+        Validate the agent network.
+
+        :param candidate: The dictionary to validate
+        :return: A list of error messages
+        """
+        errors: List[str] = []
+
+        if not candidate:
+            errors.append("Nothing to validate.")
+            return errors
+
+        if self.validators is None or len(self.validators) == 0:
+            errors.append("No validation policy.")
+            return errors
+
+        for validator in self.validators:
+            errors.extend(validator.validate(candidate))
+
+        return errors
