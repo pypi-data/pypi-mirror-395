@@ -1,0 +1,101 @@
+from typing import Any, Literal
+
+from pydantic import BaseModel
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    PyprojectTomlConfigSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
+)
+
+
+class LogConfig(BaseModel):
+    simple_log: bool = True
+    ignored_prefixes: tuple[str, ...] = (
+        "Started executing request to method",
+        "CALL register_route",
+        "CALL /api/v1",
+        "Initialized DeploymentHandle",
+        "Finished initializing replica",
+        "Got updated replicas for",
+        "Started <ray.serve._private.router.SharedRouterLongPollClient object",
+    )
+
+
+class SentryConfig(BaseModel):
+    enable: bool = False
+    dsn: str = ""
+    env: str = ""  # local, prod, dev
+    debug: bool = False
+    ignore_errors: list[str] = []
+    lifecycle: Literal["manual", "trace"] = "manual"
+    enable_logs: bool = False
+
+
+class ServerConfig(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = 8080
+    dashboard_host: str = "127.0.0.1"
+    dashboard_port: int = 8260
+    use_ray: bool = False
+    enable_proxy: bool = False
+    legal_proxy_code: list[int] = [200]
+    num_cpus: int = 8
+    excluded_log_paths: list[str] = []
+    ingress_config: dict[str, Any] = {"max_ongoing_requests": 60}
+
+
+class TestConfig(BaseModel):
+    disable_record_request: bool = False
+    silent: bool = False
+
+
+class Settings(BaseSettings):
+    # Global config
+    base_ingress_config: dict[str, Any] = {"max_ongoing_requests": 10}
+
+    server: ServerConfig = ServerConfig()
+    log: LogConfig = LogConfig()
+
+    # plugins config
+    plugins: dict[str, Any] = {}
+
+    # allow load plugins
+    load_plugins: list[str] = []
+    load_builtin_plugins: list[str] = []
+
+    test: TestConfig = TestConfig()
+
+    sentry: SentryConfig = SentryConfig()
+
+    model_config = SettingsConfigDict(
+        # `.env.prod` takes priority over `.env`
+        env_file=(".env", ".env.prod"),
+        extra="ignore",
+        env_nested_delimiter="__",
+        case_sensitive=False,
+        pyproject_toml_table_header=("tool", "framex"),
+        toml_file="config.toml",
+    )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            env_settings,
+            dotenv_settings,
+            TomlConfigSettingsSource(settings_cls),
+            PyprojectTomlConfigSettingsSource(settings_cls),
+            init_settings,
+            file_secret_settings,
+        )
+
+
+settings = Settings()
