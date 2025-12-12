@@ -1,0 +1,61 @@
+# Git Setup Anywhere (Python)
+
+A single **cross-platform Python CLI tool** to install, configure, and prepare Git + SSH for GitHub (or any Git host) on **Windows, macOS, and Linux**.
+
+---
+
+## ✅ Requirements
+
+- Python **3.8+**
+- Internet connection
+- **Admin / sudo privileges are required only for installing Git**
+- OpenSSH installed (usually preinstalled on modern systems)
+
+---
+
+## 🚀 Features
+
+- ✅ Installs **Git automatically** (if missing)
+- ✅ Works on:
+  - Windows (via `winget`)
+  - macOS (via `brew`)
+  - Linux (via `apt`, `dnf`, `yum`, `pacman`, `zypper`)
+- ✅ Interactive **Git user configuration**
+  - `user.name`
+  - `user.email`
+- ✅ Sets best-practice defaults:
+  - `init.defaultBranch = main`
+  - `color.ui = auto`
+  - `core.editor = nano`
+- ✅ **SSH key generation (ed25519)**
+- ✅ Adds SSH key to `ssh-agent` when possible
+- ✅ Displays public key for easy GitHub/GitLab setup
+- ✅ Safe overwrite protection for existing SSH keys
+- ✅ Clean, colorful, interactive CLI
+- ✅ Open-source and fully customizable
+
+---
+
+## ❌ What This Tool Does NOT Do
+
+- ❌ It does **not** automatically add your SSH key to GitHub (for security reasons)
+- ❌ It does **not** manage multiple Git profiles
+- ❌ It does **not** modify repository-level Git config
+- ❌ It does **not** run silently without user interaction (yet)
+
+---
+
+## 📦 Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/abdullah-shaikh03/GitConfig.git
+cd GitConfig
+```
+
+**NOTE**
+: If Windows blocks the execution temporarily allow the execution by running the following command in PowerShell:
+
+```Powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
