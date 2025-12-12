@@ -1,0 +1,261 @@
+Metadata-Version: 2.4
+Name: pyutool
+Version: 0.0.3
+Summary: The log module is currently implemented to replace logging. And other small wheels
+Home-page: https://github.com/YLtop01/my-awesome-project
+Author: YL_top01
+Author-email: YL_top01 <2787284002@qq.com>
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# pyutool
+
+轻量易用的 Python 实用工具集，聚焦开发高频需求，零冗余依赖，开箱即用。
+
+## 核心功能
+- **验证工具（validators）**：手机号、邮箱、日期时间、文件路径校验，函数参数类型/范围检查
+- **终端交互（cli）**：可定制菜单（颜色/边框/多列布局）、跨平台输入处理、文本样式控制
+- **文件操作（fileops）**：目录结构生成、文本编辑、路径合法性校验、配置文件读写
+- **辅助组件（helpers）**：日志快速配置、密码编码、系统信息获取、有限类型封装（语言/编码等）
+
+## 项目特点
+- ✅ 严格遵循 PEP 8 规范，支持 `pip` 安装与导入 
+- ✅ 轻量无依赖：核心功能无需第三方库，体积小、运行高效
+- ✅ 易用易扩展：API 设计简洁直观，支持自定义验证规则/菜单样式
+- ✅ 跨平台兼容：适配 Windows、Linux、macOS 系统
+
+
+## ***快速上手***
+from pyutool import validators, cli
+
+# 数据格式验证
+assert validators.is_phone("13912345678") is True
+assert validators.is_email("dev@pyutool.com") is True
+
+# 终端交互式菜单
+menu = cli.CustomMenu(
+    options=["验证工具", "文件操作", "退出"],
+    title="PyUtool 工具箱",
+    border_style="solid"  # 支持 solid/dashed/none 边框
+)
+selected = menu.run()
+print(f"你选择了：{selected}")
+
+
+# pyutool-recording 日志系统使用文档
+
+## 简介
+pyutool.recording 是 pyutool 包下的核心日志记录与校验模块，提供**结构化日志管理**、**自动参数校验**、**异常捕获日志**三大核心能力，支持多平台兼容（Windows/macOS/Linux），适用于各类 Python 应用的日志追踪与错误排查。
+
+
+## 一、包结构概述
+recording 模块采用分层设计，职责划分明确，目录结构如下：
+```text
+pyutool/recording/
+├── __init__.py               # 公共API导出（装饰器、核心异常等）
+├── core/                     # 日志核心功能
+│   ├── logger.py             # 日志记录核心（格式化、写入、轮转逻辑）
+│   ├── config.py             # 日志配置管理（路径、格式、级别、编码等）
+│   └── handler.py            # 日志处理器（轮转策略、多线程安全控制）
+├── checks/                   # 校验模块
+│   ├── decorator_checker.py  # 装饰器校验（@validate_parameters 等）
+│   ├── path_checker.py       # 路径校验（格式合法性、文件存在性）
+│   ├── type_checker.py       # 数据类型校验（基础类型/自定义类型）
+│   └── factory.py            # 校验器工厂（统一管理/调用各类校验器）
+├── errors/                   # 自定义异常体系
+│   ├── base.py               # 基础异常类（BaseCustomError，含错误定位能力）
+│   ├── parameter.py          # 参数异常（缺失/类型不匹配/范围错误等）
+│   ├── path.py               # 路径异常（格式错误/文件不存在/权限不足等）
+│   └── errors.py             # 通用异常（类型错误、键不存在、执行超时等）
+├── utils/                    # 工具函数
+│   ├── object.py             # 对象定位（模块/函数路径）、类型识别
+│   ├── path.py               # 跨平台路径处理（标准化/创建目录/权限检查）
+│   └── log_parsing.py        # 日志解析（提取关键字/统计错误频率）
+└── analysis/                 # 日志分析
+    └── reporter.py           # 日志统计报告（错误类型分布、时段频率分析）
+```
+
+
+## 二、核心功能
+
+### 1. 自定义异常体系
+- 覆盖参数、路径、类型、执行等全场景异常类（如 **ParameterTypeError**、**PathNotExistsError**）
+- 支持多语言错误消息（中文 / 英文，通过 `LogConfig.language` 配置）
+- 自动捕获错误位置（触发异常的文件路径、行号），便于快速定位问题
+
+
+### 2. 智能日志管理
+- **自动日志轮转**：支持按文件大小（`max_size`）或日期分割，Windows 环境下支持安全轮转（避免文件占用冲突）
+- **多线程安全**：基于 RLock 实现日志写入锁，防止多线程并发写入导致的日志错乱
+- **灵活配置**：可自定义日志目录（`log_dir`）、编码（`encoding`，基于 `pyutool.umodules.limited_types.LimitedEncoding` 实现安全编码限制）、日志格式（`format_str`）
+- **编码安全控制**：通过 `LimitedEncoding` 类限制合法编码集，避免使用系统不支持的编码格式导致的写入失败
+- **单例日志器**：通过 `LoggerManager` 管理日志实例，确保多模块共用时唯一性
+
+
+### 3. 参数校验工具
+- 装饰器 **@validate_parameters**：自动校验函数参数的类型、数量、范围，不符合时抛出对应异常并记录日志
+- 基础校验函数：`check_path`（路径有效性）、`check_type`（类型匹配）、`check_key`（字典键存在性）等，支持直接调用
+
+
+### 4. 函数错误日志装饰器
+- **@log_function_errors**：自动捕获函数执行中的异常，记录详细日志（含参数上下文），支持配置 `continue_on_error`（是否中断程序）、`logger_name`（指定日志器）
+- **@require_logger**：确保日志系统初始化后再执行函数，避免未初始化导致的日志丢失
+
+
+## 三、快速使用示例
+
+### 1. 日志初始化（核心步骤）
+首先通过 `LogConfig` 配置日志参数，再通过 `LoggerManager` 创建日志实例：
+```python
+from pyutool.recording import LoggerManager, LogConfig
+
+# 1. 配置日志（基于LimitedEncoding确保编码合法性）
+log_config = LogConfig(
+    name="my_app",          # 日志器名称（唯一标识）
+    log_dir="logs",         # 日志存储目录（自动创建）
+    max_size=10 * 1024 * 1024,  # 单个日志文件最大10MB（触发轮转）
+    backups=5,              # 保留5个备份文件（超出自动删除旧文件）
+    language="zh",          # 错误消息语言（zh=中文，en=英文）
+    encoding="utf-8-sig"    # 日志文件编码（LimitedEncoding支持的安全编码）
+)
+
+# 2. 创建/获取日志器（单例模式，重复调用返回同一实例）
+logger = LoggerManager.create_logger(logger_name="my_app", config=log_config)
+```
+
+
+### 2. 记录日志
+支持 INFO/WARNING/ERROR/CRITICAL 等日志级别，可记录普通信息或异常：
+```python
+# 记录普通信息（INFO级别）
+logger.record("INFO", "应用启动成功，版本：v1.0.0")
+
+# 记录异常（ERROR级别，含异常上下文）
+try:
+    # 模拟业务错误
+    result = 10 / 0
+except ZeroDivisionError as e:
+    logger.record("ERROR", f"计算模块执行失败：{str(e)}", exc_info=True)
+    # exc_info=True：自动记录异常堆栈信息（便于排查）
+```
+
+
+### 3. 参数校验装饰器
+用 `@validate_parameters` 自动校验函数参数类型 / 数量：
+
+```python
+from pyutool.recording import validate_parameters
+
+
+# 启用类型校验：自动检查参数类型是否匹配注解
+@validate_parameters(enable_type_check=True)
+def add_numbers(a: int, b: int) -> int:
+  """两数相加，要求参数均为int类型"""
+  return a + b
+
+
+# 正常调用（无异常）
+add_numbers(10, 20)  # 返回30
+
+# 异常调用（参数类型不匹配）
+add_numbers(10, "20")  # 自动抛出ParameterTypeError，日志记录错误信息
+```
+
+
+### 4. 函数错误日志装饰器
+用 `@log_function_errors` 自动捕获函数异常并记录，不中断程序：
+```python
+from pyutool.recording import log_function_errors
+
+# 配置：指定日志器、捕获异常后继续执行
+@log_function_errors(logger_name="my_app", continue_on_error=True)
+def risky_operation(file_path: str):
+    """模拟高风险操作（如文件读写）"""
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+# 调用不存在的文件（触发异常）
+risky_operation("nonexistent_file.txt")  
+# 结果：异常被捕获并记录日志，程序继续执行（不崩溃）
+```
+
+
+## 四、注意事项
+1. **编码安全控制**：日志编码通过 `pyutool.umodules.limited_types.LimitedEncoding` 进行校验，仅支持系统兼容的安全编码（如 utf-8、utf-8-sig、gbk 等），避免使用非法编码导致的写入失败。
+2. **Windows 编码问题**：默认编码为 utf-8，若出现中文乱码，需在 `LogConfig` 中指定 `encoding="utf-8-sig"`。
+3. **日志文件大小控制**：生产环境务必配置 `max_size` 和 `backups`，避免单个日志文件过大（影响读取）或占用过多磁盘空间。
+4. **多模块日志共用**：不同模块需使用同一日志器时，通过 `LoggerManager.get_logger("my_app")` 获取实例（而非重复创建）。
+5. **资源释放**：应用退出前，建议调用 `LoggerManager.clear_all_loggers()` 释放日志文件句柄，避免资源泄漏。
+6. **异常堆栈记录**：记录异常时建议添加 `exc_info=True`（如 `logger.record("ERROR", msg, exc_info=True)`），便于后续排查完整异常链路。
+
+
+## 五、更多信息
+- 若需反馈问题或提需求，可通过项目仓库的 Issues 功能提交。
+
+
+
+### pyutool/umodules 模块介绍
+
+`umodules` 是一个提供通用工具、配置管理、默认值定义等基础功能的模块集合，包含多个实用子模块，覆盖命令行交互、配置文件处理、工具函数等场景。以下是各核心模块的详细说明：
+
+
+#### 1. cli_utils.py  
+**功能**：命令行界面（CLI）菜单工具，提供交互式菜单组件及测试功能。  
+**核心内容**：  
+- 定义 `ComprehensiveTestMenu` 类（继承自 `ArrowKeyMenu`），支持多种菜单类型：  
+  - 箭头键菜单（通过上下键选择）  
+  - 数字键菜单（通过数字快捷键选择）  
+  - 网格菜单（多列布局展示选项）  
+- 支持语言切换功能（通过 `toggle_language` 方法切换中英文），并能动态更新菜单文本。  
+**用途**：快速构建交互式命令行菜单，适用于需要用户选择操作的场景。
+
+
+#### 2. configer.py  
+**功能**：配置文件（INI格式）管理工具，提供配置读取、修改、验证等功能。  
+**核心类/方法**：  
+- `Config` 类：初始化时校验配置文件路径合法性，支持创建不存在的配置文件。  
+  - `sections()`：获取所有配置节（section）。  
+  - `options(section)`：获取指定节下的所有选项（option）。  
+  - `get_value(section, option, default)`：获取指定节-选项的值，支持默认值。  
+  - `set_option(section, option, value)`：修改指定节-选项的值（通过临时文件安全更新）。  
+**特点**：结合 `check_path` 进行路径校验，支持编码验证（通过 `check_encoding`），确保配置文件操作安全。  
+
+
+#### 3. set_default.py  
+**功能**：提供通用默认值、常量、枚举及基础数据生成工具。  
+**核心内容**：  
+- 基础常量：字母（`A-Z`）、运算符（`+/-/*/`）、特殊符号（图标、Windows支持的特殊字符）。  
+- 枚举类：  
+  - `FileFormat`：区分文本文件（`txt`/`ini`等）、二进制文件（`exe`/`dll`等）、图像文件（`png`/`jpg`等）。  
+  - `WindowsSign`：定义Windows系统支持的特殊符号（箭头、方块、括号等）。  
+- `Producer` 类：生成基础数据类型示例（`int`/`str`/`list`等）、数字序列、可迭代类型列表等。  
+**用途**：为项目提供统一的默认值和常量定义，简化基础数据生成逻辑。  
+
+
+#### 4. ufunctools.py  
+**功能**：模块检查工具函数，用于解析模块中的类定义。  
+**核心函数**：  
+- `get_module_classes(module)`：通过 `inspect` 模块获取指定模块中定义的所有类名（返回字符串列表）。  
+**用途**：动态分析模块结构，适用于需要反射或自动识别模块内类的场景。  
+
+
+#### 5. limited_types.py  
+**功能**：提供路径和编码相关的限制与校验工具（代码片段显示与路径根目录处理相关）。  
+**核心内容**：  
+- 包含 `LimitedEncoding` 类（结合 `LogConfig` 中的编码配置），可能用于限制日志或文件的合法编码。  
+- `root` 属性：获取路径根目录（如Unix的 `/` 或Windows的 `C:\\`），用于路径合法性校验。  
+
+
+#### 6. 其他模块  
+- `rgb_colors.py`：推测用于RGB颜色处理（如颜色值转换、校验等），未展示具体代码。  
+- `edit_file.py`：推测提供文件编辑相关工具函数（如内容修改、格式调整等），未展示具体代码。  
+- `config.ini`：默认配置文件模板，供 `configer.py` 读取和修改。  
+
+
+### 总结  
+`umodules` 模块聚焦于通用工具能力，为上层业务（如日志系统 `recording`、游戏引擎 `game_engine` 等）提供基础支持，涵盖配置管理、命令行交互、数据定义等核心场景，具有较强的复用性。
