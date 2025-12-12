@@ -1,0 +1,109 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "qibolab"
+version = "0.2.11"
+description = "Quantum hardware module and drivers for Qibo"
+authors = ["The Qibo team"]
+license = "Apache License 2.0"
+readme = "README.md"
+homepage = "https://qibo.science/"
+repository = "https://github.com/qiboteam/qibolab/"
+documentation = "https://qibo.science/docs/qibolab/stable"
+keywords = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+packages = [{ include = "qibolab", from = "src" }]
+include = ["src/*.lark"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.14"
+numpy = ">=1.26.0,<3"
+scipy = "^1.13.0"
+pydantic = "^2.4.0"
+qibo = { version = "^0.2.16", optional = true }
+qutip = { version = "^5.0.2", optional = true }
+pyserial = { version = "^3.5", optional = true }
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+pudb = "^2025.1"
+ipython = "^8.12.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^8.0"
+furo = "^2025.7.19"
+recommonmark = "^0.7.1"
+sphinxcontrib-bibtex = "^2.5.0"
+sphinx-markdown-tables = "^0.0.17"
+nbsphinx = "^0.9.1"
+ipython = "^8.12.0"
+sphinx-copybutton = "^0.5.1"
+# extras
+qcodes = "^0.52.0"
+qcodes_contrib_drivers = "^0.23.0"
+qutip = "^5.0.2"
+sphinx-design = "^0.6.1"
+
+[tool.poetry.group.tests]
+optional = true
+
+[tool.poetry.group.tests.dependencies]
+pytest = ">=7.2.2"
+pytest-cov = "^4.0.0"
+pytest-env = ">=0.8.1"
+pytest-mock = ">=3.10.0"
+qcodes = "^0.52.0"
+qcodes_contrib_drivers = "^0.23.0"
+requests = "^2.32.0"
+
+[tool.poetry.group.analysis]
+optional = true
+
+[tool.poetry.group.analysis.dependencies]
+ruff = "^0.9.1"
+
+[tool.poetry.extras]
+backend = ["qibo"]
+emulator = ["qutip"]
+qrng = ["pyserial"]
+
+[tool.poe.tasks]
+test = "pytest"
+lint = "ruff check"
+lint-warnings = """
+  ruff check --exit-zero \
+  --select F,E,W,C90,N,UP,BLE,FBT,B,A,C4,T10,EM,EXE,ISC,ICN,LOG,G,INP,PIE,T20,PT,Q,RSE,\
+           RET,SLF,SLOT,SIM,TC,INT,ARG,PTH,ERA,NPY,PERF,RUF
+"""
+types = "true"
+docs = "make -C doc html"
+docs-clean = "make -C doc clean"
+test-docs = "make -C doc doctest"
+
+[tool.pytest.ini_options]
+testpaths = ['tests/']
+markers = ["qpu: mark tests that require qpu"]
+addopts = [
+  '--cov=qibolab',
+  '--cov-report=xml',
+  '--cov-report=html',
+  '-m not qpu',
+  "--ignore=tests/qblox", # TODO: move tests to qibolab-qblox
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F403"]
+
+[tool.pycln]
+all = true
+exclude = "__init__.py"
