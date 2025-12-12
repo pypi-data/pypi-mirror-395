@@ -1,0 +1,271 @@
+"""Manage args for NIH iCite run for one PubMed ID (PMID)"""
+
+__copyright__ = "Copyright (C) 2019-present, DV Klopfenstein, PhD. All rights reserved."
+__author__ = "DV Klopfenstein, PhD"
+
+from sys import stdout
+from sys import exit as sys_exit
+from argparse import ArgumentParser
+
+from pmidcite.eutils.cmds.pubmed import PubMed
+from pmidcite.citation import CITATION
+from pmidcite.cfgini import prt_rcfile
+from pmidcite.cli.common import add_args
+from pmidcite.cli.utils import get_outfile
+from pmidcite.cli.utils import get_pmids
+from pmidcite.cli.entry_keyset import get_cites_refs_g_args
+from pmidcite.icite.nih_grouper import get_nihgrouper
+from pmidcite.icite.downloader import get_downloader
+from pmidcite.icite.prt_hdrkey import prt_keys
+from pmidcite.icite.prt_hdrkey import prt_hdr
+
+
+class NIHiCiteCli:
+    """Manage args for NIH iCite run for one PubMed ID (PMID)"""
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.pubmed = PubMed(
+            email=cfg.get_email(),
+            apikey=cfg.get_apikey(),
+            tool=cfg.get_tool())
+
+    def get_argparser(self):
+        """Argument parser for Python wrapper of NIH's iCite given PubMed IDs"""
+        parser = ArgumentParser(
+            description="Run NIH's iCite given PubMed IDs",
+            add_help=False)
+        cfg = self.cfg
+        dflt_dir_icite_py = cfg.get_dir_icite_py()
+        dflt_dir_icite = cfg.get_dir_icite()
+        dflt_dir_pubmed_txt = cfg.get_dir_pubmed_txt()
+        # Add group default boundaries using configuration
+        grpr = self.cfg.get_nihgrouper()
+        # https://docs.python.org/3/library/argparse.html
+        # https://docs.python.org/3/library/argparse.html#action
+        # - PMIDs ----------------------------------------------------------------------------
+        parser.add_argument(
+            '-h', '--help', action='store_true',
+            help='Print this help message and exit (also --help)')
+        parser.add_argument(
+            '--version', action='store_true',
+            help="Print pmidcite's`icite` version number and exit")
+        parser.add_argument(
+            '--cite', action='store_true',
+            help='publication citation for the pmidcite project')
+        add_args(parser, ['pmids', 'infile'])
+        # - help -----------------------------------------------------------------------------
+        parser.add_argument(
+            '-H', '--print_header', action='store_true',
+            help='Print column headings on one line.')
+        parser.add_argument(
+            '-k', '--print_keys', action='store_true',
+            help='Print the keys describing the abbreviations.')
+        # - verbosity ------------------------------------------------------------------------
+        parser.add_argument(
+            '-v', '--verbose', action='store_true', default=False,
+            help='Load and print a descriptive list of citations and references for each paper.')
+        parser.add_argument(
+            '-l', '--long-format', action='store_true', default=False,
+            help='Print a multi-line description for each paper.')
+        parser.add_argument(
+            '-c', '--load_citations', action='store_true', default=False,
+            help='Load and print of papers and clinical studies that cited the requested paper.')
+        parser.add_argument(
+            '-r', '--load_references', action='store_true', default=False,
+            help='Load and print the references for each requested paper.')
+        # pylint: disable=line-too-long
+        parser.add_argument(
+            '-R', '--no_references', action='store_true',
+            help='(DEPRECATED) Do not load or print a descriptive list of references. DEPRECATED -- Use instead: -c -r')
+        # - output ---------------------------------------------------------------------------
+        parser.add_argument(
+            '-a', '--append_outfile',
+            help='Append current citation report to an ASCII text file. Create if needed.')
+        parser.add_argument(
+            '-o', '--outfile',
+            help='Write current citation report to an ASCII text file.')
+        parser.add_argument(
+            '-O', action='store_true',
+            help="Write each PMIDs' iCite report with citations/references to <dir_icite>/PMID.txt")
+        add_args(parser, ['force_write', 'force_download'])
+        # - abstracts -------------------------------------------------------------------------
+        parser.add_argument(
+            '-p', '--pubmed', action='store_true',
+            help='Download PubMed entry containing title, abstract, authors, journal, MeSH, etc.')
+        grpr.add_arguments(parser)
+        # - directories ----------------------------------------------------------------------
+        parser.add_argument(
+            '--dir_icite_py', default=dflt_dir_icite_py,
+            help=f'Write PMID iCite information into directory which contains temporary working files (default={dflt_dir_icite_py})')
+        parser.add_argument(
+            '--dir_icite', default=dflt_dir_icite,
+            help=f'Write PMID icite reports into directory (default={dflt_dir_icite})')
+        parser.add_argument(
+            '--dir_pubmed_txt', default=dflt_dir_pubmed_txt,
+            help=f'Write PubMed entry into directory (default={dflt_dir_pubmed_txt})')
+        # ------------------------------------------------------------------------------------
+        parser.add_argument(
+            '--md', action='store_true',
+            help='Print using markdown table format.')
+        # - initialization -------------------------------------------------------------------
+        parser.add_argument(
+            '--generate-rcfile', action='store_true',
+            help='Generate a sample configuration file according to the '
+                 'current configuration.')
+        parser.add_argument(
+            '--print-rcfile', action='store_true',
+            help='Print the location of the pmidcite configuration file')
+        return parser
+
+    def cli(self):
+        """Run iCite/PubMed using command-line interface"""
+        argparser = self.get_argparser()
+        args = self._get_args(argparser)
+        ##print('ICITE ARGS ../pmidcite/src/pmidcite/cli/icite.py', args)
+        self._run(args, argparser)
+
+    def _run(self, args, argparser):
+        """Run iCite/PubMed using command-line interface"""
+        if args.help:
+            argparser.print_help()
+            print('\nHelp message printed because: -h or --help == True')
+            sys_exit()
+        if args.cite:
+            print(CITATION)
+            sys_exit()
+        self.prt_info(args)
+        # Get a list of researcher-specified PMIDs
+        pmids = get_pmids(args.pmids, args.infile)
+        if pmids:
+            if len(pmids) > 10:
+                print(f'PROCESSING {len(pmids):,} PMIDs')
+            dnldr = self._get_downloader(args)
+            ##print(f'DB WWWWWWWWWWWWWWWWWWWWWWWWWWW PMIDS({pmids})')
+            pmid2icitepaper = dnldr.get_pmid2paper(pmids, None)
+            ##print('DB XXXXXXXXXXXXXXXXXXXXXXXXXXX pmid2icitepaper', pmid2icitepaper)
+            self.run_icite(pmid2icitepaper, dnldr, args, argparser)
+            if args.pubmed:
+                self.pubmed.dnld_wr1_per_pmid(pmids, args.force_download, args.dir_pubmed_txt)
+        # pylint: disable=line-too-long
+        elif not (args.generate_rcfile or args.print_keys or args.print_header or args.print_rcfile):
+            argparser.print_help(stdout)
+
+    def prt_info(self, args):
+        """Print helpful information"""
+        # If writing to a file, don't write to stdout
+        if args.O or args.append_outfile or args.outfile:
+            return
+        # Print rcfile initialization file
+        if args.print_rcfile:
+            self.cfg.prt_cfgfile()
+        if args.generate_rcfile:
+            prt_rcfile(stdout)
+        self._prt_keys_n_hdr(stdout, args.print_keys, args.print_header)
+
+    @staticmethod
+    def _prt_keys_n_hdr(prt, print_keys, print_header):
+        # Print the keys and/or the header
+        if print_keys:
+            prt_keys(prt)
+        if print_header:
+            prt_hdr(prt)
+
+    @staticmethod
+    def _get_downloader(args):
+        """Get the downloader"""
+        details_cites_refs = get_cites_refs_g_args(args)
+        groupobj = get_nihgrouper(args.min1, args.min2, args.min3, args.min4)
+        return get_downloader(
+            groupobj,
+            args.force_download,
+            details_cites_refs,
+            args.dir_icite_py)
+
+    def _get_args(self, argparser):
+        """Get args"""
+        args = argparser.parse_args()
+        if args.version:
+            # pylint: disable=import-outside-toplevel
+            import pmidcite
+            print(f'icite {pmidcite.__version__}')
+            sys_exit()
+        self.cfg.set_dir_icite_py(args.dir_icite_py)
+        self.cfg.set_dir_icite(args.dir_icite)
+        # append_outfile:
+        #   * Append TOP, CIT, CLI, and REF into file if it is not already present
+        #   * Print TOP to the screen
+        if args.append_outfile:
+            args.load_citations = True
+            args.load_references = True
+        return args
+
+    def run_icite(self, pmid2icitepaper_all, dnldr, args, argparser):
+        """Run iCite/PubMed"""
+        ##print(f'DB ARGS: {args}')
+        pmid2icitepaper_cur = self.run_icite_pre(pmid2icitepaper_all, args, argparser)
+        if not pmid2icitepaper_cur:
+            dnldr.prt_api_msgs()
+            return
+        # Write the report with citations and references for each PMID into its own file
+        if args.O:
+            self._wr_papers(pmid2icitepaper_cur, dnldr, args.print_header)
+        # Write a succinct report for each PMID to the screen
+        else:
+            self.run_icite_wr(pmid2icitepaper_cur, args, dnldr)
+
+    def run_icite_pre(self, pmid2icitepaper_all, args, argparser):
+        """Run iCite/PubMed"""
+        ## print('ALL', pmid2icitepaper_all)
+        if not pmid2icitepaper_all and not args.print_keys and not args.print_header:
+            argparser.print_help()
+            self._prt_infiles(args.infile)
+        pmid2icitepaper_cur = {p: o for p, o in pmid2icitepaper_all.items() if o is not None}
+        if not pmid2icitepaper_cur:
+            # pylint: disable=line-too-long
+            self._prt_no_icite(set(pmid2icitepaper_all.keys()).difference(pmid2icitepaper_cur.keys()))
+            return {}
+        return pmid2icitepaper_cur
+
+    @staticmethod
+    def _prt_infiles(infiles):
+        """Print input files"""
+        if infiles:
+            for fin in infiles:
+                print(f'**ERROR: NO PMIDs found in: {fin}')
+
+    @staticmethod
+    def run_icite_wr(pmid2icitepaper, args, dnldr):
+        """Print papers, including citation counts"""
+        dct = get_outfile(args.outfile, args.append_outfile, args.force_write)
+        if dct['outfile'] is None and not args.O:
+            #print('FFFFFFFFFFFFFFFFFFFFFFFFF')
+            dnldr.prt_papers(pmid2icitepaper, prt=stdout)
+        else:
+            if args.verbose:
+                dnldr.prt_papers(pmid2icitepaper, prt=stdout)
+            elif args.append_outfile:
+                # Print TOP to stdout if append_outfile
+                for icitepaper in pmid2icitepaper.values():
+                    icitepaper.prt_top(prt=stdout)
+            if dct['outfile'] is not None:
+                dnldr.wr_papers(dct['outfile'], pmid2icitepaper, dct['force_write'], dct['mode'])
+
+    def _wr_papers(self, pmid2icitepaper, dnldr, print_header):
+        """Write one icite report per PMID into dir_icite/PMID.txt"""
+        for pmid, paper in pmid2icitepaper.items():
+            fout_txt = self.cfg.get_fullname_icite(f'{pmid}.txt')
+            with open(fout_txt, 'w', encoding='utf8') as prt:
+                if print_header:
+                    prt_hdr(prt)
+                dnldr.prt_papers({pmid:paper}, prt)
+                print(f'  WROTE: {fout_txt}')
+
+    @staticmethod
+    def _prt_no_icite(pmids):
+        if not pmids:
+            return
+        print('**NOTE: No NIH iCite papers found for: {" ".join(str(p) for p in pmids)}')
+
+
+# Copyright (C) 2019-present DV Klopfenstein, PhD. All rights reserved.

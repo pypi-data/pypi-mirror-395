@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+"""Plot NIH percentile groups for citation data from a paper's cocitation network"""
+
+__copyright__ = "Copyright (C) 2020-present, DV Klopfenstein, PhD. All rights reserved."
+
+
+# pylint: disable=wrong-import-position
+import math
+import matplotlib as mpl
+mpl.use('agg')
+import matplotlib.pyplot as plt
+from scipy import stats
+from pmidcite.plot.nih_perc import PltNihVals
+from pmidcite.cfg import Cfg
+
+MU = 0
+VARIANCE = 1
+SIGMA = math.sqrt(VARIANCE)
+
+def main():
+    """Plot guassian distribution, showing icite groups"""
+    fout_imgs = [
+        '../pmidcite/doc/images/nih_perc_groups.png',
+        '../bibliometrics/doc/nih_perc_groups.tiff',
+        '../bibliometrics/doc/nih_perc_groups.pdf',
+        'nih_perc_groups.svg',
+        '../bibliometrics/doc/nih_perc_groups.pdf',
+    ]
+
+    # 1a) Get percentile group_mins along SD lines
+    # percentiles: [2.28, 15.87, 84.13, 97.72]
+    vlines = [-3, -2, -1, 1, 2, 3]
+    percentiles = [round(stats.norm.cdf(z)*100, 2) for z in vlines[1:-1]]
+
+    # 1b) Get percentile group_mins from Cfg
+    cfg = Cfg()
+    nih_grouper = cfg.get_nihgrouper()
+    percentiles = nih_grouper.get_list()
+
+    # Plot Gaussian curve
+    pltr = PltNihVals(percentiles)
+    ## pltr = PltNihVals(Cfg().get_nihgrouper().get_list())
+    pltr.prt_vals()
+
+    fig, axes = plt.subplots(1, 1)
+    pltr.plt_lines(axes)
+    pltr.colorfill_groups(axes)
+    pltr.add_text_groups(axes)
+    pltr.anno_groupmin(axes)
+    axes.set_xlabel('Standard Deviations', fontsize=15)
+    axes.set_ylabel('Distribution of co-citation network', fontsize=15)
+
+    for fout_img in fout_imgs:
+        fig.tight_layout()
+        plt.savefig(fout_img, dpi=800)
+        print(f'WROTE: {fout_img}')
+
+
+if __name__ == '__main__':
+    main()
+
+# Copyright (C) 2020-present, DV Klopfenstein, PhD. All rights reserved.

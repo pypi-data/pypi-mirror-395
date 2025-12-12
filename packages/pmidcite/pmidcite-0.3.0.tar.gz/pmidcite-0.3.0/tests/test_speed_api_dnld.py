@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Test speed for download NIH citation data"""
+
+from sys import getsizeof
+from timeit import default_timer
+
+from tests.icite import dir_icite_clobber
+from tests.icite import dir_icite_wc_l
+from tests.prt_hms import prt_hms
+from tests.pmids_i3 import PMIDS
+from tests.utils import init_dnldr
+
+
+def test_speed_api_dnld():
+    """Test speed for download NIH citation data"""
+    force_dnld = True
+    dnldr = init_dnldr(force_dnld)
+
+    num = 5000
+    print(f'tests.pmids_i3 len(PMIDS)={len(PMIDS)}')
+    pmids = PMIDS[:num]
+    pmids = PMIDS
+    # _dnld_icite_v_icites(dnldr, pmids)
+
+    ## nihentries = dnldr.api.dnld_icites(pmids)
+    ## nihentries = dnldr.get_pmid2paper(pmids)
+    ## nihentries = dnldr.get_icites(pmids)
+    tic = default_timer()
+    nihdicts = dnldr.api.dnld_nihdicts(pmids)
+    num_bytes = getsizeof(nihdicts)
+    # pylint: disable=line-too-long
+    print(f'{len(nihdicts)} nihdicts: {num_bytes:,} bytes, {num_bytes/1000000.0:,} MB')
+    tic = prt_hms(tic, f"Downloaded {len(nihdicts):,} items w/dnld_icites")
+    dir_icite_wc_l()
+
+def _dnld_icite_v_icites(dnldr, pmids):
+    dir_icite_clobber()
+    num_pmids = len(pmids)
+    tic = default_timer()
+    for idx, pmid in enumerate(pmids, 1):
+        if idx%10 == 0:
+            print(f"Downloading item {idx:,}")
+        dnldr.api.dnld_icite(pmid)  # NIHiCiteEntry
+    tic = prt_hms(tic, f"Downloaded {num_pmids} items w/dnld_icite")
+
+
+if __name__ == '__main__':
+    test_speed_api_dnld()
+
+# Copyright (C) 2021-present, DV Klopfenstein, PhD. All rights reserved.
