@@ -1,0 +1,60 @@
+<!--
+  Run this example (standalone) as follows:
+  uv run collagraph --state '{"items": [0, 1, 2]}' examples/pyside/dialog_example.cgx
+
+  See the dialog_example_window.cgx for how to integrate this component.
+ -->
+  <!--
+    When specifying a 'modal' dialog, use window-modality
+    to change the default 'ApplicationModal' to 'WindowModal'
+    if you don't want to block input to other windows.
+  -->
+<qdialog
+  modal
+  :window-modality="Qt.ApplicationModal if props.get('global_dialog', False) else Qt.WindowModal"
+  @accepted="accepted"
+  @rejected="rejected"
+>
+  <label text="Select elements" />
+  <treeview>
+    <qstandarditemmodel>
+      <standarditem
+        v-for="item in items"
+        :text="str(item)"
+      />
+    </qstandarditemmodel>
+    <qitemselectionmodel
+      @selection-changed="selection_changed"
+    />
+  </treeview>
+  <dialogbuttonbox
+    :buttons="('Ok', 'Cancel')"
+    @accepted="lambda: element.accept()"
+    @rejected="lambda: element.reject()"
+  />
+</qdialog>
+
+<script>
+from PySide6.QtCore import Qt
+import collagraph as cg
+
+
+class ListDialog(cg.Component):
+    def init(self):
+        self.state["selected"] = -1
+
+    def accepted(self):
+        self.emit("accepted", self.state["selected"])
+        self.emit("finished")
+
+    def rejected(self):
+        self.emit("rejected")
+        self.emit("finished")
+
+    def selection_changed(self, new, old):
+        indexes = new.indexes()
+        index = -1
+        if indexes:
+            index = indexes[0].row()
+        self.state["selected"] = index
+</script>
