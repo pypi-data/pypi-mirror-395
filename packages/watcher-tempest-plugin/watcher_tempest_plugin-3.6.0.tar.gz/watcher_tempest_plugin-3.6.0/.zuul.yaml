@@ -1,0 +1,49 @@
+- project:
+    queue: watcher
+    templates:
+      - check-requirements
+      - tempest-plugin-jobs
+      - publish-openstack-docs-pti
+      - release-notes-jobs-python3
+    check:
+      jobs:
+        - watcher-tempest-functional
+        - watcher-tempest-actuator
+        - watcher-tempest-strategies
+        - watcher-prometheus-integration
+        - watcher-aetos-integration
+        - watcher-tempest-functional-2025-2
+        - watcher-tempest-functional-2025-1
+        - watcher-tempest-functional-2024-2
+        - watcher-tempest-functional-2024-1
+    gate:
+      jobs:
+        - watcher-tempest-functional
+    experimental:
+      jobs:
+        - watcher-prometheus-integration-realdata
+        - watcher-aetos-integration-realdata
+
+- job:
+    name: watcher-tempest-functional-2025-2
+    parent: watcher-tempest-functional
+    nodeset: openstack-single-node-noble
+    override-checkout: stable/2025.2
+
+- job:
+    name: watcher-tempest-functional-2025-1
+    parent: watcher-tempest-functional
+    nodeset: openstack-single-node-noble
+    override-checkout: stable/2025.1
+
+- job:
+    name: watcher-tempest-functional-2024-2
+    parent: watcher-tempest-functional
+    nodeset: openstack-single-node-jammy
+    override-checkout: stable/2024.2
+
+- job:
+    name: watcher-tempest-functional-2024-1
+    parent: watcher-tempest-functional
+    nodeset: openstack-single-node-jammy
+    override-checkout: stable/2024.1
