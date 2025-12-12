@@ -1,0 +1,422 @@
+"""Async Bakalari v3 API connector."""
+
+from __future__ import annotations
+
+import asyncio
+from asyncio.locks import Lock
+import logging
+from typing import Any, Never, Self, TypedDict
+from urllib import parse
+
+import aiohttp
+from aiohttp import hdrs
+import orjson
+
+from .api_client import ApiClient
+from .const import REQUEST_TIMEOUT, EndPoint
+from .datastructure import Credentials, Schools
+from .exceptions import Ex
+
+log = logging.getLogger(__name__)
+
+
+class Town(TypedDict):
+    """Town data structure."""
+
+    name: str
+
+
+class Bakalari:
+    """Root class of Bakalari."""
+
+    response: None
+    response_json: None
+
+    _close_session: bool = False
+
+    def __init__(
+        self,
+        server: str | None = None,
+        credentials: Credentials | None = None,
+        auto_cache_credentials: bool = False,
+        cache_filename: str | None = None,
+        session: aiohttp.ClientSession | None = None,
+        school_concurrency: int = 10,
+    ):
+        """Root class of Bakalari.
+
+        Holds credentials, sends requests and perform first login.
+
+        Args:
+            server (str): Url of endpoint server.
+            credentials (Credentials): Credentials object.
+            auto_cache_credentials (bool, optional): If you want to cache credentials locally to file. Defaults to False.
+            cache_filename (str, optional): Cache file name, if `auto_cache_credentials`. Defaults to None.
+            session (aiohttp.ClientSession, optional): Session object. Defaults to None.
+            school_concurrency (int, optional): Maximum number of concurrent town
+                fetches when building school lists. Defaults to 10.
+
+        """
+
+        self._server: str | None = server
+        self._credentials: Credentials = (
+            credentials if isinstance(credentials, Credentials) else Credentials()
+        )
+        self._new_token: bool = False
+        self._auto_cache_credentials: bool = auto_cache_credentials
+        self._cache_filename: str | None = cache_filename
+        self._api_client: ApiClient = ApiClient(
+            session=session, timeout=REQUEST_TIMEOUT
+        )
+        self._refresh_lock: Lock = asyncio.Lock()
+        self.schools: Schools = Schools()
+        self._school_concurrency: int = max(1, int(school_concurrency))
+
+        if self.auto_cache_credentials and not self.cache_filename:
+            raise Ex.CacheError("Auto-cache is enabled, but no filename is provided!")
+
+        if self._auto_cache_credentials and self._cache_filename:
+            self.load_credentials(self._cache_filename)
+
+    @property
+    def credentials(self) -> Credentials:
+        """Returns the current credentials."""
+        return self._credentials
+
+    @credentials.setter
+    def credentials(self, _value: Credentials) -> Never:
+        """Raise an AttributeError as credentials are read-only."""
+        raise AttributeError("Credentials are read-only. Use login/refresh methods.")
+
+    @property
+    def auto_cache_credentials(self) -> bool:
+        """Returns whether auto-cache is enabled."""
+        return self._auto_cache_credentials
+
+    @property
+    def cache_filename(self) -> str | None:
+        """Returns the filename used for auto-cache."""
+        return self._cache_filename
+
+    @property
+    def server(self) -> str | None:
+        """Returns the server URL."""
+        return self._server
+
+    async def send_auth_request(
+        self, request_endpoint: EndPoint, extend: str | None = None, **kwargs
+    ):
+        """Send authorized request with access token or refresh token."""
+
+        request: str = str(self.get_request_url(request_endpoint) or "")
+
+        if extend:
+            request += extend
+
+        match request_endpoint.method:
+            case "post":
+                method = hdrs.METH_POST
+            case "get":
+                method = hdrs.METH_GET
+            case "put":
+                method = hdrs.METH_PUT
+
+        log.debug(
+            "Sending authorized request",
+            extra={
+                "event": "send_auth_request",
+                "url": request,
+                "method": method,
+            },
+        )
+
+        return await self._api_client.authorized_request(
+            request,
+            method=method,
+            credentials=self.credentials,
+            refresh_callback=self.refresh_access_token,
+            **kwargs,
+        )
+
+    async def send_unauth_request(
+        self, request: EndPoint, headers: dict[str, str] | None = None, **kwargs
+    ) -> str | None:
+        """Send unauthorized request to endpoint.
+
+        Args:
+            request (EndPoint): endpoint
+            headers (str): headers for request
+            **kwargs (dict): kwargs
+
+        Returns:
+            str: JSON response or None
+
+        """
+        method = hdrs.METH_GET if "get" in request.method else hdrs.METH_POST
+
+        _request_url = str(self.get_request_url(request) or "")
+
+        try:
+            return await self._api_client.request(
+                _request_url, method=method, headers=headers or {}, **kwargs
+            )
+        except Exception as err:
+            log.error(
+                "Sending unauthorized request failed.",
+                extra={
+                    "event": "send_unauth_request_error",
+                    "url": _request_url,
+                    "method": method,
+                    "error": str(err),
+                },
+            )
+            raise err from err
+
+    async def _send_request(
+        self,
+        url: str,
+        method: str,
+        headers: dict[str, str],
+        **kwargs: Any,
+    ) -> Any:
+        """Proxy retained for backwards compatibility."""
+
+        return await self._api_client.request(
+            url, method=method, headers=headers, **kwargs
+        )
+
+    async def schools_list(  # noqa: C901
+        self, town: str | None = None, recursive: bool = True
+    ) -> Schools | None:
+        """Return list of schools with their API points."""
+
+        _schools_list = Schools()
+        headers = {"Accept": "application/json"}
+
+        log.debug("Gathering list of towns ...")
+        try:
+            towns_json = await self.send_unauth_request(EndPoint.SCHOOL_LIST, headers)
+        except Exception as exc:
+            log.error(f"Error while gathering schools endpoints. {exc}")
+            return None
+
+        if not isinstance(towns_json, list):
+            log.error("Invalid response format")
+            return None
+
+        towns: list[Town] = [
+            {"name": name}
+            for d in towns_json
+            if isinstance(d, dict) and isinstance(name := d.get("name"), str)
+        ]
+
+        if town:
+            if recursive:
+                towns = [t_element for t_element in towns if town in t_element["name"]]
+            else:
+                towns = [
+                    t_element
+                    for t_element in towns
+                    if t_element["name"].startswith(town)
+                ]
+        semaphore = asyncio.Semaphore(self._school_concurrency)
+        tasks = []
+
+        async def fetch_town(town_name: str):
+            async with semaphore:
+                log.debug("Gathering schools for town: %s", town_name)
+                endpoint = f"{EndPoint.SCHOOL_LIST.endpoint}/{parse.quote(town_name)}"
+                return await self._api_client.request(
+                    endpoint, method=hdrs.METH_GET, headers=headers
+                )
+
+        for _town in towns:
+            town_name = _town.get("name")
+            if not town_name:
+                continue
+            if "." in town_name:
+                town_name = town_name[: town_name.find(".")]
+
+            tasks.append(asyncio.create_task(fetch_town(town_name), name=town_name))
+
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for response_town in responses:
+            if isinstance(response_town, Exception):
+                log.error("Town fetch failed: %s", response_town)
+                continue
+            if not isinstance(response_town, dict):
+                log.error("Invalid town response: %r", type(response_town))
+                continue
+
+            schools = response_town.get("schools")
+            if not isinstance(schools, list):
+                log.error(
+                    "Invalid schools payload for town %r", response_town.get("name")
+                )
+                continue
+
+            for _schools in schools:
+                if not isinstance(_schools, dict):
+                    continue
+                _schools_list.append_school(
+                    name=_schools.get("name", ""),
+                    api_point=_schools.get("schoolUrl", ""),
+                    town=response_town.get("name", ""),
+                )
+
+        self.schools = _schools_list
+
+        return _schools_list
+
+    async def first_login(self, username: str, password: str) -> Credentials:
+        """First login.
+
+        Create access and refresh tokens.
+        """
+
+        login_params = parse.urlencode(
+            {
+                "client_id": "ANDR",
+                "grant_type": "password",
+                "username": username,
+                "password": password,
+            }
+        )
+
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        try:
+            log.debug(f"Trying to login with username: {username}")
+            _credentials = await self.send_unauth_request(
+                EndPoint.LOGIN, data=login_params, headers=headers
+            )
+        except Ex.InvalidLogin as ex:
+            log.error("Invalid username / password provided.")
+            raise ex from ex
+
+        if isinstance(_credentials, dict):
+            _credentials.update({"username": username})
+            self._credentials = Credentials.create(_credentials)
+
+        log.info(f"Successfully logged in with username: {username}")
+
+        if self._auto_cache_credentials:
+            self.save_credentials()
+        return self.credentials
+
+    async def refresh_access_token(self) -> Credentials:
+        """Refresh access token using refresh token.
+
+        returns new Credentials if success, else RefreshTokenExpired exception
+        """
+        async with self._refresh_lock:
+            if not self.credentials.refresh_token:
+                raise Ex.RefreshTokenExpired("No refresh token available")
+
+            login_body = parse.urlencode(
+                {
+                    "client_id": "ANDR",
+                    "grant_type": "refresh_token",
+                    "refresh_token": self.credentials.refresh_token,
+                }
+            )
+
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            try:
+                log.debug("Trying refresh token ... ")
+                _credentials = await self.send_unauth_request(
+                    EndPoint.LOGIN, headers=headers, data=login_body
+                )
+            except Ex.RefreshTokenExpired as ex:
+                log.error("Refresh token expired! Login with username/password")
+                raise ex from ex
+            if isinstance(_credentials, dict):
+                self._credentials = Credentials.create(_credentials)
+
+            if self._auto_cache_credentials:
+                self.save_credentials()
+
+            return self.credentials
+
+    def get_request_url(self, request_endpoint: EndPoint) -> str | Ex.BadEndpointUrl:
+        """Get requested url from endpoint.
+
+        Args:
+            request_endpoint (EndPoint): EndPoint
+
+        Raises:
+            Ex.BadEndpointUrl: if no server is specified
+
+        Returns:
+            str: full url of endpoint
+
+        """
+
+        request = (
+            request_endpoint.endpoint
+            if request_endpoint.endpoint.lower().startswith(("http", "https"))
+            else f"{self._server}{request_endpoint.endpoint}"
+        )
+
+        if not request.lower().startswith(("http", "https")):
+            raise Ex.BadEndpointUrl(f"Bad endpoint url ({request})")
+
+        return request
+
+    def save_credentials(self, filename: str | None = None) -> bool:
+        """Save credentials to file in JSON format.
+
+        If auto_save_credentials are enabled, parameters could be ommited.
+        """
+
+        filename = filename or self._cache_filename or None
+        try:
+            if not filename:
+                log.error("Filename was not provided or cache filename was not set.")
+                return False
+
+            with open(filename, "wb") as file:
+                file.write(orjson.dumps(self.credentials, option=orjson.OPT_INDENT_2))
+                log.debug(f"Credentials saved to file {filename}")
+        except OSError as err:
+            log.error(f"Error while saving credentials to file {filename}. {str(err)}")
+            return False
+
+        return True
+
+    def load_credentials(self, filename: str) -> Credentials | bool:
+        """Load credentials from file."""
+
+        try:
+            with open(filename, "rb") as file:
+                data = orjson.loads(file.read())
+                self._credentials = Credentials.create_from_json(data)
+                return self.credentials
+
+        except (OSError, orjson.JSONDecodeError):
+            log.error(f"Error while loading credentials from file {filename}")
+            self._credentials = Credentials()
+            return False
+
+    async def close(self) -> None:
+        """Close the underlying HTTP client."""
+
+        await self._api_client.close()
+
+    async def aclose(self) -> None:
+        """Backward compatible alias for :meth:`close`."""
+
+        await self.close()
+
+    async def __aenter__(self) -> Self:
+        """Enter the async context."""
+
+        await self._api_client.__aenter__()
+        return self  # pragma: no cover
+
+    async def __aexit__(self, *_exc_info: object) -> None:
+        """Async exit."""
+
+        await self._api_client.__aexit__(*_exc_info)
