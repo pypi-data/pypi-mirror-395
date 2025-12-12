@@ -1,0 +1,82 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "MCP Server (STDIO)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "icsc_ava_upload_mcp_server.server",
+            "args": ["stdio"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "MCP Server (HTTP)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "icsc_ava_upload_mcp_server.server",
+            "args": ["http", "127.0.0.1", "8001"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+                "FILE_SERVICE_URL": "http://localhost:8090"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "MCP Inspector",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "-y",
+                "@modelcontextprotocol/inspector",
+                "python",
+                "-m",
+                "icsc_ava_upload_mcp_server.server",
+                "stdio"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Mock File Service",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "mock_file_service.server",
+            "args": ["127.0.0.1", "8090"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "presentation": {
+                "group": "Mock Services",
+                "order": 1
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Mock File Service + MCP Server (HTTP)",
+            "configurations": [
+                "Mock File Service",
+                "MCP Server (HTTP)"
+            ],
+            "presentation": {
+                "group": "Mock Services",
+                "order": 2
+            }
+        }
+    ]
+}
