@@ -1,0 +1,125 @@
+Metadata-Version: 2.4
+Name: autodg
+Version: 1.0.0
+Summary: A modular Python API analyzer for Flask, FastAPI, Django, and DRF with AI-powered documentation generation
+Author-email: Dhinagaran <dhinagaran1411@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/Airavath-Technologies/autodg
+Project-URL: Repository, https://github.com/Airavath-Technologies/autodg
+Project-URL: Documentation, https://github.com/Airavath-Technologies/autodg#readme
+Keywords: api,documentation,analyzer,flask,fastapi,django,drf,ai,llm
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Documentation
+Classifier: Topic :: Software Development :: Code Generators
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.31.0
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: openai
+Requires-Dist: openai>=1.0.0; extra == "openai"
+Provides-Extra: claude
+Requires-Dist: anthropic>=0.18.0; extra == "claude"
+Provides-Extra: gemini
+Requires-Dist: google-generativeai>=0.3.0; extra == "gemini"
+Provides-Extra: all
+Requires-Dist: openai>=1.0.0; extra == "all"
+Requires-Dist: anthropic>=0.18.0; extra == "all"
+Requires-Dist: google-generativeai>=0.3.0; extra == "all"
+Dynamic: license-file
+
+# API Analyzer
+
+A modular, extensible Python API analyzer that scans codebases and generates comprehensive documentation with AI-powered explanations.
+
+## Features
+
+- **Multi-Framework Support**: Flask, FastAPI, Django, Django REST Framework
+- **AI-Powered Documentation**: Supports Ollama, OpenAI, Claude, and Gemini
+- **Call Graph Analysis**: Visualizes function dependencies
+- **Database Operation Detection**: Identifies DB queries and operations
+- **MermaidJS Diagrams**: Auto-generated architecture diagrams
+- **File-wise Documentation**: AI overviews for every Python file
+- **Progress Tracking**: Real-time progress with ETA
+
+## Installation
+
+```bash
+pip install autodg
+```
+
+### Optional Dependencies (AI Features)
+
+> **Note**: AI-powered documentation generation is an **experimental feature**.
+> For the best local experience, we recommend running [Ollama](https://ollama.com/) with the `llama3.1` model.
+
+To enable support for specific cloud LLM providers, install the package with the corresponding extras:
+
+```bash
+# OpenAI Support
+pip install autodg[openai]
+
+# Claude Support
+pip install autodg[claude]
+
+# Gemini Support
+pip install autodg[gemini]
+
+# Support for all providers
+pip install autodg[all]
+```
+
+## Quick Start
+
+```bash
+autodg --paths /path/to/your/project --output ./docs
+```
+
+## Configuration
+
+Create a `config.yaml` file:
+
+```yaml
+llm:
+  provider: ollama  # Options: ollama, openai, claude, gemini
+  
+  ollama:
+    host: http://localhost:11434
+    model: llama3.1
+```
+
+## Usage
+
+```bash
+# Basic usage
+autodg --paths /path/to/project --output ./output
+
+# With LLM explanations
+autodg --paths /path/to/project --output ./output --ollama True
+```
+
+## Supported Frameworks
+
+- **Flask**: Routes, Blueprints
+- **FastAPI**: APIRouter, nested routers, class-based routes
+- **Django**: path(), re_path(), FBV, CBV
+- **DRF**: Routers, ViewSets
+
+## Output
+
+The analyzer generates:
+- `request_docs/`: Documentation for each API endpoint (optional ai explanations)
+- `files/`: AI-powered overviews of each Python file (optional ai explanations)
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Author
+
+Dhinagaran S (atsupp02@gmail.com)
