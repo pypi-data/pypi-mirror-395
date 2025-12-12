@@ -1,0 +1,232 @@
+"""
+Class and functions to connect mssql, postgres and mysql databases with
+airflow hooks, sqlalchemy and pyodbc.
+"""
+
+from enum import Enum
+from typing import Tuple
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine, URL
+import pyodbc
+
+from airflow.hooks.base import BaseHook
+from airflow.providers.common.sql.hooks.sql import DbApiHook
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.providers.microsoft.mssql.hooks.mssql import MsSqlHook
+from airflow.providers.mysql.hooks.mysql import MySqlHook
+
+from fastetl.data_types import DBSource
+
+class DatabaseType(str, Enum):
+    """
+    Enum class to represent the database type.
+    """
+    MSSQL = 'mssql'
+    POSTGRES = 'postgres'
+    MYSQL = 'mysql'
+    TEIID = 'teiid'
+
+
+class DbConnection:
+    """Gera as conexões origem e destino dependendo do tipo de provider.
+    Providers disponíveis: 'mssql', 'postgres' e 'mysql'.
+    """
+
+    def __init__(self, conn_id: str, use: str = "connection"):
+        """Cria uma instância do context manager DBConnection.
+
+        Args:
+            conn_id (str): id da conexão no Airflow.
+            use (str, optional): "connection", "hook" ou "engine".
+                Determina o que será retornado pelo context manager
+                (cláusula "with"). Defaults to "connection".
+        """
+        self.conn_type = get_conn_type(conn_id)
+        self.use = use
+        self.conn = None
+
+        if self.conn_type == "mssql":
+            self.mssql_conn_string = get_mssql_odbc_conn_str(
+                conn_id=conn_id, raw_str=True
+            )
+        self.hook, self.engine = get_hook_and_engine_by_provider(conn_id)
+
+    def __enter__(self):
+        if self.conn_type == "mssql":
+            try:
+                self.conn = pyodbc.connect(self.mssql_conn_string)
+            except Exception as exc:
+                raise IOError(f"{self.conn_type} connection failed.") from exc
+        else:
+            try:
+                self.conn = self.hook.get_conn()
+            except Exception as exc:
+                raise IOError(f"{self.conn_type} connection failed.") from exc
+
+        if self.use == "engine":
+            return self.engine
+        if self.use == "hook":
+            return self.hook
+        return self.conn
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.conn.close()
+
+
+class SourceConnection:
+    """Represents a source connection to a database, encapsulating the
+    connection details (e.g., connection ID, schema, table, query)
+    required to read data from a database.
+
+    Args:
+        params(DBSource): a typed dictionary of parameters about the
+            connection. For more info see fastetl.data_types.DBSource.
+
+    Raises:
+        ValueError: If `conn_id` is empty or if neither `query` nor
+            (`schema` and `table`) is provided.
+
+    Attributes:
+        conn_id (str): The unique identifier of the connection.
+        schema (Optional[str]): The name of the schema.
+        table (Optional[str]): The name of the table.
+        query (Optional[str]): The SQL query.
+        conn_type (str): Connection type/provider.
+    """
+
+    def __init__(self, params: DBSource):
+        # The unique identifier of the connection to use.
+        self.conn_id = params.get("conn_id")
+        # The name of the schema to use. Default is None.
+        self.schema = params.get("schema", None)
+        # The name of the table to use. Default is None.
+        self.table = params.get("table", None)
+        # The SQL query string or template file to use. Default is None.
+        self.query = params.get("query", None)
+
+        if not self.conn_id:
+            raise ValueError("conn_id argument cannot be empty")
+        if not self.query and not (
+            self.schema or self.table
+        ):
+            raise ValueError("must provide either schema and table or query")
+
+        self.conn_type = get_conn_type(self.conn_id)
+        conn_values = BaseHook.get_connection(self.conn_id)
+        self.conn_database = conn_values.schema
+
+
+class DestinationConnection:
+    """Represents a destination connection to a database, encapsulating
+    the connection details (e.g., connection ID, schema, table) required
+    to write data to a database.
+
+    Args:
+        conn_id (str): The unique identifier of the connection to use.
+        schema (str): The name of the schema to use.
+        table (str): The name of the table to use.
+
+    Attributes:
+        conn_id (str): The unique identifier of the connection.
+        schema (str): The name of the schema.
+        table (str): The name of the table.
+        conn_type (str): Connection type/provider.
+    """
+
+    def __init__(self, params: dict):
+        self.conn_id = params.get("conn_id", None)
+        self.schema = params.get("schema", None)
+        self.table = params.get("table", None)
+        self.conn_type = get_conn_type(self.conn_id)
+        conn_values = BaseHook.get_connection(self.conn_id)
+        self.conn_database = conn_values.schema
+
+
+def get_mssql_odbc_conn_str(conn_id: str, raw_str: bool = False) -> str:
+    """
+    Creates a default SQL Server database connection string
+    for pyodbc or simple raw string.
+
+    Args:
+        conn_id(str): Airflow database connection id.
+        raw_str(bool): Flag to return raw string or pyodbc formatted
+            string.
+
+    Returns:
+        str: raw connection string or pyodbc formatted string.
+    """
+
+    conn_values = BaseHook.get_connection(conn_id)
+    driver = "{ODBC Driver 17 for SQL Server}"
+    server = conn_values.host
+    port = conn_values.port
+    database = conn_values.schema
+    user = conn_values.login
+    password = conn_values.password
+
+    mssql_conn_str = f"""Driver={driver};Server={server}, {port}; \
+                    Database={database};Uid={user};Pwd={password};"""
+
+    if raw_str:
+        return mssql_conn_str
+
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": mssql_conn_str})
+
+    return connection_url
+
+
+def get_mssql_odbc_engine(conn_id: str, **kwargs):
+    """
+    Cria uma engine de conexão com banco SQL Server usando driver pyodbc.
+    """
+
+    return create_engine(get_mssql_odbc_conn_str(conn_id), **kwargs)
+
+
+def get_hook_and_engine_by_provider(conn_id: str) -> Tuple[DbApiHook, Engine]:
+    """
+    Creates connection hook and engine by connection type/provider.
+    Works for mssql, postgres and mysql.
+
+    Args:
+        conn_id (str): Airflow connection id.
+
+    Returns:
+        Tuple[DbApiHook, Engine]: Connection hook and engine.
+    """
+
+    conn_type = get_conn_type(conn_id)
+
+    if conn_type == "mssql":
+        hook = MsSqlHook(conn_id)
+        engine = get_mssql_odbc_engine(conn_id)
+    elif conn_type in ("postgres", "teiid"):
+        hook = PostgresHook(conn_id)
+        engine = hook.get_sqlalchemy_engine()
+    elif conn_type == "mysql":
+        hook = MySqlHook(conn_id)
+        engine = hook.get_sqlalchemy_engine()
+    else:
+        raise ValueError(f"Connection type {conn_type} not implemented")
+
+    return hook, engine
+
+
+def get_conn_type(conn_id: str) -> DatabaseType:
+    """Get connection type from Airflow connections.
+
+    Args:
+        conn_id (str): Airflow connection id.
+
+    Returns:
+        DatabaseType: type of connection. Ex: mssql, postgres, teiid, ...
+    """
+
+    conn_values = BaseHook.get_connection(conn_id)
+    conn_type = (
+        "teiid"
+        if conn_values.description and "teiid" in conn_values.description.lower()
+        else conn_values.conn_type
+    )
+
+    return  DatabaseType(conn_type)
