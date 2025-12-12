@@ -1,0 +1,416 @@
+# VirtualDojo CLI
+
+Command-line interface for VirtualDojo CRM - interact with your CRM data, manage records, and automate workflows from the terminal.
+
+## Features
+
+- **Authentication**: Login with email/password or API keys
+- **Record Management**: Full CRUD operations on any object
+- **Schema Discovery**: Explore objects, fields, and picklists
+- **File Management**: Upload, download, and manage files with progress tracking
+- **Multiple Profiles**: Manage connections to different servers/tenants
+- **Rich Output**: Beautiful tables, JSON, and YAML formatting
+- **Filter Support**: Powerful filtering with operators (contains, gte, ne, etc.)
+
+## Installation
+
+### From PyPI (recommended)
+
+```bash
+pip install virtualdojo
+```
+
+Or with [pipx](https://pypa.github.io/pipx/) (recommended for CLI tools):
+
+```bash
+pipx install virtualdojo
+```
+
+### From Source
+
+```bash
+git clone https://github.com/Quote-ly/virtualdojo_cli.git
+cd virtualdojo_cli
+pip install -e .
+```
+
+## Quick Start
+
+### 1. Login
+
+```bash
+# Login to default production server (prompts for email, password)
+vdojo login
+
+# Login to local development server
+vdojo login --local
+vdojo login -l
+
+# Login to specific server
+vdojo login --server localhost:8000 --tenant my-tenant
+vdojo login -s staging -t my-tenant
+
+# Login with API key (for CI/CD - use environment variables!)
+export VIRTUALDOJO_API_KEY=sk-abc123
+export VIRTUALDOJO_TENANT=my-company
+vdojo login
+```
+
+### 2. Check Connection
+
+```bash
+vdojo whoami
+```
+
+### 3. List Records
+
+```bash
+# List accounts
+vdojo records list accounts
+
+# List with filtering
+vdojo records list opportunities --filter "stage_ne=closed,amount_gte=10000"
+
+# Output as JSON
+vdojo records list contacts --format json
+```
+
+## Commands
+
+### Authentication
+
+```bash
+# Login (shortcuts available at top level)
+vdojo login                                    # Default server, prompts for details
+vdojo login --local                            # Local development (localhost:8000)
+vdojo login -s staging -t my-tenant            # Staging server
+vdojo login --server api.mycompany.com -t prod # Custom server
+
+# Server shortcuts:
+#   --local, -l          → http://localhost:8000
+#   --server local       → http://localhost:8000
+#   --server staging     → staging server
+#   --server production  → production server
+
+# Check current user
+vdojo whoami
+
+# Logout
+vdojo logout
+
+# Manage API keys
+vdojo auth api-key list
+vdojo auth api-key create --name "CI Pipeline" --expires 90
+vdojo auth api-key revoke KEY_ID
+```
+
+### Records
+
+```bash
+# List records
+vdojo records list accounts
+vdojo records list accounts --limit 100 --filter "status=active"
+
+# Get single record
+vdojo records get accounts acc-123
+
+# Create record
+vdojo records create accounts --data '{"name": "Acme Corp"}'
+vdojo records create tasks --set "name=Follow up" --set "status=pending"
+
+# Update record
+vdojo records update accounts acc-123 --set "status=active"
+
+# Delete record
+vdojo records delete accounts acc-123
+
+# Count records
+vdojo records count opportunities --filter "stage=negotiation"
+```
+
+### Schema
+
+```bash
+# List all objects
+vdojo schema objects
+vdojo schema objects --type custom  # Only custom objects
+
+# Describe an object
+vdojo schema describe accounts
+
+# List fields
+vdojo schema fields opportunities
+vdojo schema fields contacts --required  # Only required fields
+
+# View picklist values
+vdojo schema picklists opportunities --field stage
+```
+
+### Files
+
+```bash
+# List files and folders
+vdojo files list
+vdojo files list --folder folder-123       # List folder contents
+vdojo files list --type image              # Filter by type
+
+# Get file info
+vdojo files info file-123
+vdojo files info file-123 --format json
+
+# Upload files
+vdojo files upload ./report.pdf                      # Upload to root
+vdojo files upload ./report.pdf -f folder-123        # Upload to folder
+vdojo files upload ./data/ --recursive               # Upload directory
+
+# Download files
+vdojo files download file-123                        # Download to current dir
+vdojo files download file-123 -o ./downloads/        # Download to directory
+vdojo files download file-123 -o ./report.pdf        # Download with name
+
+# Delete files
+vdojo files delete file-123
+vdojo files delete folder-456 --force
+
+# Create folders
+vdojo files mkdir "New Folder"
+vdojo files mkdir "Reports" --parent folder-123
+
+# Move, rename, copy
+vdojo files move file-123 --to folder-456
+vdojo files rename file-123 --name "new-name.pdf"
+vdojo files copy file-123 --to folder-456
+
+# Share files
+vdojo files share file-123 --public                  # Generate public link
+vdojo files share file-123 --user user-456           # Share with user
+vdojo files share file-123 --user user-456 --permission edit
+vdojo files unshare file-123 --user user-456
+vdojo files shares file-123                          # List shares
+
+# Link files to records
+vdojo files link file-123 --object accounts --record acc-456
+vdojo files unlink file-123 --link link-789
+vdojo files links file-123                           # List links
+
+# Search files
+vdojo files search "quarterly report"
+vdojo files search "report" --type document --created-after 2024-01-01
+
+# Storage info
+vdojo files storage
+```
+
+### Configuration
+
+```bash
+# Show current config
+vdojo config show
+
+# Manage profiles
+vdojo config profile list
+vdojo config profile add staging --server https://staging.virtualdojo.com --tenant test
+vdojo config profile use staging
+vdojo config profile remove old-profile
+
+# Change settings
+vdojo config set default_limit 100
+vdojo config set output_format json
+```
+
+## Filter Operators
+
+When using `--filter`, you can use these operators:
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| (none) | Equals | `status=active` |
+| `_ne` | Not equals | `stage_ne=closed` |
+| `_gt` | Greater than | `amount_gt=10000` |
+| `_gte` | Greater than or equal | `amount_gte=10000` |
+| `_lt` | Less than | `amount_lt=1000` |
+| `_lte` | Less than or equal | `amount_lte=1000` |
+| `_contains` | Contains text | `name_contains=Acme` |
+| `_startswith` | Starts with | `name_startswith=A` |
+| `_endswith` | Ends with | `email_endswith=@corp.com` |
+| `_in` | In list | `status_in=active\|pending` or `status_in="active,pending"` |
+| `_isnull` | Is null | `email_isnull=true` |
+
+Combine multiple filters with commas:
+
+```bash
+vdojo records list opportunities --filter "stage_ne=closed,amount_gte=10000,owner_contains=john"
+```
+
+## Output Formats
+
+All commands support multiple output formats:
+
+```bash
+# Table (default) - human-readable
+vdojo records list accounts
+
+# JSON - machine-readable
+vdojo records list accounts --format json
+
+# YAML - configuration-friendly
+vdojo records list accounts --format yaml
+```
+
+## Multiple Profiles
+
+Manage connections to different environments:
+
+```bash
+# Add profiles
+vdojo config profile add production --server https://api.virtualdojo.com --tenant prod
+vdojo config profile add staging --server https://staging.virtualdojo.com --tenant staging
+vdojo config profile add local --server http://localhost:8000 --tenant dev
+
+# Switch default profile
+vdojo config profile use production
+
+# Use a specific profile for one command
+vdojo records list accounts --profile staging
+```
+
+## Configuration
+
+Configuration is stored in:
+- **Linux/macOS**: `~/.config/virtualdojo/config.toml`
+- **Windows**: `%APPDATA%\virtualdojo\config.toml`
+
+Credentials are stored separately with restricted permissions:
+- **Linux/macOS**: `~/.config/virtualdojo/credentials.toml`
+- **Windows**: `%APPDATA%\virtualdojo\credentials.toml`
+
+## Security
+
+### Credential Storage
+
+The CLI stores authentication tokens securely:
+
+1. **System Keyring (Recommended)**: When available, tokens are stored in your operating system's secure credential storage:
+   - **macOS**: Keychain
+   - **Linux**: Secret Service (GNOME Keyring, KWallet)
+   - **Windows**: Windows Credential Manager
+
+2. **Fallback File Storage**: If no system keyring is available, tokens are stored in `credentials.toml` with restricted file permissions (`0600` - owner read/write only).
+
+**Recommendations:**
+- Use full-disk encryption on your machine
+- On shared systems, ensure your home directory is not accessible to other users
+- Regularly rotate API keys via `vdojo auth api-key create` / `vdojo auth api-key revoke`
+
+### Environment Variables for CI/CD
+
+For automated workflows, use environment variables instead of command-line arguments to avoid exposing credentials in shell history and process listings:
+
+```bash
+# Set credentials via environment (secure)
+export VIRTUALDOJO_API_KEY=sk-your-api-key
+export VIRTUALDOJO_TENANT=your-tenant-id
+export VIRTUALDOJO_SERVER=https://api.virtualdojo.com
+
+# Run commands without exposing secrets
+vdojo login
+vdojo records list accounts
+```
+
+Available environment variables:
+| Variable | Description |
+|----------|-------------|
+| `VIRTUALDOJO_API_KEY` | API key for authentication |
+| `VIRTUALDOJO_PASSWORD` | Password (for non-interactive login) |
+| `VIRTUALDOJO_EMAIL` | Email address |
+| `VIRTUALDOJO_TENANT` | Tenant ID or subdomain |
+| `VIRTUALDOJO_SERVER` | Server URL |
+
+### HTTPS Connections
+
+The CLI uses HTTPS by default for all production connections. When connecting to HTTP endpoints (like `localhost` for development), a warning is displayed:
+
+```
+! Using insecure HTTP connection to http://localhost:8000.
+  Credentials will be transmitted in plaintext.
+```
+
+**Never use HTTP for production environments.**
+
+### Security Best Practices
+
+1. **Use API keys for automation** - Create dedicated API keys with expiration for CI/CD pipelines
+2. **Don't commit credentials** - Never commit `.env` files or credentials to version control
+3. **Rotate credentials** - Regularly rotate API keys, especially after team member departures
+4. **Use environment variables** - Prefer `VIRTUALDOJO_API_KEY` over `--api-key` in scripts
+5. **Audit access** - Review API key usage via `vdojo auth api-key list`
+
+## Development
+
+### Setup
+
+```bash
+# Clone repository
+git clone https://github.com/Quote-ly/virtualdojo_cli.git
+cd virtualdojo_cli
+
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run linting
+ruff check src/
+black --check src/
+```
+
+### Running Locally
+
+```bash
+# Run CLI directly
+python -m virtualdojo --help
+
+# Or after installing
+vdojo --help
+```
+
+## Requirements
+
+- Python 3.10+
+- A VirtualDojo CRM instance to connect to
+
+## Changelog
+
+### v0.3.0 (2025-12-03)
+
+**Bug Fixes:**
+- Fixed `_in` and `_not_in` filter operators not handling multiple values correctly ([#1](https://github.com/Quote-ly/virtualdojo_cli/issues/1))
+  - Now supports pipe delimiter: `name_in=VENDORS|DISTRIBUTORS|RESELLERS`
+  - Now supports quoted commas: `name_in="VENDORS,DISTRIBUTORS,RESELLERS"`
+
+**Improvements:**
+- File downloads now use secure streaming endpoint (`/stream`) instead of presigned URLs
+  - Downloads are authenticated on every request
+  - No shareable URLs that could be leaked
+  - Works correctly with MinIO in Docker environments
+
+### v0.2.0 (2025-12-02)
+
+- Initial public release
+- Authentication with email/password and API keys
+- Full CRUD operations on all CRM objects
+- Schema discovery and exploration
+- File management with progress tracking
+- Multiple profile support
+- Rich terminal output
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file.
+
+## Links
+
+- [VirtualDojo CRM](https://virtualdojo.com)
+- [API Documentation](https://docs.virtualdojo.com)
+- [Issue Tracker](https://github.com/Quote-ly/virtualdojo_cli/issues)
