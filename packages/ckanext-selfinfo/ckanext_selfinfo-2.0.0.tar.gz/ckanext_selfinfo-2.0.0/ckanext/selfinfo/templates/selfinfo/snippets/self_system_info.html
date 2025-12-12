@@ -1,0 +1,118 @@
+{% snippet 'selfinfo/snippets/selfinfo_content_header.html', icon_class='fas fa-server me-2', label=_('System Information') %}
+<div class="p-3">
+    <div class="row">
+        {% if data.ram_usage %}
+            <div class="col-lg-4 mb-4">
+                <div class="selfinfo-blue-bg selfinfo-stat-card">
+                    <div class="selfinfo-stat-icon">
+                        <i class="fas fa-memory"></i>
+                    </div>
+                    <div class="selfinfo-stat-value">{{ data.ram_usage.precent_usage }}%</div>
+                    <div class="selfinfo-stat-label">RAM Usage ({{ data.ram_usage.used_ram }} / {{ data.ram_usage.total_ram }})</div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if data.disk_usage and data.disk_usage[0] %}
+            <div class="col-lg-4 mb-4">
+                <div class="selfinfo-stat-card selfinfo-orange-bg">
+                    <div class="selfinfo-stat-icon">
+                        <i class="fas fa-hdd"></i>
+                    </div>
+                    <div class="selfinfo-stat-value">{{ data.disk_usage[0].precent_usage }}%</div>
+                    <div class="selfinfo-stat-label">{{ _('Disk Usage') }} ({{ data.disk_usage[0].free_space }} {{ _('free') }} / {{ data.disk_usage[0].total_disk }} {{ _('total') }})</div>
+                </div>
+            </div>
+        {% endif %}
+        
+        {% if data.platform_info %}
+            <div class="col-lg-4 mb-4">
+                <div class="selfinfo-stat-card selfinfo-violet-bg">
+                    <div class="selfinfo-stat-icon">
+                        <i class="fab fa-python"></i>
+                    </div>
+                    <div class="selfinfo-stat-value">{{ data.platform_info.python_version }}</div>
+                    <div class="selfinfo-stat-label">{{ _('Python Version') }}</div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if data.platform_info and data.platform_info.python_prefix %}
+            <div class="col-lg-4 mb-4">
+                <div class="selfinfo-stat-card selfinfo-ocean-blue-bg">
+                    <div class="selfinfo-stat-icon">
+                        <i class="fas fa-terminal"></i>
+                    </div>
+                    <div class="selfinfo-stat-value">{{ data.platform_info.python_prefix }}</div>
+                    <div class="selfinfo-stat-label">{{ _('Source') }}</div>
+                </div> 
+            </div>
+        {% endif %}
+        
+        {% if data.status_show %}
+            <div class="col-lg-4 mb-4">
+                <div class="selfinfo-stat-card selfinfo-dark-blue-bg">
+                    <div class="selfinfo-stat-icon">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <div class="selfinfo-stat-value">{{ data.status_show.ckan_version }}</div>
+                    <div class="selfinfo-stat-label">{{ _('CKAN Version') }}</div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if data.platform_info %}
+            <div class="col-lg-4 mb-4">
+                <div class="selfinfo-stat-card selfinfo-aurora-bg">
+                    <div class="selfinfo-stat-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="selfinfo-stat-value">{{ data.platform_info.distro }}</div>
+                    <div class="selfinfo-stat-label">
+                        {{ _('Distribution') }} ({{ data.platform_info.platform }})
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if data.ram_usage and data.ram_usage.processes %}
+        <section class="top-processes my-4">
+            <div class="d-flex align-items-center mb-3">
+                <div>
+                    <h3 class="mb-0">
+                        <i class="fas fa-fire text-warning"></i>
+                        {{ _('Top 10 Processes') }}
+                    </h3>
+                    <small class="text-muted">{{ _('Highest memory usage across the system') }}</small>
+                </div>
+            </div>
+
+            <div class="process-grid row gx-3 gy-3">
+                {% for process in data.ram_usage.processes[:10] %}
+                    {% set pid = process[0] %}
+                    {% set name = process[1] %}
+                    {% set mem_raw = process[2] %}
+
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <article class="process-card d-flex flex-column p-3 h-100">
+                            <div class="d-flex align-items-start justify-content-between mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="process-rank rounded-circle d-flex align-items-center justify-content-center me-1">{{ loop.index }}</div>
+                                    <div>
+                                        <div class="process-title fw-semibold">{{ name }}</div>
+                                        <div class="text-muted small">PID: {{ pid }}</div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge mem-badge selfinfo-main-color-bg">{{ mem_raw }}</span>
+                                </div>
+                            </div>
+
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+</div>
