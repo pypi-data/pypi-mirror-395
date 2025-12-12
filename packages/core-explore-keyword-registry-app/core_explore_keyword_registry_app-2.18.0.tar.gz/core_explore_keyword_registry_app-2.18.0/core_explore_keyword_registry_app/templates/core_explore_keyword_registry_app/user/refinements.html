@@ -1,0 +1,28 @@
+{% load xsl_transform_tag %}
+{{ data.refinement_form.media }}
+
+<div class="card" id="refinements">
+{% for field in data.refinement_form %}
+	  <div class="panel panel-default">
+		<div class="card-header">
+			<a class="clearTree" href="javascript:void(0)" onclick="clearTree('#{{field.id_for_label}}', this)">
+				(Clear)
+			</a>
+			<h4 class="panel-title refinement">
+				<a {% if BOOTSTRAP_VERSION|first == "4" %}data-toggle{% elif BOOTSTRAP_VERSION|first == "5"%}data-bs-toggle{% endif %}="collapse" href="#collapse_{{field.id_for_label}}"
+				   class="{% if forloop.counter != 1 and field.field.has_selected_values|lower == 'false' %}collapsed{% endif %}">
+					<i class="fas fa-chevron-right"></i>
+					<i class="fas fa-chevron-down"></i>
+					{{ field.label_tag }}
+				</a>
+			</h4>
+		</div>
+		<div id="collapse_{{field.id_for_label}}"
+			 class="panel-collapse collapse{% if forloop.counter == 1 or field.field.has_selected_values %} show {% endif %}">
+			<div class="panel-body">
+                {{ field }}
+			</div>
+		</div>
+	  </div>
+{% endfor %}
+</div>

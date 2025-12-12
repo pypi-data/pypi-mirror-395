@@ -1,0 +1,37 @@
+{% load render_extras %}
+{% load parse_date %}
+{% load json_date %}
+{% load tz %}
+<div name="result">
+    <div>
+        <input data-template-id="{{result.template_info.id}}"
+               data-template-hash="{{result.template_info.hash}}"
+               type="checkbox" value="{{ result.access_data_url }}"
+               class="exporter-checkbox{% if not exporter_app %} hidden{% endif %}"/>
+    </div>
+    {% if result.permission_url and display_edit_button %}
+        <input class="input-permission-url" type="hidden" value="{{result.permission_url}}">
+        <a class="permissions-link" href="#">
+            <i class="fas fa-pencil-alt permissions-icon edit" aria-hidden="true"></i>
+        </a>
+    {% endif %}
+    <div title="Last modification date" class="data-info-right-container">{{result.last_modification_date|parse_date|localtime|json_date:"N d Y g:iA"}}</div>
+    {% if result.template_info.format == 'XSD' %}
+    <div class="xml-representation-container">
+        {% render_as_template html_string %}
+    </div>
+    {% else %}
+    <input class="data-template-format" type="hidden" value="{{result.template_info.format}}">
+    <span class="result-title">
+        {% if result.detail_url %}
+        <a class="title" href="{{ result.detail_url }}">{{ result.title }}</a>
+        {% else %}
+        {{ result.title }}
+        {% endif %}
+    </span>
+    <div class="highlight-content" >
+        <pre><code>{{html_string}}</code></pre>
+    </div>
+    {% endif %}
+
+</div>

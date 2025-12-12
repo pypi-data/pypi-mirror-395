@@ -1,0 +1,32 @@
+{% load xsl_transform_tag %}
+{% load blob_tags %}
+{% load result_to_html %}
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'core_explore_keyword_registry_app/user/css/search/search.css' %}" />
+<script src="{% static 'core_explore_keyword_registry_app/user/libs/jquery-shorten/1.1.0/jquery.shorten.js' %}"></script>
+<script src="{% static 'core_explore_keyword_registry_app/user/js/search/search.js' %}"></script>
+
+{% for result in results %}
+    {% result_list_html result=result as html_string %}
+    {% if result.template_info.format == 'XSD' %}
+        {% if not html_string %}
+            {% xsl_transform_list xml_content=result.content template_id=result.template_info.id template_hash=result.template_info.hash as html_string %}
+        {% endif %}
+        {% if blobs_preview %}
+            {% render_blob_links_in_span xml_string=html_string as html_string %}
+        {% endif %}
+        {% include 'core_explore_common_app/user/results/data_source_info.html' with html_string=html_string|safe %}
+    {% else %}
+        {% if html_string %}
+            {% include 'core_explore_common_app/user/results/data_source_info.html' with html_string=html_string|safe %}
+        {% else %}
+            {% include 'core_explore_common_app/user/results/data_source_info.html' with html_string=result.content|safe %}
+        {% endif %}
+    {% endif %}
+{% empty %}
+<span style="font-style:italic; color:red;"> No Results found... </span>
+{% endfor %}
+
+{% include 'core_explore_common_app/user/results/data_source_pagination.html'%}
+
