@@ -1,0 +1,63 @@
+Metadata-Version: 2.4
+Name: pyvista4dolfinx
+Version: 0.10.1
+Summary: Re-introduction of a simple plot function for Dolfinx.
+Author-email: "Stein K.F. Stoter" <k.f.s.stoter@tue.nl>
+Maintainer-email: "Stein K.F. Stoter" <k.f.s.stoter@tue.nl>
+Project-URL: Documentation, https://fenicsx4flow.gitlab.io/pyvista4dolfinx
+Project-URL: Repository, https://gitlab.com/fenicsx4flow/pyvista4dolfinx
+Keywords: dolfinx,FEniCSx,pyvista,plotting
+Classifier: Development Status :: 4 - Beta
+Classifier: Programming Language :: Python
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: pyvista>0.41.0
+Requires-Dist: pyvistaqt>0.11.0
+
+# pyvista4dolfinx
+
+[![build status](https://gitlab.com/Stein.Stoter/pyvista4dolfinx/badges/main/pipeline.svg)](https://gitlab.com/Stein.Stoter/pyvista4dolfinx/-/commits/main)
+[![Coverage](https://fenicsx4flow.gitlab.io/pyvista4dolfinx/coverage/coverage.svg)](https://fenicsx4flow.gitlab.io/pyvista4dolfinx/coverage)
+[![MIT License](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
+[![PyPI](https://img.shields.io/pypi/v/pyvista4dolfinx)](https://pypi.org/project/pyvista4dolfinx/) <!--[![PEPI](https://static.pepy.tech/badge/pyvista4dolfinx)](https://pepy.tech/project/pyvista4dolfinx/)-->
+[![Sphinx](https://img.shields.io/badge/sphinx-docs-20B2AA?logo=sphinx&logoColor=fff)](https://fenicsx4flow.gitlab.io/pyvista4dolfinx)
+[![black](https://img.shields.io/badge/Code%20style-black-000000.svg?style=flat)](https://github.com/psf/black)
+
+Re-introduction of a simple `plot` function for [Dolfinx](https://www.fenicsproject.org/). Documentation can be found [here](https://fenicsx4flow.gitlab.io/pyvista4dolfinx).
+
+## Description
+
+FEniCSx' design principles prioritize parallel efficiency, and (in an effort to avoid opaque performance pitfalls) favor fine-grained control over a high-level interface. Consequently, simple, general-purpose plotting routines are no-longer in the standard library. Instead users are deferred to ``pyvista`` for their plotting needs. Unfortunately, quite a bit of boiler-plate code is required to interface ``dolfinx`` and ``pyvista``. At a prototyping stage one often desires quick-and-dirty visualization with a *simple* interface. To facilitate this, ``pyvista4dolfinx`` provides a single ``plot`` function that can be used to plot most of ``dolfinx`` visualizable data-structures; scalar- and vector-valued ``Function``, ``Mesh``, ``FacetMarker``, and even integration ``Measure``. The function returns a ``pyvista.Plotter`` instance, such that the user still has full access to ``pyvista``'s full range of capabilities.
+
+## Installation
+
+This library is available through PyPi, to install simply run the following commands:
+
+```bash
+pip install pyvista4dolfinx
+```
+
+Although you might have to be mindfull of the version. `pyvista4dolfinx` maintains the same version numbering as `dolfinx`. So, if you're not using the latest `dolfinx` release, you might have to install a particular tagged version:
+
+```bash
+pip install pyvista4dolfinx==0.9.2
+```
+
+## Contributing
+Feel free to make requests through opening an `issue`, or, better yet, if you want to contribute directly:
+
+1. Fork the project.
+2. Create a new branch (git checkout -b feature/my-feature).
+3. Add your new feature or bugfix.
+4. Commit your changes (git commit -m 'Add some feature').
+5. Push to the branch (git push origin feature/my-feature).
+6. Open a merge request.
+
+## To publish:
+
+1. Bump version number in pyproject toml
+2. If dolfinx version change, then also update gitlab-ci image and push updated docker image `pyvista4dolfinx:v___-dev` to hub.
+3. Push
+4. Create git tag (`git tag <new_tag>`)
+5. Push tag (`git push origin --tags`)
+6. If dolfinx version change, then also build and push docker image `pyvista4dolfinx:v___`
