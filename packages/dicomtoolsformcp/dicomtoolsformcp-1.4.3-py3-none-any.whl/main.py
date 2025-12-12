@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+DICOM 工具 MCP 服务器主文件
+
+基于 MCP (Model Context Protocol) 的 DICOM 医学影像文件分析工具的Python实现。
+"""
+
+import os
+import asyncio
+import json
+import logging
+import sys
+from typing import Any, Dict
+
+# 设置标准输出编码为 UTF-8 (Windows 兼容性)
+if sys.platform == "win32":
+    import io
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+# 配置MCP服务器所需的导入
+try:
+    from mcp.server import Server
+    from mcp.server.stdio import stdio_server
+    from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
+    from pydantic import BaseModel
+except ImportError as e:
+    print(f"错误: 缺少必要的MCP依赖库: {e}", file=sys.stderr)
+    print("请运行: pip install -r requirements.txt", file=sys.stderr)
+    sys.exit(1)
+
+# 导入DICOM工具
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from dicom_tools.scanner import scan_dicom_directory_tool
+from dicom_tools.parser import parse_dicom_file_tool
+from src.api.analysis_api import (
+    analyze_dicom_directory,
+    separate_series_by_patient,
+    get_analysis_result
+)
+from src.api.measurement_csv_api import export_measurement_csv
+from src.api.studies_api import get_all_studies_and_series
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stderr)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# 创建MCP服务器实例
+server = Server("dicom-tools-python")
+
+
+# 工具参数模型
+class DirectoryPathArgs(BaseModel):
+    directory_path: str
+
+
+class DirectoryPathWithSeriesArgs(BaseModel):
+    directory_path: str
+    series_type: str
+
+
+class FilePathArgs(BaseModel):
+    file_path: str
+
+class SeparateFilesArgs(BaseModel):
+    directory_path: str
+
+class StudyUidArgs(BaseModel):
+    study_uid: str
+
+class ExportMeasurementArgs(BaseModel):
+    studyInstanceUids: list[str]
+
+class GetStudiesArgs(BaseModel):
+    searchStr: str | None = None
+
+@server.list_tools()
+async def list_tools() -> list[Tool]:
+    """注册所有可用的DICOM工具"""
+    return [
+        Tool(
+            name="scan-dicom-directory",
+            description="扫描本地计算机指定目录下所有可读的 .dcm 文件，汇总患者数、序列数、文件数和总字节数，返回 JSON 文本。注意：这是本地文件系统操作，不是账号服务器操作。目录需存在并可访问。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "directory_path": {
+                        "type": "string",
+                        "description": "本地计算机上的目录路径（绝对路径），必须存在且可读，不是账号服务器路径"
+                    }
+                },
+                "required": ["directory_path"]
+            }
+        ),
+        Tool(
+            name="parse-dicom-file",
+            description="解析本地计算机上的单个 DICOM 文件，提取 PatientID、PatientName、SeriesInstanceUID、SeriesDescription 等元数据，返回结构化 JSON。注意：这是本地文件系统操作，不是账号服务器操作。无效文件会返回错误说明。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "本地计算机上的 DICOM 文件路径，需指向实际存在的 .dcm 文件，不是账号服务器路径"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="analyze-dicom-directory",
+            description="扫描本地计算机目录中的 DICOM 序列，按 series_type 选择分析流程并上传到预配置的远端分析服务，返回上传结果及访问 URL。注意：输入参数是本地目录路径，操作会读取本地文件并上传到账号服务器。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "directory_path": {
+                        "type": "string",
+                        "description": "本地计算机上的目录路径，包含待分析的 DICOM 序列，必须存在且具备读取权限，不是账号服务器路径"
+                    },
+                    "series_type": {
+                        "type": "string",
+                        "description": "分析流程类型：`1`=主动脉分析，`9`=二尖瓣分析，其他值将被拒绝"
+                    }
+                },
+                "required": ["directory_path", "series_type"]
+            }
+        ),
+        Tool(
+            name="separate-dicom-files",
+            description="按患者和序列拆分本地计算机目录下的 DICOM 文件，生成新的子目录结构，并以 JSON 返回整理后的统计结果。注意：这是本地文件系统操作，不是账号服务器操作。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "directory_path": {
+                        "type": "string",
+                        "description": "本地计算机上的顶层目录路径，执行过程中会在同级创建输出目录，不是账号服务器路径"
+                    }
+                }, 
+                "required": ["directory_path"]
+            }
+        ),
+        Tool(
+            name="get-analysis-result",
+            description="从账号服务器（云端）查询指定study_uid的分析结果，如果没有分析结果，需要先使用{analyze-dicom-directory}工具上传分析，返回测量结果的URL。注意：这是账号服务器操作，不是本地文件操作。使用前请确认用户要查询的是账号服务器上的数据，而不是本地文件。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "study_uid": {
+                        "type": "string",
+                        "description": "DICOM序列的 study_uid，用于从账号服务器（云端）查询分析结果，不是本地文件的UID"
+                    }
+                },
+                "required": ["study_uid"]
+            }
+        ),
+        Tool(
+            name="export-measurement-csv",
+            description="从账号服务器（云端）导出指定StudyInstanceUID数组的测量数值CSV文件，返回下载URL。注意：这是账号服务器操作，不是本地文件操作。使用前请确认用户要导出的是账号服务器上的数据，而不是本地文件。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "studyInstanceUids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "账号服务器（云端）上患者影像的StudyInstanceUID数组，用于导出测量数值到CSV文件，不是本地文件的UID"
+                    }
+                },
+                "required": ["studyInstanceUids"]
+            }
+        ),
+        Tool(
+            name="get-all-studies-and-series",
+            description="从账号服务器（云端）获取全部已上传的病人影像序列信息，包括每个病例的所有序列的详细信息。注意：这是账号服务器操作，不是本地文件操作。使用前请确认用户要查询的是账号服务器上的数据，而不是本地目录。如果用户提到'本地'、'当前目录'、'工作目录'等，应该使用scan-dicom-directory等本地操作工具。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "searchStr": {
+                        "type": "string",
+                        "description": "可选，患者姓名、病例号、备注的模糊查询字符串，用于在账号服务器上搜索"
+                    }
+                },
+                "required": []
+            }
+        )
+    ]
+
+
+@server.call_tool()
+async def call_tool(name: str, arguments: Dict[str, Any]) -> list[TextContent]:
+    """处理工具调用请求"""
+    try:
+        logger.info(f"调用工具: {name}, 参数: {arguments}")
+
+        if name == "scan-dicom-directory":
+            args = DirectoryPathArgs(**arguments)
+            result = await scan_dicom_directory_tool(args.directory_path)
+        elif name == "parse-dicom-file":
+            args = FilePathArgs(**arguments)
+            result = await parse_dicom_file_tool(args.file_path)
+        elif name == "analyze-dicom-directory":
+            args = DirectoryPathWithSeriesArgs(**arguments)
+            result = await analyze_dicom_directory(args.directory_path, args.series_type)
+        elif name == "separate-dicom-files":
+            args = SeparateFilesArgs(**arguments)
+            result = await separate_series_by_patient(args.directory_path)
+        elif name == "get-analysis-result":
+            args = StudyUidArgs(**arguments)
+            result = await get_analysis_result(args.study_uid)
+        elif name == "export-measurement-csv":
+            args = ExportMeasurementArgs(**arguments)
+            result = await export_measurement_csv(args.studyInstanceUids)
+        elif name == "get-all-studies-and-series":
+            args = GetStudiesArgs(**arguments)
+            result = await get_all_studies_and_series(args.searchStr)
+        else:
+            raise ValueError(f"未知工具: {name}")
+
+        # 转换结果格式为MCP标准格式
+        return [
+            TextContent(
+                type="text",
+                text=content["text"]
+            )
+            for content in result["content"]
+            if content["type"] == "text"
+        ]
+
+    except Exception as e:
+        logger.error(f"工具调用失败: {name}, 错误: {e}", exc_info=True)
+
+        error_response = {
+            "error": True,
+            "message": f"工具 {name} 执行失败: {str(e)}"
+        }
+
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(error_response, ensure_ascii=False)
+            )
+        ]
+
+
+async def main():
+    """启动MCP服务器"""
+    try:
+        logger.info("启动 DICOM 工具 MCP 服务器 ...")
+
+        # 使用stdio传输启动服务器
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options()
+            )
+
+    except KeyboardInterrupt:
+        logger.info("收到中断信号，正在关闭服务器...")
+    except Exception as e:
+        logger.error(f"服务器运行失败: {e}", exc_info=True)
+        sys.exit(1)
+
+
+def run():
+    """同步入口函数，用于 uvx 调用"""
+    # 设置事件循环策略（Windows兼容性）
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+    # 运行服务器
+    asyncio.run(main())
+
+
+if __name__ == "__main__":
+    run()
