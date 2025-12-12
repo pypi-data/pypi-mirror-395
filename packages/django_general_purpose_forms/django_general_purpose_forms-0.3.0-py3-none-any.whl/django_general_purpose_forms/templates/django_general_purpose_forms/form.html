@@ -1,0 +1,19 @@
+{% load i18n %}
+<form method="post" action=".">
+  {% csrf_token %}
+  {% for field in form.visible_fields %}
+    <div class="fieldWrapper">
+      {{ field.label_tag }} {{ field }}
+      {% if field.help_text %}
+        <p class="help" id="{{ field.auto_id }}_helptext">
+          {{ field.help_text|safe }}
+        </p>
+      {% endif %}
+      {{ field.errors }}
+    </div>
+  {% endfor %}
+  {% for field in form.hidden_fields %}
+    {{ field }}
+  {% endfor %}
+  <button type="submit">{% translate "Send" %}</button>
+</form>
