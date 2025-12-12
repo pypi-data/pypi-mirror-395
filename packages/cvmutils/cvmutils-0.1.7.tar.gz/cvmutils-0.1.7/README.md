@@ -1,0 +1,93 @@
+# Prepare OS image to run with encrypted root volume
+
+## Purpose
+
+This tool prepares RHEL/Fedora image to run with encrypted root volume. The
+key to the volume is sealed to the target TPM.
+
+## Image pre-requisites
+
+- GUID Partition Table (GPT)
+- Image should contain ESP partition, GUID C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+- Image should contain 'Linux root (x86-64)' partition, GUID 4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
+- Root partition should have ext4 filesystem
+- Expected PCR7 value can be either specified explicitly ('--pcr7 sha256value') or predicted ('--pcr7 auto' option) using UEFI profile ('--uefi-profile'),
+  Azure Disk Profile ('--az-disk-profile'), or EFI vars profile ('--efivars-profile'). Examples are present in 'test/test-data'.
+- PCR4 can also be used in the set of PCRs for root volume key sealing. Its expected value can be specified directly ('--pcr4 sha256value') or can be predicted by passing '--pcr4 auto' option.
+
+- ESP may contain "efivars.json" file in Azure format:
+```
+{
+    "type": "Microsoft.Compute/disks",
+    "properties": {
+        "uefiSettings": {
+            "Boot0004": {
+                "guid": "Yd/ki8qT0hGqDQDgmAMrjA==",
+                "attributes": "Bw==",
+                "value": "AQAAAGIAUwBoAGkAbQAgAGIAbwBvAHQAIAB0AG8AIAA1AC4AMQA0AC4AMAAtADIAMwA4AF8AdQBrAGkAXwB0AGUAcwB0ADEAOQAuAGUAbAA5AC4AeAA4ADYAXwA2ADQAAAAEASoAAgAAAAAoAAAAAAAAAOAHAAAAAABibF3EAi9J4o1TPhDbQRiuAgIEBDQAXABFAEYASQBcAHIAZQBkAGgAYQB0AFwAcwBoAGkAbQB4ADYANAAuAGUAZgBpAAAAf/8EAFwARQBGAEkAXABMAGkAbgB1AHgAXAB2AG0AbABpAG4AdQB6AC0ANQAuADEANAAuADAALQAyADMAOABfAHUAawBpAF8AdABlAHMAdAAxADkALgBlAGwAOQAuAHgAOAA2AF8ANgA0AC0AdgBpAHIAdAAuAGUAZgBpAAAA"
+            }
+        }
+    }
+}
+```  
+
+in case it does, its size and content will be written to a special 'Linux reserved'
+GUID 8DA63339-0007-60C0-C436-083AC8230908) partition starting at offset 2048 * 512 = 1048576.
+
+## TPM2
+
+SRK public key is required for 'deploy' phase. It can be obtained with
+
+    $ systemd-analyze srk > public.srk  
+
+or
+
+   $ tpm2_readpublic -c 0x81000001 -o public.srk -t primary.handle  
+
+## Basic usage
+
+    $ ./encrypt-rhel-image.py encrypt /path/to/image.vhd  
+    $ ./encrypt-rhel-image.py deploy -s /path/to/public.srk --pcr7 auto /path/to/image.vhd  
+
+## Running in a container
+
+The tool can run in a container and 'Containerfile.fedora'/'Containerfile.c9s' are provided as examples to build it.
+Optionally, 'quay.io/vkuznets/encrypt-rhel-image' (c9s based) can be used directly. Here is an example for Ubuntu 20.04.
+Assuming all data is stored in '/data' on the host,
+
+    # apt update && apt install docker.io  
+    # docker pull quay.io/vkuznets/encrypt-rhel-image:latest  
+    # modprobe nbd  
+    # docker run -it --privileged --mount type=bind,source=/data,target=/data --mount type=bind,source=/run/udev,target=/run/udev --mount type=bind,source=/dev,target=/dev quay.io/vkuznets/encrypt-rhel-image:latest /usr/bin/encrypt-rhel-image.py encrypt -v /data/image.qcow2  
+    # docker run -it --privileged --mount type=bind,source=/data,target=/data --mount type=bind,source=/run/udev,target=/run/udev --mount type=bind,source=/dev,target=/dev quay.io/vkuznets/encrypt-rhel-image:latest /usr/bin/encrypt-rhel-image.py deploy -s /data/public.srk -r /data/recovery_key --pcr7 auto --uefi-profile /data/uefi-profile-ovmf.json -v /data/image.qcow2  
+
+Red Hat [UBI](https://catalog.redhat.com/software/base-images) can be used for the 'deploy' phase.
+As qemu-nbd is currently missing in the UBI, the image must be passed to the container as a device.
+RHEL UBI container can also be used sealing:
+
+    # podman build -f Containerfile.ubi9 -t encrypt-rhel-image-ubi9  
+    # qemu-nbd -c /dev/nbd2 /var/lib/libvirt/images/rhel9-azure-cvm-20240820-2.qcow2  
+    # podman run -it --privileged --mount type=bind,source=/var/lib/libvirt/images,target=/mnt --mount type=bind,source=/root,target=/root --mount type=bind,source=/run/udev,target=/run/udev --mount type=bind,source=/dev,target=/dev localhost/encrypt-rhel-image-ubi9:latest /usr/bin/encrypt-rhel-image.py deploy -s /root/public.srk -r /root/recovery_key --pcr7 auto --uefi-profile /root/encrypt-rhel-image/test-data/uefi-profiles/uefi-profile-ovmf.json -v /dev/nbd2  
+    # qemu-nbd --disconnect /dev/nbd2  
+
+### Testing
+
+The tool comes with unit tests which can be executed with 'pytest'. Note that 'test-data' submodule must be checked out.
+
+    $ git submodule update
+    $ pytest
+
+## Dependencies
+
+Basic:
+- python3.x
+
+'Encrypt' phase:
+- qemu-nbd
+- e2fsprogs
+- cryptsetup
+- growpart (optional)
+
+'Deploy' phase additionally requires:
+- openssl
+- systemd-cryptenroll >= 255
