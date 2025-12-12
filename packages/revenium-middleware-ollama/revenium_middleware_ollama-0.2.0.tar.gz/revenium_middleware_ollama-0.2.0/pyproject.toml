@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "revenium-middleware-ollama"
+version = "0.2.0"
+description = "A Python library that meters Ollama usage to Revenium."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "Revenium", email = "info@revenium.io" }
+]
+dependencies = [
+    "wrapt",
+    "ollama",
+    "revenium_middleware>=0.3.5",
+    "python-dotenv"
+]
+keywords = ["ollama", "middleware", "logging", "token-usage", "metering", "revenium"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/revenium/revenium-middleware-ollama-python"
+"Bug Tracker" = "https://github.com/revenium/revenium-middleware-ollama-python/issues"
+"Documentation" = "https://github.com/revenium/revenium-middleware-ollama-python/blob/HEAD/README.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov",
+    "flake8",
+    "black",
+    "mypy",
+    "freezegun"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=revenium_middleware_ollama",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "unit: marks tests as unit tests",
+]
+
+# CRITICAL: Include examples in PyPI package
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["revenium_middleware_ollama*", "examples*"]
+
+[tool.setuptools.package-data]
+examples = ["*.py", "README.md"]
