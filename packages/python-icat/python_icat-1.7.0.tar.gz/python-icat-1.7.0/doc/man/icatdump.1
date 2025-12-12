@@ -1,0 +1,224 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "ICATDUMP" "1" "Dec 04, 2025" "1.7" "python-icat"
+.SH NAME
+icatdump \- Dump the content of the ICAT to a file
+.SH SYNOPSIS
+.nf
+\fBicatdump\fP [\fIstandard options\fP] [\-o FILE] [\-f FORMAT]
+.fi
+.sp
+.SH DESCRIPTION
+.sp
+This script queries the content from an ICAT server and serializes it
+into a flat file.  The format of that file depends on the version of
+the ICAT server and the backend that can be selected with the
+\fI\%\-\-format\fP option.
+.SH OPTIONS
+.sp
+The configuration options may be set in the command line or in a
+configuration file.  Some options may also be set in the environment.
+.SS Specific Options
+.sp
+The following options are specific to icatdump:
+.INDENT 0.0
+.TP
+.B \-o FILE, \-\-outputfile FILE
+Set the output file name.  If the value \fI\-\fP is used, the output
+will be written to standard output.  This is also the default.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-f FORMAT, \-\-format FORMAT
+Select the backend to use and thus the output file format.  XML
+and YAML backends are available.
+.UNINDENT
+.SS Standard Options
+.sp
+The following options needed to connect the ICAT service are common
+for most python\-icat scripts:
+.INDENT 0.0
+.TP
+.B \-h, \-\-help
+Display a help message and exit.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-c CONFIGFILE, \-\-configfile CONFIGFILE
+Name of a configuration file.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-s SECTION, \-\-configsection SECTION
+Name of a section in the configuration file.  If set, the values
+in this configuration section will be applied to define other
+options.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-w URL, \-\-url URL
+URL of the ICAT server.  This should point to the web service
+descriptions.  If the URL has no path component, a default path
+will be added.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-check\-certificate
+Do not verify the ICAT server\(aqs TLS certificate.  This is only
+relevant if the URL set with \fI\%\-\-url\fP uses HTTPS.  It is
+mostly only useful for connecting a test server that does not have
+a trusted certificate.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-http\-proxy HTTP_PROXY
+Proxy to use for http requests.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-https\-proxy HTTPS_PROXY
+Proxy to use for https requests.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-proxy NO_PROXY
+Comma separated list of exclusions for proxy use.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-a AUTH, \-\-auth AUTH
+Name of the authentication plugin to use for login to the ICAT
+server.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-u USERNAME, \-\-user USERNAME
+The ICAT user name.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-p PASSWORD, \-\-pass PASSWORD
+The user\(aqs password.  Will prompt for the password if not set.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-P, \-\-prompt\-pass
+Prompt for the password.  This is mostly useful to override a
+password set in the configuration file.
+.UNINDENT
+.SH KNOWN ISSUES AND LIMITATIONS
+.INDENT 0.0
+.IP \(bu 2
+IDS is not supported: the script only dumps the meta data stored in
+the ICAT, not the content of the files stored in the IDS.
+.IP \(bu 2
+The output will only contain objects that the user connecting ICAT
+has read permissions for.  The script may need to connect as the
+ICAT root user in order to get the full content.
+.IP \(bu 2
+The following items are deliberately not included in the output:
+.INDENT 2.0
+.IP \(bu 2
+Log objects (ICAT server versions older then 4.7.0),
+.IP \(bu 2
+The attributes \fBid\fP,
+\fBcreateId\fP,
+\fBcreateTime\fP,
+\fBmodId\fP, and
+\fBmodTime\fP of any object.
+.UNINDENT
+.IP \(bu 2
+It is assumed that for each Dataset \fIds\fP in the ICAT where
+\fIds.sample\fP is not NULL, the condition \fIds.investigation =
+ds.sample.investigation\fP holds.  If this is not satisfied, the
+script will fail with a \fI\%DataConsistencyError\fP\&.
+.IP \(bu 2
+The partition of the data into chunks is static.  It should rather
+be dynamic, e.g. chunks should be splitted if the number of objects
+in them grows too large.
+.IP \(bu 2
+The content in the ICAT server must not be modified while this
+script is retrieving it.  Otherwise the script may fail or the
+dumpfile be inconsistent.
+.IP \(bu 2
+The script fails if the ICAT server is older then 4.6.0 and the data
+contains any \fIStudy\fP\&.  This is a \fI\%bug in icat.server\fP\&.
+.UNINDENT
+.SH ENVIRONMENT VARIABLES
+.INDENT 0.0
+.TP
+.B ICAT_CFG
+Name of a configuration file, see \fI\%\-\-configfile\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_CFG_SECTION
+Name of a section in the configuration file, see
+\fI\%\-\-configsection\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_SERVICE
+URL of the ICAT server, see \fI\%\-\-url\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B http_proxy
+Proxy to use for http requests, see \fI\%\-\-http\-proxy\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B https_proxy
+Proxy to use for https requests, see \fI\%\-\-https\-proxy\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B no_proxy
+Exclusions for proxy use, see \fI\%\-\-no\-proxy\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_AUTH
+Name of the authentication plugin, see \fI\%\-\-auth\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_USER
+ICAT user name, see \fI\%\-\-user\fP\&.
+.UNINDENT
+.SH SEE ALSO
+.sp
+\fBicatingest(1)\fP
+.SH AUTHOR
+Rolf Krahl
+.SH COPYRIGHT
+2013–2025, Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
+.\" Generated by docutils manpage writer.
+.

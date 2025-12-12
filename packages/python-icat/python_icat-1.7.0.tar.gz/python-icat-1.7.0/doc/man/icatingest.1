@@ -1,0 +1,263 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "ICATINGEST" "1" "Dec 04, 2025" "1.7" "python-icat"
+.SH NAME
+icatingest \- Restore the content of the ICAT from a dump file
+.SH SYNOPSIS
+.nf
+\fBicatingest\fP [\fIstandard options\fP] [\-i FILE] [\-f FORMAT]
+.in +2
+[\-\-upload\-datafiles] [\-\-datafile\-dir DATADIR] [\-\-duplicate OPTION]
+.in -2
+.fi
+.sp
+.SH DESCRIPTION
+.sp
+This script reads an ICAT data file and creates all objects found in
+an ICAT server.  The format of that file depends on the backend that
+can be selected with the \fI\%\-\-format\fP option.
+.SH OPTIONS
+.sp
+The configuration options may be set in the command line or in a
+configuration file.  Some options may also be set in the environment.
+.SS Specific Options
+.sp
+The following options are specific to icatingest:
+.INDENT 0.0
+.TP
+.B \-i FILE, \-\-inputfile FILE
+Set the input file name.  If the value \fI\-\fP is used, the input will
+be read from standard input.  This is also the default.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-f FORMAT, \-\-format FORMAT
+Select the backend to use and thus the input file format.  XML
+and YAML backends are available.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-upload\-datafiles
+If that flag is set, Datafile objects will not be created in the
+ICAT server directly, but a corresponding file will be uploaded to
+IDS instead.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-datafile\-dir DATADIR
+Directory to search for the files to be uploaded to IDS.  This is
+only relevant if \fI\%\-\-upload\-datafiles\fP is set.  The default
+is the current working directory.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-duplicate OPTION
+Set the behavior in the case that any object read from the input
+already exists in the ICAT server.  Valid options are:
+.INDENT 7.0
+.TP
+\fBTHROW\fP
+Throw an error.  This is the default.
+.TP
+\fBIGNORE\fP
+Skip the object read from the input.
+.TP
+\fBCHECK\fP
+Compare all attributes from the input object with the already
+existing object in ICAT.  Throw an error of any attribute
+differs.
+.TP
+\fBOVERWRITE\fP
+Overwrite the existing object in ICAT, e.g. update it with all
+attributes set to the values found in the input object.
+.UNINDENT
+.sp
+If \fI\%\-\-upload\-datafiles\fP is set, this option will be
+ignored for Datafile objects which will then always raise an error
+if they already exist.
+.UNINDENT
+.SS Standard Options
+.sp
+The following options needed to connect the ICAT service are common
+for most python\-icat scripts:
+.INDENT 0.0
+.TP
+.B \-h, \-\-help
+Display a help message and exit.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-c CONFIGFILE, \-\-configfile CONFIGFILE
+Name of a configuration file.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-s SECTION, \-\-configsection SECTION
+Name of a section in the configuration file.  If set, the values
+in this configuration section will be applied to define other
+options.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-w URL, \-\-url URL
+URL of the ICAT server.  This should point to the web service
+descriptions.  If the URL has no path component, a default path
+will be added.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-idsurl URL
+URL of the IDS server.  This is only relevant if
+\fI\%\-\-upload\-datafiles\fP is set.  If the URL has no path
+component, a default path will be added.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-check\-certificate
+Do not verify the ICAT server\(aqs TLS certificate.  This is only
+relevant if the URL set with \fI\%\-\-url\fP or \fI\%\-\-idsurl\fP
+uses HTTPS.  It is mostly only useful for connecting a test server
+that does not have a trusted certificate.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-http\-proxy HTTP_PROXY
+Proxy to use for http requests.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-https\-proxy HTTPS_PROXY
+Proxy to use for https requests.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-proxy NO_PROXY
+Comma separated list of exclusions for proxy use.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-a AUTH, \-\-auth AUTH
+Name of the authentication plugin to use for login to the ICAT
+server.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-u USERNAME, \-\-user USERNAME
+The ICAT user name.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-p PASSWORD, \-\-pass PASSWORD
+The user\(aqs password.  Will prompt for the password if not set.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-P, \-\-prompt\-pass
+Prompt for the password.  This is mostly useful to override a
+password set in the configuration file.
+.UNINDENT
+.SH KNOWN ISSUES AND LIMITATIONS
+.INDENT 0.0
+.IP \(bu 2
+The user running this script need to have create permission for all
+objects in the dump file.  In the generic case of restoring the
+entire content on an empty ICAT server, the script must be run by
+the ICAT root user.
+.IP \(bu 2
+A dump and restore of an ICAT will not preserve the attributes
+\fBid\fP,
+\fBcreateId\fP,
+\fBcreateTime\fP,
+\fBmodId\fP, and
+\fBmodTime\fP of any object.  As a
+consequence, access rules that are based on the values of these
+attributes will not work after a restore.
+.IP \(bu 2
+Dealing with duplicates, see \fI\%\-\-duplicate\fP, is only
+supported for single objects.  If the object contains embedded
+related objects in one to many relationships that are to be created
+at once, the only allowed option to deal with duplicates is THROW.
+.UNINDENT
+.SH ENVIRONMENT VARIABLES
+.INDENT 0.0
+.TP
+.B ICAT_CFG
+Name of a configuration file, see \fI\%\-\-configfile\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_CFG_SECTION
+Name of a section in the configuration file, see
+\fI\%\-\-configsection\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_SERVICE
+URL of the ICAT server, see \fI\%\-\-url\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_DATA_SERVICE
+URL of the IDS server, see \fI\%\-\-idsurl\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B http_proxy
+Proxy to use for http requests, see \fI\%\-\-http\-proxy\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B https_proxy
+Proxy to use for https requests, see \fI\%\-\-https\-proxy\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B no_proxy
+Exclusions for proxy use, see \fI\%\-\-no\-proxy\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_AUTH
+Name of the authentication plugin, see \fI\%\-\-auth\fP\&.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B ICAT_USER
+ICAT user name, see \fI\%\-\-user\fP\&.
+.UNINDENT
+.SH SEE ALSO
+.sp
+\fBicatdump(1)\fP
+.SH AUTHOR
+Rolf Krahl
+.SH COPYRIGHT
+2013–2025, Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
+.\" Generated by docutils manpage writer.
+.
