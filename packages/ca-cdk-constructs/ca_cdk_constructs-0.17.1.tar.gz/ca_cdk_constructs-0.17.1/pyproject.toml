@@ -1,0 +1,60 @@
+[project]
+name = "ca-cdk-constructs"
+version = "0.17.1"
+description = "Shared CDK constructs"
+requires-python = ">=3.10"
+dependencies = [
+    "aws-cdk-lib>=2.215",
+    "cdk8s>=2.70.15",
+    "constructs>=10.4",
+    "cdk_remote_stack>=2.1",
+    "aws-cdk-lambda-layer-kubectl-v34>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "boto3-stubs[rds, secretsmanager] >=1.40.35",
+    "pytest>=8.4",
+    "syrupy>=4.9",
+    "ruff>=0.13.0",
+    "mypy>=1.18.2",
+]
+
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "ca_cdk_constructs"
+module-root = "."
+
+[tool.ruff]
+target-version = 'py313'
+line-length = 95
+exclude = ["ca_cdk_constructs/eks/imports"]
+
+[tool.ruff.lint]
+select = [
+   'C',      # mccabe
+   'E',      # pycodestyle
+   'F',      # Pyflakes
+   'INP001', # flake8-no-pep420
+   'N',      # pep8-naming
+   'W',      # pycodestyle
+   'I'       # Isort
+]
+ignore = [
+   'E501', # line-too-long
+]
+
+[tool.mypy]
+python_version = '3.13'
+
+[[tool.mypy.overrides]]
+module = [
+    "publication"
+]
+ignore_missing_imports = true
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
