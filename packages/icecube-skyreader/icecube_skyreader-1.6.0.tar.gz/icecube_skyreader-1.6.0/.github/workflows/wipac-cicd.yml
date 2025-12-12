@@ -1,0 +1,163 @@
+name: wipac ci/cd
+
+on:
+  push:
+    # only on branch pushes
+    branches: [ '**' ]
+    tags-ignore: [ '**' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # don't cancel on main/master/default
+  cancel-in-progress: ${{ format('refs/heads/{0}', github.event.repository.default_branch) != github.ref }}
+
+jobs:
+
+  py-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
+      - id: versions
+        uses: WIPACrepo/wipac-dev-py-versions-action@v2.8
+
+
+  #############################################################################
+  # LINTERS
+  #############################################################################
+
+
+  flake8:
+    needs: [ py-versions ]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.py3 }}
+      - uses: WIPACrepo/wipac-dev-flake8-action@v1.3
+        with:
+          max-function-length: 400
+          max-complexity: 25  # ideal is ~10-15
+
+  mypy:
+    needs: [ py-versions ]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # setuptools-scm needs to access git tags
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.py3 }}
+      - uses: WIPACrepo/wipac-dev-mypy-action@v2.0
+
+
+  #############################################################################
+  # PACKAGING
+  #############################################################################
+
+  py-setup:
+    if: ${{ github.actor != 'dependabot[bot]' }} # dependabot cannot access PAT
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          ref: ${{ github.ref }}  # dont lock to sha (action needs to push)
+      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.9
+        with:
+          mode: PACKAGING_AND_PYPI
+          python_min: "3.10"
+          python_max: 3.13
+          pypi_name: icecube-skyreader
+          author: WIPAC Developers
+          author_email: developers@icecube.wisc.edu
+          keywords_comma: "IceCube, skymap scanner, skymap, HEALPix, neutrino, reconstruction"
+
+  py-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # setuptools-scm needs to access git tags
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
+      - uses: WIPACrepo/wipac-dev-py-dependencies-action@v3.4
+
+
+  #############################################################################
+  # TESTS
+  #############################################################################
+
+  unit-tests:
+    needs: [ py-versions ]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # setuptools-scm needs to access git tags
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.py3 }}
+
+      - name: pip install
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          pip install --upgrade pip wheel setuptools
+          pip install .[tests]
+
+      - name: test
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          pytest -vvv tests/unit
+
+      - name: dump comparison json files
+        if: always()
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          more *.json | cat
+
+  ############################################################################
+  # TAG + RELEASE
+  #############################################################################
+
+  tag-and-release:
+    # only run on main/default
+    if: format('refs/heads/{0}', github.event.repository.default_branch) == github.ref
+    needs: [
+       py-versions,
+       mypy,
+       py-setup,
+       py-dependencies,
+       unit-tests
+    ]
+    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/tag-and-release.yml@v1.20
+    permissions: # for GITHUB_TOKEN
+      contents: write
+    with:
+      project-type: python
+      python-version: "${{ fromJSON(needs.py-versions.outputs.matrix)[0] }}"
+      release-artifacts: |
+        py-dependencies-logs
+      publish-to-pypi: true
+    secrets:
+      PYPI_TOKEN: ${{ secrets.WIPAC_PYPI_TOKEN }}
