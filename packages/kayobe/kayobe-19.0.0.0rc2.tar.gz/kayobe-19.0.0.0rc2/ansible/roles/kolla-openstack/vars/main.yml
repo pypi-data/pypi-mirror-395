@@ -1,0 +1,16 @@
+---
+
+# An internal variable used for cleaning files from the generated config
+# directory. Should not be exposed as we may wish to change the cleanup
+# mechanism to something more robust.
+_kolla_openstack_custom_config_cleanup_ignore_globs:
+  - glob: ironic/ironic-agent.initramfs
+    enabled: "{{ kolla_enable_ironic | bool }}"
+  - glob: ironic/ironic-agent.kernel
+    enabled: "{{ kolla_enable_ironic | bool }}"
+  - glob: nova/nova-libvirt/server*.pem
+    enabled: "{{ kolla_enable_nova | bool and kolla_enable_nova_libvirt_container | bool and kolla_libvirt_tls | bool }}"
+  - glob: nova/nova-libvirt/client*.pem
+    enabled: "{{ kolla_enable_nova | bool and kolla_libvirt_tls | bool }}"
+  - glob: nova/nova-libvirt/cacert.pem
+    enabled: "{{ kolla_enable_nova | bool and kolla_libvirt_tls | bool }}"

@@ -1,0 +1,20 @@
+---
+- name: Run a command
+  hosts: seed-hypervisor:seed:overcloud:infra-vms
+  gather_facts: False
+  max_fail_percentage: >-
+    {{ host_command_run_max_fail_percentage |
+       default(kayobe_max_fail_percentage) |
+       default(100) }}
+  tasks:
+    - name: Run a command
+      shell: "{{ host_command_to_run }}"
+      register: command_output
+    - name: Print stdout
+      debug:
+        msg: "{{ command_output.stdout }}"
+      when: show_output | bool
+    - name: Print stderr
+      debug:
+        msg: "{{ command_output.stderr }}"
+      when: show_output | bool

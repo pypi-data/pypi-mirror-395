@@ -1,0 +1,10 @@
+---
+- name: Gather facts for all hosts (if using --limit)
+  include_tasks: gather-facts-delegated.yml
+  vars:
+    delegated_host: "{{ gather_facts_delegated_delegate_hosts[item | int] }}"
+  # Loop over the index into each host's batch, so tasks are not all included serially.
+  with_sequence: start=0 end="{{ gather_facts_delegated_delegate_hosts | length | int - 1 }}"
+  when:
+    - item | int < gather_facts_delegated_delegate_hosts | length
+    - not hostvars[gather_facts_delegated_delegate_hosts[item | int]].ansible_facts
