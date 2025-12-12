@@ -1,0 +1,289 @@
+# EV Chargers MCP Server
+
+Servidor Model Context Protocol (MCP) para gestionar y extraer información de cargadores de vehículos eléctricos.
+
+## Descripción
+
+Este proyecto proporciona un servidor MCP que se conecta a cargadores EV, extrae datos de sesiones, warnings y logs del sistema, y los procesa en formatos accesibles (CSV, TXT, JSON).
+
+### Características
+
+- **Autenticación segura** con soporte para SSL/TLS configurable
+- **Extracción de sesiones de carga** desde HTML del cargador
+- **Extracción de warnings** con códigos de estado y fecha
+- **Extracción de logs del sistema** (syslog) con filtrado por fecha
+- **Filtrado temporal** por rangos de fechas o últimos N días
+- **Procesamiento de HTML** con BeautifulSoup
+- **Manejo asincrónico** con aiohttp
+
+## Requisitos
+
+- Python 3.10 o superior
+- pip (gestor de paquetes de Python)
+
+## Instalación
+
+### 1. Crear el entorno virtual
+
+```powershell
+python -m venv venv
+```
+
+### 2. Activar el entorno virtual
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+### 3. Instalar dependencias
+
+```powershell
+pip install -e .
+```
+
+O instalar las librerías directamente:
+
+```powershell
+pip install fastmcp paramiko aiohttp python-dotenv beautifulsoup4 lxml
+```
+
+## Configuración
+
+### Variables de Entorno
+
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+
+```env
+# Configuración del cargador
+CHARGER_HOST=192.168.1.100
+CHARGER_USERNAME=admin
+CHARGER_PASSWORD=password
+DEVICE_ID=6W0A19240050
+
+# Configuración SSL
+VERIFY_SSL=false
+SSL_CERT_PATH=/ruta/al/certificado.pem
+```
+
+#### Descripción de variables:
+
+| Variable | Descripción | Ejemplo |
+|----------|-------------|---------|
+| `CHARGER_HOST` | Dirección IP o hostname del cargador | `192.168.1.100` |
+| `CHARGER_USERNAME` | Usuario para autenticación | `admin` |
+| `CHARGER_PASSWORD` | Contraseña del usuario | `password123` |
+| `DEVICE_ID` | ID del dispositivo del cargador | `6W0A19240050` |
+| `VERIFY_SSL` | Habilitar verificación SSL (true/false) | `false` |
+| `SSL_CERT_PATH` | Ruta al certificado SSL (opcional) | `/path/to/cert.pem` |
+
+## Uso
+
+### en librechat
+
+### Ejecutar el servidor
+
+```powershell
+python fusionMCP.py
+```
+
+O si instalaste como paquete:
+
+```powershell
+ev-charger-mcp
+```
+
+### Herramientas disponibles
+
+El servidor expone las siguientes herramientas MCP:
+
+#### 1. `obtener_warnings`
+Obtiene y procesa los warnings del cargador EV.
+
+**Parámetros:**
+- `days` (int, opcional): Últimos N días a incluir (ej: 7, 30)
+- `start_date` (str, opcional): Fecha de inicio (formato: YYYY-MM-DD)
+- `end_date` (str, opcional): Fecha de fin (formato: YYYY-MM-DD)
+
+**Retorno:**
+```json
+{
+  "status": 200,
+  "count": 42,
+  "filtered_count": 5,
+  "data": [
+    {
+      "Serial Number": "6W0A19240050",
+      "Connector": "1",
+      "Date": "Thu Nov 27 06:12:19 2025",
+      "Code": "W001",
+      "State": "Active"
+    }
+  ]
+}
+```
+
+#### 2. `obtener_sessions`
+Obtiene y procesa las sesiones de carga del cargador EV.
+
+**Parámetros:**
+- `days` (int, opcional): Últimos N días a incluir
+- `start_date` (str, opcional): Fecha de inicio (formato: YYYY-MM-DD)
+- `end_date` (str, opcional): Fecha de fin (formato: YYYY-MM-DD)
+
+**Retorno:**
+```json
+{
+  "status": 200,
+  "count": 156,
+  "filtered_count": 0,
+  "data": [
+    {
+      "Serial Number": "6W0A19240050",
+      "Connector": "1",
+      "Start Date": "Thu Nov 27 06:12:19 2025",
+      "End Date": "Thu Nov 27 08:45:30 2025",
+      "Energy": "23.5 kWh",
+      "User ID": "USER001"
+    }
+  ]
+}
+```
+
+#### 3. `obtener_logs`
+Obtiene y procesa los logs del sistema (syslog) del cargador EV.
+
+**Parámetros:**
+- `days` (int, opcional): Últimos N días a incluir
+- `start_date` (str, opcional): Fecha de inicio (formato: YYYY-MM-DD)
+- `end_date` (str, opcional): Fecha de fin (formato: YYYY-MM-DD)
+
+**Retorno:**
+```json
+{
+  "status": 200,
+  "count": 1250,
+  "filtered_count": 100,
+  "data": [
+    "Nov 27 06:12:19 charger kernel: System boot",
+    "Nov 27 06:15:45 charger daemon: Service started"
+  ]
+}
+```
+
+## Estructura del Proyecto
+
+```
+EVChargers_MCP/
+├── fusionMCP.py                 # Servidor MCP principal
+├── pyproject.toml               # Configuración del proyecto
+├── README.md                    # Este archivo
+├── .env                         # Variables de entorno (crear)
+├── venv/                        # Entorno virtual de Python
+└── scriptsWebScrapping/
+    ├── extract_sessions.py      # Extractor de sesiones
+    ├── extract_syslog.py        # Extractor de logs
+    ├── extract_warnings.py      # Extractor de warnings
+    ├── sessions.csv             # Datos de ejemplo
+    ├── syslog.txt               # Datos de ejemplo
+    ├── warnings.csv             # Datos de ejemplo
+    └── __pycache__/
+```
+
+## Módulos internos
+
+### `extract_sessions.py`
+Extrae datos de sesiones de carga de archivos HTML.
+- Parsea fechas en múltiples formatos
+- Filtra por rango de fechas
+- Convierte a CSV o devuelve en JSON
+
+### `extract_syslog.py`
+Extrae logs del sistema desde textarea HTML.
+- Extrae líneas de syslog
+- Filtra por rango de fechas
+- Devuelve líneas procesadas
+
+### `extract_warnings.py`
+Extrae warnings del cargador desde tablas HTML.
+- Parsea código de warnings y estado
+- Filtra por rango de fechas
+- Convierte a CSV o devuelve en JSON
+
+## Desarrollo
+
+### Dependencias de desarrollo
+
+```powershell
+pip install -e ".[dev]"
+```
+
+Esto instala herramientas adicionales:
+- `pytest` - Framework de testing
+- `pytest-asyncio` - Soporte para tests asincrónico
+- `black` - Formateador de código
+- `pylint` - Linter de Python
+- `mypy` - Verificador de tipos
+
+### Ejecutar tests
+
+```powershell
+pytest
+```
+
+### Formatear código
+
+```powershell
+black .
+```
+
+### Verificar tipo
+
+```powershell
+mypy fusionMCP.py
+```
+
+## Solución de problemas
+
+### Error: "Las variables CHARGER_HOST, CHARGER_USERNAME o CHARGER_PASSWORD no están definidas"
+
+**Solución:** Verifica que el archivo `.env` exista en la raíz del proyecto y contenga las variables requeridas.
+
+### Error: "Falló la autenticación con el cargador"
+
+**Solución:** 
+- Verifica que las credenciales sean correctas
+- Comprueba que el cargador sea accesible desde tu red
+- Si usas SSL, verifica la configuración de `VERIFY_SSL` y `SSL_CERT_PATH`
+
+### Error: "No se encontró la tabla con id 'sessions_dump'"
+
+**Solución:** El HTML descargado no tiene el formato esperado. Esto puede deberse a:
+- Versión diferente del firmware del cargador
+- HTML corrupto o incompleto
+
+## Logging
+
+Los logs se muestran en la consola con el siguiente formato:
+
+```
+2025-11-28 10:30:45,123 - INFO - Iniciando EV Charger MCP Server
+2025-11-28 10:30:46,456 - INFO - Token STOK obtenido: abc123def456
+```
+
+Puedes controlar el nivel de logging modificando en `fusionMCP.py`:
+
+```python
+logging.basicConfig(level=logging.DEBUG)  # Para más detalles
+```
+
+## Licencia
+
+MIT
+
+## Contribuciones
+
+Las contribuciones son bienvenidas. Por favor, abre un issue o pull request con tus cambios.
+
+## Contacto
+
+Para preguntas o problemas, crea un issue en el repositorio.
