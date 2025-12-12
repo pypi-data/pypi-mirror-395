@@ -1,0 +1,218 @@
+# Meta Queries
+# WF 2025-05-06
+'query_count':
+    sql: |
+      SELECT COUNT(*)
+      FROM NamedQuery
+'query_success':
+    sql: |
+        SELECT 
+           COUNT(*) AS count,
+           endpoint_name
+        
+        FROM "QueryStats"
+        WHERE records>0
+        GROUP BY endpoint_name
+        ORDER BY 1 DESC
+'query_failures_by_category':
+    sql: |
+        SELECT 
+        count(*) as count,
+        nq.domain,
+        nq.namespace,
+        error_category
+        FROM QueryStats qs
+        JOIN NamedQuery nq
+        ON qs.query_id=nq.query_id
+        WHERE error_category IS NOT NULL 
+        
+        GROUP BY error_category,nq.namespace,nq.domain
+        ORDER BY 1 DESC
+'query_failures_by_category_grouped':
+    sql: |
+        SELECT 
+          count(*) AS count,
+          GROUP_CONCAT(DISTINCT nq.domain) AS domains,
+          GROUP_CONCAT(DISTINCT nq.namespace) AS namespaces,
+          error_category
+        FROM QueryStats qs
+        JOIN NamedQuery nq ON qs.query_id = nq.query_id
+        WHERE error_category IS NOT NULL
+        GROUP BY error_category
+        ORDER BY  count DESC;
+'query_failures_by_category_grouped_counted':
+    sql: |
+        SELECT 
+          error_category,
+          SUM(entry_count) AS total_count,
+          GROUP_CONCAT(DISTINCT domain_counts ORDER BY domain_count DESC) AS domain_counts,
+          GROUP_CONCAT(DISTINCT namespace_counts ORDER BY namespace_count DESC) AS namespace_counts,
+          GROUP_CONCAT(DISTINCT endpoint_counts ORDER BY endpoint_count DESC) AS endpoint_counts
+        FROM (
+          SELECT 
+            error_category,
+            domain,
+            namespace,
+            endpoint_name,
+            COUNT(*) AS entry_count,
+            domain || ' (' || SUM(COUNT(*)) OVER (PARTITION BY error_category, domain) || ')' AS domain_counts,
+            namespace || ' (' || SUM(COUNT(*)) OVER (PARTITION BY error_category, namespace) || ')' AS namespace_counts,
+            endpoint_name || ' (' || SUM(COUNT(*)) OVER (PARTITION BY error_category, endpoint_name) || ')' AS endpoint_counts,
+            SUM(COUNT(*)) OVER (PARTITION BY error_category, domain) AS domain_count,
+            SUM(COUNT(*)) OVER (PARTITION BY error_category, namespace) AS namespace_count,
+            SUM(COUNT(*)) OVER (PARTITION BY error_category, endpoint_name) AS endpoint_count
+          FROM QueryStats qs
+          JOIN NamedQuery nq ON qs.query_id = nq.query_id
+          WHERE error_category IS NOT NULL
+          GROUP BY error_category, domain, namespace, endpoint_name
+        ) sub
+        GROUP BY error_category
+        ORDER BY total_count DESC;
+'query_failures_by_database_count':
+    sql: |
+        SELECT
+           COUNT(*) AS count,
+           ep.database 
+        FROM QueryStats qs
+        JOIN Endpoint ep
+        ON qs.endpoint_name=ep.name
+        WHERE qs.error_msg IS NOT NULL
+        ORDER BY 1 DESC
+'query_success_by_namespace':
+    sql: |
+        SELECT 
+           COUNT(*) AS count,
+           nq.namespace,
+           qs.endpoint_name
+           
+        FROM QueryStats qs
+        JOIN NamedQuery nq on qs.query_id=nq.query_id
+        WHERE records>0
+        GROUP BY endpoint_name,namespace
+        ORDER BY 2 ASC,1 DESC
+# This query calculates statistics for named queries across 
+# different domains, namespaces and endpoints.
+# It joins NamedQuery with a subquery from QueryStats 
+# to get both success and failure counts.
+# Another subquery is used to get the total count of 
+# distinct queries per namespace.
+# 
+# The results show:
+# - domain
+# - namespace
+# - endpoint name (or 'No Endpoint' if null)
+# - total count of distinct queries in the namespace
+# - count of distinct successful queries
+# - count of distinct failed queries
+# - sum of success counts
+# - sum of failure counts
+#
+# Note: A query is considered failed if it has a non-null error_msg.
+# The records count is used for successful queries.
+'query_namespace_endpoint_matrix_with_distinct':
+  sql: |
+    SELECT
+        nq.domain,
+        nq.namespace,
+        COALESCE(qs.endpoint_name, 'No Endpoint') AS endpoint_name,
+        total.total_count AS total,
+        COUNT(DISTINCT (CASE WHEN qs.success_count > 0 THEN qs.query_id END)) AS distinct_successful,
+        COUNT(DISTINCT (CASE WHEN qs.failure_count > 0 THEN qs.query_id END)) AS distinct_failed,
+        SUM(qs.success_count) AS success_count,
+        SUM(qs.failure_count) AS failure_count
+    FROM NamedQuery nq
+        LEFT JOIN (
+            SELECT 
+                query_id,
+                endpoint_name,
+                context,
+                SUM(CASE WHEN error_msg IS NULL AND records > 0 THEN 1 ELSE 0 END) AS success_count,
+                SUM(CASE WHEN error_msg IS NOT NULL THEN 1 ELSE 0 END) AS failure_count
+            FROM QueryStats
+            GROUP BY query_id, endpoint_name, context
+        ) qs ON nq.query_id = qs.query_id
+        LEFT JOIN (
+          SELECT domain, namespace, COUNT(DISTINCT(query_id)) AS total_count
+          FROM NamedQuery
+          GROUP BY domain, namespace
+        ) total ON nq.domain = total.domain AND nq.namespace = total.namespace
+    GROUP BY nq.domain, nq.namespace, qs.endpoint_name, total.total_count
+'all_queries':
+    sql: |
+      SELECT * FROM NamedQuery
+'error_histogram':
+    sql: |
+      SELECT COUNT(*), query_id
+      FROM QueryStats
+      WHERE error_msg is not null
+      GROUP BY query_id
+      ORDER BY 1 DESC
+'query_stats':
+    sql: |
+      SELECT query_id,
+        COUNT(duration) AS count,
+        MIN(duration) AS min_time,
+        MAX(duration) AS max_time,
+        AVG(duration) AS avg_time,
+        MIN(records) AS min,
+        MAX(records) AS max,
+        AVG(records) AS avg
+      FROM QueryStats
+        GROUP by query_id
+        ORDER BY 1 DESC;
+'params_stats':
+    sql: |
+        SELECT count(*),
+            params 
+        FROM "QueryDetails" 
+        GROUP BY params 
+        ORDER BY 1 desc
+'query_details_stats':
+    sql: |
+      SELECT 
+        MIN(param_count) AS min_param_count,
+        MAX(param_count) AS max_param_count,
+        AVG(param_count) AS avg_param_count,
+        MIN(lines) AS min_lines,
+        MAX(lines) AS max_lines,
+        AVG(lines) AS avg_lines,
+        MIN(size) AS min_size,
+        MAX(size) AS max_size,
+        AVG(size) AS avg_size
+      FROM 
+        QueryDetails;
+'domain_namespace_stats':
+  sql: |
+    SELECT 
+      domain,
+      namespace,
+      COUNT(*) AS query_count
+    FROM NamedQuery
+    WHERE domain LIKE ? AND namespace LIKE ?
+    GROUP BY domain, namespace
+    ORDER BY 3 DESC
+'all_endpoints':
+    sql: |
+        SELECT 
+            name,
+            endpoint,
+            lang,
+            website,
+            database,
+            method
+        FROM Endpoint
+'scholia_jinja_for_loops':
+    sql: |
+        SELECT
+          count(*),
+          substr(
+            sparql,
+            instr(sparql, '{% for') + length('{% for'),  -- Start position right after "{% for"
+            instr(substr(sparql, instr(sparql, '{% for')), '%}') - length('{% for')  -- Length of substring
+          ) as for_loop_content
+        FROM
+          NamedQuery
+        WHERE
+          sparql LIKE '%{% for%' ESCAPE '\' and for_loop_content like "%in%"
+        group by for_loop_content
+        order by 1 desc
