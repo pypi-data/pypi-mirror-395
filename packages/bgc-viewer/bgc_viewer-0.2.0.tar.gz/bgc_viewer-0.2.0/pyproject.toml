@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bgc-viewer"
+version = "0.2.0"
+description = "A viewer to explore and visualize Biosynthetic Gene Cluster data"
+authors = [
+    {name = "Medema Group (see CITATION.cff for full citation)"},
+]
+dependencies = [
+    "flask>=2.3.0",
+    "flask-cors>=4.0.0",
+    "flask-session>=0.5.0",
+    "python-dotenv>=1.0.1",
+    "waitress>=3.0.0",
+    "ijson>=3.2.0",
+    "cachelib>=0.9.0",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "build>=0.10.0",
+    "twine>=4.0.0",
+]
+redis = [
+    "redis>=5.0.0",
+]
+
+[project.scripts]
+bgc-viewer = "bgc_viewer.app:main"
+
+# Include frontend build assets in package
+[tool.hatch.build.targets.wheel]
+include = [
+    "bgc_viewer/**/*.py",
+    "bgc_viewer/static/**/*",
+]
+
+# Also include static files in source distribution
+[tool.hatch.build.targets.sdist]
+include = [
+    "bgc_viewer/**/*.py",
+    "bgc_viewer/static/**/*",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+    "MANIFEST.in",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "0.2.0"
+ignore_missing_imports = true
+warn_unused_configs = true
+# Disable strict typing for first version
+# disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "waitress"
+ignore_missing_imports = true
