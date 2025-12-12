@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "icsc-ava-upload-toolkit"
+version = "0.1.1"
+description = "ICSC Ava Upload Toolkit - 包含 MCP Server 和 Mock File Service 的完整工具套件"
+authors = [{name = "User", email = "user@example.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # MCP Server 依賴
+    "fastmcp>=2.0.0",
+    "requests>=2.31.0",
+    # Mock File Service 依賴
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "python-multipart>=0.0.6",
+    "aiofiles>=23.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "build>=0.10.0",
+    "twine>=4.0.0",
+]
+
+[project.scripts]
+# MCP Server 命令
+icsc-ava-upload-server = "icsc_ava_upload_mcp_server.server:main"
+icsc-ava-mcp = "icsc_ava_upload_mcp_server.server:main"
+
+# Mock File Service 命令  
+mock-file-service = "mock_file_service.server:main"
+icsc-ava-mock-service = "mock_file_service.server:main"
+
+# 組合命令
+icsc-ava-start = "start_services:main"
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple/"
+default = true
+
+[project.urls]
+Homepage = "https://github.com/your-username/icsc-ava-upload-toolkit"
+Repository = "https://github.com/your-username/icsc-ava-upload-toolkit"
+Issues = "https://github.com/your-username/icsc-ava-upload-toolkit/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/icsc_ava_upload_mcp_server", "src/mock_file_service"]
+include = [
+    "src/**/*.py",
+    "start_services.py",
+    "README.md",
+    "LICENSE"
+]
+
