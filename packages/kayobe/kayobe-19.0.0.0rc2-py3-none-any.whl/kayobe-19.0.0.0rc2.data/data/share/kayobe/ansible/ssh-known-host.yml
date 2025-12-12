@@ -1,0 +1,13 @@
+---
+- name: Ensure known hosts are configured
+  hosts: all
+  gather_facts: no
+  max_fail_percentage: >-
+    {{ ssh_known_host_max_fail_percentage |
+       default(host_configure_max_fail_percentage) |
+       default(kayobe_max_fail_percentage) |
+       default(100) }}
+  tags:
+    - ssh-known-host
+  roles:
+    - role: ssh-known-host

@@ -1,0 +1,143 @@
+---
+# Create a virtualenv for ansible modules to use on the remote target systems
+# when running kayobe.
+
+- name: Ensure a virtualenv exists for kayobe
+  hosts: seed:seed-hypervisor:overcloud:infra-vms
+  gather_facts: False
+  max_fail_percentage: >-
+    {{ kayobe_target_venv_max_fail_percentage |
+       default(host_configure_max_fail_percentage) |
+       default(kayobe_max_fail_percentage) |
+       default(100) }}
+  tags:
+    - kayobe-target-venv
+  tasks:
+    - name: Set a fact about the kayobe target virtualenv
+      set_fact:
+        kayobe_virtualenv: "{{ ansible_python_interpreter | dirname | dirname }}"
+      when:
+        - ansible_python_interpreter is defined
+        - not ansible_python_interpreter.startswith('/bin')
+        - not ansible_python_interpreter.startswith('/usr/bin')
+
+    - name: Gather facts with system Python interpreter
+      setup:
+        filter: "{{ kayobe_ansible_setup_filter }}"
+        gather_subset: "{{ kayobe_ansible_setup_gather_subset }}"
+      when:
+        - ansible_facts is undefined or not ansible_facts
+        - kayobe_virtualenv is defined
+      register: gather_facts
+      # Before any facts are gathered, ansible doesn't know about
+      # python virtualenv.
+      # Use default python3 to be safe for this task.
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+
+    - block:
+        - name: Ensure the Python venv package is installed on Debian family systems
+          package:
+            name: python3-venv
+            state: present
+            cache_valid_time: "{{ apt_cache_valid_time }}"
+            update_cache: "True"
+          become: True
+          when: ansible_facts.os_family == 'Debian'
+
+        - name: Ensure global virtualenv directory exists
+          file:
+            path: "{{ virtualenv_path }}"
+            state: directory
+            owner: "{{ ansible_facts.user_uid }}"
+            group: "{{ ansible_facts.user_gid }}"
+            mode: 0755
+          # Check whether the virtualenv directory is a subdirectory of the
+          # global virtualenv directory.
+          when: kayobe_virtualenv.startswith(virtualenv_path)
+          become: True
+
+        - name: Ensure kayobe virtualenv directory exists
+          file:
+            path: "{{ kayobe_virtualenv }}"
+            state: directory
+            owner: "{{ ansible_facts.user_uid }}"
+            group: "{{ ansible_facts.user_gid }}"
+            mode: 0700
+          become: True
+
+        - name: Ensure Python setuptools is installed
+          package:
+            name: python3-setuptools
+            state: present
+          become: True
+
+        - name: Ensure kayobe virtualenv has the latest version of pip installed
+          pip:
+            name: pip
+            state: latest
+            virtualenv: "{{ kayobe_virtualenv }}"
+            # Site packages are required for using the dnf module, which is not
+            # available via PyPI.
+            virtualenv_site_packages: True
+            virtualenv_command: "python3.{{ ansible_facts.python.version.minor }} -m venv"
+
+        - name: Ensure kayobe virtualenv has SELinux bindings installed
+          pip:
+            name: selinux
+            state: latest
+            virtualenv: "{{ kayobe_virtualenv }}"
+          when:
+            - ansible_facts.os_family == 'RedHat'
+      vars:
+        # Use the system python interpreter since the virtualenv might not
+        # exist.
+        ansible_python_interpreter: "{{ ansible_facts.python.executable }}"
+      when: kayobe_virtualenv is defined
+
+    # If we gathered facts earlier it would have been with a different Python
+    # interpreter. For gathering modes that may use a fact cache, gather facts
+    # again using the interpreter from the virtual environment.
+    - name: Gather facts with virtualenv Python interpreter
+      setup:
+        filter: "{{ kayobe_ansible_setup_filter }}"
+        gather_subset: "{{ kayobe_ansible_setup_gather_subset }}"
+      when:
+        - kayobe_virtualenv is defined
+        - gather_facts is not skipped
+        - lookup('config', 'DEFAULT_GATHERING') != 'implicit'
+
+    - block:
+        - name: Ensure Python setuptools and pip packages are installed
+          vars:
+            packages:
+              - python3-setuptools
+              - python3-pip
+          package:
+            name: "{{ packages | select | list }}"
+            state: present
+          become: True
+      when: kayobe_virtualenv is not defined
+
+    - name: Ensure kayobe virtualenv has docker SDK for python installed
+      pip:
+        name: docker
+        state: latest
+        virtualenv: "{{ kayobe_virtualenv | default(omit) }}"
+        extra_args: "{% if docker_upper_constraints_file %}-c {{ docker_upper_constraints_file }}{% endif %}"
+      become: "{{ kayobe_virtualenv is not defined }}"
+      vars:
+        docker_upper_constraints_file: "{{ pip_upper_constraints_file }}"
+      when:
+        - "'container-engine' in group_names"
+        - container_engine == 'docker'
+
+    - name: Ensure kayobe virtualenv has podman SDK installed
+      import_role:
+        name: openstack.kolla.podman_sdk
+      vars:
+        virtualenv: "{{ kayobe_virtualenv }}"
+        podman_sdk_upper_constraints_file: "{{ pip_upper_constraints_file }}"
+      when:
+        - "'container-engine' in group_names"
+        - container_engine == 'podman'

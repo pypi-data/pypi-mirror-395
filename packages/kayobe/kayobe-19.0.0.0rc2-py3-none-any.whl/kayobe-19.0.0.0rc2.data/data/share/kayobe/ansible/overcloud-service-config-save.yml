@@ -1,0 +1,34 @@
+---
+- name: Save overcloud service configuration
+  hosts: overcloud
+  max_fail_percentage: >-
+    {{ overcloud_service_config_save_max_fail_percentage |
+       default(kayobe_max_fail_percentage) |
+       default(100) }}
+  tags:
+    - service-config-save
+  vars:
+    # Override this to change the directory in which the configuration will be
+    # saved.
+    config_save_path: "{{ lookup('env', 'PWD') ~ '/overcloud-config' }}"
+    # Override this to change the directory on the remote hosts from which the
+    # kolla-ansible configuration will be saved.
+    node_config_directory: "/etc/kolla"
+  tasks:
+    - name: Find overcloud service configuration files
+      find:
+        paths: "{{ node_config_directory }}"
+        recurse: True
+        excludes: "{{ exclude_patterns | default(omit) }}"
+        patterns: "{{ include_patterns | default(omit) }}"
+      register: find_result
+      become: true
+
+    - name: Save overcloud service configuration
+      fetch:
+        src: "{{ item.path }}"
+        dest: "{{ config_save_path }}"
+      with_items: "{{ find_result.files }}"
+      become: true
+      loop_control:
+        label: "{{ item.path }}"

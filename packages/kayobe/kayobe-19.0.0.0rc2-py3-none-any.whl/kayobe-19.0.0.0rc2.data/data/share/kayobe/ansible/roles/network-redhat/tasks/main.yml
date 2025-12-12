@@ -1,0 +1,66 @@
+---
+- import_role:
+    name: ahuffman.resolv
+  when: resolv_is_managed | bool
+  become: True
+
+- name: Ensure NetworkManager DNS config is present only if required
+  become: true
+  community.general.ini_file:
+    path: /etc/NetworkManager/NetworkManager.conf
+    section: main
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    state: "{{ 'present' if resolv_is_managed | bool else 'absent'}}"
+  loop:
+    - option: dns
+      value: none
+    - option: rc-manager
+      value: unmanaged
+  when:
+    - ansible_facts.os_family == "RedHat" and ansible_facts.distribution_major_version | int >= 9
+  register: dns_config_task
+
+- name: Reload NetworkManager with DNS config
+  become: true
+  systemd:
+    name: NetworkManager
+    state: reloaded
+    daemon_reload: yes
+  when: dns_config_task is changed
+
+- name: Configure network interfaces (RedHat)
+  import_role:
+    name: MichaelRigart.interfaces
+  vars:
+    interfaces_route_tables: "{{ network_route_tables }}"
+    interfaces_ether_interfaces: >
+      {{ network_interfaces |
+         net_select_ethers |
+         map('net_interface_obj', names=network_interfaces) |
+         list }}
+    interfaces_bridge_interfaces: >
+      {{ network_interfaces |
+         net_select_bridges |
+         map('net_bridge_obj') |
+         list }}
+    interfaces_bond_interfaces: >
+      {{ network_interfaces |
+         net_select_bonds |
+         map('net_bond_obj') |
+         list }}
+    interfaces_setup_filter: "{{ kayobe_ansible_setup_filter }}"
+    interfaces_setup_gather_subset: "{{ kayobe_ansible_setup_gather_subset }}"
+
+# NOTE(priteau): We need to run handlers from MichaelRigart.interfaces before
+# we start configuring any veth interfaces.
+- meta: flush_handlers
+
+# Configure virtual ethernet patch links to connect the workload provision
+# and external network bridges to the Neutron OVS bridge.
+- name: Ensure OVS patch links exist
+  import_role:
+    name: veth
+  vars:
+    veth_interfaces: "{{ network_interfaces | net_ovs_veths }}"
+  when: "'overcloud' in group_names"

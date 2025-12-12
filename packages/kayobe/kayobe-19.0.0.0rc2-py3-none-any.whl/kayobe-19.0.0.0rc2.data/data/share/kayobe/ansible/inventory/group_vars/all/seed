@@ -1,0 +1,176 @@
+---
+###############################################################################
+# Seed node configuration.
+
+# User with which to access the seed via SSH during bootstrap, in order to
+# setup the Kayobe user account. Default is 'cloud-user' if os_distribution is
+# set to centos, otherwise 'os_distribution'.
+seed_bootstrap_user: "{{ 'cloud-user' if os_distribution == 'centos' else os_distribution }}"
+
+###############################################################################
+# Seed network interface configuration.
+
+# List of networks to which seed nodes are attached.
+seed_network_interfaces: >
+  {{ (seed_default_network_interfaces +
+      seed_extra_network_interfaces) | select | unique | list }}
+
+# List of default networks to which seed nodes are attached.
+seed_default_network_interfaces: >
+  {{ [admin_oc_net_name,
+      oob_oc_net_name,
+      provision_oc_net_name] | select | unique | list }}
+
+# List of extra networks to which seed nodes are attached.
+seed_extra_network_interfaces: []
+
+# Whether to enable SNAT on seed nodes. Default is false.
+seed_enable_snat: false
+
+###############################################################################
+# Seed node software RAID configuration.
+
+# List of software RAID arrays. See mrlesmithjr.mdadm role for format.
+seed_mdadm_arrays: []
+
+###############################################################################
+# Seed node encryption configuration.
+
+# List of block devices to encrypt. See stackhpc.luks role for format.
+seed_luks_devices: []
+
+###############################################################################
+# Seed node LVM configuration.
+
+# List of seed volume groups. See mrlesmithjr.manage_lvm role for format.
+seed_lvm_groups: "{{ seed_lvm_groups_default + seed_lvm_groups_extra }}"
+
+# Default list of seed volume groups. See mrlesmithjr.manage_lvm role for
+# format.
+seed_lvm_groups_default: "{{ [seed_lvm_group_data] if seed_lvm_group_data_enabled | bool else [] }}"
+
+# Additional list of seed volume groups. See mrlesmithjr.manage_lvm role for
+# format.
+seed_lvm_groups_extra: []
+
+# Whether a 'data' LVM volume group should exist on the seed. By default this
+# contains a 'docker-volumes' logical volume for Docker volume storage.
+# Default is false.
+seed_lvm_group_data_enabled: false
+
+# Seed LVM volume group for data. See mrlesmithjr.manage_lvm role for format.
+seed_lvm_group_data:
+  vgname: data
+  disks: "{{ seed_lvm_group_data_disks }}"
+  create: True
+  lvnames: "{{ seed_lvm_group_data_lvs }}"
+
+# List of disks for use by seed LVM data volume group. Default to an invalid
+# value to require configuration.
+seed_lvm_group_data_disks:
+  - changeme
+
+# List of LVM logical volumes for the data volume group when using docker.
+seed_lvm_group_data_docker_lvs:
+  - "{{ seed_lvm_group_data_lv_docker_volumes }}"
+
+# List of LVM logical volumes for the data volume group when using podman.
+seed_lvm_group_data_podman_lvs:
+  - "{{ seed_lvm_group_data_lv_podman_volumes }}"
+
+# List of LVM logical volumes for the data volume group.
+seed_lvm_group_data_lvs: "{{ seed_lvm_group_data_podman_lvs if container_engine == 'podman' else seed_lvm_group_data_docker_lvs }}"
+
+# Docker volumes LVM backing volume.
+seed_lvm_group_data_lv_docker_volumes:
+  lvname: docker-volumes
+  size: "{{ seed_lvm_group_data_lv_docker_volumes_size }}"
+  create: True
+  filesystem: "{{ seed_lvm_group_data_lv_docker_volumes_fs }}"
+  mount: True
+  mntp: "{{ docker_volumes_path }}"
+
+seed_lvm_group_data_lv_podman_volumes:
+  lvname: podman-volumes
+  size: "{{ seed_lvm_group_data_lv_podman_volumes_size }}"
+  create: True
+  filesystem: "{{ seed_lvm_group_data_lv_podman_volumes_fs }}"
+  mount: True
+  mntp: "{{ podman_volumes_path }}"
+
+# Size of docker volumes LVM backing volume.
+seed_lvm_group_data_lv_docker_volumes_size: 75%VG
+
+# Filesystem for docker volumes LVM backing volume. ext4 allows for shrinking.
+seed_lvm_group_data_lv_docker_volumes_fs: ext4
+
+# Size of podman volumes LVM backing volume.
+seed_lvm_group_data_lv_podman_volumes_size: 75%VG
+
+# Filesystem for podman volumes LVM backing volume. ext4 allows for shrinking.
+seed_lvm_group_data_lv_podman_volumes_fs: ext4
+
+###############################################################################
+# Seed node sysctl configuration.
+
+# Dict of sysctl parameters to set.
+seed_sysctl_parameters: {}
+
+###############################################################################
+# Seed node tuned configuration.
+
+# Builtin tuned profile to use. Format is same as that used by giovtorres.tuned
+# role. Default is virtual-guest.
+seed_tuned_active_builtin_profile: "virtual-guest"
+
+###############################################################################
+# Seed node user configuration.
+
+# List of users to create. This should be in a format accepted by the
+# singleplatform-eng.users role.
+seed_users: "{{ users_default }}"
+
+###############################################################################
+# Seed node additional containers configuration
+
+# Dict of container images to start
+# Example:
+# seed_containers:
+#   squid:
+#     image: "docker.io/stackhpc/squid"
+#     pre: "{{ kayobe_env_config_path }}/containers/squid/pre.yml"
+#     post: "{{ kayobe_env_config_path }}/containers/squid/post.yml"
+#     tag: "3.5.20-1"
+#
+seed_containers: {}
+
+# Whether to attempt a basic authentication login to a registry when
+# deploying seed containers
+seed_deploy_containers_registry_attempt_login: "{{ kolla_docker_registry_username is truthy and kolla_docker_registry_password is truthy }}"
+
+###############################################################################
+# Seed node firewalld configuration.
+
+# Whether to install and enable firewalld.
+seed_firewalld_enabled: false
+
+# A list of zones to create. Each item is a dict containing a 'zone' item.
+seed_firewalld_zones: []
+
+# A firewalld zone to set as the default. Default is unset, in which case the
+# default zone will not be changed.
+seed_firewalld_default_zone:
+
+# A list of firewall rules to apply. Each item is a dict containing arguments
+# to pass to the firewalld module. Arguments are omitted if not provided, with
+# the following exceptions:
+# - offline: true
+# - permanent: true
+# - state: enabled
+seed_firewalld_rules: []
+
+###############################################################################
+# Seed node swap configuration.
+
+# List of swap devices. Each item is a dict containing a 'device' item.
+seed_swap: []
