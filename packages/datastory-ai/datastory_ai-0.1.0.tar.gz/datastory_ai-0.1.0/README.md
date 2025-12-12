@@ -1,0 +1,283 @@
+# 📊 DataStory - Automatic Storytelling from Data
+
+[![PyPI version](https://badge.fury.io/py/datastory.svg)](https://pypi.org/project/datastory/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Turn raw data into compelling business narratives automatically.** 
+
+DataStory analyzes your datasets and generates full written reports with insights, trends, and recommendations - no LLMs needed, pure Python intelligence.
+
+## 🚀 The Problem
+
+- **Dashboards don't explain insights** - They show graphs, not stories
+- **People want narratives** - Business stakeholders need context, not just charts
+- **Manual analysis takes time** - Writing reports is tedious and repetitive
+- **Insights get lost** - Important patterns buried in spreadsheets
+
+## 💡 The Solution
+
+DataStory automatically:
+- ✅ Analyzes your data for trends, patterns, and anomalies
+- ✅ Generates natural language business narratives
+- ✅ Identifies risks and opportunities
+- ✅ Provides actionable recommendations
+- ✅ Exports to text, markdown, HTML, or PDF
+
+**All with a single line of code!**
+
+## 📦 Installation
+
+```bash
+pip install datastory
+```
+
+For full features (charts, Excel, PDF):
+```bash
+pip install datastory[full]
+```
+
+## 🎯 Quick Start
+
+### One-Line Magic
+
+```python
+from datastory import narrate
+
+report = narrate("sales.csv")
+print(report)
+```
+
+**Output:**
+```
+📊 EXECUTIVE SUMMARY
+==================================================
+Analyzed 1,247 records across 8 dimensions.
+
+🟡 3 high-priority insights identified.
+
+Key Highlights:
+1. Sales increased by 12.3% from $450,000 to $505,000.
+2. Customer churn rose in April by 8.5%, requiring attention.
+3. West Africa region dominates sales, accounting for 45.2% of revenue.
+
+📈 KEY FINDINGS
+==================================================
+
+**Performance Trends:**
+• Sales Shows Strong Growth: Sales increased by 12.3% from $450,000 to $505,000.
+• Revenue per Customer Rising: Average order value grew by 15.7%.
+
+**Notable Anomalies:**
+• Unusual Values Detected in Order Quantity: Found 23 outliers (1.8% of data).
+
+**Relationships Discovered:**
+• Strong Positive Link: Marketing Spend and Revenue move together (correlation: 0.85).
+
+🔍 DETAILED ANALYSIS
+==================================================
+
+**High-Priority Insights:**
+
+🟡 Customer Churn Rising
+   Customer churn increased by 8.5% in April. This represents a significant concern.
+
+🟡 Low Stock Risk: Product X
+   Minimum inventory is 12 units, significantly below average of 150. Consider restocking.
+
+💡 RECOMMENDATIONS
+==================================================
+1. Investigate the decline in customer retention and implement recovery strategies
+2. Capitalize on the growth in revenue per customer to maximize returns
+3. Replenish product_x inventory to avoid stockouts
+4. Review outliers in order quantity to identify root causes
+5. Leverage identified relationships between metrics for predictive insights
+
+==================================================
+Report generated on December 03, 2025 at 1:20 PM
+Powered by DataStory - Automatic Storytelling from Data
+```
+
+## 🔥 Key Features
+
+### 1. **Pure Python Intelligence**
+- No LLMs or AI APIs required
+- Works offline
+- Fast and deterministic
+- Zero-cost analysis
+
+### 2. **Comprehensive Analysis**
+- Statistical summaries
+- Trend detection
+- Anomaly identification
+- Correlation discovery
+- Time series patterns
+- Risk assessment
+
+### 3. **Natural Language Output**
+- Business-friendly narratives
+- Context-aware descriptions
+- Action-oriented recommendations
+- Multiple detail levels
+
+### 4. **Flexible Export**
+```python
+from datastory import DataStory
+
+story = DataStory()
+story.load("data.csv")
+
+# Export to different formats
+story.export("report.txt", format="text")
+story.export("report.md", format="markdown")
+story.export("report.html", format="html", include_charts=True)
+story.export("report.pdf", format="pdf")
+```
+
+### 5. **Multiple Data Sources**
+```python
+# CSV, Excel, JSON, Parquet
+story.load("sales.csv")
+story.load("data.xlsx")
+story.load("records.json")
+story.load("dataset.parquet")
+
+# URLs
+story.load("https://example.com/data.csv")
+
+# Pandas DataFrames
+import pandas as pd
+df = pd.read_sql("SELECT * FROM sales", conn)
+story.load(df)
+```
+
+## 📖 Advanced Usage
+
+### Customization
+
+```python
+from datastory import DataStory
+
+# Configure narrative style
+config = {
+    "style": "business",  # business, casual, technical
+    "detail_level": "detailed",  # brief, medium, detailed
+    "include_recommendations": True
+}
+
+story = DataStory(config=config)
+story.load("sales.csv")
+narrative = story.generate_narrative()
+print(narrative)
+```
+
+### Programmatic Access
+
+```python
+# Access insights directly
+story = DataStory()
+story.load("data.csv")
+
+insights = story.extract_insights()
+for insight in insights:
+    print(f"{insight.type}: {insight.title}")
+    print(f"Priority: {insight.priority}")
+    print(f"Description: {insight.description}\n")
+```
+
+### Analysis Results
+
+```python
+# Get raw analysis results
+story = DataStory()
+story.load("data.csv")
+
+results = story.analyze()
+print(results["trends"])
+print(results["anomalies"])
+print(results["correlations"])
+```
+
+## 🎓 Use Cases
+
+### 1. **Business Intelligence**
+Generate executive summaries from sales, marketing, or financial data.
+
+### 2. **Data Science Reports**
+Automatically document exploratory data analysis (EDA) findings.
+
+### 3. **Automated Monitoring**
+Create daily/weekly reports on KPIs and metrics.
+
+### 4. **Client Reporting**
+Transform raw analytics into client-ready narratives.
+
+### 5. **Academic Research**
+Quickly summarize dataset characteristics and patterns.
+
+## 🆚 Why DataStory?
+
+| Feature | DataStory | Traditional BI | LLM-based |
+|---------|-----------|----------------|-----------|
+| **Setup Time** | Instant | Hours/Days | API setup |
+| **Cost** | Free | $$$$ | $$$ per call |
+| **Offline Use** | ✅ Yes | ❌ No | ❌ No |
+| **Customizable** | ✅ Full control | ⚠️ Limited | ❌ Black box |
+| **Speed** | ⚡ Instant | 🐌 Slow | ⏳ API delays |
+| **Privacy** | 🔒 Local | ⚠️ Cloud | ❌ Sent to API |
+| **Deterministic** | ✅ Yes | ✅ Yes | ❌ No |
+
+## 📊 Example Datasets
+
+The `examples/` directory includes sample datasets:
+- `sales.csv` - Sales performance data
+- `customer_churn.csv` - Customer retention data
+- `inventory.csv` - Stock levels and products
+
+## 🛠️ Technical Details
+
+### Architecture
+- **Core Analyzer**: Statistical analysis using pandas/numpy
+- **Insight Extractor**: Pattern recognition and business logic
+- **Narrative Generator**: Template-based natural language generation
+- **Data Loaders**: Multi-format support (CSV, Excel, JSON, Parquet)
+- **Report Formatters**: Export to text, markdown, HTML, PDF
+
+### Dependencies
+- **Core**: `pandas`, `numpy`
+- **Optional**: `matplotlib` (charts), `openpyxl` (Excel), `reportlab` (PDF)
+
+### Performance
+- Analyzes 100K rows in <2 seconds
+- Generates narrative in <1 second
+- Low memory footprint
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+Built with ❤️ by [Idriss Bado](https://github.com/idrissbado)
+
+Inspired by the need for better data communication in business.
+
+## 📧 Contact
+
+- GitHub: [@idrissbado](https://github.com/idrissbado)
+- PyPI: [datastory](https://pypi.org/project/datastory/)
+
+---
+
+⭐ **Star this repo if you find it useful!**
+
+🐛 **Found a bug?** [Open an issue](https://github.com/idrissbado/DataStory/issues)
+
+💡 **Have an idea?** [Start a discussion](https://github.com/idrissbado/DataStory/discussions)
