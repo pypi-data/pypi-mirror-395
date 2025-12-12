@@ -1,0 +1,3 @@
+
+
+def convert_p8_image_data_to_bgra8888(palette_data: bytes, image_data: bytes) -> bytes: ...
