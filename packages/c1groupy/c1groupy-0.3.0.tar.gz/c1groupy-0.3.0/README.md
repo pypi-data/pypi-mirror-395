@@ -1,0 +1,579 @@
+# c1gpy
+
+C1G company Python module for utilities and project setup.
+
+## Installation
+
+Install the package using pip or uv:
+
+```bash
+pip install c1groupy
+```
+
+Or with uv:
+
+```bash
+uv pip install c1groupy
+```
+
+## Features
+
+### 1. Streamlit Project Initialization
+
+The `initialize-streamlit-project` command creates a fully configured Streamlit multi-page application with Docker support and Pre-commit hooks.
+
+#### Usage
+
+```bash
+initialize-streamlit-project <project-name> [--path <directory>] [--author-email <email>]
+```
+
+**Arguments:**
+- `project-name` (required): Name of the project to create
+- `--path` (optional): Directory where the project should be created (default: current directory)
+- `--author-email` (optional): Author email address for project metadata
+
+**Example:**
+
+```bash
+initialize-streamlit-project my-streamlit-app --author-email developer@example.com
+```
+
+This will create a new directory `my-streamlit-app/` with the following structure:
+
+```
+my-streamlit-app/
+├── src/
+│   ├── app/                # Streamlit application
+│   │   ├── App.py          # Main entry point
+│   │   └── pages/          # Additional pages
+│   │       ├── 1_Page_1.py
+│   │       └── 2_Page_2.py
+│   └── entrypoint.sh       # Container entrypoint script
+├── tests/                  # Test files
+│   └── test_example.py
+├── Dockerfile              # Docker configuration
+├── docker-compose.yml      # Docker Compose configuration
+├── pyproject.toml          # Project dependencies
+├── .pre-commit-config.yaml # Pre-commit hooks
+├── .gitignore              # Git ignore rules
+└── README.md               # Project documentation
+```
+
+#### What's Included
+
+**Multi-page Streamlit App:**
+- Main page (`App.py`) with welcome content
+- Two example pages demonstrating charts and forms
+- Proper page configuration and navigation
+
+**Docker Support:**
+- `Dockerfile` with Python 3.12 and uv package manager
+- `docker-compose.yml` configured for local development
+- Smart entrypoint script that supports:
+  - `LOCALRUN=TRUE`: Hot-reloading for development
+  - `LOCALRUN=FALSE`: Production mode
+  - `PYTEST=TRUE`: Run tests in container
+- Volume mounting of `src/` directory for live code updates
+
+**Development Tools:**
+- `.pre-commit-config.yaml` with ruff linting and formatting
+- `.gitignore` configured for Python projects
+- Git repository initialized with initial commit
+- Example test file with pytest
+
+**Documentation:**
+- Comprehensive README with setup and usage instructions
+
+#### Getting Started with Your New Project
+
+After creating a project, navigate to it and choose your development method:
+
+**Option 1: Local Development with uv**
+
+```bash
+uv sync
+uv run streamlit run src/app/App.py
+```
+
+**Option 2: Docker Development**
+
+```bash
+docker-compose up --build --force-recreate --remove-orphans
+```
+
+The application will be available at http://localhost:8501
+
+**Option 3: Run Tests**
+
+Locally:
+```bash
+uv run pytest tests/
+```
+
+In Docker:
+```bash
+docker-compose run -e PYTEST=TRUE streamlit-app
+```
+
+#### Adding New Pages
+
+This template uses Streamlit's `st.navigation()` for organized multi-page navigation.
+
+To add a new page:
+
+1. Create a new Python file in `src/app/pages/` (e.g., `analytics.py`)
+2. Add your page content:
+```python
+import streamlit as st
+
+st.title("Analytics Dashboard")
+# Your page content here
+```
+
+3. Register the page in `src/app/App.py`:
+```python
+pages = {
+    "📊 Main": [
+        st.Page("pages/1_Page_1.py", title="Page 1", icon="📈"),
+        st.Page("pages/analytics.py", title="Analytics", icon="📊"),  # New page
+    ],
+    # ...
+}
+```
+
+#### Docker Environment Variables
+
+The entrypoint script supports the following environment variables:
+
+- `LOCALRUN`: Set to `TRUE` for development mode with hot-reloading (default: `FALSE`)
+- `PYTEST`: Set to `TRUE` to run tests instead of the app (default: `FALSE`)
+- `PORT`: Port for Streamlit server (default: `8501`)
+
+---
+
+## 2. FastAPI Project Initialization
+
+The initialize-fastapi-project command creates a fully configured FastAPI application with organized router structure, Docker support, and Pre-commit hooks.
+
+### Usage
+
+```bash
+initialize-fastapi-project <project-name> [--path <directory>] [--author-email <email>]
+```
+
+**Arguments:**
+- `project-name` (required): Name of the project to create
+- `--path` (optional): Directory where the project should be created (default: current directory)
+- `--author-email` (optional): Author email address for project metadata
+
+**Example:**
+
+```bash
+initialize-fastapi-project my-api --author-email developer@example.com
+```
+
+This will create a new directory `my-api/` with the following structure:
+
+```
+my-api/
+├── src/
+│   ├── api_interface.py    # Main FastAPI app
+│   ├── routers/            # API routers
+│   │   ├── router1.py
+│   │   └── router2.py
+│   ├── endpoints/          # Endpoint logic
+│   │   ├── router1/
+│   │   │   └── example_endpoint.py
+│   │   └── router2/
+│   │       └── example_endpoint.py
+│   └── entrypoint.sh       # Container entrypoint script
+├── tests/                  # Test files
+│   └── test_example.py
+├── Dockerfile              # Docker configuration
+├── docker-compose.yml      # Docker Compose configuration
+├── pyproject.toml          # Project dependencies
+├── .pre-commit-config.yaml # Pre-commit hooks
+├── .gitignore              # Git ignore rules
+└── README.md               # Project documentation
+```
+
+### What's Included
+
+**FastAPI Application:**
+- Main API interface with CORS middleware
+- Two example routers with organized structure
+- Async endpoint examples
+- API key authentication (commented out, ready to enable)
+- Automatic interactive documentation (Swagger UI & ReDoc)
+
+**Docker Support:**
+- Multi-stage Dockerfile with Python 3.12 and uv
+- `docker-compose.yml` configured for local development
+- Hypercorn ASGI server with uvloop for performance
+- Smart entrypoint script that supports:
+  - `LOCALRUN=TRUE`: Hot-reloading for development
+  - `LOCALRUN=FALSE`: Production mode with 4 workers
+  - `PYTEST=TRUE`: Run tests in container
+- Volume mounting of `src/` directory for live code updates
+
+**Development Tools:**
+- `.pre-commit-config.yaml` with ruff linting and formatting
+- `.gitignore` configured for Python projects
+- Git repository initialized with initial commit
+- Example test file with pytest and TestClient
+
+**Documentation:**
+- Comprehensive README with API structure explanation
+- Examples for adding new endpoints and routers
+
+### Getting Started with Your New FastAPI Project
+
+After creating a project, navigate to it and choose your development method:
+
+**Option 1: Local Development with uv**
+
+```bash
+uv sync
+uv run hypercorn src.api_interface:rest_api --bind :8000 --reload
+```
+
+**Option 2: Docker Development**
+
+```bash
+docker-compose up --build --force-recreate --remove-orphans
+```
+
+The API will be available at:
+- **API**: http://localhost:8000
+- **Interactive Docs**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+**Option 3: Run Tests**
+
+Locally:
+```bash
+uv run pytest tests/
+```
+
+In Docker:
+```bash
+docker-compose run -e PYTEST=TRUE fastapi-app
+```
+
+### API Structure
+
+The FastAPI template uses a clean separation of concerns:
+
+- **`api_interface.py`**: Main FastAPI app with middleware and router registration
+- **`routers/`**: Route definitions and request/response handling
+- **`endpoints/`**: Business logic separated by router
+
+### Adding New Endpoints
+
+1. Create endpoint logic in `src/endpoints/router_name/new_endpoint.py`:
+```python
+async def get_data() -> dict:
+    return {"data": "example"}
+```
+
+2. Add route in `src/routers/router_name.py`:
+```python
+from endpoints.router_name import new_endpoint
+
+@router.get("/data")
+async def get_data():
+    return await new_endpoint.get_data()
+```
+
+### API Security
+
+The template includes commented-out API key authentication that can be easily enabled:
+
+```python
+# In routers/router1.py
+from fastapi.security import APIKeyHeader
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+@router.get("/secure")
+async def secure_endpoint(api_key: str = Security(api_key_header)):
+    # Validate api_key
+    return {"secure": "data"}
+```
+
+### Docker Environment Variables
+
+- `PORT`: Port for the API server (default: `8000`)
+- `LOCALRUN`: Set to `TRUE` for development mode with hot-reloading (default: `FALSE`)
+- `PYTEST`: Set to `TRUE` to run tests instead of the app (default: `FALSE`)
+
+---
+
+## 3. Logging
+
+Reusable logging utilities with colorized console output and Google Cloud Logging support.
+
+### Local Development Logger
+
+Pretty-printed console output with colors using Rich, plus optional file logging.
+
+```python
+from c1gpy.logging import get_logger
+
+# Basic usage
+logger = get_logger(__name__, level="DEBUG")
+logger.info("Application started")
+logger.debug("Debug information")
+logger.error("Something went wrong")
+
+# With file logging
+logger = get_logger(
+    __name__,
+    level="INFO",
+    log_dir="./logs",
+    log_filename="app.log"
+)
+```
+
+**Fluent builder pattern:**
+
+```python
+from c1gpy.logging import C1GLogger
+
+logger = (
+    C1GLogger("my_app")
+    .with_level("DEBUG")
+    .with_file_logging("./logs", filename="app.log")
+    .build()
+)
+```
+
+**Parameters:**
+- `name`: Logger name (typically `__name__`)
+- `level`: Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
+- `console_format`: Format string for console output
+- `file_format`: Format string for file output
+- `log_dir`: Directory for log files (enables file logging)
+- `log_filename`: Custom log file name
+
+### Google Cloud Logger
+
+For production deployments on GCP. Sends logs to Google Cloud Logging without console output.
+
+```python
+from c1gpy.logging import get_cloud_logger
+
+logger = get_cloud_logger(__name__, level="INFO")
+logger.info("Application started")
+logger.error("Something went wrong")  # Visible in GCP Error Reporting
+```
+
+**Fluent builder pattern:**
+
+```python
+from c1gpy.logging import C1GCloudLogger
+
+logger = (
+    C1GCloudLogger("my_app")
+    .with_level("DEBUG")
+    .build()
+)
+```
+
+**Requirements:**
+- `google-cloud-logging` package (included in dependencies)
+- GCP authentication (Application Default Credentials, service account, etc.)
+
+**Parameters:**
+- `name`: Logger name (typically `__name__`)
+- `level`: Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
+- `log_format`: Format string for log messages
+
+---
+
+## 4. Utilities
+
+Common utility functions for authentication and HTTP requests.
+
+### Password Hashing (Argon2)
+
+Secure password hashing using Argon2id algorithm.
+
+```python
+from c1gpy.utils import hash_password, verify_password
+
+# Hash password for storage
+hashed = hash_password("user_password")
+
+# Verify on login
+if verify_password(input_password, stored_hash):
+    print("Login successful")
+```
+
+### Async HTTP Client
+
+HTTP client with retry, rate limiting, exponential backoff, and HTTP/2 support.
+
+```python
+from c1gpy.utils import AsyncHTTPClient, HTTPClientError, JSONDecodeError
+
+# Basic usage (no retries, HTTP/2 enabled)
+async with AsyncHTTPClient() as client:
+    data = await client.get("https://api.example.com/data")
+
+# With retries and backoff
+client = AsyncHTTPClient(
+    base_url="https://api.example.com",
+    retries=3,
+    backoff_factor=2.0,      # delays: 2s, 4s, 8s
+    rate_limit_delay=0.5,    # min 0.5s between requests
+    http2=True,              # default
+)
+
+try:
+    data = await client.get("/endpoint")
+    data = await client.post("/create", json={"key": "value"})
+except HTTPClientError as e:
+    print(f"Request failed: {e}, status: {e.status_code}")
+except JSONDecodeError as e:
+    print(f"Invalid JSON response: {e}")
+finally:
+    await client.close()
+```
+
+**Parameters:**
+- `base_url`: Optional base URL for all requests
+- `retries`: Number of retry attempts (default: 0)
+- `backoff_factor`: Multiplier for exponential backoff (default: 1.0)
+- `rate_limit_delay`: Minimum delay between requests in seconds (default: 0)
+- `timeout`: Request timeout in seconds (default: 30)
+- `http2`: Use HTTP/2 protocol (default: True)
+
+**Methods:** `get`, `post`, `put`, `patch`, `delete`
+
+**Exceptions:**
+- `HTTPClientError`: Raised when request fails after all retries (includes `status_code`)
+- `JSONDecodeError`: Raised when response is not a valid JSON dict
+
+---
+
+## 5. Google Cloud Utilities
+
+Clients for Google Cloud services. All clients support service account JSON credentials or Application Default Credentials.
+
+### Secret Manager
+
+```python
+from c1gpy.google_utils import SecretManagerClient
+
+client = SecretManagerClient("my-project")
+
+# Get a secret
+api_key = client.get_secret("api-key")
+db_password = client.get_secret("db-password", version="2")
+
+# Create a new secret
+client.create_secret("new-secret", "secret-value")
+
+# List all secrets
+secrets = client.list_secrets()
+```
+
+### Google Sheets
+
+```python
+from c1gpy.google_utils import GoogleSheetsClient
+
+client = GoogleSheetsClient("service-account.json")
+
+# Read data
+data = client.read_sheet("spreadsheet_id", "Sheet1!A1:D10")
+
+# Write data
+client.write_sheet("spreadsheet_id", "Sheet1!A1", [["Name", "Age"], ["Alice", 30]])
+
+# Append data
+client.append_sheet("spreadsheet_id", "Sheet1!A1", [["Bob", 25]])
+
+# Clear a range
+client.clear_sheet("spreadsheet_id", "Sheet1!A1:D10")
+```
+
+### Cloud Storage
+
+```python
+from c1gpy.google_utils import CloudStorageClient
+
+client = CloudStorageClient()
+
+# Upload data
+client.upload_blob("my-bucket", "data.json", '{"key": "value"}')
+client.upload_file("my-bucket", "image.png", "/path/to/image.png")
+
+# Download data
+content = client.download_blob("my-bucket", "data.json")
+client.download_blob_to_file("my-bucket", "data.json", "/local/path.json")
+
+# List and check blobs
+blobs = client.list_blobs("my-bucket", prefix="data/")
+exists = client.blob_exists("my-bucket", "data.json")
+
+# Delete
+client.delete_blob("my-bucket", "data.json")
+```
+
+### Google Drive
+
+```python
+from c1gpy.google_utils import GoogleDriveClient
+
+client = GoogleDriveClient("service-account.json")
+
+# List files
+files = client.list_files()
+files = client.list_files(folder_id="folder_id")
+
+# Upload
+result = client.upload_file("/path/to/file.pdf", name="document.pdf", folder_id="folder_id")
+result = client.upload_bytes(b"content", "file.txt")
+
+# Download
+content = client.download_file("file_id")
+client.download_file_to_path("file_id", "/local/path.pdf")
+
+# Create folder
+folder = client.create_folder("New Folder", parent_folder_id="parent_id")
+
+# Delete
+client.delete_file("file_id")
+```
+
+### Google Docs
+
+```python
+from c1gpy.google_utils import GoogleDocsClient
+
+client = GoogleDocsClient("service-account.json")
+
+# Read document
+doc = client.get_document("document_id")
+text = client.get_document_text("document_id")
+
+# Create document
+new_doc = client.create_document("My Document")
+
+# Edit document
+client.insert_text("document_id", "Hello, World!", index=1)
+client.replace_text("document_id", "old text", "new text")
+client.delete_content("document_id", start_index=1, end_index=10)
+```
+
+**Requirements:**
+- GCP authentication (service account JSON or Application Default Credentials)
+- Appropriate API permissions enabled in GCP project
+
+---
+
+## License
+
+MIT
