@@ -1,0 +1,110 @@
+Metadata-Version: 2.4
+Name: markdown_extract
+Version: 0.1.1
+Summary: A library to extract sections from Markdown files based on headers.
+Author-email: Tongyuan Miao <david.tongyuan@gmail.com>
+License: MIT License
+        
+        Copyright (c) 2025 Tongyuan Miao
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/cogitoergo-sum/markdown_extract
+Project-URL: Bug Tracker, https://github.com/cogitoergo-sum/markdown_extract/issues
+Keywords: markdown,parser,extraction,headers
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+# Markdown Extract
+
+A Simple Python library to parse Markdown files from headers.
+
+[![PyPI Latest Release](https://img.shields.io/pypi/v/markdown-extract.svg)](https://pypi.org/project/markdown-extract/)
+
+## Installation
+
+Install via pip:
+
+```bash
+pip install markdown-extract
+```
+
+## Usage
+
+```python
+from markdown_extract import MarkdownExtractor
+
+markdown_content = """
+# Section 1
+Some content here.
+
+## Subsection 1.1
+More details.
+"""
+
+extractor = MarkdownExtractor(markdown_content)
+
+# 1. Access sections using dictionary-style brackets
+print(extractor["Section 1"])
+# Output:
+# # Section 1
+# Some content here.
+# ...
+
+# 2. Access nested sections
+print(extractor["Section 1"]["Subsection 1.1"])
+# Output:
+# ## Subsection 1.1
+# More details.
+
+# 3. List child headers
+print(extractor.list())
+# Output: ['Section 1']
+
+print(extractor["Section 1"].list())
+# Output: ['Subsection 1.1']
+
+# 4. Access the full document (root)
+print(extractor[""])
+```
+
+## Features
+
+- **Nested Parsing**: Correctly parses Markdown headers into a nested structure.
+- **Robust Extraction**: Ignores "headers" that are actually inside:
+    - Code blocks (` ``` `)
+    - Tables
+    - Math blocks (`$$`)
+    - YAML front matter (`---`)
+- **Indentation Support**: Handles indented headers correctly.
+- **Easy Access**: Use bracket notation (`extractor["Header"]`) or `.get_section()` method.
+- **Discovery**: Use `.list()` to see available child headers at any level.
+
+## Development
+
+To run the tests:
+
+```bash
+python tests/run_tests.py
+```
