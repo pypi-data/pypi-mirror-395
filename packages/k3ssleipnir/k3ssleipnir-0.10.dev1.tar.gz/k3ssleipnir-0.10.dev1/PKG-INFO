@@ -1,0 +1,175 @@
+Metadata-Version: 2.4
+Name: k3ssleipnir
+Version: 0.10.dev1
+Summary: A Python based helper to setup a K3s based clusters using declarative configuration.
+Project-URL: Homepage, https://codeberg.org/nicc777/K3sSleipnir
+Project-URL: Issues, https://codeberg.org/nicc777/K3sSleipnir/issues
+Author-email: Nico Coetzee <nicc777@gmail.com>
+License-Expression: MIT
+License-File: LICENSE
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: System
+Classifier: Topic :: System :: Clustering
+Classifier: Topic :: System :: Installation/Setup
+Classifier: Topic :: System :: Software Distribution
+Requires-Python: >=3.12
+Requires-Dist: boto3>=1.41.0
+Requires-Dist: gitpython>=3.1.45
+Requires-Dist: kr8s>=0.20.13
+Requires-Dist: paramiko>=4.0.0
+Requires-Dist: pydantic>=2.12.4
+Requires-Dist: pyyaml>=6.0.3
+Requires-Dist: scp>=0.15.0
+Description-Content-Type: text/markdown
+
+# K3sSleipnir - Deploying K3s based Platforms
+
+Named after the workhorse [SSCV Sleipnir](https://en.wikipedia.org/wiki/SSCV_Sleipnir). The name itself is from [Norse mythology](https://en.wikipedia.org/wiki/Sleipnir).
+
+A Python based helper to setup a K3s based clusters using declarative configuration.
+
+Configuration is done via YAML file(s) that describe your desired end-state of your homelab k3s cluster.
+
+Features:
+
+* [x] Support for installing a k3s single node cluster on a remote server
+* [x] Support for installing a k3s multi node cluster on a remote servers
+* [x] Sensitive data (secrets) can be pulled from [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html)
+* [x] The YAML format follows a similar format to standard Kubernetes YAML files and should therefore be very familiar
+* [x] Several clusters can be defined in the same configuration file - ideal to test scenarios with multiple running clusters
+* [x] Support for cloning Git repositories to reference additional files/manifests
+* [x] Combine one or more cluster configuration for `kubectl` into a single file. Can also merge configuration with an existing file.
+* [x] Execute additional commands post cluster provisioning.
+
+> [!NOTE]
+> There are some limitations in the declarative approach but these will be discussed in the remainder of the guide.
+
+Future work:
+
+* Should there be interest, more public cloud providers and services can be supported for secrets management and DNS
+* Potentially support declarative definitions of public cloud based virtual machines on which to install and run k3s
+
+> [!IMPORTANT]
+> Keep in mind this is a personal project that I am just happy to share. Therefore, please use `issues` for support (for now) and keep in mind that the current codebase was hacked together in a couple of days, so it is not optimized, neither pretty... you have been warned :-)
+
+## Minimum Requirements
+
+> [!IMPORTANT]
+> Python version 3.12 or higher is required. Mac OS has a default version lower
+> than this which my cause the error `ModuleNotFoundError: No module named 'exceptiongroup'`
+> (see [issue 21](https://codeberg.org/nicc777/K3sSleipnir/issues/21)). On Mac,
+> use a tool like [homebrew](https://brew.sh/) to install the latest version
+> of Python.
+
+Assuming each server conforms to the [official k3s requirements](https://docs.k3s.io/installation/requirements), also take note of the following:
+
+* Each server must have an SSH server running
+* Each server must have some basic packages installed, including:
+  * `sudo` (with `visudo`)
+  * `curl`
+  * `podman` or `docker` to execute scripts post installation (also on the system running the `homelab` command)
+
+For convenience, it is highly recommended to use SSH keys for password less authentication.
+
+Assuming each server has a user called `k3s`, add the following to the `sudoers` file:
+
+```text
+k3s ALL=(ALL) NOPASSWD: /usr/local/bin/k3s-uninstall.sh
+k3s ALL=(ALL) NOPASSWD: /tmp/k3s_install.sh
+k3s ALL=(ALL) NOPASSWD: /tmp/web-forward-into-k3s.sh
+k3s ALL=(ALL) NOPASSWD: /usr/local/bin/k3s-agent-uninstall.sh
+```
+
+Executing commands on the remote servers requires an SSH private key available on the system that will run the utility.
+
+> [!IMPORTANT]
+> You may need to test the functioning of your `sudo` configuration first to ensure everything is working as expected. A common problem is that the rules may be overridden by commands after this customization, and a common fix is to ensure that these configuration additions are added right at the end of the configuration file.
+
+## Installing the Provisioning script
+
+### Install using PIP
+
+It is highly recommended to use a Python virtual environment.
+
+For installation using `pip`, run:
+
+```bash
+pip install k3ssleipnir
+```
+
+For usage instructions, run:
+
+```bash
+homelab --help
+```
+
+### Usage from Cloning this Repository
+
+Clone the repository and change into the project root.
+
+Run the following:
+
+```bash
+# Use a Python virtual environment
+python3 -m venv venv
+. venv/bin/activate
+pip3 install --upgrade -r requirements.txt
+
+# Run the tool
+cd src
+python3 -m homelab.homelabctl --help
+
+# Create a convenient alias:
+export SRC="${PWD}"
+alias homelab="cd ${SRC} && python3 -m k3ssleipnir.homelabctl "
+```
+
+## Quick Start
+
+> [!NOTE]
+> The full specification is documented in the [SPEC.md](./SPEC.md) file.
+
+At it's most basic, a cluster needs at least one server in order to deploy K3s on a single node.
+
+The most minimal configuration is therefore something like the following which will install `K3s` as a single node cluster on the defined server:
+
+```yaml
+---
+apiVersion: v1
+kind: Server
+metadata:
+  name: my-server
+spec:
+  address: 10.0.0.1
+  credentials:
+    credentialsType: private-key
+    value: /path/to/private-key
+    username: k3s
+---
+apiVersion: v1
+kind: K3sCluster
+metadata:
+  name: my-cluster
+spec:
+  tasks:
+    - cleanupPreviousClusterDeployment
+    - installK3s
+  servers:
+    - serverName: my-server
+  kubectlConfiguration:
+    targetKubeConfig: /home/user/homelab_clusters.yaml
+```
+
+Each time the command `homelab apply -f /home/user/my-homelab.yaml` is run, any existing deployment of K3s on `my-server` will be removed and a new installation will be done.
+
+As a final step, the configuration file `/home/user/homelab_clusters.yaml` will created, if it does not yet exist. If the file does exist and contains a previous definition of the deployment, the configuration will be updated. If the file exists with configurations of other clusters, the configuration of the new cluster will be added or updated, depending if it already exists or not.
+
+See the `examples/` directory for some additional examples.
