@@ -1,0 +1,559 @@
+{# scheduled_tasks_list.html.j2 - Custom template for displaying list of scheduled tasks #}
+
+<style>
+    .scheduled-task-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+        margin-bottom: 1rem;
+    }
+
+    .scheduled-task-card.enabled {
+        border-left-color: #2fb344;
+    }
+
+    .scheduled-task-card.disabled {
+        border-left-color: #868e96;
+        opacity: 0.7;
+    }
+
+    .scheduled-task-card.late {
+        border-left-color: #d63384;
+    }
+
+    .scheduled-task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .task-status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: 600;
+    }
+
+    .schedule-info {
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        margin-top: 0.5rem;
+    }
+
+    .task-meta {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .task-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .filter-section {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .filter-form {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .filter-group label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+    }
+    
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .view-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background: #fff;
+        z-index: 1;
+    }
+
+    .code-ellipsis {
+        max-width: 380px;
+        display: inline-block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+    }
+</style>
+
+<div class="container-fluid">
+    {# Filter Section #}
+    <div class="filter-section">
+        <form method="get" action="{{ widget.request.url_for('list_scheduled_tasks') }}" class="filter-form">
+            {% set current_view = (widget.current_view|default(widget.view|default(widget.request.query_params.get('view') if widget.request else None))) or 'cards' %}
+            <div class="filter-group">
+                <label for="search"><i class="fa fa-search"></i> Search</label>
+                <input type="text" 
+                       id="search" 
+                       name="search" 
+                       class="form-control" 
+                       placeholder="Search by name or function..." 
+                       value="{{ widget.current_search }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="origin"><i class="fa fa-tag"></i> Origin</label>
+                <select id="origin" name="origin" class="form-select">
+                    <option value="all" {% if widget.current_origin == 'all' %}selected{% endif %}>All Origins</option>
+                    {% for orig in widget.origins %}
+                    <option value="{{ orig }}" {% if widget.current_origin == orig %}selected{% endif %}>
+                        {{ orig }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="status"><i class="fa fa-power-off"></i> Status</label>
+                <select id="status" name="status" class="form-select">
+                    <option value="all" {% if widget.current_status == 'all' %}selected{% endif %}>All Status</option>
+                    <option value="enabled" {% if widget.current_status == 'enabled' %}selected{% endif %}>Enabled</option>
+                    <option value="disabled" {% if widget.current_status == 'disabled' %}selected{% endif %}>Disabled</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="view"><i class="fa fa-table"></i> View</label>
+                <select id="view" name="view" class="form-select">
+                    <option value="cards" {% if current_view == 'cards' %}selected{% endif %}>Cards</option>
+                    <option value="table" {% if current_view == 'table' %}selected{% endif %}>Table</option>
+                </select>
+            </div>
+            
+            <div class="filter-group" style="flex: 0 0 auto; min-width: auto;">
+                <label for="late_only"> <i class="fa fa-exclamation-triangle"></i> Late Only</label>
+                <input type="checkbox"
+                       id="late_only" 
+                       name="late_only" 
+                       class="form-check-input" 
+                       value="true"
+                       {% if widget.current_late_only %}checked{% endif %}>
+            </div>
+            
+            <div class="filter-actions" style="flex: 0 0 auto;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-filter"></i> Apply Filters
+                </button>
+                <a href="{{ widget.request.url_for('list_scheduled_tasks') }}" class="btn btn-secondary">
+                    <i class="fa fa-times"></i> Clear
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    {# Results Section #}
+    {% if widget.tasks|length == 0 %}
+    <div class="alert alert-info">
+        <i class="fa fa-info-circle"></i> No scheduled tasks found.
+    </div>
+    {% else %}
+    {% if current_view == 'table' %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height:70vh;">
+                <table class="table table-vcenter">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Function</th>
+                            <th>Schedule</th>
+                            <th>Origin</th>
+                            <th>Next Run</th>
+                            <th>Last Attempt</th>
+                            <th>Late</th>
+                            <th style="width: 280px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in widget.tasks %}
+                        <tr class="{% if not task.enabled %}text-muted{% endif %}">
+                            <td>
+                                <i class="fa fa-clock me-1"></i>{{ task.name }}
+                            </td>
+                            <td>
+                                {% if task.enabled %}
+                                    <span class="badge bg-success">Enabled</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <code class="code-ellipsis" title="{{ task.function }}">{{ task.function }}</code>
+                            </td>
+                            <td>
+                                {% if task.cron %}
+                                    <span class="badge bg-blue-lt" title="Cron">{{ task.cron }}</span>
+                                    {% if task.cron_is_valid is not none and not task.cron_is_valid %}
+                                        <span class="badge bg-danger ms-1" title="Invalid cron syntax: {{ task.cron_validation_error }}">
+                                            <i class="fa fa-exclamation-triangle"></i> Invalid cron
+                                        </span>
+                                    {% endif %}
+                                {% elif task.interval %}
+                                    <span class="badge bg-indigo-lt" title="Interval">{{ task.interval }}s</span>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                                {% if task.topic %}
+                                    <span class="ms-1 badge bg-teal-lt" title="Topic">{{ task.topic }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ task.origin or '-' }}</td>
+                            <td>{{ task.next_run.strftime('%Y-%m-%d %H:%M:%S') if task.next_run else 'N/A' }}</td>
+                            <td>{{ task.last_attempt.strftime('%Y-%m-%d %H:%M:%S') if task.last_attempt else 'Never' }}</td>
+                            <td>
+                                {% if task.is_late and task.enabled %}
+                                    <span class="badge bg-danger">Late</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="task-actions">
+                                    {% if task.last_task_id %}
+                                    <a href="{{ widget.url_task_details.replace('TASK_ID_REPLACE', task.last_task_id) }}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fa fa-eye"></i>
+                                    </a>
+                                    {% endif %}
+                                    <button type="button"
+                                            class="btn btn-sm {% if task.enabled %}btn-warning{% else %}btn-success{% endif %} toggle-task-btn"
+                                            data-task-id="{{ task.id }}"
+                                            data-task-name="{{ task.name }}"
+                                            data-enabled="{{ task.enabled|string|lower }}"
+                                            data-toggle-url="{{ widget.url_toggle_task.replace('TASK_ID_REPLACE', task.id|string) }}"
+                                            title="{{ 'Disable' if task.enabled else 'Enable' }}">
+                                        {% if task.enabled %}
+                                            <i class="fa fa-pause"></i>
+                                        {% else %}
+                                            <i class="fa fa-play"></i>
+                                        {% endif %}
+                                    </button>
+                                    <a href="{{ widget.url_edit_task.replace('TASK_ID_REPLACE', task.id|string) }}"
+                                       class="btn btn-sm btn-primary" title="Edit">
+                                        <i class="fa fa-edit"></i>
+                                    </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-success run-now-btn"
+                                            title="Run this task now"
+                                            data-task-function="{{ task.function }}"
+                                            data-task-name="{{ task.name }}"
+                                            data-task-kwargs='{{ task.kwargs | tojson | safe }}'>
+                                        <i class="fa fa-bolt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        {% for task in widget.tasks %}
+        <div class="col-12">
+            <div class="card scheduled-task-card {% if task.enabled %}enabled{% else %}disabled{% endif %} {% if task.is_late and task.enabled %}late{% endif %}">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="card-title">
+                                <i class="fa fa-clock me-2"></i>{{ task.name }}
+                                {% if task.enabled %}
+                                    <span class="badge bg-success ms-2">Enabled</span>
+                                {% else %}
+                                    <span class="badge bg-secondary ms-2">Disabled</span>
+                                {% endif %}
+                                {% if task.is_late and task.enabled %}
+                                    <span class="badge bg-danger ms-2">Late</span>
+                                {% endif %}
+                            </h5>
+                            
+                            <p class="task-meta mb-2">
+                                <strong>Function:</strong> <code>{{ task.function }}</code>
+                            </p>
+
+                            <div class="schedule-info">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        {% if task.cron %}
+                                        <div class="mb-2">
+                                            <strong><i class="fa fa-calendar-alt me-1"></i> Cron:</strong>
+                                            <code>{{ task.cron }}</code>
+                                            {% if task.cron_is_valid is not none and not task.cron_is_valid %}
+                                                <span class="badge bg-danger ms-2" title="Invalid cron syntax: {{ task.cron_validation_error }}">
+                                                    <i class="fa fa-exclamation-triangle"></i> Invalid cron
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                        {% if task.interval %}
+                                        <div class="mb-2">
+                                            <strong><i class="fa fa-clock me-1"></i> Interval:</strong>
+                                            {{ task.interval }} seconds
+                                        </div>
+                                        {% endif %}
+                                        {% if task.topic %}
+                                        <div class="mb-2">
+                                            <strong><i class="fa fa-folder me-1"></i> Topic:</strong>
+                                            {{ task.topic }}
+                                        </div>
+                                        {% endif %}
+                                        {% if task.origin %}
+                                        <div class="mb-2">
+                                            <strong><i class="fa fa-tag me-1"></i> Origin:</strong>
+                                            {{ task.origin }}
+                                        </div>
+                                        {% endif %}
+                                        <div class="mb-2">
+                                            <strong><i class="fa fa-cog me-1"></i> Kwargs:</strong>
+                                            <pre style="margin: 0; padding: 0.25rem; border-radius: 0.25rem; font-size: 0.8rem;">{{ task.kwargs }}</pre>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if task.next_run %}
+                                        <div class="mb-2">
+                                            <strong><i class="fa fa-forward me-1"></i> Next Run:</strong>
+                                            {{ task.next_run.strftime('%Y-%m-%d %H:%M:%S') if task.next_run else 'N/A' }}
+                                        </div>
+                                        {% endif %}
+                                        {% if task.last_attempt %}
+                                        <div class="mb-2">
+                                            <strong><i class="fa fa-history me-1"></i> Last Attempt:</strong>
+                                            {{ task.last_attempt.strftime('%Y-%m-%d %H:%M:%S') if task.last_attempt else 'Never' }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 d-flex align-items-center justify-content-end">
+                            <div class="task-actions">
+                                {% if task.last_task_id %}
+                                <a href="{{ widget.url_task_details.replace('TASK_ID_REPLACE', task.last_task_id) }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fa fa-eye me-1"></i> View Last Task
+                                </a>
+                                {% endif %}
+                                <button type="button"
+                                        class="btn btn-sm {% if task.enabled %}btn-warning{% else %}btn-success{% endif %} toggle-task-btn"
+                                        data-task-id="{{ task.id }}"
+                                        data-task-name="{{ task.name }}"
+                                        data-enabled="{{ task.enabled|string|lower }}"
+                                        data-toggle-url="{{ widget.url_toggle_task.replace('TASK_ID_REPLACE', task.id|string) }}">
+                                    {% if task.enabled %}
+                                        <i class="fa fa-pause me-1"></i> Disable
+                                    {% else %}
+                                        <i class="fa fa-play me-1"></i> Enable
+                                    {% endif %}
+                                </button>
+                                <a href="{{ widget.url_edit_task.replace('TASK_ID_REPLACE', task.id|string) }}"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="fa fa-edit me-1"></i> Edit
+                                </a>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-success run-now-btn"
+                                        title="Run this task now"
+                                        data-task-function="{{ task.function }}"
+                                        data-task-name="{{ task.name }}"
+                                        data-task-kwargs='{{ task.kwargs | tojson | safe }}'>
+                                    <i class="fa fa-bolt me-1"></i> Run Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token from meta tag or cookie
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) {
+            return meta.getAttribute('content');
+        }
+        // Fallback: try to get from cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrf_token') {
+                return decodeURIComponent(value);
+            }
+        }
+        return null;
+    }
+
+    // Handle run now button clicks
+    document.querySelectorAll('.run-now-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const originalHTML = this.innerHTML;
+            const taskFunction = this.getAttribute('data-task-function');
+            const taskName = this.getAttribute('data-task-name');
+            const kwargsJson = this.getAttribute('data-task-kwargs');
+            let kwargs = {};
+            try {
+                kwargs = kwargsJson ? JSON.parse(kwargsJson) : {};
+            } catch (e) {
+                console.error('Invalid kwargs JSON for task', taskName, e);
+                alert('Cannot run task: invalid parameters.');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Running...';
+            try {
+                if (typeof submitTask !== 'function') {
+                    throw new Error('submitTask is not available on this page');
+                }
+                const resp = await submitTask(taskFunction, `${taskName} (manual)`, kwargs);
+                if (resp && resp.task_id) {
+                    this.innerHTML = '<i class="fa fa-check me-1"></i> Started';
+                } else {
+                    this.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i> Failed';
+                }
+            } catch (err) {
+                console.error('Run Now failed', err);
+                this.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i> Error';
+                alert('Failed to submit task: ' + err.message);
+            } finally {
+                setTimeout(() => {
+                    this.disabled = false;
+                    this.innerHTML = originalHTML;
+                }, 1500);
+            }
+        });
+    });
+
+    // Handle toggle button clicks
+    document.querySelectorAll('.toggle-task-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            const taskName = this.getAttribute('data-task-name');
+            const isEnabled = this.getAttribute('data-enabled') === 'true';
+            const toggleUrl = this.getAttribute('data-toggle-url');
+            
+            // Disable button during request
+            this.disabled = true;
+            const originalHTML = this.innerHTML;
+            this.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Processing...';
+            
+            // Prepare headers
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            const csrfToken = getCsrfToken();
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken;
+            }
+            
+            // Make AJAX request
+            fetch(toggleUrl, {
+                method: 'POST',
+                headers: headers,
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update button state
+                    const newEnabled = data.enabled;
+                    this.setAttribute('data-enabled', newEnabled.toString());
+                    
+                    // Update button appearance
+                    if (newEnabled) {
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-warning');
+                        this.innerHTML = '<i class="fa fa-pause me-1"></i> Disable';
+                    } else {
+                        this.classList.remove('btn-warning');
+                        this.classList.add('btn-success');
+                        this.innerHTML = '<i class="fa fa-play me-1"></i> Enable';
+                    }
+                    
+                    // Update card styling
+                    const card = this.closest('.scheduled-task-card');
+                    if (newEnabled) {
+                        card.classList.remove('disabled');
+                        card.classList.add('enabled');
+                    } else {
+                        card.classList.remove('enabled');
+                        card.classList.add('disabled');
+                    }
+                    
+                    // Update badge in title
+                    const titleBadges = card.querySelector('.card-title');
+                    const statusBadge = titleBadges.querySelector('.badge.bg-success, .badge.bg-secondary');
+                    if (statusBadge) {
+                        if (newEnabled) {
+                            statusBadge.classList.remove('bg-secondary');
+                            statusBadge.classList.add('bg-success');
+                            statusBadge.textContent = 'Enabled';
+                        } else {
+                            statusBadge.classList.remove('bg-success');
+                            statusBadge.classList.add('bg-secondary');
+                            statusBadge.textContent = 'Disabled';
+                        }
+                    }
+                    
+                    // Show success message (optional - if you have a toast/notification system)
+                    if (typeof showNotification === 'function') {
+                        showNotification('success', data.message);
+                    }
+                } else {
+                    // Show error message
+                    alert('Error: ' + (data.message || 'Failed to toggle task'));
+                    this.innerHTML = originalHTML;
+                }
+                this.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error toggling task:', error);
+                alert('Error: Failed to toggle task. Please try again.');
+                this.innerHTML = originalHTML;
+                this.disabled = false;
+            });
+        });
+    });
+});
+</script>
