@@ -1,0 +1,94 @@
+name: Lint, build, and test package
+
+on:
+  pull_request:
+  push:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - run: pip install --upgrade
+          pip
+          .[dev]
+
+      - run: docformatter --check --diff src tests
+
+      - run: black --diff --check src/ tests/
+
+      - run: ruff check --output-format=github src/ tests/
+
+      - run: mypy src/ tests/
+
+      - run: python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.python-version }}
+          path: dist/*
+          retention-days: 1
+
+  test-python37:
+    needs: [build]
+    strategy:
+      matrix:
+        os: [macos-13, ubuntu-22.04]
+        python-version: ["3.7"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download wheels for Python3.7
+        uses: actions/download-artifact@v4
+        with:
+          # Since we don't build for Python 3.7, we download the Python 3.8 wheel instead.
+          name: wheel-3.8
+          path: dist/
+
+      - run: pip install --upgrade
+          pip
+          dist/clp_logging-*.whl
+          -r requirements-test.txt
+
+      - run: python -m unittest -fv
+
+  test:
+    needs: [build]
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        python-version: ["3.8", "3.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download wheels for Built Python Versions
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel-${{ matrix.python-version }}
+          path: dist/
+
+      - run: pip install --upgrade
+          pip
+          dist/clp_logging-*.whl
+          -r requirements-test.txt
+
+      - run: python -m unittest -fv
