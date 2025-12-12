@@ -1,0 +1,582 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HLA-Compass Module & Workflow API (Mini)",
+    "version": "1.0",
+    "description": "Minimal contract for module lifecycle endpoints that matter to module authors."
+  },
+  "servers": [
+    {
+      "url": "https://hub-dev.alithea.bio",
+      "description": "Dev environment"
+    },
+    {
+      "url": "https://hub-staging.alithea.bio",
+      "description": "Staging environment"
+    },
+    {
+      "url": "https://hub.alithea.bio",
+      "description": "Production environment"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Modules"
+    },
+    {
+      "name": "ModuleRuns"
+    },
+    {
+      "name": "Workflows"
+    }
+  ],
+  "paths": {
+    "/v1/modules": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "List modules available to the caller's organization",
+        "responses": {
+          "200": {
+            "description": "List of modules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ModuleSummary"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/modules/publish": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Publish a module version by referencing an OCI image",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModulePublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted for intake",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModulePublishResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid manifest or request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/module-runs": {
+      "post": {
+        "tags": [
+          "ModuleRuns"
+        ],
+        "summary": "Start a module run",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Run accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleRun"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/module-runs/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ModuleRunId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "ModuleRuns"
+        ],
+        "summary": "Fetch module run status",
+        "responses": {
+          "200": {
+            "description": "Module run payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleRun"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/module-runs/{id}/result": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ModuleRunId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "ModuleRuns"
+        ],
+        "summary": "Retrieve module run output payload",
+        "responses": {
+          "200": {
+            "description": "Module run result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows": {
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Create or update a workflow definition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workflow"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/WorkflowId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Get workflow definition",
+        "responses": {
+          "200": {
+            "description": "Workflow payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workflow"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}/runs": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/WorkflowId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Start a workflow run",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow run accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRun"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "ModuleRunId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Module run identifier"
+      },
+      "WorkflowId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Workflow identifier"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "ModuleSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "moduleName",
+          "currentVersion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "moduleName": {
+            "type": "string"
+          },
+          "currentVersion": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/ModulePricing"
+          }
+        }
+      },
+      "ModulePublishRequest": {
+        "type": "object",
+        "required": [
+          "imageRef",
+          "manifest"
+        ],
+        "properties": {
+          "imageRef": {
+            "type": "string",
+            "description": "Fully qualified OCI image reference"
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/ModuleManifest"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "org",
+              "private"
+            ]
+          },
+          "orgId": {
+            "type": "string"
+          }
+        }
+      },
+      "ModulePublishResponse": {
+        "type": "object",
+        "properties": {
+          "moduleId": {
+            "type": "string"
+          },
+          "versionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        }
+      },
+      "ModuleManifest": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "name",
+          "version",
+          "type",
+          "execution"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "enum": [
+              "1.0"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "no-ui",
+              "with-ui"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "execution": {
+            "type": "object",
+            "required": [
+              "entrypoint"
+            ],
+            "properties": {
+              "entrypoint": {
+                "type": "string"
+              }
+            }
+          },
+          "author": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              }
+            }
+          },
+          "permissions": {
+            "type": "object"
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/ModulePricing"
+          }
+        }
+      },
+      "ModulePricing": {
+        "type": "object",
+        "properties": {
+          "tiers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "tier",
+                "amountAct"
+              ],
+              "properties": {
+                "tier": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "amountAct": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ModuleRunRequest": {
+        "type": "object",
+        "required": [
+          "moduleId"
+        ],
+        "properties": {
+          "moduleId": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "interactive",
+              "async",
+              "workflow"
+            ]
+          }
+        }
+      },
+      "ModuleRun": {
+        "type": "object",
+        "required": [
+          "runId",
+          "moduleId",
+          "status"
+        ],
+        "properties": {
+          "runId": {
+            "type": "string"
+          },
+          "moduleId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "result": {
+            "type": "object"
+          }
+        }
+      },
+      "WorkflowDefinition": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "Workflow": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WorkflowDefinition"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "WorkflowRunRequest": {
+        "type": "object",
+        "required": [
+          "workflowId"
+        ],
+        "properties": {
+          "workflowId": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          }
+        }
+      },
+      "WorkflowRun": {
+        "type": "object",
+        "properties": {
+          "workflowRunId": {
+            "type": "string"
+          },
+          "workflowId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}
