@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2025 Knitli Inc.
+# SPDX-FileContributor: Adam Poulemanos <adam@knit.li>
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+"""Reranking capabilities for MS-Marco trained MiniLM models."""
+
+from __future__ import annotations
+
+import re
+
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from codeweaver.providers.reranking.capabilities.base import RerankingModelCapabilities
+
+
+def get_marco_reranking_capabilities() -> Sequence[RerankingModelCapabilities]:
+    """
+    Get the MS-Marco MiniLM reranking capabilities.
+    """
+    from codeweaver.providers.provider import Provider
+    from codeweaver.providers.reranking.capabilities.base import RerankingModelCapabilities
+    from codeweaver.providers.reranking.capabilities.types import PartialRerankingCapabilitiesDict
+
+    shared_capabilities: PartialRerankingCapabilitiesDict = {
+        "name": "Xenova/ms-marco-MiniLM-",
+        "max_input": 512,
+        "context_window": 512,
+        "tokenizer": "tokenizers",
+        "tokenizer_model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+        "supports_custom_prompt": False,
+    }
+    fastembed_models = ("L-6-v2", "L-12-v2")
+    sentence_transformers_models = ("L6-v2", "L12-v2")
+
+    ultra_light: PartialRerankingCapabilitiesDict = {
+        "name": "cross-encoder/ms-marco-TinyBERT-L2-v2",
+        "provider": Provider.SENTENCE_TRANSFORMERS,
+        "max_input": 512,
+        "context_window": 512,
+        "tokenizer": "tokenizers",
+        "tokenizer_model": "cross-encoder/ms-marco-TinyBERT-L2-v2",
+        "supports_custom_prompt": False,
+    }
+
+    assembled_capabilities: list[RerankingModelCapabilities] = []
+    assembled_capabilities.extend(
+        RerankingModelCapabilities.model_validate({
+            **shared_capabilities,
+            "name": f"{shared_capabilities['name']}{model}"
+            if re.match(r"^L-[61].*", model)
+            else f"{shared_capabilities['name']}{model.replace('Xenova', 'cross-encoder')}",
+            "provider": Provider.FASTEMBED
+            if re.match(r"^L-[61].*", model)
+            else Provider.SENTENCE_TRANSFORMERS,
+            "tokenizer_model": shared_capabilities["tokenizer_model"]
+            if shared_capabilities["name"] in {"L-6-v2", "L6-V2"}
+            else "cross-encoder/ms-marco-MiniLM-L12-v2",
+        })
+        for model in fastembed_models + sentence_transformers_models
+    )
+    assembled_capabilities.append(RerankingModelCapabilities.model_validate(ultra_light))
+    return assembled_capabilities
+
+
+__all__ = ("get_marco_reranking_capabilities",)

@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2025 Knitli Inc.
+# SPDX-FileContributor: Adam Poulemanos <adam@knit.li>
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# TRY300: Move return from try to else block - with as clause
+id: fix-try-return-as
+message: Move return statement from try to else block
+severity: info
+language: python
+rule:
+  pattern: |
+    try:
+        $$BODY
+        return $RET
+    except $EXC as $VAR:
+        $$HANDLER
+fix: |
+  try:
+      $$BODY
+  except $EXC as $VAR:
+      $$HANDLER
+  else:
+      return $RET
