@@ -1,0 +1,343 @@
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "amqp.jinja.include" as amqp -%}
+{%- import "util.jinja.include" as util -%}
+{{ util.CommonFileHeader() }}
+
+{%- set messagegroups = root.messagegroups %}
+{%- set package_name = project_name | lower | replace('-', '_') %}
+{%- set uses_cloudevents = namespace(value=false) %}
+{%- for messagegroupid, messagegroup in messagegroups.items() %}
+{%- for messageid, message in messagegroup.messages.items() %}
+{%- if cloudEvents.isCloudEvent(message) %}
+{%- set uses_cloudevents.value = true %}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+package {{ package_name }};
+
+import org.junit.jupiter.api.*;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import org.apache.qpid.protonj2.client.*;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import java.util.concurrent.CountDownLatch;
+{%- if uses_cloudevents.value %}
+{{ cloudEvents.CloudEventsImports() }}
+{%- endif %}
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Integration tests for AMQP producer using Testcontainers.
+ * 
+ * By default, tests run against ActiveMQ Artemis.
+ * Set AMQP_BROKER=rabbitmq environment variable to test against RabbitMQ.
+ * Set RABBITMQ_VERSION=3 or RABBITMQ_VERSION=4 to choose RabbitMQ version (default: 4).
+ */
+@Testcontainers
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class {{ class_name | strip_namespace }} {
+    private static final Logger logger = LogManager.getLogger({{ class_name | strip_namespace }}.class);
+    private static final String QUEUE_NAME = "exampleQueue";
+    private static final String AMQP_BROKER = System.getenv().getOrDefault("AMQP_BROKER", "artemis");
+    
+    @Container
+    private static GenericContainer<?> brokerContainer = createBrokerContainer();
+    
+    private URI brokerUrl;
+    
+    private static GenericContainer<?> createBrokerContainer() {
+        String broker = System.getenv().getOrDefault("AMQP_BROKER", "artemis");
+        logger.info("Creating AMQP broker container for: {}", broker);
+        
+        if ("rabbitmq".equalsIgnoreCase(broker)) {
+            String rabbitmqVersion = System.getenv().getOrDefault("RABBITMQ_VERSION", "4");
+            String imageTag = rabbitmqVersion.equals("3") ? "3-management" : "4-management";
+            logger.info("Using RabbitMQ version: {}", imageTag);
+            
+            GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse("rabbitmq:" + imageTag))
+                .withExposedPorts(5672, 15672)
+                .withEnv("RABBITMQ_DEFAULT_USER", "guest")
+                .withEnv("RABBITMQ_DEFAULT_PASS", "guest");
+            
+            // RabbitMQ 3.x requires AMQP 1.0 plugin, RabbitMQ 4.0+ has native support
+            if (rabbitmqVersion.equals("3")) {
+                container.withCommand("bash", "-c", 
+                    "rabbitmq-plugins enable rabbitmq_amqp1_0 && docker-entrypoint.sh rabbitmq-server");
+            }
+            
+            return container.waitingFor(Wait.forLogMessage(".*Server startup complete.*", 1)
+                    .withStartupTimeout(Duration.ofSeconds(120)));
+        } else {
+            // Default: ActiveMQ Artemis
+            return new GenericContainer<>(DockerImageName.parse("apache/activemq-artemis:latest"))
+                .withExposedPorts(5672)
+                .withEnv("ARTEMIS_USER", "guest")
+                .withEnv("ARTEMIS_PASSWORD", "guest")
+                .withEnv("ANONYMOUS_LOGIN", "true")
+                .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(60)));
+        }
+    }
+    
+    @BeforeAll
+    public void setUp() throws Exception {
+        Integer mappedPort = brokerContainer.getMappedPort(5672);
+        String host = brokerContainer.getHost();
+        brokerUrl = new URI(String.format("amqp://%s:%d", host, mappedPort));
+        logger.info("{} broker container started at {}", AMQP_BROKER, brokerUrl);
+    }
+    
+{%- for messagegroupid, messagegroup in messagegroups.items() %}
+    {%- set pascal_group_name = messagegroupid | pascal %}
+    {%- set class_name = (pascal_group_name | strip_namespace) + "EventProducer" %}
+    
+    {%- for messageid, message in messagegroup.messages.items() %}
+    {%- set messagename = messageid | pascal | strip_namespace %}
+    {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+    
+    @Test
+    @DisplayName("Test {{ messagename }} message sending")
+    public void test{{ messagename }}MessageSend() throws Exception {
+        logger.info("Starting test{{ messagename }}MessageSend");
+        
+        // Use unique queue name per test to avoid message accumulation
+        String queueName = "test-queue-{{ messagename | lower }}";
+        
+        PlainEndpointCredential credential = new PlainEndpointCredential("guest", "guest");
+        Map<String, String> options = new HashMap<>();
+        options.put("node", queueName);
+        {{ class_name }} producer = {{ class_name }}.createProducer(
+            credential,
+            {%- if cloudEvents.isCloudEvent(message) %}
+            null, // No beforeSend callback for test
+            {%- endif %}
+            options,
+            new ArrayList<>(List.of(brokerUrl))
+        );
+        
+        List<Message<?>> messagesReceived = new ArrayList<>();
+        CountDownLatch receiveLatch = new CountDownLatch(5);
+        
+        // Start a receiver to verify the messages were sent
+        Thread receiverThread = new Thread(() -> {
+            Client client = null;
+            Connection connection = null;
+            try {
+                client = Client.create();
+                ConnectionOptions connOptions = new ConnectionOptions();
+                connOptions.user("guest");
+                connOptions.password("guest");
+                
+                connection = client.connect(brokerUrl.getHost(), brokerUrl.getPort(), connOptions);
+                Receiver receiver = connection.openReceiver(queueName);
+                
+                // Wait for 5 messages with timeout
+                int attempts = 0;
+                while (messagesReceived.size() < 5 && attempts < 15) {
+                    Delivery delivery = receiver.receive(2, TimeUnit.SECONDS);
+                    if (delivery != null) {
+                        Message<?> message = delivery.message();
+                        messagesReceived.add(message);
+                        receiveLatch.countDown();
+                        delivery.accept();
+                        // Stop immediately after receiving 5 messages
+                        if (messagesReceived.size() >= 5) {
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+                
+                receiver.close();
+                connection.close();
+                client.close();
+            } catch (Exception ex) {
+                logger.error("Error in receiver thread", ex);
+                try {
+                    if (connection != null) connection.close();
+                    if (client != null) client.close();
+                } catch (Exception closeEx) {
+                    logger.debug("Error closing connection: " + closeEx.getMessage());
+                }
+            }
+        });
+        receiverThread.setDaemon(true);
+        receiverThread.start();
+        
+        // Give receiver time to connect
+        Thread.sleep(1000);
+        
+        // Create test data
+        {%- if message_body_type == "byte[]" %}
+        {{ message_body_type }} testData = new byte[0];
+        {%- else %}
+        {{ message_body_type }} testData = new {{ message_body_type }}();
+        {%- endif %}
+        {%- set schemaObj = schema_object(root, message.get('dataschemauri') or message.get('dataschema')) %}
+        {%- if schemaObj %}
+            {#- Get the actual schema from the versions structure -#}
+            {%- if schemaObj.versions %}
+                {%- set version_key = schemaObj.defaultversionid if schemaObj.defaultversionid else (schemaObj.versions.keys() | list | last) %}
+                {%- set avroSchema = schemaObj.versions[version_key].schema %}
+            {%- elif schemaObj.schema %}
+                {%- set avroSchema = schemaObj.schema %}
+            {%- else %}
+                {%- set avroSchema = schemaObj %}
+            {%- endif %}
+            {#- Now process the Avro schema fields -#}
+            {%- if avroSchema and avroSchema.type == "record" and avroSchema.fields %}
+                {%- for field in avroSchema.fields %}
+                    {#- Determine the actual field type and whether it's from a union -#}
+                    {%- if field.type is iterable and field.type is not string and field.type is not mapping %}
+                        {#- Union type like ['null', 'string'] or ['null', {...}] -#}
+                        {%- set non_null_types = field.type | reject('equalto', 'null') | list %}
+                        {%- if non_null_types | length > 0 %}
+                            {%- set actual_type = non_null_types[0] %}
+                            {%- set fieldtype = actual_type if actual_type is string else actual_type['type'] if (actual_type is mapping and 'type' in actual_type) else "unknown" %}
+                            {%- set is_union = true %}
+                        {%- else %}
+                            {%- set fieldtype = "unknown" %}
+                            {%- set actual_type = none %}
+                            {%- set is_union = false %}
+                        {%- endif %}
+                    {%- else %}
+                        {#- Direct type like 'string' or {'type': 'enum', ...} -#}
+                        {%- set actual_type = field.type %}
+                        {%- if field.type is string %}
+                            {%- set fieldtype = field.type %}
+                        {%- elif field.type is mapping and 'type' in field.type %}
+                            {%- set fieldtype = field.type['type'] %}
+                        {%- else %}
+                            {%- set fieldtype = "unknown" %}
+                        {%- endif %}
+                    {%- endif %}
+                    {%- if fieldtype == "string" %}
+        testData.set{{ field.name | pascal }}("test-{{ field.name }}");
+                    {%- elif fieldtype == "int" or fieldtype == "integer" %}
+        testData.set{{ field.name | pascal }}(42);
+                    {%- elif fieldtype == "long" %}
+        testData.set{{ field.name | pascal }}(42L);
+                    {%- elif fieldtype == "boolean" %}
+        testData.set{{ field.name | pascal }}(true);
+                    {%- elif fieldtype == "double" %}
+        testData.set{{ field.name | pascal }}(42.0);
+                    {%- elif fieldtype == "float" %}
+        testData.set{{ field.name | pascal }}(42.0f);
+                    {%- elif fieldtype == "array" %}
+        testData.set{{ field.name | pascal }}(new java.util.ArrayList<>());
+                    {%- elif fieldtype == "record" %}
+                        {#- Handle nested record types -#}
+                        {%- set record_namespace = actual_type.namespace if actual_type.namespace else avroSchema.namespace %}
+                        {%- set normalized_namespace = (data_project_name | lower | replace('-', '_')) + '.' + (record_namespace | lower | replace('.', '.') if record_namespace else '') %}
+        {{ normalized_namespace }}.{{ actual_type.name }} {{ field.name }}Obj = new {{ normalized_namespace }}.{{ actual_type.name }}();
+                        {%- if actual_type.fields %}
+                            {%- for nested_field in actual_type.fields %}
+                                {%- set nested_fieldtype = nested_field.type if nested_field.type is string else nested_field.type.type if nested_field.type is mapping else "unknown" %}
+                                {%- if nested_fieldtype == "string" %}
+        {{ field.name }}Obj.set{{ nested_field.name | pascal }}("test");
+                                {%- elif nested_fieldtype == "int" or nested_fieldtype == "integer" %}
+        {{ field.name }}Obj.set{{ nested_field.name | pascal }}(1);
+                                {%- elif nested_fieldtype == "long" %}
+        {{ field.name }}Obj.set{{ nested_field.name | pascal }}(1L);
+                                {%- elif nested_fieldtype == "boolean" %}
+        {{ field.name }}Obj.set{{ nested_field.name | pascal }}(true);
+                                {%- elif nested_fieldtype == "double" %}
+        {{ field.name }}Obj.set{{ nested_field.name | pascal }}(1.0);
+                                {%- elif nested_fieldtype == "float" %}
+        {{ field.name }}Obj.set{{ nested_field.name | pascal }}(1.0f);
+                                {%- endif %}
+                            {%- endfor %}
+                        {%- endif %}
+        testData.set{{ field.name | pascal }}({{ field.name }}Obj);
+                    {%- elif fieldtype == "enum" %}
+                        {%- set enum_namespace = actual_type.namespace if actual_type.namespace else avroSchema.namespace %}
+                        {%- set normalized_namespace = (data_project_name | lower | replace('-', '_')) + '.' + (enum_namespace | lower | replace('.', '.') if enum_namespace else '') %}
+        testData.set{{ field.name | pascal }}({{ normalized_namespace }}.{{ actual_type.name }}.{{ actual_type.symbols[0] | upper }});
+                    {%- else %}
+        // TODO: Unhandled field type '{{ fieldtype }}' for field '{{ field.name }}'
+                    {%- endif %}
+                {%- endfor %}
+            {%- endif %}
+        {%- endif %}
+        
+        // Send 5 messages
+        for (int i = 0; i < 5; i++) {
+            producer.send{{ messagename }}(testData
+            {%- if cloudEvents.isCloudEvent(message) -%}
+            {%- if message.envelopemetadata -%}
+            {%- for attrname, attribute in message.envelopemetadata.items() -%}
+            {%- if attribute.type == "uritemplate" -%}
+            {%- for placeholder in attribute.value | regex_search('\\{([A-Za-z0-9_]+)\\}') -%}
+            , "test-{{ placeholder }}"
+            {%- endfor -%}
+            {%- elif attribute.value is not defined and attrname not in ["id", "time", "datacontenttype", "dataschema"] -%}
+            , "test-{{ attrname }}"
+            {%- endif -%}
+            {%- endfor -%}
+            {%- endif -%}
+            {%- elif amqp.is_amqp(message) -%}
+            {%- if message.metadata -%}
+            {%- for attrname, attribute in message.metadata.items() -%}
+            {%- if attribute.type == "uritemplate" -%}
+            {%- for placeholder in attribute.value | regex_search('\\{([A-Za-z0-9_]+)\\}') -%}
+            , "test-{{ placeholder }}"
+            {%- endfor -%}
+            {%- elif attribute.value is not defined -%}
+            , "test-{{ attrname }}"
+            {%- endif -%}
+            {%- endfor -%}
+            {%- endif -%}
+            {%- endif -%}
+            );
+        }
+        
+        // Wait for all messages to be received
+        boolean received = receiveLatch.await(30, TimeUnit.SECONDS);
+        assertTrue(received, "All 5 messages should be received");
+        assertEquals(5, messagesReceived.size(), "Should receive exactly 5 messages");
+        
+        // Verify first message body as sample
+        Message<?> firstMessage = messagesReceived.get(0);
+        assertNotNull(firstMessage, "First message should not be null");
+        Object bodyObj = firstMessage.body();
+        assertNotNull(bodyObj, "Message body should not be null");
+        assertTrue(bodyObj instanceof byte[], "Message body should be byte array");
+        byte[] receivedBody = (byte[]) bodyObj;
+        assertTrue(receivedBody.length > 0, "Message body should not be empty");
+        
+        {%- if cloudEvents.isCloudEvent(message) %}
+        // For CloudEvents messages, verify the content-type header
+        String contentType = firstMessage.contentType();
+        assertTrue(contentType != null && contentType.contains("cloudevents"), 
+            "Message should have CloudEvents content type, got: " + contentType);
+        
+        // Basic validation - message should contain CloudEvents JSON structure
+        // Note: Full deserialization validation is complex due to AMQP body framing
+        String bodyAsString = new String(receivedBody, java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(bodyAsString.contains("\"specversion\""), "CloudEvent should contain specversion field");
+        assertTrue(bodyAsString.contains("\"type\""), "CloudEvent should contain type field");
+        assertTrue(bodyAsString.contains("\"source\""), "CloudEvent should contain source field");
+        {%- else %}
+        // Verify the received body matches the sent data by re-serializing test data
+        byte[] expectedBody = testData.toByteArray("avro/binary");
+        assertArrayEquals(expectedBody, receivedBody, "Message body should match the sent data");
+        {%- endif %}
+        
+        logger.info("Successfully sent and received {{ messagename }} message with verified content");
+        
+        producer.close();
+    }
+    
+    {%- endfor %}
+{%- endfor %}
+}
