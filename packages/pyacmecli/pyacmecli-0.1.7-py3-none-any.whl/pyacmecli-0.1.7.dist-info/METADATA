@@ -1,0 +1,116 @@
+Metadata-Version: 2.4
+Name: pyacmecli
+Version: 0.1.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: build==1.3.0
+Requires-Dist: certifi==2025.10.5
+Requires-Dist: cffi==2.0.0
+Requires-Dist: charset-normalizer==3.4.3
+Requires-Dist: click==8.3.0
+Requires-Dist: cryptography==46.0.2
+Requires-Dist: dnspython==2.8.0
+Requires-Dist: docutils==0.22.3
+Requires-Dist: filelock==3.20.0
+Requires-Dist: id==1.5.0
+Requires-Dist: idna==3.10
+Requires-Dist: jaraco-classes==3.4.0
+Requires-Dist: jaraco-context==6.0.1
+Requires-Dist: jaraco-functools==4.3.0
+Requires-Dist: jeepney==0.9.0
+Requires-Dist: josepy==2.1.0
+Requires-Dist: keyring==25.7.0
+Requires-Dist: markdown-it-py==4.0.0
+Requires-Dist: mdurl==0.1.2
+Requires-Dist: more-itertools==10.8.0
+Requires-Dist: nh3==0.3.2
+Requires-Dist: packaging==25.0
+Requires-Dist: pycparser==2.23
+Requires-Dist: pygments==2.19.2
+Requires-Dist: pyopenssl==25.3.0
+Requires-Dist: pyproject-hooks==1.2.0
+Requires-Dist: pyrfc3339==2.1.0
+Requires-Dist: readme-renderer==44.0
+Requires-Dist: requests==2.32.5
+Requires-Dist: requests-file==2.1.0
+Requires-Dist: requests-toolbelt==1.0.0
+Requires-Dist: rfc3986==2.0.0
+Requires-Dist: rich==14.2.0
+Requires-Dist: secretstorage==3.5.0
+Requires-Dist: setuptools==80.9.0
+Requires-Dist: tabulate==0.9.0
+Requires-Dist: tldextract==5.3.0
+Requires-Dist: twine==6.2.0
+Requires-Dist: typing-extensions==4.15.0
+Requires-Dist: urllib3==2.5.0
+Requires-Dist: validators==0.35.0
+Dynamic: license-file
+
+## PYACME
+
+#### You can get certificate from using cloudflare webhook, arvancloud webhooks, acme dns cname, raw txt records 
+
+##### installing it using pip
+```shell
+pip install pyacmecli
+```
+
+### Help
+
+    Usage: python -m pyacmecli [OPTIONS] COMMAND [ARGS]...
+    
+      PyACME CLIA powerful tools you can get letsencrypt certificates with dns
+      providers (Arvancloud, Cloudflare, AcmeDNS) or get certificate using dns
+      records)To debug application, or watch you can use: pyacmecli --verbose
+      {command}
+    
+    Options:
+      -v, --verbose  Application Log verbosity
+      --help         Show this message and exit.
+    
+    Commands:
+      cron  Renew certificate
+      init  init pyacme script
+      list  List of certificates
+      new   Get new certificate
+
+
+### How I can get certificate
+
+```bash
+ pyacmecli new --domain mydomain.ir --domain '*.mydomain.ir' --provider cloudflare --email mygmail@gmail.com --access-token 'cloudflare-access-token' --renew-command 'docker restart mycontainer_name'
+```
+
+### how to use it in production env
+```shell
+mkdir pyacmecli
+cd pyacmecli
+virtualenv .venv
+source .venv/bin/activate
+pip install pyacmecli
+/apps/pyacmecli/.venv/bin/pyacmecli init # to init pyacmecli project
+/apps/pyacmecli/.venv/bin/pyacmecli new --domain mydomain.ir --domain '*.mydomain.ir' --provider cloudflare --email mygmail@gmail.com --access-token 'cloudflare-access-token' --renew-command 'docker restart mycontainer_name'
+/apps/pyacmecli/.venv/bin/pyacmecli list # list of certificates
+/apps/pyacmecli/.venv/bin/pyacmecli cron cron --force-renewal # force renewal certificates
+/apps/pyacmecli/.venv/bin/pyacmecli cron
+# example cron job (run every day at 2 AM)
+crontab -e
+0 2 * * * /apps/pyacmecli/.venv/bin/pyacmecli cron
+```
+
+### build and publish project
+```shell
+uv build
+uv publish
+```
+
+### build project (legacy)
+```shell
+# rebuild your wheel
+python -m build
+# install it 
+pip install dist/pyacmecli-0.1.0-py3-none-any.whl 
+
+#upload project to pypi
+twine upload dist/*
+```
