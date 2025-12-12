@@ -1,0 +1,124 @@
+Metadata-Version: 2.4
+Name: ado-task-manager
+Version: 0.1.1
+Summary: Azure DevOps Task Manager MCP
+Author: Om Surushe
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.31
+Requires-Dist: typer>=0.9
+Requires-Dist: pydantic>=2.0
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn>=0.27
+Requires-Dist: mcp>=0.3.0
+Requires-Dist: python-dotenv>=1.0
+
+# AdoTaskManager
+
+An MCP server to manage Task work items in Azure DevOps.
+
+## Requirements
+
+- Python 3.10+
+- Azure DevOps Personal Access Token with Work Items (read/write) access
+
+## Installation
+
+### Local development
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+cp .env.example .env
+# edit .env with your AZDO_ORG_URL, AZDO_PAT, AZDO_PROJECT
+```
+
+Alternatively, if you prefer [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -e .
+```
+
+Running `python -m ado_task_manager.cli --help` will confirm the CLI is available.
+
+```bash
+python -m ado_task_manager.cli --help
+```
+
+## CLI usage
+
+```bash
+source .venv/bin/activate
+# Fetch a task
+python -m ado_task_manager.cli fetch --id 123
+
+# Fetch my tasks
+python -m ado_task_manager.cli mine
+
+# Fetch child tasks
+python -m ado_task_manager.cli children --id 123
+
+# Create a task
+python -m ado_task_manager.cli create --title "New Task" --parent-id 123 --description "Description"
+```
+
+## MCP server
+
+### Installing via mcp
+
+```bash
+mcp
+```
+
+The official MCP tooling expects `uv` to be available:
+
+```bash
+uv
+```
+
+```bash
+uv tool install mcp
+# Register the server with an MCP client (e.g., Claude Desktop)
+uv run mcp install src/ado_task_manager/server.py --name "ADO Task Manager"
+# Launch the MCP Inspector for interactive testing
+uv run mcp dev src/ado_task_manager/server.py --with-editable .
+```
+
+The install command accepts `-v KEY=value` or `-f .env` flags if you want to supply Azure DevOps environment variables during registration.
+
+```bash
+-v KEY=value
+```
+
+```bash
+-f .env
+```
+
+### Manual MCP client registration
+
+Some MCP clients accept explicit stdio configurations:
+
+```json
+{
+  "mcpServers": {
+    "ado-task-manager": {
+      "command": "python",
+      "args": [
+        "-m",
+        "ado_task_manager.server"
+      ],
+      "env": {
+        "AZDO_ORG_URL": "https://dev.azure.com/<org>",
+        "AZDO_PAT": "<personal_access_token>",
+        "AZDO_PROJECT": "<default_project>"
+      }
+    }
+  }
+}
+```
+
+Merge this snippet with existing definitions as needed, then restart or refresh your client so it discovers the server.
+
