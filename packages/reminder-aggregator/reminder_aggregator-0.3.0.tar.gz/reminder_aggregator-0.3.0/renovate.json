@@ -1,0 +1,74 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "labels": [
+    "chore",
+    "dependencies"
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardAutoclose": true,
+  "configMigration": true,
+  "separateMajorMinor": true,
+  "separateMinorPatch": false,
+  "prCreation": "immediate",
+  "prConcurrentLimit": 5,
+  "schedule": [
+    "before 12:00 on friday"
+  ],
+  "timezone": "Europe/Berlin",
+  "packageRules": [
+    {
+      "description": "Security updates: immediate automerge",
+      "matchUpdateTypes": [
+        "pin",
+        "digest",
+        "patch",
+        "minor"
+      ],
+      "matchCategories": [
+        "security"
+      ],
+      "automerge": true,
+      "automergeStrategy": "squash",
+      "minimumReleaseAge": "0 days",
+      "schedule": [
+        "at any time"
+      ]
+    },
+    {
+      "description": "Non-major updates: automerge after 2 days",
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "non-major dependencies",
+      "groupSlug": "non-major",
+      "automerge": true,
+      "automergeStrategy": "squash",
+      "minimumReleaseAge": "2 days"
+    },
+    {
+      "description": "Major updates: manual review required",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "major dependencies",
+      "groupSlug": "major",
+      "automerge": false,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "GitHub Actions: automerge after 1 day",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions",
+      "automerge": true,
+      "automergeStrategy": "squash",
+      "minimumReleaseAge": "1 day"
+    }
+  ]
+}

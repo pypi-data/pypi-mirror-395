@@ -1,0 +1,65 @@
+[project]
+name = "reminder-aggregator"
+description = "A simple Python tool that scans files for common reminder tags like TODO and FIXME to generate a report from them."
+readme = "README.md"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Utilities",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.3.0",
+    "pathspec==0.12.1",
+]
+dynamic = ["version"]
+
+[project.scripts]
+reminder-aggregator = "reminder_aggregator.cli:cli"
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+fallback-version = "0.0.0"
+style = "semver"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes
+    "E",   # pycodestyle
+    "I",   # isort
+    "ANN", # flake8 type annotations
+    "RUF", # ruff-specific rules
+]
+fixable = ["ALL"]
+
+[tool.pymarkdown]
+plugins.line-length.enabled = false
+plugins.md033.allowed_elements = "div" # Allow for centering using div
+plugins.md041.enabled = false # First line is <div> when centering heading
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+    "ruff>=0.14.0",
+]

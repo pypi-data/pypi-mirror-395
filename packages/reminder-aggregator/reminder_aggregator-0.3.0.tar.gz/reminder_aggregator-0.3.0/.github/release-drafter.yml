@@ -1,0 +1,69 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+sort-direction: ascending
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+exclude-labels:
+  - skip-changelog
+
+version-resolver:
+  major:
+    labels:
+      - breaking-change
+  minor:
+    labels:
+      - feature
+  patch:
+    labels:
+      - documentation
+      - fix
+      - chore
+  default: patch
+
+categories:
+  - title: "Breaking Changes"
+    labels:
+      - breaking-change
+
+  - title: "Features"
+    labels:
+      - feature
+
+  - title: "Bug Fixes"
+    labels:
+      - fix
+
+  - title: "Maintenance"
+    labels:
+      - chore
+      - documentation
+
+template: |
+  # What's Changed
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+## Autolabeler configuration
+autolabeler:
+  - label: breaking-change
+    body:
+      - "/^BREAKING CHANGE/i"
+
+  - label: feature
+    title:
+      - /^(feat)/i
+
+  - label: chore
+    title:
+      - /^(chore|ci|build|style|refactor|perf)/i
+
+  - label: documentation
+    files:
+      - "*.md"
+    title:
+      - /^(doc|docs)/i
+
+  - label: fix
+    title:
+      - /^(fix|bug|hotfix)/i
