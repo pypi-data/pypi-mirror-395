@@ -1,0 +1,244 @@
+Metadata-Version: 2.4
+Name: agr-cognito-py
+Version: 0.1.0
+Summary: AWS Cognito JWT authentication library for FastAPI applications
+Project-URL: Homepage, https://github.com/alliance-genome/agr_cognito_py
+Project-URL: Documentation, https://github.com/alliance-genome/agr_cognito_py#readme
+Project-URL: Repository, https://github.com/alliance-genome/agr_cognito_py.git
+Project-URL: Issues, https://github.com/alliance-genome/agr_cognito_py/issues
+Author: Alliance of Genome Resources
+License-Expression: MIT
+License-File: LICENSE
+Keywords: agr,authentication,aws,cognito,fastapi,jwt
+Classifier: Development Status :: 4 - Beta
+Classifier: Framework :: FastAPI
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Internet :: WWW/HTTP :: HTTP Servers
+Classifier: Topic :: Security
+Requires-Python: >=3.8
+Requires-Dist: fastapi>=0.100.0
+Requires-Dist: pyjwt>=2.8.0
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: requests>=2.28.0
+Provides-Extra: dev
+Requires-Dist: httpx>=0.24.0; extra == 'dev'
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Requires-Dist: types-requests>=2.28.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# agr-cognito-py
+
+AWS Cognito JWT authentication library for FastAPI applications, designed for the Alliance of Genome Resources (AGR) ecosystem.
+
+## Features
+
+- JWT token validation for AWS Cognito ID and access tokens
+- FastAPI dependencies for easy authentication integration
+- Support for both user authentication (ID tokens) and machine-to-machine auth (access tokens)
+- Admin token generation using OAuth client_credentials flow
+- MOD-based permission utilities for AGR applications
+- Token caching for improved performance
+
+## Installation
+
+```bash
+pip install agr-cognito-py
+```
+
+## Quick Start
+
+### Environment Variables
+
+Set the following environment variables:
+
+```bash
+# Required for token validation
+export COGNITO_REGION="us-east-1"
+export COGNITO_USER_POOL_ID="us-east-1_xxxxx"
+export COGNITO_CLIENT_ID="your-client-id"
+
+# Optional: Additional allowed client IDs (comma-separated)
+export COGNITO_ALLOWED_CLIENT_IDS="client1,client2"
+
+# Required for admin token generation
+export COGNITO_ADMIN_CLIENT_ID="admin-client-id"
+export COGNITO_ADMIN_CLIENT_SECRET="admin-client-secret"
+export COGNITO_TOKEN_URL="https://your-domain.auth.region.amazoncognito.com/oauth2/token"
+export COGNITO_ADMIN_SCOPE="your-api/scope"
+```
+
+### FastAPI Integration
+
+Use `Security` (recommended) or `Depends` to protect your endpoints. `Security` integrates
+with Swagger UI's "Authorize" button for easy testing.
+
+```python
+from typing import Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
+from sqlalchemy.orm import Session
+
+from agr_cognito_py import get_cognito_user_swagger, get_mod_access, ModAccess
+
+router = APIRouter(prefix="/reference", tags=["Reference"])
+
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create(
+    request: ReferenceSchemaPost,
+    user: Dict[str, Any] = Security(get_cognito_user_swagger),
+    db: Session = Depends(get_db)
+):
+    # user contains: email, name, cognito:groups, cognito:username, token_type
+    return reference_crud.create(db, request)
+
+
+@router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_tag(
+    tag_id: int,
+    user: Dict[str, Any] = Security(get_cognito_user_swagger),
+    db: Session = Depends(get_db)
+):
+    # Check MOD-based permissions before deleting
+    mod_access = get_mod_access(user)
+    if mod_access == ModAccess.NO_ACCESS:
+        raise HTTPException(status_code=403, detail="No access")
+
+    tag_crud.destroy(db, tag_id, mod_access)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+```
+
+### Token Validation
+
+```python
+from agr_cognito_py import CognitoAuth, CognitoConfig
+
+# Configure with environment variables
+auth = CognitoAuth()
+
+# Or configure explicitly
+config = CognitoConfig(
+    region="us-east-1",
+    user_pool_id="us-east-1_xxxxx",
+    client_id="your-client-id"
+)
+auth = CognitoAuth(config)
+
+# Validate a token
+try:
+    user = auth.validate_token(token)
+    print(f"User email: {user['email']}")
+    print(f"User groups: {user['cognito:groups']}")
+except JWTError as e:
+    print(f"Invalid token: {e}")
+```
+
+### Admin Token Generation
+
+For machine-to-machine authentication using client credentials:
+
+```python
+from agr_cognito_py import get_admin_token, generate_headers, CognitoAdminConfig
+import requests
+
+# Get admin token (uses caching automatically)
+token = get_admin_token()
+
+# Generate headers for API requests
+headers = generate_headers(token)
+
+# Make authenticated request
+response = requests.get("https://api.example.com/data", headers=headers)
+```
+
+### MOD-based Permissions
+
+For AGR applications requiring Model Organism Database access control:
+
+```python
+from agr_cognito_py import get_mod_access, has_mod_access, ModAccess
+
+# Get user's MOD access level
+access = get_mod_access(user)
+if access == ModAccess.ALL_ACCESS:
+    print("User has full access")
+elif access == ModAccess.WB:
+    print("User is a WormBase curator")
+
+# Check specific MOD access
+if has_mod_access(user, "WB"):
+    print("User can access WormBase data")
+```
+
+## API Reference
+
+### Classes
+
+#### `CognitoAuth`
+Main class for JWT token validation.
+
+#### `CognitoConfig`
+Configuration for token validation (region, user pool, client ID).
+
+#### `CognitoAdminConfig`
+Configuration for admin token generation (client credentials flow).
+
+### Functions
+
+#### Token Validation
+- `get_cognito_user_swagger()` - FastAPI dependency with Swagger UI integration
+- `get_cognito_user()` - FastAPI dependency supporting headers and cookies
+- `require_groups(*groups)` - FastAPI dependency requiring specific Cognito groups
+
+#### Admin Tokens
+- `get_admin_token(config, force_refresh)` - Get admin access token with caching
+- `get_authentication_token(config)` - Alias for get_admin_token
+- `generate_headers(token)` - Generate Authorization headers
+- `clear_token_cache()` - Clear the cached admin token
+
+#### Permissions
+- `get_mod_access(user)` - Get ModAccess enum for a user
+- `has_mod_access(user, mod)` - Check if user has access to a specific MOD
+
+### Enums
+
+#### `ModAccess`
+- `NO_ACCESS` - No MOD access
+- `ALL_ACCESS` - Full access to all MODs
+- `SGD`, `RGD`, `MGI`, `ZFIN`, `XB`, `FB`, `WB` - Specific MOD access
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/alliance-genome/agr_cognito_py.git
+cd agr_cognito_py
+
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run linting
+ruff check src tests
+ruff format src tests
+
+# Type checking
+mypy src
+```
+
+## License
+
+MIT License - see LICENSE file for details.
