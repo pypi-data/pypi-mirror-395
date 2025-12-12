@@ -1,0 +1,205 @@
+[project]
+name = "id-translation"
+version = "1.0.2"
+description = "Convert IDs into human-readable labels."
+authors = [
+    { name = "Richard Sundqvist", email = "richard.sundqvist@live.se" },
+]
+license = { text = "MIT" }
+
+readme = "README.md"
+keywords = ["id-translation"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Typing :: Typed",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.11"
+
+dependencies = [
+    "rics >= 5.1.0",
+]
+
+[project.optional-dependencies]
+fetching = [
+    "sqlalchemy >= 2.0.5", # SqlFetcher. Need >=2.0.5 (YANKED) for UUID tests pass for Microsoft SQL server.
+    "pandas >= 2.0.3", # PandasFetcher.
+]
+
+[project.urls]
+homepage = "https://github.com/rsundqvist/id-translation"
+repository = "https://github.com/rsundqvist/id-translation"
+documentation = "https://id-translation.readthedocs.io"
+"Bug Tracker" = "https://github.com/rsundqvist/id-translation/issues"
+"Changelog" = "https://github.com/rsundqvist/id-translation/blob/master/CHANGELOG.md"
+
+[project.scripts]
+# No scripts.
+
+[project.entry-points."id_translation.dio"]
+# The name (e.g. 'pandas_io') is not important, but should be unique.
+pandas_io = "id_translation.dio.integration.pandas:PandasIO"
+dask_io = "id_translation.dio.integration.dask:DaskIO"
+polars_io = "id_translation.dio.integration.polars:PolarsIO"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
+
+[tool.poetry.group.manual-extras.dependencies]
+# Extras that must be available for docs + tests go here. Doc/test-only deps go in their respective groups.
+polars = { version = "~1.31.0" }
+dask = { version = "~2025.11.0", extras = ["dataframe"] }
+
+[tool.poetry.group.docs]
+[tool.poetry.group.docs.dependencies]
+# duplicate object warnings for sphinx>=4
+# description: https://github.com/astropy/astropy/issues/11723
+# https://github.com/astropy/astropy/pull/12270
+sphinx = "~8.1.3"
+pydata-sphinx-theme = "~0.16.1"
+myst-parser = "~4.0.1"  # https://github.com/executablebooks/MyST-Parser/pull/1062
+nbsphinx = "~0.9.8"
+ipython = "~9.7.0"
+
+log-lexer = { path = "docs/log-lexer", develop = true }  # For .log files.
+
+[tool.poetry.group.notebooks]
+optional = true
+[tool.poetry.group.notebooks.dependencies]
+jupyterlab = ">=4,<5"
+ipywidgets = "*"
+jupyterlab-execute-time = "*"
+tqdm = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "~9.0.1"
+xdoctest = "~1.3.0"
+coverage = "~7.12.0"
+pytest-cov = "~7.0.0"
+
+# Minio tests
+s3fs = { version = "~2025.10.0", platform = "linux" }
+
+# db drivers and related dependencies
+pg8000 = "~1.31.5"
+pymssql = "~2.3.10"
+pymysql = "~1.1.2"
+cryptography = "*"
+
+[tool.poetry.group.devops.dependencies]
+invoke = "~2.2.1"
+mypy = "~1.19.0"
+ruff = "~0.14.7"
+
+safety = "~3.7.0"
+codespell = "~2.4.1"
+bump2version = "==1.0.1"
+
+[tool.ruff]
+line-length = 120
+fix = true
+unsafe-fixes = false
+output-format = "grouped"
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 80
+line-ending = "lf"
+
+[tool.ruff.lint]
+exclude = ["notebooks/*"]
+select = [
+    "ANN",
+    "S",
+    "I",
+    "B",
+    "D",
+    "F",
+    "W",
+    "E",
+    "SLOT",
+    "SIM",
+    "TID",
+    # "TD", TODOs
+    "TCH",
+    "ARG",
+    "PTH",
+    "NPY",
+    "PD",
+    "N",
+    "PERF",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "UP",
+    "FURB",
+    "RUF",
+    "TRY",
+]
+ignore = [
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in `__init__`
+    "ANN401",
+    "TID252", # Prefer absolute imports over relative imports from parent modules
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "TRY300", # Consider moving this statement to an `else` block
+    "PLR0913", # Too many arguments.
+    "SIM108", #  Use ternary operator - coverage issue, see https://github.com/nedbat/coveragepy/issues/509
+]
+allowed-confusables = ["ℹ"]  # ℹ️INFO in docstrings
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "D",
+    "S101", # Allow 'assert' keyword
+    "S608", # SQL injection.
+    "ANN",
+    "S311", # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "PLR2004", # Allow magic values
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "PLC0415", # `import` should be at the top-level of a file
+]
+"tests/offline/test_placeholder_translations.py" = ["PTH123"]
+"tests/mapping/*" = ["ARG003", "ARG004", "ARG005"]
+"tests/test_optional_dependencies.py" = ["ARG002"]
+
+# D102 Missing docstring in public method - Docstrings are inherited, but linters
+# can't realiably know this unless they import the code.
+"src/id_translation/offline/_translation_map.py" = ["D102"]
+"src/id_translation/testing.py" = ["D102"]
+"src/id_translation/dio/integration/*" = ["D102"]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150
+
+[tool.pytest]
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore:Did not recognize type:sqlalchemy.exc.SAWarning",
+    "ignore:No fetcher given:UserWarning",
+]
+log_file_level = 10
+log_file = "pytest.log"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
