@@ -1,0 +1,63 @@
+[tool.poetry]
+name = "promplate"
+version = "0.3.5.6"
+description = "Prompt engineering framework for humans"
+homepage = "https://promplate.dev/"
+documentation = "https://docs.py.promplate.dev/"
+repository = "https://github.com/promplate/core"
+authors = ["Muspi Merol <me@promplate.dev>"]
+license = "MIT"
+readme = "README.md"
+keywords = ["prompt", "template", "nlp", "llm"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Markup",
+    "Typing :: Typed",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+typing-extensions = { version = "^4", python = "<3.12" }
+aiofiles = { version = ">=23.2", optional = true }
+httpx = { version = ">=0.24, <1.0", optional = true }
+openai = { version = ">=0.27, <3.0", optional = true }
+
+[tool.poetry.extras]
+aiofiles = ["aiofiles"]
+httpx = ["httpx"]
+openai = ["openai"]
+all = ["aiofiles", "httpx", "openai"]
+
+[tool.poetry.group.dev.dependencies]
+isort = "^6"
+black = "^25"
+pytest = "^8"
+coverage = "^7"
+pytest-asyncio = "^1"
+
+[tool.pdm.scripts]
+format = { composite = ["isort ./{args}", "black ./{args}"] }
+test = "pytest"
+cov = { composite = ["coverage run -m pytest", "coverage report"] }
+
+[tool.isort]
+line_length = 130
+
+[tool.black]
+line-length = 130
+
+[tool.coverage.run]
+source = ["promplate"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 45
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
