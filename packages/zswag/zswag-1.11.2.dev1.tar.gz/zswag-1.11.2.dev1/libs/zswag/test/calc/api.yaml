@@ -1,0 +1,277 @@
+components:
+  securitySchemes:
+    BasicAuth:
+      scheme: basic
+      type: http
+      x-basicInfoFunc: zswag.test.calc.server.validate_basic_auth
+    BearerAuth:
+      scheme: bearer
+      type: http
+      x-bearerInfoFunc: zswag.test.calc.server.validate_bearer
+    CookieAuth:
+      in: cookie
+      name: api-cookie
+      type: apiKey
+      x-apikeyInfoFunc: zswag.test.calc.server.validate_apikey
+    HeaderAuth:
+      in: header
+      name: X-Generic-Token
+      type: apiKey
+      x-apikeyInfoFunc: zswag.test.calc.server.validate_apikey
+    QueryAuth:
+      in: query
+      name: api-key
+      type: apiKey
+      x-apikeyInfoFunc: zswag.test.calc.server.validate_apikey
+info:
+  contact:
+    email: support@nds-association.org
+  description: REST API for calculator.Calculator
+  license:
+    name: My-Fancy-License
+  title: Calculator
+  version: 1.0.0
+openapi: 3.0.0
+paths:
+  /bmul:
+    get:
+      description: ''
+      operationId: bitMul
+      parameters:
+        - allowEmptyValue: true
+          description: ''
+          in: query
+          name: values
+          required: true
+          schema:
+            format: string
+            items:
+              type: string
+            type: array
+          x-zserio-request-part: values
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security:
+        - HeaderAuth: []
+      summary: ''
+  /bsum/{values}:
+    get:
+      description: ''
+      operationId: byteSum
+      parameters:
+        - description: ''
+          in: path
+          name: values
+          required: true
+          schema:
+            format: base64url
+            items:
+              type: string
+            type: array
+          x-zserio-request-part: values
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security:
+        - BasicAuth: []
+      summary: ''
+  /concat:
+    get:
+      description: ''
+      operationId: concat
+      parameters:
+        - allowEmptyValue: true
+          description: ''
+          in: query
+          name: values
+          required: true
+          schema:
+            format: base64
+            items:
+              type: string
+            type: array
+          x-zserio-request-part: values
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security:
+        - BearerAuth: []
+      summary: ''
+  /fmul:
+    get:
+      description: ''
+      operationId: floatMul
+      parameters:
+        - allowEmptyValue: true
+          description: ''
+          explode: false
+          in: query
+          name: values
+          required: true
+          schema:
+            format: string
+            items:
+              type: string
+            type: array
+          x-zserio-request-part: values
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security:
+        - CookieAuth: []
+      summary: ''
+  /identity:
+    post:
+      description: ''
+      operationId: identity
+      parameters: []
+      requestBody:
+        content:
+          application/x-zserio-object:
+            schema:
+              type: string
+        description: ''
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security:
+        - CookieAuth: []
+      summary: ''
+  /imul/{values}:
+    get:
+      description: ''
+      operationId: intMul
+      parameters:
+        - description: ''
+          in: path
+          name: values
+          required: true
+          schema:
+            format: base64
+            items:
+              type: string
+            type: array
+          style: simple
+          x-zserio-request-part: values
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security:
+        - QueryAuth: []
+      summary: ''
+  /isum:
+    get:
+      description: ''
+      operationId: intSum
+      parameters:
+        - allowEmptyValue: true
+          description: ''
+          explode: true
+          in: query
+          name: values
+          required: true
+          schema:
+            format: hex
+            items:
+              type: string
+            type: array
+          x-zserio-request-part: values
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security:
+        - BearerAuth: []
+      summary: ''
+  /name/{enum_value}:
+    get:
+      description: ''
+      operationId: name
+      parameters:
+        - description: ''
+          in: path
+          name: enum_value
+          required: true
+          schema:
+            format: string
+            type: string
+          x-zserio-request-part: value
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      summary: ''
+  /power/{base}:
+    get:
+      description: ''
+      operationId: power
+      parameters:
+        - description: ''
+          in: path
+          name: base
+          required: true
+          schema:
+            format: string
+            type: string
+          x-zserio-request-part: base.value
+        - description: ''
+          in: header
+          name: X-Ponent
+          required: true
+          schema:
+            format: string
+            type: string
+          x-zserio-request-part: exponent.value
+      responses:
+        '200':
+          content:
+            application/x-zserio-object:
+              schema:
+                format: binary
+                type: string
+          description: ''
+      security: []
+      summary: ''
+security:
+  - HeaderAuth: []
+servers:
+  - url: /
