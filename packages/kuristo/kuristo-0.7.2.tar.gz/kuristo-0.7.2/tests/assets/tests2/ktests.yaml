@@ -1,0 +1,38 @@
+jobs:
+  test-A:
+    name: "Test A"
+    description: "Default run"
+    steps:
+      - name: Sequential run
+        uses: test/sequential
+
+  test-B:
+    description: "Default test that will use 4 MPI ranks"
+    steps:
+      - name: MPI-2 (a)
+        uses: app-name/mpi
+        with:
+          num-procs: 2
+
+  test-C:
+    description: "Another test that will use 4 MPI ranks"
+    steps:
+      - name: MPI-2 (b)
+        uses: app-name/mpi
+        with:
+          num-procs: 2
+
+  test-oversized:
+    description: "Oversized test that should never be scheduled"
+    steps:
+      - name: 10k cores
+        uses: test/sequential
+        with:
+          num-cores: 1000000
+
+  test-skipped:
+    description: "Disabled test"
+    skip: "disabled"
+    steps:
+      - name: Disabled test
+        uses: test/sequential
