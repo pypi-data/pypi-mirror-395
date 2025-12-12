@@ -1,0 +1,172 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agents-docs-sync"
+version = "0.1.5"
+description = "コミットするごとにテスト実行・ドキュメント生成・AGENTS.md の自動更新を行うパイプライン"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "塩ハム(d)", email="shiohamu029@gmail.com"}
+]
+keywords = [
+    "documentation",
+    "automation",
+    "ci-cd",
+    "github-actions",
+    "api-documentation",
+    "readme-generator",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "anthropic>=0.74.1",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.0",
+    "openai>=2.8.1",
+    "outlines>=1.2.8",
+    "pydantic>=2.0.0",
+    "pytest>=9.0.1",
+    "pyyaml>=6.0.3",
+    "sentence-transformers>=2.2.0",
+    "hnswlib>=0.7.0",
+    "torch>=2.0.0",
+    "ruff>=0.6.0",
+]
+
+[project.scripts]
+agents_docs_sync = "docgen.docgen:main"
+
+[tool.uv]
+default-groups = ["default"]
+
+[dependency-groups]
+# ドキュメント生成システム用の依存関係
+docgen = [
+    "pyyaml>=6.0.3",
+    # tomliはPython 3.11未満でのみ必要（Python 3.11以降ではtomllibを使用）
+    # Python 3.10以前のサポートが必要な場合は、以下のコメントを外してください
+    # "tomli>=2.0.0; python_version<'3.11'",
+]
+
+# テスト用の依存関係
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.1",
+]
+
+# 開発用の依存関係（テストとドキュメント生成を含む）
+default = [
+    {include-group = "docgen"},
+    {include-group = "test"},
+]
+
+# 開発ツール用の依存関係
+dev = [
+    {include-group = "default"},
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["docgen"]
+include = [
+  "docgen/config.toml.sample",
+  "docgen/templates/**",
+  "docgen/hooks/**",
+  "docgen/prompts/**",
+]
+
+[tool.setuptools.package-data]
+"docgen" = [
+    "config.toml.sample",
+    "templates/**/*",
+    "hooks/*",
+]
+
+# Ruff 設定 (リンター & フォーマッター)
+[tool.ruff]
+# 対象とするPythonファイル
+include = ["*.py", "**/*.py"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "__pycache__",
+    "htmlcov",
+    ".cache",
+    "dist",
+    "build",
+    "docgen/.cache",
+]
+
+# Pythonバージョン
+target-version = "py312"
+
+# 行長
+line-length = 100
+
+# リンター設定
+[tool.ruff.lint]
+# 有効にするルール
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+# 無視するルール
+ignore = [
+    "E501", # line too long, handled by formatter
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+    "E402", # module level import not at top of file (プロジェクト構造上必要)
+    "E722", # do not use bare `except` (既存コードの互換性維持)
+]
+
+# ルールごとの設定
+[tool.ruff.lint.per-file-ignores]
+# テストファイルではassert文の使用を許可
+"tests/**/*" = ["S101"]
+# 設定ファイルではハードコードされたパスを許可
+"docgen/config_manager.py" = ["S105"]
+# ドキュメント生成では複雑なロジックを許可
+"docgen/generators/**/*.py" = ["C901"]
+# コレクターでは未使用変数とバージョン依存を許可
+"docgen/collectors/**/*.py" = ["B007", "UP036"]
+# パーサーではバージョン依存を許可
+"docgen/generators/parsers/**/*.py" = ["UP036"]
+
+# フォーマッター設定
+[tool.ruff.format]
+# インデントスタイル
+indent-style = "space"
+# 引用符のスタイル (ダブルクォート優先)
+quote-style = "double"
+# 末尾カンマの処理
+skip-magic-trailing-comma = false
+# 改行の処理
+line-ending = "auto"
+
+# isort設定 (インポートソート)
+[tool.ruff.lint.isort]
+known-first-party = ["docgen"]
+force-sort-within-sections = true
+split-on-trailing-comma = true
