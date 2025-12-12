@@ -1,0 +1,5 @@
+"""Lumo 1.0 package by Tyora Inc."""
+__version__ = "1.0.0"
+__author__ = "Tyora Inc."
+__email__ = "support@tyora.io"
+__company__ = "Tyora"
