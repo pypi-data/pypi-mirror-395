@@ -1,0 +1,230 @@
+import argparse
+import json
+import re
+import sys
+from datetime import datetime
+from pathlib import Path
+from xml.parsers.expat import ExpatError
+
+import httpx
+from html2text import html2text
+from prompt_toolkit import PromptSession
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.completion import PathCompleter
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.key_binding import KeyBindings
+
+from charla import client, config, ui
+
+
+def get_chat_path(argv: argparse.Namespace) -> Path:
+    """Get path to store chat file."""
+
+    if argv.continue_chat:
+        return Path(argv.continue_chat)
+
+    chats_path = Path(argv.chats_path)
+    config.mkdir(chats_path, exist_ok=True, parents=True)
+    now = datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')
+    slug = re.sub(r'\W', '-', argv.model)
+    return chats_path / f'{now}-{slug}.json'
+
+
+def get_content(location: str) -> str:
+    """Return content of the given source or empty string.
+
+    Args:
+        location (str): The URL or file path to fetch content from.
+    """
+
+    content = ''
+
+    if location.startswith(('http://', 'https://')):
+        try:
+            resp = httpx.get(location, follow_redirects=True)
+            content = (
+                html2text(resp.text, baseurl=location) if resp.headers['content-type'] == 'text/html' else resp.text
+            )
+        except httpx.ConnectError as err:
+            print(f'Enter an existing URL.\n{err}\n')
+    else:
+        try:
+            content = Path(location).expanduser().read_text()
+        except (FileNotFoundError, PermissionError) as err:
+            print(f'Enter name of an existing file.\n{err}\n')
+
+    return content
+
+
+def prompt_session(argv: argparse.Namespace) -> PromptSession:
+    """Create and return a PromptSession object."""
+
+    session: PromptSession = PromptSession(
+        message=ui.t_prompt_ml if argv.multiline else ui.t_prompt,
+        history=FileHistory(argv.prompt_history),
+        auto_suggest=AutoSuggestFromHistory(),
+        multiline=argv.multiline,
+    )
+
+    ui.print_html(f'Chat with: <ansigreen>{argv.model}</ansigreen>')
+    if think := getattr(argv, 'think', None):
+        ui.print_html(f'Thinking mode: <ansigreen>{str(think).lower()}</ansigreen>')
+    print(ui.t_help)
+
+    bindings = KeyBindings()
+
+    @bindings.add('escape', 'm')
+    def switch_multiline(_event):
+        session.multiline = not session.multiline
+        session.message = ui.t_prompt_ml if session.multiline else ui.t_prompt
+
+    @bindings.add('c-o')
+    def fetch(_event):
+        session.message = ui.t_open
+        session.completer = PathCompleter(only_directories=False, expanduser=True)
+
+    session.key_bindings = bindings
+
+    return session
+
+
+def run(argv: argparse.Namespace) -> None:
+    """Run the chat session."""
+
+    # Location to store chat as markdown file.
+    chat_file = get_chat_path(argv)
+
+    # File name or URL to be opened.
+    open_location = ''
+
+    # System prompt with directions for the model at the beginning of the chat.
+    system_prompt = ''
+
+    # Previous chat data from JSON file.
+    previous_chat = None
+
+    # Override settings when continuing chats.
+    if argv.continue_chat:
+        previous_chat = json.loads(chat_file.read_text())
+        argv.model = previous_chat.get('model', argv.model)
+        argv.provider = previous_chat.get('provider', argv.provider)
+    # Only set system prompt for new chats.
+    elif argv.system_prompt and (p_system := Path(argv.system_prompt).expanduser()):
+        if not p_system.exists() or not p_system.is_file():
+            sys.exit(f'Error: System prompt file does not exist: {p_system}')
+        system_prompt = p_system.read_text()
+
+    # Make sure model and provider are set.
+    if not (argv.model and argv.provider):
+        sys.exit('Error: model or provider are not specified.')
+
+    # Determine which Client class to import.
+    if argv.provider == 'ollama':
+        from charla.client.ollama import OllamaClient as ApiClient  # noqa: PLC0415
+    elif argv.provider == 'github':
+        from charla.client.github import GithubClient as ApiClient  # type: ignore  # noqa: PLC0415
+
+    # Start model API client before chat REPL in case of model errors.
+    api_client = ApiClient(argv.model, system=system_prompt, message_limit=argv.message_limit, think=argv.think)
+    api_client.set_info()
+
+    # Prompt history used for auto completion.
+    history = Path(argv.prompt_history)
+    config.mkdir(history.parent, exist_ok=True, parents=True)
+
+    # Start the chat REPL.
+    session = prompt_session(argv)
+
+    # Output and set chat history.
+    if previous_chat:
+        for msg in previous_chat['messages']:
+            ui.print_message(role=msg['role'], text=msg['text'])
+            api_client.add_message(role=msg['role'], text=msg['text'])
+        print()
+    # Print system prompt for new chats if set.
+    elif system_prompt:
+        print(f'{ui.t_system}\n')
+        ui.print_md(system_prompt)
+
+    while True:
+        try:
+            if not (user_input := session.prompt()):
+                continue
+
+            # Handle OPEN command input and continue to next prompt.
+            if session.message == ui.t_open:
+                open_location = user_input.strip()
+                session.bottom_toolbar = ui.t_open_toolbar + open_location
+                session.message = ui.t_prompt_ml if session.multiline else ui.t_prompt
+                session.completer = None
+                continue
+
+            # Read content from location and append it to user message.
+            if open_location:
+                if content := get_content(open_location):
+                    user_input = user_input.strip() + '\n\n' + content
+                    open_location = ''
+                    session.bottom_toolbar = None
+                else:
+                    continue
+
+            print(f'\n{ui.t_response}\n')
+
+            try:
+                response = api_client.generate(user_input)
+            except client.ClientError as err:
+                ui.print_error(str(err))
+                if err.label == 'service':
+                    print('Please check your connection to the model server and try again.')
+                continue
+            except client.TerminateError as err:
+                ui.print_error(str(err))
+                terminate(chat_file, api_client)
+
+            try:
+                ui.print_md(response)
+            except (AttributeError, ExpatError):
+                ui.print_html('<ansired>Raw response:</ansired>')
+                print(response)
+            print()
+            save(chat_file, api_client)
+
+        # Exit program on CTRL-C and CTRL-D
+        except (KeyboardInterrupt, EOFError):
+            break
+
+    terminate(chat_file, api_client)
+
+
+def convert(argv: argparse.Namespace) -> None:
+    """Convert chat file to markdown."""
+
+    data = json.loads(Path(argv.chatfile).read_text())
+    for msg in data['messages']:
+        text = msg['text']
+        match msg['role']:
+            case 'user':
+                print(f'{ui.t_prompt}{text}\n')
+            case 'assistant':
+                print(f'{ui.t_response}\n\n{text}\n')
+            case 'system':
+                print(f'{ui.t_system}\n\n{text}')
+
+
+def save(chat_file: Path, api_client: client.Client) -> None:
+    """Save chat as JSON file."""
+
+    chat_file.write_text(
+        json.dumps({'model': api_client.model, 'provider': api_client.provider, 'messages': api_client.message_history})
+    )
+
+
+def terminate(chat_file: Path, api_client: client.Client) -> None:
+    """Save chat if there is at least one response and exit program."""
+
+    if any(m['role'] == 'assistant' for m in api_client.message_history):
+        print(f'Saving chat in: {chat_file}')
+        save(chat_file, api_client)
+
+    ui.print_html('<ansigreen>Exiting program.</ansigreen>')
+    sys.exit()
