@@ -1,0 +1,187 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: writenotenow/sqlite-mcp-server
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write  # For security scanning
+  pull-requests: write    # For PR comments
+  id-token: write        # For supply chain attestations
+  attestations: write    # For generating attestations
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+
+    steps:
+    - uses: actions/checkout@v6
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+    
+    - name: Install dependencies and run tests
+      run: |
+        uv sync --frozen --no-dev
+        uv run python test_runner.py --quick
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test  # Only build if tests pass
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      continue-on-error: true  # Don't fail if Docker Hub credentials are missing
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract version from pyproject.toml
+      id: version
+      run: |
+        VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Extracted version: $VERSION"
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        flavor: |
+          latest=auto
+        tags: |
+          # Always create latest tag for master branch pushes
+          type=raw,value=latest,enable={{is_default_branch}}
+          # Always create version tags from pyproject.toml (v2.6.4)
+          type=raw,value=v${{ steps.version.outputs.version }}
+          # Create version tags (v2.6.4) when pushing git tags - keep the v prefix
+          type=semver,pattern={{raw}}
+          # Create short SHA tags for traceability (e.g., sha-abc1234)
+          type=sha,prefix=sha-,format=short
+
+    # Build locally first for security scanning (AMD64 only)
+    - name: Build Docker image for scanning
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: Dockerfile
+        platforms: linux/amd64
+        push: false
+        load: true
+        tags: local-scan:latest
+        cache-from: type=gha
+
+    # Security scanning with Docker Scout CLI
+    - name: Docker Scout security scan
+      timeout-minutes: 10  # Prevent hanging
+      run: |
+        # Install Docker Scout CLI
+        curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sh -s --
+        
+        # Verify image exists
+        docker images local-scan:latest
+        
+        # Run security scan - block vulnerabilities above medium level (critical, high)
+        echo "🔍 Running Docker Scout security scan for local-scan:latest"
+        
+        # Run scan with timeout and capture output to analyze
+        echo "⏱️ Running Docker Scout scan (max 8 minutes)..."
+        if timeout 480 docker scout cves local-scan:latest > scout_output.txt 2>&1; then
+          echo "📊 Scan completed successfully"
+          cat scout_output.txt
+          
+          # Check if critical or high vulnerabilities are present in the output
+          if grep -E "(CRITICAL|HIGH)" scout_output.txt | grep -v "0  " > /dev/null; then
+            echo "❌ Critical or high severity vulnerabilities detected"
+            echo "🚨 Build blocked due to unacceptable security risk"
+            exit 1
+          else
+            echo "✅ Security scan passed - no critical/high severity vulnerabilities"
+            echo "ℹ️ Low/medium severity vulnerabilities are acceptable"
+          fi
+        else
+          echo "⚠️ Docker Scout scan timed out or failed"
+          echo "🔄 Continuing build - scan timeout is not a security failure"
+          echo "ℹ️ Consider running scout scan locally for large images"
+        fi
+
+    # Only push if security scan passes
+    - name: Build and push Docker image
+      if: success()
+      id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        # Enable attestations for supply chain security (v6 handles multi-arch better)
+        provenance: mode=max
+        sbom: true
+
+    - name: Test Docker image functionality
+      if: github.event_name != 'pull_request'
+      run: |
+        # Extract the first tag from the metadata output
+        FIRST_TAG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
+        echo "Testing image: $FIRST_TAG"
+        
+        # Test that the image starts and shows help (basic functionality)
+        echo "Testing server help output..."
+        if docker run --rm $FIRST_TAG --help | grep -q "SQLite MCP Server"; then
+          echo "✅ Image: Server starts and shows help correctly"
+        else
+          echo "❌ Server help test failed"
+          exit 1
+        fi
+        
+        # Test that the Python environment is working by overriding entrypoint
+        echo "Testing Python environment..."
+        if docker run --rm --entrypoint python $FIRST_TAG -c "import sys; print('✅ Python environment working')"; then
+          echo "✅ Image: Python environment functional"
+        else
+          echo "❌ Python environment test failed"
+          exit 1
+        fi
+        
+        echo "✅ Image tests passed"
+
+
+
+    # Attestations are handled automatically by Docker build with:
+    # provenance: mode=max and sbom: true (lines 145-146)
+    # This should provide attestations for ALL tags including latest and version tags

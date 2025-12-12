@@ -1,0 +1,87 @@
+# Dependabot configuration for automated dependency updates
+# See: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "neverinfamous"
+    assignees:
+      - "neverinfamous"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+    # Group related updates together
+    groups:
+      development-dependencies:
+        patterns:
+          - "pytest*"
+          - "flake8*"
+          - "black*"
+          - "isort*"
+          - "pyright*"
+      core-dependencies:
+        patterns:
+          - "mcp*"
+    # Security updates get priority
+    allow:
+      - dependency-type: "all"
+    ignore:
+      # Ignore major version updates for now (require manual review)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "neverinfamous"
+    assignees:
+      - "neverinfamous"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "neverinfamous"
+    assignees:
+      - "neverinfamous"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+    # Only allow minor and patch updates for Docker base images
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
