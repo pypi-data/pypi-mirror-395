@@ -1,0 +1,510 @@
+#!/usr/bin/env python3
+"""
+ul80 - Microsoft LINK-80 compatible linker for Linux.
+
+Usage: ul80 [-o output.com] file1.rel file2.rel ...
+"""
+
+import sys
+import os
+import argparse
+from pathlib import Path
+
+from um80 import __version__
+from um80.relformat import *
+
+
+class LinkerError(Exception):
+    """Linker error."""
+    pass
+
+
+class Module:
+    """A loaded REL module."""
+    def __init__(self, name):
+        self.name = name
+        self.code = bytearray()  # Loaded code/data
+        self.code_size = 0
+        self.data_size = 0
+        self.code_base = 0  # Will be set during linking
+        self.data_base = 0
+        self.code_start = 0  # Starting offset within code buffer (for absolute ORG)
+
+        # Symbols defined in this module
+        self.publics = {}  # name -> (value, seg_type)
+
+        # External references (chains to be fixed up)
+        self.externals = {}  # name -> list of (offset_in_module, seg_type)
+
+        # Internal chains (forward references resolved within module)
+        self.chains = {}  # offset -> list of offsets to fix
+
+        # Common blocks
+        self.commons = {}  # name -> size
+
+        # Relocation info: list of (offset, seg_type) for addresses that need relocation
+        self.relocations = []
+
+
+class Linker:
+    """LINK-80 compatible linker."""
+
+    def __init__(self):
+        self.modules = []
+        self.globals = {}  # name -> (module_idx, value, seg_type, is_defined)
+        self.commons = {}  # name -> size (largest wins)
+
+        self.code_base = 0x0103  # Default CP/M load address + 3 for JMP
+        self.data_base = None  # Will be after code if not specified
+        self.common_base = None  # After data
+
+        self.output = bytearray()
+        self.entry_point = None  # (value, seg_type) or None
+
+        self.errors = []
+        self.warnings = []
+
+    def error(self, msg):
+        self.errors.append(f"Error: {msg}")
+
+    def warning(self, msg):
+        self.warnings.append(f"Warning: {msg}")
+
+    def load_rel(self, filename):
+        """Load a REL file and add to modules list."""
+        with open(filename, 'rb') as f:
+            data = f.read()
+
+        reader = RELReader(data)
+        module = Module(Path(filename).stem.upper())
+
+        current_loc = 0
+        current_seg = ADDR_PROGRAM_REL  # Default to code segment
+        code_bytes = bytearray()
+        first_loc_set = False  # Track if we've seen the first location
+
+        while True:
+            try:
+                item = reader.read_item()
+            except EOFError:
+                break
+
+            if item is None:
+                break
+
+            item_type = item[0]
+
+            if item_type == 'ABSOLUTE_BYTE':
+                # Extend buffer if needed
+                while len(code_bytes) <= current_loc:
+                    code_bytes.append(0)
+                code_bytes[current_loc] = item[1]
+                current_loc += 1
+
+            elif item_type == 'PROGRAM_REL':
+                # 16-bit program-relative value - needs relocation
+                value = item[1]
+                while len(code_bytes) <= current_loc + 1:
+                    code_bytes.append(0)
+                code_bytes[current_loc] = value & 0xFF
+                code_bytes[current_loc + 1] = (value >> 8) & 0xFF
+                module.relocations.append((current_loc, ADDR_PROGRAM_REL))
+                current_loc += 2
+
+            elif item_type == 'DATA_REL':
+                # 16-bit data-relative value - needs relocation
+                value = item[1]
+                while len(code_bytes) <= current_loc + 1:
+                    code_bytes.append(0)
+                code_bytes[current_loc] = value & 0xFF
+                code_bytes[current_loc + 1] = (value >> 8) & 0xFF
+                module.relocations.append((current_loc, ADDR_DATA_REL))
+                current_loc += 2
+
+            elif item_type == 'COMMON_REL':
+                # 16-bit common-relative value - needs relocation
+                value = item[1]
+                while len(code_bytes) <= current_loc + 1:
+                    code_bytes.append(0)
+                code_bytes[current_loc] = value & 0xFF
+                code_bytes[current_loc + 1] = (value >> 8) & 0xFF
+                module.relocations.append((current_loc, ADDR_COMMON_REL))
+                current_loc += 2
+
+            elif item_type == 'PROGRAM_NAME':
+                module.name = item[1]
+
+            elif item_type == 'ENTRY_SYMBOL':
+                # Symbol this module exports (for library search)
+                pass
+
+            elif item_type == 'DEFINE_ENTRY':
+                # PUBLIC symbol definition
+                a_field, name = item[1], item[2]
+                addr_type, value = a_field
+                module.publics[name] = (value, addr_type)
+
+            elif item_type == 'CHAIN_EXTERNAL':
+                # External reference chain
+                a_field, name = item[1], item[2]
+                addr_type, head = a_field
+                if name not in module.externals:
+                    module.externals[name] = []
+                module.externals[name].append((head, addr_type))
+
+            elif item_type == 'SET_LOC':
+                a_field = item[1]
+                addr_type, value = a_field
+                current_loc = value
+                current_seg = addr_type
+                # Track the first absolute location as code_start
+                if not first_loc_set and addr_type == ADDR_ABSOLUTE:
+                    module.code_start = value
+                    first_loc_set = True
+
+            elif item_type == 'CHAIN_ADDRESS':
+                # Internal forward reference chain
+                a_field = item[1]
+                addr_type, head = a_field
+                # Store for later processing
+                if head not in module.chains:
+                    module.chains[head] = []
+                module.chains[head].append((current_loc, addr_type))
+
+            elif item_type == 'DEFINE_PROG_SIZE':
+                a_field = item[1]
+                _, size = a_field
+                module.code_size = size
+
+            elif item_type == 'DEFINE_DATA_SIZE':
+                a_field = item[1]
+                _, size = a_field
+                module.data_size = size
+
+            elif item_type == 'DEFINE_COMMON_SIZE':
+                a_field, name = item[1], item[2]
+                _, size = a_field
+                module.commons[name] = size
+
+            elif item_type == 'SELECT_COMMON':
+                # Switch to common block
+                pass
+
+            elif item_type == 'REQUEST_LIB':
+                # Library search request
+                pass
+
+            elif item_type == 'END_PROGRAM':
+                # End of module
+                pass
+
+            elif item_type == 'END_FILE':
+                break
+
+        module.code = code_bytes
+        self.modules.append(module)
+
+        # Register public symbols
+        mod_idx = len(self.modules) - 1
+        for name, (value, seg_type) in module.publics.items():
+            if name in self.globals and self.globals[name][3]:
+                self.warning(f"Multiple definition of '{name}'")
+            else:
+                self.globals[name] = (mod_idx, value, seg_type, True)
+
+        # Track common block sizes
+        for name, size in module.commons.items():
+            if name not in self.commons or size > self.commons[name]:
+                self.commons[name] = size
+
+        return True
+
+    def resolve_externals(self):
+        """Check that all external references can be resolved."""
+        undefined = []
+        for module in self.modules:
+            for name in module.externals:
+                # Parse "SYMBOL+N" format - check base symbol
+                base_name = name
+                if '+' in name:
+                    parts = name.rsplit('+', 1)
+                    try:
+                        int(parts[1])  # Valid offset?
+                        base_name = parts[0]
+                    except ValueError:
+                        pass  # Not a valid offset, use full name
+
+                if base_name not in self.globals or not self.globals[base_name][3]:
+                    undefined.append(name)
+
+        if undefined:
+            for name in set(undefined):
+                self.error(f"Undefined symbol: {name}")
+            return False
+        return True
+
+    def calculate_addresses(self):
+        """Calculate base addresses for all modules."""
+        # Calculate total code size
+        total_code = 0
+        for module in self.modules:
+            module.code_base = self.code_base + total_code
+            total_code += module.code_size if module.code_size else len(module.code)
+
+        # Data follows code
+        if self.data_base is None:
+            self.data_base = self.code_base + total_code
+
+        total_data = 0
+        for module in self.modules:
+            module.data_base = self.data_base + total_data
+            total_data += module.data_size
+
+        # Common follows data
+        if self.common_base is None:
+            self.common_base = self.data_base + total_data
+
+    def relocate_value(self, module, value, seg_type):
+        """Relocate a value based on its segment type."""
+        if seg_type == ADDR_ABSOLUTE:
+            return value
+        elif seg_type == ADDR_PROGRAM_REL:
+            return value + module.code_base
+        elif seg_type == ADDR_DATA_REL:
+            return value + module.data_base
+        elif seg_type == ADDR_COMMON_REL:
+            return value + self.common_base
+        return value
+
+    def link(self):
+        """Link all loaded modules."""
+        if not self.resolve_externals():
+            return False
+
+        self.calculate_addresses()
+
+        # Build output starting at origin (code_base of first module)
+        # Determine output base address (lowest module address)
+        self.output_base = min(m.code_base for m in self.modules)
+
+        total_size = 0
+        for module in self.modules:
+            code_size = module.code_size if module.code_size else len(module.code)
+            end_addr = module.code_base + code_size - self.output_base
+            if end_addr > total_size:
+                total_size = end_addr
+
+        self.output = bytearray(total_size)
+
+        # Copy and relocate each module
+        for module in self.modules:
+            code_size = module.code_size if module.code_size else len(module.code) - module.code_start
+            dest_offset = module.code_base - self.output_base
+
+            # Copy code bytes from the code_start position in the source buffer
+            # (accounts for absolute ORG where code is stored at offset > 0)
+            src_start = module.code_start
+            for i in range(code_size):
+                src_idx = src_start + i
+                if src_idx < len(module.code) and dest_offset + i < len(self.output):
+                    self.output[dest_offset + i] = module.code[src_idx]
+
+        # Fix up external references
+        for mod_idx, module in enumerate(self.modules):
+            dest_offset = module.code_base - self.output_base
+            src_start = module.code_start  # For absolute ORG adjustment
+
+            for name, refs in module.externals.items():
+                # Parse "SYMBOL+N" format for expression offsets
+                expr_offset = 0
+                base_name = name
+                if '+' in name:
+                    parts = name.rsplit('+', 1)
+                    base_name = parts[0]
+                    try:
+                        expr_offset = int(parts[1])
+                    except ValueError:
+                        pass  # Not a valid offset, use full name
+
+                if base_name not in self.globals:
+                    continue
+
+                target_mod_idx, target_value, target_seg_type, _ = self.globals[base_name]
+                target_module = self.modules[target_mod_idx]
+                target_addr = self.relocate_value(target_module, target_value, target_seg_type)
+                target_addr += expr_offset  # Add expression offset (e.g., +1 for SYMBOL+1)
+
+                for head, ref_seg_type in refs:
+                    # Follow the chain and fix up each reference
+                    # Chain offsets are absolute addresses, adjust for code_start
+                    offset = head - src_start
+                    visited = set()  # Prevent infinite loops
+                    while offset not in visited and offset >= 0:
+                        visited.add(offset)
+                        abs_offset = dest_offset + offset
+                        if abs_offset + 1 < len(self.output) and abs_offset >= 0:
+                            # Get value at this location (this is the next chain link, absolute addr)
+                            value = self.output[abs_offset] | (self.output[abs_offset + 1] << 8)
+
+                            # Chain format: each link points to previous reference
+                            # End of chain is marked by value 0
+                            # Resolve this location with target address
+                            self.output[abs_offset] = target_addr & 0xFF
+                            self.output[abs_offset + 1] = (target_addr >> 8) & 0xFF
+
+                            if value == 0:
+                                # End of chain
+                                break
+                            else:
+                                # Follow chain to previous reference (absolute addr, adjust for code_start)
+                                offset = value - src_start
+                        else:
+                            break
+
+        # Apply relocations for program-relative, data-relative, and common-relative addresses
+        for module in self.modules:
+            dest_offset = module.code_base - self.output_base
+            src_start = module.code_start  # For absolute ORG adjustment
+            for offset, seg_type in module.relocations:
+                # Relocation offsets are absolute addresses, adjust for code_start
+                abs_offset = dest_offset + (offset - src_start)
+                if abs_offset >= 0 and abs_offset + 1 < len(self.output):
+                    # Read current value
+                    value = self.output[abs_offset] | (self.output[abs_offset + 1] << 8)
+                    # Apply relocation based on segment type
+                    if seg_type == ADDR_PROGRAM_REL:
+                        value += module.code_base
+                    elif seg_type == ADDR_DATA_REL:
+                        value += module.data_base
+                    elif seg_type == ADDR_COMMON_REL:
+                        value += self.common_base
+                    # Write relocated value
+                    self.output[abs_offset] = value & 0xFF
+                    self.output[abs_offset + 1] = (value >> 8) & 0xFF
+
+        return True
+
+    def save_com(self, filename):
+        """Save as CP/M .COM file."""
+        # For .COM file, code loads and executes at 0x100
+        # Only prepend JMP if entry point is not at 0x100
+        with open(filename, 'wb') as f:
+            f.write(bytes(self.output))
+
+    def save_hex(self, filename):
+        """Save as Intel HEX format."""
+        with open(filename, 'w') as f:
+            addr = self.output_base
+            data = bytes(self.output)
+
+            idx = 0
+            while idx < len(data):
+                # Write 16 bytes per line
+                line_len = min(16, len(data) - idx)
+                line_data = data[idx:idx + line_len]
+
+                # Calculate checksum
+                checksum = line_len + (addr >> 8) + (addr & 0xFF) + 0  # record type 0
+                checksum += sum(line_data)
+                checksum = (~checksum + 1) & 0xFF
+
+                # Write line
+                hex_data = ''.join(f'{b:02X}' for b in line_data)
+                f.write(f':{line_len:02X}{addr:04X}00{hex_data}{checksum:02X}\n')
+
+                addr += line_len
+                idx += line_len
+
+            # Write EOF record
+            f.write(':00000001FF\n')
+
+    def save_sym(self, filename):
+        """Save symbol table file (.SYM) compatible with SID/ZSID debuggers.
+
+        Format: ADDR NAME (one per line, LF endings)
+        Sorted alphabetically by symbol name.
+        """
+        # Build list of (name, address) for all defined globals
+        symbols = []
+        for name, (mod_idx, value, seg_type, is_defined) in self.globals.items():
+            if is_defined:
+                module = self.modules[mod_idx]
+                addr = self.relocate_value(module, value, seg_type)
+                symbols.append((name, addr))
+
+        # Sort alphabetically by symbol name (DRI convention)
+        symbols.sort(key=lambda x: x[0])
+
+        with open(filename, 'w') as f:
+            # SID .SYM format: ADDR NAME (one per line)
+            # Use LF line endings - cpmemu converts to CR-LF in text mode
+            for name, addr in symbols:
+                f.write(f"{addr:04X} {name}\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description='ul80 - LINK-80 compatible linker')
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}')
+    parser.add_argument('inputs', nargs='+', help='Input .REL files')
+    parser.add_argument('-o', '--output', help='Output file (default: first input with .com)')
+    parser.add_argument('-x', '--hex', action='store_true', help='Output Intel HEX format')
+    parser.add_argument('-s', '--sym', action='store_true', help='Generate .SYM symbol file')
+    parser.add_argument('-S', '--sym-file', metavar='FILE', help='Generate .SYM symbol file with specified name')
+    parser.add_argument('-p', '--origin', type=lambda x: int(x, 16) if not x.startswith(('0x', '0X', '0o', '0O', '0b', '0B')) else int(x, 0), default=0x100,
+                       help='Program origin as hex (e.g., E000, 0xE000, default: 100)')
+
+    args = parser.parse_args()
+
+    linker = Linker()
+    linker.code_base = args.origin  # Code starts at origin (0x100 for CP/M)
+
+    # Load all input files
+    for filename in args.inputs:
+        if not os.path.exists(filename):
+            print(f"Error: File not found: {filename}", file=sys.stderr)
+            sys.exit(1)
+        if not linker.load_rel(filename):
+            print(f"Error loading {filename}", file=sys.stderr)
+            sys.exit(1)
+
+    # Link
+    if not linker.link():
+        for err in linker.errors:
+            print(err, file=sys.stderr)
+        sys.exit(1)
+
+    # Determine output filename
+    if args.output:
+        output_path = args.output
+    else:
+        ext = '.hex' if args.hex else '.com'
+        output_path = Path(args.inputs[0]).with_suffix(ext)
+
+    # Save output
+    if args.hex:
+        linker.save_hex(str(output_path))
+    else:
+        linker.save_com(str(output_path))
+
+    # Save symbol file if requested
+    if args.sym or args.sym_file:
+        if args.sym_file:
+            sym_path = Path(args.sym_file)
+        else:
+            sym_path = Path(output_path).with_suffix('.sym')
+        linker.save_sym(str(sym_path))
+        print(f"Symbol file -> {sym_path}")
+
+    # Report warnings
+    for warn in linker.warnings:
+        print(warn, file=sys.stderr)
+
+    print(f"Linked -> {output_path}")
+    print(f"  Modules: {len(linker.modules)}")
+    print(f"  Global symbols: {len(linker.globals)}")
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
