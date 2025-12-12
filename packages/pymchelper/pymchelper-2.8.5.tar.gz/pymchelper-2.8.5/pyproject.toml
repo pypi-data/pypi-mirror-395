@@ -1,0 +1,146 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymchelper"
+dynamic = ["version"]
+description = "Python toolkit for SHIELD-HIT12A and FLUKA"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "pymchelper team", email = "leszek.grzanka@gmail.com"}
+]
+keywords = ["monte carlo", "particle therapy", "SHIELD-HIT12A", "FLUKA", "physics"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Environment :: Console",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+image = ["matplotlib"]
+excel = ["xlwt"]
+hdf = ["h5py"]
+dicom = ["pydicom"]
+pytrip = [
+    "pytrip98",
+]
+full = [
+    "matplotlib",
+    "xlwt",
+    "h5py",
+    "pydicom",
+    "pytrip98",
+    "hipsterplot",
+    "bashplotlib",
+]
+test = [
+    "pytest==8.4.2",
+    "pytest-rerunfailures",
+    "flake8==7.3.0",
+    "sphinx>=7.0",
+    "mcpl==1.6.2",
+    "yapf==0.43.0",
+    "requests==2.32.5",
+    "scipy",
+    "pre-commit==3.7.1 ; python_version < '3.10'",
+    "pre-commit==4.5.0 ; python_version >= '3.10'",
+]
+dev = [
+    "pymchelper[full,test]",
+    "build",
+    "twine",
+]
+docs = [
+    "pymchelper[full]",
+    "sphinx>=7.0",
+    "pydata-sphinx-theme==0.16.0",
+    "sphinx-copybutton",
+]
+
+[project.urls]
+Homepage = "https://github.com/DataMedSci/pymchelper"
+Documentation = "https://datamedsci.github.io/pymchelper/"
+Repository = "https://github.com/DataMedSci/pymchelper.git"
+Issues = "https://github.com/DataMedSci/pymchelper/issues"
+Changelog = "https://github.com/DataMedSci/pymchelper/releases"
+
+[project.scripts]
+convertmc = "pymchelper.run:main"
+runmc = "pymchelper.utils.runmc:main"
+mcscripter = "pymchelper.utils.mcscripter:main"
+plan2sobp = "pymchelper.utils.radiotherapy.plan:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests", "tests.*", "examples", "examples.*", "docs", "docs.*"]
+
+[tool.setuptools.package-data]
+pymchelper = ["flair/db/*"]
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "node-and-date"
+write_to = "pymchelper/_version.py"
+
+[tool.yapf]
+based_on_style = "pep8"
+column_limit = 120
+
+[tool.pytest]
+testpaths = ["tests"]
+addopts = ["-v", "--doctest-modules"]
+
+[tool.wheel]
+universal = false
+
+[tool.nuitka]
+# Nuitka 2.8 configuration for building self-contained onefile executables
+# Common flags applied via CLI; keep config minimal and portable.
+standalone = true
+onefile = true
+nofollow_imports = false
+enable_plugins = [
+    "numpy",
+    "pylibjpeg",
+    "pylibjpeg-libjpeg",
+    "pylibjpeg-openjpeg",
+    "pylibjpeg-rle",
+]
+
+# Include essential package data
+include_data_files = [
+    # bundle dynamic version file
+    ["pymchelper/_version.py", "pymchelper/_version.py"],
+    # flair db files used by convertmc/runmc
+    ["pymchelper/flair/db/card.ini", "pymchelper/flair/db/card.ini"],
+    ["pymchelper/flair/db/card.db", "pymchelper/flair/db/card.db"],
+]
+
+# On Linux, prefer using patchelf/ldconfig from runner image
+recurse_to_modules = [
+    "pymchelper",
+    "pydicom.encoders.gdcm",
+    "pydicom.encoders.pylibjpeg",
+    "scipy.spatial.transform._rotation_groups",
+]

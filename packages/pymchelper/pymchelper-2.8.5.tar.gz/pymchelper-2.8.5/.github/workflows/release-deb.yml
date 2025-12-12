@@ -1,0 +1,380 @@
+name: Release - executable artifacts and deb package
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+
+  # build each executable in parallel (Nuitka)
+  build-mcscripter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Build mcscripter in manylinux2014 with Nuitka
+        run: |
+          docker run --rm \
+            -v "${PWD}:/work" \
+            -w /work \
+            quay.io/pypa/manylinux2014_x86_64 \
+            /bin/bash -lc '
+              set -e
+              # Provide static libpython required by Nuitka on manylinux
+              if [ -f /opt/_internal/static-libs-for-embedding-only.tar.xz ]; then
+                cd /opt/_internal && tar xf static-libs-for-embedding-only.tar.xz && cd -
+              fi
+              PYBIN=/opt/python/cp311-cp311/bin/python
+              "$PYBIN" -m pip install --upgrade pip
+              # Prefer binary wheels globally for heavy deps, then install project deps
+              PIP_ONLY_BINARY=:all: "$PYBIN" -m pip install --prefer-binary numpy
+              PIP_ONLY_BINARY=:all: "$PYBIN" -m pip install --prefer-binary h5py
+              "$PYBIN" -m pip install -e .[full]
+              "$PYBIN" -m pip install nuitka==2.8 wheel
+              "$PYBIN" -m nuitka \
+                --standalone --onefile \
+                --include-data-file=pymchelper/_version.py=pymchelper/_version.py \
+                --nofollow-import-to=pytrip \
+                --enable-plugin=no-qt \
+                --output-dir=dist \
+                --output-filename=mcscripter \
+                pymchelper/utils/mcscripter.py
+            '
+      - name: List generated executable with size
+        run: |
+          ls -lh ./dist/mcscripter
+          du -h ./dist/mcscripter
+      - name: Test mcscripter executable
+        run: ./dist/mcscripter --version
+      - name: Upload mcscripter artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: executables-mcscripter
+          path: ./dist/mcscripter
+
+  build-plan2sobp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Build plan2sobp in manylinux2014 with Nuitka
+        run: |
+          docker run --rm \
+            -v "${PWD}:/work" \
+            -w /work \
+            quay.io/pypa/manylinux2014_x86_64 \
+            /bin/bash -lc '
+              set -e
+              # Provide static libpython required by Nuitka on manylinux
+              if [ -f /opt/_internal/static-libs-for-embedding-only.tar.xz ]; then
+                cd /opt/_internal && tar xf static-libs-for-embedding-only.tar.xz && cd -
+              fi
+              PYBIN=/opt/python/cp311-cp311/bin/python
+              "$PYBIN" -m pip install --upgrade pip
+              # Prefer binary wheels globally for heavy deps, then install project deps
+              PIP_ONLY_BINARY=:all: "$PYBIN" -m pip install --prefer-binary numpy
+              PIP_ONLY_BINARY=:all: "$PYBIN" -m pip install --prefer-binary h5py
+              "$PYBIN" -m pip install -e .[full]
+              "$PYBIN" -m pip install nuitka==2.8 wheel
+              "$PYBIN" -m nuitka \
+                --standalone --onefile \
+                --include-data-file=pymchelper/_version.py=pymchelper/_version.py \
+                --nofollow-import-to=pytrip \
+                --enable-plugin=no-qt \
+                --output-dir=dist \
+                --output-filename=plan2sobp \
+                pymchelper/utils/radiotherapy/plan.py
+            '
+      - name: List generated executable with size
+        run: |
+          ls -lh ./dist/plan2sobp
+          du -h ./dist/plan2sobp
+      - name: Test plan2sobp executable
+        run: ./dist/plan2sobp --version
+      - name: Upload plan2sobp artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: executables-plan2sobp
+          path: ./dist/plan2sobp
+
+  # build-runmc: intentionally disabled (excluded from single-file builds)
+
+  build-convertmc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Build convertmc in manylinux2014 with Nuitka
+        run: |
+          docker run --rm \
+            -v "${PWD}:/work" \
+            -w /work \
+            quay.io/pypa/manylinux2014_x86_64 \
+            /bin/bash -lc '
+              set -e
+              # Provide static libpython required by Nuitka on manylinux
+              if [ -f /opt/_internal/static-libs-for-embedding-only.tar.xz ]; then
+                cd /opt/_internal && tar xf static-libs-for-embedding-only.tar.xz && cd -
+              fi
+              PYBIN=/opt/python/cp311-cp311/bin/python
+              "$PYBIN" -m pip install --upgrade pip
+              # Prefer binary wheels globally for heavy deps, then install project deps
+              PIP_ONLY_BINARY=:all: "$PYBIN" -m pip install --prefer-binary numpy
+              PIP_ONLY_BINARY=:all: "$PYBIN" -m pip install --prefer-binary h5py
+              "$PYBIN" -m pip install -e .[full]
+              "$PYBIN" -m pip install nuitka==2.8 wheel
+              "$PYBIN" -m nuitka \
+                --standalone --onefile \
+                --include-data-file=pymchelper/_version.py=pymchelper/_version.py \
+                --include-data-file=pymchelper/flair/db/card.ini=pymchelper/flair/db/card.ini \
+                --include-data-file=pymchelper/flair/db/card.db=pymchelper/flair/db/card.db \
+                --nofollow-import-to=pytrip \
+                --nofollow-import-to=scipy \
+                --enable-plugin=no-qt \
+                --output-dir=dist \
+                --output-filename=convertmc \
+                pymchelper/run.py
+            '
+      - name: List generated executable with size
+        run: |
+          ls -lh ./dist/convertmc
+          du -h ./dist/convertmc
+      - name: Test convertmc executable
+        run: ./dist/convertmc --version
+      - name: Upload convertmc artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: executables-convertmc
+          path: ./dist/convertmc
+
+  # test executables on multiple Linux distributions
+  test-executables:
+    runs-on: ubuntu-latest
+    needs: [build-mcscripter, build-plan2sobp, build-convertmc]
+    strategy:
+      matrix:
+        docker-tag: 
+          - 'debian:11'
+          - 'debian:12'
+          - 'debian:13'
+          - 'ubuntu:22.04'
+          - 'ubuntu:24.04'
+          - 'ubuntu:25.04'
+          # Fedora images temporarily excluded due to exec permission issues
+
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-mcscripter
+          path: ./dist
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-plan2sobp
+          path: ./dist
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-convertmc
+          path: ./dist
+
+      - name: Ensure host executables are executable
+        run: chmod +x ./dist/* || true
+
+      - name: Test mcscripter on ${{ matrix.docker-tag }}
+        run: docker run --volume "${PWD}/dist:/test" ${{ matrix.docker-tag }} /bin/sh -c "chmod +x /test/* || true; /test/mcscripter --version"
+
+      - name: Test plan2sobp on ${{ matrix.docker-tag }}
+        run: docker run --volume "${PWD}/dist:/test" ${{ matrix.docker-tag }} /bin/sh -c "chmod +x /test/* || true; /test/plan2sobp --version"
+
+      # runmc test intentionally disabled
+
+      - name: Test convertmc on ${{ matrix.docker-tag }}
+        run: docker run --volume "${PWD}/dist:/test" ${{ matrix.docker-tag }} /bin/sh -c "chmod +x /test/* || true; /test/convertmc --version"
+
+  # upload of single-file executables to release assets
+  upload-executables:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [build-mcscripter, build-plan2sobp, build-convertmc, test-executables]
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-mcscripter
+          path: ./dist
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-plan2sobp
+          path: ./dist
+      # runmc artifact intentionally not uploaded
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-convertmc
+          path: ./dist
+
+      - name: Add artifact with util files to the release
+        uses: ncipollo/release-action@v1.20.0
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          allowUpdates:  true
+          # An optional set of paths representing artifacts to upload to the release. This may be a single path or a comma delimited list of paths (or globs)
+          artifacts: './dist/*'
+          token:  ${{ secrets.GITHUB_TOKEN }}
+
+
+  generate-deb-packages:
+    runs-on: ubuntu-latest
+    needs: [build-mcscripter, build-plan2sobp, build-convertmc, test-executables]
+
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-mcscripter
+          path: ./dist
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-plan2sobp
+          path: ./dist
+      # runmc artifact intentionally not downloaded
+      - uses: actions/download-artifact@v6
+        with:
+          name: executables-convertmc
+          path: ./dist
+
+      - name: Generate deb packages
+        working-directory: debian_packages
+        run: ./generate_deb_packages.sh convertmc mcscripter plan2sobp
+
+      - name: Archive deb package as artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: deb
+          path: 'debian_packages/*.deb'
+
+  test_deb:
+    runs-on: ubuntu-latest
+    needs: [generate-deb-packages]
+    strategy:
+      matrix:
+        docker-tag: ['debian:12', 'debian:13', 'debian:stable', 'ubuntu:20.04', 'ubuntu:22.04', 'ubuntu:24.04', 'ubuntu:25.04', 'ubuntu:25.10']
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: deb
+          path: ./
+
+      - name: Inspect artifacts
+        run: find . -name "*.deb" -printf 'Contents of package %p\n' -exec dpkg-deb --contents {} \;
+
+      - name: Test installation
+        run: docker run --volume `pwd`:/pkg ${{ matrix.docker-tag }} /bin/sh -c "ldd --version; dpkg --install /pkg/pymchelper-*.deb; convertmc --version; plan2sobp --version; mcscripter --version"
+
+  repo_prepare:
+      runs-on: ubuntu-latest
+      needs: [generate-deb-packages]
+      steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: deb
+          path: debian_packages/
+
+      - name: Import GPG key from a secret variable
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Print GPG user IDs and save files to be included in repository
+        working-directory: debian_packages
+        run: |
+          echo "fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}"
+          echo "keyid:       ${{ steps.import_gpg.outputs.keyid }}"
+          echo "name:        ${{ steps.import_gpg.outputs.name }}"
+          echo "email:       ${{ steps.import_gpg.outputs.email }}"
+          echo "${{ steps.import_gpg.outputs.fingerprint }}" > key_fingerprint.txt
+          gpg --export --armor --output public.gpg
+
+      - name: Create reposity and add packages
+        working-directory: debian_packages
+        run: ./add_packages_to_repo.sh
+
+      - name: Archive directory with repository as artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: repo
+          path: 'debian_packages/public'
+
+  repo_upload:
+      runs-on: ubuntu-latest
+      needs: [repo_prepare, test_deb]
+      permissions:
+        contents: write
+      steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: repo
+          path: debian_packages/public
+
+      - name: Tuning
+        working-directory: debian_packages
+        run: |
+          mv datamedsci.list public/
+          touch public/.nojekyll
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4.7.4
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          branch: gh-pages # The branch the action should deploy to.
+          folder: debian_packages/public # The folder the action should deploy.
+          repository-name: DataMedSci/deb_package_repository
+          ssh-key: ${{ secrets.DEB_REPO_PRIVATE_KEY }}
+          clean: true
+          single-commit: true
+
+  test_apt_installation:
+    runs-on: ubuntu-latest
+    needs: [repo_upload]
+    if: startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      matrix:
+        docker-tag: ['debian:12', 'debian:13', 'ubuntu:22.04', 'ubuntu:24.04', 'ubuntu:25.04']
+    steps:
+      - name: Wait for repository propagation
+        run: sleep 30
+
+      - name: Test apt installation on ${{ matrix.docker-tag }}
+        run: |
+          docker run --volume "${PWD}:/work" ${{ matrix.docker-tag }} /bin/sh -c "
+            set -e
+            apt-get update
+            apt-get install -y wget gpg
+            wget -qO - https://datamedsci.github.io/deb_package_repository/public.gpg | gpg --dearmor -o /usr/share/keyrings/datamedsci-archive-keyring.gpg
+            echo 'deb [signed-by=/usr/share/keyrings/datamedsci-archive-keyring.gpg] https://datamedsci.github.io/deb_package_repository/ stable main' > /etc/apt/sources.list.d/datamedsci.list
+            apt-get update
+            apt-get install -y pymchelper-convertmc pymchelper-mcscripter pymchelper-plan2sobp
+            echo 'Testing installed packages:'
+            convertmc --version
+            mcscripter --version
+            plan2sobp --version
+          "
