@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=46.4"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ewoksdata"
+version = "2.0.3"
+authors = [{ name = "ESRF", email = "dau-pydev@esrf.fr" }]
+description = "Ewoks tasks for data access"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE.md" }
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "packaging",
+    "h5py >=2.8",
+    "silx >=1.1.0",
+    "hdf5plugin",
+    "blissdata >=0.3.4",
+    "redis",                     # missing dependency in blissdata<1
+    "redis !=5.3.0b1,!=5.3.0b3",
+    "redis-om !=1.0.0b0;python_version < '3.9'",  # https://github.com/redis/redis-om-python/issues/693
+    "redis-om !=1.0.3b0;python_version < '3.9'",  # https://github.com/redis/redis-om-python/issues/706
+]
+
+[project.urls]
+Homepage = "https://gitlab.esrf.fr/workflow/ewoksapps/ewoksdata/"
+Documentation = "https://ewoksdata.readthedocs.io"
+Repository = "https://gitlab.esrf.fr/workflow/ewoksapps/ewoksdata/"
+Issues = "https://gitlab.esrf.fr/workflow/ewoksapps/ewoksdata/issues"
+Changelog = "https://gitlab.esrf.fr/workflow/ewoksapps/ewoksdata/-/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+online = [
+    "blissdata[tango]"
+]
+test = [
+    "ewoksdata[online]",
+    "pytest >=7",
+]
+dev = [
+    "ewoksdata[test]",
+    "black >=25",
+    "flake8 >=4",
+    "isort",
+]
+doc = [
+    "ewoksdata[test]",
+    "sphinx >=4.5",
+    "sphinx-autodoc-typehints >=1.16",
+    "pydata-sphinx-theme < 0.15",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.coverage.run]
+omit = ['*/tests/*']
+
+[tool.isort]
+profile = "black"
+force_single_line = "True"
