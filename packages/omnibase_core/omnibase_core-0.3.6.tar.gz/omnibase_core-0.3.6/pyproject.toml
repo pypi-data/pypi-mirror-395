@@ -1,0 +1,366 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "omnibase_core"
+version = "0.3.6"
+description = "ONEX Core Framework - Base classes and essential implementations"
+authors = [
+    {name = "OmniNode Team", email = "team@omninode.ai"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = [
+    "onex",
+    "framework",
+    "architecture",
+    "dependency-injection",
+    "base-classes",
+    "infrastructure",
+    "event-driven",
+    "error-handling",
+    "node-architecture"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed"
+]
+dependencies = [
+    "pydantic>=2.11.7,<3.0.0",
+    "llama-index>=0.14.0,<0.15.0",
+    "pypdf>=6.1.0,<7.0.0",
+    "fastapi>=0.120.1,<0.121.0",
+    "starlette>=0.49.1,<0.50.0",
+    "uvicorn>=0.32.0,<0.33.0",
+    "pyyaml>=6.0.2,<7.0.0",
+    "asyncpg>=0.29.0,<0.30.0",
+    "python-consul>=1.1.0,<2.0.0",
+    "psycopg2-binary>=2.9.10,<3.0.0",
+    "redis>=6.4.0,<7.0.0",
+    "dependency-injector>=4.48.1,<5.0.0",
+    "click>=8.1.0,<9.0.0",
+    "rich>=13.7.0,<14.0.0",
+    "aiohttp>=3.9.0,<4.0.0"
+]
+
+[project.urls]
+homepage = "https://github.com/OmniNode-ai/omnibase_core"
+repository = "https://github.com/OmniNode-ai/omnibase_core"
+documentation = "https://github.com/OmniNode-ai/omnibase_core/tree/main/docs"
+
+[project.scripts]
+onex = "omnibase_core.cli.commands:cli"
+# Backward-compatibility alias (renamed from 'omni-agent' to 'onex' in v0.3.0)
+omni-agent = "omnibase_core.cli.commands:cli"
+
+[project.optional-dependencies]
+cli = ["psutil"]
+full = ["psutil"]
+
+[tool.poetry]
+# Note: name and version are defined in [project] section above (PEP 621)
+# Poetry will use those values automatically
+packages = [{include = "omnibase_core", from = "src"}]
+include = [
+    "scripts/validation/*.py",
+    "scripts/validation/*.json",
+    "scripts/validation/*.md"
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+# NOTE: omnibase-spi removed in v0.3.6 - SPI now depends on Core (dependency inversion)
+pydantic = "^2.12.5"
+llama-index = "^0.14.0"  # Updated for pypdf 6.0+ security fix (CVE-2025-55197)
+pypdf = "^6.4.0"  # Security fix for CVE-2025-55197
+fastapi = "^0.120.1"  # Updated to 0.120.1+ for starlette 0.49.x compatibility
+starlette = "^0.49.1"  # Security fix for CVE-2025-62727 (O(n^2) DoS via Range header)
+uvicorn = "^0.32.0"
+pyyaml = "^6.0.2"
+asyncpg = "^0.29.0"
+python-consul = "^1.1.0"
+psycopg2-binary = "^2.9.10"
+redis = "^6.4.0"
+dependency-injector = "^4.48.1"
+
+# CLI Dependencies
+click = "^8.1.0"
+rich = "^13.7.0"
+aiohttp = "^3.9.0"
+
+# Optional CLI Dependencies
+psutil = {version = "^7.1.3", optional = true}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.0"
+pytest-asyncio = "^0.25.0"
+mypy = "^1.19.0"
+black = "^25.11.0"
+isort = "^5.13.0"
+ruff = "^0.14.7"
+types-pyyaml = "^6.0.12.20250822"
+pre-commit = "^4.3.0"
+types-requests = "^2.32.4.20250913"
+memory-profiler = "^0.61.0"
+pyyaml = "^6.0.3"
+pytest-cov = "^7.0.0"
+pytest-xdist = "^3.8.0"
+pytest-split = "^0.10.0"
+pytest-timeout = "^2.4.0"
+pytest-rerunfailures = "^16.1"
+pytest-testmon = "^2.1.4"
+interrogate = "^1.7.0"
+hypothesis = "^6.148"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [
+    "**/archived/**",
+    "**/archive/**",
+    "**/__pycache__/**",
+    "**/site-packages/**",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I", "N", "UP", "YTT", "S", "BLE", "FBT", "B", "A", "COM", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "RUF"]
+ignore = [
+    "S101",      # Allow assert statements in tests
+    "E501",      # Line too long (technical debt - will fix incrementally)
+    "BLE001",    # Blind exception catching (technical debt)
+    "E402",      # Module level import not at top (technical debt)
+    "TC001",     # Type checking imports (technical debt)
+    "TC003",     # Type checking imports (technical debt)
+    "PLR0911",   # Too many returns (technical debt)
+    "PLR0912",   # Too many branches (technical debt)
+    "PLR0913",   # Too many arguments (technical debt)
+    "PLR0915",   # Too many statements (technical debt)
+    "PLR2004",   # Magic values (technical debt)
+    "FBT001",    # Boolean positional args (technical debt)
+    "FBT002",    # Boolean default args (technical debt)
+    "EM101",     # Exception string literal (technical debt)
+    "EM102",     # Exception f-string literal (technical debt)
+    "TRY003",    # Long exception messages (technical debt)
+    "TRY004",    # Exception type preference (technical debt)
+    "TRY300",    # Consider else block (technical debt)
+    "DTZ005",    # datetime.now() without tz (technical debt)
+    "UP038",     # Use X | Y in isinstance (technical debt)
+    "B008",      # Function call in defaults (technical debt)
+    "ARG003",    # Unused class method argument (technical debt)
+    "ERA001",    # Commented out code (technical debt)
+    "SIM102",    # Nested if statements (technical debt)
+    "B007",      # Unused loop variable (technical debt)
+    "PT018",     # Assertion breakdown (technical debt)
+    "EXE001",    # Shebang without executable (technical debt)
+    "B904",      # raise from (will fix incrementally)
+    "RET505",    # Unnecessary elif (will fix incrementally)
+    "COM812",    # Trailing commas (will fix incrementally)
+    "C901",      # Function complexity (architectural - not fixable easily)
+    "E721",      # Type comparisons (technical debt)
+    "N806",      # Variable naming (technical debt)
+    "TRY203",    # Redundant exception handler (technical debt)
+    "RUF003",    # Comment formatting (technical debt)
+    "SIM117",    # Nested with statements (technical debt)
+    "SIM105",    # contextlib.suppress (technical debt)
+    "PTH123",    # Path.open() (technical debt)
+    "PT017",     # pytest.raises in except (technical debt)
+    "F841",      # Unused variable (technical debt)
+    "ARG002",    # Unused method argument (technical debt)
+    "T201",      # Print statements (technical debt)
+    "FBT003",    # Boolean positional value in call (technical debt)
+    "N802",      # Invalid function name (technical debt)
+    "S603",      # Subprocess without shell (technical debt)
+    "S607",      # Start process with partial path (technical debt)
+    "PT011",     # Pytest raises too broad (technical debt)
+    "SLF001",    # Private member access (technical debt)
+    "DTZ001",    # Call datetime without tzinfo (technical debt)
+    "ARG001",    # Unused function argument (technical debt)
+    "G004",      # Logging f-string (technical debt)
+    "INP001",    # Implicit namespace package (technical debt)
+    "TRY301",    # Raise within try (technical debt)
+    "RUF022",    # Unsorted dunder all (technical debt)
+    "SIM103",    # Needless bool (technical debt)
+    "S301",      # Suspicious pickle usage (technical debt)
+    "B019",      # Cached instance method (technical debt)
+    "PLW2901",   # Redefined loop name (technical debt)
+    "B011",      # Assert false (technical debt)
+    "PT015",     # Pytest assert always false (technical debt)
+    "RUF005",    # Collection literal concatenation (technical debt)
+    "S110",      # Try except pass (technical debt)
+    "S112",      # Try except continue (technical debt)
+    "SIM108",    # If else block instead of if exp (technical debt)
+    "F401",      # Unused import (technical debt)
+    "S311",      # Suspicious non-cryptographic random usage (technical debt)
+    "S324",      # Hashlib insecure hash function (technical debt)
+    "PLR1714",   # Repeated equality comparison (technical debt)
+    "UP007",     # Non pep604 annotation (technical debt)
+    "RUF012",    # Mutable class default (technical debt)
+    "TRY401",    # Verbose log message (technical debt)
+    "S105",      # Hardcoded password string (technical debt)
+    "B017",      # Assert raises exception (technical debt)
+    "A001",      # Builtin variable shadowing (technical debt)
+    "PT012",     # Pytest raises with multiple statements (technical debt)
+    "RET503",    # Implicit return (technical debt)
+    "RET504",    # Unnecessary assign (technical debt)
+    "SIM101",    # Duplicate isinstance call (technical debt)
+    "SIM110",    # Reimplemented builtin (technical debt)
+    "ARG005",    # Unused lambda argument (technical debt)
+    "E711",      # None comparison (technical debt)
+    "E722",      # Bare except (technical debt)
+    "PLR1722",   # Sys exit alias (technical debt)
+    "ISC001",    # Implicit string concatenation (conflicts with formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/validation/test_timeout_compatibility.py" = ["I001"]  # Import sorting conflicts with isort
+"tests/unit/validation/test_protocol_compliance.py" = ["I001"]  # Import sorting conflicts with isort
+"tests/unit/validation/test_yaml_allowlist.py" = ["DTZ007"]  # Date format validation without timezone
+"src/omnibase_core/mixins/mixin_event_bus.py" = ["I001"]  # Import order conflicts with import semantics
+"src/omnibase_core/mixins/mixin_event_handler.py" = ["I001"]  # Import order conflicts with import semantics
+"src/omnibase_core/mixins/mixin_discovery_responder.py" = ["I001"]  # Import sorting skipped by isort - sync with isort skip list
+"src/omnibase_core/mixins/__init__.py" = ["I001"]  # Import order to avoid circular dependencies
+"src/omnibase_core/infrastructure/node_base.py" = ["I001"]  # Import order to avoid circular dependencies
+"src/omnibase_core/models/container/model_onex_container.py" = ["I001"]  # Import order to avoid circular dependencies
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+known_first_party = ["omnibase_core", "omnibase_spi"]
+extend_skip = [
+    "archived", "archive", ".github/workflows",
+    "scripts/validation/test_timeout_compatibility.py",
+    "tests/unit/validation/test_protocol_compliance.py",
+    # Files with intentional import order to avoid circular dependencies
+    "src/omnibase_core/types/constraints.py",
+    "src/omnibase_core/mixins/mixin_event_bus.py",
+    "src/omnibase_core/mixins/mixin_event_handler.py",
+    "src/omnibase_core/mixins/mixin_node_executor.py",
+    "src/omnibase_core/mixins/mixin_discovery_responder.py",
+    "src/omnibase_core/mixins/__init__.py",
+    "src/omnibase_core/mixins/mixin_event_driven_node.py",
+    "src/omnibase_core/mixins/mixin_canonical_serialization.py",
+    "src/omnibase_core/models/container/model_service_instance.py",
+    "src/omnibase_core/models/container/model_onex_container.py",
+    "src/omnibase_core/models/container/model_service_registration.py",
+    # Skip file with isort/ruff conflict
+    "src/omnibase_core/validation/auditor_protocol.py",
+    "src/omnibase_core/models/container/model_registry_status.py",
+    "src/omnibase_core/models/common/model_value_container.py",
+    "src/omnibase_core/models/metadata/model_generic_metadata.py",
+    "src/omnibase_core/models/metadata/__init__.py",
+    "src/omnibase_core/container/service_registry.py",
+    "src/omnibase_core/infrastructure/node_base.py",
+    "src/omnibase_core/logging/structured.py",
+    "src/omnibase_core/validation/contract_validator.py",
+    # Files with intentional section-based import organization
+    "src/omnibase_core/protocols/__init__.py",
+]
+extend_skip_glob = ["tests/fixtures/validation/edge_cases/*.py"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+mypy_path = "src"
+namespace_packages = true
+explicit_package_bases = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = false
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests that test individual components in isolation",
+    "integration: Integration tests that test multiple components together",
+    "slow: Tests that take a long time to run (>1s)",
+    "smoke: Quick smoke tests for basic functionality",
+    "performance: Performance and benchmark tests",
+    "cache: Cache-related tests",
+    "nodes: Node architecture tests",
+    "validation: Validation framework tests",
+    "flaky: Marks tests as flaky and allows reruns (from pytest-rerunfailures)"
+]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--tb=short",
+    "-n4",  # Limit parallel workers to prevent OOM (was: auto)
+    "--timeout=60",  # Prevent hanging tests (60s per test)
+    "--timeout-method=thread",  # Use thread-based timeout for better compatibility
+    "--dist=loadgroup",  # Group tests by @pytest.mark.xdist_group for better control
+    "--reruns=2",  # Auto-retry failed tests twice (handles flaky tests)
+    "--reruns-delay=1",  # 1 second delay between reruns
+]
+filterwarnings = [
+    # Suppress asyncio "Task was destroyed but it is pending!" warnings
+    # These are expected during test cleanup when fixtures cancel pending tasks
+    # The cleanup fixtures (event_loop_cleanup, cleanup_service_tasks) properly
+    # cancel tasks, so these warnings are cosmetic and don't indicate real issues
+    "ignore:.*Task was destroyed but it is pending.*:RuntimeWarning",
+    # NOTE: "coroutine was never awaited" warnings are NOT suppressed
+    # These indicate real bugs where async functions were called but never executed
+    # If you encounter this warning, FIX the test by properly awaiting the coroutine
+]
+# Memory optimization notes:
+# - Limited to 4 workers to prevent OOM on machines with 16GB RAM
+# - Use --timeout to prevent hanging tests accumulating memory
+# - Use --dist=loadscope to group tests by module (reduces import overhead)
+# Test execution strategies:
+#   Fast iteration: -n 2 --timeout=30
+#   Full suite: -n 4 --timeout=60 (default)
+#   CI/Large machines: -n 8 --timeout=120
+#   Debug single test: -n 0 (disable xdist)
+#
+# Intelligent test selection with pytest-testmon:
+#   Run only affected tests: poetry run pytest --testmon
+#   Reset testmon database: poetry run pytest --testmon-noselect
+#   Disable testmon: poetry run pytest --testmon-off
+#   Note: .testmondata file is gitignored and stores test dependencies
+
+[tool.coverage.run]
+source = ["src/omnibase_core"]
+omit = [
+    "*/tests/*",
+    "*/archived/*",
+    "*/archive/*",
+    "*/__pycache__/*",
+    "*/site-packages/*"
+]
+branch = true
+parallel = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 60
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if typing.TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod"
+]
