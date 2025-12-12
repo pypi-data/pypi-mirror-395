@@ -1,0 +1,97 @@
+Metadata-Version: 2.4
+Name: visiongraph-ndi
+Version: 0.2.0
+Summary: NDI support for the visiongraph library.
+Home-page: https://github.com/cansik/visiongraph-ndi
+Author: Florian Bruggisser
+Author-email: github@broox.ch
+License: MIT License
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: cyndilib~=0.0.9
+Requires-Dist: visiongraph>=1.1.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: summary
+
+# Visiongraph NDI [![PyPI](https://img.shields.io/pypi/v/visiongraph-ndi)](https://pypi.org/project/visiongraph-ndi/)
+
+Visiongraph NDI is an extension of the [visiongraph](https://github.com/cansik/visiongraph) library, adding support for real-time video streaming over the network via NewTek's NDI® protocol. This library provides both sending and receiving capabilities, making it easy to integrate NDI into computer vision workflows.
+
+## Installation
+
+Install visiongraph NDI with pip:
+
+```bash
+pip install visiongraph-ndi
+```
+
+### Requirements
+
+Ensure you have the latest version of visiongraph installed.
+
+## Usage Examples
+
+### Sending Video Streams
+
+The `NDIVideoOutput` class allows you to broadcast images in real-time. This example shows how to generate a simple time-based pattern and send it as a video stream.
+
+```python
+from visiongraph_ndi.NDIVideoOutput import NDIVideoOutput
+
+# Set up NDI output with a stream name
+with NDIVideoOutput("Demo") as ndi:
+    image_bgr = ... # load or get an image in BGR format
+    ndi.send(image_bgr)  # Send the generated image
+```
+
+The `NDIVideoOutput` class initializes an NDI output stream with the given name. Use `ndi.send(frame)` to transmit frames, which can be in `BGR` or `BGRA` format.
+
+### Receiving Video Streams
+
+The `NDIVideoInput` class supports finding available NDI sources and streaming from them in real-time. Below are examples of how to find NDI sources and receive streams.
+
+#### Finding Sources
+
+Use `NDIVideoInput.find_sources()` to list all available NDI sources on the network. It is possible to set the timeout to find sources (default: `1.0` seconds).
+
+```python
+from visiongraph_ndi.NDIVideoInput import NDIVideoInput
+
+# Discover NDI sources for 5 seconds
+for source in NDIVideoInput.find_sources(timeout=5.0):
+    print(source.name)
+```
+
+#### Receiving Video Streams
+
+The following example demonstrates how to receive a video stream from a the first NDI source available and display it using OpenCV.
+
+```python
+import cv2
+from visiongraph_ndi.NDIVideoInput import NDIVideoInput
+
+# Connect to an NDI source
+with NDIVideoInput(stream_name="Demo") as ndi:
+    while ndi.is_connected:
+        ts, frame = ndi.read()  # Receive timestamped frame
+
+        if frame is None:
+            continue  # Skip if no frame is received
+
+        # Display the frame
+        cv2.imshow(f"NDI {ndi.source.stream_name}", frame)
+        cv2.waitKey(1)
+```
+
+The `NDIVideoInput` class automatically connects to the first available NDI source or allows for specific source selection if desired (using the `stream_name` and/or `host_name` parameter in the constructor). By calling `ndi.read()`, you retrieve frames as `numpy` arrays, ready for processing or display.
+
+### About
+
+Visiongraph NDI is powered by the NDI Python wrapper [cyndilib](https://github.com/nocarryr/cyndilib) (`MIT license`). Special thanks to nocarryr for making this integration possible.
