@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2023 Thomas Breitner
+#
+# SPDX-License-Identifier: CC0-1.0
+
+name: Publish github pages
+
+on:
+  push:
+    branches:
+      - main
+  # pull_request:
+  #   branches:
+  #     - main
+  workflow_call:
+
+permissions:
+  # "contents: write" Currently necessary due to gh-pages deployment
+  contents: write
+  pages: write
+
+jobs:
+    ghpages:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Git checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+        - name: Set up Python
+          uses: actions/setup-python@v4
+          with:
+            python-version: 3.9
+        - name: Deploy to github pages
+          run: |
+            python -m pip install --upgrade pip setuptools wheel
+            git pull origin main
+            git branch -a -v
+            git switch main
+            git branch -a -v
+            python -m pip install .
+            mkdocs gh-deploy --force --verbose

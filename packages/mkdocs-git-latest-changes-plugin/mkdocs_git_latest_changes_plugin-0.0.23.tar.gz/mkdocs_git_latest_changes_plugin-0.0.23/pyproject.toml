@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2023 Thomas Breitner
+#
+# SPDX-License-Identifier: MIT
+
+[build-system]
+requires = [
+    "setuptools>=61.0.0",
+    "setuptools-scm>=8.0",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mkdocs-git-latest-changes-plugin"
+dynamic = ["version"]
+description = "MkDocs plugin that allows you to display a list of recently modified pages from the Git log"
+authors = [{name = "Thomas Breitner", email = "mail@thms.de"},]
+license = {file = "LICENSES/MIT.txt"}
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Framework :: MkDocs",
+    "Topic :: Documentation",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Development Status :: 3 - Alpha",
+]
+
+dependencies = [
+    "mkdocs>=1.5",
+    "GitPython>=3.1.43",
+    "Jinja2 >=2.11.1",  # Already a dependency of MkDocs, but we'll be explicit
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "reuse",
+    "mypy",
+    "ruff",
+    "pytest",
+]
+
+[project.entry-points."mkdocs.plugins"]
+"git-latest-changes" = "mkdocs_git_latest_changes_plugin.plugin:GitLatestChangesPlugin"
+
+[project.urls]
+Homepage = "https://tombreit.github.io/mkdocs-git-latest-changes-plugin/"
+Documentation = "https://github.com/tombreit/mkdocs-git-latest-changes-plugin/blob/main/README.md"
+Repository = "https://github.com/tombreit/mkdocs-git-latest-changes-plugin"
+Issues = "https://github.com/tombreit/mkdocs-git-latest-changes-plugin/issues"
+
+[tool.setuptools]
+license-files = ["LICENSES/*.txt"]
+
+[tool.setuptools_scm]
+
+[tool.mypy]
+strict = true
+exclude = ["tests/"]
+allow_subclassing_any = true
+untyped_calls_exclude = [
+    "mkdocs.config.base.Config",
+    "mkdocs.plugins.BasePlugin",
+]
+
+[tool.ruff]
+src = ["src", "tests"]
+target-version = "py311"
