@@ -1,0 +1,161 @@
+name: Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  black:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: psf/black@stable
+      with:
+        options: "--check --diff"
+        src: ./src/python_workflow_definition
+    - uses: psf/black@stable
+      with:
+        options: "--check --diff"
+        src: ./example_workflows/quantum_espresso/qe_xml_parser/src/qe_xml_parser
+
+  pip_check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Conda config
+      run: echo -e "channels:\n  - conda-forge\n" > .condarc
+    - name: Setup Mambaforge
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.12"
+        miniforge-version: latest
+        condarc-file: .condarc
+        environment-file: binder/environment.yml
+    - name: Pip check
+      shell: bash -l {0}
+      run: |
+        pip install --no-deps --no-build-isolation -e .
+        pip check
+
+  nfdi4ing:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Conda config
+      run: echo -e "channels:\n  - conda-forge\n" > .condarc
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.12"
+        miniforge-version: latest
+        condarc-file: .condarc
+        environment-file: binder/environment.yml
+    - name: Installation and setup
+      shell: bash -l {0}
+      run: |
+        pip install --no-deps --no-build-isolation -e .
+        conda install -c conda-forge jupyter papermill
+        verdi presto --profile-name pwd
+        sudo apt-get install -y $(cat binder/apt.txt)
+    - name: Create Additional Conda Environments
+      shell: bash -l {0}
+      run: |
+        conda env create -n preprocessing -f example_workflows/nfdi/source/envs/preprocessing.yaml -y
+        conda env create -n processing -f example_workflows/nfdi/source/envs/processing.yaml -y
+        conda env create -n postprocessing -f example_workflows/nfdi/source/envs/postprocessing.yaml -y
+    - name: Tests
+      shell: bash -l {0}
+      run: |
+        cd example_workflows/nfdi/
+        papermill aiida.ipynb aiida_out.ipynb -k "python3"
+        papermill cwl.ipynb cwl_out.ipynb -k "python3"
+        papermill jobflow.ipynb jobflow_out.ipynb -k "python3"
+        papermill pyiron_base.ipynb pyiron_base_out.ipynb -k "python3"
+        papermill pyiron_workflow.ipynb pyiron_workflow_out.ipynb -k "python3"
+        papermill universal_workflow.ipynb universal_workflow_out.ipynb -k "python3"
+
+  quantumespresso:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup environment
+      shell: bash -l {0}
+      run: |
+        echo -e "channels:\n  - conda-forge\n" > .condarc
+        tail --lines=+4 example_workflows/quantum_espresso/environment.yml >> binder/environment.yml
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.12"
+        miniforge-version: latest
+        condarc-file: .condarc
+        environment-file: binder/environment.yml
+    - name: Installation and setup
+      shell: bash -l {0}
+      run: |
+        pip install --no-deps --no-build-isolation -e example_workflows/quantum_espresso/qe_xml_parser
+        pip install --no-deps --no-build-isolation -e .
+        conda install -c conda-forge jupyter papermill
+        verdi presto --profile-name pwd
+    - name: Tests
+      shell: bash -l {0}
+      run: |
+        export ESPRESSO_PSEUDO=$(pwd)/espresso/pseudo
+        cp -r example_workflows/quantum_espresso/espresso .
+        cd example_workflows/quantum_espresso
+        papermill aiida.ipynb aiida_out.ipynb -k "python3"
+        papermill cwl.ipynb cwl_out.ipynb -k "python3"
+        papermill jobflow.ipynb jobflow_out.ipynb -k "python3"
+        papermill pyiron_base.ipynb pyiron_base_out.ipynb -k "python3"
+        papermill pyiron_workflow.ipynb pyiron_workflow_out.ipynb -k "python3"
+        papermill universal_workflow.ipynb universal_workflow_out.ipynb -k "python3"
+
+  arithmetic:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Conda config
+      run: echo -e "channels:\n  - conda-forge\n" > .condarc
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.12"
+        miniforge-version: latest
+        condarc-file: .condarc
+        environment-file: binder/environment.yml
+    - name: Installation and setup
+      shell: bash -l {0}
+      run: |
+        pip install --no-deps --no-build-isolation -e .
+        conda install -c conda-forge jupyter papermill
+        verdi presto --profile-name pwd
+    - name: Tests
+      shell: bash -l {0}
+      run: |
+        cd example_workflows/arithmetic
+        papermill aiida.ipynb aiida_out.ipynb -k "python3"
+        papermill cwl.ipynb cwl_out.ipynb -k "python3"
+        papermill jobflow.ipynb jobflow_out.ipynb -k "python3"
+        papermill pyiron_base.ipynb pyiron_base_out.ipynb -k "python3"
+        papermill pyiron_workflow.ipynb pyiron_workflow_out.ipynb -k "python3"
+        papermill universal_workflow.ipynb universal_workflow_out.ipynb -k "python3"
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Conda config
+      run: echo -e "channels:\n  - conda-forge\n" > .condarc
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.12"
+        miniforge-version: latest
+        condarc-file: .condarc
+        environment-file: documentation/environment.yml
+    - name: Install Jupyterbook
+      shell: bash -l {0}
+      run: |
+        cp documentation/_config.yml .
+        cp documentation/_toc.yml .
+        cp documentation/*.md .
+        jupyter-book build . --path-output public
+        mv public/_build/html public_html
+        touch public_html/.nojekyll
