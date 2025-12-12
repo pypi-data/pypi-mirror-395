@@ -1,0 +1,3 @@
+from invenio_records.systemfields import ModelField
+
+class ActionField(ModelField): ...

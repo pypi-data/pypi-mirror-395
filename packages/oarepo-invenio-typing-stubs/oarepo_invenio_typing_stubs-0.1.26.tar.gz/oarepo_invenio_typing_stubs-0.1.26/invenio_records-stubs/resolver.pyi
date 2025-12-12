@@ -1,0 +1,6 @@
+from typing import Any
+
+class InvenioRefResolver:  # inherits from jsonschema.RefResolver at runtime
+    def resolve_remote(self, uri: str) -> Any: ...
+
+def urljoin_with_custom_scheme(*args: Any, **kwargs: Any) -> str: ...
