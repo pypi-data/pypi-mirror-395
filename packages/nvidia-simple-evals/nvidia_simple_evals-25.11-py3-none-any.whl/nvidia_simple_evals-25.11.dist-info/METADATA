@@ -1,0 +1,447 @@
+Metadata-Version: 2.4
+Name: nvidia_simple_evals
+Version: 25.11
+Summary: Open AI simple evals - packaged by NVIDIA
+License: MIT
+License-File: LICENSE
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.8
+Requires-Dist: aiohttp>=3.11.11
+Requires-Dist: blobfile>=3.0.0
+Requires-Dist: datasets>=3.2.0
+Requires-Dist: jinja2>=3.1.5
+Requires-Dist: nemo-evaluator
+Requires-Dist: openai>=1.59.6
+Requires-Dist: pandas>=2.2.3
+Requires-Dist: pylatexenc>=2.10.0
+Requires-Dist: scipy>=1.15.0
+Requires-Dist: sympy>=1.13.3
+Requires-Dist: tabulate>=0.9.0
+Requires-Dist: tenacity==9.0.0
+Requires-Dist: tqdm>=4.67.1
+Description-Content-Type: text/markdown
+
+# NVIDIA NeMo Evaluator
+
+The goal of NVIDIA NeMo Evaluator is to advance and refine state-of-the-art methodologies for model evaluation, and deliver them as modular evaluation packages (evaluation containers and pip wheels) that teams can use as standardized building blocks.
+
+# Quick start guide
+
+NVIDIA NeMo Evaluator provide you with evaluation clients, that are specifically built to evaluate model endpoints using our Standard API.
+
+## Launching an evaluation for an LLM
+
+1. Install the package
+    ```
+    pip install nvidia-simple-evals
+    ```
+
+3. (Optional) Set a token to your API endpoint if it's protected
+    ```bash
+    export MY_API_KEY="your_api_key_here"
+    ```
+4. List the available evaluations:
+    ```bash
+    $ nemo-evaluator ls
+    Available tasks:
+    * AA_AIME_2024 (in simple_evals)
+    * AA_math_test_500 (in simple_evals)
+    * AIME_2024 (in simple_evals)
+    * AIME_2025 (in simple_evals)
+    * gpqa_diamond (in simple_evals)
+    * gpqa_diamond_aa_v2 (in simple_evals)
+    * gpqa_diamond_llama_4 (in simple_evals)
+    * gpqa_experts (in simple_evals)
+    * gpqa_extended (in simple_evals)
+    * gpqa_main (in simple_evals)
+    * humaneval (in simple_evals)
+    * humanevalplus (in simple_evals)
+    * math_test_500 (in simple_evals)
+    * mgsm (in simple_evals)
+    * mmlu (in simple_evals)
+    * mmlu_llama_4 (in simple_evals)
+    * mmlu_pro_llama_4 (in simple_evals)
+    * mmlu_AR-XY (in simple_evals)
+    * mmlu_BN-BD (in simple_evals)
+    * mmlu_DE-DE (in simple_evals)
+    * mmlu_EN-US (in simple_evals)
+    * mmlu_ES-LA (in simple_evals)
+    * mmlu_FR-FR (in simple_evals)
+    * mmlu_HI-IN (in simple_evals)
+    * mmlu_ID-ID (in simple_evals)
+    * mmlu_IT-IT (in simple_evals)
+    * mmlu_JA-JP (in simple_evals)
+    * mmlu_KO-KR (in simple_evals)
+    * mmlu_PT-BR (in simple_evals)
+    * mmlu_SW-KE (in simple_evals)
+    * mmlu_YO-NG (in simple_evals)
+    * mmlu_ZH-CN (in simple_evals)
+    * mmlu_pro (in simple_evals)
+    * simpleqa (in simple_evals)
+    ```
+5. Run the evaluation of your choice:
+   ```bash
+   nemo-evaluator run_eval \
+       --eval_type mmlu_pro \
+       --model_id meta/llama-3.1-70b-instruct \
+       --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+       --model_type chat \
+       --api_key_name MY_API_KEY \
+       --output_dir /workspace/results
+   ```
+6. Gather the results
+    ```bash
+    cat /workspace/results/results.yml
+    ```
+
+# Command-Line Tool
+
+Each package comes pre-installed with a set of command-line tools, designed to simplify the execution of evaluation tasks. Below are the available commands and their usage for the `simple_evals`:
+
+## Commands
+
+### 1. **List Evaluation Types**
+
+```bash
+nemo-evaluator ls
+```
+
+Displays the evaluation types available within the harness.
+
+### 2. **Run an evaluation**
+
+The `nemo-evaluator run_eval` command executes the evaluation process. Below are the flags and their descriptions:
+
+### Required flags
+* `--eval_type <string>`
+The type of evaluation to perform
+* `--model_id <string>`
+The name or identifier of the model to evaluate.
+* `--model_url <url>`
+The API endpoint where the model is accessible.
+* `--model_type <string>`
+The type of the model to evaluate, currently either "chat", "completions", or "vlm".
+* `--output_dir <directory>`
+The directory to use as the working directory for the evaluation. The results, including the results.yml output file, will be saved here.
+
+### Optional flags
+* `--api_key_name <string>`
+The name of the environment variable that stores the Bearer token for the API, if authentication is required.
+* `--run_config <path>`
+Specifies the path to a  YAML file containing the evaluation definition.
+
+### Example
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type AIME_2025 \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir ./evaluation_results
+```
+
+If the model API requires authentication, set the API key in an environment variable and reference it using the `--api_key_name` flag:
+
+```bash
+export MY_API_KEY="your_api_key_here"
+
+nemo-evaluator run_eval \
+    --eval_type AIME_2025 \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --api_key_name MY_API_KEY \
+    --output_dir ./evaluation_results
+```
+
+# Configuring evaluations via YAML
+
+Evaluations in NVIDIA NeMo Evaluator are configured using YAML files that define the parameters and settings required for the evaluation process. These configuration files follow a standard API which ensures consistency across evaluations.
+
+Example of a YAML config:
+```yaml
+config:
+  type: AIME_2025
+  params:
+    parallelism: 50
+    limit_samples: 20
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+The priority of overrides is as follows:
+1. command line arguments
+2. user config (as seen above)
+3. task defaults (defined per task type)
+4. framework defaults 
+
+`--dry_run` option allows you to print the final run configuration and command without executing the evaluation.
+
+### Example:
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type AIME_2025 \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir .evaluation_results \
+    --dry_run
+```
+
+Output:
+
+```bash
+Rendered config:
+
+command: '{% if target.api_endpoint.api_key is not none %}export API_KEY=${{target.api_endpoint.api_key}}
+  && {% endif %} simple_evals --model {{target.api_endpoint.model_id}} --eval_name
+  {{config.params.task}} --url {{target.api_endpoint.url}} --temperature {{config.params.temperature}}
+  --top_p {{config.params.top_p}} --max_tokens {{config.params.max_new_tokens}} --out_dir
+  {{config.output_dir}} --cache_dir {{config.output_dir}}/cache --num_threads {{config.params.parallelism}}
+  --max_retries {{config.params.max_retries}} --timeout {{config.params.request_timeout}}
+  {% if config.params.extra.n_samples is defined %} --num_repeats {{config.params.extra.n_samples}}{%
+  endif %} {% if config.params.limit_samples is not none %} --first_n {{config.params.limit_samples}}{%
+  endif %} {% if config.params.extra.add_system_prompt  %} --add_system_prompt {%
+  endif %} {% if config.params.extra.args is defined %} {{ config.params.extra.args
+  }} {% endif %}'
+framework_name: simple_evals
+pkg_name: simple_evals
+config:
+  output_dir: .evaluation_results
+  params:
+    limit_samples: null
+    max_new_tokens: 4096
+    max_retries: 5
+    parallelism: 10
+    task: AIME_2025
+    temperature: 0.0
+    request_timeout: 60
+    top_p: 1.0e-05
+    extra:
+      add_system_prompt: false
+  supported_endpoint_types:
+  - chat
+  type: AIME_2025
+target:
+  api_endpoint:
+    api_key: null
+    model_id: my_model
+    stream: null
+    type: chat
+    url: http://localhost:8000
+
+
+Rendered command:
+
+ simple_evals --model my_model --eval_name AIME_2025 --url http://localhost:8000 --temperature 0.0 --top_p 1e-05 --max_tokens 4096 --out_dir .evaluation_results --cache_dir .evaluation_results/cache --num_threads 10 --max_retries 5 --timeout 60 
+```
+
+# Customizing llm-as-a-judge
+
+By default, the `nemo-evaluator run_eval` command uses the llama 3.3 70b judge for AA_math_test_500 and AA_AIME_2024 and gpt-4 for other Math tasks.
+
+However, you can also customize the llm-as-a-judge for specific tasks, by using the judge-specific flags.
+
+## OpenAI judges
+If you want to use one of OpenAI's models as a judge (e.g. `gpt-4`, `gpt-4o`), specify the name of the model by overriding the `judge.model_id` parameter and set the standard OpenAI environment variables:
+
+Set the endpoint URL:
+```bash
+export OPENAI_MODEL_URL=...
+```
+
+Set the api key:
+```bash
+export OPENAI_API_KEY=...
+```
+
+...or your client ID and secret, so that the api key can be generated for you:
+```bash
+export OPENAI_CLIENT_ID=...
+export OPENAI_CLIENT_SECRET=...
+```
+
+### Example command:
+```bash
+nemo-evaluator run_eval \
+    --eval_type AIME_2025 \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir ./evaluation_results \
+    --overrides="config.params.extra.judge.model_id=gpt-4"
+```
+
+### Example YAML config:
+```yaml
+config:
+  type: AIME_2025
+  params:
+    parallelism: 50
+    limit_samples: 20
+    extra:
+      judge:
+        model_id: gpt-4
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+## Other judges
+
+You can use any NIM-compatible model as a judge by overriding the `judge.model_id` parameter and setting the judge's API endpoint in the `judge.url` parameter. If your model requires authentication, override the `judge.api_key` parameter to reference the name of the environment variable where your API key is stored. 
+
+**Note:** Currently only `generic` and `openai` backends are supported. The `openai` backend is for OpenAI-compatible models, while `generic` is recommended for other, custom models.
+
+(Optional) Set the judge's API key:
+```bash
+export JUDGE_API_KEY=...
+```
+
+### Example command:
+```bash
+nemo-evaluator run_eval \
+    --eval_type AIME_2025 \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir ./evaluation_results \
+    --overrides="config.params.extra.judge.model_id=your_model_name,config.params.extra.judge.url=https://your_judge_url,config.params.extra.judge.api_key=JUDGE_API_KEY,config.params.extra.judge.backend=generic"
+```
+
+### Example YAML config, your own judge:
+```yaml
+config:
+  type: AIME_2025
+  params:
+    parallelism: 50
+    limit_samples: 20
+    extra:
+      judge:
+        model_id: judge_model_name
+        url: https://your_judge_url
+        api_key: JUDGE_API_KEY
+        backend: generic
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+### Example YAML config, NIM judge:
+```yaml
+config:
+  type: AIME_2025
+  params:
+    parallelism: 50
+    limit_samples: 20
+    extra:
+      judge:
+        model_id: meta/llama-3.1-70b-instruct
+        url: https://integrate.api.nvidia.com/v1/chat/completions
+        api_key: NVIDIA_API_KEY
+        backend: generic
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+## Infernce parameters for the judge
+
+The judge's inference parameters come with default settings that work well for most evaluations. You can change these settings to fit your needs using command-line flags or YAML configuration options.
+
+### Example command - custom inference parameters:
+The following flags are available for customizing the judge's inference parameters:
+```bash
+nemo-evaluator run_eval \
+    --eval_type AIME_2025 \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir ./evaluation_results \
+    --overrides="config.params.extra.judge.model_id=your_model_name,config.params.extra.judge.url=https://your_judge_url,config.params.extra.judge.api_key=your_judge_api_key,config.params.extra.judge.backend=generic,config.params.extra.judge.request_timeout=300,config.params.extra.judge.max_retries=15,config.params.extra.judge.max_tokens=512,config.params.extra.judge.temperature=0.6,config.params.extra.judge.top_p=1.0"
+```
+
+### Example YAML config - custom inference parameters:
+```yaml
+config:
+  type: AIME_2025
+  params:
+    parallelism: 50
+    limit_samples: 20
+    extra:
+      judge:
+        model_id: meta/llama-3.1-70b-instruct
+        url: https://integrate.api.nvidia.com/v1/chat/completions
+        api_key: NVIDIA_API_KEY
+        backend: generic
+        request_timeout: 300
+        max_retries: 15
+        max_tokens: 512
+        temperature: 0.6
+        top_p: 1.0
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+# FAQ
+
+## Deploying a model as an endpoint
+
+NVIDIA NeMo Evaluator utilize a client-server communication architecture to interact with the model. As a prerequisite, the **model must be deployed as an endpoint with a NIM-compatible API**.
+
+Users have the flexibility to deploy their model using their own infrastructure and tooling.
+
+Servers with APIs that conform to the OpenAI/NIM API standard are expected to work seamlessly out of the box.
+
+## Providing llm-as-a-judge keys to Math benchmarks
+
+For the gpt judge:
+```
+export OPENAI_API_KEY=...
+```
+
+or, alternatively:
+```
+export OPENAI_CLIENT_ID=...
+export OPENAI_CLIENT_SECRET=...
+```
+
+For the llama 3.3 70b judge (for AA_math_test_500 and AA_AIME_2024), store your api key in an environment variable:
+```
+export JUDGE_API_KEY=...
+```
+
+and override the api_key parameter in the "--overrides" flag. Here, api_key is the name of the environment variable that stores your API key, not the key itself:
+```
+--overrides="config.params.extra.judge.api_key=JUDGE_API_KEY"
+```
+
+...or, alternatively, in your YAML config:
+```yaml
+params:
+  extra:
+    judge:
+      api_key: JUDGE_API_KEY
+```

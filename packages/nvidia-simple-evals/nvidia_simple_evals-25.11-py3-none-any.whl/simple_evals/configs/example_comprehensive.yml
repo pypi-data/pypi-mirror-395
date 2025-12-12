@@ -1,0 +1,81 @@
+# Comprehensive example evaluation configuration
+# This file demonstrates all the features of the new evaluation configuration system
+
+eval_name: mmlu
+
+# EXTRACTION SECTION
+# Can be one of:
+# - List of regex patterns (for RegexExtractor)
+# - String path to module class (e.g., "simple_evals.extractors.NemoExtractor")
+# - null (no extraction, pass through full response)
+
+extraction:
+  # Option 1: List of regex patterns with match groups
+  - regex: "Answer:\\s*([A-D])"
+    match_group: 1
+    name: "answer_colon"
+  - regex: "The correct answer is\\s*([A-D])"
+    match_group: 1
+    name: "correct_answer_is"
+  - regex: "I choose\\s*([A-D])"
+    match_group: 1
+    name: "i_choose"
+  - regex: "([A-D])\\s*is the answer"
+    match_group: 1
+    name: "is_the_answer"
+  
+  # Option 2: Simple string patterns (match_group defaults to 1)
+  # - "Answer: ([A-D])"
+  # - "([A-D])"
+  
+  # Option 3: Use custom extractor class
+  # extraction: "simple_evals.extractors.NemoExtractor"
+  
+  # Option 4: No extraction (pass through full response)
+  # extraction: null
+
+# SCORING SECTION
+# Can be one of:
+# - Dictionary with scorer configuration
+# - String path to module class
+# - null (no scoring)
+
+scoring:
+  # Option 1: Built-in scorer types
+  type: equality  # Options: equality, math, llm
+  case_sensitive: false
+  strip_whitespace: true
+  
+  # Option 2: Math scorer
+  # type: math
+  # use_sympy: true
+  # tolerance: 1e-6
+  
+  # Option 3: LLM scorer
+  # type: llm
+  # judge_config:
+  #   url: "https://api.openai.com/v1/chat/completions"
+  #   model: "gpt-4"
+  #   api_key: "OPENAI_API_KEY"
+  #   temperature: 0.0
+  #   max_tokens: 10
+  
+  # Option 4: Custom scorer class
+  # scoring: "my_module.MyCustomScorer"
+  
+  # Option 5: No scoring
+  # scoring: null
+
+# PROMPT TEMPLATE SECTION
+# Jinja2 template for formatting prompts
+# Variables are substituted from the dataset row
+
+prompt_template: |
+  {{ Question }}
+  
+  A) {{ A }}
+  B) {{ B }}
+  C) {{ C }}
+  D) {{ D }}
+  
+  Please provide your answer by selecting A, B, C, or D.
