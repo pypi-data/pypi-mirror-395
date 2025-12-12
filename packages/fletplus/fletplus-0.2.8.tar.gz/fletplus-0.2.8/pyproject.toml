@@ -1,0 +1,59 @@
+[build-system]
+requires = [
+    "setuptools>=61",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "fletplus"
+version = "0.2.8"
+description = "Componentes visuales avanzados y herramientas mejoradas para Flet en Python."
+authors = [
+  { name = "Adolfo González", email = "adolfogonzal@gmail.com" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = [
+  "flet>=0.27.0",
+  "click>=8.1",
+  "watchdog>=3.0",
+  "websockets>=12.0",
+  "httpx>=0.28",
+]
+
+
+# ------------ ENTRYPOINTS CLI ------------
+[project.scripts]
+fletplus = "fletplus.cli.main:app"
+fletplus-demo = "fletplus_demo:main"
+
+
+# ------------ LINKS ------------
+[project.urls]
+Homepage = "https://github.com/Alphonsus411/fletplus"
+Source = "https://github.com/Alphonsus411/fletplus"
+Documentation = "https://github.com/Alphonsus411/fletplus#readme"
+
+
+# ------------ OPTIONAL SPEEDUPS (Cython) ------------
+[project.optional-dependencies]
+speedups = ["cython>=3.0"]
+
+
+# ------------ PACKAGE DISCOVERY ------------
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fletplus*", "fletplus_demo*"]
+exclude = ["tests*", "tools*", "coverage*", "docs*"]
+
+
+# ------------ PACKAGE DATA ------------
+[tool.setuptools.package-data]
+"fletplus.router" = ["router_cy.c"]
+"fletplus.http" = ["disk_cache.c"]
+"fletplus.state" = ["state.c"]
+"fletplus.utils" = ["responsive_manager.c"]
