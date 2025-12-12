@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Deactivated Mailing Lists') }}{% endblock %}
+
+{% block content %}
+<h2>{{ _('Deactivated Mailing Lists') }}</h2>
+
+{%- include "flash.html" %} {# Show flash messages #}
+
+{% if lists %}
+<table class="striped">
+    <thead>
+        <tr>
+            <th>{{ _('List Name') }}</th>
+            <th>{{ _('List Address') }}</th>
+            <th>{{ _('List Mode') }}</th>
+            <th>{{ _('Actions') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for list in lists %}
+    <tr>
+        <td>{{ list.name }}</td>
+        <td>{{ list.address }}</td>
+        <td>
+            {%- if list.mode == "broadcast" %}
+                {{ _('Broadcast') }}
+            {%- elif list.mode == "group" %}
+                {{ _('Group') }}
+            {%- else %}
+                {{ _('Unknown') }}
+            {%- endif %}
+        </td>
+        <td>
+            <a href="{{ url_for('lists.subscribers_manage', list_id=list.id) }}" role="button" class="secondary">{{ _('Subscribers') }}</a>
+            <a href="{{ url_for('lists.reactivate', list_id=list.id) }}" role="button" class="" onclick="return confirm('{{ _('Are you sure you want to reactivate the list') }} {{ list.name }} <{{ list.address }}>?')">{{ _('Reactivate') }}</a>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% else %}
+<p><em>{{ _('No deactivated mailing lists found.') }}</em></p>
+{% endif %}
+{% endblock %}
