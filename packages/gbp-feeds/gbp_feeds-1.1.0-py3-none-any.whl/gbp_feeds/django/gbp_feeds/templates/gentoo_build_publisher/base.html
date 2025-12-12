@@ -1,0 +1,20 @@
+{% extends "gentoo_build_publisher/base.html" %}
+{% load gbp url_tags %}
+{% block extra_head %}
+{{ block.super }}
+{% if request %}
+{% if request.resolver_match.view_name == 'gbp-machines' %}
+    <link rel="alternate" type="application/rss+xml" title="Gentoo Build Publisher Feed" href="{% full_url 'gbp-feeds-rss-machine' machine=request.resolver_match.kwargs.machine %}">
+    <link rel="alternate" type="application/atom+xml" title="Gentoo Build Publisher Feed" href="{% full_url 'gbp-feeds-atom-machine' machine=request.resolver_match.kwargs.machine %}">
+{% else %}
+    <link rel="alternate" type="application/rss+xml" title="Gentoo Build Publisher Feed" href="{% full_url 'gbp-feeds-rss-main' %}">
+    <link rel="alternate" type="application/atom+xml" title="Gentoo Build Publisher Feed" href="{% full_url 'gbp-feeds-atom-main' %}">
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block footerlinks %}
+  {% url 'gbp-feeds-rss-main' as link %}
+  {% footer_link 'Feed <i class="bi bi-rss-fill"></i>' link %}
+  {{ block.super }}
+{% endblock %}
