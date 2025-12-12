@@ -1,0 +1,2 @@
+DOCUMENT_TYPE_INVOICE = "invoice"
+DOCUMENT_TYPE_QUOTE = "quote"
