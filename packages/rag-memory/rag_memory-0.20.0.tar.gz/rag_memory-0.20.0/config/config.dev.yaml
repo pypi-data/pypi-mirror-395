@@ -1,0 +1,39 @@
+# RAG Memory Local Development Configuration
+#
+# Used when running locally from the repo (uv run rag ... or local MCP server)
+# Database URLs and mounts point to local Docker Compose services
+#
+# DO NOT add secrets to this file - use .env for OPENAI_API_KEY
+
+server:
+  # Local development database (from docker-compose.dev.yml)
+  database_url: postgresql://raguser:ragpassword@localhost:54325/rag_memory_dev
+
+  # Local development Neo4j (from docker-compose.dev.yml)
+  neo4j_uri: bolt://localhost:7690
+  neo4j_http_port: 7477
+  neo4j_user: neo4j
+  neo4j_password: dev-password
+
+  # OPENAI_API_KEY comes from .env (loaded by conftest.py or dotenv)
+
+  # Graphiti LLM Models (override defaults to use standard GPT models)
+  # These avoid the o1 reasoning models which require special parameters
+  graphiti_model: gpt-5-mini           # Main extraction model (complex entity/relationship extraction)
+  graphiti_small_model: gpt-5-nano  # Small task model (simple classifications)
+
+  # Graphiti entity extraction configuration
+  # NOTE: Only affects ingestion (ingest_text, ingest_url, etc.), not search
+  max_reflexion_iterations: 0
+
+  # Knowledge Graph search strategy (default: mmr)
+  # Options: mmr, rrf, cross_encoder
+  # - mmr: Maximal Marginal Relevance (diversity-optimized, RECOMMENDED)
+  # - rrf: Reciprocal Rank Fusion (balanced, good general purpose)
+  # - cross_encoder: LLM-based scoring (slower, more aggressive filtering)
+  search_strategy: mmr
+
+mounts:
+  # Reference documentation and examples for file/directory ingestion testing
+  - path: /Users/timkitchens/projects/ai-projects/rag-memory
+    read_only: true
