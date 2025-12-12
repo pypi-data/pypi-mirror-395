@@ -1,0 +1,127 @@
+# Copyright 2025, SERTIT-ICube - France, https://sertit.unistra.fr/
+# This file is part of sertit-utils project
+#     https://github.com/sertit/sertit-utils
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Script testing string functions"""
+
+import argparse
+import logging
+from datetime import date, datetime
+
+import pytest
+
+from sertit import ci, strings
+
+ci.reduce_verbosity()
+
+
+def test_conversion():
+    # Str to bool
+    true_str = (True, "yes", "true", "t", "y", "1")
+    false_str = (False, "no", "false", "f", "n", "0")
+    for true, false in zip(true_str, false_str, strict=True):
+        assert strings.str_to_bool(true)
+        assert not strings.str_to_bool(false)
+
+    with pytest.raises(ValueError):
+        strings.str_to_bool("oopsie")
+
+    # Str to logging verbosity
+    debug_str = ("debug", "d", 10)
+    info_str = ("info", "i", 20)
+    warn_str = ("warning", "w", "warn", 30)
+    err_str = ("error", "e", "err", 40)
+    for debug in debug_str:
+        assert strings.str_to_verbosity(debug) == logging.DEBUG
+    for info in info_str:
+        assert strings.str_to_verbosity(info) == logging.INFO
+    for warn in warn_str:
+        assert strings.str_to_verbosity(warn) == logging.WARNING
+    for err in err_str:
+        assert strings.str_to_verbosity(err) == logging.ERROR
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        strings.str_to_verbosity("oopsie")
+
+    # Str to list of dates
+    list_of_str_dates = "20200909105055, 2019-08-06;19560702121212\t2020-08-09"
+    list_of_datetimes = [
+        datetime(2020, 9, 9, 10, 50, 55),
+        datetime(2019, 8, 6),
+        datetime(1956, 7, 2, 12, 12, 12),
+        datetime(2020, 8, 9),
+    ]
+    list_of_dates = [
+        datetime(2020, 9, 9, 10, 50, 55),
+        date(2019, 8, 6),
+        datetime(1956, 7, 2, 12, 12, 12),
+        date(2020, 8, 9),
+    ]
+    assert list_of_datetimes == strings.str_to_list_of_dates(
+        list_of_str_dates, date_format="%Y%m%d%H%M%S", additional_separator="\t"
+    )
+    assert strings.str_to_list_of_dates(list_of_dates) == list_of_datetimes
+    assert strings.str_to_list_of_dates(list_of_datetimes) == list_of_datetimes
+
+    date_fmt = "%Y%m%d%H"
+    ci.assert_val(
+        strings.str_to_date("now", date_format=date_fmt),
+        datetime.strptime(datetime.now().strftime(date_fmt), date_fmt),
+        "now",
+    )
+    ci.assert_val(
+        strings.str_to_date("today", date_format=date_fmt),
+        datetime.strptime(datetime.today().strftime(date_fmt), date_fmt),
+        "now",
+    )
+
+    # Str to list
+    list_str_up = ["A", "B"]
+    list_str_low = ["a", "b"]
+    assert strings.str_to_list(list_str_up) == list_str_up
+    assert strings.str_to_list(list_str_low, case="upper") == list_str_up
+    assert strings.str_to_list(list_str_up, case="lower") == list_str_low
+
+    with pytest.raises(ValueError):
+        strings.str_to_list(21)
+
+
+def test_str():
+    """Test string function"""
+    tstr = "ThisIsATest"
+    assert strings.snake_to_camel_case(strings.camel_to_snake_case(tstr)) == tstr
+    assert strings.to_cmd_string(tstr) == f'"{tstr}"'
+
+
+def test_uuid():
+    """Test string function"""
+    is_uuid_4 = "d0910ba4-9ed9-409a-8527-e40b581bf0c2"
+    is_uuid_1 = "78d31fbe-2454-11ed-b256-7b4fd196c4c5"
+    is_not_uuid = "random"
+
+    assert strings.is_uuid(is_uuid_4, 4)
+
+    for i in [1, 2, 3, 5]:
+        assert not strings.is_uuid(is_uuid_4, i)
+
+    assert not strings.is_uuid(is_uuid_1, 4)
+
+    for i in [2, 3, 4, 5]:
+        assert not strings.is_uuid(is_uuid_1, i)
+
+    for i in range(1, 5):
+        assert not strings.is_uuid(is_not_uuid, i)
+
+    with pytest.raises(ValueError):
+        assert not strings.is_uuid(is_uuid_4, 8)
