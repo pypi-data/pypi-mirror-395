@@ -1,0 +1,72 @@
+framework:
+  name: safety_eval
+  pkg_name: safety_eval
+  full_name: Safety Harness
+  description: Harness for Safety evaluations
+  url: null
+defaults:
+  command: >-
+    {% if target.api_endpoint.api_key is not none %}export API_KEY=${{target.api_endpoint.api_key}}  && {% endif %}
+    {% if config.params.extra.judge.api_key is not none %}export JUDGE_API_KEY=${{config.params.extra.judge.api_key}} && {% endif %}
+    safety-eval  --model-name  {{target.api_endpoint.model_id}} --model-url {{target.api_endpoint.url}} --model-type {{target.api_endpoint.type}} 
+    --judge-url  {{config.params.extra.judge.url}}   --results-dir {{config.output_dir}}   --eval {{config.params.task}} 
+    --mut-inference-params max_tokens={{config.params.max_new_tokens}},temperature={{config.params.temperature}},top_p={{config.params.top_p}},timeout={{config.params.request_timeout}},concurrency={{config.params.parallelism}},retries={{config.params.max_retries}}
+    --judge-inference-params concurrency={{config.params.extra.judge.parallelism}},retries={{config.params.max_retries}} 
+    {% if config.params.extra.dataset is defined and config.params.extra.dataset %} --dataset {{config.params.extra.dataset}}{% endif %}
+    {% if config.params.limit_samples is not none %} --limit {{config.params.limit_samples}} {% endif %}
+    {% if config.params.extra.judge.model_id is not none %} --judge-model-name {{config.params.extra.judge.model_id}} {% endif %}
+    {% if config.type == "aegis_v2_reasoning" %}
+    {% if config.params.extra.evaluate_reasoning_traces  %} --evaluate-reasoning-traces {% endif %}
+    {% endif %}
+  config:
+    supported_endpoint_types:
+    - chat
+    - completions
+    # MUT - Model Under Test
+    params:
+      # Params below are for MUT endpoint
+      limit_samples: null
+      max_new_tokens: 6144
+      temperature: 0.6
+      top_p: 0.95
+      parallelism: 8 # how many request to sent to the MUT endpoint in parallel. 
+      max_retries: 5 # if request fails, how many times should the client try again
+      request_timeout: 30
+      extra:
+        judge:
+          # Params below are for the judge endpoint
+          url: null
+          model_id: null
+          api_key: null
+          parallelism: 32
+          request_timeout: 60
+          max_retries: 16
+  target:
+    api_endpoint: # required to add: url, model_id, type
+      stream: false
+evaluations:
+  - name: aegis_v2 # task used by the NeMo Safety Toolkit
+    description: Aegis V2 without evaluating reasoning traces. This version is used by the NeMo Safety Toolkit.
+    defaults:
+      config:
+        type: "aegis_v2"
+        params:
+          task: "aegis_v2"
+          extra:
+            evaluate_reasoning_traces: false
+  - name: aegis_v2_reasoning # task used in the MRC
+    description: Aegis V2 with evaluating reasoning traces.
+    defaults:
+      config:
+        type: "aegis_v2_reasoning"
+        params:
+          task: "aegis_v2"
+          extra:
+            evaluate_reasoning_traces: true
+  - name: wildguard
+    description: Wildguard
+    defaults:
+      config:
+        type: "wildguard"
+        params:
+          task: "wildguard"
