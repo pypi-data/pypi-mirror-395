@@ -1,0 +1,118 @@
+# -*- coding: utf-8 -*-
+# Copyright 2018, CS GROUP - France, https://www.csgroup.eu/
+#
+# This file is part of EODAG project
+#     https://www.github.com/CS-SI/EODAG
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+search:
+  type: StacSearch
+  results_entry: features
+  pagination:
+    next_page_query_obj: '{{"limit":{items_per_page},"{next_page_token_key}":"{next_page_token}"}}'
+    total_items_nb_key_path: '$.numberMatched'
+    next_page_url_key_path: '$.links[?(@.rel="next")].href'
+    next_page_query_obj_key_path: '$.links[?(@.rel="next")].body'
+    next_page_merge_key_path: '$.links[?(@.rel="next")].merge'
+    # do not use 'page' as default key, guess from provider response
+    next_page_token_key: null
+  sort:
+    sort_by_tpl: '{{"sortby": [ {{"field": "{sort_param}", "direction": "{sort_order}" }} ] }}'
+    sort_order_mapping:
+      ascending: asc
+      descending: desc
+  discover_metadata:
+    auto_discovery: true
+    metadata_pattern: '^[a-zA-Z0-9_:-]+$'
+    search_param: '{{{{"query":{{{{"{metadata}":{{{{"eq":"{{{metadata}}}" }}}} }}}} }}}}'
+    search_param_unparsed:
+      - filter
+      - query
+    metadata_path: '$.properties.*'
+  discover_collections:
+    fetch_url: '{api_endpoint}/../collections'
+    result_type: json
+    results_entry: '$.collections[*]'
+    generic_collection_id: '$.id'
+    generic_collection_parsable_properties:
+      _collection: '$.id'
+    generic_collection_parsable_metadata:
+      description: '$.description'
+      instruments: '$.summaries.instruments'
+      constellation: '{$.summaries.constellation#csv_list}'
+      platform: '{$.summaries.platform#csv_list}'
+      processing:level: '{$.summaries."processing:level"#csv_list}'
+      keywords: '$.keywords'
+      license: '$.license'
+      title: '$.title'
+      extent: '$.extent'
+    metadata_path: '$.properties.*'
+  discover_queryables:
+    fetch_url: '{api_endpoint}/../queryables'
+    collection_fetch_url: '{api_endpoint}/../collections/{provider_collection}/queryables'
+    result_type: json
+    results_entry: '$.properties[*]'
+    queryable_parsable_metadata:
+      description: '$.description'
+      title: '$.title'
+      type: '$.type'
+      pattern: '$.pattern'
+  common_metadata_mapping_path: '$'
+  metadata_mapping:
+    productType: '$.null'
+    _collection:
+      - '{{"collections":["{_collection}"]}}'
+      - '$.collection'
+    # common metadata
+    gsd:
+      - '{{"query":{{"gsd":{{"eq":"{gsd}"}}}}}}'
+      - '$.properties.gsd'
+    constellation:
+      - '{{"query":{{"constellation":{{"eq":"{constellation}"}}}}}}'
+      - '$.properties.constellation'
+    platform:
+      - '{{"query":{{"platform":{{"eq":"{platform}"}}}}}}'
+      - '$.properties.platform'
+    instruments:
+      - '{{"query":{{"instruments":{{"eq":{instruments}}}}}}}'
+      - '$.properties.instruments'
+    title: '$.id'
+    datetime: '$.properties.datetime'
+    start_datetime: '$.properties.start_datetime'
+    end_datetime:
+      - '{{"datetime":"{start_datetime#to_iso_utc_datetime}/{end_datetime#to_iso_utc_datetime}"}}'
+      - '$.properties.end_datetime'
+    id:
+      - '{{"ids":["{id}"]}}'
+      - '$.id'
+    geometry:
+      - '{{"intersects":{geometry#to_geojson}}}'
+      - '($.geometry.`str()`.`sub(/^None$/, POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90)))`)|($.geometry[*])'
+    # extensions parameters having specific mapping
+    sar:polarizations:
+      - '{{"query":{{"sar:polarizations":{{"eq":{sar:polarizations}}}}}}}'
+      - '$.properties.sar:polarizations'
+    sar:beam_ids:
+      - '{{"query":{{"sar:beam_ids":{{"eq":{sar:beam_ids}}}}}}}'
+      - '$.properties.sar:beam_ids'
+    eo:cloud_cover:
+      - '{{"query":{{"eo:cloud_cover":{{"lte":{eo:cloud_cover}}}}}}}'
+      - '$.properties."eo:cloud_cover"'
+    # eodag metadata
+    eodag:download_link: '$.links[?(@.rel="self")].href'
+    eodag:quicklook: '$.assets.quicklook.href'
+    eodag:thumbnail: '$.assets.thumbnail.href'
+    # order:status set to succeeded for consistency between providers
+    order:status: '{$.null#replace_str("Not Available","succeeded")}'
+    # Normalization code moves assets from properties to product's attr
+    assets: '$.assets'
