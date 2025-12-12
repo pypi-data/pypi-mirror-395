@@ -1,0 +1,10 @@
+{%- set schema = root -%}
+{%- set namespace = class_name | namespace(project_name) -%}
+{
+    "namespace": "{{ namespace | lower() }}",
+    {%- for attr, value in schema.items() %}
+    {%- if attr != 'namespace' %}
+    "{{ attr }}": {{ value | tojson(3) }}{%- if not loop.last %},{% endif %}
+    {%- endif %}
+    {%- endfor %}
+}
