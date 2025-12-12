@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aspire-inference"
+authors = [
+    {name = "Michael J. Williams", email = "michaeljw1@googlemail.com"},
+]
+description = "Accelerate Sequential Posterior Inference via REuse"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "array-api-compat",
+    "wrapt",
+    "h5py",
+]
+
+dynamic = ["version"]
+
+[project.optional-dependencies]
+scipy = [
+    "scipy",
+]
+jax = [
+    "jax",
+    "jaxlib",
+    "flowjax"
+]
+torch = [
+    "torch",
+    "zuko",
+    "tqdm",
+]
+minipcn = [
+    "minipcn[array-api]>=0.2.0a3",
+    "orng",
+]
+emcee = [
+    "emcee",
+]
+blackjax = [
+    "blackjax",
+]
+test = [
+    "pytest",
+    "pytest-requires",
+    "pytest-cov",
+]
+
+[project.urls]
+Homepage = "https://github.com/mj-will/aspire"
+Documentation = "https://aspire.readthedocs.io/"
+
+[tool.setuptools_scm]
+
+[tool.setuptools.package-dir]
+aspire = "src/aspire"
+
+[tool.ruff]
+line-length = 79
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+extend-select = ["I"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=aspire --cov-report=term-missing -ra"
+testpaths = ["tests"]
