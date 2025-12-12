@@ -1,0 +1,115 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vpn-monitor"
+dynamic = ["version"]
+description = "Monitors Windows App and enforces VPN usage."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "VPN Monitor Contributors"}
+]
+keywords = ["vpn", "monitor", "windows", "security", "network"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Networking :: Monitoring",
+]
+dependencies = [
+    "psutil",
+    "requests",
+    "pystray",
+    "Pillow"
+]
+
+[project.urls]
+Homepage = "https://github.com/henrykp/vpn_status_monitor"
+Repository = "https://github.com/henrykp/vpn_status_monitor"
+Issues = "https://github.com/henrykp/vpn_status_monitor/issues"
+
+[project.scripts]
+vpn-monitor = "vpn_monitor.main:main"
+
+# ============================================================================
+# Tool Configurations
+# ============================================================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["vpn_monitor"]
+branch = true
+omit = [
+    "tests/*",
+    "**/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | venv
+    | build
+    | dist
+    | \.eggs
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["vpn_monitor"]
+skip = [".git", ".venv", "venv", "build", "dist"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist", ".venv", "venv"]
+skips = ["B101"]  # Skip assert warnings in tests
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "build/",
+    "dist/",
+    "venv/",
+]
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"

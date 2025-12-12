@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
+      - 'docs/**'
+      - 'chore/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      - name: Run flake8
+        run: flake8 vpn_monitor tests --count --show-source --statistics
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  commitlint:
+    name: Validate Commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install commitlint
+        run: |
+          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+
+      - name: Create commitlint config
+        run: |
+          echo "module.exports = { extends: ['@commitlint/config-conventional'] };" > commitlint.config.js
+
+      - name: Validate PR commits
+        run: |
+          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+  build:
+    name: Build Executable
+    runs-on: windows-latest
+    needs: [lint, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Build executable
+        run: pyinstaller --noconsole --onefile --name vpn-monitor run.py
+
+      - name: Verify executable exists
+        run: |
+          if (Test-Path "dist/vpn-monitor.exe") {
+            Write-Host "✓ Build successful: dist/vpn-monitor.exe"
+            Get-Item "dist/vpn-monitor.exe" | Select-Object Name, Length, LastWriteTime
+          } else {
+            Write-Error "✗ Build failed: executable not found"
+            exit 1
+          }
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: vpn-monitor-exe
+          path: dist/vpn-monitor.exe
+          retention-days: 7
+
