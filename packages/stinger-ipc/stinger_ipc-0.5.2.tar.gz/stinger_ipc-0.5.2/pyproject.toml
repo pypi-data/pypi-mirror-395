@@ -1,0 +1,60 @@
+[project]
+name = "stinger-ipc"
+version = "0.5.2"
+description = "Tools to create code to do IPC over MQTT"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "jacobs-jinja-too>=0.2.10",
+    "jsonschema-rs>=0.34.0",
+    "packaging>=25.0",
+    "pydantic>=2.11.7",
+    "pydantic-asyncapi>=0.3.0",
+    "pyyaml>=6.0.2",
+    "ruamel-yaml>=0.18.14",
+    "semantic-version>=2.10.0",
+    "stevedore>=5.5.0",
+    "typer>=0.16.1",
+    "yamlloader>=1.5.1",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "jacobs-json-schema>=0.4.2",
+    "mypy>=1.16.0",
+    "paho-mqtt>=2.1.0",
+    "pytest>=8.4.0",
+    "pyyaml>=6.0.2",
+    "types-pyyaml>=6.0.12.20250516",
+]
+
+[tool.black]
+line-length = 200
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["stingeripc", "stingeripc.tools", "stingeripc.symbols"]
+
+[tool.setuptools.package-data]
+stingeripc = [
+    "templates/**/*.jinja2",
+    "schema/schema.yaml",
+]
+
+[project.scripts]
+stinger = "stingeripc.tools.cli:run"
+stinger-ipc = "stingeripc.tools.cli:run"
+
+[project.entry-points."stinger_symbols"]
+python = 'stingeripc.lang_symb:PythonSymbolsProvider'
+rust = 'stingeripc.lang_symb:RustSymbolsProvider'
+cpp = 'stingeripc.lang_symb:CppSymbolsProvider'
+pb = 'stingeripc.symbols.protobuf:ProtocolBufferSymbolsProvider'

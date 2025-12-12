@@ -1,0 +1,670 @@
+//! Server module for {{stinger.name}} IPC
+//! 
+//! This module is only available when the "server" feature is enabled.
+
+
+/*
+DO NOT MODIFY THIS FILE{# <-- Ignore this because you are editing the template file. #}.  It is automatically generated and changes will be over-written
+on the next generation.
+
+This is the Server for the {{stinger.name}} interface.
+
+LICENSE: This generated code is not subject to any license restrictions from the generator itself.
+TODO: Get license text from stinger file
+*/
+
+#[allow(unused_imports)]
+use crate::payloads::{MethodReturnCode, *};
+use bytes::Bytes;
+use tokio::sync::{oneshot};
+{%if stinger.methods|length > 0 %}
+use std::any::Any;
+use async_trait::async_trait;
+use tokio::sync::{Mutex as AsyncMutex};
+use std::sync::{Arc, Mutex};
+{%endif%}
+{%if stinger.methods|length > 0 or stinger.properties|length > 0 %}
+use serde_json;
+use tokio::sync::{broadcast{%if stinger.properties|length > 0 %}, watch{%endif%}};
+{%endif%}
+{%if stinger.properties | length > 0%}
+use std::sync::atomic::{AtomicU32, Ordering};
+use crate::property::{{stinger.name | UpperCamelCase}}InitialPropertyValues;
+{%endif%}
+use stinger_mqtt_trait::{Mqtt5PubSub, MqttPublishSuccess, Mqtt5PubSubError};
+use stinger_mqtt_trait::message::{MqttMessage, QoS};
+use stinger_rwlock_watch::{RwLockWatch};
+#[allow(unused_imports)]
+use stinger_rwlock_watch::{WriteRequestLockWatch, CommitResult};
+use tokio::task::JoinError;
+use std::future::Future;
+use std::pin::Pin;
+type SentMessageFuture = Pin<Box<dyn Future<Output = Result<(), MethodReturnCode>> + Send>>;
+#[cfg(feature = "server")]
+#[allow(unused_imports)]
+use tracing::{debug, info, warn, error};
+use crate::message;
+#[cfg(feature = "metrics")]
+use serde::Serialize;
+
+{%if stinger.methods|length > 0 or stinger.properties|length > 0 %}
+/// This struct is used to store all the MQTTv5 subscription ids
+/// for the subscriptions the client will make.
+#[derive(Clone, Debug)]
+struct {{stinger.name | UpperCamelCase }}ServerSubscriptionIds {
+    {%for method_name, method in stinger.methods.items()-%}
+    {{method_name | snake_case}}_method_req: u32,
+    {%endfor%}
+    {%for prop_name, prop in stinger.properties.items()-%}{%if not prop.read_only %}
+    {{prop_name | snake_case}}_property_update: u32,
+    {%endif%}{%endfor%}
+}
+
+{%if stinger.properties | length > 0%}
+#[derive(Clone)]
+struct {{stinger.name | UpperCamelCase}}Properties {
+    {%for prop_name, prop in stinger.properties.items()-%}
+    {%-if prop.arg_list | length > 1%}
+    pub {{prop_name | snake_case}}: Arc<RwLockWatch<{{prop.rust_type}}>>,
+    {%-else%}
+    pub {{prop_name | snake_case}}: Arc<RwLockWatch<{{prop.arg_list[0].rust_type}}>>,
+    {%endif-%}
+    {{prop_name | snake_case}}_version: Arc<AtomicU32>,
+    {%-endfor%}
+}
+{%endif%}{# if any properties #}
+
+
+#[cfg(feature = "metrics")]
+#[derive(Debug, Serialize)]
+pub struct {{stinger.name | UpperCamelCase }}ServerMetrics {
+    {%for method_name, method in stinger.methods.items()-%}
+    pub {{method_name | snake_case}}_calls: u64,
+    pub {{method_name | snake_case}}_errors: u64,
+    {%endfor%}
+    {%if stinger.properties | length > 0 %}
+    pub initial_property_publish_time: std::time::Duration,
+    {%endif%}
+}
+
+#[cfg(feature = "metrics")]
+impl Default for {{stinger.name | UpperCamelCase }}ServerMetrics {
+    fn default() -> Self {
+        {{stinger.name | UpperCamelCase }}ServerMetrics {
+            {%for method_name, method in stinger.methods.items()-%}
+            {{method_name | snake_case}}_calls: 0,
+            {{method_name | snake_case}}_errors: 0,
+            {%endfor%}
+            {%if stinger.properties | length > 0 %}
+            initial_property_publish_time: std::time::Duration::from_secs(0),
+            {%endif%}
+        }
+    }
+}
+
+{%endif%}{# any methods or properties #}
+#[derive(Clone)]
+pub struct {{stinger.rust.server_struct_name}}<C: Mqtt5PubSub> {
+    mqtt_client: C,
+    {%if stinger.methods|length > 0 or stinger.properties|length > 0 %}
+    /// Temporarily holds the receiver for the broadcast channel.  The Receiver will be moved
+    /// to a process loop when it is needed.  MQTT messages will be received with this.
+    msg_streamer_rx: Arc<Mutex<Option<broadcast::Receiver<MqttMessage>>>>,
+
+    /// The Sender side of MQTT messages that are received from the broker.  This tx
+    /// side is cloned for each subscription made.
+    #[allow(dead_code)]
+    msg_streamer_tx: broadcast::Sender<MqttMessage>,
+    {%endif%}
+    {%if stinger.methods|length > 0 %}
+    /// Struct contains all the method handlers.
+    method_handlers: Arc<AsyncMutex<Box<dyn {{stinger.name | UpperCamelCase }}MethodHandlers<C>>>>,
+    {%endif%}
+    {%if stinger.properties|length > 0%}
+    /// Struct contains all the properties.
+    properties: {{stinger.name | UpperCamelCase}}Properties,
+    {%endif%}
+    {%if stinger.methods|length > 0 or stinger.properties|length > 0 %}
+    /// Subscription IDs for all the subscriptions this makes.
+    subscription_ids: {{stinger.name | UpperCamelCase }}ServerSubscriptionIds,
+    {%endif%}
+
+    /// Copy of MQTT Client ID
+    #[allow(dead_code)]
+    pub client_id: String,
+
+    pub instance_id: String,
+
+    #[cfg(feature = "metrics")]
+    metrics: Arc<AsyncMutex<{{stinger.name | UpperCamelCase }}ServerMetrics>>,
+}
+
+impl<C: Mqtt5PubSub + Clone + Send> {{stinger.rust.server_struct_name}}<C> {
+    pub async fn new(
+            mut connection: C,
+            {%if stinger.methods|length > 0%}method_handlers: Arc<AsyncMutex<Box<dyn {{stinger.name | UpperCamelCase }}MethodHandlers<C>>>>, {%endif%}
+            instance_id: String, {%if stinger.properties|length > 0 %}
+            initial_property_values: {{stinger.name | UpperCamelCase}}InitialPropertyValues,{%endif%}
+        ) -> Self {
+        #[cfg(feature = "metrics")]
+        let mut metrics = {{stinger.name | UpperCamelCase }}ServerMetrics::default();
+
+        {%if stinger.methods|length > 0 or stinger.properties|length > 0 %}
+        // Create a channel for messages to get from the Mqtt5PubSub object to this {{stinger.rust.server_struct_name}} object.
+        // The Connection object uses a clone of the tx side of the channel.
+        let (message_received_tx, message_received_rx) = broadcast::channel::<MqttMessage>(64);
+
+        // Create method handler struct
+        {%for method_name, method in stinger.methods.items()-%}
+        let subscription_id_{{method_name | snake_case}}_method_req = connection.subscribe(format!("{{method.topic}}", instance_id), QoS::ExactlyOnce, message_received_tx.clone()).await;
+        let subscription_id_{{method_name | snake_case}}_method_req = subscription_id_{{method_name | snake_case}}_method_req.unwrap_or(u32::MAX);
+
+        {%endfor%}
+        {%for prop_name, prop in stinger.properties.items()-%}{%if not prop.read_only %}
+        let subscription_id_{{prop_name | snake_case}}_property_update = connection.subscribe(format!("{{prop.update_topic}}", instance_id), QoS::AtLeastOnce, message_received_tx.clone()).await;
+        let subscription_id_{{prop_name | snake_case}}_property_update = subscription_id_{{prop_name | snake_case}}_property_update.unwrap_or(u32::MAX);
+
+        {%else-%}
+        {%endif%}{%endfor%}
+        
+        // Create structure for subscription ids.
+        let sub_ids = {{stinger.name | UpperCamelCase }}ServerSubscriptionIds {
+            {%for method_name, method in stinger.methods.items()-%}
+            {{method_name | snake_case}}_method_req: subscription_id_{{method_name | snake_case}}_method_req,
+            {%endfor%}
+            {%for prop_name, prop in stinger.properties.items()-%}{%if not prop.read_only -%}
+            {{prop_name | snake_case}}_property_update: subscription_id_{{prop_name | snake_case}}_property_update,
+            {%endif%}{%endfor%}
+        };
+        {%endif%}
+
+        {%if stinger.properties|length > 0%}
+        let property_values = {{stinger.name | UpperCamelCase}}Properties {
+            {%-for prop_name, prop in stinger.properties.items()%}
+            {%if prop.arg_list | length > 1 -%}
+            {{prop_name | snake_case}}: Arc::new(RwLockWatch::new(initial_property_values.{{prop_name | snake_case}}.clone())),
+            {%-else%}
+            {{prop_name | snake_case}}: Arc::new(RwLockWatch::new(initial_property_values.{{prop_name | snake_case}}.clone())),
+            {%-endif-%}
+            {{prop_name | snake_case}}_version: Arc::new(AtomicU32::new(initial_property_values.{{prop_name | snake_case}}_version)),
+            {%-endfor%}
+        };
+
+        // Publish the initial property values for all the properties.
+        #[cfg(feature = "metrics")]
+        let start_prop_publish_time = std::time::Instant::now();
+        {%-for prop_name, prop in stinger.properties.items()%}
+        {
+            let topic = format!("{{prop.value_topic}}", instance_id);
+            {%if prop.arg_list | length > 1 -%}
+            let msg = message::property_value(&topic, &initial_property_values.{{prop_name | snake_case}}, initial_property_values.{{prop_name | snake_case}}_version).unwrap();
+            {%-else%}
+            let payload_obj = {{prop_name | UpperCamelCase}}Property {
+                {{prop.arg_list[0].name | snake_case}}: initial_property_values.{{prop_name | snake_case}},
+            };
+            let msg = message::property_value(&topic, &payload_obj, initial_property_values.{{prop_name | snake_case}}_version).unwrap();
+            {%endif%}
+            let _ = connection.publish_nowait(msg);
+        }
+        {%endfor%}
+        #[cfg(feature = "metrics")]
+        {
+            metrics.initial_property_publish_time = start_prop_publish_time.elapsed();
+            debug!("Published {{stinger.properties|length}} initial property value{%if stinger.properties|length > 1 %}s{%endif%} in {:?}", metrics.initial_property_publish_time);
+        }
+        {%endif%}
+
+        {{stinger.rust.server_struct_name}} {
+            mqtt_client: connection.clone(),
+            {%if stinger.methods|length > 0 or stinger.properties|length > 0 %}
+            msg_streamer_rx: Arc::new(Mutex::new(Some(message_received_rx))),
+            msg_streamer_tx: message_received_tx,{%if stinger.methods | length > 0 %}
+            method_handlers,{%endif%}{%if stinger.properties | length > 0 %}
+            properties: property_values,{%endif%}
+            subscription_ids: sub_ids,
+            {%endif%}
+            client_id: connection.get_client_id(),
+            instance_id,
+            #[cfg(feature = "metrics")]
+            metrics: Arc::new(AsyncMutex::new(metrics)),
+        }
+    }
+
+    #[cfg(feature = "metrics")]
+    pub fn get_metrics(&self) -> Arc<AsyncMutex<{{stinger.name | UpperCamelCase }}ServerMetrics>> {
+        self.metrics.clone()
+    }
+
+    /// Converts a oneshot channel receiver into a future.
+    async fn oneshot_to_future(
+        ch: oneshot::Receiver<Result<MqttPublishSuccess, Mqtt5PubSubError>>,
+    ) -> SentMessageFuture {
+        Box::pin(async move {
+            let chan_result = ch.await;
+            match chan_result {
+                Ok(transferred_result) => match transferred_result {
+                    Ok(MqttPublishSuccess::Acknowledged) => Ok(()),
+                    Ok(MqttPublishSuccess::Completed) => Ok(()),
+                    Ok(MqttPublishSuccess::Sent) => Ok(()),
+                    Ok(MqttPublishSuccess::Queued) => Ok(()),
+                    Err(e) => Err(MethodReturnCode::TransportError(format!(
+                        "MQTT publish error: {:?}",
+                        e
+                    ))),
+                },
+                Err(e) => Err(MethodReturnCode::TransportError(format!(
+                    "MQTT publish oneshot receive error: {:?}",
+                    e
+                ))),
+            }
+        })
+    }
+
+    async fn wrap_return_code_in_future(rc: MethodReturnCode) -> SentMessageFuture {
+        Box::pin(async move {
+            match rc {
+                MethodReturnCode::Success(_) => Ok(()),
+                _ => Err(rc),
+            }
+        })
+    }
+    {%if stinger.methods | length > 0 or stinger.properties | length > 0 %}
+    /// Publishes an error response to the given response topic with the given correlation data.
+    async fn publish_error_response(mut publisher: C, response_topic: Option<String>, correlation_data: Option<Bytes>, err: MethodReturnCode) {
+        if let Some(resp_topic) = response_topic {
+            let msg = message::error_response(&resp_topic, correlation_data, err).unwrap();
+            let _ = publisher.publish(msg).await;
+        } else {
+            info!("No response topic found in message properties; cannot send error response.");
+        }
+    }
+    {%endif-%}
+    {%for sig_name, sig in stinger.signals.items()-%}
+    /// Emits the {{sig_name}} signal with the given arguments.
+    pub async fn emit_{{sig_name|snake_case}}(&mut self, {%for arg in sig.arg_list%}{{arg.name|snake_case}}: {{arg.rust_type}}{%if not loop.last%}, {%endif%}{%endfor%}) -> SentMessageFuture {
+        let data = {{sig_name|UpperCamelCase}}SignalPayload {
+            {%for arg in sig.arg_list%}
+            {{arg.name|snake_case}},
+            {%endfor%}
+        };
+        let topic = format!("{{sig.topic}}", self.instance_id);
+        let msg = message::signal(&topic, &data).unwrap();
+        let mut publisher = self.mqtt_client.clone();
+        let ch = publisher.publish_noblock(msg).await;
+        Self::oneshot_to_future(ch).await
+    }
+
+    /// Emits the {{sig_name}} signal with the given arguments, but this is a fire-and-forget version.
+    pub fn emit_{{sig_name|snake_case}}_nowait(&mut self, {%for arg in sig.arg_list%}{{arg.name|snake_case}}: {{arg.rust_type}}{%if not loop.last%}, {%endif%}{%endfor%}) -> std::result::Result<MqttPublishSuccess, Mqtt5PubSubError>{
+        let data = {{sig_name|UpperCamelCase}}SignalPayload {
+            {%for arg in sig.arg_list%}
+            {{arg.name|snake_case}},
+            {%endfor%}
+        };
+        let topic = format!("{{sig.topic}}", self.instance_id);
+        let msg = message::signal(&topic, &data).unwrap();
+        let mut publisher = self.mqtt_client.clone();
+        publisher.publish_nowait(msg)
+    }
+    {%endfor%}
+    {%for method_name, method in stinger.methods.items()%}
+    /// Handles a request message for the {{method_name}} method.
+    async fn handle_{{method_name|snake_case}}_request(
+                mut publisher: C, 
+                handlers: Arc<AsyncMutex<Box<dyn {{stinger.name | UpperCamelCase }}MethodHandlers<C>>>>, 
+                msg: MqttMessage
+    ) {
+        let opt_corr_data = msg.correlation_data;
+        let opt_resp_topic = msg.response_topic;
+        {%if method.arg_list | length > 0 -%}
+        let payload_vec = msg.payload;
+        let payload_obj = serde_json::from_slice::<{{method_name | UpperCamelCase}}RequestObject>(&payload_vec);
+        if payload_obj.is_err() {
+            error!("Error deserializing request payload for {{method_name}}: {:?}", payload_obj.err());
+            {{stinger.rust.server_struct_name}}::<C>::publish_error_response(publisher, opt_resp_topic, opt_corr_data, MethodReturnCode::ServerDeserializationError("Failed to deserialize request payload".to_string())).await;
+            return;
+        }
+        // Unwrap is OK here because we just checked for error.
+        let payload = payload_obj.unwrap();
+        {%endif%}{# has arg_list #} 
+        // call the method handler
+        let rc: Result<{{method.return_value_rust_type}}, MethodReturnCode> = {
+            let handler_guard = handlers.lock().await;
+            handler_guard.handle_{{method_name|snake_case}}({%for arg in method.arg_list%}payload.{{arg.name|snake_case}}{%if not loop.last%}, {%endif%}{%endfor%}).await
+        };
+
+        if let Some(resp_topic) = opt_resp_topic {
+            let corr_data = opt_corr_data.unwrap_or_default();
+            match rc {
+                Ok({%if method.return_arg_list|length == 0 %}_{%endif%}retval) => {
+                    {% if method.return_arg_list|length == 0 %}
+                    let empty_resp = {{method.return_value_name | UpperCamelCase}}{};
+                    let msg = message::response(&resp_topic, &empty_resp, corr_data, None).unwrap();
+                    let _fut_publish_result = publisher.publish(msg).await;
+                    {%elif method.return_arg_list|length == 1 %}
+                    let resp_obj = {{method.return_value_name | UpperCamelCase}} {
+                        {{method.return_arg_list[0].name | snake_case}}: retval,
+                    };
+                    let msg = message::response(&resp_topic, &resp_obj, corr_data,None).unwrap();
+                    let _fut_publish_result = publisher.publish(msg).await;
+                    {% else %}
+                    let msg = message::response(&resp_topic, &retval, corr_data, None).unwrap();
+                    let _fut_publish_result = publisher.publish(msg).await;
+                    {% endif %}
+                }
+                Err(err) => {
+                    info!("Error occurred while handling {{method_name}}: {:?}", &err);
+                    {{stinger.rust.server_struct_name}}::<C>::publish_error_response(publisher, Some(resp_topic), Some(corr_data), err).await;
+                }
+            }
+        } else {
+            // Without a response topic, we cannot send a response.
+            info!("No response topic provided, so no publishing response to `{{method_name}}`.");
+        }
+    }
+    {%endfor%}
+
+    {%-for prop_name, prop in stinger.properties.items()%}
+
+    {%if not prop.read_only %} {# Enable mechanisms for remote clients to update the property#}
+    /// This is called because of an MQTT request to update the property value.
+    /// It updates the local value, which notifies any watchers, and publishes the new value.
+    /// If there is an error, it can publish back if a response topic was provided.
+    async fn update_{{prop_name}}_value(
+            mut publisher: C, 
+            property_pointer: Arc<RwLockWatch<{%if prop.arg_list|length > 0 %}{{prop.rust_type}}{%else%}{{prop.arg_list[0].rust_type}}{%endif%}>>,  // Arc to the property value
+            version_pointer: Arc<AtomicU32>,
+            msg: MqttMessage
+    )
+    {
+        // This is JSON encoding of an object with {{prop.arg_list | length}} field{%if prop.arg_list | length > 1 %}s{%endif%}.
+        let payload_str = String::from_utf8_lossy(&msg.payload).to_string();
+        
+        let mut return_code = MethodReturnCode::Success(None);
+
+        match msg.content_type.as_deref() {
+            Some("application/json") => { /* OK */ }
+            Some(ct) => {
+                error!("Unexpected content-type for property update: {}", ct);
+                return_code = MethodReturnCode::PayloadError(format!("Invalid Content-Type '{}', expected 'application/json'", ct));
+            }
+            None => {
+                error!("Missing content-type for property update");
+                return_code = MethodReturnCode::PayloadError("Missing Content-Type; expected 'application/json'".to_string());
+            }
+        }
+
+        match return_code {
+            MethodReturnCode::Success(_) => {
+                let mut incoming_version: Option<u32> = None;
+                if let Some(version_str) = msg.user_properties.get("PropertyVersion") {
+                    match version_str.parse::<u32>() {
+                        Ok(v) => incoming_version = Some(v),
+                        Err(e) => {
+                            error!("Failed to parse 'PropertyVersion' user property ('{}'): {:?}", version_str, e);
+                            return_code = MethodReturnCode::PayloadError("Invalid 'PropertyVersion' user property".to_string());
+                        }
+                    }
+                }
+
+                if let Some(v) = incoming_version {
+                    let current = version_pointer.load(Ordering::SeqCst);
+                    if v != current {
+                        return_code = MethodReturnCode::OutOfSync(format!(
+                            "PropertyVersion mismatch: incoming {}, current {}",
+                            v, current
+                        ));
+                    }
+                }
+            }
+            _ => { /* Do nothing, error already set. */ }
+        }
+
+        let opt_new_value = match return_code {
+            MethodReturnCode::Success(_) => {
+                match serde_json::from_str::<{{prop_name|UpperCamelCase}}Property>(&payload_str) {
+                    Ok(new_property_structure) => {
+                        let request_lock = property_pointer.write_request();
+                        let mut write_request = request_lock.write().await;
+                        {%if prop.arg_list | length == 1 %}
+                        // Single value property.  Use the {{prop.arg_list[0].name | snake_case}} field of the struct.
+                        *write_request = new_property_structure.{{prop.arg_list[0].name | snake_case}}.clone();
+                        {%else%}
+                        // Multi-value property set as a struct.
+                        *write_request = new_property_structure.clone();
+                        {%endif%}
+
+                        // Committing the write request blocks until the message has been published to MQTT.
+                        write_request.commit(std::time::Duration::from_secs(2)).await;
+                        Some((*write_request).clone())
+                    }
+                    Err(e) => {
+                        error!("Failed to parse JSON received over MQTT to update '{{prop_name}}' property: {:?}", e);
+                        return_code = MethodReturnCode::ServerDeserializationError("Failed to deserialize property '{{prop_name}}' payload".to_string());
+                        None
+                    }
+                }
+            },
+            _ => {
+                None
+            }
+        };
+
+        if let Some(resp_topic) = msg.response_topic {
+            let corr_data = msg.correlation_data.unwrap_or_default();
+            let payload_obj = {
+                if let Some(new_value) = opt_new_value {
+                    {%if prop.arg_list | length == 1 %}
+                    {{prop_name | UpperCamelCase}}Property { 
+                        {{prop.arg_list[0].name}}: new_value
+                    }
+                    {%else%}
+                    new_value
+                    {%endif%}
+                } else {
+                    let prop_lock = property_pointer.read().await;
+                    {%if prop.arg_list | length == 1 %}
+                    {{prop_name | UpperCamelCase}}Property { 
+                        {{prop.arg_list[0].name}}: (*prop_lock).clone(),
+                    }
+                    {%else%}
+                    (*prop_lock).clone()
+                    {%endif%}
+                }
+            };
+            match message::property_update_response(&resp_topic, &payload_obj, corr_data, return_code) {
+                Ok(msg) => {
+                    let _fut_publish_result = publisher.publish(msg).await;
+                }
+                Err(err) => {
+                    error!("Error occurred while handling property update for '{{prop_name}}': {:?}", &err);
+                }
+            }
+        } else {
+            debug!("No response topic provided, so no publishing response to property update for '{{prop_name}}'.");
+        }
+    }
+    {%endif%}{# not read only property #}
+
+    /// Watch for changes to the `{{prop_name}}` property.
+    /// This returns a watch::Receiver that can be awaited on for changes to the property value.
+    pub fn watch_{{prop_name | snake_case}}(&self) -> watch::Receiver<{%if prop.arg_list | length > 1 %}{{prop.rust_type}}{% else %}{{prop.arg_list[0].rust_type}}{% endif %}> {
+        self.properties.{{prop_name | snake_case}}.subscribe()
+    }
+
+    pub fn get_{{prop_name | snake_case}}_handle(&self) -> WriteRequestLockWatch<{%if prop.arg_list | length > 1 %}{{prop.rust_type}}{% else %}{{prop.arg_list[0].rust_type}}{% endif %}> {
+        self.properties.{{prop_name | snake_case}}.write_request()
+    }
+
+    /// Sets the value{%if prop.arg_list|length > 1%}s{%endif%} of the {{prop_name}} property.
+    pub async fn set_{{prop_name}}(&mut self, value: {{prop.rust_type}}) -> SentMessageFuture {
+        let write_request_lock = self.get_{{prop_name | snake_case}}_handle();
+        Box::pin(async move { 
+            let mut write_request = write_request_lock.write().await;
+            *write_request = value;
+            match write_request.commit(std::time::Duration::from_secs(2)).await {
+                CommitResult::Applied(_) => Ok(()),
+                CommitResult::TimedOut => Err(MethodReturnCode::Timeout("Timeout committing property change".to_string())),
+            }
+        })
+    }
+    {%endfor%}
+
+    /// Starts the tasks that process messages received.
+    /// In the task, it loops over messages received from the rx side of the message_receiver channel.
+    /// Based on the subscription id of the received message, it will call a function to handle the
+    /// received message.
+    pub async fn run_loop(&mut self) -> Result<(), JoinError>
+    where
+        C: 'static,
+    {
+
+        {%if stinger.methods|length > 0 or stinger.properties|length > 0 %}
+        // Take ownership of the RX channel that receives MQTT messages.  This will be moved into the loop_task.
+        let mut message_receiver = {
+            self.msg_streamer_rx.lock().unwrap().take().expect("msg_streamer_rx should be Some")
+        };
+
+        {%if stinger.methods|length > 0 -%}
+        let method_handlers = self.method_handlers.clone();
+        let _ = self.method_handlers.lock().await.initialize(self.clone()).await;
+        {%endif-%}
+
+        let sub_ids = self.subscription_ids.clone();
+
+        {%-if stinger.methods|length > 0 %}
+        let publisher = self.mqtt_client.clone();
+        {%endif%}
+
+        {%-if stinger.properties|length > 0%}
+        let props = self.properties.clone();
+        {%-for prop_name, prop in stinger.properties.items()%}
+        { // Set up property change request handling task
+            let instance_id_for_{{prop_name|snake_case}}_prop = self.instance_id.clone();
+            let mut publisher_for_{{prop_name|snake_case}}_prop = self.mqtt_client.clone();
+            let {{prop_name|snake_case}}_prop_version = props.{{prop_name | snake_case}}_version.clone();
+            if let Some(mut rx_for_{{prop_name|snake_case}}_prop) = props.{{prop_name | snake_case}}.take_request_receiver() {
+                tokio::spawn(async move {
+                    while let Some((request, opt_responder)) = rx_for_{{prop_name|snake_case}}_prop.recv().await {
+                        {%if prop.arg_list | length == 1 %}
+                        let payload_obj = {{prop_name | UpperCamelCase}}Property { 
+                            {{prop.arg_list[0].name}}: request.clone(),
+                        };
+                        {%else%}
+                        let payload_obj = request.clone();
+                        {%endif%}
+                        let version_value = {{prop_name|snake_case}}_prop_version.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let topic: String = format!("{{prop.value_topic}}", instance_id_for_{{prop_name|snake_case}}_prop);
+                        match message::property_value(&topic, &payload_obj, version_value) {
+                            Ok(msg) => {
+                                let publish_result = publisher_for_{{prop_name|snake_case}}_prop.publish(msg).await;
+                                if let Some(responder) = opt_responder {
+                                    match publish_result {
+                                        Ok(_) => {
+                                            let _ = responder.send(Some(request));
+                                        },
+                                        Err(_) => {
+                                            error!("Error publishing updated value for '{{prop_name}}' property");
+                                            let _ = responder.send(None);
+                                        }
+                                    };
+                                }
+                            },
+                            Err(e) => {
+                                error!("Error creating property value message for '{{prop_name}}' property: {:?}", e);
+                                if let Some(responder) = opt_responder {
+                                    let _ = responder.send(None);
+                                }
+                            }
+                        }
+                    };
+                });
+            }
+        }
+        {% endfor %}
+        {%endif%}
+
+        // Spawn a task to periodically publish interface info.
+        let mut interface_publisher = self.mqtt_client.clone();
+        let instance_id = self.instance_id.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(120));
+            loop {
+                interval.tick().await;
+                let topic = format!("{{stinger.interface_info_topic}}", instance_id);
+                let info = crate::interface::InterfaceInfoBuilder::default()
+                    .interface_name("{{stinger.name}}".to_string())
+                    .title("{{stinger.title}}".to_string())
+                    .version("{{stinger.version}}".to_string())
+                    .instance(instance_id.clone())
+                    .connection_topic(topic.clone())
+                    .build().unwrap();
+                let msg = message::interface_online(&topic, &info, 150 /*seconds*/).unwrap();
+                let _ = interface_publisher.publish(msg).await;
+            }
+        });
+
+        let properties = self.properties.clone();
+        let loop_task = tokio::spawn(async move {
+            loop {
+                match message_receiver.recv().await {
+                    Ok(msg) => {
+
+                        if let Some(subscription_id) = msg.subscription_id {
+
+                            match subscription_id {
+                                {%-for method_name, method in stinger.methods.items()%}
+                                _i if _i == sub_ids.{{method_name | snake_case}}_method_req => {
+                                    debug!("Received {{method_name}} method invocation message.");
+                                    {{stinger.rust.server_struct_name}}::<C>::handle_{{method_name|snake_case}}_request(publisher.clone(), method_handlers.clone(), msg).await;
+                                },
+                                {%-endfor%}
+                                {%-for prop_name, prop in stinger.properties_rw.items()%}
+                                _i if _i ==sub_ids.{{prop_name | snake_case}}_property_update => {
+                                    debug!("Received {{prop_name}} property update request message.");
+                                    {{stinger.rust.server_struct_name}}::<C>::update_{{prop_name | snake_case}}_value(
+                                            publisher.clone(),
+                                            properties.{{prop_name | snake_case}}.clone(),
+                                            properties.{{prop_name | snake_case}}_version.clone(),
+                                            msg
+                                    ).await;
+                                }
+                                {%endfor%}{# properties #}
+                                _ => {
+                                    error!("Received MQTT message with unknown subscription id: {}", subscription_id);
+                                }
+                            }
+                        } else {
+                            warn!("Received MQTT message without subscription id; cannot process.");
+                        }
+                    },
+                    Err(e) => {
+                        warn!("Error receiving MQTT message in server loop: {:?}", e);
+                    }
+                }
+            }
+        });
+
+        let _ = tokio::join!(loop_task);
+        {%endif%} {# any methods or properties #}
+        
+        warn!("Server receive loop completed. Exiting run_loop.");
+        Ok(())
+    }
+
+}
+{%if stinger.methods|length > 0 %}
+#[async_trait]
+pub trait {{stinger.name | UpperCamelCase }}MethodHandlers<C: Mqtt5PubSub>: Send + Sync {
+
+    async fn initialize(&mut self, server: {{stinger.rust.server_struct_name}}<C>) -> Result<(), MethodReturnCode>;
+
+    {%for method_name, method in stinger.methods.items()-%}
+    /// Pointer to a function to handle the {{method_name}} method request.
+    async fn handle_{{method_name|snake_case}}(&self, {%for arg in method.arg_list%}{{arg.name|snake_case}}: {{arg.rust_type}}{%if not loop.last%}, {%endif%}{%endfor%}) -> Result<{{method.return_value_rust_type}}, MethodReturnCode>;
+    
+    {%endfor%}
+
+    fn as_any(&self) -> &dyn Any;
+}
+{%endif%}{# methods #}
