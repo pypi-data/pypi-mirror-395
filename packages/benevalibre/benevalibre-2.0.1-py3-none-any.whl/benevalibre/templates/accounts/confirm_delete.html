@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% if error_message %}
+    <c-alert level="error">{{ error_message }}</c-alert>
+
+    <a href="{% url "account:update" %}" class="button button-secondary">Annuler</a>
+  {% else %}
+    <p class="mb-6 text-lg">La suppression de votre compte est irréversible. Vos actions de bénévolat ne seront pas supprimées mais elles ne seront plus associées à votre identité. Pour continuer, veuillez saisir votre mot de passe.</p>
+
+    <c-form :form="form" action="{% url "account:delete" %}">
+      <c-slot name="actions">
+        <button type="submit" class="button button-primary">Supprimer mon compte</button>
+        <a href="{% url "account:update" %}" class="button button-secondary">Annuler</a>
+      </c-slot>
+    </c-form>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "associations/list.html" %}
+
+{% block content %}
+  {% if not object_list %}
+    {% if search_query %}
+      <c-alert level="info">
+        <c-slot name="title">
+          Aucune association avec « <i>{{ search_query }}</i> » dans son nom n'a été trouvée
+        </c-slot>
+
+        <p>
+          Vous êtes responsable de cette association ?
+          {% if create_url %}
+            Vous pouvez <a href="{{ create_url }}">la créer</a>
+            ou <a href="{{ import_url }}">l'importer</a> depuis une autre instance.
+          {% else %}
+            Veuillez <a href="{% url "account:login" %}">vous connecter</a>
+            ou <a href="{% url "account:register" %}">vous créer un compte</a> pour continuer.
+          {% endif %}
+        </p>
+      </c-alert>
+    {% else %}
+      <c-alert level="error">
+        Veuillez saisir un nom ou une partie de nom d'association à rechercher.
+      </c-alert>
+    {% endif %}
+  {% else %}
+    {{ block.super }}
+  {% endif %}
+{% endblock %}

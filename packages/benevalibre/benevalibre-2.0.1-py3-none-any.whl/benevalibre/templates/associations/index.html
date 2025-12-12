@@ -1,0 +1,40 @@
+{% extends "associations/list.html" %}
+{% load thumbnail %}
+
+{% block content %}
+  {% if object_list %}
+    {% if create_url %}
+      <c-alert>
+        Votre association n'existe pas encore ? Vous pouvez <a href="{{ create_url }}">la créer</a> ou <a href="{{ import_url }}">l'importer</a> depuis une autre instance.
+      </c-alert>
+    {% endif %}
+
+    <c-section header_title="Quelques-unes au hasard">
+      <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {% for object in object_list %}
+          <div class="relative flex h-[calc(220px+2rem)] flex-col items-center justify-evenly gap-4 rounded-lg p-4 bg-white">
+            {% if object.logo %}
+              <div class="inline-flex aspect-square items-center justify-center">
+                {% thumbnail object.logo "110x110" format="WEBP" upscale=False as img %}
+                  <img src="{{ img.url }}" width="{{ img.width }}" height="{{ img.height }}" alt="">
+                {% endthumbnail %}
+              </div>
+            {% endif %}
+            <h4 class="text-center">
+              <a href="{% url "associations:detail" object.pk %}" class="{% if object.logo %} text-lg {% else %} text-xl {% endif %} leading-snug font-medium text-black focus-visible:ring-0 hover:text-primary group">
+                <span class="absolute inset-0 rounded-lg group-focus-visible:ring-3 group-focus-visible:ring-primary/60" aria-hidden="true"></span>
+                <span class="line-clamp-3">{{ object.name }}</span>
+              </a>
+            </h4>
+          </div>
+        {% endfor %}
+
+        <div class="col-span-full">
+          <a href="{{ list_url }}" class="w-full button button-primary">Voir toutes les associations</a>
+        </div>
+      </div>
+    </c-section>
+  {% else %}
+    {{ block.super }}
+  {% endif %}
+{% endblock %}

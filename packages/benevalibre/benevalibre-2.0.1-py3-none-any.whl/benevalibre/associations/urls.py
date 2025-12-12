@@ -1,0 +1,71 @@
+from django.urls import include, path
+
+from .views import (
+    anonymous_members,
+    associations,
+    benevalo_categories,
+    benevalo_levels,
+    benevalos,
+    members,
+    projects,
+    roles,
+    statistics,
+)
+
+urlpatterns = [
+    path(
+        "<int:association>/",
+        include(
+            [
+                path(
+                    "anonymous-members/",
+                    anonymous_members.ViewSet.as_view(
+                        url_namespace="association_anonymous_members",
+                    ),
+                ),
+                path(
+                    "benevalos/",
+                    benevalos.ViewSet.as_view(
+                        url_namespace="association_benevalos",
+                    ),
+                ),
+                path(
+                    "benevalo-categories/",
+                    benevalo_categories.ViewSet.as_view(
+                        url_namespace="association_benevalo_categories",
+                    ),
+                ),
+                path(
+                    "benevalo-levels/",
+                    benevalo_levels.ViewSet.as_view(
+                        url_namespace="association_benevalo_levels",
+                    ),
+                ),
+                path(
+                    "members/",
+                    members.ViewSet.as_view(
+                        url_namespace="association_members",
+                    ),
+                ),
+                path(
+                    "projects/",
+                    projects.ViewSet.as_view(
+                        url_namespace="association_projects",
+                    ),
+                ),
+                path(
+                    "roles/",
+                    roles.ViewSet.as_view(
+                        url_namespace="association_roles",
+                    ),
+                ),
+                path(
+                    "statistics/",
+                    statistics.StatisticsView.as_view(),
+                    name="association_statistics",
+                ),
+            ]
+        ),
+    ),
+    path("", associations.ViewSet.as_view(url_namespace="associations")),
+]

@@ -1,0 +1,102 @@
+<div class="rounded-sm bg-white shadow-xs dark:bg-gray-950">
+  <div class="border-b border-gray-100 px-6 py-4 sm:flex sm:items-baseline sm:justify-between dark:border-gray-900">
+    <h3 class="text-xl/snug font-bold">
+      <a class="hover:text-primary" href="{% url "associations:detail" pk=association.pk %}">
+        {{ association.name }}
+      </a>
+    </h3>
+    {% if not is_pending and role %}
+      <div class="mt-2 sm:mt-0 sm:ml-8 sm:shrink-0">
+        <span class="badge badge-info">{{ role.name }}</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="px-6 py-4">
+    {% if not association.is_active %}
+      <c-alert level="info">
+        La création de cette association n'a pas encore été validée.
+      </c-alert>
+    {% elif membership and not membership.is_active %}
+      <c-alert level="info">
+        Votre demande de rejoindre l'association n'a pas encore été validée.
+      </c-alert>
+    {% else %}
+      <div class="mb-2 sm:flex sm:items-center sm:justify-between">
+        <h4 class="text-lg font-medium">
+          <a class="hover:text-primary" href="{{ user_benevalos.index_url }}">
+            Mes actions de bénévolat
+          </a>
+        </h4>
+        {% if user_benevalos.add_url %}
+          <div class="mt-2 sm:mt-0 sm:ml-8 sm:shrink-0">
+            <a class="button-sm button button-secondary" href="{{ user_benevalos.add_url }}">
+              {% icon "plus" classname="button-icon" %}Ajouter
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      <dl class="space-y-2 text-sm/snug xl:text-base/snug">
+        <div class="flex justify-between gap-4">
+          <dt class="text-gray-800 dark:text-gray-200">Nombre de saisies</dt>
+          <dd class="text-end">
+            <span class="font-medium">{{ user_benevalos.count_validated }}</span>
+            {% if user_benevalos.count_pending %}
+              <span class="ml-1 badge badge-error badge-sm">+ {{ user_benevalos.count_pending }} en attente de validation</span>
+            {% endif %}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-gray-800 dark:text-gray-200">Date de ma dernière action</dt>
+          <dd class="text-end font-medium">{{ user_benevalos.last_date|date:"SHORT_DATE_FORMAT"|default:"—" }}</dd>
+        </div>
+      </dl>
+
+      {% if benevalos %}
+        <div class="mt-4 mb-2 border-t border-gray-100 pt-4 dark:border-gray-900">
+          <h4 class="text-lg font-medium">
+            <a class="hover:text-primary" href="{{ benevalos.manage_url }}">
+              Actions de bénévolat
+            </a>
+          </h4>
+        </div>
+        <dl class="space-y-2 text-sm/snug xl:text-base/snug">
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-800 dark:text-gray-200">Nombre de saisies</dt>
+            <dd class="text-end">
+              <span class="font-medium">{{ benevalos.count_validated }}</span>
+              {% if benevalos.count_pending %}
+                <span class="ml-1 badge badge-error badge-sm">+ {{ benevalos.count_pending }} en attente de validation</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-800 dark:text-gray-200">Date de la dernière action</dt>
+            <dd class="text-end font-medium">{{ benevalos.last_date|date:"SHORT_DATE_FORMAT"|default:"—" }}</dd>
+          </div>
+        </dl>
+      {% endif %}
+
+      {% if members %}
+        <div class="mt-4 mb-2 border-t border-gray-100 pt-4 dark:border-gray-900">
+          <h4 class="text-lg font-medium">
+            <a class="hover:text-primary" href="{{ members.manage_url }}">
+              Membres
+            </a>
+          </h4>
+        </div>
+        <dl class="space-y-2 text-sm/snug xl:text-base/snug">
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-800 dark:text-gray-200">Nombre de membres</dt>
+            <dd class="text-end">
+              <span class="font-medium">{{ members.count_validated }}</span>
+              {% if members.count_pending %}
+                <span class="ml-1 badge badge-error badge-sm">+ {{ members.count_pending }} en attente de validation</span>
+              {% endif %}
+            </dd>
+          </div>
+        </dl>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>

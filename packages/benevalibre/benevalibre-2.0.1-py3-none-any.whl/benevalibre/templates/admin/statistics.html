@@ -1,0 +1,52 @@
+{% extends "admin/base.html" %}
+{% load django_tables2 %}
+
+{% block content %}
+  <c-stats>
+    <c-stats.item label="Associations" :value="global_stats.count_associations" />
+    <c-stats.item label="Utilisateur⋅rices" :value="global_stats.count_users" />
+    {% if global_stats.first_benevalo_date %}
+      <c-stats.item label="Premier bénévolat" value="{{ global_stats.first_benevalo_date|date:"SHORT_DATE_FORMAT" }}" />
+    {% endif %}
+  </c-stats>
+
+  <c-section header_title="Champs d'activité des associations">
+    {% for activity_field_group in activity_field_groups %}
+      <details class="mb-4 group">
+        <summary class="flex cursor-pointer items-baseline py-1 before:w-4 before:content-['▸'] group-open:before:content-['▾']">
+          <div class="flex flex-1 items-baseline justify-between gap-x-2">
+            <h4 class="text-lg/tight font-medium">{{ activity_field_group.name }}</h4>
+            <span class="shrink-0 badge badge-primary">{{ activity_field_group.num_associations }}</span>
+          </div>
+        </summary>
+
+        <dl class="mt-2 divide-y divide-gray-300 rounded-sm bg-gray-100 px-4 py-1 dark:divide-gray-700 dark:bg-gray-950">
+          {% for activity_field in activity_field_group.all_activity_fields %}
+            <div class="flex items-baseline justify-between gap-x-2 py-2">
+              <dt>{{ activity_field.name }}</dt>
+              <dd class="shrink-0 px-2 font-bold">{{ activity_field.num_associations }}</dd>
+            </div>
+          {% endfor %}
+        </dl>
+      </details>
+    {% endfor %}
+  </c-section>
+
+  {% if has_benevalos %}
+    <c-section header_title="Actions de bénévolat">
+      {% if year_menu_items %}
+        <c-slot name="header_actions">
+          <c-dropdown button_label="{{ current_year|default:"Total" }}" :menu_items="year_menu_items" />
+        </c-slot>
+      {% endif %}
+
+      <c-stats>
+        <c-stats.item label="Actions de bénévolat" :value="benevalos_stats.count" />
+        <c-stats.item label="Temps consacré" :value="benevalos_stats.total_duration" />
+        <c-stats.item label="Distance parcourue" :value="benevalos_stats.total_distance" />
+      </c-stats>
+
+      {% render_table benevalo_categories_report %}
+    </c-section>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{% with id=widget.attrs.id %}
+<div{% if id %} id="{{ id }}"{% endif %} class="space-y-4 first:mt-0">
+  {% for group, options, index in widget.optgroups %}
+    {% for option in options %}
+      <div class="flex items-start gap-x-2">
+        <input type="{{ option.type }}" name="{{ option.name }}"{% if option.value != None %} value="{{ option.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" with widget=option %}>
+        <label{% if option.attrs.id %} for="{{ option.attrs.id }}"{% endif %}>{{ option.label }}</label>
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+{% endwith %}

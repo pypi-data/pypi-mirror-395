@@ -1,0 +1,16 @@
+{% load thumbnail %}
+{% if user.is_anonymous_member %}
+  <span class="inline-flex {{ size_classname|default:"size-8 text-sm/none" }} items-center justify-center bg-primary-300 rounded-full transition-shadow group-active:ring-3 group-active:ring-primary/60 group-aria-expanded:ring-3 group-aria-expanded:ring-primary/60 group-focus-visible:ring-3 group-focus-visible:ring-primary/60">
+    {% icon "user-secret" classname="size-5 text-black" %}
+  </span>
+{% elif user.avatar %}
+  {% thumbnail user.avatar "40x40" crop="center" format="WEBP" as img %}
+    <img src="{{ img.url }}" alt="{{ user }}" class="inline {{ size_classname|default:"size-8" }} rounded-full transition-shadow group-active:ring-3 group-active:ring-primary/60 group-aria-expanded:ring-3 group-aria-expanded:ring-primary/60 group-focus-visible:ring-3 group-focus-visible:ring-primary/60">
+  {% endthumbnail %}
+{% else %}
+  {% with avatar_hsl_color=user.get_avatar_hsl_color %}
+    <span class="inline-flex {{ size_classname|default:"size-8 text-sm/none" }} items-center justify-center rounded-full transition-shadow group-active:ring-3 group-active:ring-opacity-60 group-aria-expanded:ring-3 group-focus-visible:ring-3" style="--tw-ring-color: hsl({{ avatar_hsl_color }} / 60%); background-color: hsl({{ avatar_hsl_color }});">
+      <span class="font-medium text-black">{{ user.get_initials }}</span>
+    </span>
+  {% endwith %}
+{% endif %}
