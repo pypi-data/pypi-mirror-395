@@ -1,0 +1,264 @@
+Metadata-Version: 2.4
+Name: input-output-build
+Version: 0.1.1
+Summary: Utilities for building and testing input/output pipelines.
+Author-email: John Malcolm Vich <vich.malcolm.john@bollywood.com>
+Maintainer-email: John Malcolm Vich <vich.malcolm.john@bollywood.com>
+Keywords: input,output,build,pipeline,automation
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Build Tools
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+# input-output-build
+
+`input-output-build` is a modular framework designed for constructing,
+validating, and testing high‑performance input/output (I/O) pipelines
+across diverse environments. Whether you're building data ingestion
+systems, streaming architectures, ETL workflows, or interactive
+command-line tooling, this package provides a structured ecosystem for
+orchestrating I/O operations with robustness, extensibility, and
+composability in mind.
+
+------------------------------------------------------------------------
+
+## ✨ Features
+
+### 🔧 Modular I/O Pipeline Architecture
+
+-   Build pipelines from **independent, reusable blocks**
+-   Native support for **parallelism**, **batch processing**, and
+    **streaming**
+-   Strong typing philosophy ensures that **every transformation is
+    traceable**
+
+### 🧪 Built-In Test Harness
+
+-   Automatic test scaffolding for I/O-heavy applications\
+-   Golden‑file comparison utilities\
+-   Randomized fuzzing for stress-testing your I/O flows
+
+### 📊 Rich Logging & Introspection
+
+-   Pipeline visualization via ASCII graphs\
+-   Event tracing with timestamps\
+-   Execution statistics (latencies, throughput, failure snapshots)
+
+### 🚀 Extensible Plugin System
+
+-   Load pipeline components dynamically
+-   Register new input/output types at runtime
+-   Optional sandboxing mode for experimental blocks
+
+------------------------------------------------------------------------
+
+## 📦 Installation
+
+``` bash
+pip install input-output-build
+```
+
+or for development:
+
+``` bash
+git clone https://github.com/youruser/input-output-build
+cd input-output-build
+pip install -e .
+```
+
+------------------------------------------------------------------------
+
+## 📁 Project Structure
+
+    input-output-build/
+    ├── docs/
+    │   ├── architecture.md
+    │   ├── pipeline-examples.md
+    │   └── plugin-development.md
+    ├── examples/
+    │   ├── stream_processor.py
+    │   ├── batch_to_stream.py
+    │   └── io_benchmark.py
+    ├── src/
+    │   └── input_output_build/
+    │       ├── core/
+    │       │   ├── base.py
+    │       │   ├── pipeline.py
+    │       │   └── executor.py
+    │       ├── io/
+    │       │   ├── file_reader.py
+    │       │   ├── file_writer.py
+    │       │   ├── stream_input.py
+    │       │   └── http_source.py
+    │       ├── utils/
+    │       │   ├── logger.py
+    │       │   ├── benchmarking.py
+    │       │   └── graph.py
+    │       └── cli.py
+    └── tests/
+        ├── test_pipeline.py
+        ├── test_io_handlers.py
+        └── test_benchmarks.py
+
+------------------------------------------------------------------------
+
+## 🏗️ Example: Building a Pipeline
+
+``` python
+from input_output_build.core.pipeline import Pipeline
+from input_output_build.io.file_reader import FileReader
+from input_output_build.io.file_writer import FileWriter
+from input_output_build.utils.logger import Logger
+
+pipeline = (
+    Pipeline("demo")
+    .add(FileReader("input.txt"))
+    .add(lambda data: data.upper())
+    .add(FileWriter("output.txt"))
+)
+
+Logger.info("Running pipeline...")
+pipeline.run()
+```
+
+------------------------------------------------------------------------
+
+## 🔌 Creating Your Own Block
+
+``` python
+from input_output_build.core.base import Block
+
+class ReverseText(Block):
+    def process(self, data):
+        return data[::-1]
+```
+
+Use it inside a pipeline:
+
+``` python
+pipeline.add(ReverseText())
+```
+
+------------------------------------------------------------------------
+
+## 📈 Benchmarking Pipelines
+
+``` python
+from input_output_build.utils.benchmarking import benchmark
+
+result = benchmark(pipeline.run, iterations=100)
+print(result)
+```
+
+------------------------------------------------------------------------
+
+## 🧩 Plugin Development
+
+Pipeline components can be loaded dynamically at runtime.
+
+Create a plugin:
+
+``` python
+# myplugin.py
+from input_output_build.core.base import Block
+
+class Trim(Block):
+    def process(self, data):
+        return data.strip()
+```
+
+Register it:
+
+``` python
+pipeline.load_plugin("myplugin.Trim")
+```
+
+------------------------------------------------------------------------
+
+## 🗺️ Architecture Overview
+
+### Core Concepts
+
+-   **Block** -- atomic processing unit\
+-   **Pipeline** -- sequential chain of blocks\
+-   **Executor** -- runtime responsible for scheduling\
+-   **Inspector** -- provides real-time stats and debugging hooks
+
+### Execution Model
+
+    Input → Block A → Block B → Block C → Output
+
+------------------------------------------------------------------------
+
+## 🧵 Concurrency Model
+
+The framework supports:
+
+-   multiprocessing pipelines\
+-   multithreaded workers\
+-   async/await streaming execution
+
+```{=html}
+<!-- -->
+```
+                ┌─────────┐
+    Input ───►  │ Executor│ ───► Worker Pool ───► Blocks
+                └─────────┘
+
+------------------------------------------------------------------------
+
+## 📚 Documentation
+
+See:
+
+-   `docs/architecture.md`\
+-   `docs/pipeline-examples.md`\
+-   `docs/plugin-development.md`
+
+------------------------------------------------------------------------
+
+## 🛠️ Development
+
+Run the test suite:
+
+``` bash
+pytest -q
+```
+
+Format and lint:
+
+``` bash
+ruff check .
+black .
+```
+
+------------------------------------------------------------------------
+
+## 🤝 Contributing
+
+Pull requests are welcome!\
+Please follow the contribution guidelines and coding standards.
+
+------------------------------------------------------------------------
+
+## 📝 License
+
+MIT License © 2025 Your Name
+
+------------------------------------------------------------------------
+
+## ⭐ Acknowledgements
+
+Special thanks to contributors and the open-source community for
+inspiring the modular pipeline design philosophy.
+
+------------------------------------------------------------------------
