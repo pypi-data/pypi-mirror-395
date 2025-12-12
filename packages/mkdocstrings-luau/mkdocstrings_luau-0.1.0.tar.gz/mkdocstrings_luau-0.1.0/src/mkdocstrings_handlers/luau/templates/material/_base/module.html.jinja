@@ -1,0 +1,60 @@
+{#- Template for rendering Luau modules.
+
+Context:
+  data: The module data.
+  root (bool): Whether this is the root object.
+  heading_level (int): The HTML heading level to use.
+  config (dict): The configuration options.
+-#}
+
+{% block logs scoped %}
+  {{ log.debug("Rendering module " + data.path) }}
+{% endblock logs %}
+
+<div class="doc doc-object doc-module">
+  {% with obj = data, html_id = data.path %}
+
+    {% filter heading(
+        heading_level,
+        role="module",
+        id=html_id,
+        class="doc doc-heading",
+        toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-module"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + data.name,
+      ) %}
+
+      {% block heading scoped %}
+        {% if config.show_symbol_type_heading %}<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>{% endif %}
+        <span class="doc doc-object-name doc-module-name">{{ config.heading if config.heading and root else data.name }}</span>
+      {% endblock heading %}
+
+    {% endfilter %}
+
+    <div class="doc doc-contents {% if root %}first{% endif %}">
+      {% block contents scoped %}
+
+        {% if data.docstring %}
+          {% block docstring scoped %}
+            <div class="doc doc-docstring">
+              {{ data.docstring|convert_markdown(heading_level, html_id) }}
+            </div>
+          {% endblock docstring %}
+        {% endif %}
+
+        {% if data.functions %}
+          {% block functions scoped %}
+            <div class="doc doc-functions">
+              <h{{ heading_level + 1 }}>Functions</h{{ heading_level + 1 }}>
+              {% for func in data.functions %}
+                {% with data=func, root=False, heading_level=heading_level+2 %}
+                  {% include "function.html.jinja" %}
+                {% endwith %}
+              {% endfor %}
+            </div>
+          {% endblock functions %}
+        {% endif %}
+
+      {% endblock contents %}
+    </div>
+
+  {% endwith %}
+</div>
