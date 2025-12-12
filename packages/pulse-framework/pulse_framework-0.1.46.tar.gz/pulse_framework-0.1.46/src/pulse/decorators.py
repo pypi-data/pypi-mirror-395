@@ -1,0 +1,175 @@
+# Separate file from reactive.py due to needing to import from state too
+
+import inspect
+from collections.abc import Awaitable, Callable
+from typing import Any, ParamSpec, Protocol, TypeVar, overload
+
+from pulse.reactive import (
+	AsyncEffect,
+	AsyncEffectFn,
+	Computed,
+	Effect,
+	EffectCleanup,
+	EffectFn,
+	Signal,
+)
+from pulse.state import ComputedProperty, State, StateEffect
+
+T = TypeVar("T")
+TState = TypeVar("TState", bound=State)
+P = ParamSpec("P")
+
+
+# -> @ps.computed The chalenge is:
+# - We want to turn regular functions with no arguments into a Computed object
+# - We want to turn state methods into a ComputedProperty (which wraps a
+#   Computed, but gives it access to the State object).
+@overload
+def computed(fn: Callable[[], T], *, name: str | None = None) -> Computed[T]: ...
+@overload
+def computed(
+	fn: Callable[[TState], T], *, name: str | None = None
+) -> ComputedProperty[T]: ...
+@overload
+def computed(
+	fn: None = None, *, name: str | None = None
+) -> Callable[[Callable[[], T]], Computed[T]]: ...
+
+
+def computed(fn: Callable[..., Any] | None = None, *, name: str | None = None):
+	# The type checker is not happy if I don't specify the `/` here.
+	def decorator(fn: Callable[..., Any], /):
+		sig = inspect.signature(fn)
+		params = list(sig.parameters.values())
+		# Check if it's a method with exactly one argument called 'self'
+		if len(params) == 1 and params[0].name == "self":
+			return ComputedProperty(fn.__name__, fn)
+		# If it has any arguments at all, it's not allowed (except for 'self')
+		if len(params) > 0:
+			raise TypeError(
+				f"@computed: Function '{fn.__name__}' must take no arguments or a single 'self' argument"
+			)
+		return Computed(fn, name=name or fn.__name__)
+
+	if fn is not None:
+		return decorator(fn)
+	else:
+		return decorator
+
+
+StateEffectFn = Callable[[TState], EffectCleanup | None]
+AsyncStateEffectFn = Callable[[TState], Awaitable[EffectCleanup | None]]
+
+
+class EffectBuilder(Protocol):
+	@overload
+	def __call__(self, fn: EffectFn | StateEffectFn[Any]) -> Effect: ...
+	@overload
+	def __call__(self, fn: AsyncEffectFn | AsyncStateEffectFn[Any]) -> AsyncEffect: ...
+	def __call__(
+		self,
+		fn: EffectFn | StateEffectFn[Any] | AsyncEffectFn | AsyncStateEffectFn[Any],
+	) -> Effect | AsyncEffect: ...
+
+
+@overload
+def effect(
+	fn: EffectFn,
+	*,
+	name: str | None = None,
+	immediate: bool = False,
+	lazy: bool = False,
+	on_error: Callable[[Exception], None] | None = None,
+	deps: list[Signal[Any] | Computed[Any]] | None = None,
+	interval: float | None = None,
+) -> Effect: ...
+
+
+@overload
+def effect(
+	fn: AsyncEffectFn,
+	*,
+	name: str | None = None,
+	immediate: bool = False,
+	lazy: bool = False,
+	on_error: Callable[[Exception], None] | None = None,
+	deps: list[Signal[Any] | Computed[Any]] | None = None,
+	interval: float | None = None,
+) -> AsyncEffect: ...
+# In practice this overload returns a StateEffect, but it gets converted into an
+# Effect at state instantiation.
+@overload
+def effect(fn: StateEffectFn[Any]) -> Effect: ...
+@overload
+def effect(fn: AsyncStateEffectFn[Any]) -> AsyncEffect: ...
+@overload
+def effect(
+	fn: None = None,
+	*,
+	name: str | None = None,
+	immediate: bool = False,
+	lazy: bool = False,
+	on_error: Callable[[Exception], None] | None = None,
+	deps: list[Signal[Any] | Computed[Any]] | None = None,
+	interval: float | None = None,
+) -> EffectBuilder: ...
+
+
+def effect(
+	fn: Callable[..., Any] | None = None,
+	*,
+	name: str | None = None,
+	immediate: bool = False,
+	lazy: bool = False,
+	on_error: Callable[[Exception], None] | None = None,
+	deps: list[Signal[Any] | Computed[Any]] | None = None,
+	interval: float | None = None,
+):
+	# The type checker is not happy if I don't specify the `/` here.
+	def decorator(func: Callable[..., Any], /):
+		sig = inspect.signature(func)
+		params = list(sig.parameters.values())
+
+		# Disallow intermediate + async
+		if immediate and inspect.iscoroutinefunction(func):
+			raise ValueError("Async effects cannot have immediate=True")
+
+		if len(params) == 1 and params[0].name == "self":
+			return StateEffect(
+				func,
+				name=name,
+				immediate=immediate,
+				lazy=lazy,
+				on_error=on_error,
+				deps=deps,
+				interval=interval,
+			)
+
+		if len(params) > 0:
+			raise TypeError(
+				f"@effect: Function '{func.__name__}' must take no arguments or a single 'self' argument"
+			)
+
+		# This is a standalone effect function. Choose subclass based on async-ness
+		if inspect.iscoroutinefunction(func):
+			return AsyncEffect(
+				func,  # type: ignore[arg-type]
+				name=name or func.__name__,
+				lazy=lazy,
+				on_error=on_error,
+				deps=deps,
+				interval=interval,
+			)
+		return Effect(
+			func,  # type: ignore[arg-type]
+			name=name or func.__name__,
+			immediate=immediate,
+			lazy=lazy,
+			on_error=on_error,
+			deps=deps,
+			interval=interval,
+		)
+
+	if fn:
+		return decorator(fn)
+	return decorator
