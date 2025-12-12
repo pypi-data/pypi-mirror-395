@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - PyDiscoBasePro</title>
+    <link rel="stylesheet" href="../style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="nav-container">
+                <div class="logo">
+                    <h1><i class="fab fa-discord"></i> PyDiscoBasePro</h1>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api.html">API</a></li>
+                    <li><a href="configuration.html">Configuration</a></li>
+                    <li><a href="deployment.html">Deployment</a></li>
+                    <li><a href="https://github.com/code-xon/pydiscobasepro" target="_blank">GitHub</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="doc-content">
+            <div class="container">
+                <h1><i class="fas fa-cogs"></i> Configuration Guide</h1>
+
+                <div class="doc-section">
+                    <h2>Basic Configuration</h2>
+                    <p>The main configuration file is located at <code>config/config.json</code>. Here's a complete example:</p>
+                    <pre><code>{
+  "token": "YOUR_BOT_TOKEN_HERE",
+  "prefix": "!",
+  "intents": {
+    "guilds": true,
+    "members": true,
+    "messages": true,
+    "message_content": true,
+    "voice_states": true,
+    "reactions": true,
+    "presences": false
+  },
+  "mongodb": {
+    "uri": "mongodb://localhost:27017",
+    "database": "pydiscobasepro"
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/bot.log",
+    "discord_channel_id": null,
+    "max_file_size": "10 MB",
+    "retention": "7 days"
+  },
+  "dashboard": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8080,
+    "auth_required": false
+  },
+  "features": {
+    "auto_register_commands": true,
+    "hot_reload": true,
+    "error_reporting": true
+  }
+}</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Configuration Options</h2>
+
+                    <h3>Bot Token</h3>
+                    <p>Your Discord bot token from the <a href="https://discord.com/developers/applications" target="_blank">Developer Portal</a>.</p>
+
+                    <h3>Command Prefix</h3>
+                    <p>The prefix for traditional commands (e.g., "!help").</p>
+
+                    <h3>Intents</h3>
+                    <p>Discord gateway intents your bot needs. Enable only what's required for security.</p>
+                    <ul>
+                        <li><code>guilds</code>: Server information</li>
+                        <li><code>members</code>: Member information</li>
+                        <li><code>messages</code>: Message content and events</li>
+                        <li><code>message_content</code>: Access to message content</li>
+                        <li><code>voice_states</code>: Voice channel events</li>
+                        <li><code>reactions</code>: Message reactions</li>
+                    </ul>
+
+                    <h3>MongoDB Configuration</h3>
+                    <p>Database connection settings.</p>
+                    <ul>
+                        <li><code>uri</code>: MongoDB connection string</li>
+                        <li><code>database</code>: Database name</li>
+                    </ul>
+
+                    <h3>Logging Configuration</h3>
+                    <p>Control how the bot logs information.</p>
+                    <ul>
+                        <li><code>level</code>: DEBUG, INFO, WARNING, ERROR</li>
+                        <li><code>file</code>: Log file path</li>
+                        <li><code>discord_channel_id</code>: Channel ID for Discord logging</li>
+                        <li><code>max_file_size</code>: Maximum log file size</li>
+                        <li><code>retention</code>: How long to keep log files</li>
+                    </ul>
+
+                    <h3>Dashboard Configuration</h3>
+                    <p>Web dashboard settings.</p>
+                    <ul>
+                        <li><code>enabled</code>: Enable/disable dashboard</li>
+                        <li><code>host</code>: Server host (0.0.0.0 for all interfaces)</li>
+                        <li><code>port</code>: Server port</li>
+                        <li><code>auth_required</code>: Require authentication</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Environment Variables</h2>
+                    <p>You can use environment variables for sensitive data:</p>
+                    <pre><code>export BOT_TOKEN="your_token_here"
+export MONGODB_URI="mongodb://localhost:27017"
+export DASHBOARD_PORT="8080"</code></pre>
+                    <p>Then reference them in your config:</p>
+                    <pre><code>{
+  "token": "$BOT_TOKEN",
+  "mongodb": {
+    "uri": "$MONGODB_URI"
+  },
+  "dashboard": {
+    "port": "$DASHBOARD_PORT"
+  }
+}</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Advanced Configuration</h2>
+
+                    <h3>Custom Command Categories</h3>
+                    <p>Organize commands into categories:</p>
+                    <pre><code>"categories": {
+  "moderation": ["ban", "kick", "mute"],
+  "fun": ["meme", "joke", "game"],
+  "utility": ["help", "info", "ping"]
+}</code></pre>
+
+                    <h3>Rate Limiting</h3>
+                    <p>Configure global rate limits:</p>
+                    <pre><code>"rate_limits": {
+  "commands_per_second": 5,
+  "messages_per_minute": 60
+}</code></pre>
+
+                    <h3>Plugin Configuration</h3>
+                    <p>Configure third-party plugins:</p>
+                    <pre><code>"plugins": {
+  "music": {
+    "enabled": true,
+    "max_queue_size": 100
+  },
+  "moderation": {
+    "auto_mod": true,
+    "spam_detection": true
+  }
+}</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Configuration Validation</h2>
+                    <p>The framework validates your configuration on startup. Common errors:</p>
+                    <ul>
+                        <li><strong>Invalid token</strong>: Check your bot token from Discord Developer Portal</li>
+                        <li><strong>Missing intents</strong>: Enable required intents in both config and Developer Portal</li>
+                        <li><strong>MongoDB connection failed</strong>: Verify MongoDB is running and URI is correct</li>
+                        <li><strong>Permission errors</strong>: Ensure bot has necessary permissions in your server</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 PyDiscoBasePro. Made with ❤️ by Code-Xon.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../script.js"></script>
+</body>
+</html>
