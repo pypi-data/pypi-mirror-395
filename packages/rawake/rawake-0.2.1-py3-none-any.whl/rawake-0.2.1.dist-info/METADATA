@@ -1,0 +1,119 @@
+Metadata-Version: 2.1
+Name: rawake
+Version: 0.2.1
+Summary: Remote computer awake (rawake)
+Author-email: "Jorge F. Sánchez" <rawake@jfsanchez.net>
+License: MIT
+Project-URL: Homepage, https://github.com/jfsanchez91/rawake
+Project-URL: Bug Tracker, https://github.com/jfsanchez91/rawake/issues
+Keywords: rawake,remote,awake
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: wakeonlan
+Requires-Dist: paramiko
+Provides-Extra: dev
+Requires-Dist: black ; extra == 'dev'
+Requires-Dist: pre-commit ; extra == 'dev'
+Provides-Extra: test
+Requires-Dist: pytest ; extra == 'test'
+
+# Remote Computer Awake (rawake)
+
+## Installation
+```bash
+$ uv pip install -U rawake # install latest version
+$ rawake --version # verify installation
+```
+
+## Configuration
+The `rawake` configuration is a python-base configuration file. Configuration should be stored at `~/.config/rawake/config.py`
+
+*Example:*
+```python
+from rawake.config import Config, Computer
+
+DEFAULT_SSH_SUSPEND_COMMAND = "sudo systemctl suspend"
+
+CONFIGURATION = Config(
+    computers=[
+        Computer(
+            name="remote-server",
+            ip_address="192.168.0.10",
+            mac_address="22:1b:5c:44:12:6b",
+            ssh_port=2222,
+            ssh_suspend_command=DEFAULT_SSH_SUSPEND_COMMAND,
+        ),
+        Computer(
+            name="other-server",
+            ip_address="192.168.0.200",
+            mac_address="a4:44:c3:61:10:b8",
+            ssh_suspend_command="sudo shutdown -h now",
+        ),
+    ],
+)
+```
+
+## Listing the configuration
+```bash
+$ rawake --list
+[
+  {
+    "name": "other-server",
+    "mac_address": "a4:44:c3:61:10:b8",
+    "ip_address": "192.168.0.200",
+    "ss_suspend_command": "sudo shutdown -h now",
+    "ssh_port": 22
+  },
+  {
+    "name": "remote-server",
+    "mac_address": "22:1b:5c:44:12:6b",
+    "ip_address": "192.168.0.10",
+    "ss_suspend_command": "sudo systemctl suspend",
+    "ssh_port": 2222
+  }
+]
+```
+
+## Suspend remote computer:
+`rawake` requires a username:password SSH connection to the remote host to be able to execute the configured suspend command.
+```bash
+$ rawake --suspend remote-server
+SSH authentication:
+username:username
+password:<password>
+```
+
+## Awake remote computer:
+For awaking a remote computer, `rawake` sends a [Wake-On-Lan magic packet](https://en.wikipedia.org/wiki/Wake-on-LAN).
+```bash
+rawake --awake remote-server
+```
+
+
+## Development
+
+### Python dev environment:
+
+- Install [uv](https://github.com/astral-sh/uv).
+
+- Create virtual environment and install dependencies:
+  ```bash
+  uv sync --all-extras
+  ```
+- Activate the virtualenv:
+  ```bash
+  source .venv/bin/activate
+  ```
+
+- Install git pre-commit hooks
+    - `pre-commit install`
+    - `pre-commit autoupdate`
+
+### Running the tests:
+  ```bash
+  uv run pytest
+  ```

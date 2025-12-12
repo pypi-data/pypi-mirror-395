@@ -1,0 +1,79 @@
+import sys
+import argparse
+import typing
+import json
+import getpass
+import logging
+import paramiko
+
+from rawake.logging import logger, panic
+from rawake.config import Config, Computer
+from rawake.computer_controller import ComputerController
+from rawake.__version__ import __version__
+
+
+def print_computers(computers: typing.Set[Computer]):
+    class ComputerJsonEncoder(json.JSONEncoder):
+        def default(self, o):
+            if isinstance(o, Computer):
+                return {
+                    "name": o.name,
+                    "mac_address": o.mac_address,
+                    "ip_address": o.ip_address,
+                    "ss_suspend_command": o.ssh_suspend_command,
+                    "ssh_port": o.ssh_port,
+                }
+            return super().default(o)
+
+    print(json.dumps(list(computers), cls=ComputerJsonEncoder, indent=2))
+
+
+def _run():
+    parser = argparse.ArgumentParser(prog="rawake", description="Remotly awake your computers")
+    parser.add_argument("--version", action="version", version="%(prog)s {version}".format(version=__version__))
+    parser.add_argument("-v", "--verbose", help="verbose logging.", action="store_true")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-a", "--awake", help="awakes a computer by it's name.")
+    group.add_argument("-s", "--suspend", help="suspends a computer by it's name.")
+    group.add_argument("--status", help="check if a computer is online by it's name.")
+    group.add_argument("-l", "--list", help="list configured computers.", action="store_true")
+
+    args = parser.parse_args()
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    try:
+        config = Config.load()
+    except Exception as e:
+        panic("Error loading configuration: " + str(e))
+    controller = ComputerController(config)
+
+    if args.list:
+        print_computers(controller.list_computers())
+    elif args.awake:
+        controller.awake_by_name(computer_name=args.awake)
+    elif args.status:
+        is_online = controller.check_status_by_name(computer_name=args.status)
+        print("Online" if is_online else "Offline")
+    elif args.suspend:
+        print("SSH authentication")
+        ssh_username = input("username: ")
+        try:
+            controller.suspend_by_name(computer_name=args.suspend, ssh_username=ssh_username)
+        except paramiko.AuthenticationException:
+            print("SSH public key authentication failed.")
+            ssh_password = getpass.getpass("password: ")
+            controller.suspend_by_name(computer_name=args.suspend, ssh_username=ssh_username, ssh_password=ssh_password)
+    else:
+        parser.print_usage()
+        sys.exit(-1)
+
+
+def run():
+    try:
+        _run()
+    except KeyboardInterrupt:
+        print("")
+        sys.exit(1)
