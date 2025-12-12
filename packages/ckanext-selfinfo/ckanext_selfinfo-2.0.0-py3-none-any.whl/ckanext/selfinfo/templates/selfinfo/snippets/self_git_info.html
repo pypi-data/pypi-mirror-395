@@ -1,0 +1,71 @@
+{% if data.git_info %}
+    {% if data.git_info.repos_info or data.git_info.access_errors %}
+        {% snippet 'selfinfo/snippets/selfinfo_content_header.html', icon_class='fab fa-git-alt me-2', label=_('GIT Information') %}
+
+        <div class="p-3">
+            {% if data.git_info.repos_info %}
+                <div class="row g-3 mb-4">
+                    {% for repo in data.git_info.repos_info %}
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <article class="process-card p-3">
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="process-rank rounded-circle">{{ loop.index }}</div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <h6 class="process-title mb-1">{{ repo.name }}</h6>
+                                            <span class="badge mem-badge selfinfo-main-color-bg">{{ repo.commit[:8] if repo.commit else _('unknown') }}</span>
+                                        </div>
+                                        <div class="small text-muted mb-2">{{ _('Based on') }}: {{ repo.on or _('N/A') }}</div>
+                                        <div class="mb-2">
+                                            <strong>{{ _('Head') }}:</strong>
+                                            <code class="ms-1">{{ repo.head or '-' }}</code>
+                                        </div>
+                                        {% if repo.remotes %}
+                                            <div class="ext-chips">
+                                                <strong>{{ _('Remotes') }}:</strong>
+                                                {% for remote in repo.remotes %}
+                                                    <a class="me-1" href="{{ remote.url }}" target="_blank" rel="noopener">{{ remote.name }}</a>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if data.git_info.access_errors %}
+                <section class="ckan-info-card mb-4">
+                    <header class="ckan-info-header d-flex align-items-center justify-content-between p-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-white"></i>
+                            <div>
+                                <h5 class="mb-0 text-white">{{ _('Repository Access Errors') }}</h5>
+                                <small class="text-white">{{ _('Repositories that could not be accessed') }}</small>
+                            </div>
+                        </div>
+                    </header>
+                    <div class="ckan-info-body p-3">
+                        <div class="list-group list-group-flush">
+                            {% for name, error in data.git_info.access_errors.items() %}
+                                <div class="list-group-item bg-transparent border-0 p-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="me-3">
+                                            <i class="fas fa-times-circle text-danger"></i>
+                                        </div>
+                                        <div>
+                                            <div class="h6 mb-1">{{ name }}</div>
+                                            <div class="small text-muted">{{ error }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+            {% endif %}
+        </div>
+    {% endif %}
+{% endif %}
