@@ -1,0 +1,47 @@
+{% extends "admin/app_index.html" %}
+{% load static i18n kmuhelper_tags %}
+
+{% block title %}KMUHelper Admin{% endblock %}
+
+{% block content_title %}
+    <h1>Willkommen im KMUHelper Adminbereich!</h1>
+{% endblock %}
+
+{% block branding %}
+    {% kmuhelper_branding %}
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'admin/kmuhelper/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'admin/kmuhelper/css/pagechooser.css' %}">
+    {% include "admin/kmuhelper/_includes/fontawesome.html" %}
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {% include "kmuhelper/_includes/pwa_head.html" %}
+{% endblock %}
+
+{% block nav-breadcrumbs %}
+{% endblock %}
+
+{% block coltype %}initialwidth{% endblock %}
+
+{% block content %}
+    {% block pageinfo %}
+        <p id="pageinfo">
+            In diesem Bereich hast du vollen Zugriff auf die Hauptfunktionen des KMUHelpers. Zusätzliche
+            Funktionen befinden sich im <a href="{% url 'kmuhelper:email-index' %}">E-Mail-Bereich</a>,
+            in der <a href="{% url 'kmuhelper:app-index' %}">KMUHelper&nbsp;App</a> sowie
+            in den <a href="{% url 'kmuhelper:settings' %}">Einstellungen</a>.
+        </p>
+    {% endblock %}
+
+    {% if "old_design" in request.GET or "old" in request.GET %}
+        {{ block.super }}
+    {% else %}
+        {% kmuhelper_pagechooser_from_model_list app_list.0.models %}
+        <br>
+    {% endif %}
+{% endblock %}

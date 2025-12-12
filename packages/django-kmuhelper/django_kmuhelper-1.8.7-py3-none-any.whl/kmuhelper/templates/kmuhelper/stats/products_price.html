@@ -1,0 +1,82 @@
+{% extends "kmuhelper/stats/base.html" %}
+
+{% block content %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('myChart').getContext('2d');
+
+            const productsSold = {{ products_sold | safe }};
+            productsSold.forEach((d) => {
+                d.x = new Date(d.date);
+            });
+
+            const moneyIncome = {{ money_income | safe }};
+            moneyIncome.forEach((d) => {
+                d.x = new Date(d.date);
+            });
+
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Verkaufte Produkte',
+                            data: productsSold,
+                            backgroundColor: 'rgba(246,196,0,0.75)',
+                            yAxisID: 'yProducts',
+                        },
+                        {
+                            label: 'Brutto-Umsatz',
+                            data: moneyIncome,
+                            backgroundColor: 'rgba(221,17,85,1)',
+                            yAxisID: 'yUmsatz',
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                round: 'month',
+                                displayFormats: {
+                                    month: 'MMM yy',
+                                },
+                                tooltipFormat: 'MMMM yyyy',
+                            },
+                        },
+                        yProducts: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value, index, values) {
+                                    return value + " P.";
+                                },
+                            },
+                        },
+                        yUmsatz: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value, index, values) {
+                                    return value + " CHF";
+                                },
+                            },
+                        }
+                    },
+                },
+            });
+        });
+    </script>
+
+    <div style="position: relative; width: 100%;">
+        <canvas id="myChart"></canvas>
+    </div>
+
+{% endblock %}

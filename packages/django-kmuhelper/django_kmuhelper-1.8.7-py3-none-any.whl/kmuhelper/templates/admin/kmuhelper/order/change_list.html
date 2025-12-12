@@ -1,0 +1,75 @@
+{% extends 'admin/kmuhelper/change_list.html' %}
+
+{% load kmuhelper_tags %}
+
+{% block pageinfo %}
+    <p id="pageinfo">
+        <b>Verwandte Seiten:</b>
+        <a href="{% url 'admin:kmuhelper_app_shipping_changelist' %}">
+            <abbr title="App"><i class="fa-solid fa-desktop"></i></abbr> Warenausgang
+        </a>
+        <a href="{% url 'admin:kmuhelper_app_incomingpayments_changelist' %}">
+            <abbr title="App"><i class="fa-solid fa-desktop"></i></abbr> Zahlungseingang
+        </a>
+        <a href="{% docs_url 'order-and-invoice' %}" target="_blank">
+            <abbr title="Dokumentation"><i class="fa-solid fa-book"></i></abbr> Bestellung & Rechnung
+        </a>
+    </p>
+
+    {% block unpaid_orders %}
+        <table>
+            <thead>
+            <tr>
+                <th colspan="2">Unbezahlte Bestellungen</th>
+            </tr>
+            </thead>
+            <tbody id="unpaid">
+            <tr>
+                <td colspan="2">Wird geladen...</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <br>
+        <br>
+        <br>
+
+        <script>
+            const elem = document.getElementById("unpaid");
+
+            try {
+                fetch("{% url 'kmuhelper:api-orders-unpaid' %}").then(res => {
+                    res.json().then(json => {
+                        data = json.orders_unpaid_sum;
+                        elem.innerHTML = `
+                            <tr>
+                                <td>Versendet: </td><td style="text-align: right;">${data.sent} CHF</td>
+                            </tr>
+                            <tr>
+                                <td style="padding-right: 2em;">In Bearbeitung: </td><td style="text-align: right;">${data.unsent} CHF</td>
+                            </tr>
+                            <tr>
+                                <td>Gesamt: </td><td style="text-align: right;">${data.all} CHF</td>
+                            </tr>
+                        `;
+                    });
+                });
+            } catch (e) {
+                unpaid.firstChild().innerHTML = "<tr><td colspan='2'>Konnte nicht geladen werden!</td></tr>"
+            }
+        </script>
+
+    {% endblock %}
+{% endblock %}
+
+{% block object-tools-items %}
+    {% load kmuhelper_tags %}
+    {% kmuhelper_woocommerce_connected as woocommerce_is_connected %}
+    {% if woocommerce_is_connected and perms.kmuhelper.add_order %}
+        <li>
+            <a onclick="woocommerce_loading_swal();" href="{% url 'kmuhelper:wc-import-orders' %}" class="addlink">Bestellungen von
+                WooCommerce importieren</a>
+        </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
