@@ -1,0 +1,1485 @@
+"""
+desispec.ccdcalib
+=================
+
+"""
+
+import os, sys, glob, json
+import traceback
+import datetime
+import subprocess
+import yaml
+
+import astropy.io.fits as pyfits
+import fitsio
+from astropy.table import vstack as table_vstack
+from astropy.time import Time
+import numpy as np
+from scipy.signal import savgol_filter
+
+from desispec import io
+from desispec.preproc import masked_median
+# from desispec.preproc import parse_sec_keyword, calc_overscan
+from desispec.preproc import parse_sec_keyword, get_amp_ids, get_readout_mode
+from desispec.preproc import subtract_peramp_overscan
+from desispec.calibfinder import CalibFinder, sp2sm, sm2sp
+from desispec.io.util import checkgzip, get_tempfilename, parse_cameras, decode_camword, difference_camwords,create_camword
+from desispec.io.raw import read_raw_primary_header
+from desispec.workflow.exptable import get_exposure_table_pathname
+from desispec.workflow.tableio import load_table, load_tables, write_table
+from desispec.util import header2night
+from desispec.io import findfile
+
+from desiutil.log import get_logger
+from desiutil.depend import add_dependencies
+
+from desispec.workflow.batch import get_config
+
+def compute_dark_file(rawfiles, outfile, camera, bias=None, nocosmic=False,
+                      exptime=None, min_vccdsec=0, max_temperature_diff=4, reference_header=None,
+                      save_preproc=True, preproc_dark_dir=None, min_dark_exposures=4, max_dark_exposures=50):
+    """
+    Compute classic dark model from input dark images
+
+    Args:
+        rawfiles (list of str): list of input raw data files (``desi-*.fits.fz``)
+        outfile (str): output file with dark model to write
+        camera (str): camera to process, e.g. b0, r1, z9
+
+    Options:
+        bias (str or list): bias file to use, or list of bias files
+        nocosmic (bool): use medians instead of cosmic identification
+        exptime (float): write EXPTIME header keyword; all inputs must match
+        min_vccdsec (float) : minimal time (in sec) after CCD bias voltage was turned on
+        max_temperature_diff (float) : maximal CCD temperature difference
+        reference_header (dict) : reference header that defines the valid hardware configuration (default is the most recent one)
+        save_preproc (bool) : save preprocessed images
+        preproc_dark_dir (str) : specify output directory used to save preproc images
+        min_dark_exposures (int) : minimum number of dark exposures to use; if less are found to be valid code will raise an error and exit
+        max_dark_exposures (int) : maximum number of dark exposures to use; if more are provided, only the nearest max_dark_exposures in mjd are used
+
+
+    Note: if bias is None, the bias will be looked for in $DESI_SPECTRO_REDUX/$SPECPROD/calibnight, and will raise
+    an error if no nightly bias is found.
+
+    Note: this computes a classic dark model without any non-linear terms.
+    see bin/compute_dark_nonlinear for current DESI dark model.
+
+    """
+
+    log = get_logger()
+
+    if reference_header is None :
+        log.info("first pass to find the most recent header ...")
+        for ifile, filename in enumerate(rawfiles):
+            log.info(filename)
+            try:
+                header = fitsio.read_header(filename, ext=camera)
+            except OSError:
+                log.warning(f'No camera {camera} in {filename}')
+                continue
+            if reference_header is None :
+                reference_header = header
+            else :
+                if header["EXPID"] > reference_header["EXPID"] :
+                    reference_header = header
+
+    log.info(f"Use for hardware state reference EXPID={reference_header['EXPID']} NIGHT={reference_header['NIGHT']} CAMERA={reference_header['CAMERA']} DETECTOR={reference_header['DETECTOR']}")
+
+    log.info(f"reading images for {camera} ...")
+    shape=None
+    images=[]
+    if nocosmic :
+        masks=None
+    else :
+        masks=[]
+    exptimes=[]
+    files_used = []
+    for ifile, filename in enumerate(rawfiles):
+        log.info(f'Reading {filename} camera {camera}')
+
+       # collect exposure times
+        primary_header = read_raw_primary_header(filename)
+        try:
+            header = fitsio.read_header(filename, ext=camera)
+        except OSError:
+            log.warning(f'No camera {camera} in {filename}')
+            continue
+            
+        if "EXPREQ" in primary_header :
+            thisexptime = primary_header["EXPREQ"]
+            log.warning("Using EXPREQ and not EXPTIME, because a more accurate quantity on teststand")
+        else :
+            thisexptime = primary_header["EXPTIME"]
+
+        flavor = primary_header['FLAVOR'].upper()
+        if flavor != 'DARK':
+            message = f'Input {filename} flavor {flavor} != DARK'
+            log.error(message)
+            raise ValueError(message)
+
+        valid=True
+
+        if exptime is not None:
+            if round(exptime)  != round(thisexptime):
+                message = f'Input {filename} exptime {thisexptime} != requested exptime {exptime}'
+                log.warning(message)
+                continue
+
+        if 'VCCDSEC' in header :
+            vccdsec = float(header['VCCDSEC'])
+            log.info("{} VCCDSEC={:d} sec = {:.1f} hours".format(filename,int(vccdsec),vccdsec/3600))
+            if vccdsec < min_vccdsec :
+                log.warning(f"ignore {filename} because VCCDSEC = {vccdsec} < {min_vccdsec}")
+                continue
+
+        valid=True
+        for k in ['DETECTOR','CCDCFG','CCDTMING'] :
+            v1=reference_header[k].strip().upper()
+            v2=header[k].strip().upper()
+            if v1 != v2 :
+                mess=(f"skip {filename} k={v2} != {v1} (from reference header)")
+                log.warning(mess)
+                valid=False
+                break
+
+        if not valid :
+            continue
+
+        v1=float(reference_header["CCDTEMP"])
+        v2=float(header["CCDTEMP"])
+        if np.abs(v1-v2)>max_temperature_diff :
+            mess=(f"skip {filename} k={v2} different from {v1} (from reference header)")
+            log.warning(mess)
+            continue
+
+        if bias is not None:
+            if isinstance(bias, str):
+                thisbias = bias
+            elif isinstance(bias, (list, tuple, np.array)):
+                thisbias = bias[ifile]
+            else:
+                message = 'bias should be None, str, list, or tuple, not {}'.format(type(bias))
+                log.error(message)
+                raise RuntimeError(message)
+        else:
+            thisbias = True
+        
+        night=header2night(primary_header)
+        expid=primary_header["EXPID"]
+
+        if thisbias is False :
+            biasnight = findfile("biasnight",night=night,expid=expid,camera=camera,readonly=True)
+            if os.path.isfile(biasnight) :
+                thisbias = biasnight
+            else :
+                message=f"Missing mandatory biasnight file {biasnight}"
+                log.critical(message)
+                raise RuntimeError(message)
+        log.debug(f"BIAS={thisbias}")
+
+        ## Identify the path to the preprocessed dark image
+        default_preproc_filename = findfile("preproc_for_dark", night=night, expid=expid, camera=camera, readonly=True)
+        default_exists = os.path.isfile(default_preproc_filename)
+        user_preproc_filename = None
+        user_exists = False
+        if preproc_dark_dir is not None :
+            user_preproc_filename = findfile("preproc_for_dark", night=night, expid=expid, camera=camera,
+                                        specprod_dir=preproc_dark_dir, readonly=True)
+            user_exists = os.path.isfile(user_preproc_filename)
+
+        if user_exists:
+            preproc_filename = user_preproc_filename
+        elif default_exists:
+            preproc_filename = default_preproc_filename
+        elif preproc_dark_dir is not None:
+            preproc_filename = user_preproc_filename
+        else:
+            preproc_filename = default_preproc_filename
+            
+        if user_exists or default_exists:
+            log.info(f"Reading existing {preproc_filename}")
+            img = io.read_image(preproc_filename)
+            file_used = preproc_filename
+        else :
+            log.warning(f"Missing {preproc_filename}, generating now.")
+            # read raw data and preprocess them
+            img = io.read_raw(filename, camera, bias=thisbias, nocosmic=nocosmic,
+                              mask=False, dark=False, pixflat=False, fallback_on_dark_not_found=True)
+
+            if save_preproc :
+                # is saved in preproc_dark_dir if not None
+                io.write_image(preproc_filename,img)
+                log.info(f"Wrote {preproc_filename}")
+                file_used = preproc_filename
+            else:
+                file_used = filename
+
+        # propagate gains to reference_header
+        for a in get_amp_ids(img.meta) :
+            k="GAIN"+a
+            if k in img.meta and k not in reference_header:
+                reference_header[k] = img.meta[k]
+
+        if shape is None :
+            shape=img.pix.shape
+        log.info("adding dark %s divided by exposure time %f s"%(filename,thisexptime))
+        images.append(img.pix.ravel()/thisexptime)
+        if masks is not None :
+            masks.append(img.mask.ravel())
+        exptimes.append(thisexptime)
+        files_used.append(file_used)
+        
+        if len(images) >= max_dark_exposures:
+            log.warning(f"Using only the first {max_dark_exposures} valid darks provided for {camera}.")
+            break
+
+    if len(images) == 0:
+        log.critical(f"No images left after selection for {camera}")
+        raise RuntimeError(f"No images left after selection for {camera}")
+    if len(images) < min_dark_exposures:
+        msg = f"{len(images)} images left after selection for {camera}, which is less than " \
+              + f"{min_dark_exposures=}. Exiting without producing file."
+        log.critical(msg)
+        raise RuntimeError(msg)
+    
+    images=np.array(images)
+    exptimes=np.array(exptimes)
+    assert(images.shape[0] == exptimes.size)
+
+    if masks is not None :
+        masks=np.array(masks)
+        smask=np.sum(masks,axis=0)
+    else :
+        smask=np.zeros(images[0].shape)
+
+    log.info(f"compute median image for {camera}...")
+    medimage=masked_median(images,masks)
+
+    if True :
+        log.info(f"compute mask  for {camera}...")
+        ares=np.abs(images-medimage)
+        nsig=4.
+        mask=(ares<nsig*1.4826*np.median(ares,axis=0))
+
+        # average (not median)
+        #log.info("compute average ...")
+        #meanimage=np.sum(images*mask,axis=0)/np.sum(mask,axis=0)
+
+        # better is optimal weights (here images have been divided by exptimes beforehand)
+        log.info(f"compute weighted average for {camera}...")
+        meanimage=np.sum(images*(exptimes[:,None]**2)*mask,axis=0)/np.sum((exptimes[:,None]**2)*mask,axis=0)
+        meanimage=meanimage.reshape(shape)
+    else :
+        meanimage=medimage.reshape(shape)
+
+    log.info(f"write result for {camera} in %s ..."%outfile)
+    hdulist=pyfits.HDUList([pyfits.PrimaryHDU(meanimage.astype('float32'))])
+
+    # copy some keywords
+    for key in [
+        "TELESCOP","INSTRUME","SPECGRPH","SPECID","DETECTOR","CAMERA",
+        "CCDNAME","CCDPREP","CCDSIZE","CCDTEMP","CPUTEMP","CASETEMP",
+        "CCDTMING","CCDCFG","SETTINGS","VESSEL","FEEVER","FEEBOX",
+        "PRESECA","PRRSECA","DATASECA","TRIMSECA","BIASSECA","ORSECA",
+        "CCDSECA","DETSECA","AMPSECA",
+        "PRESECB","PRRSECB","DATASECB","TRIMSECB","BIASSECB","ORSECB",
+        "CCDSECB","DETSECB","AMPSECB",
+        "PRESECC","PRRSECC","DATASECC","TRIMSECC","BIASSECC","ORSECC",
+        "CCDSECC","DETSECC","AMPSECC",
+        "PRESECD","PRRSECD","DATASECD", "TRIMSECD","BIASSECD","ORSECD",
+        "CCDSECD","DETSECD","AMPSECD",
+        "DAC0","DAC1","DAC2","DAC3","DAC4","DAC5","DAC6","DAC7",
+        "DAC8","DAC9","DAC10","DAC11","DAC12","DAC13","DAC14","DAC15",
+        "DAC16","DAC17","CLOCK0","CLOCK1","CLOCK2","CLOCK3","CLOCK4",
+        "CLOCK5","CLOCK6","CLOCK7","CLOCK8","CLOCK9","CLOCK10",
+        "CLOCK11","CLOCK12","CLOCK13","CLOCK14","CLOCK15","CLOCK16",
+        "CLOCK17","CLOCK18","OFFSET0","OFFSET1","OFFSET2","OFFSET3",
+        "OFFSET4","OFFSET5","OFFSET6","OFFSET7","DELAYS","CDSPARMS",
+        "PGAGAIN","OCSVER","DOSVER","CONSTVER",
+        "GAINA", "GAINB", "GAINC", "GAIND",
+        "VCCDSEC","VCCDON"
+        ] :
+        if key in reference_header.keys():
+            hdulist[0].header[key] = (reference_header[key],reference_header.get_comment(key))
+
+    if exptime is not None:
+        hdulist[0].header['EXPTIME'] = exptime
+
+    hdulist[0].header["BUNIT"] = "electron/s"
+    hdulist[0].header["EXTNAME"] = "DARK"
+
+    for i, filename in enumerate(files_used):
+        hdulist[0].header["INPUT%03d"%i]=os.path.basename(filename)
+
+    tmpfile = get_tempfilename(outfile)
+    hdulist.writeto(tmpfile, overwrite=True)
+    os.rename(tmpfile, outfile)
+    log.info(f"Wrote {outfile}")
+
+    log.info(f"done")
+    ## end of function compute_dark_file
+
+
+def compute_bias_file(rawfiles, outfile, camera, explistfile=None,
+        extraheader=None):
+    """
+    Compute a bias file from input ZERO rawfiles
+
+    Args:
+        rawfiles: list of input raw file names
+        outfile (str): output filename
+        camera (str): camera, e.g. b0, r1, z9
+
+    Options:
+        explistfile: filename with text list of NIGHT EXPID to use
+        extraheader: dict-like key/value header keywords to add
+
+    Notes: explistfile is only used if rawfiles=None; it should have
+    one NIGHT EXPID entry per line.
+    """
+    log = get_logger()
+
+    if explistfile is not None:
+        if rawfiles is not None:
+            msg = "specify rawfiles or explistfile, but not both"
+            log.error(msg)
+            raise ValueError(msg)
+
+        rawfiles = list()
+        with open(explistfile, 'r') as fx:
+            for line in fx:
+                line = line.strip()
+                if line.startswith('#') or len(line)<2:
+                    continue
+                night, expid = map(int, line.split())
+                filename = io.findfile('raw', night, expid, readonly=True)
+                if not os.path.exists(filename):
+                    msg = f'Missing {filename}'
+                    log.critical(msg)
+                    raise RuntimeError(msg)
+
+                rawfiles.append(filename)
+
+    log.info("read %s images ...", camera)
+    images=[]
+    shape=None
+    first_image_header = None
+    for filename in rawfiles :
+        log.info("reading %s %s", filename, camera)
+        fitsfile=pyfits.open(filename)
+
+        primary_header=read_raw_primary_header(filename)
+        image_header=fitsfile[camera].header
+
+        if first_image_header is None :
+            first_image_header = image_header
+        elif 'VCCDSEC' in first_image_header and 'VCCDSEC' in fitsfile[camera].header:
+            if fitsfile[camera].header['VCCDSEC']<first_image_header['VCCDSEC']:
+                first_image_header['VCCDSEC']=fitsfile[camera].header['VCCDSEC']
+                first_image_header['VCCDON']=fitsfile[camera].header['VCCDON']
+
+        flavor = image_header['FLAVOR'].upper()
+        if flavor != 'ZERO':
+            message = f'Input {filename} flavor {flavor} != ZERO'
+            log.error(message)
+            raise ValueError(message)
+
+        # Get CalibFinder for this CCD if possible in case there is a
+        # GOODBIASSEC override; ok if it doesn't exists e.g. immediately
+        # after hardware change while bootstrapping nightlybias and darks
+        try:
+            cfinder=CalibFinder([image_header,primary_header],fallback_on_dark_not_found=True)
+        except KeyError:
+            log.warning(f"Didn't find calib config for {camera}; continuing without checking for GOODBIASSEC")
+            cfinder = None
+
+        # subtract overscan region
+        image=fitsfile[camera].data.astype("float64")
+        subtract_peramp_overscan(image, image_header, cfinder)
+
+        if shape is None :
+            shape=image.shape
+        images.append(image.ravel())
+
+        fitsfile.close()
+
+    images=np.array(images)
+    log.debug('%s images.shape=%s', camera, str(images.shape))
+
+    # compute a mask
+    log.info(f"compute median {camera} image ...")
+    medimage=np.median(images,axis=0) #.reshape(shape)
+    log.info(f"compute {camera} mask ...")
+    ares=np.abs(images-medimage)
+    nsig=4.
+    mask=(ares<nsig*1.4826*np.median(ares,axis=0))
+    # average (not median)
+    log.info(f"compute {camera} average ...")
+    meanimage=np.sum(images*mask,axis=0)/np.sum(mask,axis=0)
+    meanimage=meanimage.reshape(shape)
+
+    # cleanup memory
+    del images
+    del mask
+    del medimage
+
+    log.info(f"write {camera} result to {outfile} ...")
+    hdus=pyfits.HDUList([pyfits.PrimaryHDU(meanimage.astype('float32'))])
+
+    # copy some keywords
+    for key in [
+            "TELESCOP","INSTRUME","SPECGRPH","SPECID","DETECTOR","CAMERA",
+            "CCDNAME","CCDPREP","CCDSIZE","CCDTEMP","CPUTEMP","CASETEMP",
+            "CCDTMING","CCDCFG","SETTINGS","VESSEL","FEEVER","FEEBOX",
+            "PRESECA","PRRSECA","DATASECA","TRIMSECA","BIASSECA","ORSECA",
+            "CCDSECA","DETSECA","AMPSECA",
+            "PRESECB","PRRSECB","DATASECB","TRIMSECB","BIASSECB","ORSECB",
+            "CCDSECB","DETSECB","AMPSECB",
+            "PRESECC","PRRSECC","DATASECC","TRIMSECC","BIASSECC","ORSECC",
+            "CCDSECC","DETSECC","AMPSECC",
+            "PRESECD","PRRSECD","DATASECD","TRIMSECD","BIASSECD","ORSECD",
+            "CCDSECD","DETSECD","AMPSECD",
+            "DAC0","DAC1","DAC2","DAC3","DAC4","DAC5","DAC6","DAC7","DAC8",
+            "DAC9","DAC10","DAC11","DAC12","DAC13","DAC14","DAC15","DAC16",
+            "DAC17","CLOCK0","CLOCK1","CLOCK2","CLOCK3","CLOCK4","CLOCK5",
+            "CLOCK6","CLOCK7","CLOCK8","CLOCK9","CLOCK10","CLOCK11","CLOCK12",
+            "CLOCK13","CLOCK14","CLOCK15","CLOCK16","CLOCK17","CLOCK18",
+            "OFFSET0","OFFSET1","OFFSET2","OFFSET3","OFFSET4","OFFSET5",
+            "OFFSET6","OFFSET7","DELAYS","CDSPARMS","PGAGAIN","OCSVER",
+            "DOSVER","CONSTVER",
+            "VCCDSEC","VCCDON"] :
+        if key in first_image_header :
+            hdus[0].header[key] = (first_image_header[key],first_image_header.comments[key])
+
+    hdus[0].header["BUNIT"] = "adu"
+    hdus[0].header["EXTNAME"] = "BIAS"
+    if extraheader is not None:
+        for key, value in extraheader.items():
+            hdus[0].header[key] = value
+
+    add_dependencies(hdus[0].header)
+
+    for filename in rawfiles :
+        #- keep only NIGHT/EXPID/filename.fits part of path
+        fullpath = os.path.abspath(filename)
+        tmp = fullpath.split(os.path.sep)
+        shortpath = os.path.sep.join(tmp[-3:])
+        hdus[0].header["COMMENT"] = "Inc. {}".format(shortpath)
+
+    #- write via temporary file, then rename
+    tmpfile = get_tempfilename(outfile)
+    hdus.writeto(tmpfile, overwrite="True")
+    os.rename(tmpfile, outfile)
+
+    log.info(f"done with {camera}")
+
+def _find_zeros(night, cameras, nzeros=25, nskip=2):
+    """Find all OBSTYPE=ZERO exposures on a given night
+
+    Args:
+        night (int): YEARMMDD night to search
+        cameras (list of str): list of cameras to process
+
+    Options:
+        nzeros (int): number of zeros desired from valid all-cam observations to not worry about partials
+        nskip (int): number of initial zeros to skip
+
+    Returns:
+         calib_expdict (dict): dictionary of expids (values) for each camera (keys)
+                               for calibration zeros
+         noncalib_expdict (dict): dictionary of expids (values) for each camera (keys)
+                                  for non calibration zeros.
+
+    Uses production exposure tables to veto known bad ZEROs, but it will also
+    find any ZEROs on disk for that night, regardless of whether they are in
+    the exposures table or not.
+    """
+    log = get_logger()
+
+    ## Ensure cameras are array-like and valid
+    if isinstance(cameras, str):
+        cameras = decode_camword(parse_cameras(cameras))
+
+    #- Find all ZERO exposures on this night
+    nightdir = io.rawdata_root() + f'/{night}'
+    requestfiles = sorted(glob.glob(f'{nightdir}/*/request*.json'))
+    calib_expids, noncalib_expids = list(), list()
+    for filename in requestfiles:
+        with open(filename) as fx:
+            r = json.load(fx)
+
+        #- CALIB ZEROs or non-calib ZEROs for dark sequence
+        #- while being robust to missing OBSTYPE or PROGRAM
+        if ('OBSTYPE' in r) and (r['OBSTYPE'] == 'ZERO') and ('PROGRAM' in r):
+            if r['PROGRAM'].startswith('CALIB ZEROs'):
+                calib_expids.append(int(os.path.basename(os.path.dirname(filename))))
+            elif r['PROGRAM'].startswith('ZEROs for dark sequence'):
+                noncalib_expids.append(int(os.path.basename(os.path.dirname(filename))))
+            elif r['PROGRAM'].startswith('ZEROs for morning darks'):
+                noncalib_expids.append(int(os.path.basename(os.path.dirname(filename))))
+            else:
+                continue
+        else:
+            continue
+
+    #- Remove ZEROs that are flagged as bad, but allow for the possibility
+    #- of ZEROs that aren't in the exposure table for whatever reason
+    log.debug('Checking for pre-identified bad ZEROs')
+    expfile = get_exposure_table_pathname(night)
+    exptable = load_table(expfile, tabletype='exptable')
+    select_zeros=exptable['OBSTYPE']=='zero'
+    bad = select_zeros & (exptable['LASTSTEP']!='all')
+    badcam = select_zeros & (exptable['BADCAMWORD']!='')
+    notallcams = select_zeros & (exptable['CAMWORD']!='a0123456789')
+
+    expdicts = dict()
+    for expids, zerotype in zip([calib_expids, noncalib_expids],
+                                ['calib', 'noncalib']):
+        expids = np.array(expids, dtype=int)
+
+        #- drop first two zeros because they are sometimes still stabilizing
+        if nskip > 0:
+            log.info(f'Dropping first {nskip} {zerotype} ZEROs: {expids[0:2]}')
+            expids = expids[nskip:]
+
+        if np.any(bad):
+            #this discards observations that are bad for all cams
+            drop = np.isin(expids, exptable['EXPID'][bad])
+            ndrop = np.sum(drop)
+            drop_expids = expids[drop]
+            log.info(f'Dropping {ndrop} bad {zerotype} ZEROs: {drop_expids}')
+            expids = expids[~drop]
+
+        if np.any(badcam|notallcams):
+            #do the by spectrograph evaluation of bad spectra
+            drop = np.isin(expids, exptable['EXPID'][badcam|notallcams])
+            ndrop = np.sum(drop)
+            drop_expids = expids[drop]
+            expids = expids[~drop]
+            #need lists here so we can append good observations on some spectrographs
+            expdict={f'{cam}': list(expids) for cam in cameras}
+            if len(expids) >= nzeros:
+                #in this case we can just drop all partially bad exposures as we have enough that are good on all cams
+                log.info(f'Additionally dropped {ndrop} partially bad {zerotype} ZEROs for'
+                         + f' all cams because of BADCAM/CAMWORD: {drop_expids}')
+            else:
+                #in this case we want to recover as many as possible
+                log.info(f'additionally dropped {ndrop} bad {zerotype} ZEROs for some cams'
+                         + f'because of BADCAM/CAMWORD: {drop_expids}')
+
+                for expid in drop_expids:
+                    select_exp=exptable['EXPID']==expid
+                    goodcamword=difference_camwords(exptable['CAMWORD'][select_exp][0],
+                                                    exptable['BADCAMWORD'][select_exp][0])
+                    goodcamlist=decode_camword(goodcamword)
+                    for camera in goodcamlist:
+                        if camera in cameras:
+                            expdict[camera].append(expid)
+        else:
+            expdict={f'{cam}': expids for cam in cameras}
+
+        for camera,expids in expdict.items():
+            log.info(f'Keeping {len(expids)} {zerotype} ZEROs for camera {camera}')
+            #make sure everything is in np arrays again
+            expdict[camera] = np.sort(expids).astype(int)
+
+        expdicts[zerotype] = expdict
+
+    #- Verify that all cameras in one are present in the other dictionary
+    for cam in set(expdicts['calib'].keys()).union(set(expdicts['noncalib'].keys())):
+        if cam not in expdicts['calib'].keys():
+            expdicts['calib'][cam] = np.array([], dtype=int)
+        if cam not in expdicts['noncalib'].keys():
+            expdicts['noncalib'][cam] = np.array([], dtype=int)
+
+    return expdicts['calib'], expdicts['noncalib']
+
+def select_zero_expids(calib_exps, noncalib_exps, night, cam,
+                        nzeros=25, minzeros=15, nskip=2, anyzeros=False):
+    """Select which ZERO exposure IDs to use for nightly bias
+
+    Args:
+        calib_exps (array-like): expids of calibration zeros
+        noncalib_exps (array-like): expids of non calibration zeros
+        night (int): YEARMMDD night to process
+        cam (str): camera to process
+
+    Options:
+        nzeros (int): number of zeros desired from valid all-cam observations to not worry about partials
+        minzeros (int): minimum number of zeros to sufficiently compute a nightly bias
+        nskip (int): number of initial zeros to skip
+
+    Returns:
+        expids (array): the list of expids selected
+
+    """
+    log = get_logger()
+    ntotzeros = len(calib_exps) + len(noncalib_exps)
+    nthreshold = nzeros - nskip
+
+    # - If anyzeros, use all expids
+    if anyzeros:
+        expids = np.sort(np.append(calib_exps, noncalib_exps))
+    else:
+        expids = calib_exps
+
+    ## If we don't have enought total zeros, give up now for this cam
+    if ntotzeros < minzeros:
+        log.error(f'Only {ntotzeros} total ZEROS on {night} and cam {cam};'
+                  + f'need at least {minzeros}')
+        return None
+
+    ## If we have fewer zeros than we ideally want (nthreshold) and we
+    ## have other cals that we haven't tried, add them
+    if not anyzeros and len(expids) < nthreshold and len(noncalib_exps) > 0:
+        log.info(f'Only {len(expids)} Calib ZEROS on {night} and cam {cam},'
+                 + f' but want {nthreshold}. Trying non-calibrations zeros')
+        ## If not enough or just enough noncalib zeros to reach threshold
+        ## add all of them
+        ## Otherwise add just enough noncalib zeros to reach nthreshold
+        if ntotzeros <= nthreshold:
+            num_to_add = len(noncalib_exps)
+            expids = np.sort(np.append(calib_exps, noncalib_exps))
+        else:
+            ## Draw the exposures from the middle of the set (in hopes that
+            ## they are more stable)
+            num_to_add = nthreshold - len(calib_exps)
+            i = (len(noncalib_exps) - num_to_add) // 2
+            expids = np.sort(
+                np.append(calib_exps, noncalib_exps[i:i + num_to_add]))
+
+        ## This shouldn't happen after the above check, but make sure
+        if len(expids) < minzeros:
+            log.error(f'Still only {len(expids)} ZEROS on {night} and '
+                      + f'cam {cam}; need at least {minzeros}.')
+            return None
+        else:
+            log.info(f'Succeeded in adding {num_to_add} non-calib'
+                     + f' zeros. We now have {len(expids)} ZEROS on '
+                     + f'{night} and cam {cam}.')
+
+    if len(expids) > nzeros:
+        nexps = len(expids)
+        n = (nexps - nzeros) // 2
+        expids = expids[n:n + nzeros]
+
+    return expids.astype(int)
+
+def compute_nightly_bias(night, cameras, outdir=None, nzeros=25, minzeros=15,
+        nskip=2, anyzeros=False, comm=None):
+    """Create nightly biases for cameras on night
+
+    Args:
+        night (int): YEARMMDD night to process
+        cameras (list of str): list of cameras to process
+
+    Options:
+        outdir (str): write files to this output directory
+        nzeros (int): number of OBSTYPE=ZERO exposures to use
+        minzeros (int): minimum number of OBSTYPE=ZERO exposures required
+        nskip (int): number of initial zeros to skip
+        anyzeros (bool): allow any ZEROs, not just those taken for CCD calib seq
+        comm: MPI communicator for parallelism
+
+    Returns:
+        nfail (int): number of cameras that failed across all ranks
+
+    Writes biasnight*.fits files in outdir or
+    $DESI_SPECTRO_REDUX/$SPECPROD/calibnight/night/
+
+    Note: compute_bias_file requires ~12 GB memory per camera, so limit
+    the size of the MPI communicator depending upon the memory available.
+    """
+    #- only import fitsio if needed, not upon package import
+    import fitsio
+
+    log = get_logger()
+
+    ## Ensure cameras are array-like and valid
+    if isinstance(cameras, str):
+        cameras = decode_camword(parse_cameras(cameras))
+    else:
+        for camera in cameras:
+            if not isinstance(camera, str) or len(camera) != 2 \
+               or camera[0] not in ['b', 'r', 'z'] or not camera[1].isnumeric():
+                msg = f"Couldn't understand camera={camera} in {cameras}"
+                log.error(msg)
+                raise ValueError(msg)
+
+    if comm is not None:
+        rank, size = comm.rank, comm.size
+    else:
+        rank, size = 0, 1
+
+    #- Find all zeros for the night
+    expdict = None
+    if rank == 0:
+        calib_expdict, noncalib_expdict = _find_zeros(night, cameras=cameras,
+                                                      nzeros=nzeros, nskip=nskip)
+
+        used_expdict = {}
+        ## _find_zeros dictionaries already verified to have the same set
+        ## of keys
+        for cam in calib_expdict.keys():
+            expids = select_zero_expids(calib_expdict[cam], noncalib_expdict[cam],
+                                         night, cam, nzeros, minzeros,
+                                         nskip, anyzeros)
+            if expids is not None:
+                used_expdict[cam] = expids
+                log.info(f'Using {len(used_expdict[cam])} ZEROs for nightly'
+                         + f'bias {night} and cam {cam}')
+
+        expdict=used_expdict
+
+    if comm is not None:
+        expdict = comm.bcast(expdict, root=0)
+
+    if len(expdict) == 0:
+        if rank == 0:
+            log.critical("No camera has enough zeros")
+
+        raise RuntimeError("No camera has enough zeros")
+
+    #- Rank 0 create output directory if needed
+    if rank == 0:
+        outfile = io.findfile('biasnight', night=night,
+                              camera=cameras[0], outdir=outdir)
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+
+    #- wait for directory creation before continuing
+    if comm is not None:
+        comm.barrier()
+
+    nfail = 0
+    for camera in cameras[rank::size]:
+        if camera not in expdict.keys():
+            log.error(f'execution was skipped for camera {camera} due to lack of usable zeros')
+            nfail+=1
+            continue
+        expids=expdict[camera]
+        rawfiles=[io.findfile('raw', night, e, readonly=True) for e in expids]
+
+        outfile = io.findfile('biasnight', night=night, camera=camera,
+                              outdir=outdir)
+
+        #- write to preliminary file until validated as better than default bias
+        head, tail = os.path.split(outfile)
+        tail = tail.replace('biasnight-', 'biasnighttest-')
+        testbias = os.path.join(head, tail)
+
+        if os.path.exists(outfile):
+            log.info(f'{outfile} already exists; skipping')
+        elif os.path.exists(testbias):
+            log.info(f'{testbias} already exists; skipping')
+        else:
+            log.info(f'Rank {rank} computing nightly bias for {night} {camera}')
+            try:
+                compute_bias_file(rawfiles, testbias, camera,
+                                  extraheader=dict(NIGHT=night))
+            except Exception as ex:
+                nfail+=1
+                log.error(f'Rank {rank} camera {camera} raised {type(ex)} exception {ex}')
+                for line in traceback.format_exception(*sys.exc_info()):
+                    log.error('  '+line.strip())
+
+        #- Validate that the new nightlybias is better than default
+        if os.path.exists(testbias):
+            rawtestfile = rawfiles[-1]
+            rawhdr = read_raw_primary_header(rawtestfile)
+            with fitsio.FITS(rawtestfile) as fx:
+                camhdr = fx[camera].read_header()
+
+            try:
+                cf = CalibFinder([rawhdr, camhdr],fallback_on_dark_not_found=True)
+            except KeyError as err:
+                log.error(f'No calib config found for {camera}, so skipping comparison to default bias')
+                os.rename(testbias, outfile)
+                continue  #- non-fatal, move on to next camera without incrementing nfail
+
+            try:
+                defaultbias = cf.findfile('BIAS')
+            except KeyError as ex:
+                nfail+=1
+                log.error(f'{rank=}, {camera=} raised {type(ex)} exception {ex}')
+                for line in traceback.format_exception(*sys.exc_info()):
+                    log.error('  '+line.strip())
+                continue
+
+            log.info(f'Comparing {night} {camera} nightly bias to {defaultbias} using {os.path.basename(rawtestfile)}')
+            try:
+                mdiff1, mdiff2 = compare_bias(rawtestfile, testbias, defaultbias)
+            except Exception as ex:
+                nfail+=1
+                log.error(f'Rank {rank} camera {camera} raised {type(ex)} exception {ex}')
+                for line in traceback.format_exception(*sys.exc_info()):
+                    log.error('  '+line.strip())
+                continue
+
+            maxabs1 = np.max(np.abs(mdiff1))
+            std1 = np.std(mdiff1)
+            maxabs2 = np.max(np.abs(mdiff2))
+            std2 = np.std(mdiff2)
+            log.info(f'Nightly bias {camera}: maxabsdiff {maxabs1:.2f}, stddev {std1:.2f}')
+            log.info(f'Default bias {camera}: maxabsdiff {maxabs2:.2f}, stddev {std2:.2f}')
+
+            if maxabs1 < maxabs2 + 0.5 : # add handicap of 0.5 elec to favor nightly bias that also fixes bad columns
+                log.info(f'Selecting nightly bias for {night} {camera}')
+                os.rename(testbias, outfile)
+            else:
+                log.warning(f'Nightly bias worse than default; leaving {testbias} for inspection')
+
+    if comm is not None:
+        nfail = np.sum(comm.gather(nfail, root=0))
+        nfail = comm.bcast(nfail, root=0)
+
+    if rank == 0 and nfail > 0:
+        log.error(f'{nfail}/{len(cameras)} failed')
+
+    return nfail
+
+
+def compare_bias(rawfile, biasfile1, biasfile2, ny=8, nx=40):
+    """Compare rawfile image to bias images in biasfile1 and biasfile2
+
+    Args:
+        rawfile: full filepath to desi*.fits.fz raw data file
+        biasfile1: filepath to bias model made from OBSTYPE=ZERO exposures
+        biasfile2: filepath to bias model made from OBSTYPE=ZERO exposures
+
+    Options:
+        ny (even int): number of patches in y (row) direction
+        nx (even int): number of patches in x (col) direction
+
+    Returns tuple (mdiff1[ny,nx], mdiff2[ny,nx]) median(image-bias) in patches
+
+    The rawfile camera is derived from the biasfile CAMERA header keyword.
+
+    median(raw-bias) is calculated in ny*nx patches using only the DATASEC
+    portion of the images.  Since the DESI CCD bias features tend to vary
+    faster with row than column, default patches are (4k/8 x 4k/40) = 500x100.
+    """
+    #- only import fitsio if needed, not upon package import
+    import fitsio
+
+    log = get_logger()
+    bias1, biashdr1 = fitsio.read(biasfile1, header=True)
+    bias2, biashdr2 = fitsio.read(biasfile2, header=True)
+
+    #- bias cameras must match
+    cam1 = biashdr1['CAMERA'].strip().upper()
+    cam2 = biashdr2['CAMERA'].strip().upper()
+    if cam1 != cam2:
+        msg  = f'{biasfile1} camera {cam1} != {biasfile2} camera {cam2}'
+        log.critical(msg)
+        raise ValueError(msg)
+
+    image, hdr = fitsio.read(rawfile, ext=cam1, header=True)
+
+    primary_hdr = read_raw_primary_header(rawfile)
+    try:
+        cfinder = CalibFinder([primary_hdr, hdr],fallback_on_dark_not_found=True)
+    except KeyError:
+        log.warning(f"Didn't find calib config for {primary_hdr['CAMERA']}; continuing without checking for GOODBIASSEC")
+        cfinder = None
+
+    #- subtract constant per-amp overscan region
+    image = image.astype(float)
+    subtract_peramp_overscan(image, hdr, cfinder)
+
+    #- calculate differences per-amp
+    readout_mode = get_readout_mode(hdr)
+    if readout_mode == '4Amp':
+        ny_groups = ny//2
+        nx_groups = nx//2
+    elif readout_mode == '2AmpLeftRight':
+        ny_groups = ny
+        nx_groups = nx//2
+    elif readout_mode == '2AmpUpDown':
+        ny_groups = ny//2
+        nx_groups = nx
+    else:
+        msg = f'Unknown {readout_mode=}'
+        log.critical(msg)
+        raise ValueError(msg)
+
+    diff1 = image - bias1
+    diff2 = image - bias2
+
+    median_diff1 = list()
+    median_diff2 = list()
+
+    amp_ids = get_amp_ids(hdr)
+    for amp in amp_ids:
+        ampdiff1 = np.zeros((ny_groups, nx_groups))
+        ampdiff2 = np.zeros((ny_groups, nx_groups))
+        yy, xx = parse_sec_keyword(hdr['DATASEC'+amp])
+        iiy = np.linspace(yy.start, yy.stop, ny_groups+1).astype(int)
+        jjx = np.linspace(xx.start, xx.stop, nx_groups+1).astype(int)
+        for i in range(ny_groups):
+            for j in range(nx_groups):
+                aa = slice(iiy[i], iiy[i+1])
+                bb = slice(jjx[j], jjx[j+1])
+
+                #- median of differences
+                ampdiff1[i,j] = np.median(image[aa,bb] - bias1[aa,bb])
+                ampdiff2[i,j] = np.median(image[aa,bb] - bias2[aa,bb])
+
+                #- Note: diff(medians) is less sensitive
+                ## ampdiff1[i,j] = np.median(image[aa,bb]) - np.median(bias1[aa,bb])
+                ## ampdiff2[i,j] = np.median(image[aa,bb]) - np.median(bias2[aa,bb])
+
+        median_diff1.append(ampdiff1)
+        median_diff2.append(ampdiff2)
+
+    #- put back into 2D array by amp
+    d1 = median_diff1
+    d2 = median_diff2
+
+    if readout_mode == '4Amp':
+        mdiff1 = np.vstack([np.hstack([d1[2],d1[3]]), np.hstack([d1[0],d1[2]])])
+        mdiff2 = np.vstack([np.hstack([d2[2],d2[3]]), np.hstack([d2[0],d2[2]])])
+    elif readout_mode == '2AmpLeftRight':
+        mdiff1 = np.hstack([d1[0], d1[1]])
+        mdiff2 = np.hstack([d2[0], d2[1]])
+    elif readout_mode == '2AmpUpDown':
+        mdiff1 = np.vstack([d1[0], d1[1]])
+        mdiff2 = np.vstack([d2[0], d2[1]])
+
+    assert mdiff1.shape == (ny,nx)
+    assert mdiff2.shape == (ny,nx)
+
+    return mdiff1, mdiff2
+
+
+def compare_dark(preprocfile1, preprocfile2, ny=8, nx=40):
+    """Compare preprocessed dark images based on different dark models
+
+    Args:
+        preprocfile1: filepath to preprocessed (i.e. dark subtracted) DARK image
+        preprocfile2: filepath to preprocessed (i.e. dark subtracted) DARK image
+
+    Options:
+        ny (even int): number of patches in y (row) direction
+        nx (even int): number of patches in x (col) direction
+
+    Returns tuple (mdiff1[ny,nx], mdiff2[ny,nx]) median(image-bias) in patches
+
+    median(raw-bias) is calculated in ny*nx patches using only the DATASEC
+    portion of the images.  Since the DESI CCD bias features tend to vary
+    faster with row than column, default patches are (4k/8 x 4k/40) = 500x100.
+    """
+    #- only import fitsio if needed, not upon package import
+    import fitsio
+
+    log = get_logger()
+    diff1, preprochdr1 = fitsio.read(preprocfile1, header=True)
+    diff2, preprochdr2 = fitsio.read(preprocfile2, header=True)
+
+    #- bias cameras must match
+    cam1 = preprochdr1['CAMERA'].strip().upper()
+    cam2 = preprochdr2['CAMERA'].strip().upper()
+    if cam1 != cam2:
+        msg  = f'{preprocfile1} camera {cam1} != {preprocfile2} camera {cam2}'
+        log.critical(msg)
+        raise ValueError(msg)
+
+    #- calculate differences per-amp
+    readout_mode = get_readout_mode(preprochdr1)
+    if readout_mode == '4Amp':
+        ny_groups = ny//2
+        nx_groups = nx//2
+    elif readout_mode == '2AmpLeftRight':
+        ny_groups = ny
+        nx_groups = nx//2
+    elif readout_mode == '2AmpUpDown':
+        ny_groups = ny//2
+        nx_groups = nx
+    else:
+        msg = f'Unknown {readout_mode=}'
+        log.critical(msg)
+        raise ValueError(msg)
+
+    median_diff1 = list()
+    median_diff2 = list()
+
+    amp_ids = get_amp_ids(preprochdr1)
+    for amp in amp_ids:
+        ampdiff1 = np.zeros((ny_groups, nx_groups))
+        ampdiff2 = np.zeros((ny_groups, nx_groups))
+        #DATASEC is still CCD based, where DETSEC is given the coords in preproc x/y units?
+        yy, xx = parse_sec_keyword(preprochdr1['DETSEC'+amp])
+        iiy = np.linspace(yy.start, yy.stop, ny_groups+1).astype(int)
+        jjx = np.linspace(xx.start, xx.stop, nx_groups+1).astype(int)
+        for i in range(ny_groups):
+            for j in range(nx_groups):
+                aa = slice(iiy[i], iiy[i+1])
+                bb = slice(jjx[j], jjx[j+1])
+
+                #- median of differences
+                ampdiff1[i,j] = np.median(diff1[aa,bb])
+                ampdiff2[i,j] = np.median(diff2[aa,bb])
+
+                #- Note: diff(medians) is less sensitive
+                ## ampdiff1[i,j] = np.median(image[aa,bb]) - np.median(bias1[aa,bb])
+                ## ampdiff2[i,j] = np.median(image[aa,bb]) - np.median(bias2[aa,bb])
+
+        median_diff1.append(ampdiff1)
+        median_diff2.append(ampdiff2)
+
+    #- put back into 2D array by amp
+    d1 = median_diff1
+    d2 = median_diff2
+
+    if readout_mode == '4Amp':
+        mdiff1 = np.vstack([np.hstack([d1[2],d1[3]]), np.hstack([d1[0],d1[2]])])
+        mdiff2 = np.vstack([np.hstack([d2[2],d2[3]]), np.hstack([d2[0],d2[2]])])
+    elif readout_mode == '2AmpLeftRight':
+        mdiff1 = np.hstack([d1[0], d1[1]])
+        mdiff2 = np.hstack([d2[0], d2[1]])
+    elif readout_mode == '2AmpUpDown':
+        mdiff1 = np.vstack([d1[0], d1[1]])
+        mdiff2 = np.vstack([d2[0], d2[1]])
+
+    assert mdiff1.shape == (ny,nx)
+    assert mdiff2.shape == (ny,nx)
+
+    return mdiff1, mdiff2
+
+
+def fit_const_plus_dark(exp_arr,image_arr):
+    """
+    fit const + dark*t model given images and exptimes
+
+    Args:
+        exp_arr: list of exposure times
+        image_arr: list of average dark images
+
+    returns: (const, dark) tuple of images
+
+    NOTE: the image_arr should *not* be divided by the exposure time
+    """
+    n_images=len(image_arr)
+    n0=image_arr[0].shape[0]
+    n1=image_arr[0].shape[1]
+
+    # fit dark
+    A = np.zeros((2,2))
+    b0  = np.zeros((n0,n1))
+    b1  = np.zeros((n0,n1))
+    for image,exptime in zip(image_arr,exp_arr) :
+        res = image
+        A[0,0] += 1
+        A[0,1] += exptime
+        A[1,0] += exptime
+        A[1,1] += exptime**2
+        b0 += res
+        b1 += res*exptime
+
+    # const + exptime * dark
+    Ai = np.linalg.inv(A)
+    const = Ai[0,0]*b0 + Ai[0,1]*b1
+    dark  = Ai[1,0]*b0 + Ai[1,1]*b1
+
+    return const, dark
+
+def fit_dark(exp_arr,image_arr):
+    """
+    fit dark*t model given images and exptimes
+
+    Args:
+        exp_arr: list of exposure times
+        image_arr: list of average dark images
+
+    returns: dark_image
+
+    NOTE: the image_arr should *not* be divided by the exposure time
+    """
+    n_images=len(image_arr)
+    n0=image_arr[0].shape[0]
+    n1=image_arr[0].shape[1]
+
+    # fit dark
+    a = 0
+    b  = np.zeros((n0,n1))
+    for image,exptime in zip(image_arr,exp_arr) :
+        res = image
+        a  += exptime**2
+        b += res*exptime
+
+    return b/a
+
+def model_y1d(image, smooth=0):
+    """
+    Model image as a sigma-clipped mean 1D function of row
+
+    Args:
+        image: 2D array to model
+
+    Options:
+        smooth (int): if >0, Savitzky-Golay filter curve by this window
+
+    Returns 1D model of image with len = image.shape[0]
+    """
+    ny, nx = image.shape
+    median1d = np.median(image, axis=1)
+    absdiffimg = np.abs((image.T - median1d).T)
+    robust_sigma = 1.4826*np.median(absdiffimg, axis=1)
+
+    keep = (absdiffimg.T < 4*robust_sigma).T
+    model1d = np.average(image, weights=keep, axis=1)
+    if smooth>0:
+        model1d[0:ny//2] = savgol_filter(model1d[0:ny//2], smooth, polyorder=3)
+        model1d[ny//2:] = savgol_filter(model1d[ny//2:], smooth, polyorder=3)
+
+    return model1d
+
+def make_dark_scripts(outdir, days=None, nights=None, cameras=None,
+                      linexptime=None, nskip_zeros=None, tempdir=None, nosubmit=False,
+                      first_expid=None,night_for_name=None, use_exptable=True,queue='realtime',
+                      copy_outputs_to_split_dirs=False, prepared_exptable=None, system_name=None,
+                      min_vccdsec=None):
+    """
+    Generate batch script to run desi_compute_dark_nonlinear
+
+    Args:
+        outdir (str): output directory
+        days or nights (list of int): days or nights to include
+
+    Options:
+        cameras (list of str): cameras to include, e.g. b0, r1, z9
+        linexptime (float): exptime after which dark current is linear
+        nskip_zeros (int): number of ZEROs at beginning of day/night to skip
+        tempdir (str): tempfile working directory
+        nosubmit (bool): generate scripts but don't submit them to batch queue
+        first_expid (int): ignore expids prior to this
+        use_exptable (bool): use shortened copy of joined exposure tables instead of spectable (need to have right $SPECPROD set)
+        queue (str): which batch queue to use for submission
+        copy_outputs_to_split_dirs (bool): whether to copy outputs to bias_frames/dark_frames subdirs
+        prepared_exptable (exptable): if a table is submitted here, no further spectra will be searched and this will be used instead
+        system_name (str): the system for which batch files should be created, defaults to guessing current system
+        min_vccdsec(str): minimum time a ccd needs to be turned on to be allowed in the model
+
+
+    Args/Options are passed to the desi_compute_dark_nonlinear script
+    """
+    log = get_logger()
+    batch_config=get_config(system_name)
+
+    runtime= 240 * batch_config['timefactor']
+    runtime_hh = int(runtime // 60)
+    runtime_mm = int(runtime % 60)
+
+    if tempdir is None:
+        tempdir = os.path.join(outdir, 'temp')
+        log.info(f'using tempdir {tempdir}')
+
+    if not os.path.isdir(tempdir):
+        os.makedirs(tempdir)
+
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
+
+    if cameras is None:
+        cameras = list()
+        for sp in range(10):
+            for c in ['b', 'r', 'z']:
+                cameras.append(c+str(sp))
+
+    today = datetime.datetime.now().strftime('%Y%m%d')
+
+    #- Convert list of days to single string to use in command
+
+    lastdayornight=0
+    if days is not None:
+        days = ' '.join([str(tmp) for tmp in days])
+        lastdayornight=sorted(days.split())[-1]
+    elif nights is not None:
+        nights = ' '.join([str(tmp) for tmp in nights])
+        lastdayornight=sorted(nights.split())[-1]
+    else:
+        msg = 'Must specify days or nights'
+        log.critical(msg)
+        raise ValueError(msg)
+
+    #- Create exposure log so that N>>1 jobs don't step on each other
+    nightlist = [int(tmp) for tmp in nights.split()]
+
+    if prepared_exptable is None:
+        if use_exptable:
+            #grab all exposures from the exposure log in case some have been marked bad
+            #note that some exposures will not be in here, so we'll assume those are all fine
+            log.info(f'Using exposure tables for {len(nightlist)} night directories')
+            expfiles=[]
+            for night in nightlist:
+                expfiles.append(get_exposure_table_pathname(night))
+            exptables = load_tables(expfiles)
+            exptable_all=table_vstack(exptables)
+            select = ((exptable_all['OBSTYPE']=='zero')|(exptable_all['OBSTYPE']=='dark'))
+            exptable_select=exptable_all[select]
+
+        log.info(f'Scanning {len(nightlist)} night directories')
+        speclog = io.util.get_speclog(nightlist)
+        select_speclog = ((speclog['OBSTYPE']=='ZERO')|(speclog['OBSTYPE']=='DARK'))
+
+        speclog = speclog[select_speclog]
+        if use_exptable:
+            badcamwords=[]
+            laststeps=[]
+            badamps=[]
+            camwords=[]
+            for entry in speclog:
+                if entry['EXPID'] in exptable_select['EXPID']:
+                    sel=entry['EXPID']==exptable_select['EXPID']
+                    badcamwords.append(exptable_select['BADCAMWORD'][sel][0])
+                    badamps.append(exptable_select['BADAMPS'][sel][0])
+                    camwords.append(exptable_select['CAMWORD'][sel][0])
+                    laststeps.append(exptable_select['LASTSTEP'][sel][0])
+                else:
+                    badcamwords.append("")
+                    laststeps.append("all")
+                    camwords.append("a0123456789")
+                    badamps.append("")
+            speclog.add_column(badcamwords,name='BADCAMWORD')
+            speclog.add_column(laststeps,name='LASTSTEP')
+            speclog.add_column(camwords,name='CAMWORD')
+            speclog.add_column(badamps,name='BADAMPS')
+    else:
+        #TODO: need to check if this works properly, else needs to be adapted
+        speclog=prepared_exptable
+        speclog.rename_column('MJD-OBS','MJD')
+        del speclog['HEADERERR']
+        del speclog['EXPFLAG']
+        del speclog['COMMENTS']
+
+
+    speclog['OBSTYPE']=np.char.upper(speclog['OBSTYPE'])
+
+    t = Time(speclog['MJD']-7/24, format='mjd')
+    speclog['DAY'] = t.strftime('%Y%m%d').astype(int)
+    speclogfile = os.path.join(tempdir, 'speclog.csv')
+
+    tmpfile = speclogfile + '.tmp-' + str(os.getpid())
+    speclog.write(tmpfile, format='ascii.csv')
+    os.rename(tmpfile, speclogfile)
+    log.info(f'Wrote speclog to {speclogfile}')
+
+    n_jobs_per_script = int(batch_config['cores_per_node']//32)
+    #create scripts that do up to 4 cameras in parallel
+    batch_opts = list()
+    if 'batch_opts' in batch_config:
+        for opt in batch_config['batch_opts']:
+            batch_opts.append(f'#SBATCH {opt}')
+    batch_opts = '\n'.join(batch_opts)
+    n_scripts=int(len(cameras)//n_jobs_per_script)
+    if len(cameras)%n_jobs_per_script !=0:
+        n_scripts+=1
+    for scriptid in range(n_scripts):
+        if night_for_name is not None :
+            job_filename_key=f'scriptnumber-{scriptid}-{night_for_name}'
+        else:
+            job_filename_key = f'scriptnumber-{scriptid}-{lastdayornight}'
+
+        batchfile = os.path.join(tempdir, f'dark-{job_filename_key}.slurm')
+        logfile = os.path.join(tempdir, f'dark-{job_filename_key}-%j.log')
+        #header
+        with open(batchfile, 'w') as fx:
+            fx.write(f'''#!/bin/bash -l
+#SBATCH -N 1
+#SBATCH --qos {queue}
+#SBATCH --account desi
+#SBATCH --job-name dark-{job_filename_key}
+#SBATCH --output {logfile}
+#SBATCH --time={f"{runtime_hh:02d}:{runtime_mm:02d}:00" if queue!="debug" else "00:30:00"}
+#SBATCH --exclusive
+{batch_opts}
+
+cd {outdir}
+''')
+
+        minind=scriptid*n_jobs_per_script
+        maxind=(scriptid+1)*n_jobs_per_script
+        if maxind>len(cameras):
+            maxind=len(cameras)
+        darkfile_list=[]
+        biasfile_list=[]
+        for camera in cameras[minind:maxind]:
+            sp = 'sp' + camera[1]
+            sm = sp2sm(sp)
+            #key = f'{sm}-{camera}-{today}'
+            if night_for_name is not None :
+                key = f'{sm}-{camera}-{night_for_name}'
+            else :
+                key = f'{sm}-{camera}-{lastdayornight}'
+            darkfile = f'dark-{key}.fits.gz'
+            biasfile = f'bias-{key}.fits.gz'
+            logfile2 = os.path.join(tempdir, f'dark-{key}-${{SLURM_JOB_ID}}.log')
+            darkfile_list.append(darkfile)
+            biasfile_list.append(biasfile)
+            cmd = f"desi_compute_dark_nonlinear"
+            cmd += f" \\\n    --camera {camera}"
+            cmd += f" \\\n    --tempdir {tempdir}"
+            cmd += f" \\\n    --darkfile {darkfile}"
+            cmd += f" \\\n    --biasfile {biasfile}"
+            if days is not None:
+                cmd += f" \\\n    --days {days}"
+            if nights is not None:
+                cmd += f" \\\n    --nights {nights}"
+            if linexptime is not None:
+                cmd += f" \\\n    --linexptime {linexptime}"
+            if nskip_zeros is not None:
+                cmd += f" \\\n    --nskip-zeros {nskip_zeros}"
+            if first_expid is not None:
+                cmd += f" \\\n    --first-expid {first_expid}"
+            if min_vccdsec is not None:
+                cmd += f" \\\n    --min-vccdsec {min_vccdsec}"
+
+            with open(batchfile, 'a') as fx:
+                fx.write(f"time {cmd} > {logfile2} 2> {logfile2} &\n")
+
+        with open(batchfile, 'a') as fx:
+            fx.write("wait\n")
+            for darkfile,biasfile in zip(darkfile_list,biasfile_list):
+                if copy_outputs_to_split_dirs:
+                    fx.write(f"""
+cp {darkfile}  dark_frames/{darkfile}
+cp {biasfile}  bias_frames/{biasfile}
+""")
+#TODO: the copying needs to be done in a cleaner way, maybe as part of the desi_compute_dark_nonlinear? or just writing to the corresponding output dir directly
+        if not nosubmit:
+            err = subprocess.call(['sbatch', batchfile])
+            if err == 0:
+                log.info(f'Submitted {batchfile}')
+            else:
+                log.error(f'Error {err} submitting {batchfile}')
+        else:
+            log.info(f"Generated but didn't submit {batchfile}")
+
+
+def make_regular_darks(outdir=None, lastnight=None, cameras=None, window=30,
+                      linexptime=None, nskip_zeros=None, tempdir=None, nosubmit=False,
+                      first_expid=None,night_for_name=None, use_exptable=True,queue='realtime',
+                      copy_outputs_to_split_dirs=None, transmit_obslist = True, system_name=None,
+                      no_obslist=False,min_vccdsec=None):
+    """
+    Generate batch script to run desi_compute_dark_nonlinear
+
+    Options:
+        outdir (str): output directory
+        lastnight (int): last night to take into account (inclusive), defaults to tonight
+
+        window (int): length of time window to take into account
+        cameras (list of str): cameras to include, e.g. b0, r1, z9
+        linexptime (float): exptime after which dark current is linear
+        nskip_zeros (int): number of ZEROs at beginning of day/night to skip
+        tempdir (str): tempfile working directory
+        nosubmit (bool): generate scripts but don't submit them to batch queue
+        first_expid (int): ignore expids prior to this
+        use_exptable (bool): use shortened copy of joined exposure tables instead of spectable (need to have right $SPECPROD set)
+        queue (str): which batch queue to use for submission
+        transmit_obslist(bool): if True will give use the obslist from here downstream
+        system_name(str): allows to overwrite the system for which slurm scripts are created, will default to guessing the current system
+        no_obslist(str): just use exactly the specified night-range, but assume we do not have exposure tables for this (useful when there is no exposure_table yet)
+        min_vccdsec(float): minimum time a ccd needs to be turned on to be allowed in the model (default: 21600=6h)
+
+    Args/Options are passed to the desi_compute_dark_nonlinear script
+    """
+    log = get_logger()
+
+    if lastnight is None:
+        lastnight=datetime.datetime.now().strftime('%Y%m%d')
+    if outdir is None:
+        outdir=os.getenv('DESI_SPECTRO_DARK')
+    if tempdir is None:
+        tempdir=outdir+f'/temp_{lastnight}'
+    if copy_outputs_to_split_dirs is None:
+        copy_outputs_to_split_dirs = True
+
+    #probably run a script here that updates the obslist or checks it's up-to-date
+
+    startnight=datetime.datetime.strptime(str(lastnight),'%Y%m%d')-datetime.timedelta(days=window-1)
+    nights = [int((startnight+datetime.timedelta(days=i)).strftime('%Y%m%d')) for i in range(window)]
+
+    if no_obslist:
+        #this part is only to allow running the dark scripts before we have an exposure table
+        usenights=[]
+        for n in nights:
+            if len(glob.glob(f"{os.getenv('DESI_SPECTRO_DATA')}/{n}/*"))>0:
+                usenights.append(n)
+        nights=usenights
+
+        obslist=None
+        use_exptable=False
+    else:
+        obslist=load_table(f"{os.getenv('DESI_SPECTRO_DARK')}/exp_dark_zero.csv")
+
+        #read all calib files to get dates of changes
+        yaml_filenames=glob.glob(os.getenv('DESI_SPECTRO_CALIB')+'/spec/sm*/sm*-?.yaml')
+        all_config_data={}
+        for y_file in yaml_filenames:
+            with open(y_file) as f:
+                y_data=yaml.safe_load(f)
+            all_config_data.update(y_data)
+
+        #extract only the main keys which are dates except for the very first one (could elsewise check on OBS-BEGIN), only mildly more complicated
+        change_dates={k:[] for k in all_config_data.keys()}
+        for speckey,data in all_config_data.items():
+
+            required_keys=[(k,{k2:v2 for (k2,v2) in v.items() if k2 in ['DATE-OBS-BEGIN','DATE-OBS-END','DETECTOR','CCDTMING','CCDCFG','AMPLIFIERS']}) for k,v in data.items()]
+            required_keys.sort(key=lambda x:int(x[1]['DATE-OBS-BEGIN']),reverse=True)
+            usever,useval=required_keys[0]
+            for newver,newval in required_keys[1:]:
+                usenew=True
+                for key in ['DETECTOR','CCDTMING','CCDCFG','AMPLIFIERS']:
+                    if useval[key]!=newval[key]:
+                        usenew = False
+                        break
+
+                if not usenew:
+                    change_dates[speckey].append(int(useval['DATE-OBS-BEGIN']))
+                    useval = newval
+                    usever = newver
+                useval = newval
+                usever = newver
+        change_dates_any_spectrograph=sorted(np.unique([int(d) for v in change_dates.values() for d in v]))   #this is to not overcomplicate things by tracking per detector yet
+
+        nights = [n for n in nights if n in obslist['NIGHT']]
+        if len(nights)==0:
+            log.critical("No darks were taken for this time frame, exiting")
+            sys.exit(1)
+        change_dates_in_nights=[d for d in change_dates_any_spectrograph if d<max(nights) and d>min(nights)]
+
+        #change_dates_relevant={k:v for k,v in change_dates.items() if v in change_dates_in_nights}
+        change_dates_relevant={}
+        for speckey,dates in change_dates.items():
+            dates_relevant= [date for date in dates if date in change_dates_in_nights]
+            if len(dates_relevant)>0:
+                dates_relevant.sort()
+                change_dates_relevant[speckey]=dates_relevant[-1]
+
+        obslist=obslist[[o['NIGHT'] in nights for o in obslist]]
+        for i,o in enumerate(obslist):
+            for speckey, date in change_dates_relevant.items():
+                if o['NIGHT']<date:
+                    badcamword_decoded=decode_camword(o['BADCAMWORD'])
+                    spec=sm2sp(speckey.split('-')[0])
+                    color=speckey[-1]
+                    mask_sp=f"{color}{spec[-1]}"
+                    if mask_sp not in badcamword_decoded:
+                        badcamword_decoded.append(mask_sp)
+                    badcamword_encoded=create_camword(badcamword_decoded)
+                    obslist[i]['BADCAMWORD']=badcamword_encoded
+
+        #truncate to the right nights
+        if transmit_obslist:
+            obslist=obslist[[o['NIGHT'] in nights for o in obslist]]
+            if nskip_zeros is None:
+                nskip_zeros = 0
+        else:
+            obslist = None
+
+    make_dark_scripts(outdir, nights=nights, cameras=cameras,
+                      linexptime=linexptime, nskip_zeros=nskip_zeros, tempdir=tempdir, nosubmit=nosubmit,
+                      first_expid=first_expid,night_for_name=night_for_name, use_exptable=use_exptable,queue=queue,
+                      copy_outputs_to_split_dirs=copy_outputs_to_split_dirs,prepared_exptable=obslist, system_name=system_name,
+                      min_vccdsec=min_vccdsec)

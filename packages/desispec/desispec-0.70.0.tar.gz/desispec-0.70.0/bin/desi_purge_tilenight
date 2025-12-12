@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+# coding: utf-8
+from desispec.scripts.purge_tilenight import get_parser, purge_tilenight
+
+if __name__ == '__main__':
+    parser = get_parser()
+    args = parser.parse_args()
+
+    args.tiles = [int(t) for t in args.tiles.split(',')]
+
+    purge_tilenight(args.tiles, args.night,
+                    dry_run=(not args.not_dry_run), no_attic=args.no_attic)
+
+    if not args.not_dry_run:
+        print('\nThat was a dry run; if you really want to do those actions,')
+        print('rerun with --not-dry-run')
