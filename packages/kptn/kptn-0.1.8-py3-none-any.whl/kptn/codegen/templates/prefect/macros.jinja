@@ -1,0 +1,28 @@
+{% macro deps_to_str(deps) %}
+{%- for dep in deps -%}
+{%- set _dep = "_" + dep %}
+            {{ _dep }}{% if not loop.last %},{% endif %}
+{%- endfor %}
+{%- endmacro %}
+
+{% macro render_wait_for(deps) %}
+{%- if deps != None -%}
+,
+        wait_for=[
+            {{- deps_to_str(deps) }}
+        ]
+{%- endif %}
+{%- endmacro %}
+
+{% macro submit(name, deps, python_task_names) -%}
+_{{name}} = submit(
+        "{{name}}",
+        pipeline_config,
+        task_list,
+        ignore_cache
+        {%- if name in python_task_names %},
+        tasks.{{name}}
+        {%- endif -%}
+        {{ render_wait_for(deps) }}
+    )
+{%- endmacro %}
