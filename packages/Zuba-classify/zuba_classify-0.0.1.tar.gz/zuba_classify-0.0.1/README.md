@@ -1,0 +1,126 @@
+# 🇳🇬 **Zuba Language Classifier**
+
+**Zuba Language Classifier** is a lightweight Python package for classifying text into four major Nigerian languages:
+
+* **Hausa**
+* **Yoruba**
+* **Igbo**
+* **Broken English (Pidgin)**
+
+The model is built using a fine-tuned **GPT-2 architecture** and loads automatically from the **HuggingFace Hub**, so you do **not** need to download or bundle any model files manually.
+
+The package supports both single-sentence and batch predictions.
+
+---
+
+##  Features
+
+* Predicts **four Nigerian languages**
+*  Works with **single strings or lists**
+* Auto-downloads model from **HuggingFace Hub**
+* Fast inference and minimal dependencies
+
+---
+
+##  Installation
+
+Install the package from **PyPI**:
+
+```bash
+pip install Zuba_classifier
+```
+
+Install **PyTorch** if you do not already have it:
+
+```bash
+pip install torch
+```
+
+---
+
+##  Model Setup
+
+The classifier automatically downloads the trained GPT-2 model from the **HuggingFace Hub** the first time you use it.
+
+No manual setup is required.
+
+You may also use a custom model if your architecture differs.
+
+---
+
+## 🚀 Quick Start
+
+```python
+from Zuba.Prediction import Classify
+
+Classifier = Classify()
+
+classifier=Classify()
+result=classifier.predict([
+    
+        "Ina jin dadin wannan rana.",
+        "Mo fẹ jẹ iyan.",
+        "A na m aga ahịa echi."
+    
+])
+print(result)
+```
+
+**Output:**
+
+```text
+["hausa", "yoruba", "igbo"]
+```
+
+---
+## Note:
+on the first run of this code block the function will download the trainable weight hosted on hugging face so it might take long to execute on the first run
+## ⚙️ How It Works
+
+1. Your model class is loaded by the `Classify` constructor.
+2. The package downloads the trained weights from HuggingFace automatically.
+3. Text is tokenized with **GPT-2 tokenizer (tiktoken)**.
+4. Input is encoded, padded, and truncated to the required sequence length.
+5. The model performs inference and outputs one of the four language labels.
+
+---
+
+
+
+### **classifier.py**
+
+Handles tokenization, preprocessing, batching, and predictions.
+
+### **model_loader.py**
+
+Downloads and loads the trained model weights from HuggingFace.
+
+---
+
+## 🔧 Configuration
+
+**Tokenization Length**
+
+The default maximum token length is:
+
+```text
+277
+```
+
+
+## 🔗 Important Constants
+
+```python
+REPO_ID = "your-username/your-repo-name"
+PACKAGE_LINK = "PYPI_link"
+```
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+
