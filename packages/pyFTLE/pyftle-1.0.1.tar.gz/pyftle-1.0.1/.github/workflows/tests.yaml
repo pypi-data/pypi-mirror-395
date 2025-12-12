@@ -1,0 +1,41 @@
+name: Python Tests
+on: [push, pull_request]
+jobs:
+  lock_file:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Generate UV Lock file (if not already committed)
+        run: uv lock --locked
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: [lock_file]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Create Virtual Environment and Install Dependencies
+        shell: bash
+        run: |
+          uv sync
+          uv pip install -e '.[dev,test]'
+          uv pip list
+
+      - name: Build package (C++ extension via scikit-build-core)
+        shell: bash
+        run: |
+          uv build
+          ls -lh dist/
+          uv pip install dist/*.whl
+          ls -lh src/pyftle/*.so || true
+
+      - name: Run Tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: uv run pytest -v --durations=0 --cov --cov-report=xml
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
