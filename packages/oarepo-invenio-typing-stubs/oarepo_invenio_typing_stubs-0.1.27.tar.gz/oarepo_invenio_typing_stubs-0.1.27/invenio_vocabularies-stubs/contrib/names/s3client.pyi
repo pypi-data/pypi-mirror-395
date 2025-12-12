@@ -1,0 +1,9 @@
+from typing import Any
+
+class S3Client:
+    fs: Any
+    def __init__(self, access_key, secret_key) -> None: ...
+    def read_file(self, s3_path): ...
+
+class S3OrcidClient(S3Client):
+    def __init__(self) -> None: ...
