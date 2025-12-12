@@ -1,0 +1,71 @@
+{
+  "name": "Parallel Marker vs Reducto Comparison",
+  "description": "Compare Marker and Reducto segmentation in parallel",
+  "steps": [
+    {
+      "step_key": "marker_parse",
+      "unique_name": "marker_parse",
+      "settings": {},
+      "depends_on": []
+    },
+    {
+      "step_key": "marker_segment",
+      "unique_name": "marker_segment",
+      "settings": {
+        "segmentation_schema": {
+          "segmentation_strategy": "document_boundary"
+        }
+      },
+      "depends_on": ["marker_parse"]
+    },
+    {
+      "step_key": "api_request",
+      "unique_name": "reducto_parse",
+      "settings": {
+        "url": "https://platform.reducto.ai/parse",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "input": "{{_internal.file_url}}",
+          "retrieval": {
+            "chunking": "page"
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "token": "YOUR_REDUCTO_API_KEY"
+        },
+        "timeout_seconds": 900
+      },
+      "depends_on": []
+    },
+    {
+      "step_key": "api_request",
+      "unique_name": "reducto_split",
+      "settings": {
+        "url": "https://platform.reducto.ai/split",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "input": "{{_internal.file_url}}",
+          "split_description": [
+            {
+              "name": "content_sections",
+              "description": "Main content sections of the document"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "token": "YOUR_REDUCTO_API_KEY"
+        },
+        "timeout_seconds": 300
+      },
+      "depends_on": []
+    }
+  ]
+}
