@@ -1,0 +1,93 @@
+#!/bin/python
+
+# Copyright Red Hat
+#
+# This file is part of fedfind.
+#
+# fedfind is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Adam Williamson <awilliam@redhat.com>
+
+"""This is just a script used to generate the allstable.json file used
+by the tests. It contains the image dicts for every single image from
+every Fedora stable release, in a dict keyed on the release number.
+The image dicts are in lists sorted by the paths. The tests use this
+file to check that we keep returning the same image dicts. Updating
+the reference file should be done carefully and with manual diffing
+against the previous copy, and when the reference is updated for a new
+stable release, the copies of the file lists in tests/data/http must
+also be updated to keep the tests in sync.
+"""
+
+from __future__ import unicode_literals
+from __future__ import print_function
+
+import fedfind.const
+import fedfind.helpers
+import fedfind.release
+import json
+import sys
+
+if len(sys.argv) != 2:
+    sys.exit("Specify output filename!")
+
+imgdict = {}
+curr = fedfind.helpers.get_current_release()
+# the server some image URLs will appear as being on, since we use the
+# localhost test server in the tests
+fakedl = 'http://localhost:5001/pub'
+
+synthfails = []
+unknowns = []
+knownsubvs = [subv.name for subv in fedfind.const.SUBVARIANTS]
+for relnum in range(1, int(curr) + 1):
+    rel = fedfind.release.get_release(relnum)
+    imgdict[relnum] = sorted(rel.all_images, key=lambda x:x['path'])
+    for img in imgdict[relnum]:
+        img['url'] = img['url'].replace(fedfind.const.HTTPS_DL, fakedl)
+        img['url'] = img['url'].replace(fedfind.const.HTTPS, fakedl)
+        img['direct_url'] = img['direct_url'].replace(fedfind.const.HTTPS_DL, fakedl)
+        img['direct_url'] = img['direct_url'].replace(fedfind.const.HTTPS, fakedl)
+        # there are some weird old images we're relaxed about
+        if relnum > 8:
+            if not img['subvariant']:
+                # this means we had to try and synthesize a subvariant
+                # for this image, and were unable to
+                synthfails.append(img['url'])
+            elif img['subvariant'] not in knownsubvs:
+                unknowns.append([img['url'], img['subvariant']])
+
+if synthfails:
+    for url in synthfails:
+        print(f"Could not synthesize subvariant for image {url}")
+if unknowns:
+    for url, subvariant in unknowns:
+        print(f"Image {url} has subvariant {subvariant} which is not in const.SUBVARIANTS")
+if synthfails or unknowns:
+    sys.exit(1)
+
+json = json.dumps(imgdict, sort_keys=True, indent=2, separators=(',', ': '))
+
+with open(sys.argv[1], 'w') as fh:
+    fh.write(json)
+
+print("If adding a new stable release, remember to:\n"
+      "* Update image lists in tests/data/http\n"
+      "* Update test_get_release_respinrelease and test_images_respinrelease for new image lists\n"
+      "* Add the compose metadata to the metadata archive in tests/data/httpkp\n"
+      "* Create tests/data/httpkp/compose/metadata-archive/series/Fedora-(release) with the compose ID and label\n"
+      "* Bump the ArchiveRelease cutoff in fedfind.release.get_release\n"
+      "* Update test_get_stable_current in test_release for that change\n"
+      "* Regenerate tests/data/compose-urls-YYYYMMDD.json\n"
+      "* Update test_compose_urls for that change\n")
