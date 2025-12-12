@@ -1,0 +1,122 @@
+Metadata-Version: 2.4
+Name: 2025_assignment2_vaultPasswordManager
+Version: 2.0.2
+Summary: Python Password Manager
+Home-page: https://gitlab.com/mbroglio/2025_assignment2_vaultPasswordManager
+Author: EmacsSoftwares
+Author-email: matteo.broglio3@gmail.com
+License: MIT
+Classifier: Topic :: Security
+Classifier: Topic :: Security :: Cryptography
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pycryptodome==3.20.0
+Requires-Dist: pyperclip
+Requires-Dist: tabulate
+Requires-Dist: passwordgenerator
+Requires-Dist: SQLAlchemy==1.4.41
+Requires-Dist: sqlcipher3==0.5.4
+Dynamic: license-file
+
+# VAULT PASSWORD MANAGER
+
+Broglio Matteo - 899562\
+Caputo Lorenzo - 894528 \
+El Hanafi Nadim - 894489\
+Fuso Valentina - 899972\
+Giuggioli Daniel - 894415 
+
+***Repo GitLab:*** https://gitlab.com/mbroglio/2025_assignment2_vaultPasswordManager.git
+
+## DESCRIZIONE
+
+### Applicazione
+Il progetto consiste in un password manager da linea di comando. Il suo principale scopo è quello di gestire ed archiviare in modo sicuro e completamente locale le credenziali. Viene utilizzato una database SQLite che, tramite la libreria `sqlcipher`, implementa un sistema di crittografia AES-256.
+#### Componenti Principali:
+1. **Entry Point**: `src/vault.py` è il file principale che gestisce l'interfaccia a linea di comando e le operazioni principali del password manager.
+2. **Libreria di Crittografia**: `lib/Encryption.py` gestisce tutte le operazioni di crittografia e decrittografia delle password.
+3. **Gestione Database**: `models/` definisce la struttura del database (utenti, categorie, segreti) tramite SQLAlchemy.
+
+### GitLab Repository
+Il progetto ha due branch principali:
+- `main`: Contiene la versione stabile del codice
+- `dev`: Da noi creato, al fine di garantire la presenza di un ulteriore branch dedicato all'introduzioone di nuove funzionalità non ancora definitive. \
+All'interno del branch `dev` è stata aggiunta la funzionalità di classificazione delle password sulla base del loro livello di sicurezza.
+
+*Note: Il lavoro si è svolto in contemporanea tra i membri del gruppo tramite la funzionalità Live Share di Visual Studio Code. Per tale motivo le commit risultano tutte effettuate da `mbroglio` seppur comprendano il lavoro svolto dal resto dei componenti.*
+
+## Pipeline CI/CD
+La pipeline CI/CD è definita nel file `.gitlab-ci.yml`. Essa ha lo scopo di automatizzare il ciclo di vita del software, dalla fase di build fino alla distribuzione e documentazione. \
+La pipeline è suddivisa in diversi stage, ognuno con un compito specifico
+
+### CONFIGURAZIONE DELL'AMBIENTE
+**Scopo:** Definire l'ambiente di esecuzione per tutti gli stage successivi.
+
+**Strumenti**: Docker, Python 3.11-slim
+
+**Motivazione:** Docker garantisce un ambiente di esecuzione isolato. Python 3.11-slim è scelto per la sua leggerezza e compatibilità con le librerie del progetto. Le dipendenze come `gcc`, `libsqlcipher-dev` e `xclip` vengono preinstallate, secondo quanto indicato dalla documentazione del progetto originale, per assicurare che tutti i pacchetti Python possano essere installati correttamente.
+
+### STAGE BUILD
+**Scopo:** Preparare l'ambiente Python ed installare le dipendenze necessarie tramite `requirements.txt`.
+
+**Strumenti**: venv, pip
+
+**Motivazione:** `venv` crea un ambiente virtuale isolato per il progetto, evitando conflitti tra le dipendenze, esso agisce anche come cache per le installazioni successive e gli artefatti generati. L'aggiornamento di `pip` assicura la compatibilità con le versioni più recenti delle librerie. Il file `requirements.txt` elenca tutte le dipendenze necessarie per il progetto, esse verranno installate tramite `pip`.
+
+**Branch:** Build viene eseguito su tutti i branch per garantire che ogni modifica al codice sorgente abbia un ambiente di esecuzione pronto per le fasi successive.
+
+### STAGE TEST
+**Scopo:** Verificare il corretto funzionamento del codice tramite l'esecuzione di test unitari e di performance, misurando inoltre la copertura del codice.
+
+**Strumenti:** Pytest, pytest-cov, pytest-benchmark.
+
+**Motivazione:** `Pytest` analizza tutti i file con prefisso `test_` nella cartella `src/` per eseguire i test unitari e di performance. L'uso di `pytest-cov` consente di misurare la copertura del codice, fornendo un report che indica la percentuale di codice testata. Viene inoltre eseguito implicitamente un test di performance tramite `pytest-benchmark` per valutare l'efficienza del codice.
+
+**Branch:** Il job di Test viene eseguito su tutti i branch al fine di garantire che ogni modifica al codice sorgente sia testata.
+
+### STAGE VERIFY
+**Scopo:** Garantire la qualità e la sicurezza del codice tramite analisi statica e dinamica, eseguite in parallelo.
+
+**Strumenti:** Prospector (Analisi Statica), Bandit (Controlli di Sicurezza, Analisi Statica) e DynaPyt(Analisi Dinamica).
+
+**Motivazione:** Lo stage di Verify viene eseguito dopo la fase di Test per assicurare che i test eseguiti nel corso dello stage corrente siano stati superati con successo prima di procedere con l'analisi dinamica, basata su di essi. Lo stage Verify viene suddiviso in tre job paralleli:
+1. **Prospector**: Esegue un'analisi statica del codice per identificare problemi di stile, complessità e potenziali bug.
+2. **Bandit**: Si concentra sull'individuazione di vulnerabilità di sicurezza nel codice Python.
+3. **DynaPyt**: Esegue un'analisi dinamica del codice durante l'esecuzione, raccogliendo informazioni utili per individuare problemi che potrebbero non essere rilevati dall'analisi statica. \
+Il job relativo a DynaPyt richiede l'implementazione di un file specifico (`dynapyt_test_runner.py`) per avviare l'analisi dinamica, il quale si occupa di eseguire i test presenti nella cartella `unittest`. Allo stesso tempo è richiesta la presenza di un file di analisi (`src.dynapyt_analysis.trace.Trace`) per tracciare l'esecuzione del codice. Tale file segue gli standard definiti dalla libreria. \
+La configurazione `allow_failure: true`, presente in Bandit e Prospector, permette alla pipeline di continuare verso gli stage successivi anche se il job termina notificando un warning. Tale setting non è presente in DynaPyt, in quanto si occupa esclusivamente di tracciare l'esecuzione del codice senza effettuare controlli di qualità o sicurezza, pertanto un suo eventuale fallimento indicherebbe un problema più grave che richiede l'interruzione della pipeline.
+
+**Branch:** Analogamente allo stage Test, questo stage viene eseguito su tutti i branch per garantire che ogni modifica al codice sorgente venga verificata.
+
+### STAGE PACKAGE
+**Scopo:** Creare pacchetti distribuibili del progetto.
+
+**Strumenti:** setuptools, wheel.
+
+**Motivazione:** `setuptools` e `wheel` sono utilizzati per creare pacchetti Python con lo standard `sdist` e `bdist_wheel`. Questa operazione consente di preparare il software per la distribuzione, facilitando l'installazione in altri ambienti. I file `setup.py` e `setup.cfg` permettono di definire le informazioni necessarie per la creazione del pacchetto, come nome, versione, autore e dipendenze.
+
+**Branch:**  Viene eseguito solo sul branch `main` per garantire che solo il codice stabile venga pacchettizzato e di conseguenza preparato per la distribuzione.
+
+### STAGE RELEASE
+**Scopo:** Pubblicare i pacchetti creati nella fase di Package su PiPy.
+
+**Strumenti:** twine.
+
+**Motivazione:** Lo stage di Release, per mezzo di `Twine`, consente di caricare i pacchetti Python su Repository quali PyPi. Questo facilita la distribuzione e l'installazione del software da parte degli utenti finali. L'autenticazione avviene tramite un token API memorizzato in una variabile segreta su GitLab. Questo garantisce l'associazione del pacchetto all'account corretto senza esporre credenziali.
+
+**Branch:** Analogamente allo stage Package, lo stage di Release, viene effettuato solo sul branch `main` per garantire che solo il codice stabile venga rilasciato pubblicamente.
+
+### STAGE DOCUMENTATION
+**Scopo:** Generare e archiviare la documentazione del progetto.
+
+**Strumenti:** MkDocs, mkdocs-material.
+
+**Motivazione:** Viene utilizzato `MkDocs` per creare documentazione in formato HTML a partire dai file Markdown presenti nella directory `docs/`. Il tema `mkdocs-material` offre un design moderno per la documentazione. La documentazione generata viene salvata come artefatto della pipeline e pubblicata su GitLab Pages per la consultazione.
+
+**Branch:** Viene eseguito solo sul branch `main` per garantire che la documentazione rifletta lo stato stabile del progetto.
