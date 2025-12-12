@@ -1,0 +1,47 @@
+name: Publish to PyPI on Tag
+
+on:
+  push:
+    tags:
+      - "v*"  # Trigger whenever a version tag is pushed
+
+permissions:
+  contents: read
+  id-token: write  # Needed for OIDC trusted publishing
+
+jobs:
+  publish:
+    name: Build and Publish to TestPyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          TAG_NAME="${GITHUB_REF##*/}"
+          VERSION="${TAG_NAME#v}"  # Strip leading 'v'
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Update pyproject.toml with tag version
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          echo "Setting project version to $VERSION"
+          sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to TestPyPI (trusted publishing)
+        run: uv publish --trusted-publishing always
