@@ -1,0 +1,90 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+
+[dependency-groups]
+dev = ["edison-client[dev]"]
+
+[project]
+authors = [
+    {email = "hello@futurehouse.org", name = "Edison Scientific technical staff"},
+]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python",
+]
+dependencies = [
+    "aiofiles",
+    "cloudpickle",
+    "fhaviary",
+    "google-resumable-media",
+    "httpx",
+    "httpx-aiohttp",
+    "ldp>=0.22.0",
+    "litellm",
+    "openai>=2.7",  # Pin to keep recent
+    "pydantic",
+    "python-dotenv",
+    "requests",
+    "tenacity",
+    "tqdm>=4.62",  # For tqdm.asyncio stdlib consistency
+]
+description = "A client for interacting with endpoints of the Edison Scientific service."
+dynamic = ["version"]
+license = {file = "LICENSE"}
+name = "edison-client"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "edison-client[monitoring,typing]",
+    "ipykernel",
+    "jupyter",
+    "jupyterlab",
+    "mypy",
+    "notebook",
+    "pre-commit",
+    "pylint-per-file-ignores",
+    "pylint-pydantic",
+    "pylint>=4",  # Pin to keep recent
+    "pytest",
+    "pytest-asyncio",
+    "pytest-rerunfailures",
+    "pytest-subtests",
+    "pytest-timeout",
+    "pytest-timer[colorama]",
+    "pytest-xdist",
+    "ruff",
+    "setuptools_scm",
+]
+monitoring = [
+    "newrelic>=11.0.0,<12.0.0",
+]
+typing = [
+    "types-PyYAML",
+    "types-aiofiles",
+    "types-requests",
+    "types-tqdm",
+]
+
+[tool.ruff]
+extend = "../../pyproject.toml"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+root = "../.."
+version_file = "src/edison_client/version.py"
+
+[[tool.uv.index]]
+explicit = true
+name = "testpypi"
+publish-url = "https://test.pypi.org/legacy/"
+url = "https://test.pypi.org/"

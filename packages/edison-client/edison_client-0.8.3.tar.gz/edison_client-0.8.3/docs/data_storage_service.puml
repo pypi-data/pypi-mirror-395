@@ -1,0 +1,39 @@
+@startuml
+title Finch x DSS
+
+actor       User       as user
+participant "Platform" as platform
+participant "Finch" as finch
+participant "Data Storage Service" as dss
+
+alt Running Finch Job
+user -> platform: Upload file
+user <-- platform
+user -> platform: Submit job with query
+platform -> dss: Create DSS \nentry for file uploaded
+platform -> dss: Upload file
+note left: Chunk and push the file to gcs using\npresigned link or push raw content\n(depending on size)
+
+platform -> finch: Create a new finch\njob passing the dss uris in env config
+platform <-- finch: Job in progress
+
+finch -> dss: Download files using dss uris
+note right: These interactions happen\nvia the eds client and fh tools
+finch <-- dss: File downloaded
+finch -> finch: Run analysis
+finch -> finch: Find new files generated during analysis
+finch -> dss: Upload new files
+finch <-- dss: dss entry ids
+finch -> finch: Update environment frame with dss uris
+platform <-- finch: Job complete + environment frame
+user <-- platform: Display job output
+end
+
+alt Downloading Job Output
+user -> platform: Download job output file
+platform -> dss: Get presigned link or raw content
+platform <-- dss: File
+user <-- platform: Download starts
+end
+
+@enduml
