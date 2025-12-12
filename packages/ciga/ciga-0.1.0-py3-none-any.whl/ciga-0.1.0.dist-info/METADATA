@@ -1,0 +1,330 @@
+Metadata-Version: 2.4
+Name: ciga
+Version: 0.1.0
+Summary: Character interaction temporal graph analysis
+Home-page: https://github.com/MediaCompLab/CIGA
+Author: Media Comprehension Lab
+Author-email: shu13@gsu.edu
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pandas
+Requires-Dist: igraph
+Requires-Dist: numpy
+Requires-Dist: tqdm
+Requires-Dist: matplotlib
+Provides-Extra: all
+Requires-Dist: anthropic; extra == "all"
+Requires-Dist: openai; extra == "all"
+Requires-Dist: pyvis>=0.3.0; extra == "all"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: twine>=4.0.2; extra == "dev"
+Provides-Extra: visualization
+Requires-Dist: pyvis>=0.3.0; extra == "visualization"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+![license](https://img.shields.io/github/license/MediaCompLab/CIGA.svg)
+![package](https://github.com/MediaCompLab/CIGA/actions/workflows/python-package.yml/badge.svg?event=push)
+![publish](https://github.com/MediaCompLab/CIGA/actions/workflows/python-publish.yml/badge.svg)
+
+# CIGA: Character Interaction Graph Analyzer
+
+CIGA is a Python package designed for performing graph analysis on social interactions between individuals across time.
+It is a redesign of [CharNet](https://github.com/MediaCompLab/CharNet) using igraph.
+
+- **Github:** https://github.com/MediaCompLab/CIGA
+
+## Simple example
+
+---
+
+```python
+import ciga as cg
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.DataFrame({
+        'Season': [1, 1, 1, 1],
+        'Episode': [1, 1, 1, 1],
+        'Scene': [1, 1, 2, 2],
+        'Line': [1, 2, 1, 2],
+        'Speaker': ['Sheldon', 'Leonard', 'Penny', 'Sheldon'],
+        'Listener': ['Leonard', 'Sheldon', 'Sheldon', 'Penny'],
+        'Words': ['Hello', 'Hi there', 'How are you?', 'Fine, thank you']
+    })
+
+def weight_func(interaction):
+    return 1
+
+position = ('Season', 'Episode', 'Scene', 'Line')
+interactions = cg.prepare_data(data=df,
+                               position=position,
+                               source='Speaker', 
+                               target='Listener', 
+                               interaction='Words')
+
+sub_interactions = cg.segment(interactions, start=(1, 1, 1, 1), end=(2, 1, 1, 1))
+weights = cg.calculate_weights(sub_interactions, weight_func)
+agg_weights = cg.agg_weights(data=weights, 
+                             position=position[:-1], 
+                             agg_func=lambda x: sum(x))
+
+tg = cg.TGraph(data=agg_weights, 
+               position=position[:-1], 
+               directed=False)
+
+graph = tg.get_graph((1, 1, 1))
+fig, ax = plt.subplots()
+cg.iplot(graph, target=ax)
+plt.show()
+
+res = cg.tgraph_degree(tg, weighted=True, w_normalized=False, normalized=True)
+
+res.to_csv('results.csv')
+```
+
+## More Examples
+
+---
+
+### 1. Basic Interaction Graph Creation and Visualization
+
+```python
+import ciga as cg
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Sample interaction data
+data = pd.DataFrame({
+    'Time': [1, 1, 2, 2, 3],
+    'Source': ['Alice', 'Bob', 'Alice', 'Charlie', 'Bob'],
+    'Target': ['Bob', 'Alice', 'Charlie', 'Alice', 'Charlie'],
+    'Interaction': ['talk', 'talk', 'nod', 'talk', 'smile']
+})
+
+# Prepare the data
+position = ('Time',)
+interactions = cg.prepare_data(data, position, source='Source', target='Target', interaction='Interaction')
+
+# Calculate weights (using the length of the interaction as weight)
+weights = cg.calculate_weights(interactions, weight_func=lambda x: len(x))
+
+# Aggregate weights
+agg_weights = cg.agg_weights(weights, position)
+
+# Create a temporal graph
+tg = cg.TGraph(data=agg_weights, position=position, directed=True)
+
+# Get the graph at time step 2
+graph = tg.get_graph(time_point=(2,))
+
+# Visualize the graph
+fig, ax = plt.subplots()
+cg.iplot(graph, target=ax)
+plt.show()
+```
+
+### 2. Centrality Analysis
+
+```python
+import ciga as cg
+import pandas as pd
+
+# ... (using the same 'data' and 'tg' from the previous example)
+
+# Degree centrality
+degree_centrality = cg.tgraph_degree(tg, weighted=True, normalized=True)
+print("Degree Centrality:\n", degree_centrality)
+
+# Betweenness centrality
+betweenness_centrality = cg.tgraph_betweenness(tg, weighted=True, normalized=True)
+print("Betweenness Centrality:\n", betweenness_centrality)
+
+# Closeness centrality
+closeness_centrality = cg.tgraph_closeness(tg, weighted=True, normalized=True)
+print("Closeness Centrality:\n", closeness_centrality)
+
+# Eigenvector centrality
+eigenvector_centrality = cg.tgraph_eigenvector_centrality(tg, weighted=True)
+print("Eigenvector Centrality:\n", eigenvector_centrality)
+```
+
+### 3. Community Detection
+
+```python
+import ciga as cg
+import pandas as pd
+
+# ... (using the same 'data' and 'tg' from the previous example)
+
+# Community detection using Leiden algorithm
+communities = cg.tgraph_community_leiden(tg, weights='weight', resolution=1.0)
+print("Communities:\n", communities)
+```
+
+### 4. Graph Properties
+
+```python
+import ciga as cg
+import pandas as pd
+
+# ... (using the same 'data' and 'tg' from the previous example)
+
+# Graph density over time
+density = cg.tgraph_density(tg)
+print("Density:\n", density)
+
+# Graph transitivity over time
+transitivity = cg.tgraph_transitivity_undirected(tg)
+print("Transitivity:\n", transitivity)
+```
+
+### 5. Using a Custom Weight Function
+
+```python
+import ciga as cg
+import pandas as pd
+from nltk.sentiment import SentimentIntensityAnalyzer
+
+# Sample interaction data with text
+data = pd.DataFrame({
+    'Time': [1, 1, 2, 2, 3],
+    'Source': ['Alice', 'Bob', 'Alice', 'Charlie', 'Bob'],
+    'Target': ['Bob', 'Alice', 'Charlie', 'Alice', 'Charlie'],
+    'Interaction': ['I like you', 'Thanks!', 'This is great', 'Hello', 'Nice to see you']
+})
+
+# Initialize sentiment analyzer
+sid = SentimentIntensityAnalyzer()
+
+# Custom weight function using sentiment analysis
+def custom_weight_func(interaction):
+    return sid.polarity_scores(interaction)['compound']  # Using compound sentiment score as weight
+
+# Prepare the data
+position = ('Time',)
+interactions = cg.prepare_data(data, position, source='Source', target='Target', interaction='Interaction')
+
+# Calculate weights using the custom weight function
+weights = cg.calculate_weights(interactions, weight_func=custom_weight_func)
+
+# Aggregate weights
+agg_weights = cg.agg_weights(weights, position)
+
+# Create a temporal graph
+tg = cg.TGraph(data=agg_weights, position=position, directed=True)
+
+# Get the graph at time step 2
+graph = tg.get_graph(time_point=(2,))
+
+# Visualize the graph
+fig, ax = plt.subplots()
+cg.iplot(graph, target=ax)
+plt.show()
+```
+
+### 6. Inferring Listeners with LLM
+
+```python
+import ciga as cg
+import pandas as pd
+import anthropic
+
+# Sample data with dialogue and scene descriptions
+data = pd.DataFrame({
+    'Season': [1, 1, 1, 1, 1],
+    'Episode': [1, 1, 1, 2, 2],
+    'Scene': [1, 1, 2, 1, 1],
+    'Line': [1, 2, 3, 1, 2],
+    'Speaker': ['Alice', 'Bob', 'Charlie', 'Alice', 'Bob'],
+    'Dialogue': ['Hi Bob', 'Hello Alice', 'Hey everyone', 'Good morning', 'Morning Alice'],
+    'Action': ['Waive hand', 'Smile', '', 'Smile', 'Waive hand'],
+    'Scene_Description': ['In the room', 'In the room', 'In the room', 'In the room', 'In the room']
+})
+
+# Initialize Anthropic client (replace with your API key)
+anthropic_client = anthropic.Anthropic(api_key="YOUR_API_KEY")
+
+# Infer listeners
+inferred_listeners = cg.infer_listeners(data=data,
+                                        position=('Season', 'Episode', 'Scene', 'Line'),
+                                        speaker='Speaker',
+                                        dialogue='Dialogue',
+                                        action='Action',
+                                        scene_description='Scene_Description',
+                                        client=anthropic_client,
+                                        mode='anthropic',
+                                        model='claude-3-5-haiku-latest',
+                                        max_tokens=200,
+                                        gap=0.5)
+
+print("Inferred Listeners:\n", inferred_listeners)
+```
+
+### 7. Visualizing with Pyvis
+
+```python
+import ciga as cg
+import pandas as pd
+
+# ... (using the same 'data' and 'tg' from the previous example)
+
+# Get the graph at time step 2
+graph = tg.get_graph(time_point=(2,))
+
+# Visualize the graph using Pyvis
+cg.pyviz(graph, output_file='interactive_graph.html')
+```
+
+## Install
+
+---
+
+Install the latest version of CIGA:
+
+```bash
+$ pip install ciga
+```
+
+Install with visualization dependencies (for interactive plotting with `pyviz`):
+```bash
+$ pip install ciga[visualization]
+```
+
+Install with all optional dependencies:
+```bash
+$ pip install ciga[all]
+```
+
+**Note:** The `pyviz` function requires `pyvis` as an optional dependency. If you try to use `pyviz` without installing the visualization dependencies, you'll see a helpful error message with installation instructions.
+
+## To Do
+- [x] Add non-directed graph support
+- [x] Add closeness centrality
+- [x] Add Eigenvector centrality
+- [x] Add Leiden community detection
+- [x] Add forgetting simulation
+- [x] Add temporal visualization
+- [ ] Add centrality visualizer (with visualization)
+
+## License
+
+Released under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
+
+```
+Copyright (c) 2024 Media Comprehension Lab
+```
