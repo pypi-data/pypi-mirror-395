@@ -1,0 +1,169 @@
+#!/bin/bash
+#
+#   this creates ORG file, extracts camera features
+#   and takes a snapshot.
+#   also gathers  all other snapshots for the Vendor_model_revision
+#   available in ~/DATA/
+#
+# emacs --batch --eval "(require 'org)" 13d3_56cb_1862.org --funcall org-html-export-to-html
+
+
+PORT=0
+
+if nc -w1 -z 127.0.0.1 8000; then
+    echo "Port 8000 is listening"
+    PORT=8000
+else
+    if nc -w1 -z 127.0.0.1 5000; then
+	echo "Port 5000 is listening"
+	PORT=5000
+    else
+	echo "NO Port 5000 nor 8000 is listening"
+    fi
+fi
+
+if [ "$PORT" = "0" ]; then
+    exit 0
+fi
+
+
+cd $HOME/DATA
+
+
+#PORT=5000
+#PORT=8000
+VIDEO=/dev/video0
+
+V=`sudo udevadm info --query=all $VIDEO | grep VENDOR_ID | sed -e "s/.*=//"`
+
+M=`sudo udevadm info --query=all $VIDEO | grep MODEL_ID | sed -e "s/.*=//"`
+
+N=`sudo udevadm info --query=all $VIDEO | grep ID_SERIAL= | sed -e "s/.*=//"`
+
+R=`sudo udevadm info --query=all $VIDEO | grep ID_REVISION= | sed -e "s/.*=//"`
+
+echo $V:$M:$R
+echo ... $N
+
+
+FILE="${V}_${M}_${R}".org
+FILEVN="${V}_${M}_${R}"
+# screenshots
+FILEJPG="${V}_${M}_${R}".jpg
+
+echo "* CAMERA DETAILS " > $FILE
+
+echo "/"`date`"/" >> $FILE
+
+
+echo " " >> $FILE
+
+
+echo " - NAME:" "*$N*" >> $FILE
+
+echo " - lsusb: " `lsusb | grep $V | grep $M | cut -d " " -f 6-19` >> $FILE
+
+echo " - V-M-R: " $V $M $R >> $FILE
+
+echo " - Price: " >> $FILE
+
+echo " - Controls: " `v4l2-ctl -l -d $VIDEO  | wc -l`  >> $FILE
+
+echo "   - AE -> "  `v4l2-ctl -l -d $VIDEO  | grep auto | grep exposure | sed -e "s/\s\+//" | cut -d " " -f 1` >> $FILE
+
+echo "   - Gi -> "  `v4l2-ctl -l -d $VIDEO  | grep gain  | sed -e "s/\s\+//" | cut -d " " -f 1` >> $FILE
+
+echo "   - Gm -> "  `v4l2-ctl -l -d $VIDEO  | grep gamma  | sed -e "s/\s\+//" | cut -d " " -f 1` >> $FILE
+
+echo " "  >> $FILE
+
+
+echo "-------" >> $FILE
+
+
+
+echo "** Look:" >> $FILE
+
+echo " " >> $FILE
+
+echo "#+ATTR_HTML: :width 640 :height 480" >> $FILE
+echo " [[file:$FILEJPG]] " >> $FILE
+
+echo " " >> $FILE
+
+
+echo "-------" >> $FILE
+
+
+echo "** Controls detailed "  >> $FILE
+
+echo " "  >> $FILE
+
+echo "#+begin_example"  >> $FILE
+v4l2-ctl -l -d $VIDEO >> $FILE
+echo "#+end_example"  >> $FILE
+
+echo " "  >> $FILE
+
+echo " "  >> $FILE
+
+
+
+echo "-------" >> $FILE
+
+
+
+echo "** Example captures: " >> $FILE
+
+echo " " >> $FILE
+
+
+#now=`hostname`_`date +"%Y%m%d_%H%M%S"`
+now=${FILEVN}_`date +"%Y%m%d_%H%M%S"`
+
+# curl -X POST -F 'savebg=SAVEBG' http://127.0.0.1:$PORT/cross > /dev/null
+curl -X POST -F 'saveim=SAVEIM' http://127.0.0.1:$PORT/cross > /dev/null
+echo ... curled for new IM ... sleeping 4 sec.
+sleep 4
+#BGFILE=$HOME/.config/flashcam/background.jpg
+BGFILE=$HOME/DATA/camera_screenshot.jpg
+ls -l $BGFILE
+
+cp  $BGFILE   $HOME/DATA/$now.jpg
+echo ... copied to $now.jpg
+ls -l $now.jpg
+echo ... bg is solved...
+
+# Avoid doubling
+### echo " [[file:$now.jpg]] " >> $FILE
+
+#cp  ${FILEVN}_*.jpg $HOME/DATA/
+
+ls -1t ${FILEVN}_*.jpg |  sed -e "s/^/  [[file:/" | sed -e "s/$/]]  /" >> $FILE
+
+
+# SKIP AND BAR in pdf and html
+
+echo " " >> $FILE
+echo "#+BEGIN_EXPORT html"  >> $FILE
+echo '<div style="height: 10px;"></div>'  >> $FILE
+echo "#+END_EXPORT"  >> $FILE
+
+echo "-------" >> $FILE
+echo " " >> $FILE
+
+
+echo "/Created by: "`hostname`"/" >> $FILE
+
+echo ____________________________________________________
+
+ls -l  $FILE
+
+#cp $FILE  $HOME/DATA/
+
+# emacs --batch --eval "(require 'org)" 13d3_56cb_1862.org --funcall org-html-export-to-html
+
+which pandoc
+if [ "$?" = "0" ]; then
+    pandoc $FILE > $FILEVN.html
+fi

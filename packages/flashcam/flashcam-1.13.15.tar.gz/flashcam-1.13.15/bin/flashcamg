@@ -1,0 +1,40 @@
+#!/bin/bash
+
+echo $PWD
+sleep 1
+SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+echo ...  script path:
+echo $SCRIPTPATH
+sleep 1
+
+
+cd $SCRIPTPATH
+echo $PWD
+
+cd ../lib
+if [ "$?" != "0" ]; then
+    echo X... problem with lib path
+    exit 1
+fi
+
+# list all python versions, problem 3.8  and  3.10 have bad name sort
+# i use -1tr to select the latest
+PY=`ls -1tr | grep python3 | tail -1`
+echo ... python path:
+cd $PY
+echo $PWD
+
+echo ... site packages path:
+cd site-packages
+echo $PWD
+
+echo .... entering flashcam.:
+cd flashcam
+echo $PWD
+
+# 30sec for pi3b with ubuntu server 22
+
+# OLD WAY WOTKS, BUT 115 threads....
+#gunicorn --threads 5  -w 1 -b 0.0.0.0:8000  --timeout 30 web:app
+# new test way...
+gunicorn --threads=5  --workers=1 -b 0.0.0.0:8000  --timeout=40 web:app
