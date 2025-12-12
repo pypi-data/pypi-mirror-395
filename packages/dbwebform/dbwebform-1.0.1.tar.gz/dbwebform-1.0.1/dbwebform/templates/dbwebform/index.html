@@ -1,0 +1,27 @@
+{% extends 'dbwebform/base.html' %}
+
+{% block content %}
+    {% block index_pre_content %}{% endblock %}
+	<form method="post" class="form">
+        {{ form.as_p() }}
+        <button class="btn btn-hren" type="submit">Подтвердить</button>
+    </form>
+    {% block index_post_content %}{% endblock %}
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="https://magilyasdoma.github.io/hrenpack_js/notifications.js"></script>
+	<script>
+        const form = document.querySelector('.form');
+        const notification_text = "{{ notification_text }}", method = "{{ request.method }}"
+        input_form_control_unline(form);
+        formInputReversed(form);
+
+        if (notification_text && method === "POST") {
+            const notification = new HyperTextNotification({ backgroundColor: 'rgba(192,0,192,0.8)' })
+            notification.show(notification_text)
+        }
+    </script>
+    {% block index_scripts %}{% endblock %}
+{% endblock %}
+
