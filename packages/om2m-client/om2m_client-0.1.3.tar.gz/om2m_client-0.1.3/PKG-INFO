@@ -1,0 +1,440 @@
+Metadata-Version: 2.4
+Name: om2m-client
+Version: 0.1.3
+Summary: A client for interacting with OM2M CSE, compatible with CPython and MicroPython.
+Home-page: https://github.com/SCRCE/micropython-om2m-client
+Author: Ahmad Hammad, Omar Hourani
+Author-email: Ahmad.Hammad@ieee.com, Omar.Hourani@ieee.org
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: MicroPython
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: summary
+
+# om2m-client
+
+[![PyPI version](https://img.shields.io/pypi/v/om2m-client.svg)](https://pypi.org/project/om2m-client/)
+[![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+
+A **MicroPython and Python** client library for interacting with [OM2M](https://www.eclipse.org/om2m/) (Open Middleware for applications in the Internet of Things).  
+This library simplifies the creation and retrieval of **oneM2M** resources (AEs, Containers, ContentInstances, Subscriptions) on an OM2M CSE (Common Service Entity).
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Installation](#installation)
+   - [CPython (Regular Python 3)](#installation-on-cpython)
+   - [MicroPython](#installation-on-micropython)
+4. [Quick Start](#quick-start)
+5. [Usage](#usage)
+   - [Creating and Retrieving Resources](#creating-and-retrieving-resources)
+   - [Retrieving Latest Data](#retrieving-latest-data)
+   - [Retrieving All Data from a Device](#retrieving-all-data-from-a-device)
+   - [Replication (CPython Only)](#replication-cpython-only)
+6. [Library Structure](#library-structure)
+7. [MicroPython vs CPython Differences](#micropython-vs-cpython-differences)
+8. [Contributing](#contributing)
+9. [Citation](#citation)
+10. [License](#license)
+11. [Authors & Contact](#authors--contact)
+
+---
+
+## Overview
+
+[oneM2M](https://www.onem2m.org/) is a global standards initiative for Machine-to-Machine (M2M) and Internet of Things (IoT) technologies. [OM2M](https://www.eclipse.org/om2m/) is an open-source implementation of the oneM2M architecture, providing RESTful resources for IoT devices and applications.
+
+The **`om2m-client`** library enables developers to:
+
+- Create **Application Entities (AEs)** in an OM2M Infrastructure Node (IN).
+- Create **Containers** within those AEs.
+- Post **ContentInstances (CIN)** to store sensor data or device states.
+- Subscribe to notifications via **Subscriptions**.
+- Retrieve or list AEs, Containers, and ContentInstances from the CSE.
+
+Designed to run on:
+
+- **MicroPython** (for constrained devices like ESP32).
+- **CPython** (for Middle Nodes (MNs) and general use).
+
+---
+
+## Features
+
+- **Lightweight**: Utilizes `urequests`/`ujson` for MicroPython and `requests`/`json` for CPython.
+- **OneM2M Resource Management**:
+  - **Application Entity (AE)**
+  - **Container (CNT)**
+  - **ContentInstance (CIN)**
+  - **Subscription (SUB)**
+- **Resource Retrieval**: Fetch resources in JSON or XML format (JSON is default).
+- **Latest Content Retrieval**: Helper functions to obtain the **latest** sensor reading for each device.
+- **Comprehensive**: Covers most typical CRUD operations in OM2M.
+- **Partial Replication** (CPython only): Functionality to replicate AEs and data to another OM2M instance.
+
+---
+
+## Installation
+
+### Installation on CPython
+
+Install the library using `pip`:
+
+```bash
+pip install om2m-client
+```
+
+- **Requirements**:
+  - **Python 3.6+** (tested with Python 3.7, 3.8, 3.9).
+  - **requests** library (automatically installed as a dependency).
+
+### Installation on MicroPython
+
+Since MicroPython does **not** utilize `setup.py` or PyPI in the traditional sense, installation involves manually transferring the necessary files or using the `mip` package manager.
+
+#### Method 1: Manual Copy
+
+1. **Copy the `om2m_client` Package**:
+   - Transfer the `om2m_client` directory (containing `client.py`, `models.py`, `exceptions.py`, etc.) to your MicroPython device using tools like `mpremote`, `ampy`, or `rshell`.
+
+2. **Ensure Dependencies are Available**:
+   - **`urequests`**: Many MicroPython firmware images include `urequests` by default. If not, download and transfer `urequests.py` to your device.
+   - **`ujson`**: Typically included in MicroPython firmware. If missing, download and transfer `ujson.py`.
+
+#### Method 2: Using `mip` (MicroPython Package Manager)
+
+1. **Create a `requirements.txt` File**:
+
+   ```text
+   micropython-urequests
+   micropython-ujson
+   ```
+
+2. **Install Dependencies via `mip`**:
+
+   ```bash
+   mip install -r requirements.txt
+   ```
+
+3. **Transfer the `om2m_client` Package**:
+   - Similar to Method 1, ensure the `om2m_client` directory is on your MicroPython device.
+
+> **Note**: The standard `pip` or `setup.py` mechanism does **not** typically work on microcontrollers.
+
+---
+
+## Quick Start
+
+This example demonstrates how to use `om2m-client` in **either** Python or MicroPython environments.
+
+```python
+from om2m_client import OM2MClient, AE, Container, ContentInstance
+
+# 1) Instantiate the OM2MClient
+client = OM2MClient(
+    base_url="http://localhost:8282",  # OM2M base URL
+    cse_id="mn-cse",
+    cse_name="mn-name",
+    username="admin",
+    password="admin",
+    use_json=True
+)
+
+# 2) Create an AE
+ae = AE(rn="myDeviceAE", api="app-sample", rr=False, lbl=["test-device"])
+ae_location = client.create_ae(ae)
+print("Created AE at:", ae_location)
+
+# 3) Create a Container under that AE
+container_path = f"{client.cse_id}/{client.cse_name}/myDeviceAE"
+container = Container(rn="DATA", lbl=["sensor/data"])
+cnt_location = client.create_container(container_path, container)
+print("Created Container at:", cnt_location)
+
+# 4) Create a ContentInstance (sensor reading)
+cin_path = f"{client.cse_id}/{client.cse_name}/myDeviceAE/DATA"
+temperature_cin = ContentInstance(cnf="application/json", con='{"temperature": 23}')
+cin_location = client.create_content_instance(cin_path, temperature_cin)
+print("Created ContentInstance at:", cin_location)
+
+# 5) Retrieve the latest data
+latest = client.retrieve_latest_data("myDeviceAE", "DATA")
+print("Latest data from 'myDeviceAE':", latest)
+```
+
+---
+
+## Usage
+
+### Creating and Retrieving Resources
+
+#### 1. Application Entity (AE)
+
+```python
+from om2m_client import OM2MClient, AE
+
+client = OM2MClient(
+    base_url="http://localhost:8282",
+    cse_id="mn-cse",
+    cse_name="mn-name",
+    username="admin",
+    password="admin",
+    use_json=True
+)
+
+ae = AE(rn="MyAE", api="my-api", rr=False, lbl=["test-device"])
+ae_location = client.create_ae(ae)
+print("Created AE at:", ae_location)
+```
+
+#### 2. Container (CNT)
+
+```python
+from om2m_client import Container
+
+parent_path = "mn-cse/mn-name/MyAE"
+container = Container(rn="DATA", lbl=["sensor/data"])
+cnt_location = client.create_container(parent_path, container)
+print("Created Container at:", cnt_location)
+```
+
+#### 3. ContentInstance (CIN)
+
+```python
+from om2m_client import ContentInstance
+import json
+
+cin_path = "mn-cse/mn-name/MyAE/DATA"
+cin = ContentInstance(cnf="application/json", con=json.dumps({"temperature": 25}))
+cin_location = client.create_content_instance(cin_path, cin)
+print("Created ContentInstance at:", cin_location)
+```
+
+#### 4. Subscription (SUB)
+
+```python
+from om2m_client import Subscription
+
+sub_path = "mn-cse/mn-name/MyAE"
+subscription = Subscription(rn="mySubscription", nu="http://notify-endpoint", nct=2)
+sub_location = client.create_subscription(sub_path, subscription)
+print("Created Subscription at:", sub_location)
+```
+
+### Retrieving Latest Data
+
+Retrieve the **latest** `ContentInstance` for a given AE and Container (`DATA` by default):
+
+```python
+latest_cin = client.retrieve_latest_data(device_name="MyAE", container_name="DATA")
+print("Latest ContentInstance:", latest_cin)
+```
+
+### Retrieving All Data from a Device
+
+Retrieve **all** `ContentInstances` from a container and obtain a minimal JSON structure:
+
+```python
+all_data = client.retrieve_all_content_instances_minimal(device_name="MyAE", container_name="DATA")
+print("All ContentInstances:", all_data)
+```
+
+### Replication (CPython Only)
+
+**Note**: The replication function is **not** available in MicroPython. Attempting to use it in MicroPython will raise a `NotImplementedError`.
+
+```python
+import sys
+from om2m_client import OM2MClient
+
+# Ensure the environment is CPython
+if sys.implementation.name != "micropython":
+    source_client = OM2MClient(
+        base_url="http://source-host:8282",
+        cse_id="mn-cse",
+        cse_name="mn-name",
+        username="admin",
+        password="admin",
+        use_json=True
+    )
+    
+    target_client = OM2MClient(
+        base_url="http://target-host:8282",
+        cse_id="mn-cse",
+        cse_name="mn-name",
+        username="admin",
+        password="admin",
+        use_json=True
+    )
+    
+    # Retrieve all data from the source AE
+    source_data = source_client.retrieve_all_content_instances_minimal(device_name="MyAE")
+    
+    # Replicate data to the target client
+    source_client.replicate_ae_data_from_minimal(
+        minimal_data=source_data,
+        target_client=target_client,
+        container_name="DATA2"
+    )
+```
+
+---
+
+## Library Structure
+
+```
+om2m_client/
+├── client.py            # Core OM2MClient class with CRUD methods
+├── models.py            # Resource classes (AE, Container, ContentInstance, Subscription)
+├── exceptions.py        # Custom exceptions (OM2MRequestError, etc.)
+├── __init__.py          # Makes the folder a package
+└── ... (additional files, if needed)
+```
+
+### Notable Files
+
+- **`client.py`**  
+  Contains the `OM2MClient` class, providing CRUD functions for **AE, Container, CIN, Subscription**, and helper methods (e.g., retrieving the latest data).
+
+- **`models.py`**  
+  Defines simple Python classes (`AE`, `Container`, `ContentInstance`, `Subscription`) to store resource attributes in a structured manner.
+
+- **`exceptions.py`**  
+  Provides custom exception classes for enhanced error handling.
+
+---
+
+## MicroPython vs CPython Differences
+
+1. **Imports**:
+   - **MicroPython**: Uses `urequests` and `ujson`.
+   - **CPython**: Uses `requests` and `json`.
+   
+2. **Replication Function**:
+   - **MicroPython**: `replicate_ae_data_from_minimal` is **not implemented** and will raise a `NotImplementedError`.
+   - **CPython**: Fully functional, allowing replication of AEs and data to another OM2M instance.
+
+3. **JSON Indentation**:
+   - **MicroPython’s `ujson`** does not support `indent`. The library includes fallbacks to produce minimal JSON when running on MicroPython.
+
+4. **Setup Tools**:
+   - **MicroPython**: Does not support `pip install .` or typical `setup.py` usage. Manual file transfers or `mip` are required.
+   - **CPython**: Supports standard `pip` and `setup.py` installations.
+
+---
+
+## Contributing
+
+Contributions are welcome! To contribute to the `om2m-client` project, follow these steps:
+
+1. **Fork the Repository**  
+   Fork the [GitHub repository](https://github.com/SCRCE/micropython-om2m-client) to your own account.
+
+2. **Clone Your Fork**  
+   ```bash
+   git clone https://github.com/<your-username>/micropython-om2m-client.git
+   cd micropython-om2m-client
+   ```
+
+3. **Create a New Branch**  
+   Create a branch for your feature or bug fix:
+   ```bash
+   git checkout -b feature/my-awesome-update
+   ```
+
+4. **Make Your Changes**  
+   Implement your feature or fix the bug. Ensure your code follows the project's coding standards.
+
+5. **Commit Your Changes**  
+   ```bash
+   git commit -m "Add feature X or fix bug Y"
+   ```
+
+6. **Push to Your Fork**  
+   ```bash
+   git push origin feature/my-awesome-update
+   ```
+
+7. **Open a Pull Request**  
+   Navigate to your fork on GitHub and open a pull request against the main repository.
+
+### Guidelines
+
+- **Code Quality**: Ensure your code is clean, well-documented, and follows PEP 8 guidelines.
+- **Testing**: Add or update tests to cover your changes.
+- **Documentation**: Update the README or other documentation as necessary.
+- **Issue Tracking**: If you're addressing an existing issue, reference it in your pull request.
+
+We appreciate your contributions—whether it's bug reports, feature requests, or code improvements!
+
+---
+
+## Citation
+
+If you use this package in your research or project, please cite the following paper:
+
+**Decentralizing OM2M: A Self-Sustaining, Lightweight, and Scalable IoT Platform Deployment**
+
+**Authors:**  
+Ahmad Hammad¹, Omar Hourani², Anastassia Gharib², Omar Qawasmeh³
+
+**Affiliations:**  
+¹Software Engineering Department, Princess Sumaya University for Technology, Amman, Jordan  
+²Communications Engineering Department, Princess Sumaya University for Technology, Amman, Jordan  
+³Data Science & Artificial Intelligence Department, Princess Sumaya University for Technology, Amman, Jordan
+
+**Contact:**  
+Ahmad.Hammad@ieee.org, Omar.Hourani@ieee.org, A.Gharib@psut.edu.jo, O.Alqawasmeh@psut.edu.jo
+
+---
+
+## License
+
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)** license.
+
+### **You are free to:**
+
+- **Share**: Copy and redistribute the material in any medium or format.
+- **Adapt**: Remix, transform, and build upon the material.
+
+### **Under the following terms:**
+
+- **Attribution**: You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+- **NonCommercial**: You may not use the material for commercial purposes.
+
+For full license details, visit [https://creativecommons.org/licenses/by-nc/4.0/](https://creativecommons.org/licenses/by-nc/4.0/).
+
+---
+
+## Authors & Contact
+
+- **Ahmad Hammad**  
+  Email: [ahmadhammad.uca@gmail.com](mailto:Ahmad.Hammad@ieee.org)
+
+- **Omar Hourani**  
+  Email: [omar.hourani@ieee.org](mailto:Omar.Hourani@ieee.org)
+
+GitHub: [SCRCE/micropython-om2m-client](https://github.com/SCRCE/micropython-om2m-client)
+
+> Feedback, bug reports, and feature requests are always welcome!  
+> Feel free to open an issue or submit a pull request on GitHub.
+
+---
+
+Enjoy building IoT solutions with **OM2M** and **MicroPython** (or CPython). Happy coding!
