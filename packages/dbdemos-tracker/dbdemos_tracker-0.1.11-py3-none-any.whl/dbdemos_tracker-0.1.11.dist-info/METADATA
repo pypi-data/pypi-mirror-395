@@ -1,0 +1,279 @@
+Metadata-Version: 2.1
+Name: dbdemos-tracker
+Version: 0.1.11
+Summary: A tracking library for Databricks demo analytics.
+Home-page: https://github.com/databricks-field-eng/dbdemos-tracker
+Author: Databricks
+Author-email: quentin.ambard@databricks.com
+License: Databricks license
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests >=2.25.0
+Requires-Dist: databricks-sdk >=0.8.0
+Provides-Extra: dev
+Requires-Dist: fastapi >=0.68.0 ; extra == 'dev'
+Requires-Dist: pytest >=6.0 ; extra == 'dev'
+Requires-Dist: pytest-cov >=2.0 ; extra == 'dev'
+Requires-Dist: black >=21.0 ; extra == 'dev'
+Requires-Dist: flake8 >=3.8 ; extra == 'dev'
+Provides-Extra: test
+Requires-Dist: pytest >=6.0 ; extra == 'test'
+Requires-Dist: pytest-cov >=2.0 ; extra == 'test'
+Requires-Dist: fastapi >=0.68.0 ; extra == 'test'
+Requires-Dist: httpx >=0.24.0 ; extra == 'test'
+
+# dbdemos-tracker
+
+A Python library for tracking your asset usage among bricksters.
+This will filter and collect actions on @databricks.com emails only (used by dbdemos among other)
+
+The data is synched on logfood (soon in opal self service).
+
+Data is aggregated at team level, we're anonymizing the report and not tracking individual.
+
+## Installation
+
+Add dbdemos-tracker in your requirements.txt or equivalent:
+
+```bash
+pip install dbdemos-tracker
+```
+
+## Usage
+
+### App Name
+
+Please use your repository name as app name so that we can easily match the demo.
+
+### Demo Catalog ID
+
+If your demo is part of the Demo Catalog, you can track which catalog entry users are coming from by providing a `demo_catalog_id`. This helps understand how demos are discovered and accessed.
+
+To get your `demo_catalog_id`, visit [go/demo-catalog](https://go/demo-catalog) or reach out to Quentin or Cal.
+
+```python
+from dbdemos_tracker import Tracker
+from databricks.sdk import WorkspaceClient
+
+ws = WorkspaceClient()
+
+# Initialize tracker with demo_catalog_id
+tracker = Tracker(
+    org_id=ws.get_workspace_id(),
+    demo_name="my-demo-app",
+    demo_catalog_id="your-catalog-id"
+)
+
+# All subsequent track_app_view calls will include the demo_catalog_id
+tracker.track_app_view(user_email="user@databricks.com", app_path="/dashboard")
+```
+
+### Fast API example
+
+#### FastAPI Middleware (recommended, easiest way if you're using FastAPI backend)
+We provide a tool to track all app views out of the box.
+
+Note: Try to filter on the main actions so that we don't have too many views using `patterns=["/my/.*/url/to/track", "..."]`
+
+```python
+from fastapi import FastAPI
+from dbdemos_tracker import Tracker
+
+# Create FastAPI app
+app = FastAPI(title="My Demo App")
+
+# Add tracking middleware - this will track ALL requests automatically
+Tracker.add_tracker_fastapi(app, "app-name")
+# Or alternatively, you can filter to only track some URLs using the patterns arg:
+Tracker.add_tracker_fastapi(app, "app-name", patterns=['/', '/demos/.*/load'])
+# With demo_catalog_id (from go/demo-catalog):
+Tracker.add_tracker_fastapi(app, "app-name", demo_catalog_id="catalog-123")
+
+# Then all your API endpoints will be tracked out of the box (no need to change them)
+@app.get("/")
+def home():
+    return {"message": "Welcome to my demo app"}
+
+```
+
+### Manual tracking with FastAPI
+Use this if you want to track a single backend API call
+
+```python
+from dbdemos_tracker import Tracker
+from fastapi import FastAPI, Request
+from databricks.sdk import WorkspaceClient
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+app = FastAPI(title="Databricks App with Tracking")
+
+# Create tracker for app - Use your repo name as app name
+ws = WorkspaceClient()
+tracker = Tracker(org_id=ws.get_workspace_id(), demo_name="app-name-use-repo-name")
+
+# Track app views in functions
+@app.get("/")
+def home(request: Request):
+    user_email = request.headers.get("X-Forwarded-Email")
+    path = request.url.path
+    if user_email:
+        try:
+            tracker.track_app_view(user_email=user_email, app_path=path)
+        except Exception as e:
+            logger.warning(f"Tracking error: {e}")
+    # ... Then add your custom implementation
+    return {"message": "Welcome to my demo app"}
+```
+
+## Manual App Usage Tracking
+
+Use this to track classic, non databricks apps (you'll have to figure out the user email somehow)
+
+```python
+from dbdemos_tracker import Tracker
+
+# Create tracker for app - Use your repo name as app name
+ws = WorkspaceClient()
+tracker = Tracker(org_id=ws.get_workspace_id(), demo_name="app-name")
+
+# Track app views in functions
+@app.get("/dashboard")
+def home():
+    #Get the user email from your app
+    user_email="user@databricks.com"
+    tracker.track_app_view(user_email=user_email, app_path="/dashboard")
+    return {"message": "Welcome to my demo app"}
+```
+
+
+## Flask Example
+
+### Databricks App Usage Tracking example with Flask backend
+
+```python
+from flask import Flask, request, jsonify
+from databricks.sdk import WorkspaceClient
+from dbdemos_tracker import Tracker
+import logging
+
+app = Flask(__name__)
+logger = logging.getLogger(__name__)
+
+ws = WorkspaceClient()
+tracker = Tracker(org_id=ws.get_workspace_id(), demo_name="app-name")
+
+@app.route("/", methods=["GET"])
+def home():
+    user_email = request.headers.get("X-Forwarded-Email")
+    path = request.path
+    if user_email:
+        try:
+            tracker.track_app_view(user_email=user_email, app_path=path)
+        except Exception as e:
+            logger.warning(f"Tracking error: {e}")
+    return jsonify({"message": "Welcome to my demo app"})
+```
+
+### Streamlit Integration
+
+**Initialize Tracker (call once at the top of your app):**
+```python
+import streamlit as st
+from dbdemos_tracker import Tracker
+
+# Initialize tracker - only runs once per session
+Tracker.setup_streamlit_tracker("app-name")
+```
+
+**Track Page Views (Required for all pages):**
+
+Every page in your Streamlit app should call the tracker with the appropriate page path. The tracker automatically retrieves the user email from Databricks App headers (`X-Forwarded-Email`).
+
+```python
+# In your main app or each page file
+import streamlit as st
+from dbdemos_tracker import Tracker
+
+# Initialize tracker first
+Tracker.setup_streamlit_tracker("my-demo-app")
+
+# Track the current page view
+Tracker.track_streamlit_event("/home")
+
+st.title("Home Page")
+# ... page content
+```
+
+**Multi-page App Example:**
+```python
+# pages/dashboard.py
+import streamlit as st
+from dbdemos_tracker import Tracker
+
+Tracker.setup_streamlit_tracker("my-demo-app")
+Tracker.track_streamlit_event("/dashboard")
+
+st.title("Dashboard")
+# ... dashboard content
+```
+
+```python
+# pages/settings.py
+import streamlit as st
+from dbdemos_tracker import Tracker
+
+Tracker.setup_streamlit_tracker("my-demo-app")
+Tracker.track_streamlit_event("/settings")
+
+st.title("Settings")
+# ... settings content
+```
+
+**With Demo Catalog ID:**
+```python
+# Initialize with demo_catalog_id (from go/demo-catalog)
+Tracker.setup_streamlit_tracker("my-demo-app", demo_catalog_id="catalog-123")
+
+# All track_streamlit_event calls will automatically include the demo_catalog_id
+Tracker.track_streamlit_event("/dashboard")
+```
+
+## Configuration
+
+### Disable Tracking
+
+```python
+# Disable tracking globally
+Tracker.enable_tracker = False
+
+# Re-enable when needed
+Tracker.enable_tracker = True
+```
+
+### Email Filtering
+
+The tracker automatically filters emails to only track Databricks email addresses (`@databricks.com`). Non-Databricks emails are ignored for privacy.
+
+### Test Workspace
+
+Tracking is automatically disabled for test workspace ID `1660015457675682`.
+
+## Features
+
+- Track demo usage analytics
+- Configurable tracking enable/disable
+- Automatic Databricks email filtering
+- Error handling with timeout protection
+- FastAPI middleware for automatic request tracking
+- Streamlit integration for app interaction tracking
+- Support for both notebook and app path tracking
+- User hash generation for privacy
+
+## License
+
+Databricks License 
