@@ -1,0 +1,99 @@
+"""{{ PROJECT_DESCRIPTION }}."""
+
+import os
+from pathlib import Path
+
+from chapkit import BaseConfig
+from chapkit.api import AssessedStatus, MLServiceBuilder, MLServiceInfo
+from chapkit.artifact import ArtifactHierarchy
+from chapkit.ml import ShellModelRunner
+
+
+class {{ PROJECT_SLUG.replace('_', ' ').title().replace(' ', '') }}Config(BaseConfig):
+    """Configuration for {{ PROJECT_NAME }}."""
+
+    # Add your model-specific parameters here
+    # Config fields can be accessed by external scripts via config.yml
+    # For example:
+    # min_samples: int = 5
+    # model_type: str = "linear_regression"
+
+
+# Create shell-based runner with command templates
+# The runner copies the entire project directory to an isolated workspace
+# and executes commands with the workspace as the current directory.
+# This allows scripts to use relative paths and imports.
+#
+# Variables will be substituted with actual file paths at runtime:
+#   {data_file} - Training data CSV
+#   {historic_file} - Historic data CSV
+#   {future_file} - Future data CSV
+#   {output_file} - Predictions CSV
+#   {geo_file} - Optional GeoJSON file (if provided)
+#
+# Files available in workspace (scripts can access directly):
+#   config.yml - YAML config (always available)
+#   model.pickle - Model file (create/use as needed)
+
+# Training command template (using relative path to script)
+train_command = "python scripts/train_model.py --data {data_file}"
+
+# Prediction command template (using relative path to script)
+predict_command = (
+    "python scripts/predict_model.py "
+    "--historic {historic_file} "
+    "--future {future_file} "
+    "--output {output_file}"
+)
+
+# Create shell model runner
+runner: ShellModelRunner[{{ PROJECT_SLUG.replace('_', ' ').title().replace(' ', '') }}Config] = ShellModelRunner(
+    train_command=train_command,
+    predict_command=predict_command,
+)
+
+# Create ML service info with metadata
+info = MLServiceInfo(
+    display_name="{{ PROJECT_NAME }}",
+    version="1.0.0",
+    summary="{{ PROJECT_DESCRIPTION }}",
+    description="Shell-based ML service using external scripts for train/predict. Scripts can be implemented in any language (Python, R, Julia, etc.)",
+    author="Your Name",
+    author_assessed_status=AssessedStatus.yellow,
+    contact_email="your.email@example.com",
+)
+
+# Create artifact hierarchy for ML artifacts
+HIERARCHY = ArtifactHierarchy(
+    name="{{ PROJECT_SLUG }}",
+    level_labels={0: "ml_training", 1: "ml_prediction"},
+)
+
+# Database configuration
+# Uses environment variable or defaults to data/chapkit.db
+# Creates data directory if it doesn't exist
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///data/chapkit.db")
+if DATABASE_URL.startswith("sqlite") and ":///" in DATABASE_URL:
+    db_path = Path(DATABASE_URL.split("///")[1])
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+# Build the FastAPI application
+app = (
+    MLServiceBuilder(
+        info=info,
+        config_schema={{ PROJECT_SLUG.replace('_', ' ').title().replace(' ', '') }}Config,
+        hierarchy=HIERARCHY,
+        runner=runner,
+        database_url=DATABASE_URL,
+    )
+{% if WITH_MONITORING %}
+    .with_monitoring()
+{% endif %}
+    .build()
+)
+
+
+if __name__ == "__main__":
+    from chapkit.api import run_app
+
+    run_app("main:app")
