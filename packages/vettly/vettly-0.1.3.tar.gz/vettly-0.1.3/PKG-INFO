@@ -1,0 +1,150 @@
+Metadata-Version: 2.4
+Name: vettly
+Version: 0.1.3
+Summary: Python SDK for Vettly content moderation API
+Project-URL: Homepage, https://vettly.dev
+Project-URL: Documentation, https://docs.vettly.dev
+Project-URL: Repository, https://github.com/nextauralabs/vettly
+Project-URL: Issues, https://github.com/nextauralabs/vettly/issues
+Project-URL: Source Code, https://github.com/nextauralabs/vettly
+Project-URL: Bug Tracker, https://github.com/nextauralabs/vettly/issues
+Author-email: Nextura Labs <support@vettly.dev>
+Maintainer-email: Nextura Labs <support@vettly.dev>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: ai,api,content-moderation,machine-learning,moderation,safety,sdk
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.8
+Requires-Dist: httpx>=0.24.0
+Requires-Dist: pydantic>=2.0.0
+Provides-Extra: async
+Requires-Dist: httpx[http2]>=0.24.0; extra == 'async'
+Provides-Extra: dev
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-httpx>=0.21.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# vettly
+
+Content moderation that just works. One API for text, images, and video.
+
+## Installation
+
+```bash
+pip install vettly
+```
+
+## Quick Start
+
+```python
+from vettly import Vettly
+
+client = Vettly('sk_live_...')
+
+result = client.check(
+    content='User-generated text',
+    policy='community-safe'
+)
+
+if result.action == 'block':
+    # Content blocked
+    pass
+```
+
+## Get Your API Key
+
+1. Sign up at [vettly.dev](https://vettly.dev)
+2. Go to Dashboard → API Keys
+3. Create and copy your key
+
+## Features
+
+- **Text, images, video** - One unified API for all content types
+- **Custom policies** - Define thresholds in YAML
+- **Webhooks** - Get notified when content is flagged
+- **Dashboard** - Monitor decisions and export logs
+- **Deterministic** - Same input, same output, every time
+
+## Response Format
+
+```python
+{
+    "action": "block",
+    "categories": {
+        "hate": 0.91,
+        "harassment": 0.08,
+        "violence": 0.12
+    },
+    "flags": ["hate"],
+    "latency_ms": 147
+}
+```
+
+## Image Moderation
+
+```python
+result = client.check_image(
+    url='https://example.com/image.jpg',
+    policy='strict'
+)
+```
+
+## Async Support
+
+```python
+from vettly import AsyncVettly
+
+async with AsyncVettly('sk_live_...') as client:
+    result = await client.check(
+        content='User content',
+        policy='community-safe'
+    )
+```
+
+## FastAPI Example
+
+```python
+from fastapi import FastAPI, HTTPException
+from vettly import AsyncVettly
+
+app = FastAPI()
+client = AsyncVettly('sk_live_...')
+
+@app.post("/comments")
+async def create_comment(content: str):
+    result = await client.check(content=content, policy='community-safe')
+
+    if result.action == 'block':
+        raise HTTPException(403, "Content blocked")
+
+    return {"status": "ok"}
+```
+
+## Pricing
+
+| Plan | Price | Text | Images | Videos |
+|------|-------|------|--------|--------|
+| Developer | Free | 10,000/mo | 250/mo | 100/mo |
+| Starter | $29/mo | Unlimited | 5,000/mo | 2,000/mo |
+| Pro | $79/mo | Unlimited | 20,000/mo | 10,000/mo |
+| Enterprise | $499/mo | Unlimited | 200,000/mo | 100,000/mo |
+
+## Links
+
+- [vettly.dev](https://vettly.dev) - Sign up
+- [docs.vettly.dev](https://docs.vettly.dev) - Documentation
