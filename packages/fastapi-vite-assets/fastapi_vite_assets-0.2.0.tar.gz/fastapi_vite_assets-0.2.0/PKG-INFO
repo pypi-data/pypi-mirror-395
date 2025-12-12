@@ -1,0 +1,317 @@
+Metadata-Version: 2.4
+Name: fastapi-vite-assets
+Version: 0.2.0
+Summary: Vite asset management for FastAPI with Jinja2 templates
+Project-URL: Homepage, https://github.com/jkupcho/fastapi-vite-assets
+Project-URL: Documentation, https://github.com/jkupcho/fastapi-vite-assets/blob/main/packages/fastapi-vite-assets/README.md
+Project-URL: Repository, https://github.com/jkupcho/fastapi-vite-assets
+Project-URL: Issues, https://github.com/jkupcho/fastapi-vite-assets/issues
+Author-email: Jonathan Kupcho <jonathan.kupcho@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: assets,fastapi,frontend,hmr,jinja2,vite
+Classifier: Development Status :: 3 - Alpha
+Classifier: Framework :: FastAPI
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Requires-Dist: fastapi>=0.100.0
+Requires-Dist: jinja2>=3.1.0
+Provides-Extra: dev
+Requires-Dist: commitizen>=3.13.0; extra == 'dev'
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pre-commit>=3.0.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.8.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# FastAPI Vite Integration
+
+Seamless Vite asset management for FastAPI applications with Jinja2 templates. Features automatic manifest path derivation and production-ready asset serving.
+
+## Features
+
+- 🔥 **Hot Module Replacement (HMR)** in development
+- 📦 **Automatic manifest parsing** for production builds
+- 🎯 **Simple API** - single function call to setup
+- ⚡ **Fast** - leverages Vite's speed in development
+- 🔧 **Auto-configured** - manifest path derived from assets path
+- 🔧 **Configurable** - customize paths and behavior
+- 🎨 **Framework agnostic** - works with any Vite frontend setup
+- ✅ **Production validation** - catches missing assets early
+- 📝 **Comprehensive logging** - debug issues easily
+- 🔒 **Type-safe** - full type hints for IDE support
+- 🚀 **CI/CD ready** - automated releases with GitHub Actions
+
+## Installation
+
+```bash
+# Using uv
+uv add fastapi-vite-assets
+
+# Using pip
+pip install fastapi-vite-assets
+```
+
+## Quick Start
+
+### 1. Configure Vite
+
+In your `vite.config.ts`:
+
+```typescript
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  build: {
+    manifest: true,
+    rollupOptions: {
+      input: ["src/main.ts", "src/style.css"],
+    },
+  },
+});
+```
+
+### 2. Setup FastAPI
+
+```python
+from pathlib import Path
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi_vite_assets import ViteConfig, setup_vite
+
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+
+# Configure Vite integration
+# New: manifest_path is auto-derived from assets_path
+vite_config = ViteConfig(
+    assets_path="web/dist",
+    # manifest_path auto-derived: "web/dist/.vite/manifest.json"
+)
+setup_vite(app, templates, vite_config)
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+```
+
+### 3. Create Templates
+
+In `templates/base.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My App</title>
+    {{ vite_hmr_client() }}
+    {{ vite_asset("src/style.css") }}
+</head>
+<body>
+    {% block content %}{% endblock %}
+    {{ vite_asset("src/main.ts") }}
+</body>
+</html>
+```
+
+## Configuration
+
+### ViteConfig Options
+
+```python
+ViteConfig(
+    # Path to Vite build output directory
+    assets_path: str = "dist",
+
+    # Path to Vite manifest.json (auto-derived if None)
+    manifest_path: Optional[str] = None,
+
+    # Vite dev server URL
+    dev_server_url: str = "http://localhost:5173",
+
+    # URL prefix for static assets in production
+    static_url_prefix: str = "/static",
+
+    # Auto-detect dev mode from ENV variable
+    auto_detect_dev: bool = True,
+
+    # Force dev/prod mode (overrides auto-detection)
+    force_dev_mode: Optional[bool] = None,
+
+    # Base path to resolve relative paths
+    base_path: Optional[Path] = None,
+
+    # Validate configuration during setup
+    validate_on_setup: bool = True,
+
+    # Warn if assets missing in production
+    warn_on_missing_assets: bool = True,
+
+    # Warn if manifest missing in production
+    warn_on_missing_manifest: bool = True,
+
+    # Raise exceptions instead of warnings
+    strict_mode: bool = False,
+)
+```
+
+**New in v0.2.0:**
+- `manifest_path` is now optional and auto-derived from `assets_path` as `{assets_path}/.vite/manifest.json`
+- Added validation flags to catch configuration issues early
+- Added `strict_mode` for fail-fast behavior in production
+
+### Environment Variables
+
+- `ENV` - Set to `"production"` for production mode (default: `"development"`)
+- `VITE_HOST` - Override Vite dev server host (default: from `dev_server_url`)
+- `VITE_PORT` - Override Vite dev server port (default: from `dev_server_url`)
+
+## Template Functions
+
+### `vite_hmr_client()`
+
+Injects the Vite HMR client script tag in development mode. Does nothing in production.
+
+```html
+{{ vite_hmr_client() }}
+```
+
+### `vite_asset(path)`
+
+Injects the appropriate asset tag(s) for the given entry point.
+
+**Development mode:** Points to Vite dev server
+```html
+<script type="module" src="http://localhost:5173/src/main.ts"></script>
+```
+
+**Production mode:** Reads from manifest and includes all dependencies
+```html
+<script type="module" src="/static/assets/main-abc123.js"></script>
+<link rel="stylesheet" href="/static/assets/main-def456.css">
+```
+
+## Development vs Production
+
+### Development
+```bash
+# Terminal 1 - Start Vite dev server
+cd web && npm run dev
+
+# Terminal 2 - Start FastAPI
+fastapi dev app/main.py
+```
+
+### Production
+```bash
+# Build Vite assets
+cd web && npm run build
+
+# Run FastAPI with production environment
+ENV=production uvicorn app.main:app
+```
+
+## Docker Deployment
+
+See the example `Dockerfile` in the repository for a multistage build setup.
+
+## Logging and Debugging
+
+`fastapi-vite-assets` uses Python's standard logging. Configure it to see what's happening:
+
+```python
+import logging
+
+# Enable debug logging for detailed output
+logging.basicConfig(level=logging.DEBUG)
+
+# Or configure just this package
+logging.getLogger("fastapi_vite_assets").setLevel(logging.INFO)
+```
+
+**Log levels:**
+- `DEBUG`: Configuration details, manifest loading, path resolution
+- `INFO`: Static file mounting, setup completion
+- `WARNING`: Missing assets, manifest issues, configuration problems
+- `ERROR`: Critical failures like malformed JSON
+
+## Production Validation
+
+Catch configuration errors before they cause runtime issues:
+
+### Default Behavior (Warnings)
+
+By default, validation runs during `setup_vite()` and logs warnings:
+
+```python
+vite_config = ViteConfig(assets_path="web/dist")
+setup_vite(app, templates, vite_config)
+# Logs warnings if assets missing in production
+```
+
+### Strict Mode (Fail Fast)
+
+Use strict mode to raise exceptions for misconfigurations:
+
+```python
+vite_config = ViteConfig(
+    assets_path="web/dist",
+    strict_mode=True  # Raises ValueError if assets missing
+)
+setup_vite(app, templates, vite_config)
+```
+
+### Disable Validation
+
+If you prefer to handle validation yourself:
+
+```python
+vite_config = ViteConfig(
+    assets_path="web/dist",
+    validate_on_setup=False
+)
+setup_vite(app, templates, vite_config)
+
+# Run validation manually later
+issues = vite_config.validate()
+if issues:
+    for issue in issues:
+        print(f"Warning: {issue}")
+```
+
+## Migration from v0.1.x
+
+If you're upgrading from an earlier version, your existing code continues to work:
+
+```python
+# v0.1.x - Still works in v0.2.0
+vite_config = ViteConfig(
+    assets_path="web/dist",
+    manifest_path="web/dist/.vite/manifest.json",  # Explicit
+)
+
+# v0.2.0 - Simpler (recommended)
+vite_config = ViteConfig(
+    assets_path="web/dist",
+    # manifest_path auto-derived
+)
+```
+
+## Examples
+
+Check out the `packages/example` directory for a complete working example.
+
+## License
+
+MIT
