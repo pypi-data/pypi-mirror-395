@@ -1,0 +1,73 @@
+name: Cache rubin-sim-data
+on:
+  # Run job at the end of each day
+  schedule:
+      - cron: "0 0 * * *"
+  # and on manual workflow
+  workflow_dispatch:
+
+
+jobs:
+  make-cache:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.12"
+          miniforge-version: latest
+          channels: conda-forge,defaults
+          show-channel-urls: true
+
+      - name: Install rubin-scheduler/rubin-sim
+        id: rs-install
+        shell: bash -l {0}
+        run: |
+          conda install --yes rubin-sim
+          conda list rubin-scheduler | grep -v "#" | awk '{print $2}' > ${{ github.workspace }}/rs_version
+          echo "rs-version" `cat ${{ github.workspace }}/rs_version`
+          echo "rs-version=`cat ${{ github.workspace }}/rs_version`" >> $GITHUB_OUTPUT
+
+      - name: Access rubin-sched-data cache
+        id: cache-rs
+        uses: actions/cache@v4
+        env:
+          cache-name: cached-rubin-sched-data
+        with:
+          path: ~/rubin_sim_data
+          key: ${{ env.cache-name }}-v${{ steps.rs-install.outputs.rs-version }}
+          restore-keys: |
+            ${{ env.cache-name }}-v
+
+      - if: ${{ steps.cache-rs.outputs.cache-hit == 'true' }}
+        name: List cache contents.
+        shell: bash -l {0}
+        run: |
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          echo $RUBIN_SIM_DATA_DIR contents
+          ls $RUBIN_SIM_DATA_DIR
+          echo "__contents of versions.txt__"
+          cat $RUBIN_SIM_DATA_DIR/versions.txt
+
+      - if: ${{ steps.cache-rs.outputs.cache-hit != 'true' }}
+        name: Update/Download data.
+        shell: bash -l {0}
+        run: |
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          scheduler_download_data --update --tdqm_disable
+          rs_download_data --update --tdqm_disable --dirs sim_baseline
+
+      - name: Check data
+        shell: bash -l {0}
+        run: |
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          echo $RUBIN_SIM_DATA_DIR contents
+          ls $RUBIN_SIM_DATA_DIR
+          echo "__contents of versions.txt__"
+          cat $RUBIN_SIM_DATA_DIR/versions.txt
+          echo "is it in sync?"
+          scheduler_download_data --versions
+          rs_download_data --versions
