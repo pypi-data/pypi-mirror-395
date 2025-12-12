@@ -1,0 +1,83 @@
+[project]
+name = "heracles-ql"
+description = "heralces-ql VictoriaMetrics DSL"
+readme = "README.md"
+authors = [{name = "Hudson River Trading LLC", email="opensource@hudson-trading.com"}]
+requires-python = ">=3.11"
+dependencies = []
+dynamic = ["version"]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["heracles"]
+
+
+[project.optional-dependencies]
+config = [
+    "pydantic>=2.11.7",
+    "pyyaml>=6.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "auditwheel>=6.4.2",
+    "marko>=2.2.0",
+    "mypy>=1.17.1",
+    "pydantic>=2.11.7",
+    "pytest>=8.4.1",
+    "typer>=0.16.1",
+    "types-pyyaml>=6.0.12.20250822",
+    "wheel>=0.45.1",
+]
+
+[tool.uv]
+# setting these cache keys ensures uv will rebuild the project when any Go source
+# files change. It DOES NOT protect against deleteing the pkg directory, so in those
+# cases the user still must be uv sync --reinstall-package heracles-ql
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "formatter/**" },
+  { file = "hermes/**" },
+  { git = { commit = true } },
+]
+
+# this line includes hatch_build.py as a build plugin
+[tool.hatch.build.targets.wheel.hooks.custom]
+
+[tool.hatch.build.targets.wheel.force-include]
+"pkg/formatter.so" = "pkg/formatter.so"
+"pkg/hermes" = "pkg/hermes"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "formatter/**",
+  "heracles/**",
+  "hermes/**",
+]
+
+
+[tool.ruff]
+select = [
+  "E",
+  "F",   # pyflakes
+  "I",   # isort
+  "UP",  # pyupgrade
+  "RUF", # ruff-specific rules
+]
+ignore = []
+# Set to the minimum version this lib supports
+target-version = "py311"
+
+[tool.ruff.isort]
+known-first-party = ["heracles"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+disallow_untyped_defs = true
