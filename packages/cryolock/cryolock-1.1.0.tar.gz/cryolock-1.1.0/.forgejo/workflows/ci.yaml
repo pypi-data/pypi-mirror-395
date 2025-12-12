@@ -1,0 +1,64 @@
+name: CI
+
+enable-email-notifications: true
+
+on:
+  push:
+
+jobs:
+  test3:
+    name: Run tests on Python 3
+
+    runs-on: rollercase
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Prepare environment
+        run: |
+          cp -r src/cryolock tests/cryolock
+          pyenv local 3
+
+      - name: Test synchronization primitives
+        run: |
+          python tests/lock.py
+          python tests/rlock.py
+
+  test3510:
+    name: Run tests on Python 3.5.10
+
+    runs-on: rollercase
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Prepare environment
+        run: |
+          cp -r src/cryolock tests/cryolock
+          pyenv local 3.5.10
+
+      - name: Test synchronization primitives
+        run: |
+          python tests/lock.py
+          python tests/rlock.py
+
+  test27:
+    name: Run tests on Python 2.7
+
+    runs-on: rollercase
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Prepare environment
+        run: |
+          cp -r src/cryolock tests/cryolock
+          pyenv local 2.7
+
+      - name: Test synchronization primitives
+        run: |
+          python tests/lock.py
+          python tests/rlock.py

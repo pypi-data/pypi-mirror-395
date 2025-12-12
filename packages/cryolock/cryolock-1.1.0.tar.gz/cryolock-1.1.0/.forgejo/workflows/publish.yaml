@@ -1,0 +1,41 @@
+name: Publish
+
+enable-email-notifications: true
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Build and publish package
+
+    runs-on: codeberg-small
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3'
+          cache: 'pip'
+
+      - name: Prepare build tools
+        run: |
+          pip install --upgrade pip
+          pip install flit
+
+      - name: Publish to PyPI
+        env:
+          FLIT_USERNAME: __token__
+          FLIT_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: flit publish
+
+      - name: Publish to Forgejo instance
+        env:
+          FLIT_USERNAME: ${{ forgejo.repository_owner }}
+          FLIT_PASSWORD: ${{ secrets.FORGEJO_PASSWORD }}
+          FLIT_INDEX_URL: ${{ forgejo.server_url }}/api/packages/${{ forgejo.repository_owner }}/pypi
+        run: flit publish
