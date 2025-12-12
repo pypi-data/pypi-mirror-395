@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "qingping-iot-mqtt"
+dynamic = ["version"]
+description = 'Python library and utilities for working with Qingping IoT MQTT protocols - JSON and binary ("HEX").'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "BSD-3-Clause"
+keywords = [
+  "qingping",
+  "iot",
+  "mqtt",
+]
+authors = [
+  { name = "Daniel Skowroński", email = "daniel@skowron.ski" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "click~=8.3.1",
+  "pyyaml~=6.0.3",
+  "pydantic~=2.12.4",
+  "paho-mqtt~=2.1.0",
+  "coloredlogs~=15.0.1",
+  "peewee~=3.18.3",
+  "requests~=2.32.5"
+]
+
+[project.urls]
+Documentation = "https://github.com/danielskowronski/qingping-iot-mqtt#readme"
+Issues = "https://github.com/danielskowronski/qingping-iot-mqtt/issues"
+Source = "https://github.com/danielskowronski/qingping-iot-mqtt"
+
+[project.scripts]
+qingping-iot-mqtt = "qingping_iot_mqtt.cli:qingping_iot_mqtt"
+
+[tool.hatch.version]
+path = "src/qingping_iot_mqtt/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/qingping_iot_mqtt tests}"
+
+[tool.coverage.run]
+source_pkgs = ["qingping_iot_mqtt", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/qingping_iot_mqtt/__about__.py",
+]
+
+[tool.coverage.paths]
+qingping_iot_mqtt = ["src/qingping_iot_mqtt", "*/qingping-iot-mqtt/src/qingping_iot_mqtt"]
+tests = ["tests", "*/qingping-iot-mqtt/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
