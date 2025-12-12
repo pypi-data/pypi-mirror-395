@@ -1,0 +1,219 @@
+Metadata-Version: 2.4
+Name: nvidia_tooltalk
+Version: 25.11
+Summary: Evaluating tool-augmented LLMs in a conversational setting - packaged by NVIDIA
+License: MIT
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+License-File: NOTICE
+Requires-Dist: tqdm
+Requires-Dist: numpy
+Requires-Dist: matplotlib
+Requires-Dist: openai
+Requires-Dist: pytest
+Requires-Dist: torch
+Requires-Dist: transformers
+Requires-Dist: nemo-evaluator
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# NVIDIA NeMo Evaluator
+
+The goal of NVIDIA NeMo Evaluator is to advance and refine state-of-the-art methodologies for model evaluation, and deliver them as modular evaluation packages (evaluation containers and pip wheels) that teams can use as standardized building blocks.
+
+# Quick start guide
+
+NVIDIA NeMo Evaluator provide you with evaluation clients, that are specifically built to evaluate model endpoints using our Standard API.
+
+## Launching an evaluation for an LLM
+
+1. Install the package
+    ```
+    pip install nvidia-tooltalk
+    ```
+
+3. (Optional) Set a token to your API endpoint if it's protected
+    ```bash
+    export MY_API_KEY="your_api_key_here"
+    ```
+4. List the available evaluations:
+    ```bash
+    $ nemo-evaluator ls
+    Available tasks:
+    * tooltalk (in tooltalk)
+    ...
+    ```
+5. Run the evaluation of your choice:
+   ```bash
+   nemo-evaluator run_eval \
+       --eval_type tooltalk \
+       --model_id meta/llama-3.1-70b-instruct \
+       --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+       --model_type chat \
+       --api_key_name MY_API_KEY \
+       --output_dir /workspace/results
+   ```
+6. Gather the results
+    ```bash
+    cat /workspace/results/results.yml
+    ```
+
+# Command-Line Tool
+
+Each package comes pre-installed with a set of command-line tools, designed to simplify the execution of evaluation tasks. Below are the available commands and their usage for the `tooltalk`:
+
+## Commands
+
+### 1. **List Evaluation Types**
+
+```bash
+nemo-evaluator ls
+```
+
+Displays the evaluation types available within the harness.
+
+### 2. **Run an evaluation**
+
+The `nemo-evaluator run_eval` command executes the evaluation process. Below are the flags and their descriptions:
+
+### Required flags
+* `--eval_type <string>`
+The type of evaluation to perform
+* `--model_id <string>`
+The name or identifier of the model to evaluate.
+* `--model_url <url>`
+The API endpoint where the model is accessible.
+* `--model_type <string>`
+The type of the model to evaluate, for tooltalk it should be "chat"
+* `--output_dir <directory>`
+The directory to use as the working directory for the evaluation. The results, including the results.yml output file, will be saved here.
+
+### Optional flags
+* `--api_key_name <string>`
+The name of the environment variable that stores the Bearer token for the API, if authentication is required.
+* `--run_config <path>`
+Specifies the path to a  YAML file containing the evaluation definition.
+
+### Example
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type tooltalk \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir ./evaluation_results
+```
+
+If the model API requires authentication, set the API key in an environment variable and reference it using the `--api_key_name` flag:
+
+```bash
+export MY_API_KEY="your_api_key_here"
+
+nemo-evaluator run_eval \
+    --eval_type tooltalk \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --api_key_name MY_API_KEY \
+    --output_dir ./evaluation_results
+```
+
+# Configuring evaluations via YAML
+
+Evaluations in NVIDIA NeMo Evaluator are configured using YAML files that define the parameters and settings required for the evaluation process. These configuration files follow a standard API which ensures consistency across evaluations.
+
+Example of a YAML config:
+```yaml
+config:
+  type: tooltalk
+  params:
+    limit_samples: 20
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+The priority of overrides is as follows:
+1. command line arguments
+2. user config (as seen above)
+3. task defaults (defined per task type)
+4. framework defaults 
+
+`--dry_run` option allows you to print the final run configuration and command without executing the evaluation.
+
+### Example:
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type tooltalk \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir .evaluation_results \
+    --dry_run
+```
+
+Output:
+
+```bash
+Rendered config:
+
+command: '{% if target.api_endpoint.api_key is not none %}API_KEY=${{target.api_endpoint.api_key}}{%
+  endif %} tooltalk --dataset data/easy --database data/databases --model {{target.api_endpoint.model_id}}
+  --output_dir {{config.output_dir}} --url {{target.api_endpoint.url}} {% if config.params.limit_samples
+  is not none %}--first_n {{config.params.limit_samples}}{% endif %}'
+framework_name: tooltalk
+pkg_name: tooltalk
+config:
+  output_dir: .evaluation_results
+  params:
+    limit_samples: null
+    max_new_tokens: null
+    max_retries: null
+    parallelism: null
+    task: tooltalk
+    temperature: null
+    timeout: null
+    top_p: null
+    extra: {}
+  supported_endpoint_types:
+  - chat
+  type: tooltalk
+target:
+  api_endpoint:
+    api_key: null
+    model_id: my_model
+    stream: null
+    type: chat
+    url: http://localhost:8000
+
+
+Rendered command:
+
+tooltalk --dataset data/easy --database data/databases --model my_model --output_dir .evaluation_results --url http://localhost:8000 
+```
+
+# FAQ
+
+## Deploying a model as an endpoint
+
+NVIDIA NeMo Evaluator utilize a client-server communication architecture to interact with the model. As a prerequisite, the **model must be deployed as an endpoint with a NIM-compatible API**.
+
+Users have the flexibility to deploy their model using their own infrastructure and tooling.
+
+Servers with APIs that conform to the OpenAI/NIM API standard are expected to work seamlessly out of the box.

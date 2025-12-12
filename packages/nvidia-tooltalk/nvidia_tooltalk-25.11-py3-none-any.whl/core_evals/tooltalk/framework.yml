@@ -1,0 +1,24 @@
+framework:
+  name: tooltalk
+  pkg_name: tooltalk
+  full_name: ToolTalk
+  description: ToolTalk is designed to evaluate tool-augmented LLMs as a chatbot. ToolTalk contains a handcrafted dataset of 28 easy conversations and 50 hard conversations.
+  url: https://github.com/microsoft/ToolTalk
+defaults:
+  command: >-
+    {% if target.api_endpoint.api_key is not none %}API_KEY=${{target.api_endpoint.api_key}}{% endif %} python -m tooltalk.evaluation.evaluate_{{'openai' if 'azure' in target.api_endpoint.url or 'api.openai' in target.api_endpoint.url else 'nim'}} --dataset data/easy --database data/databases --model {{target.api_endpoint.model_id}} {% if config.params.max_new_tokens is not none %}--max_new_tokens {{config.params.max_new_tokens}}{% endif %} {% if config.params.temperature is not none %}--temperature {{config.params.temperature}}{% endif %} {% if config.params.top_p is not none %}--top_p {{config.params.top_p}}{% endif %} --api_mode all --output_dir {{config.output_dir}} --url {{target.api_endpoint.url}} {% if config.params.limit_samples is not none %}--first_n {{config.params.limit_samples}}{% endif %}
+  config:
+    params:
+      limit_samples: null
+  target:
+    api_endpoint: {} # required to add: url, model_id, api_key
+evaluations:
+- name: tooltalk
+  description: ToolTalk task with default settings.
+  defaults:
+    config:
+      type: tooltalk
+      supported_endpoint_types:
+      - chat
+      params:
+        task: tooltalk
