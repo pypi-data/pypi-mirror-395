@@ -1,0 +1,214 @@
+Metadata-Version: 2.4
+Name: zipbundler
+Version: 0.1.0
+Summary: Bundle your packages into a runnable, importable zip
+License: # Custom Notice
+         This repository is licensed under the MIT License **with additional terms**
+         restricting AI/ML training use. See the “Additional Terms – Apathetic No-AI Use
+         Rider v1.0 or later” section at the end of this file for details.
+         
+         ------------------------------------------------------------
+         
+         MIT License
+         
+         Copyright (c) 2025 Apathetic Tools
+         
+         Permission is hereby granted, free of charge, to any person obtaining a copy
+         of this software and associated documentation files (the "Software"), to deal
+         in the Software without restriction, including without limitation the rights
+         to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+         copies of the Software, and to permit persons to whom the Software is
+         furnished to do so, subject to the following conditions:
+         
+         The above copyright notice and this permission notice shall be included in all
+         copies or substantial portions of the Software.
+         
+         THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+         IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+         FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+         AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+         LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+         OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+         SOFTWARE.
+         
+         -----------------------------------------------------------------------
+         Additional Terms – Apathetic No-AI Use Rider v1 or later, 2025-11-09
+         -----------------------------------------------------------------------
+         
+         In addition to the permissions and conditions of the Base License:
+         
+         1. You may **not** use this repository, in whole or in part, including its source
+            code or derivatives, to train, fine-tune, or otherwise improve any
+            machine-learning or artificial-intelligence system.
+         
+         2. You may **not** include this repository or its contents in any dataset or
+            corpus used for AI/ML training, nor provide automated access to it for that
+            purpose.
+         
+         3. These restrictions apply to both commercial and non-commercial use.
+         
+         4. This Rider is **Version 1 or later**, as published by the **Apathetic License
+            Collective**. You may use this version or any later version, which may modify,
+            replace, or entirely remove these restrictions. The canonical source for the
+            latest version is: [https://github.com/apathetic-tools/apathetic-noai](https://
+            github.com/apathetic-tools/apathetic-noai)
+         
+         
+         Alternative licensing terms may be available directly from the author.
+License-File: LICENSE
+Keywords: ai,agent,workflow
+Author: Apathetic Tools
+Requires-Python: >=3.10
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Build Tools
+Requires-Dist: apathetic-logging (>=0.0.1,<2.0.0)
+Requires-Dist: apathetic-schema (>=0.0.1,<2.0.0)
+Requires-Dist: apathetic-utils (>=0.0.1,<2.0.0)
+Project-URL: Changelog, https://github.com/apathetic-tools/zipbundler/releases
+Project-URL: Documentation, https://apathetic-tools.github.io/zipbundler/
+Project-URL: Homepage, https://github.com/apathetic-tools/zipbundler
+Project-URL: Issues, https://github.com/apathetic-tools/zipbundler/issues
+Project-URL: Repository, https://github.com/apathetic-tools/zipbundler
+Description-Content-Type: text/markdown
+
+# Zipbundler 🗜️
+
+[![CI](https://github.com/apathetic-tools/zipbundler/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/apathetic-tools/zipbundler/actions/workflows/ci.yml)
+[![License: MIT-a-NOAI](https://img.shields.io/badge/License-MIT--a-NOAI-blueviolet.svg)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.gg/PW6GahZ7)
+
+**Bundle your packages into a runnable, importable zip.**  
+*Because installation is optional.*
+
+📘 **[Roadmap](./ROADMAP.md)** · 📝 **[Release Notes](https://github.com/apathetic-tools/zipbundler/releases)**
+
+> [!NOTE]
+> Heads up: the AI cooked dinner. It's edible, but watch your step. Detailed bug reports welcome.
+
+## 🚀 Quick Start
+
+Zipbundler bundles your Python packages into runnable, importable zip files. Perfect for distributing single-file applications or creating portable package archives.
+
+### Installation
+
+```bash
+# Using poetry
+poetry add zipbundler
+
+# Using pip
+pip install zipbundler
+```
+
+### Basic Usage
+
+```bash
+# zipapp-style CLI (100% compatible with python -m zipapp)
+zipbundler src/myapp -o app.pyz -p "/usr/bin/env python3" -m "myapp:main"
+
+# With compression
+zipbundler src/myapp -o app.pyz -m "myapp:main" -c
+
+# Display info from existing archive
+zipbundler app.pyz --info
+
+# Or use configuration file
+zipbundler init
+zipbundler build
+
+# Watch for changes and rebuild automatically
+zipbundler watch
+```
+
+### Configuration
+
+Create a `.zipbundler.jsonc` file in your project root:
+
+```jsonc
+{
+  "packages": ["src/my_package/**/*.py"],
+  "exclude": ["**/__pycache__/**", "**/tests/**"],
+  "output": {
+    "path": "dist/my_package.zip"
+  },
+  "entry_point": "my_package.__main__:main",
+  "options": {
+    "shebang": true,
+    "main_guard": true
+  }
+}
+```
+
+---
+
+## 🎯 What is Zipbundler?
+
+Zipbundler creates **zipapp-compatible** `.pyz` files that are both **runnable** (executable) and **importable** (usable as a package). Unlike tools like [shiv](https://github.com/linkedin/shiv) or [pex](https://github.com/pantsbuild/pex), zipbundler produces standard zipapp files that work with Python's built-in `zipimport` module.
+
+**Key Features:**
+- ✅ **zipapp Compatible** — Produces standard `.pyz` files compatible with Python's `zipapp` module
+- ✅ **Importable** — Files can be imported directly using `zipimport` or `importlib`
+- ✅ **Flat Structure** — Preserves original package structure without path transformations
+- ✅ **Standard Format** — Works with `python -m zipapp` and all zipapp-compatible tools
+
+**Comparison with Other Tools:**
+
+| Feature | zipbundler | [shiv](https://github.com/linkedin/shiv) | [pex](https://github.com/pantsbuild/pex) |
+|---------|------------|------------------------------------------|------------------------------------------|
+| zipapp compatible | ✅ Yes | ❌ No | ❌ No |
+| Importable | ✅ Yes | ❌ No | ❌ No |
+| Flat structure | ✅ Yes | ⚠️ Transforms paths | ⚠️ Transforms paths |
+| Dependency resolution | ⚠️ Manual | ✅ Automatic | ✅ Automatic |
+| Virtualenv support | ❌ No | ✅ Yes | ✅ Yes |
+
+*Note: shiv and pex excel at dependency management and virtualenv creation, but produce non-standard zip files that aren't importable or zipapp-compatible.*
+
+### Use Cases
+
+- **CLI Tools**: Bundle command-line applications into single executable `.pyz` files
+- **Importable Packages**: Create packages that can be imported without installation
+- **Standard zipapp Format**: Generate files compatible with Python's standard library
+- **Quick Deployment**: Ship code without installation steps or path transformations
+
+## ✨ Features
+
+- 📦 **zipapp Compatible** — Produces standard `.pyz` files compatible with Python's `zipapp` module
+- 🔄 **Importable** — Files can be imported using `zipimport` or `importlib`
+- 📁 **Flat Structure** — Preserves original package paths without transformations
+- 🎯 **zipapp-style CLI** — Compatible with `python -m zipapp` command-line interface
+- 🚫 **Exclude Patterns** — Fine-grained control over what gets included
+- 🎬 **Entry Points** — Support for executable zip files with entry points
+- ⚙️ **Code Generation** — Optional shebang and main guard insertion
+- 🔍 **Watch Mode** — Automatically rebuild on file changes
+- 📝 **Dry Run** — Preview what would be bundled without creating files
+
+---
+
+## ⚖️ License
+
+- [MIT-a-NOAI License](LICENSE)
+
+You're free to use, copy, and modify the script under the standard MIT terms.  
+The additional rider simply requests that this project not be used to train or fine-tune AI/ML systems until the author deems fair compensation frameworks exist.  
+Normal use, packaging, and redistribution for human developers are unaffected.
+
+## 🪶 Summary
+
+**Use it. Hack it. Ship it.**  
+It's MIT-licensed, minimal, and meant to stay out of your way — just with one polite request: don't feed it to the AIs (yet).
+
+---
+
+> ✨ *AI was used to help draft language, formatting, and code — plus we just love em dashes.*
+
+<p align="center">
+  <sub>😐 <a href="https://apathetic-tools.github.io/">Apathetic Tools</a> © <a href="./LICENSE">MIT-a-NOAI</a></sub>
+</p>
+
