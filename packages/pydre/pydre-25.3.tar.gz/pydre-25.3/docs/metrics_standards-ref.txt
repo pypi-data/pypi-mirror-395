@@ -1,0 +1,119 @@
+		---- DSL's Metrics w/ SAE International Standards References ----
+		______________________________________________________
+
+	This, here, will be a list of all of the DSL's metrics with references to each of their 
+respective locations in the SAE document. In reference to the SAE International Standards doc found
+on box.osu.edu as the file 'J2944_201506.pdf':
+
+	Current DSL Metrics (found in metrics.py):
+	------------------------------------------
+				_____
+	- colMean		     |
+				     |
+	- colMin		     |
+				     | <----- Don't expect these to be found within SAE doc
+	- colMax		     |
+				     |
+	- colSD			     |
+				 ____|
+	- meanVelocity
+		** velocity is only mentioned, it seems, in the context of accelerating or calculations
+			for TTC or similar formulas within SAE documentation
+
+	- stdDevVelocity
+		** like meanVelocity above, no mentions within SAE documentation
+
+	- steeringEntropy <-- SAE Reference @ 9.2.4 p.84
+		-- Boer's Method (the one we want to make sure we're adhering to for calculations)
+			is found at: http://apps.usd.edu/coglab/schieber/docs/SAE-1999-01-0892.pdf
+		** Without completely tearing apart the code, our current implementation seemingly 
+			matches the required Boer algorithim for calculating steering entropy.
+
+	- tailgatingTime <-- related SAE Reference @ 8.1.4 as 'Time Headway'
+		-- Tailgating not mentioned in document except for when discussing lane change urgency;
+			however, time headway was the time measurement of how far a subject was from
+			a lead car, within a certain range would be considered tailgating. ( I think).
+		** As long as the headway measurement is taken from a common point (any of the 3 options 
+			presented in 8.1.4) on both the subject's and lead car's vehicles, this metric 
+			adheres to proper standards. To be meticulous, we could probably find out from
+			where on the vehicle Simcreator takes measurements (but that's up to Thomas).
+
+	- tailgatingPercentage
+		-- Nothing about percentages found, refer to metric above.
+		** As far as I can tell, this looks good too. Refer to metric above for explanation.
+
+	- timeAboveSpeed
+		-- Speed not really discussed in SAE docs except as mentioned above in meanVelocity
+
+	- lanePosition <-- SAE Referenced as 'Standard deviation of lane position (SDLP)' @ 10.1.3 p.90
+		** SDLP is up to par with standards. There is code & explanation, if we want to be sticklers.
+		** All other metrics in this function are either not mentioned in the SAE doc or are 
+			mentioned without any requirements (except method by which "mean" was found, 
+			which numpy's "mean" function adheres to).
+
+	- boxMetrics
+		-- specific metric not expecting to find, think this had to do with reaction time tho,
+			which is covered in the SAE doc @ 6.5.2 (see tbiReaction)
+
+	- roadExits <-- related SAE Reference as 'Roadway departure duration' @ 10.5.3 p.115
+		** This had no requirements except the place in which the measurement was taken from
+			I'm mostly disregarding this requirement in metrics bc SimCreator takes care
+			of that business for us.
+
+	- brakeJerk <-- SAE Reference @ 7.2.13
+		** This adheres great to the standard. The requirement that was really pertinent was
+			the longitudinal decceleration, which is exactly the way that our metrics 
+			currently handle brake jerk.
+
+	- ecoCar
+		-- study specific metric, dealing with pretty basic reaction times.
+		** Much like tbi Reaction (below), this properly calculates response times in 
+			line with what SAE asserted as the standard. As far as the other basic 
+			stats the function calculates, this SAE doc doesn't standardize simple
+			stats like sd, mean, mode... .
+
+	- tbiReaction <-- related SAE Reference @ 6.5.2 p.30 & 6.5.4 p.31
+		-- These are the references for the general fields of "Reaction Time" & "Response Time",
+			respectively. They briefly mention the guidelines for performing each of these
+			in studies.
+		** According to the algorithim written above the tbi reaction code in comments, 
+			everything looks good (as far as requirements go).
+
+	- errorPresses
+		** Couldn't find any metrics dealing with user error in performing studies, only user 
+			error in variable settings such as steering or accelerating (within SAE doc)
+
+	- gazes <-- related SAE Reference as 'Gaze time... lane change average...' @ 10.4.1.1 p.106
+		-- Very specific, but is the only mention of "gaze" in all the SAE documentation.
+		** This metric was only addressing gazes to change lanes. There were no discernable
+			requirements that applied to how our code looks at the 'offroad' gazes.
+
+		---- Possible Metrics to Implement ----
+		***************************************
+	
+	This is a section where I will toss down some metrics that catch my eye while reading. If it
+	is extra compelling I might even do write-ups or something about the metric in question 
+	(that's being optimistic, realistically).
+
+	- extreme response mitigation: @ 5.2.5 p. 16
+		-- Would be kinda sick to be able to fix distributions for the older folks who drive
+			off the road for seconds at a time. However, would have alot of variables to 
+			make it work properly. Would probably be better suited for its own project.
+
+	- LATERAL METRICS- all these have to do with measuring lane/road positions
+
+		- lane departure magnitude: @ 10.2.4 p.97
+			-- In lanePosition() we have almost every other lateral metric mentioned within the
+				SAE doc, except this one. Doesn't seem to be super useful, but probably 
+				couldn't hurt to add.
+		
+		- lane change severity: @ 10.4.4 p.113
+			-- This & the one below are pretty interesting metrics; however, I'm not sure
+				how much we would use it (we aren't big on the lane changes).
+
+		- lane change urgency: @ 10.4.5 p 113 & 114
+			-- See comment above.
+	
+	- Coherence: @ 8.3.1 p. 64
+		-- Seems like a metric we should already have, but if not, it'd be pretty interesting to
+			implement.
