@@ -1,0 +1,1 @@
+var setCurrentVersionPostUrl = "{% url 'admin:core_user_registration_app_template_version_current' 'template_version_id' %}";

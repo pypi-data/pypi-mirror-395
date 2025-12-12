@@ -1,0 +1,57 @@
+{% extends 'core_main_app/_render/admin/theme/tools/box.html' %}
+{% load timestamptags %}
+{% load tz %}
+
+{% block box_title %}Pending requests{% endblock %}
+
+{% block box_body %}
+<table class="table table-bordered table-striped table-hover">
+    <tr>
+        <th width="10%">User</th>
+        <th width="10%">First Name</th>
+        <th width="10%">Late Name</th>
+        <th width="20%">Email Address</th>
+        <th width="20%">Date</th>
+        <th>Actions</th>
+        <th>Metadata</th>
+
+    </tr>
+    {% for request in data.requests %}
+        <input type="hidden" id="metadata_id" value="{{request.metadata.id}} "/>
+        <div id ="metadata" style="display: none;">
+        {{request.metadata}}
+        </div>
+
+        <tr id="{{ request.id }}" metadata="{{request.metadata.id}} ">
+
+            {# FIXME add link to /admin/auth/user #}
+            <td>{{ request.username }}</td>
+            <td>{{ request.first_name }}</td>
+            <td>{{ request.last_name }}</td>
+            <td>{{ request.email }}</td>
+            <td>{{ request.date|localtime }}</td>
+            <td>
+                <div class="btn btn-success accept_request">
+                    <i class="fa fa-check"></i> Accept
+                </div>
+                <div class="btn btn-danger deny_request">
+                    <i class="fa fa-times"></i> Deny
+                </div>
+            </td>
+            <td>
+                {% if request.metadata  %}
+                <div class="btn btn-secondary btn-view-metadata">
+                    <i class ="fa fa-file-text-o"></i> View metadata
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td class="empty" colspan="7">
+                No account requests pending at the moment.
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}

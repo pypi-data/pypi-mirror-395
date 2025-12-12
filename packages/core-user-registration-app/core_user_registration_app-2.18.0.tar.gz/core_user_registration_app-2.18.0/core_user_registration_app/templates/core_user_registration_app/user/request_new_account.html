@@ -1,0 +1,34 @@
+{% load static %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Request New Account</h2>
+
+        <p>Use the following form to request an account on the system.</p>
+
+        {% if data.action_result %}
+        <div class="alert alert-danger">
+            {{ data.action_result }}
+        </div>
+        {% endif %}
+
+        <form novalidate action="{% url 'core_user_registration_app_account_request' %}" method="post" class="form-horizontal">
+
+            {% csrf_token %}
+            {% for field in data.request_form %}
+              <div class="form-group">
+                <label>{{ field.label_tag }}</label>
+                <div>{{ field }}</div>
+                {% if field.help_text %}
+                  <small class="text-muted">{{ field.help_text }}</small>
+                {% endif %}
+                {% for error in field.errors %}
+                  <p class="text-danger">{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-lg btn-secondary {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5" %}float-end{% endif %}">
+                <i class="fa fa-paper-plane"></i> Send Request
+            </button>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,1 @@
+var dataStructureElementUrl = "{% url 'core_user_registration_app_data_structure_element_value' %}";

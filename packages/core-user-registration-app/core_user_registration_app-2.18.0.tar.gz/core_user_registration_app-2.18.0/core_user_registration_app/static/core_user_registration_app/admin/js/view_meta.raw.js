@@ -1,0 +1,1 @@
+var viewRecordUrl = "{% url 'admin:core_user_registration_app_metadata_detail' %}";
