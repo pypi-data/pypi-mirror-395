@@ -1,0 +1,102 @@
+#:schema https://json.schemastore.org/pyproject.json
+# ref: <https://packaging.python.org/en/latest/specifications/pyproject-toml/>
+
+[project]
+name = "liblaf-mkdocs-preset"
+description = ""
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [
+  { name = "liblaf", email = "30631553+liblaf@users.noreply.github.com" }
+]
+keywords = []
+classifiers = [
+  # ref: <https://pypi.org/classifiers/>
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed"
+]
+dependencies = [
+  "griffe-fieldz>=0.3,<0.4",
+  "griffe-inherited-docstrings>=1,<2",
+  "griffe-pydantic>=1,<2",
+  "griffe-warnings-deprecated>=1,<2",
+  "mdx-truly-sane-lists>=1,<2",
+  "mkdocs>=1,<2",
+  "mkdocs-api-autonav>=0.4,<0.5",
+  "mkdocs-autorefs>=1,<2",
+  "mkdocs-awesome-nav>=3,<4",
+  "mkdocs-git-committers-plugin-2>=2,<3",
+  "mkdocs-git-revision-date-localized-plugin>=1,<2",
+  "mkdocs-include-markdown-plugin[cache]>=7,<8",
+  "mkdocs-material[imaging]>=9,<10",
+  "mkdocstrings[python]>=1,<2",
+  "pymdown-extensions>=10,<11",
+  "ruff>=0.14,<0.15"
+]
+dynamic = ["version"]
+
+[project.urls]
+"Changelog" = "https://github.com/liblaf/mkdocs-preset/blob/main/CHANGELOG.md"
+"Documentation" = "https://liblaf.github.io/mkdocs-preset/"
+"Funding" = "https://github.com/liblaf/mkdocs-preset?sponsor=1"
+"Homepage" = "https://github.com/liblaf/mkdocs-preset"
+"Issue Tracker" = "https://github.com/liblaf/mkdocs-preset/issues"
+"Release Notes" = "https://github.com/liblaf/mkdocs-preset/releases"
+"Source Code" = "https://github.com/liblaf/mkdocs-preset"
+
+[dependency-groups]
+build = ["check-wheel-contents>=0.6,<0.7", "hatch>=1,<2", "twine>=6,<7"]
+test = ["liblaf-pytest-preset>=0.1,<0.2", "pytest>=9,<10"]
+
+[build-system]
+requires = ["hatch-vcs", "hatchling"]
+build-backend = "hatchling.build"
+
+[tool.check-wheel-contents]
+ignore = ["W002"]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/liblaf/mkdocs_preset/_version.py"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/liblaf"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.pyright]
+extends = ".config/linters/pyrightconfig.json"
+
+[tool.pytest]
+addopts = [
+  "--doctest-modules",
+  "--hypothesis-show-statistics",
+  "--import-mode=importlib",
+  "--showlocals"
+]
+consider_namespace_packages = true
+strict = true
+testpaths = ["benches", "src", "tests"]
+
+[tool.ruff]
+extend = ".config/linters/.ruff.toml"
+
+[tool.uv]
+default-groups = "all"
