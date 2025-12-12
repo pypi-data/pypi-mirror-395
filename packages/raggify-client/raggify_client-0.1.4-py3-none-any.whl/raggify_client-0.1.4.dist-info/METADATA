@@ -1,0 +1,102 @@
+Metadata-Version: 2.3
+Name: raggify-client
+Version: 0.1.4
+Summary: client tool for raggify, a llama index based library for building multimodal RAG systems
+Keywords: rag,multimodal,embedding,cli,typer
+Author: jun76
+Author-email: jun76 <jun76.git@gmail.com>
+License: MIT License
+         
+         Copyright (c) 2025 jun
+         
+         Permission is hereby granted, free of charge, to any person obtaining a copy
+         of this software and associated documentation files (the "Software"), to deal
+         in the Software without restriction, including without limitation the rights
+         to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+         copies of the Software, and to permit persons to whom the Software is
+         furnished to do so, subject to the following conditions:
+         
+         The above copyright notice and this permission notice shall be included in all
+         copies or substantial portions of the Software.
+         
+         THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+         IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+         FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+         AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+         LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+         OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+         SOFTWARE.
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: System :: Systems Administration
+Classifier: Topic :: Utilities
+Requires-Dist: mashumaro
+Requires-Dist: python-dotenv
+Requires-Dist: pyyaml
+Requires-Dist: requests
+Requires-Dist: typer
+Requires-Python: >=3.12
+Project-URL: Homepage, https://github.com/jun76/raggify
+Project-URL: Issues, https://github.com/jun76/raggify/issues
+Description-Content-Type: text/markdown
+
+# Raggify Client
+
+[![Tests](https://github.com/jun76/raggify/actions/workflows/tests.yml/badge.svg)](https://github.com/jun76/raggify/actions/workflows/tests.yml) [![codecov](https://codecov.io/github/jun76/raggify/graph/badge.svg?token=TFE0CSETR8)](https://codecov.io/github/jun76/raggify)
+
+<img alt="Image" src="https://raw.githubusercontent.com/jun76/raggify/main/media/Raggify.png" />
+
+**Raggify Client** is a lightweight library that extracts only the REST API client portion from **Raggify**, a comprehensive library that includes server modules.
+
+For details on the Raggify library, please refer to [this page](https://github.com/jun76/raggify).
+
+# 🚀 How to Install
+
+To install, run:
+
+```bash
+pip install raggify-client
+```
+
+raggify-client requires a raggify server to be running on the backend.
+You can specify server `host` and `port` in `/etc/raggify-client/config.yaml`.
+
+```yaml
+host: localhost
+port: 8000
+topk: 20
+log_level: DEBUG
+```
+
+The default config.yaml is generated when raggify-client is run for the first time.
+
+```bash
+raggify-cilent --help
+```
+
+# 📚 Use As Library
+
+Assuming the Raggify server is already running, the following program can be executed, for example:
+
+```python
+import json
+
+from raggify_client import RestAPIClient
+
+client = RestAPIClient(host="localhost", port=8000)
+
+print(json.dumps(client.status(), indent=2))
+
+client.ingest_url("http://some.site.com")
+```
+
+# ⌨️ Use As CLI
+
+Assuming the Raggify server is already running, you can execute commands such as the following:
+
+<img alt="Image" src="https://raw.githubusercontent.com/jun76/raggify/main/media/client.png" />
