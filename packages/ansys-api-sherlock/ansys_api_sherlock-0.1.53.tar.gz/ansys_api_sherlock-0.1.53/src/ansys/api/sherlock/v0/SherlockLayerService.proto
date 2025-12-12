@@ -1,0 +1,775 @@
+// Copyright 2023-2025 ANSYS, Inc. Unauthorized use, distribution, or duplication is prohibited.
+syntax = "proto3";
+
+import "ansys/api/sherlock/v0/SherlockCommonService.proto";
+
+option java_package = "sherlock.grpc";
+option java_outer_classname = "SherlockLayerServiceProto";
+
+/**
+ * Request to list the valid mount point types.
+ */
+message GetMountPointTypesRequest {
+}
+
+/**
+ * Represents a list of valid mount point types.
+ */
+message GetMountPointTypesResponse {
+  ReturnCode returnCode 	= 1;	// Status code of response.
+  repeated string type 		= 2;	// Mount Point Type.
+}
+
+/**
+ * Request to list the valid mount point shape types.
+ */
+message GetMountPointShapeTypesRequest {
+  string mountPointType		= 1;	// Mount Point Type. Supported values are: Mount Hole, Mount Pad, Standoff, and Support Pin.
+}
+
+/**
+ * Represents a list of valid mount point shape types.
+ */
+message GetMountPointShapeTypesResponse {
+  ReturnCode returnCode 	= 1;	// Status code of response.
+  repeated string type 		= 2;	// Mount Point Shape Type.
+}
+
+/**
+ * Request to list the valid mount point sides.
+ */
+message GetMountPointSidesRequest {
+}
+
+/**
+ * Represents a list of valid mount point sides.
+ */
+message GetMountPointSidesResponse {
+  ReturnCode returnCode		= 1;	// Status code of response.
+  repeated string side		= 2;	// Mount Point side.
+}
+
+/**
+ * Request to list the valid mount point units.
+ */
+message GetMountPointUnitsRequest {
+}
+
+/**
+ * Represents a list of valid mount point units.
+ */
+message GetMountPointUnitsResponse {
+  ReturnCode returnCode 	= 1;	// Status code of response.
+  repeated string units		= 2;	// Mount Point units.
+}
+
+/**
+ * Request to list the valid mount point boundaries.
+ */
+message GetMountPointBoundariesRequest {
+}
+
+/**
+ * Represents a list of valid mount point boundaries.
+ */
+message GetMountPointBoundariesResponse {
+  ReturnCode returnCode 	= 1;	// Status code of response.
+  repeated string boundary	= 2;	// Mount Point boundary.
+}
+
+/**
+ * Request to list the valid mount point chassis materials.
+ */
+message GetMountPointChassisMaterialsRequest {
+}
+
+/**
+ * Represents a list of valid mount point chassis materials.
+ */
+message GetMountPointChassisMaterialsResponse {
+  ReturnCode returnCode 			= 1;	// Status code of response.
+  repeated string chassisMaterial	= 2;	// Mount Point chassis material.
+}
+
+/**
+ * Request to delete all mount points in specific CCA of specific project.
+ */
+message DeleteAllMountPointsRequest {
+  string project = 1;	// Sherlock project name.
+  string ccaName = 2;	// The CCA name.
+}
+
+/**
+ * Request to export all mount points and their properties into a CSV formatted file.
+ */
+message ExportAllMountPointsRequest {
+  string project 	= 1;	// Sherlock project name.
+  string ccaName 	= 2;	// The CCA name.
+  string units 		= 3;	// Units used in exporting.
+  string filePath 	= 4;	// The filepath of the CSV file to be exported.
+}
+
+/**
+ * Request to export all ICT fixtures and their properties into a CSV formatted file.
+ */
+message ExportAllICTFixturesRequest {
+  string project 	= 1;	// Sherlock project name.
+  string ccaName 	= 2;	// The CCA name.
+  string units 		= 3;	// Units used in exporting.
+  string filePath 	= 4;	// The filepath of the CSV file to be exported.
+}
+
+/**
+ * Request to list the valid mount point chassis materials.
+ */
+message GetMountPointsPropertiesRequest {
+  string project				= 1;	// Sherlock project name.
+  string ccaName				= 2;	// The CCA name.
+  string mountPointIDs			= 3;	// A comma separated list of mount point id for a list of mount point, or a mount id for one part.
+}
+
+/**
+ * Represents a list of valid mount point properties.
+ */
+message GetMountPointsPropertiesResponse {
+  ReturnCode returnCode 		= 1;	// Status code of response.
+  repeated MountPointProperties mountPointsProperties 	= 2;	// Mount point properties.
+}
+
+/**
+ * Properties of mount point, the properties may varies from the mount point type and mount point shape.
+ */	
+message MountPointProperties{
+  string ID					= 1;	// Mount point ID.
+  string type				= 2;	// Mount point type.
+  string shape				= 3;	// Shape type.
+  string units 				= 4;	// Mount point units.
+  string x 					= 5;	// Center X.
+  string y 					= 6;	// Center Y.
+  string length 			= 7;	// Length.
+  string width				= 8;	// Width.
+  string diameter			= 9;	// Diameter.
+  string nodes				= 10;	// # of nodes.
+  string rotation			= 11;	// Rotation in degrees.
+  string side 				= 12;	// Mount point side.
+  string height 			= 13;	// Mount point height.
+  string material 			= 14;	// Mount point material.
+  string boundary			= 15;	// Boundary Pt(s).
+  string constraints		= 16; 	// FEA constraints.
+  string polygon			= 17;	// Coordinates of points.
+  string state				= 18;	// Mount point state.
+  string chassisMaterial 	= 19;	// Chassis material.
+}
+
+/**
+ * Request to list the valid ICT fixture properties.
+ */
+message GetICTFixturesPropertiesRequest {
+  string project				= 1;	// Sherlock project name.
+  string ccaName				= 2;	// The CCA name.
+  string ICTFixtureIDs			= 3;	// A comma separated list of ICT fixture ids, or an ICT fixture id for one part.
+}
+
+/**
+ * Represents a list of valid ICT fixture properties.
+ */
+message GetICTFixturesPropertiesResponse {
+  ReturnCode returnCode 		= 1;	// Status code of response.
+  repeated ICTFixtureProperties ICTFixtureProperties 	= 2;	// ICT fixture properties.
+}
+
+/**
+ * Properties of ICT fixture, the properties may vary depending on the fixture type and fixture shape.
+ */
+message ICTFixtureProperties{
+  string ID					= 1;	// Fixture ID.
+  string type				= 2;	// Fixture type.
+  string units				= 3;	// Fixture units.
+  string side				= 4;	// Fixture side.
+  string height				= 5; 	// Fixture height.
+  string material			= 6; 	// Fixture material.
+  string state				= 7; 	// Fixture state.
+  string shape				= 8;	// Shape type.
+  string x					= 9;	// Center X.
+  string y					= 10;	// Center Y.
+  string length 			= 11;	// Length.
+  string width				= 12;	// Width.
+  string diameter			= 13;	// Circle diameter.
+  string nodes				= 14; 	// # of nodes.
+  string rotation			= 15; 	// Rotation (degrees).
+  string polygon 			= 16;	// Coordinates of points.
+  string boundary			= 17;	// Boundary Pt(s).
+  string constraints		= 18; 	// FEA constraints.
+  string chassisMaterial	= 19;	// Chassis material.
+}
+
+/**
+ * Request to update mount points properties of a CCA from a CSV formatted file.
+ */
+message UpdateMountPointsByFileRequest {
+  string project 										= 1;	// Sherlock project name.
+  string ccaName 										= 2;	// The CCA name.
+  string filePath 										= 3;	// The filepath of the CSV file containing the mount points properties.
+}
+
+/**
+ * Request to update mount points properties of a CCA from input parameters.
+ */
+message UpdateMountPointsRequest {
+  string project 										= 1;	// Sherlock project name.
+  string ccaName 										= 2;	// The CCA name.
+  repeated MountPointProperties mountPointsProperties 	= 3;	// Mount point properties.
+}
+
+/**
+ * Contains the status of the update as well as all the update error messages.
+ */
+message UpdateMountPointsResponse {
+  ReturnCode returnCode 		= 1;	// Status code of response.
+  repeated string updateError	= 2;	// Mount Points update error messages.
+}
+
+/**
+ * Request to delete all ICT fixtures in specific CCA of specific project.
+ */
+message DeleteAllICTFixturesRequest {
+  string project = 1;	// Sherlock project name.
+  string ccaName = 2;	// The CCA name.
+}
+
+/**
+ * Request to delete all ICT fixtures in specific CCA of specific project.
+ */
+message DeleteAllTestPointsRequest {
+  string project = 1;	// Sherlock project name.
+  string ccaName = 2;	// The CCA name.
+}
+
+/**
+ * Request to update ICT fixtures properties of a CCA from a CSV formatted file.
+ */
+message UpdateICTFixturesByFileRequest {
+  string project 										= 1;	// Sherlock project name.
+  string ccaName 										= 2;	// The CCA name.
+  string filePath 										= 3;	// The filepath of the CSV file containing the ICT fixtures properties.
+}
+
+/**
+ * Request to update ICT fixtures properties of a CCA from input parameters.
+ */
+message UpdateICTFixturesRequest {
+  string project 										= 1;	// Sherlock project name.
+  string ccaName 										= 2;	// The CCA name.
+  repeated ICTFixtureProperties ICTFixtureProperties 	= 3;	// ICT Fixture properties.
+}
+
+/**
+ * Contains the status of the update as well as all the update error messages.
+ */
+message UpdateICTFixturesResponse {
+  ReturnCode returnCode 		= 1;	// Status code of response.
+  repeated string updateError	= 2;	// ICT fixtures update error messages.
+}
+
+/**
+ * Request to export all test points and their properties into a CSV formatted file.
+ */
+message ExportAllTestPointsRequest {
+  string project 		= 1;	// Sherlock project name.
+  string ccaName 		= 2;	// The CCA name.
+  string lengthUnits 	= 3;	// Length Units used in exporting.
+  string displacementUnits = 4;	// Displacement Units used in exporting.
+  string forceUnits 	= 5;	// Force Units used in exporting.
+  string filePath 		= 6;	// The filepath of the CSV file to be exported.
+}
+
+/**
+ * Request to update test points properties of a CCA from a CSV formatted file.
+ */
+message UpdateTestPointsByFileRequest {
+  string project 										= 1;	// Sherlock project name.
+  string ccaName 										= 2;	// The CCA name.
+  string filePath 										= 3;	// The filepath of the CSV file containing the test points properties.
+}
+
+/**
+ * Request to update test points properties of a CCA from input parameters.
+ */
+message UpdateTestPointsRequest {
+  string project										= 1;	// Sherlock project name.
+  string ccaName										= 2;	// The CCA name.
+  repeated TestPointProperties testPointProperties 		= 3;	// List of data needed to update each test point.
+}
+
+/**
+ * Contains the status of the update as well as all the update error messages.
+ */
+message UpdateTestPointsResponse {
+  ReturnCode returnCode 		= 1;	// Status code of response.
+  repeated string updateError	= 2;	// Test Points update error messages.
+}
+
+/**
+ * Request to return the properties for each test point given a comma-separated list of test point ids.
+ */
+message GetTestPointPropertiesRequest {
+  string project					= 1;	// Sherlock project name.
+  string ccaName					= 2;	// The CCA name.
+  optional string testPointIDs		= 3;	// A comma-separated list of test point ids representing one or more test points. If a list is not included then the entire list of test points for a given CCA will have their properties returned.
+}
+
+/**
+ * Represents the test point properties for a specific test point id.
+ */
+message GetTestPointPropertiesResponse {
+  ReturnCode returnCode 						= 1;	// Status code of response.
+  TestPointProperties testPointProperties 	    = 2;	// The test point properties for a given test point id.
+}
+
+/**
+ * Properties of a test point.
+ */
+message TestPointProperties {
+  enum LoadType {
+    Force 		 = 0;	// Numeric load value and associated units represents force.
+	Displacement = 1;	// Numeric load value and associated units represents displacement.
+  }
+  string   ID				= 1;	// Test point ID.
+  string   side				= 2;	// Test point side, i.e., Top or Bottom.
+  string   units 			= 3;	// Test point units.
+  double   centerX 			= 4;	// Center X.
+  double   centerY 			= 5;	// Center Y.
+  double   radius			= 6;    // Radius.
+  LoadType loadType         = 7;    // Load Type enum with acceptable values being either Force or Displacement.
+  double   loadValue      	= 8;    // Load value.
+  string   loadUnits     	= 9;    // Load units.
+}
+
+message PolygonalShape {
+
+  message Point {
+    double x = 1;					// The x coordinate of the point.
+    double y = 2;					// The y coordinate of the point.
+  }
+
+  repeated Point points = 1;		// The points used to define the polygonal shape, must be >= 3.
+  optional double rotation = 2;		// The rotation of the shape in degrees.
+}
+
+message RectangularShape {
+  optional double length = 1;		// The length of the rectangle.
+  optional double width = 2;		// The width of the rectangle.
+  optional double centerX = 3;		// The x coordinate of the center of the rectangle.
+  optional double centerY = 4;		// The y coordinate of the center of the rectangle.
+  optional double rotation = 5;		// The rotation of the rectangle in degrees.
+}
+
+message SlotShape {
+  optional double length = 1;		// The length of the slot shape.
+  optional double width = 2;		// The width of the slot shape.
+  optional uint32 nodeCount = 3;	// The number of nodes.
+  optional double centerX = 4;		// The x coordinate of the center of the slot shape.
+  optional double centerY = 5;		// The x coordinate of the center of the slot shape.
+  optional double rotation = 6;		// The rotation of the shape in degrees.
+}
+
+message CircularShape {
+  optional double diameter = 1;		// The diameter of the circle.
+  optional uint32 nodeCount = 2;	// The number of nodes.
+  optional double centerX = 3;		// The x coordinate of the center of the circle.
+  optional double centerY = 4;		// The x coordinate of the center of the circle.
+  optional double rotation = 5;		// The rotation of the shape in degrees.
+}
+
+message PCBShape {
+}
+
+/**
+ * Data that fully describes a potting region.
+ */
+ message PottingRegion {
+  string ccaName = 1;							// The name of the CCA.
+  optional string pottingID = 2;				// The potting ID.
+  optional string pottingSide = 3;			// The potting side, options are "TOP", "BOT", or "BOTTOM".
+  optional string pottingMaterial = 4;		// The potting material.
+  optional string pottingUnits = 5;			// The units to use for the potting region.
+  optional double pottingThickness = 6;		// The potting thickness.
+  optional double pottingStandoff = 7;		// The potting standoff.
+
+  oneof Shape {
+    PolygonalShape polygonalShape = 8;		// Used to add a region with a polygonal shape.
+    RectangularShape rectangularShape = 9;	// Used to add a region with a rectangular shape.
+    SlotShape slotShape = 10;					// Used to add a region with a slot shape.
+    CircularShape circularShape = 11;			// Used to add a region with a circular shape.
+    PCBShape pCBShape = 12;					// Used to add a region with a PCB shape.
+  }
+}
+
+/**
+ * Request to add a potting region.
+ */
+message AddPottingRegionRequest {
+  message PottingRegion {
+    option deprecated = true;
+    string ccaName = 1;							// The name of the CCA.
+    optional string pottingID = 2;				// The potting ID.
+    optional string pottingSide = 3;			// The potting side, options are "TOP", "BOT", or "BOTTOM".
+    optional string pottingMaterial = 4;		// The potting material.
+    optional string pottingUnits = 5;			// The units to use for the potting region.
+    optional double pottingThickness = 6;		// The potting thickness.
+    optional double pottingStandoff = 7;		// The potting standoff.
+
+    oneof Shape {
+      PolygonalShape polygonalShape = 8;		// Used to add a region with a polygonal shape.
+  	  RectangularShape rectangularShape = 9;	// Used to add a region with a rectangular shape.
+  	  SlotShape slotShape = 10;					// Used to add a region with a slot shape.
+  	  CircularShape circularShape = 11;			// Used to add a region with a circular shape.
+  	  PCBShape pCBShape = 12;					// Used to add a region with a PCB shape.
+    }
+  }
+
+  string project = 1;							// The name of the Sherlock project to add the potting regions to.
+  repeated PottingRegion pottingRegions = 2;	// The potting regions to add.
+}
+
+/**
+ * Request to update 1 or more potting regions in a single CCA.
+ */
+ message UpdatePottingRegionRequest {
+  /**
+   * Potting region data used to describe a single potting region and identify which one should be updated.
+   */
+  message PottingRegionUpdateData {
+    string pottingRegionIDToUpdate = 1;  // Data that uniquely identifies the potting region being updated.
+    PottingRegion pottingRegion = 2; // Data that describes a potting region.
+  }
+
+  string project = 1; // The name of the Sherlock project that contains the potting region(s) to update.
+  repeated PottingRegionUpdateData updatePottingRegions = 2;  // List of data needed to update each potting region.
+}
+
+/**
+ * Request to delete 1 or more potting regions.
+ */
+ message DeletePottingRegionRequest {
+  /**
+   * Potting region data used to identify a single pre-existing potting region which should be deleted.
+   */
+  message PottingRegionDeleteData {
+    string ccaName = 1; // The name of the CCA.
+    string pottingID = 2; // The potting ID.
+  }
+
+  string project = 1; // The name of the Sherlock project that contains the potting region(s) to delete.
+  repeated PottingRegionDeleteData pottingRegionDeleteData = 2; // List of information needed to delete a specific Potting Region.
+}
+
+/**
+ * Request to copy 1 or more potting regions.
+ */
+ message CopyPottingRegionRequest {
+  /**
+   * Potting region data used to identify a single pre-existing potting region which should be copied.
+   */
+  message PottingRegionCopyData {
+    string ccaName = 1; // The name of the CCA.
+    string pottingID = 2; // The potting ID to copy from.
+    string copyPottingID = 3; // The potting ID to be used for the new copy.
+    optional double centerX = 4; // The x coordinate for the center of the copied potting region.
+    optional double centerY = 5; // The y coordinate for the center of the copied potting region.
+  }
+
+  string project = 1; // The name of the Sherlock project that contains the potting region(s) to copy.
+  repeated PottingRegionCopyData pottingRegionCopyData = 2; // List of information needed to copy a specific Potting Region.
+ }
+
+message ModelingRegion {
+	enum ModelingMode {
+		Enabled = 0;		// Use the modeling region.
+  		Disabled = 1;		// Ignore the modeling region.
+  		Excluded = 2;		// Don't generate any elements for the region.
+  	}
+	enum ElementOrder {
+		First_Order = 0;		// First order (Linear) 3D elements should be created for the PCB in the modeling region.
+		Second_Order = 1;	// Second order (Quadratic) 3D elements should be created for the PCB in the modeling region.
+		Solid_Shell = 2;		// Used for relatively flat elements, like those found in a PCB layer to reduce modeling generation time.
+	}
+	message PCBModelingProperties {
+		enum ExportModelType {
+			Default = 0;		// Region type is based on the Mesh Type property defined in the PCB Modeling tab in the FEA Model Export dialog.
+			Sherlock = 1;		// Use mesh elements generated by Sherlock to model the region.
+			Sweep = 2;			// Use mesh elements generated by the FEA tool to model the region.
+			None = 3;			// Define only geometric volumes for the region, without generating mesh elements.
+		}
+		ExportModelType exportModelType = 1; 	// The type of model to be generated for a given modeling region.
+		ElementOrder elemOrder = 2;				// The type of 3D elements to be created for the PCB in the modeling region.
+		double maxMeshSize = 3;					// The maximum size of the mesh to be used in the region.
+		string maxMeshSizeUnits = 4;			// Units for the maximum mesh size.
+		bool quadsPreferred = 5;				// If true, then the meshing engine should attempt to generate quad-shaped elements when creating the mesh.
+	}
+	message TraceModelingProperties {
+		enum TraceModelingType {
+			Default = 0;	// Trace modeling type is based on the Trace Modeling property defined in the Trace Modeling tab in the FEA Model Export dialog.
+			Enabled = 1;	// Trace modeling is enabled for this region.
+			Disabled = 2;	// Trace modeling is disabled for this region.
+		}
+		TraceModelingType traceModelType = 1;		// Specifies if trace modeling should be performed inside of the region.
+		optional ElementOrder elemOrder = 2;		// The type of 3D elements to be created for traces in the region when trace modeling is enabled.
+		optional double traceMeshSize = 3;			// The maximum mesh size to be used in the region when trace modeling is enabled.
+		optional string traceMeshSizeUnits = 4;		// Units for the maximum mesh size when trace modeling is enabled.
+	}
+	optional string ccaName = 1;							// Name of the CCA.
+	optional string regionId = 2;							// Unique modeling region ID.
+	optional string regionUnits = 3;						// Modeling region units.
+	optional ModelingMode modelMode = 4; 					// Mode that specified how the region is used.
+	oneof Shape {
+	      PolygonalShape polygonalShape = 5;				// Defined by N points that form a convex polygon.
+	  	  RectangularShape rectangularShape = 6;			// Defined by 4 points that form a rectangle.
+	  	  SlotShape slotShape = 7;							// Defined by 8 points that form a rectangle with rounded ends.
+	  	  CircularShape circularShape = 8;					// Defined by N points that form a circle.
+	}
+	optional PCBModelingProperties pcbModelProps = 9;   	// Mesh properties for the modeling region.
+	optional TraceModelingProperties traceModelProps = 10;	// Trace modeling properties for the region.
+	optional string regionIdReplacement = 11;				// Represents a unique region id that will replace the existing regionId value during
+															// a modeling region update if a value exists.
+}
+
+/**
+ * Request to add one or more modeling regions to a specific project.
+ */
+message AddModelingRegionRequest {
+	string project = 1;								// The name of the Sherlock project to add the modeling regions to.
+	repeated ModelingRegion modelingRegions = 2;	// List of modeling regions to add to the project.
+}
+
+/**
+ * Request to update one or more modeling regions for a specific project.
+ */
+message UpdateModelingRegionRequest {
+	string project = 1;								// The name of the Sherlock project.
+	repeated ModelingRegion modelingRegions = 2;	// List of modeling regions to update in the project.  The regionId for
+													// each modeling region must already exist in the project.
+}
+
+/**
+ * Request to delete one or more modeling regions for a specific project.
+ */
+message DeleteModelingRegionRequest {
+	message DeleteModelingRegionInfo {
+		string ccaName = 1;	 	// Name of the CCA.
+		string regionId = 2;	// Unique region ID of the modeling region to delete.
+	}
+	string project = 1;									    // The name of the Sherlock project.
+	repeated DeleteModelingRegionInfo deleteRegions = 2;	// List of modeling regions to delete in the project.
+}
+
+/**
+ * Request to copy one or more modeling regions in a specific project.
+ */
+message CopyModelingRegionRequest {
+	message CopyModelingRegionInfo {
+		string ccaName = 1;	 		// Name of the CCA.
+		string regionId = 2;		// Region ID of the existing modeling region to copy.
+		string regionIdCopy = 3;    // Region ID of the modeling region copy. Must be unique.
+		double centerX = 4;			// The center x coordinate of the modeling region copy -- used for location placement in the Layer Viewer.
+		double centerY = 5;			// The center y coordinate of the modeling region copy -- used for location placement in the Layer Viewer.
+	}
+	string project = 1;									    // The name of the Sherlock project.
+	repeated CopyModelingRegionInfo copyRegions = 2;		// List of modeling regions to copy along with their corresponding "copy to" parameters.
+}
+
+/**
+* Format of a layer viewer folder and layer names within the folder.
+*/
+message LayerInfo {
+    enum LayerFolder {
+    	Unknown = 0;
+        Components = 1;
+        Copper_Layers = 2;
+        DFMEA_Bot = 3;
+        DFMEA_Top = 4;
+        Drill_Holes = 5;
+        Harmonic_Vibe = 6;
+        Heat_Sinks = 7;
+        Icepak_Thermal_Maps = 8;
+        ICT = 9;
+        Laminate_Layers = 10;
+        Mechanical_Parts = 11;
+        Mechanical_Shock = 12;
+        Mechanical = 13;
+        Natural_Freq = 14;
+        Other_Layers = 15;
+        Potting_Regions = 16;
+        PTH_Fatigue = 17;
+        Random_Vibe = 18;
+        Semiconductor_Wearout_Top = 19;
+        Silk_Screens = 20;
+        Solder_Fatigue_Bot = 21;
+        Solder_Fatigue_Top = 22;
+        Solder_Masks = 23;
+        Strain_Maps = 24;
+        Test_Points = 25;
+        Thermal_Derating_Bot = 26;
+        Thermal_Derating_Top = 27;
+        Thermal_Maps = 28;
+        Thermal_Mech = 29;
+    }
+	LayerFolder layerFolder = 1;
+    repeated string layers = 2;
+}
+
+/**
+ * Request to list all layers in a specific project CCA.
+ */
+message ListLayersRequest {
+  string project = 1;	// Sherlock project name.
+  string ccaName = 2;	// The CCA name.
+}
+
+/**
+ * Contains the list of layers.
+ */
+message ListLayersResponse {
+  ReturnCode returnCode = 1;			// Status code of response.
+  repeated LayerInfo layerInfos = 2;	// List of layer information.
+}
+
+
+/**
+ * Request to export one or more 2D Layer Viewer images from a project CCA.
+ */
+message ExportLayerImageRequest {
+  message ExportLayerImageInfo {
+    optional bool componentsEnabled = 1;	// Displays the components in the export image. Default to true when not provided.
+    optional bool labelsEnabled = 2;		// Displays the component reference designators in the export image. Default to true when not provided.
+    optional bool leadsEnabled = 3;			// Displays the component leads and solder balls in the export image. Default to true when not provided.
+    bool axesEnabled = 4;					// Displays the x and y axes in the export image.
+    bool gridEnabled = 5;					// Displays a grid in the export image.
+    repeated LayerInfo layerInfos = 6;		// List of layers to be exported. This cannot be empty.
+    string filePath = 7;					// Full file path of the export image.
+    int32 imageHeight = 8;					// The export image height.
+    int32 imageWidth = 9;					// The export image width.
+    bool overwriteExistingFile = 10;		// If the file path already exists, overwrite the file if this is set to true.
+  }
+  string project = 1;								// Sherlock project name.
+  string ccaName = 2;								// The CCA name.
+  repeated ExportLayerImageInfo exportLayers = 3;	// List of layer images to export along with their export parameters.
+}
+
+/**
+ * Contains the status of the export as well as all the export error and informational messages.
+ */
+message ExportLayerImageResponse {
+  ReturnCode returnCode = 1;			// Status code of response.
+  repeated string exportMessages = 2;	// Informational and error messages about the export.
+}
+
+service SherlockLayerService {
+  // Add a potting region with the specified shape and properties.
+  rpc addPottingRegion(AddPottingRegionRequest) returns (ReturnCode);
+
+  // Updates a potting region with the specified shape and properties.
+  rpc updatePottingRegion(UpdatePottingRegionRequest) returns (stream ReturnCode);
+
+  // Deletes a potting region based on given identification properties.
+  rpc deletePottingRegion(DeletePottingRegionRequest) returns (stream ReturnCode);
+
+  // Copies a potting region based on given identification properties.
+  rpc copyPottingRegion(CopyPottingRegionRequest) returns (stream ReturnCode);
+
+  // Delete all ICT fixtures in specific CCA of specific project.
+  rpc deleteAllICTFixtures(DeleteAllICTFixturesRequest) returns (ReturnCode);
+
+  // Delete all mount points in specific CCA of specific project.
+  rpc deleteAllMountPoints(DeleteAllMountPointsRequest) returns (ReturnCode);
+
+  // Delete all test points in specific CCA of specific project.
+  rpc deleteAllTestPoints(DeleteAllTestPointsRequest) returns (ReturnCode);
+
+  // Export all mount points and their properties into a CSV formatted file.
+  rpc exportAllMountPoints(ExportAllMountPointsRequest) returns (ReturnCode);
+
+  // Export all ICT fixtures and their properties into a CSV formatted file.
+  rpc exportAllICTFixtures(ExportAllICTFixturesRequest) returns (ReturnCode);
+
+  // Export all test points and their properties into a CSV formatted file.
+  rpc exportAllTestPoints(ExportAllTestPointsRequest) returns (ReturnCode);
+
+  // Get a list of valid mount point boundaries.
+  rpc getMountPointBoundaries(GetMountPointBoundariesRequest) returns (GetMountPointBoundariesResponse);
+
+  // Get a list of valid mount point chassis materials.
+  rpc getMountPointChassisMaterials(GetMountPointChassisMaterialsRequest) returns (GetMountPointChassisMaterialsResponse);
+
+  // Get a list of valid mount point properties.
+  rpc getMountPointsProperties(GetMountPointsPropertiesRequest) returns (GetMountPointsPropertiesResponse);
+
+  // Get a list of valid ICT fixture properties.
+  rpc getICTFixturesProperties(GetICTFixturesPropertiesRequest) returns (GetICTFixturesPropertiesResponse);
+
+  // Get a list of valid mount point shape type values.
+  rpc getMountPointShapeTypes(GetMountPointShapeTypesRequest) returns (GetMountPointShapeTypesResponse);
+
+  // Get a list of valid mount point sides.
+  rpc getMountPointSides(GetMountPointSidesRequest) returns (GetMountPointSidesResponse);
+
+  // Get a list of valid mount point type values.
+  rpc getMountPointTypes(GetMountPointTypesRequest) returns (GetMountPointTypesResponse);
+
+  // Get a list of valid mount point units.
+  rpc getMountPointUnits(GetMountPointUnitsRequest) returns (GetMountPointUnitsResponse);
+
+  //Get a series of valid test point properties.
+  rpc getTestPointProperties(GetTestPointPropertiesRequest) returns (stream GetTestPointPropertiesResponse);
+
+  // Update the ICT fixtures properties of a CCA using input parameters.
+  // If the ID specified already exists, then the properties for that ICT fixture will be updated.
+  // If the ID specified does not already exist, or if the field is empty, then a new ICT fixture will be added with the specified properties.
+  rpc updateICTFixtures(UpdateICTFixturesRequest) returns (UpdateICTFixturesResponse);
+
+  // Update the ICT fixtures properties of a CCA from a CSV formatted file. This API could be used to add new ICT fixtures or update existing ones depending on the file contents.
+  // If the ID specified already exists, then the properties for that ICT fixture will be updated.
+  // If the ID specified does not already exist, or if the field is empty, then a new ICT fixture will be added with the specified properties.
+  // The file format should be the same as the one produced from CCA -> Export ICT Fixtures.
+  rpc updateICTFixturesByFile(UpdateICTFixturesByFileRequest) returns (UpdateICTFixturesResponse);
+
+  // Update mount points with specified properties.
+  // If the ID specified already exists, then the properties for that mount point will be updated.
+  // If the ID specified does not already exist, or if the field is empty, then a new mount point will be added with the specified properties.
+  rpc updateMountPoints(UpdateMountPointsRequest) returns (UpdateMountPointsResponse);
+
+  // Update the mount points properties of a CCA from a CSV formatted file. This API could be used to add new mount points or update existing ones depending on the file contents.
+  // If the ID specified already exists, then the properties for that mount point will be updated.
+  // If the ID specified does not already exist, or if the field is empty, then a new mount point will be added with the specified properties.
+  // The file format should be the same as the one produced from CCA -> Export Mount Points.
+  rpc updateMountPointsByFile(UpdateMountPointsByFileRequest) returns (UpdateMountPointsResponse);
+
+  // Update the test points properties of a CCA from input parameters.
+  // If the ID specified already exists, then the properties for that test point will be updated.
+  // If the ID specified does not already exist, or if the field is empty, then a new test point will be added with the specified properties.
+  rpc updateTestPoints(UpdateTestPointsRequest) returns (UpdateTestPointsResponse);
+  
+  // Update the test points properties of a CCA from a CSV formatted file. This API could be used to add new test points or update existing ones depending on the file contents.
+  // If the ID specified already exists, then the properties for that test point will be updated.
+  // If the ID specified does not already exist, or if the field is empty, then a new test point will be added with the specified properties.
+  // The file format should be the same as the one produced from CCA -> Export Test Points.
+  rpc updateTestPointsByFile(UpdateTestPointsByFileRequest) returns (UpdateTestPointsResponse);
+  
+  // Add one or more modeling regions with the specified shapes and properties.
+  rpc addModelingRegion(AddModelingRegionRequest) returns (ReturnCode);
+  
+  // Update one or more modeling regions with the specified shapes and properties.
+  rpc updateModelingRegion(UpdateModelingRegionRequest) returns (ReturnCode);
+  
+  // Delete one or more existing modeling regions.
+  rpc deleteModelingRegion(DeleteModelingRegionRequest) returns (ReturnCode);
+  
+  // Copy one or more existing modeling regions.
+  rpc copyModelingRegion(CopyModelingRegionRequest) returns (ReturnCode);
+  
+  // List all the available layers as seen in the layer viewer for a project CCA.
+  rpc listLayers(ListLayersRequest) returns (ListLayersResponse);
+  
+  // Export one or more 2D Layer Viewer images from a project CCA.
+  rpc exportLayerImage(ExportLayerImageRequest) returns (stream ExportLayerImageResponse);
+}
