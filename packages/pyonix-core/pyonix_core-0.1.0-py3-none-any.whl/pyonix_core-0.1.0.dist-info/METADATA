@@ -1,0 +1,97 @@
+Metadata-Version: 2.4
+Name: pyonix-core
+Version: 0.1.0
+Summary: A robust, secure, and maintainable ONIX 3.x Python library using xsdata.
+License-File: LICENSE
+Requires-Python: >=3.11
+Requires-Dist: lxml>=5.0.0
+Requires-Dist: xsdata[cli,lxml]
+Description-Content-Type: text/markdown
+
+# pyonix-core
+
+A high-performance, type-safe, and secure Python library for processing ONIX 3.0 XML feeds. Built on top of `xsdata` and `lxml`, `pyonix-core` provides a robust foundation for bibliographic data exchange in the publishing industry.
+
+## Overview
+
+ONIX for Books is the international standard for representing and communicating book industry product information in electronic form. `pyonix-core` simplifies the complexity of the ONIX 3.0 standard by providing:
+
+*   **Strict Type Safety**: Fully typed Python dataclasses generated directly from EDItEUR's official XSD schemas.
+*   **Memory Efficiency**: Iterative, streaming parsing capabilities designed to handle multi-gigabyte ONIX files with minimal memory footprint.
+*   **Security First**: Hardened XML parsing configuration to prevent XXE (XML External Entity) attacks and other common XML vulnerabilities.
+*   **Developer Friendly**: A high-level "Facade" pattern to abstract away the deeply nested structure of raw ONIX messages, providing simple access to common fields like ISBNs, titles, and prices.
+
+## Installation
+
+Requires Python 3.11 or higher.
+
+```bash
+pip install .
+```
+
+## Quick Start
+
+### Parsing an ONIX File
+
+The core entry point is `parse_onix_stream`, which yields product records one by one. This allows you to process massive files without loading the entire document into memory.
+
+```python
+from pyonix_core.parsing.parser import parse_onix_stream
+from pyonix_core.facade.product import ProductFacade
+
+file_path = "path/to/onix_feed.xml"
+
+# parse_onix_stream automatically detects Reference vs Short tags
+for product in parse_onix_stream(file_path):
+    # Wrap the raw data model in a Facade for easier access
+    facade = ProductFacade(product)
+    
+    print(f"Title: {facade.title}")
+    print(f"ISBN-13: {facade.isbn13}")
+    print(f"Price: {facade.price_amount} {facade.price_currency}")
+    print("-" * 20)
+```
+
+### Working with the Facade
+
+The `ProductFacade` simplifies data extraction. Instead of navigating complex nested objects, you can access properties directly.
+
+```python
+# Example of accessing data via Facade
+print(f"Record Reference: {facade.record_reference}")
+print(f"Contributors: {', '.join(facade.contributors)}")
+```
+
+## Architecture
+
+### Data Models
+The data models in `pyonix_core.models` are auto-generated using `xsdata` from the official ONIX 3.0 schemas. This ensures 100% compliance with the standard and provides excellent IDE support (autocompletion, type checking).
+
+### Security
+XML parsing is handled by `lxml` with strict security settings:
+*   `resolve_entities=False`: Prevents XXE attacks.
+*   `no_network=True`: Blocks remote resource fetching.
+*   `load_dtd=False`: Disables DTD processing.
+
+## Development
+
+### Running Tests
+
+```bash
+python -m unittest discover tests
+```
+
+### Regenerating Models
+
+If the schemas change, you can regenerate the data models:
+
+```bash
+python scripts/generate_models.py
+```
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+*Note: This project is currently in active development.*

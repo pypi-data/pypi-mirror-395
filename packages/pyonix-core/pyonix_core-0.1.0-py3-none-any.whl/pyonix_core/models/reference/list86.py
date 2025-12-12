@@ -1,0 +1,28 @@
+from enum import Enum
+
+__NAMESPACE__ = "http://ns.editeur.org/onix/3.0/reference"
+
+
+class List86(Enum):
+    """
+    Bible text organization.
+
+    Attributes:
+        CHR: Chronological A Bible with the text organized in the order
+            in which events are believed to have happened
+        CHA: Chain reference A Bible which explores keywords or themes
+            by referring text to preceding or following text
+        INT: Interlinear A Bible or other text in which different
+            versions are printed one line above the other, so that the
+            variations can easily be detected
+        PAR: Parallel A Bible with two or more versions printed side by
+            side
+        STN: Standard A Bible in which the text is presented in the
+            traditional order
+    """
+
+    CHR = "CHR"
+    CHA = "CHA"
+    INT = "INT"
+    PAR = "PAR"
+    STN = "STN"
