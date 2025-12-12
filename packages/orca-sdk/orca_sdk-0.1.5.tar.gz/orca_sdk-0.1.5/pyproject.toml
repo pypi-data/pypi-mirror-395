@@ -1,0 +1,84 @@
+[project]
+name = "orca_sdk"
+description = "SDK for interacting with Orca Services"
+license = "Apache-2.0"
+authors = [
+    {name = "Orca DB Inc.", email = "dev-rel@orcadb.ai"}
+]
+readme = "README.md"
+version = "0.1.5" # Will be set by CI before building the wheel. Do not set manually.
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "datasets >=3.1.0,<4",
+    "httpx >=0.28.1",
+    "httpx-retries >=0.4.3,<0.5.0",
+    "python-dotenv >=1.1.0",
+    # TODO: make these optional-dependencies
+    # ui
+    "gradio >=5.44.1,<6",
+    # metrics
+    "numpy >=2.1.0,<3",
+    "scikit-learn >=1.6.1,<2",
+    # arrow
+    "pyarrow >=18.0.0,<19",
+    # torch
+    "torch >=2.8.0,<3",
+    # pandas
+    "pandas >=2.2.3,<3",
+]
+
+[dependency-groups]
+dev = [
+    "black ~=25.1.0",
+    "isort ~=6.0.0",
+    "pytest ~=8.3.3",
+    "pytest-asyncio ~=0.25.3",
+    "pytest-timeout ~=2.3.1",
+    "pytest-cov ~=6.0.0",
+    "pyright ~=1.1.399",
+    "datamodel-code-generator ~=0.32.0",
+    "ipykernel ~=6.29.5",
+]
+
+[tool.poetry]
+packages = [{ include = "orca_sdk" }]
+
+[tool.poetry.requires-plugins]
+poethepoet = { extras = ["poetry-plugin"], version = "^0.37.0" }
+
+[tool.poe]
+poetry_command = ""
+
+[tool.poe.tasks]
+test = "pytest"
+typecheck = "pyright"
+codegen = "python -m scripts.codegen"
+lighthouse = { shell = "cd ../lighthouse && poetry run poe dev" }
+vulnerabilities = "trivy fs . --scanners vuln --ignore-unfixed"
+changelog.cmd = "git-cliff --tag-pattern orca_sdk --bump --unreleased"
+changelog.cwd = "../"
+changelog.env = { "SCOPE" = "orca_sdk" }
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+addopts = "--color=yes -s"
+filterwarnings = ["ignore::DeprecationWarning"]
+asyncio_default_fixture_loop_scope = "session"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+known_first_party = ["orca_sdk"]
+
+[tool.pyright]
+include = ["./orca_sdk/**", "./scripts/**"]
