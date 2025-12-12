@@ -1,0 +1,159 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bizstats-llm-router"
+version = "0.1.0"
+description = "Multi-provider LLM routing with intelligent failover, cost optimization, and CrewAI integration"
+readme = "README.md"
+license = {text = "Proprietary - Copyright (c) 2025 Absolut-e Data Com Inc. and BizStats.AI. All rights reserved."}
+requires-python = ">=3.11"
+authors = [
+    { name = "Absolut-e Data Com Inc.", email = "account@absolut-e.com" }
+]
+keywords = [
+    "llm",
+    "openai",
+    "anthropic",
+    "google",
+    "ollama",
+    "azure",
+    "bedrock",
+    "routing",
+    "failover",
+    "crewai",
+    "multi-provider",
+    "ai",
+    "machine-learning"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "aiohttp>=3.9.0",
+    "httpx>=0.26.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "tenacity>=8.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "aioresponses>=0.7.0",
+    "respx>=0.20.0",
+]
+openai = [
+    "openai>=1.0.0",
+]
+anthropic = [
+    "anthropic>=0.18.0",
+]
+google = [
+    "google-generativeai>=0.4.0",
+]
+ollama = [
+    "ollama>=0.1.0",
+]
+crewai = [
+    "crewai>=0.186.0",
+    "litellm>=1.0.0",
+]
+redis = [
+    "redis>=5.0.0",
+]
+all = [
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+    "google-generativeai>=0.4.0",
+    "ollama>=0.1.0",
+    "crewai>=0.186.0",
+    "litellm>=1.0.0",
+    "redis>=5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/absolut-e/bizstats-llm-router"
+Documentation = "https://github.com/absolut-e/bizstats-llm-router#readme"
+Repository = "https://github.com/absolut-e/bizstats-llm-router"
+Issues = "https://github.com/absolut-e/bizstats-llm-router/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bizstats_llm_router"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: Unit tests (no external dependencies)",
+    "integration: Integration tests (requires LLM providers)",
+    "slow: Slow running tests",
+]
+
+[tool.coverage.run]
+source = ["src/bizstats_llm_router"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/adapters/openai.py",
+    "*/adapters/anthropic.py",
+    "*/adapters/google.py",
+    "*/adapters/ollama.py",
+    "*/adapters/azure.py",
+    "*/adapters/bedrock.py",
+    "*/adapters/__init__.py",
+]
+
+[tool.coverage.report]
+fail_under = 73
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
