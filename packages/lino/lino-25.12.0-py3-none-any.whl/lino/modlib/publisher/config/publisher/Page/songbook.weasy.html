@@ -1,0 +1,52 @@
+{%- extends "publisher/Page/base.weasy.html" -%}
+{% set show_printed_time = True %}
+
+{% if site_op  %}
+{%- block bottomleft %}
+@bottom-left {
+    vertical-align: top;
+    content: '{%- block doctitle %}{{str(obj)}}{%- endblock %}'
+}
+{%- endblock bottomleft %}
+{%- block bottomright %}
+@bottom-right {
+    vertical-align: top;
+    white-space: pre;
+    content: '\A{{_("Page")}} ' counter(page) ' {{_("of {0}").format("")}} ' counter(pages)
+             {%- if show_printed_time -%}
+             '\A{{_("Printed")}} {{fdm(dd.today())}} {{_("at")}} {{now.time().strftime("%H:%M")}}'
+             {%- endif %};
+}
+{%- endblock bottomright %}
+{%- endif %}
+
+{%- block main %}
+
+<h1 style="text-align:center;">{{obj.title}}</h1>
+{% if obj.subtitle %}
+<h3 style="text-align:center;">{{obj.subtitle}}</h3>
+{%- endif %}
+
+{% block body %}
+
+{% if obj.body %}
+<div style="height:2mm;"></div>
+{{obj.body_full_preview}}
+<div style="height:2mm;"></div>
+{% endif %}
+
+{% for item in obj.items.all() %}
+{{item.as_page_item(ar)}}
+{% endfor %}
+
+<h1>{{_("Register")}}</h1>
+{% for item in obj.items.order_by('ticket__title') %}
+{{item.ticket.title}} ... {{item.seqno}}<br/>
+{% endfor %}
+
+{{rt.models.sources.authors_summary(obj, _("Authors"))}}
+{{rt.models.sources.copyright_summary(obj, _("Copyright"))}}
+
+{% endblock %}
+
+{%- endblock main %}
