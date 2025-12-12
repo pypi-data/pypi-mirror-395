@@ -1,0 +1,19 @@
+{% extends 'core_main_app/_render/admin/theme/tools/modal.html' %}
+{% load special_plural %}
+{% block modal_id %}delete-result-modal{% endblock %}
+{% block modal_title %}Delete {% if data.administration %}{{data.document|special_plural}}{% else %}{{data.document}}{% endif %}{% endblock %}
+
+{% block modal_body %}
+<div class="alert alert-danger" id="delete_banner_errors" style="display: none;">
+        <a href="#" class="{% if BOOTSTRAP_VERSION|first == "4" %}close{% elif BOOTSTRAP_VERSION|first == "5" %}btn-close{% endif %}" data-hide="alert" aria-label="close">{% if BOOTSTRAP_VERSION|first == "4" %}&times;{% elif BOOTSTRAP_VERSION|first == "5"  %}{% endif %}</a>
+     	<h4><i class="fas fa-exclamation-circle"></i> Error</h4>
+        <div id="delete_document_errors"></div>
+</div>
+<input type="hidden" class="{{data.document}}-id"/>
+<p>Are you sure you want to delete the {% if data.administration %}{{data.document|special_plural}}{% else %}{{data.document}}{% endif %} ?</p>
+{% endblock %}
+
+{% block modal_footer %}
+<button class="btn btn-secondary pull-left" {% if BOOTSTRAP_VERSION|first == "4" %}data-dismiss{% elif BOOTSTRAP_VERSION|first == "5"  %}data-bs-dismiss{% endif %}="modal"><i class="fas fa-times"></i> No</button>
+<button id="delete-document-yes" class="btn btn-danger"><i class="fas fa-check"></i> Yes</button>
+{% endblock %}

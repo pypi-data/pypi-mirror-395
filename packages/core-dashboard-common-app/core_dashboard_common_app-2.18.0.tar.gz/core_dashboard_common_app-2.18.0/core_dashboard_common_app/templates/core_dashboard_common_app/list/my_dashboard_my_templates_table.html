@@ -1,0 +1,70 @@
+{% load dict_key_extras %}
+{% load get_attribute %}
+
+{% if not come_from_admin %}
+    <p>
+        This page lists user templates. Use drag and drop to update the order templates appear
+        on the website, then click on "Save ordering" when done.
+    </p>
+{% endif %}
+<table class="table table-bordered table-striped table-hover fixed-table
+        {% if come_from_admin %}table-col-4{% else %}table-col-3{% endif %}">
+    <thead>
+        <th>Template name</th>
+        <th>Filename</th>
+        {% if come_from_admin %}
+            <th>User</th>
+        {% endif %}
+        <th>Actions</th>
+    </thead>
+    <tbody>
+        {% for object in objects %}
+            <tr object-id="{{object.template_version.id}}" {% if not come_from_admin %} draggable="true" ondragstart="start()"  ondragover="dragover()" {% endif %}>
+                <td>{{ object.title }}</td>
+                <td>{{ object.template.filename }}</td>
+                {% if come_from_admin %}
+                    <td>
+                        {{object.user}}
+                    </td>
+                {% endif %}
+                <td>
+                    {% if object.template_version|get_attribute:'is_disabled' %}
+                    <a class="btn btn-secondary restore-{{data.document}}-btn" objectid="{{ object.template_version.id }}">
+                        <i class="fas fa-undo"></i> Restore
+                    </a>
+                    {% else %}
+                        {% if come_from_admin %}
+                            <a class="btn btn-secondary view-{{data.document}}-btn" href="{% url 'core-admin:core_main_app_manage_template_versions' object.template_version.id %}">
+                                <i class="fas fa-list"></i> Versions
+                            </a>
+                            {% url 'core-admin:core_dashboard_app_edit_template' object.template_version.id as edit_url %}
+                            {% include 'core_main_app/common/buttons/edit.html' %}
+                        {% else %}
+                            <a class="btn btn-secondary view-{{data.document}}-btn" href="{% url 'core_main_app_manage_template_versions' object.template_version.id %}">
+                                <i class="fas fa-list"></i> Versions
+                            </a>
+                            {% url 'core_dashboard_app_edit_template' object.template_version.id as edit_url %}
+                            {% include 'core_main_app/common/buttons/edit.html' %}
+                        {% endif %}
+                        <button class="btn btn-danger disable-{{data.document}}-btn" objectid="{{ object.template_version.id }}">
+                            <i class="fas fa-trash"></i> Disable
+                        </button>
+
+                    {% endif %}
+
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td class="empty" style="text-align: center;" colspan="100%">
+                     No {{document}} found.
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if not come_from_admin %}
+    <button  class="btn btn-primary mt-3 {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5" %}float-end{% endif %} save-order"  disabled>
+        <i class="fas fa-save"></i> Save ordering
+    </button>
+{% endif %}

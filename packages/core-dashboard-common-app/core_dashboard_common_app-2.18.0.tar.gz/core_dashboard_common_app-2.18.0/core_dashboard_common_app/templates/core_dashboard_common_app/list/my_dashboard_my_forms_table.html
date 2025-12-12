@@ -1,0 +1,88 @@
+{% load dict_key_extras %}
+
+<table class="table table-bordered table-striped table-hover">
+    <thead>
+        {% if data.menu %}
+            <th> <input type="checkbox" id="select_all_{{group}}" onchange="selectAll(this, '{{group}}')"> </th>
+        {% endif %}
+        <th>Name</th>
+        <th>Template</th>
+        {% if data.usernames %}
+            <th>User</th>
+        {% endif %}
+        <th>Actions</th>
+    </thead>
+    <tbody>
+        {% for data_loaded in objects %}
+            {% cycle 'even' '' as rowcolors silent %}
+            <tr class="{{ rowcolors }}" objectid="{{data_loaded.form.id}}">
+                {% if data.menu %}
+                <td id="actionCheckbox_{{forloop.counter}}">
+                    <input type="checkbox" id={{data_loaded.form.id}} name={{group}}>
+                </td>
+                {% endif %}
+                <td>
+                    {{ data_loaded.form.name }}
+                </td>
+                <td>
+                    {{ data_loaded.form.template.display_name }}
+                </td>
+                {% if data.usernames %}
+                <td>
+                    {% with key=data_loaded.form.user %}
+                      {{ data.usernames|get:key }}
+                    {% endwith %}
+                </td>
+                {% endif %}
+                <td>
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownActions" {% if BOOTSTRAP_VERSION|first == "4" %}data-toggle{% elif BOOTSTRAP_VERSION|first == "5"  %}data-bs-toggle{% endif %}="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-sliders"></i> Actions
+                    </button>
+
+                    <div class="dropdown-menu" aria-labelledby="dropdownActions">
+                        {% if come_from_admin %}
+                            <a class="dropdown-item view-form-btn"
+                               href="{% url 'core-admin:core_curate_view_form' data_loaded.form.id %}">
+                                <i class="fas fa-file-alt"></i> View
+                            </a>
+                        {% else %}
+                            <a class="dropdown-item view-form-btn"
+                               href="{% url 'core_curate_view_form' data_loaded.form.id %}">
+                                <i class="fas fa-file-alt"></i> View
+                            </a>
+                        {% endif %}
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item edit-form-btn" href="{% url 'core_curate_enter_data' data_loaded.form.id %}">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        {% if data_loaded.form.template.format == "XSD" %}
+                        <a class="dropdown-item open-xml-form-btn" href="#">
+                            <i class="fas fa-code"></i> Open
+                        </a>
+                        {% elif data_loaded.form.template.format == "JSON"%}
+                        <a class="dropdown-item open-json-form-btn" href="#">
+                            <i class="fas fa-code"></i> Open
+                        </a>
+                        {% endif %}
+
+                        <a class="dropdown-item change-owner-btn" href="#">
+                            <i class="fas fa-user-circle"></i> Change Owner
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item delete-document-btn" href="#">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </div>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td class="empty" style="text-align: center;" colspan="100%">
+                     No {{document}} found.
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% include 'core_main_app/common/pagination/data_source_pagination.html' with pagination=data.pagination%}
