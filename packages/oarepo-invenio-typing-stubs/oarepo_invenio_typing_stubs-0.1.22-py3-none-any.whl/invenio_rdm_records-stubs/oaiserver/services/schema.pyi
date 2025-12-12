@@ -1,0 +1,6 @@
+from marshmallow import Schema
+
+class OAIPMHMetadataFormat(Schema): ...
+
+class OAIPMHSetSchema(Schema):
+    class Meta: ...

@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from typing import Any
+
+from marshmallow import Schema
+
+class MultiDictSchema(Schema):
+    LIST_TYPES: list[type[Any]]
+
+    @classmethod
+    def is_list_field(cls, field: Any) -> bool: ...
+    def flatten_multidict(self, data: Any, **kwargs: Any) -> Any: ...
+
+class BaseListSchema(Schema):
+    def get_hits(self, obj_list: Any) -> Any: ...
+    def get_aggs(self, obj_list: Any) -> Any: ...
+    def get_links(self, obj_list: Any) -> Any: ...
+    def get_sorting_option(self, obj_list: Any) -> Any: ...
+
+class BaseObjectSchema(Schema):
+    def dump(self, obj: Any, **kwargs: Any) -> Any: ...
+
+__all__ = ("MultiDictSchema", "BaseListSchema", "BaseObjectSchema")

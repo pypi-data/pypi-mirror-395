@@ -1,0 +1,13 @@
+from typing import Any
+
+from flask_resources.errors import HTTPJSONException
+from invenio_pidstore.errors import PIDDoesNotExistError
+
+class RedirectException(HTTPJSONException):
+    code: int
+    location: str
+    def __init__(self, location: str, **kwargs: Any) -> None: ...
+    def get_headers(self, environ: Any | None = ..., scope: Any | None = ...): ...
+    def get_body(self, environ: Any | None = ..., scope: Any | None = ...): ...
+
+class DraftNotCreatedError(PIDDoesNotExistError): ...
