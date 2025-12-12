@@ -1,0 +1,28 @@
+{% load auth_extras %}
+<h1>Compose Template</h1>
+<p>
+Please click on an element of the tree to start composing the template. A menu will appear and you will be able to
+interact with that element.
+</p>
+
+<div class="btn-group {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5" %}float-end{% endif %}">
+	<a class="btn btn-secondary {% if BOOTSTRAP_VERSION|first == "4" %}mr-1{% elif BOOTSTRAP_VERSION|first == "5" %}me-1{% endif %}" href="{% url 'core_composer_download_xsd' %}">
+		<i class="fas fa-download"></i> Download
+	</a>
+    {% if user|has_perm:'core_composer_app.save_template' %}
+	<a class="btn btn-secondary save-template {% if BOOTSTRAP_VERSION|first == "4" %}mr-1{% elif BOOTSTRAP_VERSION|first == "5" %}me-1{% endif %}">
+		<i class="fas fa-save"></i> Save as Template
+	</a>
+    {% endif %}
+    {% if user|has_perm:'core_composer_app.save_type' %}
+	<a class="btn btn-secondary save-type {% if BOOTSTRAP_VERSION|first == "4" %}mr-1{% elif BOOTSTRAP_VERSION|first == "5" %}me-1{% endif %}">
+		<i class="fas fa-save"></i> Save as Type
+	</a>
+    {% endif %}
+</div>
+<div id="template_selection">
+	<div class="clearer">&nbsp;</div>
+	<div id="xsd_form">{{data.xsd_form|safe}}</div>
+</div>
+
+<div id="templateID" style="display: none">{{data.template_id}}</div>

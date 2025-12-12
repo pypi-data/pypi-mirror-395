@@ -1,0 +1,35 @@
+{% extends 'core_main_app/admin/templates/versions/available.html' %}
+
+{% block box_tools %}
+
+{% if not data.version_manager.user %}
+	<a href="{% url 'core-admin:core_composer_app_upload_type_version' data.version_manager.id %}"
+	   class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5" %}float-end{% endif %}
+  			  {% if BOOTSTRAP_VERSION|first == "4" %}ml-1{% elif BOOTSTRAP_VERSION|first == "5" %}ms-1{% endif %}
+			  btn btn-secondary">
+		<i class="fas fa-upload"></i> Upload New Version
+	</a>
+{% endif %}
+
+{% url data.back_url as type_list_url %}
+{% include 'core_main_app/common/buttons/go_to.html' with url=type_list_url label='Back to Types' %}
+
+{% endblock %}
+
+<!-- TODO: This code is duplicated from core_main_app -->
+{% block box_actions %}
+	{% if 'core_parser_app' in INSTALLED_APPS %}
+		<a class="btn btn-secondary modules"
+			href="{% url data.module_url version.object %}">
+			<i class="fas fa-cubes"></i> Modules
+		</a>
+	{% endif %}
+	{% if version.object != data.version_manager.current %}
+		<span class='icon legend long current' objectid='{{ version.object }}'>
+		   <a class="btn btn-secondary" href="#"><i class="fas fa-bookmark"></i> Set Current</a>
+		</span>
+		<span class='icon legend delete' objectid='{{ version.object }}'>
+		   <button class="btn btn-danger"><i class="fas fa-trash"></i> Disable</button>
+		</span>
+	{% endif %}
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'core_main_app/admin/templates/list/available.html' %}
+
+
+{% block box_tools %}
+<a href="{% url 'core-admin:core_composer_app_upload_bucket' %}" class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5" %}float-end{% endif %} btn btn-secondary">
+    <i class="fas fa-plus"></i> Add {{ data.object_name }}
+</a>
+{% endblock %}
+
+{% block box_body %}
+<table class="table table-bordered table-striped table-hover">
+    <tr>
+        <th>{{ data.object_name }}</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for bucket in data.buckets %}
+        <tr>
+            <td>
+                <span class="bucket" style="background:{{ bucket.color}};" bucketid="{{bucket.id}}">
+                    {{ bucket.label }}
+                </span>
+            </td>
+            <td>
+                {% url 'core-admin:core_composer_app_edit_bucket' bucket.id as edit_url %}
+                {% include 'core_main_app/common/buttons/edit.html' %}
+               <span class='icon legend delete'>
+                   <button class="btn btn-danger delete" bucketid='{{ bucket.id }}'>
+                       <i class="fas fa-trash"></i> Delete</button>
+               </span>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td class="empty" colspan="2">
+                No {{ data.object_name }} created yet.
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

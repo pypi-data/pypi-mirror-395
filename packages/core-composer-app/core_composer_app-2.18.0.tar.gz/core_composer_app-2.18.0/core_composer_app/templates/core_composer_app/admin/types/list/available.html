@@ -1,0 +1,52 @@
+{% extends 'core_main_app/admin/templates/list/available.html' %}
+
+
+{% block box_tools %}
+    <a href="{% url 'core-admin:core_composer_app_upload_type' %}" class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5" %}float-end{% endif %} btn btn-secondary">
+        <i class="fas fa-upload"></i> Upload {{ data.object_name }}
+    </a>
+{% endblock %}
+
+{% block box_body %}
+<table class="table table-bordered table-striped table-hover">
+    <tr>
+        <th>{{ data.object_name }}</th>
+        <th width="30%">Buckets</th>
+        <th width="40%">Actions</th>
+    </tr>
+
+    {% for object in data.available %}
+        <tr>
+            <td>{{ object.title }}</td>
+            <td>
+                {% for bucket in object.bucket_set.all %}
+                    <span class="bucket" style="background:{{ bucket.color}};" bucketid="{{bucket.id}}">
+                        {{ bucket.label }}
+                    </span>
+                {% endfor %}
+            </td>
+            <td>
+                <a class="btn btn-secondary" href="{% url 'core-admin:core_composer_app_manage_type_versions' object.id %}">
+                    <i class="fas fa-list"></i> Versions
+                </a>
+                {% url 'core-admin:core_composer_app_edit_type' object.id as edit_url %}
+                {% include 'core_main_app/common/buttons/edit.html' %}
+                <span>
+                    <a class="btn btn-secondary"
+                       href="{% url 'core-admin:core_composer_app_type_buckets' object.id %}">
+                        <i class="fas fa-tags"></i> Edit Buckets </a>
+                </span>
+                <span class="icon legend delete" objectid="{{ object.id }}">
+                    <button class="btn btn-danger"><i class="fas fa-trash"></i> Disable </button>
+                </span>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td class="empty" colspan="3">
+                No {{ data.object_name }} uploaded.
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}
