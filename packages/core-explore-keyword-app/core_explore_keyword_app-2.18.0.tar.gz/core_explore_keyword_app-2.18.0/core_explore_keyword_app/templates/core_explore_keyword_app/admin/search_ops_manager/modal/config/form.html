@@ -1,0 +1,29 @@
+<form>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            Form errors: {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+    {% for field in form.visible_fields %}
+        <div
+            {% if field.errors or form.non_field_errors %}
+            class="form-group has-error"
+            {% else %}
+            class="form-group"
+            {% endif %}
+        >
+            {{ field.label_tag }}
+            {% if field.help_text %}
+                <em class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">{{ field.help_text|safe }}</em>
+            {% endif %}
+            {{ field }}
+        </div>
+        {% if field.errors %}
+        <div class="alert alert-danger">{{ field.errors }}</div>
+        {% endif %}
+    {% endfor %}
+    {% for field in form.hidden_fields %}
+        {{ field }}
+    {% endfor %}
+</form>
