@@ -1,0 +1,122 @@
+# PII Engine Policy Configuration
+# This file defines how different types of PII should be processed and who can access them
+
+pii_policies:
+  email:
+    classification: "HIGH_RISK"
+    processing:
+      tokenize: true
+      encrypt: true
+      mask_display: true
+    retention_days: 2555  # 7 years
+    
+  phone:
+    classification: "MEDIUM_RISK"
+    processing:
+      tokenize: true
+      encrypt: true
+      pseudonymize: true
+    retention_days: 1825  # 5 years
+    
+  person_name:
+    classification: "HIGH_RISK"
+    processing:
+      tokenize: true
+      encrypt: true
+      pseudonymize: true
+    retention_days: 2555  # 7 years
+    
+  company_name:
+    classification: "MEDIUM_RISK"
+    processing:
+      tokenize: true
+      encrypt: true
+      pseudonymize: true
+    retention_days: 1825  # 5 years
+    
+  address:
+    classification: "HIGH_RISK"
+    processing:
+      tokenize: true
+      encrypt: true
+      pseudonymize: true
+    retention_days: 2555  # 7 years
+    
+  ssn:
+    classification: "CRITICAL_RISK"
+    processing:
+      tokenize: true
+      encrypt: true
+      mask_display: true
+    retention_days: 3650  # 10 years
+    
+  credit_card:
+    classification: "CRITICAL_RISK"
+    processing:
+      tokenize: true
+      encrypt: true
+      mask_display: true
+    retention_days: 1095  # 3 years
+    
+  ip_address:
+    classification: "LOW_RISK"
+    processing:
+      tokenize: true
+      encrypt: false
+      mask_display: true
+    retention_days: 365  # 1 year
+
+# Role-based access control
+access_policies:
+  roles:
+    admin:
+      can_view_plaintext: true
+      can_view_pseudonymized: true
+      can_view_masked: true
+      audit_required: true
+      
+    manager:
+      can_view_plaintext: false
+      can_view_pseudonymized: true
+      can_view_masked: true
+      audit_required: true
+      
+    user:
+      can_view_plaintext: false
+      can_view_pseudonymized: false
+      can_view_masked: true
+      audit_required: false
+      
+    analyst:
+      can_view_plaintext: false
+      can_view_pseudonymized: true
+      can_view_masked: true
+      can_view_aggregated: true
+      audit_required: false
+      
+    readonly:
+      can_view_plaintext: false
+      can_view_pseudonymized: false
+      can_view_masked: true
+      audit_required: false
+
+# Compliance settings
+compliance:
+  gdpr:
+    enabled: true
+    right_to_be_forgotten: true
+    data_portability: true
+    
+  ccpa:
+    enabled: true
+    opt_out_rights: true
+    
+  hipaa:
+    enabled: false
+    
+# Audit settings
+audit:
+  log_all_access: true
+  log_failed_attempts: true
+  retention_days: 2555  # 7 years
+  alert_on_admin_access: true
