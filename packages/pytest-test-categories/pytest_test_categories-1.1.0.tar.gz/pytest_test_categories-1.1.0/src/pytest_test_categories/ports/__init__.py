@@ -1,0 +1,62 @@
+"""Ports (interfaces) for hexagonal architecture.
+
+This package contains abstract port definitions that define contracts
+for resource isolation and enforcement. Implementations (adapters)
+are provided in the `adapters` package.
+
+Ports defined here:
+- NetworkBlockerPort: Interface for network access control
+- FilesystemBlockerPort: Interface for filesystem access control
+- ProcessBlockerPort: Interface for subprocess/process spawn control
+- DatabaseBlockerPort: Interface for database access control
+- SleepBlockerPort: Interface for sleep/timing function control
+- ThreadMonitorPort: Interface for thread creation monitoring (warns instead of blocks)
+"""
+
+from __future__ import annotations
+
+from pytest_test_categories.ports.database import (
+    DatabaseAccessAttempt,
+    DatabaseBlockerPort,
+)
+from pytest_test_categories.ports.filesystem import (
+    FilesystemAccessAttempt,
+    FilesystemBlockerPort,
+    FilesystemOperation,
+)
+from pytest_test_categories.ports.network import (
+    BlockerState,
+    ConnectionAttempt,
+    EnforcementMode,
+    NetworkBlockerPort,
+)
+from pytest_test_categories.ports.process import (
+    ProcessBlockerPort,
+    SpawnAttempt,
+)
+from pytest_test_categories.ports.sleep import (
+    SleepAttempt,
+    SleepBlockerPort,
+)
+from pytest_test_categories.ports.threading import (
+    ThreadCreationAttempt,
+    ThreadMonitorPort,
+)
+
+__all__ = [
+    'BlockerState',
+    'ConnectionAttempt',
+    'DatabaseAccessAttempt',
+    'DatabaseBlockerPort',
+    'EnforcementMode',
+    'FilesystemAccessAttempt',
+    'FilesystemBlockerPort',
+    'FilesystemOperation',
+    'NetworkBlockerPort',
+    'ProcessBlockerPort',
+    'SleepAttempt',
+    'SleepBlockerPort',
+    'SpawnAttempt',
+    'ThreadCreationAttempt',
+    'ThreadMonitorPort',
+]

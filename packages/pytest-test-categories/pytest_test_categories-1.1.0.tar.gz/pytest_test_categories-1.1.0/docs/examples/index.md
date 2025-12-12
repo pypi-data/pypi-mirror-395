@@ -1,0 +1,119 @@
+# Examples
+
+This section provides practical examples of using pytest-test-categories in various scenarios.
+
+## Topics
+
+```{toctree}
+:maxdepth: 2
+
+migration-guide
+common-patterns
+ci-integration
+network-isolation
+filesystem-isolation
+http-mocking
+async-testing
+database-testing
+container-testing
+ide-configs/README
+```
+
+## Getting Started
+
+If you are new to pytest-test-categories, start with these guides:
+
+1. **[Migration Guide](migration-guide.md)** - Step-by-step process for adding pytest-test-categories to an existing project
+2. **[Common Patterns](common-patterns.md)** - Fixture patterns, mocking strategies, and test organization
+3. **[CI Integration](ci-integration.md)** - GitHub Actions, GitLab CI, and Jenkins examples
+
+For isolation-specific examples, see:
+
+- **[Network Isolation](network-isolation.md)** - Mocking HTTP, databases, and other network calls
+- **[Filesystem Isolation](filesystem-isolation.md)** - Using tmp_path and mocking file operations
+
+## Ecosystem Integration Guides
+
+Guides for integrating pytest-test-categories with popular testing libraries:
+
+- **[HTTP Mocking](http-mocking.md)** - pytest-httpx, responses, and httpretty for small tests
+- **[Async Testing](async-testing.md)** - pytest-asyncio integration and async mocking patterns
+- **[Database Testing](database-testing.md)** - SQLAlchemy, pytest-postgresql, and repository patterns
+- **[Container Testing](container-testing.md)** - Testcontainers for medium tests with real services
+
+## Quick Examples
+
+### Basic Test Marking
+
+```python
+import pytest
+
+@pytest.mark.small
+def test_unit_logic():
+    """Fast, hermetic unit test."""
+    assert calculate_discount(100, 20) == 80
+
+@pytest.mark.medium
+def test_database_integration(db):
+    """Integration test with local database."""
+    user = UserRepository(db).create(name="Alice")
+    assert user.id is not None
+
+@pytest.mark.large
+def test_end_to_end(staging_api):
+    """End-to-end test with external services."""
+    order = staging_api.create_order()
+    assert order.status == "created"
+```
+
+### Using Base Classes
+
+```python
+from pytest_test_categories import SmallTest, MediumTest
+
+class TestCalculator(SmallTest):
+    def test_add(self):
+        assert Calculator().add(1, 2) == 3
+
+    def test_subtract(self):
+        assert Calculator().subtract(5, 3) == 2
+
+class TestUserRepository(MediumTest):
+    def test_create_user(self, db):
+        user = UserRepository(db).create(name="Alice")
+        assert user.id is not None
+```
+
+### Mocking for Small Tests
+
+```python
+import pytest
+
+@pytest.mark.small
+def test_email_sender(mocker):
+    """Mock external dependencies for small tests."""
+    mock_smtp = mocker.patch("smtplib.SMTP")
+
+    send_welcome_email("user@example.com")
+
+    mock_smtp.return_value.send_message.assert_called_once()
+```
+
+### Fixtures with Size Markers
+
+```python
+import pytest
+
+@pytest.fixture
+def mock_api_client(mocker):
+    """Fixture providing a mock API client for small tests."""
+    client = mocker.Mock()
+    client.get.return_value = {"status": "ok"}
+    return client
+
+@pytest.mark.small
+def test_api_handler(mock_api_client):
+    handler = APIHandler(client=mock_api_client)
+    result = handler.fetch_status()
+    assert result == "ok"
+```
