@@ -1,0 +1,331 @@
+---
+title: "Quickstart: Declarative JSON-to-Relational Mapping in Python"
+output: gfm
+---
+
+`etielle` is a simple, powerful Python library for reshaping nested [JSON](https://en.wikipedia.org/wiki/JSON) data, typically from an API, into relational tables that fit your database schema. Think of `etielle` as a "JSON extractor" that you program with clear instructions: "Go here in the JSON, pull this data, and put it in that table." The library's name is a play on [ETL ("Extract, Transform, Load")](docs/introduction-to-etl.qmd), which is the technical term for this set of operations.
+
+- **Repository**: [Promptly-Technologies-LLC/etielle](https://github.com/Promptly-Technologies-LLC/etielle)
+- **PyPI**: [`etielle`](https://pypi.org/project/etielle/)
+- **Python**: >= 3.13
+
+## Why Use `etielle`? (For Beginners)
+
+JSON data from APIs is often deeply nested and requires complicated parsing. `etielle` helps by:
+
+- **Traversing nested structures**: Walk through arrays-within-dictionaries-within-arrays to any arbitrary depth.
+- **Performing arbitrary transformations**: Use built-in functions or define your own custom transforms.
+- **Building relationships**: Link records across your different output tables automatically.
+- **Emitting to arbitrary formats**: Emit data to Pydantic models, TypedDicts, or ORM objects directly.
+- **Optionally loading data into a database**: Load data into a database using SQLAlchemy or SQLModel.
+
+## Learning Path
+
+1. [**Quickstart**](index.qmd): Quick and dirty introduction to `etielle` and how to use it.
+2. [**Introduction to ETL**](docs/introduction-to-etl.qmd): The problem `etielle` is solving: JSON data ETL.
+3. [**Navigation**](docs/navigation.qmd): How to navigate through your JSON data with `goto()` and `each()`.
+4. [**Transforms**](docs/transforms.qmd): Getting and altering values from the JSON data.
+5. [**Mapping Tables**](docs/mapping.qmd): Outputting data with `Field` and `TempField`.
+6. [**Relationships**](docs/relationships.qmd): Linking tables together with `link_to()`.
+7. [**Database Loading**](docs/database-loading.qmd): Persisting data with `load()` and `run()`.
+
+## Installation
+
+We recommend using `uv` for faster installs, but `pip` works too.
+
+```bash
+uv add etielle
+# or
+pip install etielle
+```
+
+### Optional: Install with ORM adapters
+
+If you plan to bind relationships and flush to your database via SQLAlchemy or SQLModel, install with the optional extra for your ORM:
+
+```bash
+uv add "etielle[sqlalchemy]"
+# or
+uv add "etielle[sqlmodel]"
+```
+
+## Quick Start: Your First Mapping
+
+Let's start with a simple example. Suppose you have this JSON:
+
+``` {python}
+import json
+
+data = {
+  "users": [
+    {"id": "u1", "name": "Alice", "posts": [{"id": "p1", "title": "Hello"}, {"id": "p2", "title": "World"}]},
+    {"id": "u2", "name": "Bob", "posts": []}
+  ]
+}
+```
+
+We want two tables: "users" (id, name) and "posts" (id, user_id, title).
+
+Here's the code using the fluent API:
+
+``` {python}
+from etielle import etl, Field, TempField, get, get_from_parent
+
+# Build and run the pipeline
+result = (
+    etl(data)
+    # Extract users
+    .goto("users").each()
+    .map_to(table="users", fields=[
+        Field("id", get("id")),
+        Field("name", get("name")),
+    ])
+    # Extract posts (nested under each user)
+    .goto("posts").each()
+    .map_to(table="posts", fields=[
+        Field("id", get("id")),
+        Field("user_id", get_from_parent("id")),  # Link to parent user
+        Field("title", get("title")),
+    ])
+    .run()
+)
+
+# result.tables gives you dict access by table name
+out = {table: list(rows.values()) for table, rows in result.tables.items()}
+print(json.dumps(out, indent=2))
+```
+
+Congrats! You've mapped your first JSON using the fluent E->T->L pattern.
+
+## Core Concepts: Breaking It Down
+
+### 1. The `etl()` Entry Point
+
+Everything starts with `etl(data)`. This creates a pipeline builder that you chain methods onto:
+
+```python
+from etielle import etl
+
+result = (
+    etl(data)           # Start with your JSON
+    .goto("users")      # Navigate to a path
+    .each()             # Iterate over items
+    .map_to(...)        # Emit table rows
+    .run()              # Execute and get results
+)
+```
+
+### 2. Navigation: `goto()` and `each()`
+
+Navigation tells etielle where to find your data:
+
+- **`goto(path)`**: Navigate to a nested location (supports dot notation: `"data.users"`)
+- **`each()`**: Iterate over items in a list or dict
+
+```python
+# Navigate to data["response"]["users"] and iterate
+.goto("response.users").each()
+
+# Or use list syntax
+.goto(["response", "users"]).each()
+```
+
+### 3. Fields and TempFields
+
+When you call `map_to()`, you define what data to extract:
+
+- **`Field(name, transform)`**: A column that appears in your output
+- **`TempField(name, transform)`**: Used for joins/relationships, but NOT in output
+
+```python
+.map_to(table="users", fields=[
+    Field("id", get("id")),          # Output column (also available for joins)
+    Field("name", get("name")),      # Output column
+])
+```
+
+### 4. Transforms: Smart Data Extractors
+
+Transforms are functions that pull values from the current context:
+
+| Transform | Purpose |
+|-----------|---------|
+| `get("name")` | Get field from current node |
+| `get_from_parent("id")` | Get field from parent context |
+| `get_from_root("config.version")` | Get field from JSON root |
+| `literal(42)` | Constant value |
+| `key()` | Current dict key |
+| `index()` | Current list index |
+| `concat(a, b, c)` | Join strings |
+
+```python
+# Combine transforms
+Field("full_id", concat(literal("user_"), get("id")))  # "user_u1"
+```
+
+### 5. Running the Pipeline
+
+Call `.run()` to execute and get results:
+
+```python
+result = pipeline.run()
+
+# Access tables by name
+users = result.tables["users"]    # Dict[tuple, dict]
+
+# Or by model class (if using typed models)
+users = result.tables[User]       # Dict[tuple, User]
+
+# Check for errors
+if result.errors:
+    for table, errs in result.errors.items():
+        print(f"{table}: {errs}")
+```
+
+## Detailed Examples
+
+### Example 1: Merging Data from Multiple Paths
+
+Merge user info from two parts of JSON using `goto_root()`:
+
+``` {python}
+from etielle import etl, Field, TempField, get
+
+data = {
+    "users": [{"id": "u1", "name": "Alice"}],
+    "profiles": [{"user_id": "u1", "email": "alice@example.com"}]
+}
+
+result = (
+    etl(data)
+    # First path: basic user data
+    .goto("users").each()
+    .map_to(table="users", join_on=["id"], fields=[
+        Field("id", get("id")),
+        Field("name", get("name")),
+    ])
+    # Second path: profile data (same table, merged by id)
+    .goto_root()
+    .goto("profiles").each()
+    .map_to(table="users", join_on=["id"], fields=[
+        Field("email", get("email")),
+        TempField("id", get("user_id"))  # Join key for merging
+    ])
+    .run()
+)
+
+user = list(result.tables["users"].values())[0]
+print(user)  # Has id, name, AND email merged together
+```
+
+### Example 2: Deep Nesting
+
+Handle deeply nested structures with chained navigation:
+
+``` {python}
+#| eval: false
+# servers -> channels -> messages -> reactions (3 levels deep)
+result = (
+    etl(data)
+    .goto("servers").each()
+    .map_to(table="servers", fields=[...])
+
+    .goto("channels").each()
+    .map_to(table="channels", fields=[
+        Field("server_id", get_from_parent("id", depth=1)),
+        ...
+    ])
+
+    .goto("messages").each()
+    .map_to(table="messages", fields=[
+        Field("channel_id", get_from_parent("id", depth=1)),
+        Field("server_id", get_from_parent("id", depth=2)),
+        ...
+    ])
+    .run()
+)
+```
+
+### Example 3: Typed Output with Pydantic
+
+Use model classes for validated, typed output:
+
+``` {python}
+from pydantic import BaseModel
+from etielle import etl, Field, TempField, get
+
+class User(BaseModel):
+    id: str
+    name: str
+    email: str | None = None
+
+data = {"users": [{"id": "u1", "name": "Alice"}]}
+
+result = (
+    etl(data)
+    .goto("users").each()
+    .map_to(table=User, fields=[  # Pass model class, not string
+        Field("id", get("id")),
+        Field("name", get("name")),
+    ])
+    .run()
+)
+
+user = list(result.tables[User].values())[0]
+print(f"Type: {type(user).__name__}, name: {user.name}")
+```
+
+## Transform Cheatsheet
+
+| Transform | Purpose | Example |
+|-----------|---------|---------|
+| `get(path)` | From current node | `get("user.name")` |
+| `get_from_parent(path, depth=1)` | From ancestor | `get_from_parent("id")` |
+| `get_from_root(path)` | From JSON root | `get_from_root("version")` |
+| `key()` | Current dict key | When iterating `{"a": 1, "b": 2}` |
+| `index()` | Current list index | 0, 1, 2, ... |
+| `parent_key()` | Parent's dict key | Access parent iteration key |
+| `parent_index()` | Parent's list index | Access parent iteration index |
+| `node()` | Current node value | The whole current object |
+| `literal(value)` | Constant | `literal(42)` |
+| `concat(*parts)` | Join strings | `concat(get("first"), literal(" "), get("last"))` |
+| `coalesce(*transforms)` | First non-None | `coalesce(get("nickname"), get("name"))` |
+| `format_id(*parts, sep="_")` | Join with separator | `format_id(get("type"), get("id"))` |
+| `len_of(inner)` | Length of list/dict/string | `len_of(get("tags"))` |
+
+## Common Mistakes
+
+- **Empty results?**
+  - Check your `goto()` path matches the JSON structure exactly
+  - Make sure you called `.each()` to iterate
+
+- **Missing parent data?**
+  - Check the `depth` parameter in `get_from_parent()`
+  - Ensure the parent context exists in your navigation chain
+
+- **Duplicate or missing rows?**
+  - Verify `TempField` values are unique for each row
+  - Check that join keys don't contain `None` values
+
+## Next Steps
+
+- **[Navigation](docs/navigation.qmd)** - Deep dive into `goto()`, `each()`, and `goto_root()`
+- **[Transforms](docs/transforms.qmd)** - All built-in transforms and how to use them
+- **[Mapping Tables](docs/mapping.qmd)** - `Field`, `TempField`, merge policies
+- **[Relationships](docs/relationships.qmd)** - Link tables with `link_to()`
+- **[Database Loading](docs/database-loading.qmd)** - Persist with `load().run()`
+
+## Glossary
+
+- **Pipeline**: The chain of operations from `etl()` to `run()`
+- **Navigation**: Methods like `goto()` and `each()` that position you in the JSON
+- **Transform**: A function that extracts values from the current context
+- **Field**: An output column in your table
+- **TempField**: A field used for joins/linking but not in final output
+- **Join Key**: Values that uniquely identify a row (derived from TempFields)
+
+## License
+
+MIT
+
+Need help? Open an issue on GitHub!
