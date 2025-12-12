@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "triggercalib"
+description = "A turnkey package for estimating LHCb trigger efficiencies"
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [{name = "Jamie Gooding", email = "jamie.gooding@cern.ch"}]
+classfiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
+]
+keywords = [
+    "lhcb",
+    "trigger",
+    "tistos",
+    "efficiencies",
+]
+requires-python = ">=3.6"
+dependencies = [
+    "hepstats",
+    "lhcbstyle",
+    "numpy",
+    "sweights",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://gitlab.cern.ch/lhcb-rta/triggercalib/"
+Documentation = "https://triggercalib.docs.cern.ch/" 
+"Bug Tracker" = "https://gitlab.cern.ch/lhcb-rta/triggercalib/-/issues"
+
+[project.optional-dependencies]
+zfit = [
+    "tensorflow==2.16.1",
+    "zfit==0.23.0",
+]
+
+[tool.hatch]
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/triggercalib/version.py"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "-ra",
+    "-q",
+    "-s",
+    "-vv",
+    "--cov=src/triggercalib/",
+]
+testpaths = [
+    "src/triggercalib/*/tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

@@ -1,0 +1,132 @@
+###############################################################################
+# (c) Copyright 2024-2025 CERN for the benefit of the LHCb Collaboration      #
+#                                                                             #
+# This software is distributed under the terms of the GNU General Public      #
+# Licence version 3 (GPL Version 3), copied verbatim in the file "COPYING".   #
+#                                                                             #
+# In applying this licence, CERN does not waive the privileges and immunities #
+# granted to it by virtue of its status as an Intergovernmental Organization  #
+# or submit itself to any jurisdiction.                                       #
+###############################################################################
+
+variables:
+  MKDOCS_VERSION: '1.6.1'
+  MATERIAL_VERSION: '9.6.1'
+  DOCSTRINGS_VERSION: '1.14.2'
+  JUPYTER_VERSION: '0.25.1'
+
+.mkdocs-job-image: &mkdocs-job-image registry.cern.ch/docker.io/library/python:3.9-slim-bullseye
+
+.mkdocs-job-script: &mkdocs-job-script
+  - apt update && apt install -y git subversion
+  - pip install --upgrade pip setuptools wheel
+  - pip install mkdocs==${MKDOCS_VERSION} mkdocs-material==${MATERIAL_VERSION} mkdocstrings-python==${DOCSTRINGS_VERSION} mkdocs-jupyter==${JUPYTER_VERSION}
+  - mkdocs build -d public
+
+image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
+
+stages:
+  - check
+  - test
+  - build
+  - deploy
+
+before_script:
+  - source /cvmfs/lhcb.cern.ch/lib/LbEnv
+  - lb-conda-dev virtual-env default/2024-06-08 .venv
+  - .venv/run pip install -r requirements-ci.txt
+  - .venv/run pip install .
+
+formatting:
+  tags:
+    - cvmfs
+  stage: check
+  script:
+    - .venv/run black src --check
+  allow_failure: true
+
+linting:
+  stage: check
+  tags:
+    - cvmfs
+  script:
+    - .venv/run flake8 --select=F,E71,E9,E2,E1,W1,W6,W2
+  allow_failure: true
+
+testing:
+  stage: test
+  tags:
+    - cvmfs
+  script:
+    - .venv/run pytest --junitxml=report.xml
+  coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+    expire_in: 2 days
+
+# Test with zfit (allowed to fail as WIP)
+testing+zfit:
+  stage: test
+  tags:
+    - cvmfs
+  before_script:
+    - source /cvmfs/lhcb.cern.ch/lib/LbEnv
+    - lb-conda-dev virtual-env default/2024-06-08 .venv+zfit
+    - .venv+zfit/run pip install -r requirements-ci.txt
+    - .venv+zfit/run pip install .[zfit]
+  script:
+    - .venv+zfit/run pytest
+  allow_failure: true
+
+package:
+  stage: build
+  image: gitlab-registry.cern.ch/lhcb-docker/python-deployment:python-3.7
+  script:
+    - python -m build
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 week
+  before_script:
+    - pip install build
+  after_script: []
+
+docs:
+  image: *mkdocs-job-image
+  stage: build
+  script: *mkdocs-job-script
+  interruptible: true
+  before_script: []
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      when: always
+
+pages:
+  image: *mkdocs-job-image
+  stage: deploy
+  script: [*mkdocs-job-script, "if [[ -f _redirects ]]; then cp _redirects public; fi;"]
+  before_script: []
+  artifacts:
+    paths:
+    - public
+    expire_in: 1 hour
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+
+deploy:
+  stage: deploy
+  image: gitlab-registry.cern.ch/lhcb-docker/python-deployment:python-3.7
+  only:
+    - tags
+  dependencies:
+    - package
+  script:
+    - if [ -z "$TWINE_PASSWORD" ] ; then echo "Set TWINE_PASSWORD in CI variables" ; exit 1 ; fi
+    - twine upload -u __token__ dist/*
+  before_script: []
+  after_script: []
