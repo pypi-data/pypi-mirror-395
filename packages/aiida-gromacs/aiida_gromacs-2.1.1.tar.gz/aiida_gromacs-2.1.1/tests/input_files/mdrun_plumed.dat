@@ -1,0 +1,55 @@
+###########################################################
+# This plumed input file is used for testing code only.   #
+# It will not run correctly with plumed.                  #
+###########################################################
+
+
+# This plumed file shows an example of using the angle between two vectors as
+# the collective variable to perform metadynamics enhanced sampling on
+c1a: COM ATOMS=1-3817 # e.g. 1-100
+c1b: COM ATOMS=3818-7634
+c2a: COM ATOMS=7635-11451
+c2b: COM ATOMS=11452-15270
+
+# get the angle between vectors c1b-c1a and c2b-c2a
+hinge: ANGLE ATOMS=c1a,c1b,c2a,c2b
+
+# Activate well-tempered metadynamics in hinge
+METAD ...
+   label=metad
+   ARG=hinge
+   # Gaussian width (sigma) should be chosen based on CV fluctuation in unbiased run
+   SIGMA=4
+   # Deposit a Gaussian every 500 time steps, with initial height equal to 1.2 kJ/mol
+   PACE=500 HEIGHT=1.2
+   # The bias factor should be wisely chosen
+   BIASFACTOR=20
+   # Gaussians will be written to file #and also stored on grid
+   ### testing different syntax here ###
+   FILE=HILLS1 FILE = HILLS2
+   FILE = HILLS3 FILE=HILLS4
+   FILE= HILLS5 FILE =HILLS6,HILLS7
+   FILE= HILLS8 , HILLS9
+   #GRID_MIN=0 GRID_MAX=pi
+... METAD
+
+# Print both collective variables on COLVAR file every 10 steps
+### testing different syntax here ###
+PRINT ARG=hinge1,metad.bias FILE=COLVAR1 STRIDE=10
+PRINT ARG=hinge2,metad.bias STRIDE=10 FILE=COLVAR2
+PRINT ARG=hinge3,metad.bias STRIDE=10 FILE=COLVAR3,COLVAR4
+PRINT ARG=hinge4, metad.bias STRIDE = 10 FILE = COLVAR5 FILE = COLVAR5b
+PRINT ARG=hinge5, metad.bias STRIDE = 10 FILE = COLVAR6, COLVAR7 FILE = COLVAR6b, COLVAR7b
+PRINT ARG=hinge5, metad.bias STRIDE = 10 FILE= COLVAR8, COLVAR9 FILE= COLVAR8b, COLVAR9b
+PRINT ARG=hinge5, metad.bias STRIDE = 10 FILE =COLVAR10, COLVAR11 FILE =COLVAR10b, COLVAR11b
+PRINT ARG=hinge5, metad.bias STRIDE = 10 FILE = COLVAR12,COLVAR13 FILE = COLVAR12b,COLVAR13b
+PRINT ARG=hinge5, metad.bias STRIDE = 10 FILE = COLVAR14 , COLVAR15,COLVAR16 FILE = COLVAR14b , COLVAR15b,COLVAR16b
+
+
+### testing different syntax here ###
+EXTERNAL FILE=plumed_input.test1
+# EXTERNAL FILE=plumed_input.test1
+EXTERNAL sjdhfsdg
+EXTERNAL ...
+    FILE=plumed_input.test2
+... EXTERNAL

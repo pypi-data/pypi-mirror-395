@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+
+  tests:
+    strategy:
+      matrix:
+        container: [2025-02-10-aiida2.6.1-py3.11.0-gromacs2024.3,
+                    2025-02-10-aiida2.6.2-py3.11.0-gromacs2024.3,
+                    2025-02-10-aiida2.6.3-py3.11.0-gromacs2024.3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+        image: harbor.stfc.ac.uk/psdi-pathfinder4/aiida-testbase:${{ matrix.container }}
+    name: ${{ matrix.container }}
+    steps:
+    - uses: actions/checkout@v6.0.0
+
+    - name: Start AiiDA with a test profile
+      shell: bash
+      run: /home/aiida/aiida-start
+
+    - name: Install aiida-gromacs and its testing dependencies
+      shell: bash
+      run: pip install -e .[testing]
+
+    - name: Run test suite
+      shell: bash
+      run: pytest --cov aiida_gromacs --cov-report term-missing --cov-append .
+
+    - name: Report Coverage
+      uses: coverallsapp/github-action@v2.3.7
+
+  docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v6.0.0
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v6.1.0
+      with:
+        python-version: 3.13
+
+    - name: Install python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -e .[docs]
+
+    - name: Build docs
+      run: cd docs && make
+
+  pre-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v6.0.0
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v6.1.0
+      with:
+        python-version: 3.13
+
+    - name: Install python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -e .[pre-commit,docs,testing]
+
+    - name: Run pre-commit
+      run: |
+        pre-commit install
+        pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
