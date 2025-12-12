@@ -1,0 +1,185 @@
+/*
+DO NOT MODIFY THIS FILE {# unless you see this comment #}.  It is automatically generated and changes will be over-written
+on the next generation.
+
+It contains enumerations used by the {{stinger.name}} interface.
+
+LICENSE: This generated code is not subject to any license restrictions from the generator itself.
+TODO: Get license text from stinger file
+*/
+use std::any::Any;
+
+use mqttier::{MqttierClient, MqttierOptionsBuilder, Connection};
+use {{stinger.rust.package_name}}::server::{ {{stinger.rust.server_struct_name}}{%if stinger.methods|length>0%}, {{stinger.name | UpperCamelCase }}MethodHandlers{%endif%} };
+{%-if stinger.properties|length > 0%}
+use {{stinger.rust.package_name}}::property::{{stinger.name | UpperCamelCase}}InitialPropertyValues;
+{%endif-%}
+use tokio::time::{sleep, Duration};
+{%if stinger.methods|length > 0%}
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tracing_subscriber;
+use async_trait::async_trait;
+{%endif%}
+use tokio::join;
+#[allow(unused_imports)]
+use {{stinger.rust.package_name}}::payloads::{MethodReturnCode, *};
+
+
+{%if stinger.methods|length > 0%}
+struct {{stinger.name | UpperCamelCase }}MethodImpl {
+    server: Option<{{stinger.rust.server_struct_name}}<MqttierClient>>,
+}
+
+impl {{stinger.name | UpperCamelCase }}MethodImpl {
+    fn new() -> Self {
+        Self {
+            server: None,
+        }
+    }
+}
+
+#[async_trait]
+impl {{stinger.name | UpperCamelCase }}MethodHandlers<MqttierClient> for {{stinger.name | UpperCamelCase }}MethodImpl {
+
+    async fn initialize(&mut self, server: {{stinger.rust.server_struct_name}}<MqttierClient>) -> Result<(), MethodReturnCode> {
+        self.server = Some(server.clone());
+        Ok(())
+    }
+
+    {%for method_name, method in stinger.methods.items()%}
+    async fn handle_{{method_name|snake_case}}(&self, {%for arg in method.arg_list%}_{{arg.name|snake_case}}: {{arg.rust_type}}{%if not loop.last%}, {%endif%}{%endfor%}) -> Result<{{method.return_value_rust_type}}, MethodReturnCode> {
+        println!("Handling {{method_name}}");
+        {%-if method.return_value_type == 'struct'%}
+        let rv = {{method.return_arg_list[0].rust_temp_type}} {
+            {%for arg in method.return_value.members-%}
+            {{arg.name|snake_case}}: {{arg.get_random_example_value(lang="rust")}},
+            {%endfor%}
+        };
+        {%if method.return_arg_list[0].optional %}
+        Ok(Some(rv))
+        {%else%}
+        Ok(rv)
+        {%endif%}
+        {%-elif method.return_value_type == 'multiple'%}
+        let rv = {{method.return_value_rust_type}} {
+            {%for arg in method.return_value-%}
+            {{arg.name|snake_case}}: {{arg.get_random_example_value(lang="rust")}},
+            {%endfor%}
+        };
+        Ok(rv)
+        {%elif method.return_value_type is not false %}
+        Ok({{method.return_value.get_random_example_value(lang="rust")}})
+        {%else%}
+        Ok(())
+        {%-endif%}
+    }
+    {%endfor%}
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+{%endif%}
+
+#[tokio::main]
+async fn main() {
+
+    // Initialize tracing subscriber to see log output
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
+        )
+        .init();
+
+    // Set up an MQTT client connection. 
+    let mqttier_options = MqttierOptionsBuilder::default()
+        .connection(Connection::TcpLocalhost(1883))
+        .client_id("rust-server-demo".to_string())
+        .build().unwrap();
+    let mut connection = MqttierClient::new(mqttier_options).unwrap();
+    let _ = connection.start().await.unwrap();
+
+    {%if stinger.properties|length > 0%}
+    let initial_property_values = {{stinger.name | UpperCamelCase}}InitialPropertyValues {
+        {%for prop_name, prop in stinger.properties.items()%}
+        {{prop_name | snake_case}}: 
+        {%-if prop.arg_list|length == 1%}{{prop.arg_list[0].get_random_example_value(lang="rust")}},
+        {%-else-%}
+        {{prop.rust_type}} {
+            {%-for arg in prop.arg_list %}
+                {{arg.name|snake_case}}: {{arg.get_random_example_value(lang="rust")}},
+            {%-endfor%}
+        },
+        {%-endif%}
+        {{prop_name | snake_case}}_version: 1,
+        {%endfor%}
+    };
+    {%endif%}
+    {%if stinger.methods|length > 0%}
+    // Create an object that implements the method handlers.
+    let handlers: Arc<Mutex<Box<dyn {{stinger.name | UpperCamelCase }}MethodHandlers<MqttierClient>>>> = Arc::new(Mutex::new(Box::new({{stinger.name | UpperCamelCase }}MethodImpl::new())));
+
+    // Create the server object.
+    let mut server = {{stinger.rust.server_struct_name}}::new(connection, handlers.clone(), "rust-server-demo:1".to_string(),{%if stinger.properties|length > 0 %} initial_property_values, {%endif%}).await;
+    {%else%}
+    // Create the server object.
+    let mut server = {{stinger.rust.server_struct_name}}::new(connection, "rust-server-demo:1".to_string(){%if stinger.properties|length > 0 %} initial_property_values, {%endif%}).await;
+    {%endif%}
+
+    // Start the server connection loop in a separate task.
+    let mut looping_server = server.clone();
+    let _loop_join_handle = tokio::spawn(async move {
+        println!("Starting connection loop");
+        let _conn_loop = looping_server.run_loop().await;
+    });
+
+    {% if stinger.signals|length > 0 %}
+    let mut server_clone1 = server.clone();{%endif%}
+    let signal_publish_task = tokio::spawn(async move {
+        loop {
+            {%for sig_name, sig in stinger.signals.items()%}
+            sleep(Duration::from_secs(1)).await;
+            println!("Emitting signal '{{sig_name}}'");
+            let signal_result_future = server_clone1.emit_{{sig_name|snake_case}}({%for arg in sig.arg_list%}{{arg.get_random_example_value(lang="rust")}}{%if not loop.last%}, {%endif%}{%endfor%}).await;
+            let signal_result = signal_result_future.await;
+            println!("Signal '{{sig_name}}' was sent: {:?}", signal_result);
+            {%endfor%}
+            sleep(Duration::from_secs(67)).await;
+        }
+    });
+    {%if stinger.properties|length > 0 %}
+    // Provide property handles to the property_publish_task which will use them to continuously update property values.
+    {%for prop_name, prop in stinger.properties.items()%}
+    let {{prop_name | snake_case}}_property = server.get_{{prop_name | snake_case}}_handle();
+    {%endfor-%}
+    let property_publish_task = tokio::spawn(async move {
+        loop {
+            sleep(Duration::from_secs(51)).await;
+            {%for prop_name, prop in stinger.properties.items()%}
+            sleep(Duration::from_secs(1)).await;
+            {
+                println!("Changing property '{{prop_name}}'");
+                let mut {{prop_name|snake_case}}_guard = {{prop_name | snake_case}}_property.write().await;
+                {%-if prop.arg_list | length == 1 %}
+                *{{prop_name|snake_case}}_guard = {{prop.arg_list[0].get_random_example_value(lang="rust", seed=3)}};
+                {%else%}
+                let new_{{prop_name|snake_case}}_value = {{prop.rust_type}} {
+                    {%-for arg in prop.arg_list %}
+                        {{arg.name|snake_case}}: {{arg.get_random_example_value(lang="rust", seed=4)}},
+                    {%-endfor%}
+                };
+                *{{prop_name|snake_case}}_guard = new_{{prop_name|snake_case}}_value;
+                {%endif-%}
+                // Value is changed and published when {{prop_name|snake_case}}_guard goes out of scope and is dropped.
+            }
+            {%endfor%}{# property updates -#}
+        }
+    });
+    {%endif%}
+
+    let _ = join!(signal_publish_task{%if stinger.properties|length > 0 %}, property_publish_task{%endif%});
+
+    // Ctrl-C to stop
+}
