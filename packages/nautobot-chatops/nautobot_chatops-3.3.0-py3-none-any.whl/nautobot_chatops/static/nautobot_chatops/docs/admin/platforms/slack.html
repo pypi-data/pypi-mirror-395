@@ -1,0 +1,3128 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://docs.nautobot.com/projects/chatops/en/latest/admin/platforms/slack.html">
+      
+      
+        <link rel="prev" href="../install.html">
+      
+      
+        <link rel="next" href="mattermost.html">
+      
+      
+      <link rel="icon" href="../../assets/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Slack Setup - Nautobot ChatOps App Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#slack-setup" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../index.html" title="Nautobot ChatOps App Documentation" class="md-header__button md-logo" aria-label="Nautobot ChatOps App Documentation" data-md-component="logo">
+      
+  <img src="../../assets/nautobot_logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nautobot ChatOps App Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Slack Setup
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5c-.84 0-1.65.15-2.39.42L12 2M3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29L3.34 7m.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14L3.36 17M20.65 7l-1.77 3.79a7.023 7.023 0 0 0-2.38-4.15l4.15.36m-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29L20.64 17M12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44L12 22Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3 3.19.09m3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95 2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91 1.61 0 2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08Z"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/nautobot/nautobot-app-chatops" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../index.html" class="md-tabs__link">
+        
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user/app_overview.html" class="md-tabs__link">
+          
+  
+    
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../install.html" class="md-tabs__link">
+          
+  
+    
+  
+  Administrator Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev/contributing.html" class="md-tabs__link">
+          
+  
+    
+  
+  Developer Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://docs.nautobot.com" class="md-tabs__link">
+        
+  
+    
+  
+  Nautobot Docs Home ↗︎
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../index.html" title="Nautobot ChatOps App Documentation" class="md-nav__button md-logo" aria-label="Nautobot ChatOps App Documentation" data-md-component="logo">
+      
+  <img src="../../assets/nautobot_logo.svg" alt="logo">
+
+    </a>
+    Nautobot ChatOps App Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/nautobot/nautobot-app-chatops" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    User Guide
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            User Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/app_overview.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    App Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/app_getting_started.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/faq.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Frequently Asked Questions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integrations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            Integrations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/aci.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco ACI Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/ansible.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWX / Ansible Tower Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/aristacv.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Arista CloudVision Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/grafana.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/ipfabric.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    IPFabric Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/meraki.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco Meraki Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/panorama.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Palo Alto Panorama Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/nso.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco NSO Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user/integrations/slurpit.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Slurpit Chat Commands
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Administrator Guide
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Administrator Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install and Configure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platforms
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Platforms
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Slack Setup
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="slack.html" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Slack Setup
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-slack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connecting to Slack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting to Slack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#webhooks-vs-socket-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Webhooks vs. Socket Mode
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-slack-app-using-a-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create Slack App using a Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-app-creation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Post App-Creation Steps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Post App-Creation Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Examples
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invite-chatbot-to-channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      Invite Chatbot to Channels
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuring-multiple-chatbots-in-a-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring Multiple Chatbots in a Workspace
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#general-chat-setup-instructions" class="md-nav__link">
+    <span class="md-ellipsis">
+      General Chat Setup Instructions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#startup-slack-sockets-socket-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Startup Slack Sockets (Socket Mode)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Startup Slack Sockets (Socket Mode)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#start_slack_socket-management-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      start_slack_socket Management Command
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#slack-socket-systemd-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Slack Socket Systemd Service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-systemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure systemd
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deprected-create-slack-app-without-a-manifest-original-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deprected - Create Slack App without a Manifest (original method)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mattermost.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mattermost Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="webex.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco Webex Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="microsoft_teams.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Microsoft Teams Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integrations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Integrations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/aci.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco ACI Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/ansible.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWX / Ansible Tower Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/aristacv.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Arista CloudVision Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/grafana.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/ipfabric.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    IPFabric Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/meraki.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco Meraki Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/panorama.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Palo Alto Panorama Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/nso.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco NSO Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/slurpit.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Slurpit Integration Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrade.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrade
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../uninstall.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Uninstall
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility_matrix.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Compatibility Matrix
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../release_notes/index.html" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            Release Notes
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_3.3.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v3.3
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_3.2.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v3.2
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_3.1.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v3.1
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_3.0.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v3.0
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_2.1.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v2.1
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_2.0.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v2.0
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.11.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.11
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.10.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.10
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.9.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.9
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.8.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.7.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.7
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.6.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.6
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.5.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.5
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.4.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.4
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.3.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.3
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.2.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.2
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/version_1.1.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    v1.1
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Guide
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/contributing.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing to the App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/design.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Design Documentation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/dev_environment.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Development Environment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/release_checklist.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Checklist
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../dev/code_reference/index.html" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Code Reference
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            Code Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/package.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Package
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/models.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Models
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/api.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    API
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_6_5" id="__nav_4_6_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dispatchers
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dispatchers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/base.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Base Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/slack.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Slack Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/webex.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cisco Webex Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/ms_teams.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Microsoft Teams Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/code_reference/mattermost.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mattermost Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/accessgrant.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Access Grants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/commandtoken.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Command Tokens
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/chatopsaccountlink.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Account Link
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://docs.nautobot.com" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Nautobot Docs Home ↗︎
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-slack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connecting to Slack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting to Slack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#webhooks-vs-socket-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Webhooks vs. Socket Mode
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-slack-app-using-a-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create Slack App using a Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-app-creation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Post App-Creation Steps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Post App-Creation Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Examples
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invite-chatbot-to-channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      Invite Chatbot to Channels
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuring-multiple-chatbots-in-a-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuring Multiple Chatbots in a Workspace
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#general-chat-setup-instructions" class="md-nav__link">
+    <span class="md-ellipsis">
+      General Chat Setup Instructions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#startup-slack-sockets-socket-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      Startup Slack Sockets (Socket Mode)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Startup Slack Sockets (Socket Mode)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#start_slack_socket-management-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      start_slack_socket Management Command
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#slack-socket-systemd-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Slack Socket Systemd Service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-systemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure systemd
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deprected-create-slack-app-without-a-manifest-original-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deprected - Create Slack App without a Manifest (original method)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/nautobot/nautobot-app-chatops/edit/main/docs/admin/platforms/slack.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/nautobot/nautobot-app-chatops/raw/main/docs/admin/platforms/slack.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.15 8.15 0 0 1-1.23-2Z"/></svg>
+    </a>
+  
+
+
+<h1 id="slack-setup">Slack Setup<a class="headerlink" href="#slack-setup" title="Permanent link">&para;</a></h1>
+<p>These are the distinct configuration values you will need to configure in <code>nautobot_config.py</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Configuration Setting</th>
+<th>Mandatory?</th>
+<th>Default</th>
+<th>Available on Admin Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enable_slack</code></td>
+<td><strong>Yes</strong></td>
+<td>False</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>slack_api_token</code></td>
+<td><strong>Yes</strong></td>
+<td>--</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>slack_app_token</code></td>
+<td>Socket Mode</td>
+<td>--</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>slack_signing_secret</code></td>
+<td><strong>Yes</strong></td>
+<td>--</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>slack_slash_command_prefix</code></td>
+<td>No</td>
+<td><code>"/"</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>slack_socket_static_host</code></td>
+<td>No</td>
+<td>--</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>These values will be used in the <code>nautobot_config.py</code> file, once we get to the section where we cover server configuration.
+For now, take a mental note that in this section where we are configuring the Slack application, we will need to explicitly note the
+<code>slack_api_token</code> and <code>slack_signing_secret</code> values when they are presented.</p>
+<p>Example config snippet from <code>nautobot_config.py</code> for configuring ChatOps with Slack:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Enable installed apps. Add the name of each app to the list.</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">PLUGINS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">PLUGINS_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="s1">&#39;nautobot_chatops&#39;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="s1">&#39;enable_slack&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="s1">&#39;slack_api_token&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;slack-api-token&gt;&#39;</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="s1">&#39;slack_signing_secret&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;slack-signing-secret&gt;&#39;</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="p">}</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="p">}</span>
+</code></pre></div>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Optional: Logos rely on Slack being able to access the Static URL provided by Nautobot. If you are running
+Slack in Socket Mode, Nautobot ChatOps App will need you to specify where the static files are hosted.
+This is helpful for giving Slack access to only the server hosting Nautobot Static Files. To configure the
+static files host, use <code>slack_socket_static_host</code> ex. <code>slack_socket_static_host: 'https://example.com/static/'</code>.</p>
+</div>
+<h2 id="connecting-to-slack">Connecting to Slack<a class="headerlink" href="#connecting-to-slack" title="Permanent link">&para;</a></h2>
+<p>The Nautobot ChatOps app supports two methods of communicating with Slack.</p>
+<ol>
+<li>Incoming Webhooks</li>
+<li>Socket Mode</li>
+</ol>
+<details class="version-added">
+<summary>Added in version 1.10</summary>
+<p>Added socket mode support.</p>
+</details>
+<h3 id="webhooks-vs-socket-mode">Webhooks vs. Socket Mode<a class="headerlink" href="#webhooks-vs-socket-mode" title="Permanent link">&para;</a></h3>
+<p>With incoming webhooks, whenever a user sends a message to the bot via the client application (phone or desktop app), (1) the connection is initiated from the client, and the message gets sent to Slack's cloud. The Slack servers then initiate a connection to the ChatOps app running on the Nautobot server (2). Since this is a new, incoming connection, it must be port forwarded and allowed through any firewalls in your network between the internet and your Nautobot server (3). Nautobot then replies to the existing connection to Slack, which in turn forwards the response to the client.</p>
+<p><img alt="Chatops Slack Webhooks Mode" src="../../images/chatops-slack-webhooks-mode.png" /></p>
+<p>With socket mode, the Nautobot server will instead maintain a connection to the Slack cloud, initiating the connection <em>from</em> the Nautobot server itself (1). In this manner, externally facing firewalls do not need to allow inbound traffic from Slack to the Nautobot server. They only need to allow traffic outbound from the Nautobot server to Slack. Once a client sends a message to the bot (2), Slack forwards the message to Nautobot over the existing websocket connection (3). Nautobot then replies over the existing websocket connection to Slack, and Slack forwards the response to the client.</p>
+<p><img alt="Chatops Slack Socket Mode" src="../../images/chatops-slack-socket-mode.png" /></p>
+<p>While there are sufficient ways of securing inbound API requests from the public internet (e.g. using a secure web API gateway), using socket mode is generally easier to set up from a network and netsec perspective, especially for companies that do not currently have a web API gateway installed, or are unfamiliar with them.</p>
+<h2 id="create-slack-app-using-a-manifest">Create Slack App using a Manifest<a class="headerlink" href="#create-slack-app-using-a-manifest" title="Permanent link">&para;</a></h2>
+<p><strong>Important</strong> - In step 3, you <em>must</em> configure the manifest differently depending on if you are using Socket mode or not.</p>
+<ol>
+<li>Log in to <a href="https://api.slack.com/apps">https://api.slack.com/apps</a> and select "Create New App". Select "From an app manifest."</li>
+<li>Select your preferred Slack workspace for your app.</li>
+<li>In the window titled "Enter app manifest below," select the "YAML" formatting tab and copy/paste the contents of file <a href="https://github.com/nautobot/nautobot-app-chatops/blob/develop/setup_files/nautobot_slack_manifest.yml">nautobot_slack_manifest.yml</a> from this repo. Update the below settings, then click Next.<ul>
+<li>On line 5, you can change the name of the Chatbot here. By default it is set to <code>Nautobot</code></li>
+<li>If using Socket mode:<ul>
+<li>On line 34, update <code>socket_mode_enabled</code> to <code>true</code></li>
+</ul>
+</li>
+<li>If not using Socket mode:<ul>
+<li>On line 12, under setting <code>features/slash_commands/url</code>, update <code>&lt;your-URL&gt;</code> with a publicly accessible URL to your Nautobot server. Note: The trailing <code>/api/plugins/...</code> are required.</li>
+<li>Repeat this for line 30, under setting <code>settings/request_url/request_url</code></li>
+<li>Repeat this for line 35, under setting <code>settings/interactivity/request_url</code></li>
+<li>On line 34, verify <code>socket_mode_enabled</code> is set to <code>false</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Review the summarized settings on the next window and click Create.</li>
+<li>On the General --&gt; Basic Information page, note the <code>Signing Secret</code> near the bottom, under App Credentials. This will be needed later for setting <code>SLACK_SIGNING_SECRET</code>.</li>
+<li>On this same Basic Information page, select <code>Install to Workspace</code>. Select a channel to allow the app to post to (e.g. #general), and click <code>Allow</code>.<ul>
+<li>If you are not a Slack admin, this step will require approval first from an Slack admin in your company.</li>
+</ul>
+</li>
+<li>If using Socket mode:<ul>
+<li>Under Settings --&gt; Basic Information, scroll down to section "App-Level Tokens" and click <code>Generate Token and Scopes</code> to generate an API token.<ul>
+<li><strong>Token Name</strong>: This can be anything you want.</li>
+<li><strong>Scopes</strong>: Click <code>Add Scope</code> and select the option <code>connections:write</code>.</li>
+</ul>
+</li>
+<li>Click <code>Generate</code>. Copy this API token. This will be needed later for setting <code>SLACK_APP_TOKEN</code>.</li>
+</ul>
+</li>
+<li>Under Settings --&gt; Install App, copy the <code>Bot User OAuth Token</code> here. This will be needed later for setting <code>SLACK_API_TOKEN</code>.</li>
+<li>Continue with below section "Post App-Creation Steps"</li>
+</ol>
+<blockquote>
+<p><strong>Optional:</strong> You can configure the App Icon on the General --&gt; Basic Information page. Under <code>App Icon</code>, select "Choose File." You can use the supplied icon <a href="https://github.com/nautobot/nautobot-app-chatops/blob/develop/setup_files/nautobot_chatops_icon.png">nautobot_chatops_icon.png</a>.</p>
+</blockquote>
+<h2 id="post-app-creation-steps">Post App-Creation Steps<a class="headerlink" href="#post-app-creation-steps" title="Permanent link">&para;</a></h2>
+<h3 id="configuration-examples">Configuration Examples<a class="headerlink" href="#configuration-examples" title="Permanent link">&para;</a></h3>
+<p>Before continuing to the general install guide (linked below), you will need the token(s) and secret you previously generated.</p>
+<p>In your <code>nautobot_config.py</code> file, the following <code>PLUGINS</code> and <code>PLUGINS_CONFIG</code> variables will need to look simlar to this:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">PLUGINS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">]</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">PLUGINS_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="s2">&quot;enable_slack&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="s2">&quot;slack_api_token&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;slack-api-token&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s2">&quot;slack_app_token&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;slack-app-token&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="s2">&quot;slack_signing_secret&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;slack-signing-secret&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        <span class="s2">&quot;slack_slash_command_prefix&quot;</span><span class="p">:</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="p">}</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">}</span>
+</code></pre></div>
+<p>The <code>slack_app_token</code> is <em>only</em> used if you are using Socket mode when setting up your chatbot. Otherwise it can be safely ignored.</p>
+<p>You can also set these values as environment variables, and use the example listed below. Note the environment variables are all uppercase.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">PLUGINS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">PLUGINS_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="s2">&quot;enable_slack&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="s2">&quot;slack_api_token&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLACK_API_TOKEN&quot;</span><span class="p">),</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="s2">&quot;slack_app_token&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLACK_APP_TOKEN&quot;</span><span class="p">),</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="s2">&quot;slack_signing_secret&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLACK_SIGNING_SECRET&quot;</span><span class="p">),</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="s2">&quot;slack_slash_command_prefix&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLACK_SLASH_COMMAND_PREFIX&quot;</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">),</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="p">}</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="invite-chatbot-to-channels">Invite Chatbot to Channels<a class="headerlink" href="#invite-chatbot-to-channels" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>Note</strong>: In the Slack app, you will need to invite the chatbot to each channel that it will belong to with <code>@&lt;app name&gt;</code>.
+For example, when an app named <code>Nautobot ChatOps</code> is installed to the workspace:</p>
+<ol>
+<li>A message is displayed in the channel, saying that the integration <code>Nautobot ChatOps</code> has been added</li>
+<li>You <code>@Nautobot ChatOps</code> in the channel</li>
+<li>You are prompted to add <code>@Nautobot ChatOps</code> to the channel</li>
+</ol>
+</blockquote>
+<p><img alt="slack integration invite" src="../../images/add_nautobot.png" /></p>
+<p>Once these steps are completed, you can proceed to the <a href="../install.html#install-guide">Install Guide</a> section.</p>
+<h2 id="configuring-multiple-chatbots-in-a-workspace">Configuring Multiple Chatbots in a Workspace<a class="headerlink" href="#configuring-multiple-chatbots-in-a-workspace" title="Permanent link">&para;</a></h2>
+<p>Chatbots from multiple Nautobot implementations can exist in a single Slack workspace and even channel.</p>
+<p>They will be differentiated in the workspace using the <code>slack_slash_command_prefix</code> value in <code>PLUGINS_CONFIG</code>.</p>
+<p>Here is an example <code>nautobot_config.py</code> for the first Nautobot chatbot implementation in the workspace. This chatbot will be called in the workspace using <code>/nautobot</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Enable installed apps. Add the name of each app to the list.</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">PLUGINS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">]</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">PLUGINS_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="s2">&quot;enable_slack&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="s2">&quot;slack_api_token&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;slack-api-token&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="s2">&quot;slack_signing_secret&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;slack-signing-secret&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="p">}</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="p">}</span>
+</code></pre></div>
+<p>Here is an example <code>nautobot_config.py</code> for a second Nautobot chatbot implementation in the workspace.
+This configuration explicitly configures the <code>slack_slash_command_prefix</code> key/value.
+This chatbot will be called in the workspace using <code>/network2-nautobot</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Enable installed apps. Add the name of each app to the list.</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">PLUGINS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">]</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">PLUGINS_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="s2">&quot;nautobot_chatops&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="s2">&quot;enable_slack&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="s2">&quot;slack_api_token&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;slack-api-token&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="s2">&quot;slack_signing_secret&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;slack-signing-secret&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="s2">&quot;slack_slash_command_prefix&quot;</span><span class="p">:</span> <span class="s2">&quot;/network2-&quot;</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="p">}</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>NOTE: by default, your slash command must end with <code>nautobot</code>. If no <code>slack_slash_command_prefix</code> is specified,
+the slash command will be <code>/nautobot</code>. If a <code>slack_slash_command_prefix</code> is specified, the slash command will be <code>&lt;slack_slash_command_prefix&gt;nautobot</code>.</p>
+<p>NOTE: Custom chatbot development allows for chatbot slash commands such as <code>/grafana</code> and <code>/meraki</code>.</p>
+</blockquote>
+<h2 id="general-chat-setup-instructions">General Chat Setup Instructions<a class="headerlink" href="#general-chat-setup-instructions" title="Permanent link">&para;</a></h2>
+<p>See <a href="../install.html">admin_install</a> instructions here for general app setup instructions.</p>
+<h2 id="startup-slack-sockets-socket-mode">Startup Slack Sockets (Socket Mode)<a class="headerlink" href="#startup-slack-sockets-socket-mode" title="Permanent link">&para;</a></h2>
+<p>Socket Mode requires it's own Worker in order poll Slack for new slash commands and interactions. Slack Socket Mode supports up to 10 active connections. To start a new connection there is a new Management Command provided.</p>
+<h3 id="start_slack_socket-management-command">start_slack_socket Management Command<a class="headerlink" href="#start_slack_socket-management-command" title="Permanent link">&para;</a></h3>
+<p><code>nautobot-server start_slack_socket</code></p>
+<p>Start a worker to connect to Slack.</p>
+<h3 id="slack-socket-systemd-service">Slack Socket Systemd Service<a class="headerlink" href="#slack-socket-systemd-service" title="Permanent link">&para;</a></h3>
+<p>To establish the <code>systemd</code> unit file for the Slack Socket worker, copy and paste the following into <code>/etc/systemd/system/nautobot-chatops-slack-socket.service</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">[Unit]</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="na">Description</span><span class="o">=</span><span class="s">Nautobot Chatops Slack Socket Worker</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="na">Documentation</span><span class="o">=</span><span class="s">https://docs.nautobot.com/projects/chatops/en/latest/</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="na">After</span><span class="o">=</span><span class="s">nautobot.service</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="na">Wants</span><span class="o">=</span><span class="s">network-online.target</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">[Service]</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="na">Type</span><span class="o">=</span><span class="s">exec</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="na">Environment</span><span class="o">=</span><span class="s">&quot;NAUTOBOT_ROOT=/opt/nautobot&quot;</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="na">User</span><span class="o">=</span><span class="s">nautobot</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="na">Group</span><span class="o">=</span><span class="s">nautobot</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="na">WorkingDirectory</span><span class="o">=</span><span class="s">/opt/nautobot</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="na">ExecStart</span><span class="o">=</span><span class="s">/opt/nautobot/bin/nautobot-server start_slack_socket</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="na">Restart</span><span class="o">=</span><span class="s">always</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="na">RestartSec</span><span class="o">=</span><span class="s">30</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="na">PrivateTmp</span><span class="o">=</span><span class="s">true</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="k">[Install]</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="na">WantedBy</span><span class="o">=</span><span class="s">multi-user.target</span>
+</code></pre></div>
+<p>This can be done multiple times to create more workers. Up to 10 total workers can be created across all instances. Additional workers are useful to increase the amount of messages that can be processed from Slack. Additional workers are also useful for allowing ChatOps functionality during Server maintenance.</p>
+<h3 id="configure-systemd">Configure systemd<a class="headerlink" href="#configure-systemd" title="Permanent link">&para;</a></h3>
+<p>Because we just added new service files, you'll need to reload the systemd daemon:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo systemctl daemon-reload
+</code></pre></div>
+<p>Then, start the <code>nautobot-chatops-slack-socket</code> services and enable it to initiate at boot time:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo systemctl enable --now nautobot-chatops-slack-socket
+</code></pre></div>
+<h2 id="deprected-create-slack-app-without-a-manifest-original-method">Deprected - Create Slack App without a Manifest (original method)<a class="headerlink" href="#deprected-create-slack-app-without-a-manifest-original-method" title="Permanent link">&para;</a></h2>
+<p>While this method is still possible, we recommend using the App Manifest method (described above) to install your Slack App.</p>
+<ol>
+<li>Log in to <a href="https://api.slack.com/apps">https://api.slack.com/apps</a> and select "Create New App".<ul>
+<li>Select "From scratch"</li>
+<li>Enter "Nautobot ChatOps" as the "App Name"</li>
+<li>Select your preferred Slack workspace for your app</li>
+<li>Click "Create App"</li>
+</ul>
+</li>
+<li>On the "Basic Information" page for your app, under "Add features and functionality", select "Interactive Components"<ul>
+<li>Set the toggle to "On"</li>
+<li>Enter the HTTPS URL of the Slack <code>interaction</code> endpoint for your Nautobot installation - it should be something like <code>https://&lt;server&gt;/api/plugins/chatops/slack/interaction/</code> (note the trailing slash)</li>
+<li>Select "Save Changes"</li>
+</ul>
+</li>
+<li>On the "Basic Information" page for your app, under "Add features and functionality", select "Slash Commands"<ul>
+<li>Decide now whether your setup requires a slack slash command prefix to disambiguate this bot's commands from those understood by other bots (such as if you have multiple older Nautobot ChatOps versions also enabled), such as <code>/nautobot-</code> or <code>/network2-</code></li>
+<li>This part is a bit tedious, but for each supported command (e.g. <code>/nautobot</code>, <code>/grafana</code>) you will need to:<ul>
+<li>Select "Create New Command"</li>
+<li>Enter the command text, the request URL (<code>https://&lt;server&gt;/api/plugins/chatops/slack/slash_command/</code> in all cases), and the description and usage hints</li>
+<li>Select "Save"</li>
+</ul>
+</li>
+<li>It's up to you whether to configure only the top-level commands (<code>/nautobot</code>, etc.) or whether you wish to configure all of the sub-commands as slash-commands as well (<code>/nautobot-get-devices</code>, <code>/nautobot-get-facts</code>, etc.). The sub-commands can always be entered as parameters to the top-level commands in any case (<code>/nautobot get-devices</code>) whether or not you also define them as first-class slash-commands in their own right.</li>
+<li>TODO: we need a helper script that could be easily run to generate a full listing of subcommands so that a new deployer can know what all they need to set up!</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p>Note: if you want to interact with Nautobot to retrieve data without doing any custom code development, your slash command must
+be <code>/nautobot</code> or end with <code>nautobot</code> following the configured slack_slash_command_prefix. For example, the
+<code>/network2-nautobot</code> command would have a <code>slack_slash_command_prefix</code> of <code>/network2-</code></p>
+</blockquote>
+<ol>
+<li>On the "Basic Information" page for your app, under "App Credentials", find the "Signing Secret" and click "Show". You will need to configure this value for the app as the <code>slack_signing_secret</code> value, such as through an <code>.env</code> file. If this value is not correctly configured, the bot will be unable to validate that inbound notifications it receives have been properly signed by the Slack server.</li>
+<li>In the sidebar to the left, select "OAuth &amp; Permissions".<ul>
+<li>Under "Scopes", select "Add an OAuth Scope", and add the following scopes:<ul>
+<li><code>chat:write</code></li>
+<li><code>commands</code></li>
+<li><code>channels:read</code></li>
+<li><code>files:write</code></li>
+<li><code>incoming-webhook</code></li>
+<li><code>users:read</code></li>
+<li><code>users:read.email</code></li>
+<li><code>app_mentions:read</code></li>
+<li><code>groups:read</code></li>
+<li><code>im:read</code></li>
+<li><code>mpim:read</code></li>
+</ul>
+</li>
+<li>At the top of this page, select "Install App to Workspace" and confirm it.</li>
+<li>There should now be a "Bot User OAuth Access Token" displayed, typically a string starting with <code>xoxb-</code>. You will need to configure this value for the app as the <code>slack_api_token</code> value, either directly or through an <code>.env</code> file. If this value is not properly configured, the bot will be unable to send content to the user.</li>
+</ul>
+</li>
+<li>Returning to the "Basic Information" page for your app, under "Display Information", you can specify the name, description, icon, and accent/background color for the app. You can use the <code>nautobot_logo.png</code> from this directory if desired.</li>
+<li>Continue with below section "Post App-Creation Steps"</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../install.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Install and Configure">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Install and Configure
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="mattermost.html" class="md-footer__link md-footer__link--next" aria-label="Next: Mattermost Setup">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Mattermost Setup
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      
+<div class="md-copyright">
+    
+    <div class="md-copyright__highlight">
+        Copyright &copy; The Authors
+    </div>
+    <a href="https://github.com/nautobot/nautobot-app-chatops/blob/main/LICENSE">Apache-2.0 LICENSE</a>
+    
+</div>
+
+<div class="md-copyright">
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">Made with Material for MkDocs</a>
+    | <a href="https://www.networktocode.com/community/open-source/" target="_blank" rel="noopener">Join #Nautobot on the Network to Code Slack</a>
+    
+    | <a href="https://networktocode.com" target="_blank" rel="noopener">Sponsored by <img
+            src=../../assets/networktocode_bw.png class="copyright-logo"></a>
+    
+</div>
+
+<!-- RTD version flyout injected on live site -->
+<div id="readthedocs-embed-flyout"></div>
+
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://blog.networktocode.com/blog/tags/nautobot" target="_blank" rel="noopener" title="Network to Code Blog" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M0 64c0-17.7 14.3-32 32-32 229.8 0 416 186.2 416 416 0 17.7-14.3 32-32 32s-32-14.3-32-32C384 253.6 226.4 96 32 96 14.3 96 0 81.7 0 64zm0 352a64 64 0 1 1 128 0 64 64 0 1 1-128 0zm32-256c159.1 0 288 128.9 288 288 0 17.7-14.3 32-32 32s-32-14.3-32-32c0-123.7-100.3-224-224-224-17.7 0-32-14.3-32-32s14.3-32 32-32z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://www.youtube.com/playlist?list=PLjA0bhxgryJ2Ts4GJMDA-tPzVWEncv4pb" target="_blank" rel="noopener" title="Nautobot Videos" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.305-11.412 132.305s0 89.438 11.412 132.305c6.281 23.65 24.787 41.5 48.284 47.821C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.321 42.003-24.171 48.284-47.821 11.412-42.867 11.412-132.305 11.412-132.305s0-89.438-11.412-132.305zm-317.51 213.508V175.185l142.739 81.205-142.739 81.201z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://www.networktocode.com/community/" target="_blank" rel="noopener" title="Network to Code Community" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M94.12 315.1c0 25.9-21.16 47.06-47.06 47.06S0 341 0 315.1c0-25.9 21.16-47.06 47.06-47.06h47.06v47.06zm23.72 0c0-25.9 21.16-47.06 47.06-47.06s47.06 21.16 47.06 47.06v117.84c0 25.9-21.16 47.06-47.06 47.06s-47.06-21.16-47.06-47.06V315.1zm47.06-188.98c-25.9 0-47.06-21.16-47.06-47.06S139 32 164.9 32s47.06 21.16 47.06 47.06v47.06H164.9zm0 23.72c25.9 0 47.06 21.16 47.06 47.06s-21.16 47.06-47.06 47.06H47.06C21.16 243.96 0 222.8 0 196.9s21.16-47.06 47.06-47.06H164.9zm188.98 47.06c0-25.9 21.16-47.06 47.06-47.06 25.9 0 47.06 21.16 47.06 47.06s-21.16 47.06-47.06 47.06h-47.06V196.9zm-23.72 0c0 25.9-21.16 47.06-47.06 47.06-25.9 0-47.06-21.16-47.06-47.06V79.06c0-25.9 21.16-47.06 47.06-47.06 25.9 0 47.06 21.16 47.06 47.06V196.9zM283.1 385.88c25.9 0 47.06 21.16 47.06 47.06 0 25.9-21.16 47.06-47.06 47.06-25.9 0-47.06-21.16-47.06-47.06v-47.06h47.06zm0-23.72c-25.9 0-47.06-21.16-47.06-47.06 0-25.9 21.16-47.06 47.06-47.06h117.84c25.9 0 47.06 21.16 47.06 47.06 0 25.9-21.16 47.06-47.06 47.06H283.1z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://github.com/nautobot/nautobot" target="_blank" rel="noopener" title="GitHub Repo" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://twitter.com/networktocode" target="_blank" rel="noopener" title="Network to Code Twitter" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit", "content.action.view", "content.code.copy", "navigation.footer", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.tracking", "search.highlight", "search.share", "search.suggest"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+    
+  </body>
+</html>
