@@ -1,0 +1,139 @@
+{
+  "path": "$PRJ/examples/sv/multi_unpacked_ports.sv",
+  "modules": [
+    {
+      "name": "multi_unpacked_ports",
+      "params": [
+        {
+          "name": "WIDTH",
+          "dim": "[3:0]",
+          "default": "4'b1010",
+          "comment": [
+            "4-bit packed"
+          ]
+        },
+        {
+          "ptype": "integer",
+          "name": "CONFIG",
+          "dim_unpacked": "[0:2]",
+          "default": "'{8, 16, 32}",
+          "comment": [
+            "3-element unpacked array"
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "direction": "input",
+          "ptype": "wire",
+          "name": "data_in",
+          "dim": "[7:0]",
+          "comment": [
+            "8-bit packed"
+          ]
+        },
+        {
+          "direction": "output",
+          "ptype": "logic",
+          "name": "data_out",
+          "dim": "[WIDTH-1:0]",
+          "comment": [
+            "Dynamic width (from parameter)"
+          ]
+        },
+        {
+          "direction": "input",
+          "ptype": "wire",
+          "name": "mem_a",
+          "dim": "[15:0]",
+          "dim_unpacked": "[0:7]",
+          "comment": [
+            "Two 8-entry memories (16-bit each)"
+          ]
+        },
+        {
+          "direction": "input",
+          "ptype": "wire",
+          "name": "mem_b",
+          "dim": "[15:0]",
+          "dim_unpacked": "[0:7]",
+          "comment": [
+            "Two 8-entry memories (16-bit each)"
+          ]
+        },
+        {
+          "direction": "output",
+          "ptype": "reg",
+          "name": "result_x",
+          "dim": "[31:0]",
+          "dim_unpacked": "[0:3]",
+          "comment": [
+            "Two 4-entry arrays (32-bit each)"
+          ]
+        },
+        {
+          "direction": "output",
+          "ptype": "reg",
+          "name": "result_y",
+          "dim": "[31:0]",
+          "dim_unpacked": "[0:3]",
+          "comment": [
+            "Two 4-entry arrays (32-bit each)"
+          ]
+        },
+        {
+          "direction": "input",
+          "ptype": "logic",
+          "name": "packed_unpacked",
+          "dim": "[1:0][3:0]",
+          "dim_unpacked": "[0:1]",
+          "comment": [
+            "2-element unpacked, each 2x4 packed"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tb",
+      "insts": [
+        {
+          "name": "dut",
+          "module": "multi_unpacked_ports",
+          "connections": [
+            {
+              "port": "data_in",
+              "con": "data_in"
+            },
+            {
+              "port": "data_out",
+              "con": "data_out"
+            },
+            {
+              "port": "mem_a",
+              "con": "mem_a"
+            },
+            {
+              "port": "mem_b",
+              "con": "mem_b",
+              "comment": [
+                "Unpacked ports connected in bulk"
+              ]
+            },
+            {
+              "port": "result_x",
+              "con": "result_x"
+            },
+            {
+              "port": "result_y",
+              "con": "result_y"
+            },
+            {
+              "port": "packed_unpacked",
+              "con": "packed_unpacked"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
