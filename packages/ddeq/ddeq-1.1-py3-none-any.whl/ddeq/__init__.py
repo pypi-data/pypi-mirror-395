@@ -1,0 +1,61 @@
+__all__ = [
+    'amf',
+    'background',
+    'dplume',
+    'coco2',
+    'csf',
+    'curves',
+    'div',
+    'download_S5P',
+    'emissions',
+    'era5',
+    'era5dl',
+    'functions',
+    'gauss',
+    'ime',
+    'lcsf',
+    'mcmc_tools',
+    'misc',
+    'nox',
+    'plume_coords',
+    'sats',
+    'smartcarb',
+    'solver',
+    'sources',
+    'timeseries',
+    'vis',
+    'wind'
+]
+
+import os
+
+from ddeq import (
+    amf,
+    background,
+    dplume,
+    coco2,
+    csf,
+    curves,
+    div,
+    download_S5P,
+    emissions,
+    era5,
+    era5dl,
+    functions,
+    gauss,
+    ime,
+    lcsf,
+    mcmc_tools,
+    misc,
+    nox,
+    plume_coords,
+    sats,
+    smartcarb,
+    solver,
+    sources,
+    timeseries,
+    vis,
+    wind
+)
+
+DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
