@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enikki"
+version = "0.1.0"
+description = "A CLI tool to generate picture-diary style manga from text conversations"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Kentaro Kuribayashi" }
+]
+requires-python = ">=3.10"
+keywords = ["manga", "comic", "ai", "generative-ai", "cli", "enikki", "diary", "picture-diary"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "InquirerPy>=0.3.4",
+    "Pillow>=10.0.0",
+    "google-genai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "build>=1.0.0",
+    "twine>=5.0.0",
+]
+
+[project.scripts]
+enikki = "cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kentaro/enikki"
+Documentation = "https://github.com/kentaro/enikki#readme"
+Repository = "https://github.com/kentaro/enikki"
+Issues = "https://github.com/kentaro/enikki/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+exclude = [
+    "config.toml",
+    "*.png",
+    "tests/",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "config.toml",
+    "*.png",
+    "tests/",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
