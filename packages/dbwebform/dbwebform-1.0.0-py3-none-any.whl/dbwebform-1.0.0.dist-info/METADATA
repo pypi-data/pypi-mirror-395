@@ -1,0 +1,236 @@
+Metadata-Version: 2.4
+Name: dbwebform
+Version: 1.0.0
+Summary: Flask-based web forms for database models with auto-generated forms and admin interface
+Home-page: https://github.com/MagIlyasDOMA/dbwebform
+Author: Маг Ильяс DOMA (MagIlyasDOMA)
+Author-email: magilyas.doma.09@list.ru
+License: MIT
+Project-URL: Documentation, https://github.com/MagIlyasDOMA/dbwebform/README.md
+Project-URL: Source, https://github.com/MagIlyasDOMA/dbwebform
+Project-URL: Tracker, https://github.com/MagIlyasDOMA/dbwebform/issues
+Keywords: flask,web-forms,database,sqlalchemy,wtforms
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Flask
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Database :: Front-Ends
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: flask<4.0.0,>=3.1.1
+Requires-Dist: sqlalchemy<3.0.0,>=2.0.44
+Requires-Dist: flask-sqlalchemy<4.0.0,>=3.1.1
+Requires-Dist: flask-wtf<2.0.0,>=1.2.2
+Requires-Dist: wtforms<4.0.0,>=3.2.1
+Requires-Dist: hrenpack<=3.0.0,>=2.2.2
+Requires-Dist: db-model-generator<2.0.0,>=1.4.2
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# dbwebform — документация
+`dbwebform` — это пакет для быстрого создания веб-форм на основе моделей базы данных с использованием Flask, SQLAlchemy и WTForms. Пакет предоставляет готовый класс App, который автоматизирует настройку приложения, работу с базой данных и отображение форм.
+
+---
+
+## Установка
+```shell
+pip install dbwebform
+```
+
+## Быстрый старт
+### 1. Создание модели и формы
+Используйте `db-model-generator` для автоматической генерации модели и формы:
+
+```shell
+db-model-generator sqlite:///example.db users orm.py -r
+```
+
+### 2. Создание приложения
+```python
+from dbwebform import App
+from orm import Model, Form, db
+
+
+app = App(
+    __name__,
+    db=db,
+    model_class=Model,
+    form_class=Form,
+    title="Регистрация пользователя",
+    notification_text="Пользователь успешно создан",
+    port=5000
+)
+
+if __name__ == "__main__":
+    app.run(debug=True)
+```
+---
+
+## Конфигурация класса `App`
+### Параметры конструктора:
+
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|--------------|----------|
+| `db` | `SQLAlchemy` | — | Экземпляр SQLAlchemy для работы с БД |
+| `model_class` | `db.Model` | — | Класс модели SQLAlchemy |
+| `form_class` | `FlaskForm` | — | Класс формы WTForms |
+| `port` | `int` | `8000` | Порт для запуска сервера |
+| `database_url` | `str` | `'sqlite:///db.sqlite3'` | URL подключения к БД |
+| `title` | `str` | `"Создание нового объекта"` | Заголовок страницы |
+| `notification_text` | `str` | `"Объект создан"` | Текст уведомления после отправки формы |
+| `index_template` | `str` | `'dbwebform/index.html'` | Путь к шаблону формы |
+| `model_fields` | `Iterable[str]` | `None` | Список полей модели для сохранения (если `None` — сохраняются все) |
+
+---
+
+## Структура пакета
+
+```text
+dbwebform/
+├── __init__.py
+├── app.py
+├── templates/
+│   ├── dbwebform/
+│   │   ├── base.html
+│   │   └── index.html
+└── favicon.ico
+```
+
+---
+
+## Шаблоны
+### `base.html`
+Базовый шаблон с подключением:
+
+- Bootstrap 5
+
+- hrenpack-theme-style
+
+- Темная/светлая тема
+
+- Иконка базы данных
+
+### `index.html`
+Шаблон формы. Наследуется от `base.html`.
+Может быть переопределён через параметр `index_template`.
+
+#### Блоки для расширения:
+- `{% block index_pre_content %}` — контент перед формой
+
+- `{% block index_post_content %}` — контент после формы
+
+- `{% block index_scripts %}` — дополнительные скрипты
+
+---
+
+## Методы класса App
+### `_init_db(database_url: str)`
+Инициализирует базу данных, создаёт все таблицы.
+
+### `_get_form_model_data(form) -> dict`
+Фильтрует данные формы для сохранения в модель (если задан model_fields).
+
+### `_create_new_object(form)`
+Создаёт и сохраняет новый объект в БД.
+
+### `index()`
+Обрабатывает GET/POST запросы, отображает форму и сохраняет данные.
+
+### `favicon()`
+Возвращает иконку для сайта.
+
+---
+
+## Пример кастомизации шаблона
+```html
+<!-- my_custom_index.html -->
+{% extends 'dbwebform/base.html' %}
+
+{% block index_pre_content %}
+    <div class="alert alert-info">
+        Заполните все поля формы ниже.
+    </div>
+{% endblock %}
+
+{% block index_scripts %}
+    <script>
+        console.log("Форма загружена!");
+    </script>
+{% endblock %}
+```
+
+---
+
+## Запуск приложения
+
+```python
+app = App(
+    __name__,
+    db=db,
+    model_class=MyModel,
+    form_class=MyForm,
+    port=8080
+)
+
+app.run(debug=True, host="0.0.0.0")
+```
+
+## Зависимости
+Пакет требует установки следующих зависимостей:
+
+```text
+flask~=3.1.1
+sqlalchemy==2.0.44
+flask-sqlalchemy==3.1.1
+flask-wtf==1.2.2
+wtforms==3.2.1
+db-model-generator==1.4.2
+hrenpack>=2.2.2, <=3.0.0
+```
+
+| Пакет              | Версия                | Назначение                                              |
+|--------------------|-----------------------|---------------------------------------------------------|
+| **flask**          | ~=3.1.1               | Веб-фреймворк для создания приложения                   |
+| **sqlalchemy**     | ==2.0.44              | ORM для работы с базой данных                           |
+| **flask-sqlalchemy** | ==3.1.1             | Интеграция SQLAlchemy с Flask                           |
+| **flask-wtf**      | ==1.2.2               | Интеграция WTForms с Flask                              |
+| **wtforms**        | ==3.2.1               | Создание и валидация веб-форм                           |
+| **db-model-generator** | ==1.4.2           | Автогенерация моделей и форм из схемы БД                |
+| **hrenpack**       | >=2.2.2, <=3.0.0      | Набор утилит, стилей и компонентов для фронтенда        |
+
+Все зависимости устанавливаются автоматически при установке пакета через pip.
+
+## Лицензия
+Распространяется под лицензией __MIT__.
+Полный текст лицензии доступен в файле `LICENSE` или по ссылке: [MIT License](https://opensource.org/licenses/MIT)
+
+## Поддержка и вклад
+Для предложений и сообщений об ошибках создавайте issue в репозитории проекта.
+Pull-requests приветствуются.
+
