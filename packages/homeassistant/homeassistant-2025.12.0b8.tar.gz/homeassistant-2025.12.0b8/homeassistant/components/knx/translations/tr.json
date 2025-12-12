@@ -1,0 +1,648 @@
+{
+    "config": {
+        "error": {
+            "cannot_connect": "Ba\u011flanma hatas\u0131",
+            "invalid_individual_address": "De\u011fer, KNX bireysel adresi i\u00e7in modelle e\u015fle\u015fmiyor.\n 'alan.hat.cihaz'",
+            "invalid_ip_address": "Ge\u00e7ersiz IPv4 adresi.",
+            "keyfile_invalid_signature": "\".knxkeys\" dosyas\u0131n\u0131n \u015fifresini \u00e7\u00f6zmek i\u00e7in kullan\u0131lan parola yanl\u0131\u015f.",
+            "keyfile_no_backbone_key": "\".knxkeys\" dosyas\u0131, g\u00fcvenli y\u00f6nlendirme i\u00e7in bir omurga anahtar\u0131 i\u00e7ermez.",
+            "keyfile_no_tunnel_for_host": "\".knxkeys\" dosyas\u0131, \" {host} \" ana bilgisayar\u0131 i\u00e7in kimlik bilgileri i\u00e7ermiyor.",
+            "keyfile_not_found": "Belirtilen \".knxkeys\" dosyas\u0131 config/.storage/knx/ yolunda bulunamad\u0131",
+            "no_router_discovered": "A\u011fda hi\u00e7bir KNXnet/IP y\u00f6nlendirici bulunamad\u0131.",
+            "no_tunnel_discovered": "A\u011f\u0131n\u0131zda bir KNX t\u00fcnel sunucusu bulunamad\u0131."
+        },
+        "step": {
+            "connection_type": {
+                "data": {
+                    "connection_type": "KNX ba\u011flant\u0131 t\u00fcr\u00fc"
+                },
+                "data_description": {
+                    "connection_type": "L\u00fctfen KNX ba\u011flant\u0131n\u0131z i\u00e7in kullanmak istedi\u011finiz ba\u011flant\u0131 tipini se\u00e7iniz."
+                },
+                "description": "'Otomatik', ba\u015flang\u0131\u00e7ta bir KNX IP arabirimi bulmak i\u00e7in bir a\u011f ge\u00e7idi taramas\u0131 ger\u00e7ekle\u015ftirir. Bir t\u00fcnel \u00fczerinden ba\u011flanacakt\u0131r. (A\u011f ge\u00e7idi taramas\u0131 ba\u015far\u0131l\u0131 olmazsa kullan\u0131lamaz.) \n \n 'T\u00fcnelleme', bir t\u00fcnel \u00fczerinden belirli bir KNX IP arabirimine ba\u011flanacakt\u0131r. \n \n 'Y\u00f6nlendirme', KNX IP y\u00f6nlendiricileriyle ileti\u015fim kurmak i\u00e7in \u00c7oklu Yay\u0131n kullanacakt\u0131r.",
+                "title": "KNX ba\u011flant\u0131s\u0131"
+            },
+            "knxkeys_tunnel_select": {
+                "data": {
+                    "tunnel_endpoint_ia": "Ba\u011flant\u0131 i\u00e7in kullan\u0131lan t\u00fcnel u\u00e7 noktas\u0131n\u0131 se\u00e7in."
+                },
+                "data_description": {
+                    "tunnel_endpoint_ia": "'Otomatik', ba\u011flan\u0131rken sizin i\u00e7in bo\u015f bir t\u00fcnel u\u00e7 noktas\u0131 se\u00e7er. Emin de\u011filseniz, bu en iyi se\u00e7enektir."
+                },
+                "title": "T\u00fcnel biti\u015f noktas\u0131"
+            },
+            "manual_tunnel": {
+                "data": {
+                    "host": "Sunucu",
+                    "local_ip": "Yerel IP aray\u00fcz\u00fc",
+                    "port": "Port",
+                    "route_back": "Geri y\u00f6nlendirme / NAT modu",
+                    "tunneling_type": "KNX t\u00fcnelleme tipi"
+                },
+                "data_description": {
+                    "host": "KNX/IP t\u00fcnelleme cihaz\u0131n\u0131n IP adresi veya ana bilgisayar ad\u0131.",
+                    "local_ip": "Home Assistant'tan ba\u011flant\u0131 i\u00e7in kullan\u0131lan yerel IP veya aray\u00fcz ad\u0131. Otomatik bulmay\u0131 kullanmak i\u00e7in bo\u015f b\u0131rak\u0131n.",
+                    "port": "KNX/IP t\u00fcnelleme ayg\u0131t\u0131n\u0131n kulland\u0131\u011f\u0131 port.",
+                    "route_back": "KNXnet/IP t\u00fcnel sunucunuz NAT'\u0131n arkas\u0131ndaysa etkinle\u015ftirin. Yaln\u0131zca UDP ba\u011flant\u0131lar\u0131 i\u00e7in ge\u00e7erlidir.",
+                    "tunneling_type": "KNX/IP t\u00fcnelleme ayg\u0131t\u0131n\u0131z\u0131n t\u00fcnelleme t\u00fcr\u00fcn\u00fc se\u00e7in. Eski aray\u00fczler yaln\u0131zca `UDP`yi destekleyebilir."
+                },
+                "description": "L\u00fctfen t\u00fcnel cihaz\u0131n\u0131z\u0131n ba\u011flant\u0131 bilgilerini girin.",
+                "title": "T\u00fcnel ayarlar\u0131"
+            },
+            "routing": {
+                "data": {
+                    "individual_address": "Bireysel adres",
+                    "local_ip": "Yerel IP aray\u00fcz\u00fc",
+                    "multicast_group": "\u00c7ok noktaya yay\u0131n grubu",
+                    "multicast_port": "\u00c7ok noktaya yay\u0131n ba\u011flant\u0131 noktas\u0131",
+                    "routing_secure": "KNX IP G\u00fcvenli Y\u00f6nlendirme"
+                },
+                "data_description": {
+                    "individual_address": "Home Assistant taraf\u0131ndan kullan\u0131lacak KNX adresi, \u00f6r. \"0.0.4\"",
+                    "local_ip": "Home Assistant'tan ba\u011flant\u0131 i\u00e7in kullan\u0131lan yerel IP veya aray\u00fcz ad\u0131. Otomatik bulmay\u0131 kullanmak i\u00e7in bo\u015f b\u0131rak\u0131n.",
+                    "multicast_group": "Kurulumunuz taraf\u0131ndan kullan\u0131lan \u00e7oklu yay\u0131n grubu. Varsay\u0131lan `224.0.23.12`",
+                    "multicast_port": "Kurulumunuz taraf\u0131ndan kullan\u0131lan \u00e7oklu yay\u0131n portu. Varsay\u0131lan `3671`'dir",
+                    "routing_secure": "Kurulumunuzun KNX IP Secure standard\u0131na g\u00f6re \u015fifreli ileti\u015fim kullan\u0131p kullanmad\u0131\u011f\u0131n\u0131 se\u00e7in. Bu ayar uyumlu cihazlar ve yap\u0131land\u0131rma gerektirir. Bir sonraki ad\u0131mda kimlik bilgileriniz istenecektir."
+                },
+                "description": "L\u00fctfen y\u00f6nlendirme se\u00e7eneklerini yap\u0131land\u0131r\u0131n.",
+                "title": "Y\u00f6nlendirme"
+            },
+            "secure_key_source_menu_routing": {
+                "description": "KNX/IP Secure\u2019u nas\u0131l yap\u0131land\u0131rmak istiyorsunuz?",
+                "menu_options": {
+                    "secure_knxkeys": "IP G\u00fcvenli anahtarlar\u0131 sa\u011flayan bir `.knxkeys` dosyas\u0131 kullan\u0131n",
+                    "secure_routing_manual": "IP G\u00fcvenli omurga anahtar\u0131n\u0131 manuel olarak yap\u0131land\u0131r\u0131n"
+                },
+                "title": "KNX IP G\u00fcvenli"
+            },
+            "secure_key_source_menu_tunnel": {
+                "description": "KNX/IP Secure\u2019u nas\u0131l yap\u0131land\u0131rmak istiyorsunuz?",
+                "menu_options": {
+                    "secure_knxkeys": "IP G\u00fcvenli anahtarlar\u0131 sa\u011flayan bir `.knxkeys` dosyas\u0131 kullan\u0131n",
+                    "secure_tunnel_manual": "IP G\u00fcvenli kimlik bilgilerini manuel olarak yap\u0131land\u0131r\u0131n"
+                },
+                "title": "KNX IP G\u00fcvenli"
+            },
+            "secure_knxkeys": {
+                "data": {
+                    "knxkeys_file": "Anahtarl\u0131k dosyas\u0131",
+                    "knxkeys_password": "Anahtarl\u0131k \u015fifresi"
+                },
+                "data_description": {
+                    "knxkeys_file": "`.knxkeys` dosyas\u0131n\u0131 se\u00e7in. Bu ETS'den d\u0131\u015far\u0131 aktar\u0131labilir.",
+                    "knxkeys_password": "`.knxkeys` dosyas\u0131n\u0131 a\u00e7mak i\u00e7in \u015fifre d\u0131\u015fa aktarma s\u0131ras\u0131nda ayarland\u0131."
+                },
+                "title": "KNX Anahtarl\u0131\u011f\u0131n\u0131 \u0130\u00e7e Aktar"
+            },
+            "secure_routing_manual": {
+                "data": {
+                    "backbone_key": "Omurga anahtar\u0131",
+                    "sync_latency_tolerance": "A\u011f gecikme tolerans\u0131"
+                },
+                "data_description": {
+                    "backbone_key": "ETS projenizin 'G\u00fcvenlik' raporunda g\u00f6r\u00fclebilir. \u00d6rn. `00112233445566778899AABBCCDDEEFF`",
+                    "sync_latency_tolerance": "ETS projenizin omurga yap\u0131land\u0131rmas\u0131na e\u015fit olmal\u0131d\u0131r. Varsay\u0131lan `1000`'dir"
+                },
+                "description": "L\u00fctfen IP G\u00fcvenlik bilgilerinizi giriniz.",
+                "title": "G\u00fcvenli y\u00f6nlendirme"
+            },
+            "secure_tunnel_manual": {
+                "data": {
+                    "device_authentication": "Cihaz do\u011frulama \u015fifresi",
+                    "user_id": "Kullan\u0131c\u0131 Kimli\u011fi",
+                    "user_password": "Kullan\u0131c\u0131 \u015fifresi"
+                },
+                "data_description": {
+                    "device_authentication": "Bu, ETS'deki aray\u00fcz\u00fcn 'IP' panelinde ayarlan\u0131r.",
+                    "user_id": "Bu genellikle t\u00fcnel numaras\u0131 +1'dir. Yani ETS'de sunulan listedeki ilk t\u00fcnelin Kullan\u0131c\u0131 Kimli\u011fi `2` olacakt\u0131r.",
+                    "user_password": "ETS'de t\u00fcnelin '\u00d6zellikler' panelinde ayarlanan belirli t\u00fcnel ba\u011flant\u0131s\u0131 i\u00e7in \u015fifre."
+                },
+                "description": "L\u00fctfen IP G\u00fcvenlik bilgilerinizi giriniz."
+            },
+            "tcp_tunnel_endpoint": {
+                "data": {
+                    "tunnel_endpoint_ia": "Ba\u011flant\u0131 i\u00e7in kullan\u0131lan t\u00fcnel u\u00e7 noktas\u0131n\u0131 se\u00e7in."
+                },
+                "data_description": {
+                    "tunnel_endpoint_ia": "'Otomatik', ba\u011flan\u0131rken sizin i\u00e7in bo\u015f bir t\u00fcnel u\u00e7 noktas\u0131 se\u00e7er. Emin de\u011filseniz, bu en iyi se\u00e7enektir."
+                },
+                "title": "T\u00fcnel biti\u015f noktas\u0131"
+            },
+            "tunnel": {
+                "data": {
+                    "gateway": "L\u00fctfen listeden bir a\u011f ge\u00e7idi se\u00e7in."
+                },
+                "data_description": {
+                    "gateway": "Ba\u011flant\u0131 i\u00e7in kullanmak istedi\u011finiz bir KNX t\u00fcnelleme aray\u00fcz\u00fc se\u00e7in."
+                },
+                "title": "T\u00fcnel"
+            }
+        }
+    },
+    "config_panel": {
+        "entities": {
+            "create": {
+                "_": {
+                    "entity": {
+                        "description": "Home Assistant'a \u00f6zel ayarlar.",
+                        "device_description": "Bir cihaz, birden fazla varl\u0131\u011f\u0131 gruplaman\u0131za olanak tan\u0131r. Bu varl\u0131\u011f\u0131n ait oldu\u011fu cihaz\u0131 se\u00e7in veya yeni bir cihaz olu\u015fturun.",
+                        "entity_category_description": "Birincil olmayan bir varl\u0131\u011f\u0131n s\u0131n\u0131fland\u0131r\u0131lmas\u0131. Standart davran\u0131\u015f i\u00e7in bo\u015f b\u0131rak\u0131n.",
+                        "entity_category_title": "Varl\u0131k kategorisi",
+                        "entity_description": "Bir cihaz se\u00e7iliyse iste\u011fe ba\u011fl\u0131, aksi takdirde gereklidir. Varl\u0131k bir cihaza atanm\u0131\u015fsa, cihaz ad\u0131 \u00f6nek olarak kullan\u0131l\u0131r.",
+                        "entity_label": "Varl\u0131k ad\u0131",
+                        "name_description": "Varl\u0131\u011f\u0131n Home Assistant'ta nas\u0131l adland\u0131r\u0131laca\u011f\u0131n\u0131 tan\u0131mlay\u0131n.",
+                        "name_title": "Cihaz ve varl\u0131k ad\u0131",
+                        "title": "Varl\u0131k yap\u0131land\u0131rmas\u0131"
+                    },
+                    "knx": {
+                        "knx_group_address": {
+                            "dpt": "Veri noktas\u0131 t\u00fcr\u00fc",
+                            "passive_addresses": "Pasif adresler",
+                            "send_address": "Adresi g\u00f6nder",
+                            "state_address": "Durum adresi",
+                            "valid_dpts": "Ge\u00e7erli DPT'ler"
+                        },
+                        "sync_state": {
+                            "description": "KNX veri yolundan durum adresleri i\u00e7in durum g\u00fcncellemelerini aktif olarak isteyin.",
+                            "options": {
+                                "every": "Her zaman planlanm\u0131\u015f",
+                                "expire": "Son de\u011fer g\u00fcncellemesinden sonra sona erer",
+                                "false": "Asla",
+                                "init": "Ba\u011flant\u0131 kuruldu\u011funda bir kez",
+                                "true": "Entegrasyon varsay\u0131lan\u0131n\u0131 kullan"
+                            },
+                            "strategy": "Strateji",
+                            "title": "Durum g\u00fcncelleyici"
+                        },
+                        "title": "KNX yap\u0131land\u0131rmas\u0131"
+                    }
+                },
+                "binary_sensor": {
+                    "description": "\u0130kili veri noktalar\u0131 i\u00e7in salt okunur varl\u0131k. Pencere veya kap\u0131 durumlar\u0131 vb.",
+                    "knx": {
+                        "context_timeout": {
+                            "description": "Birden fazla ayn\u0131 telgraf y\u00fck\u00fc aras\u0131ndaki saniye cinsinden s\u00fcre, dahili bir sayaca dahil edilir. Bu, bir d\u00fc\u011fmeye birden fazla t\u0131klamay\u0131 otomatikle\u015ftirmek i\u00e7in kullan\u0131labilir. Bu \u00f6zelli\u011fi devre d\u0131\u015f\u0131 b\u0131rakmak i\u00e7in `0` de\u011ferini girin.",
+                            "label": "Ba\u011flam zaman a\u015f\u0131m\u0131"
+                        },
+                        "ga_sensor": {
+                            "description": "\u0130kili bir durumu temsil eden grup adresi.",
+                            "label": "Durum"
+                        },
+                        "ignore_internal_state": {
+                            "description": "Veriler ayn\u0131 olsa bile her g\u00fcncellemeyi durum makinesine yaz.",
+                            "label": "G\u00fcncellemeyi zorla"
+                        },
+                        "invert": {
+                            "description": "\u0130\u015fleme ba\u015flamadan \u00f6nce y\u00fck\u00fc ters \u00e7evirin."
+                        }
+                    }
+                },
+                "climate": {
+                    "description": "KNX klima platformu, \u0131s\u0131tma akt\u00fcat\u00f6rleri, HVAC a\u011f ge\u00e7itleri vb. i\u00e7in bir aray\u00fcz olarak kullan\u0131l\u0131r.",
+                    "knx": {
+                        "default_controller_mode": {
+                            "description": "Ba\u015flatma s\u0131ras\u0131nda klima modunun ayarlanmas\u0131.",
+                            "label": "Varsay\u0131lan mod"
+                        },
+                        "fan_max_step": {
+                            "description": "Fan\u0131n maksimum ad\u0131m say\u0131s\u0131.",
+                            "label": "Fan ad\u0131mlar\u0131"
+                        },
+                        "fan_zero_mode": {
+                            "description": "Fan h\u0131z\u0131n\u0131 temsil eden modu `0` olarak ayarlay\u0131n.",
+                            "label": "S\u0131f\u0131r fan h\u0131z\u0131 modu",
+                            "options": {
+                                "off": "Kapal\u0131"
+                            }
+                        },
+                        "ga_active": {
+                            "description": "Cihaz\u0131n aktif mi yoksa bo\u015fta m\u0131 oldu\u011funu g\u00f6steren ikili de\u011fer. Yap\u0131land\u0131r\u0131l\u0131rsa, bu de\u011fer vana konumuna g\u00f6re \u00f6nceliklidir.",
+                            "label": "Etkin"
+                        },
+                        "ga_controller_mode": {
+                            "label": "Denetleyici modu"
+                        },
+                        "ga_controller_status": {
+                            "description": "HVAC kontrol\u00f6r modu ve \u00f6n ayar durumu. Eberle Status oktet (KNX AN 097/07 rev 3) standartla\u015ft\u0131r\u0131lmam\u0131\u015f DPT.",
+                            "label": "Denetleyici durumu"
+                        },
+                        "ga_fan_speed": {
+                            "description": "Mevcut fan h\u0131z\u0131n\u0131 ayarlay\u0131n.",
+                            "label": "Fan h\u0131z\u0131",
+                            "options": {
+                                "5_001": "Y\u00fczde",
+                                "5_010": "Ad\u0131mlar"
+                            }
+                        },
+                        "ga_fan_swing": {
+                            "description": "Dikey fan sal\u0131n\u0131m modunu a\u00e7\u0131n. Yaln\u0131zca bir y\u00f6n destekleniyorsa bunu kullan\u0131n.",
+                            "label": "Fan sal\u0131n\u0131m\u0131"
+                        },
+                        "ga_fan_swing_horizontal": {
+                            "description": "Yatay fan sal\u0131n\u0131m modunu a\u00e7\u0131n.",
+                            "label": "Fan yatay sal\u0131n\u0131m\u0131"
+                        },
+                        "ga_heat_cool": {
+                            "label": "Is\u0131tma/So\u011futma"
+                        },
+                        "ga_humidity_current": {
+                            "label": "Mevcut nem"
+                        },
+                        "ga_on_off": {
+                            "label": "A\u00e7\u0131k/Kapal\u0131"
+                        },
+                        "ga_operation_mode": {
+                            "description": "Mevcut \u00e7al\u0131\u015fma modu.",
+                            "label": "\u00c7al\u0131\u015fma modu"
+                        },
+                        "ga_operation_mode_comfort": {
+                            "label": "Konfor modu"
+                        },
+                        "ga_operation_mode_economy": {
+                            "label": "Ekonomi modu"
+                        },
+                        "ga_operation_mode_protection": {
+                            "label": "Bina koruma modu"
+                        },
+                        "ga_operation_mode_standby": {
+                            "label": "Bekleme modu"
+                        },
+                        "ga_temperature_current": {
+                            "label": "Mevcut s\u0131cakl\u0131k"
+                        },
+                        "ga_valve": {
+                            "description": "Mevcut kontrol de\u011feri / vana pozisyonu y\u00fczde olarak. `0` iklimlendirme cihaz\u0131n\u0131 r\u00f6lantiye al\u0131r.",
+                            "label": "Vana konumu"
+                        },
+                        "ignore_auto_mode": {
+                            "description": "Kontrol cihaz\u0131n\u0131z `otomatik` modunu desteklemedi\u011finde etkinle\u015ftirin. Bu durumda entegrasyon taraf\u0131ndan dikkate al\u0131nmayacakt\u0131r.",
+                            "label": "Otomatik modu yoksay"
+                        },
+                        "on_off_invert": {
+                            "description": "\u0130\u015fleme ba\u015flamadan \u00f6nce y\u00fck\u00fc ters \u00e7evirin."
+                        },
+                        "section_activity": {
+                            "description": "Cihaz\u0131n aktif mi yoksa bo\u015fta m\u0131 oldu\u011funu belirleyin.",
+                            "title": "Aktivite"
+                        },
+                        "section_controller_mode": {
+                            "description": "\u0130klim cihaz\u0131n\u0131n modunu ayarlay\u0131n.",
+                            "title": "Denetleyici modu"
+                        },
+                        "section_fan": {
+                            "description": "Fan kontrol\u00fc i\u00e7in yap\u0131land\u0131rma (AC \u00fcniteleri).",
+                            "title": "Fan"
+                        },
+                        "section_heat_cool": {
+                            "description": "Cihaz\u0131n \u0131s\u0131tma veya so\u011futma modunda olup olmad\u0131\u011f\u0131n\u0131 ayarlay\u0131n.",
+                            "title": "Is\u0131tma/So\u011futma"
+                        },
+                        "section_on_off": {
+                            "description": "Cihaz\u0131 a\u00e7\u0131n veya kapat\u0131n.",
+                            "title": "A\u00e7\u0131k/Kapal\u0131"
+                        },
+                        "section_operation_mode": {
+                            "description": "Cihaz\u0131n \u00f6n ayar modunu ayarlay\u0131n.",
+                            "title": "\u00c7al\u0131\u015fma modu"
+                        },
+                        "section_operation_mode_individual": {
+                            "description": "Cihaz\u0131n \u00f6n ayar modunu bireysel grup adreslerini kullanarak ayarlay\u0131n.",
+                            "title": "Bireysel \u00e7al\u0131\u015fma modlar\u0131"
+                        },
+                        "target_temperature": {
+                            "description": "Hedef s\u0131cakl\u0131\u011f\u0131 ayarlay\u0131n.",
+                            "ga_setpoint_shift": {
+                                "description": "Hedef s\u0131cakl\u0131\u011f\u0131n temel ayar noktas\u0131ndan sapmas\u0131.",
+                                "label": "Ayar noktas\u0131 kaymas\u0131"
+                            },
+                            "ga_temperature_target": {
+                                "description": "Mevcut mutlak hedef s\u0131cakl\u0131k.",
+                                "label": "Hedef s\u0131cakl\u0131k"
+                            },
+                            "max_temp": {
+                                "description": "Ayarlanabilecek maksimum s\u0131cakl\u0131k.",
+                                "label": "Maksimum s\u0131cakl\u0131k"
+                            },
+                            "min_temp": {
+                                "description": "Minimum s\u0131cakl\u0131k",
+                                "label": "Minimum s\u0131cakl\u0131k"
+                            },
+                            "options": {
+                                "group_direct_temp": {
+                                    "description": "Hedef s\u0131cakl\u0131\u011f\u0131 mutlak bir de\u011fere ayarlay\u0131n.",
+                                    "label": "Mutlak ayar noktas\u0131"
+                                },
+                                "group_setpoint_shift": {
+                                    "description": "Hedef s\u0131cakl\u0131\u011f\u0131 bir temel ayar noktas\u0131ndan kayd\u0131r\u0131n.",
+                                    "label": "Ayar noktas\u0131 kaymas\u0131"
+                                }
+                            },
+                            "setpoint_shift_max": {
+                                "description": "Temel ayar noktas\u0131ndan izin verilen en y\u00fcksek sapma.",
+                                "label": "Maksimum ayar noktas\u0131 kaymas\u0131"
+                            },
+                            "setpoint_shift_min": {
+                                "description": "Temel ayar noktas\u0131ndan izin verilen en d\u00fc\u015f\u00fck sapma.",
+                                "label": "Minimum ayar noktas\u0131 kaymas\u0131"
+                            },
+                            "temperature_step": {
+                                "description": "S\u0131cakl\u0131\u011f\u0131 de\u011fi\u015ftirmek i\u00e7in en k\u00fc\u00e7\u00fck ad\u0131m boyutu. Ayar noktas\u0131 kayd\u0131rma yap\u0131land\u0131rmalar\u0131 i\u00e7in bu, kayd\u0131rma de\u011ferinin \u00f6l\u00e7ek fakt\u00f6r\u00fcn\u00fc ayarlar.",
+                                "label": "S\u0131cakl\u0131k ad\u0131m\u0131"
+                            },
+                            "title": "Hedef s\u0131cakl\u0131k"
+                        }
+                    }
+                },
+                "cover": {
+                    "knx": {
+                        "ga_position_set": {
+                            "description": "Yeni mutlak bir pozisyon belirlemek i\u00e7in grup adresleri."
+                        },
+                        "ga_position_state": {
+                            "description": "Grup adresleri g\u00fcncel durumu bildiriyor."
+                        },
+                        "ga_step": {
+                            "description": "Kademeli hareket i\u00e7in grup adresleri. \u00d6zel bir durdurma adresi bulunmad\u0131\u011f\u0131nda kapa\u011f\u0131 durdurmak i\u00e7in kullan\u0131l\u0131r."
+                        },
+                        "ga_stop": {
+                            "description": "Hareketi durdurmak i\u00e7in grup adresleri."
+                        },
+                        "ga_up_down": {
+                            "description": "Grup adresleri tam bir hareketi tetikliyor."
+                        },
+                        "section_travel_time": {
+                            "title": "Seyahat s\u00fcresi"
+                        },
+                        "travelling_time_down": {
+                            "description": "Kapa\u011f\u0131n tamamen kapanmas\u0131 i\u00e7in gereken s\u00fcre (saniye).",
+                            "label": "Kapan\u0131\u015f zaman\u0131"
+                        },
+                        "travelling_time_up": {
+                            "description": "Kapa\u011f\u0131n tamamen a\u00e7\u0131lmas\u0131 i\u00e7in gereken s\u00fcre (saniye).",
+                            "label": "A\u00e7\u0131l\u0131\u015f zaman\u0131"
+                        }
+                    }
+                },
+                "header": "Yeni varl\u0131k olu\u015ftur",
+                "light": {
+                    "description": "KNX ayd\u0131nlatma platformu, dimleme akt\u00fcat\u00f6rleri, LED kontrol cihazlar\u0131, DALI a\u011f ge\u00e7itleri ve benzerleri i\u00e7in bir aray\u00fcz olarak kullan\u0131l\u0131r.",
+                    "knx": {
+                        "color": {
+                            "description": "I\u015f\u0131\u011f\u0131n rengini kontrol edin.",
+                            "ga_blue_brightness": {
+                                "description": "Renk kanal\u0131n\u0131n parlakl\u0131\u011f\u0131n\u0131 kontrol etmek i\u00e7in grup adresi. Gerekli.",
+                                "label": "Mavi parlakl\u0131k"
+                            },
+                            "ga_blue_switch": {
+                                "description": "Renk kanal\u0131n\u0131 a\u00e7\u0131p/kapatmak i\u00e7in grup adresi.",
+                                "label": "Mavi anahtar"
+                            },
+                            "ga_color": {
+                                "label": "Renkli adresler",
+                                "options": {
+                                    "232_600": "RGB",
+                                    "242_600": "XYY",
+                                    "251_600": "RGBW"
+                                }
+                            },
+                            "ga_green_brightness": {
+                                "description": "Renk kanal\u0131n\u0131n parlakl\u0131\u011f\u0131n\u0131 kontrol etmek i\u00e7in grup adresi. Gerekli.",
+                                "label": "Ye\u015fil parlakl\u0131k"
+                            },
+                            "ga_green_switch": {
+                                "description": "Renk kanal\u0131n\u0131 a\u00e7\u0131p/kapatmak i\u00e7in grup adresi.",
+                                "label": "Ye\u015fil anahtar"
+                            },
+                            "ga_hue": {
+                                "description": "I\u015f\u0131\u011f\u0131n tonunu kontrol eder.",
+                                "label": "Renk tonu"
+                            },
+                            "ga_red_brightness": {
+                                "description": "Renk kanal\u0131n\u0131n parlakl\u0131\u011f\u0131n\u0131 kontrol etmek i\u00e7in grup adresi. Gerekli.",
+                                "label": "K\u0131rm\u0131z\u0131 parlakl\u0131k"
+                            },
+                            "ga_red_switch": {
+                                "description": "Renk kanal\u0131n\u0131 a\u00e7\u0131p/kapatmak i\u00e7in grup adresi.",
+                                "label": "K\u0131rm\u0131z\u0131 anahtar"
+                            },
+                            "ga_saturation": {
+                                "description": "I\u015f\u0131\u011f\u0131n doygunlu\u011funu kontrol eder.",
+                                "label": "Doygunluk"
+                            },
+                            "ga_white_brightness": {
+                                "description": "Renk kanal\u0131n\u0131n parlakl\u0131\u011f\u0131n\u0131 kontrol eden grup adresi.",
+                                "label": "Beyaz parlakl\u0131k"
+                            },
+                            "ga_white_switch": {
+                                "description": "Renk kanal\u0131n\u0131 a\u00e7\u0131p/kapatmak i\u00e7in grup adresi.",
+                                "label": "Beyaz anahtar"
+                            },
+                            "options": {
+                                "hsv_addresses": {
+                                    "description": "Renk tonu, doygunluk ve parlakl\u0131k bireysel grup adresleri taraf\u0131ndan kontrol edilir.",
+                                    "label": "HSV"
+                                },
+                                "individual_addresses": {
+                                    "description": "Her renk kanal\u0131n\u0131n durumu ve parlakl\u0131\u011f\u0131 i\u00e7in ayr\u0131 grup adreslerini kullanan RGB(W).",
+                                    "label": "Bireysel adresler"
+                                },
+                                "single_address": {
+                                    "description": "RGB, RGBW veya XYY rengi tek bir grup adresiyle kontrol edilir.",
+                                    "label": "Tek adres"
+                                }
+                            }
+                        },
+                        "ga_brightness": {
+                            "description": "I\u015f\u0131\u011f\u0131n mutlak parlakl\u0131\u011f\u0131n\u0131 kontrol edin."
+                        },
+                        "ga_switch": {
+                            "description": "I\u015f\u0131\u011f\u0131 a\u00e7/kapat."
+                        }
+                    }
+                },
+                "type_selection": {
+                    "header": "KNX varl\u0131\u011f\u0131 olu\u015fturun",
+                    "title": "Varl\u0131k t\u00fcr\u00fcn\u00fc se\u00e7in"
+                }
+            }
+        }
+    },
+    "device_automation": {
+        "extra_fields": {
+            "destination": "Grup adresleri",
+            "group_value_read": "GroupValueRead (GrupDe\u011feriOku)",
+            "group_value_response": "GroupValueResponse (GrupDe\u011ferYan\u0131t\u0131)",
+            "group_value_write": "GroupValueWrite (GrupDe\u011fer Yaz\u0131s\u0131)",
+            "incoming": "Gelen",
+            "outgoing": "Giden"
+        },
+        "extra_fields_descriptions": {
+            "destination": "Tetikleyici bu grup adreslerine g\u00f6nderilen veya al\u0131nan telegramlar\u0131 dinleyecektir. Hi\u00e7bir adres se\u00e7ilmezse tetikleyici her grup adresi i\u00e7in etkinle\u015fir.",
+            "group_value_read": "GroupValueRead telegramlar\u0131 dinleyin.",
+            "group_value_response": "GroupValueResponse telegramlar\u0131n\u0131 dinleyin.",
+            "group_value_write": "GroupValueWrite telegramlar\u0131 dinleyin.",
+            "incoming": "Gelen telegramlar\u0131 dinleyin.",
+            "outgoing": "Giden telegramlar\u0131 dinleyin."
+        },
+        "trigger_type": {
+            "telegram": "Telegram"
+        }
+    },
+    "entity": {
+        "climate": {
+            "knx_climate": {
+                "state_attributes": {
+                    "preset_mode": {
+                        "name": "\u00d6n ayar",
+                        "state": {
+                            "building_protection": "Bina koruma",
+                            "comfort": "Konfor",
+                            "economy": "Eko"
+                        }
+                    }
+                }
+            }
+        },
+        "sensor": {
+            "connected_since": {
+                "name": "Ba\u011flant\u0131 kuruldu"
+            },
+            "connection_type": {
+                "name": "Ba\u011flant\u0131 t\u00fcr\u00fc"
+            },
+            "individual_address": {
+                "name": "Bireysel adres"
+            },
+            "telegram_count": {
+                "name": "Telegramlar",
+                "unit_of_measurement": "telegramlar"
+            },
+            "telegrams_incoming": {
+                "name": "Gelen telegramlar",
+                "unit_of_measurement": "telegramlar"
+            },
+            "telegrams_incoming_error": {
+                "name": "Gelen telegram hatalar\u0131",
+                "unit_of_measurement": "hatalar"
+            },
+            "telegrams_outgoing": {
+                "name": "Giden telegramlar",
+                "unit_of_measurement": "telegramlar"
+            },
+            "telegrams_outgoing_error": {
+                "name": "Giden telegram hatalar\u0131",
+                "unit_of_measurement": "hatalar"
+            }
+        }
+    },
+    "exceptions": {
+        "integration_not_loaded": {
+            "message": "KNX entegrasyonu y\u00fcklenmedi."
+        },
+        "service_send_invalid_payload": {
+            "message": "`knx.send` hizmeti i\u00e7in ge\u00e7ersiz y\u00fck. {error}"
+        },
+        "service_send_invalid_type": {
+            "message": "`knx.send` hizmeti i\u00e7in ge\u00e7ersiz t\u00fcr: {type}"
+        }
+    },
+    "options": {
+        "step": {
+            "communication_settings": {
+                "data": {
+                    "rate_limit": "Saya\u00e7 Limiti",
+                    "state_updater": "Durum g\u00fcncelleyici",
+                    "telegram_log_size": "Telegram ge\u00e7mi\u015fi s\u0131n\u0131r\u0131"
+                },
+                "data_description": {
+                    "rate_limit": "Saniye ba\u015f\u0131na maksimum giden telgraflar. \n S\u0131n\u0131r\u0131 devre d\u0131\u015f\u0131 b\u0131rakmak i\u00e7in `0`. \u00d6nerilen: `0` veya `20` ile `40` aras\u0131nda",
+                    "state_updater": "KNX Veri Yolu'ndan durum adreslerini okumak i\u00e7in varsay\u0131lan davran\u0131\u015f\u0131 ayarlar. \n Etkinle\u015ftirildi\u011finde, Home Assistant her grup adresini izleyecek ve bir saat boyunca herhangi bir de\u011fer al\u0131nmad\u0131ysa veri yolundan okuyacakt\u0131r. \n Devre d\u0131\u015f\u0131 b\u0131rak\u0131ld\u0131\u011f\u0131nda, durum adresleri bir veri yolu ba\u011flant\u0131s\u0131 kurulduktan sonra yaln\u0131zca bir kez okunacakt\u0131r. \n Bu davran\u0131\u015f, `sync_state` se\u00e7ene\u011fi kullan\u0131larak tek tek varl\u0131klar i\u00e7in ge\u00e7ersiz k\u0131l\u0131nabilir.",
+                    "telegram_log_size": "KNX panel grubu monit\u00f6r\u00fc i\u00e7in bellekte tutulacak telgraflar. Maksimum: {telegram_log_size_max}"
+                }
+            }
+        }
+    },
+    "services": {
+        "event_register": {
+            "description": "`knx_event`leri tetiklemek i\u00e7in knx_event filtresine grup adresleri ekler veya kald\u0131r\u0131r. Yaln\u0131zca bu eylemle eklenen adresler kald\u0131r\u0131labilir.",
+            "fields": {
+                "address": {
+                    "description": "Eklenecek veya kald\u0131r\u0131lacak grup adres(ler)i. Listelere izin verilir.",
+                    "name": "Grup adresi"
+                },
+                "remove": {
+                    "description": "Grup adresinin/adreslerinin kald\u0131r\u0131l\u0131p kald\u0131r\u0131lmayaca\u011f\u0131.",
+                    "name": "Etkinlik kayd\u0131n\u0131 kald\u0131r\u0131n"
+                },
+                "type": {
+                    "name": "De\u011fer t\u00fcr\u00fc"
+                }
+            },
+            "name": "knx_event'e kaydol"
+        },
+        "exposure_register": {
+            "description": "KNX veri yoluna pozlamalar ekler veya kald\u0131r\u0131r. Yaln\u0131zca bu eylemle eklenen pozlamalar kald\u0131r\u0131labilir.",
+            "fields": {
+                "address": {
+                    "description": "Durum veya \u00f6znitelik g\u00fcncellemelerinin g\u00f6nderilece\u011fi grup adresi. GroupValueRead istekleri yan\u0131tlanacakt\u0131r. Adres ba\u015f\u0131na yaln\u0131zca bir te\u015fhir kaydedilebilir.",
+                    "name": "Grup adresi"
+                },
+                "attribute": {
+                    "description": "KNX veriyoluna g\u00f6nderilecek varl\u0131\u011f\u0131n \u00f6zniteli\u011fi. Ayarlanmazsa durum g\u00f6nderilir. \u00d6rne\u011fin. bir \u0131\u015f\u0131k i\u00e7in durum ya \u201ca\u00e7\u0131k\u201d ya da \u201ckapal\u0131\u201dd\u0131r - niteli\u011fi ile onun \u201cparlakl\u0131\u011f\u0131n\u0131\u201d ortaya \u00e7\u0131karabilirsiniz.",
+                    "name": "Varl\u0131k \u00f6zniteli\u011fi"
+                },
+                "default": {
+                    "description": "Durum veya \u00f6znitelik de\u011feri Yok ise veri yoluna g\u00f6nderilecek varsay\u0131lan de\u011fer. \u00d6rne\u011fin. \"kapal\u0131\" durumdaki bir \u0131\u015f\u0131\u011f\u0131n parlakl\u0131k \u00f6zelli\u011fi yoktur, bu nedenle varsay\u0131lan de\u011fer olan 0 kullan\u0131labilir. Ayarlanmazsa (veya Yok) veri yoluna hi\u00e7bir de\u011fer g\u00f6nderilmez ve adrese bir GroupReadRequest bilinen son de\u011feri d\u00f6nd\u00fcr\u00fcr.",
+                    "name": "Varsay\u0131lan de\u011fer"
+                },
+                "entity_id": {
+                    "description": "Durumu veya niteli\u011fi a\u00e7\u0131\u011fa \u00e7\u0131kar\u0131lacak varl\u0131k kimli\u011fi.",
+                    "name": "Varl\u0131k"
+                },
+                "remove": {
+                    "description": "Maruziyetin kald\u0131r\u0131lmas\u0131 gerekip gerekmedi\u011fi. Kald\u0131rma i\u00e7in yaln\u0131zca 'Adres' alan\u0131 gereklidir.",
+                    "name": "Pozlamay\u0131 kald\u0131r"
+                },
+                "type": {
+                    "name": "De\u011fer t\u00fcr\u00fc"
+                }
+            },
+            "name": "KNX veriyoluna a\u00e7\u0131kla"
+        },
+        "read": {
+            "description": "GroupValueRead isteklerini KNX veri yoluna g\u00f6nderir. Yan\u0131t `knx_event`'ten kullan\u0131labilir ve KNX varl\u0131klar\u0131nda i\u015flenecektir.",
+            "fields": {
+                "address": {
+                    "description": "Okuma talebinin g\u00f6nderilece\u011fi grup adres(ler)i. Listeler birden \u00e7ok grup adresini okuyacakt\u0131r.",
+                    "name": "Grup adresi"
+                }
+            },
+            "name": "KNX veriyolundan oku"
+        },
+        "reload": {
+            "description": "KNX entegrasyonunu yeniden y\u00fckler.",
+            "name": "Tekrar y\u00fckle"
+        },
+        "send": {
+            "description": "\u0130ste\u011fe ba\u011fl\u0131 verileri do\u011frudan KNX veri yoluna g\u00f6nderir.",
+            "fields": {
+                "address": {
+                    "description": "Yaz\u0131lacak grup adres(ler)i. Listeler art arda birden \u00e7ok grup adresine g\u00f6nderilecek.",
+                    "name": "Grup adresi"
+                },
+                "payload": {
+                    "description": "Veri yoluna g\u00f6nderilecek y\u00fck. Tam say\u0131lar DPT 1/2/3 y\u00fckleri olarak ele al\u0131n\u0131r. 6 bitten b\u00fcy\u00fck DPT'ler i\u00e7in bir liste g\u00f6nderin. Her de\u011fer 1 okteti (0-255) temsil eder. 0 ile DPT bayt uzunlu\u011funu doldurun.",
+                    "name": "Y\u00fck"
+                },
+                "response": {
+                    "description": "Telegram\u0131n `GroupValueWrite` yerine `GroupValueResponse` olarak g\u00f6nderilmesi gerekip gerekmedi\u011fi.",
+                    "name": "Yan\u0131t olarak G\u00f6nder"
+                },
+                "type": {
+                    "name": "De\u011fer t\u00fcr\u00fc"
+                }
+            },
+            "name": "KNX veriyoluna g\u00f6nder"
+        }
+    }
+}
