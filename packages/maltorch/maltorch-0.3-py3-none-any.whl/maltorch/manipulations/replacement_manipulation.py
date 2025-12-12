@@ -1,0 +1,35 @@
+import torch
+from torch import Tensor
+
+from maltorch.initializers.initializers import ByteBasedInitializer
+from maltorch.manipulations.byte_manipulation import ByteManipulation
+
+
+class ReplacementManipulation(ByteManipulation):
+    def __init__(
+        self,
+        initializer: ByteBasedInitializer,
+        domain_constraints=None,
+        perturbation_constraints=None,
+    ):
+        if domain_constraints is None:
+            domain_constraints = []
+        if perturbation_constraints is None:
+            perturbation_constraints = []
+        super().__init__(initializer, domain_constraints, perturbation_constraints)
+
+    def _apply_manipulation(
+        self, x: torch.Tensor, delta: torch.Tensor
+    ) -> tuple[Tensor, Tensor]:
+        for i, idx in enumerate(self.indexes_to_perturb):
+            idx = idx.to(x.device)
+            size_indexes = idx[idx != -1].shape[-1]
+            x[i, idx[idx != -1]] = delta[i][:size_indexes].to(x.device).long()
+        return x, delta
+
+    def initialize(self, samples: torch.Tensor):
+        self.indexes_to_perturb = []
+        modified_sample, delta, indexes = self.initializer(samples.data)
+        self.indexes_to_perturb = indexes
+        samples.data = modified_sample
+        return samples, delta
