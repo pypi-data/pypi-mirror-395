@@ -1,0 +1,107 @@
+use super::color;
+
+// Simple output layer that centralizes colored and structured pushes
+// while still rendering into a String buffer (to preserve sizing/measurement).
+pub struct Out<'a> {
+    buf: &'a mut String,
+    newline: String,
+    indent_unit: String,
+    // Syntax/role colors are only emitted when both color_enabled is true
+    // and the strategy allows syntax coloring (ColorStrategy::Syntax).
+    role_colors_enabled: bool,
+    style: crate::serialization::types::Style,
+    line_number_width: Option<usize>,
+}
+
+impl<'a> Out<'a> {
+    pub fn new(
+        buf: &'a mut String,
+        config: &crate::RenderConfig,
+        line_number_width: Option<usize>,
+    ) -> Self {
+        let role_colors_enabled = matches!(
+            config.color_strategy(),
+            crate::serialization::types::ColorStrategy::Syntax
+        );
+        Self {
+            buf,
+            newline: config.newline.clone(),
+            indent_unit: config.indent_unit.clone(),
+            role_colors_enabled,
+            style: config.style,
+            line_number_width,
+        }
+    }
+
+    pub fn push_str(&mut self, s: &str) {
+        self.buf.push_str(s);
+    }
+
+    pub fn push_char(&mut self, c: char) {
+        self.buf.push(c);
+    }
+
+    pub fn push_newline(&mut self) {
+        self.buf.push_str(&self.newline);
+    }
+
+    pub fn push_indent(&mut self, depth: usize) {
+        self.buf.push_str(&self.indent_unit.repeat(depth));
+    }
+
+    pub fn push_comment<S: Into<String>>(&mut self, body: S) {
+        let s = color::color_comment(body, self.role_colors_enabled);
+        self.buf.push_str(&s);
+    }
+
+    pub fn push_omission(&mut self) {
+        self.buf
+            .push_str(color::omission_marker(self.role_colors_enabled));
+    }
+
+    // Color role helpers for tokens
+    pub fn push_key(&mut self, quoted_key: &str) {
+        let s = color::wrap_role(
+            quoted_key,
+            color::ColorRole::Key,
+            self.role_colors_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
+    pub fn push_string_literal(&mut self, quoted_value: &str) {
+        let s = color::wrap_role(
+            quoted_value,
+            color::ColorRole::String,
+            self.role_colors_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
+    // Push an unquoted string value using the string color role.
+    pub fn push_string_unquoted(&mut self, value: &str) {
+        let s = color::wrap_role(
+            value,
+            color::ColorRole::String,
+            self.role_colors_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
+    // Formatting mode queries
+    pub fn is_compact_mode(&self) -> bool {
+        self.newline.is_empty() && self.indent_unit.is_empty()
+    }
+
+    pub fn style(&self) -> crate::serialization::types::Style {
+        self.style
+    }
+
+    pub fn line_number_width(&self) -> Option<usize> {
+        self.line_number_width
+    }
+
+    pub fn colors_enabled(&self) -> bool {
+        self.role_colors_enabled
+    }
+}
