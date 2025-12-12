@@ -1,0 +1,911 @@
+{% if not is_fragment %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kptn Lineage</title>
+    <script src="{{ static_prefix }}/alpine.min.js" defer></script>
+{% else %}
+<div id="kptn-lineage-fragment">
+{% endif %}
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.08), transparent 30%),
+                        radial-gradient(circle at 75% 35%, rgba(16, 185, 129, 0.08), transparent 25%),
+                        radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.08), transparent 20%),
+                        #0b1021;
+            color: #e2e8f0;
+        }
+        .container {
+            padding: 16px;
+        }
+        .kptn-omnibar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+            position: sticky;
+            top: 0;
+            padding: 6px 0;
+            background: linear-gradient(180deg, rgba(11,16,33,0.9) 0%, rgba(11,16,33,0) 100%);
+            z-index: 3;
+        }
+        .kptn-omnibar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .kptn-omnibar-right {
+            margin-left: auto;
+        }
+        .kptn-preview-all {
+            border: 1px solid rgba(226,232,240,0.1);
+            background: rgba(255,255,255,0.06);
+            color: #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .kptn-preview-all:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(226,232,240,0.2);
+            color: #fbbf24;
+        }
+        .kptn-filter-all {
+            border: 1px solid rgba(226,232,240,0.1);
+            background: rgba(255,255,255,0.03);
+            color: #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .kptn-filter-all:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(226,232,240,0.2);
+            color: #38bdf8;
+        }
+        .kptn-dismiss {
+            border: 1px solid rgba(226,232,240,0.05);
+            background: rgba(255,255,255,0.02);
+            color: #94a3b8;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .kptn-dismiss:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(226,232,240,0.1);
+            color: #e2e8f0;
+        }
+        .kptn-global-filter {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            flex: 1 1 260px;
+        }
+        .kptn-global-filter.is-visible {
+            display: inline-flex;
+        }
+        .kptn-global-filter input {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+            height: 28px;
+            width: 100%;
+            min-width: 260px;
+            max-width: 520px;
+            box-sizing: border-box;
+        }
+        .kptn-global-filter input:focus {
+            outline: 1px solid rgba(56,189,248,0.4);
+            border-color: rgba(56,189,248,0.3);
+        }
+        .table-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .kptn-open-file, .kptn-open-table, .kptn-toggle-sql {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: none;
+            background: rgba(255,255,255,0.04);
+            color: #e2e8f0;
+            cursor: pointer;
+            padding: 2px;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .kptn-open-file:hover, .kptn-open-table:hover, .kptn-toggle-sql:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fbbf24;
+        }
+        .kptn-open-file svg, .kptn-open-table svg, .kptn-toggle-sql svg {
+            width: 16px;
+            height: 16px;
+        }
+        .kptn-preview {
+            max-width: 100%;
+            width: 100%;
+            display: block;
+            overflow-x: auto;
+            margin-top: -1px;
+        }
+        .preview-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+        .preview-table th, .preview-table td {
+            border: 1px solid rgba(226,232,240,0.2);
+            padding: 6px 8px;
+            font-size: 12px;
+            color: #e2e8f0;
+            min-width: 110px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .kptn-preview-controls {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            margin: 1px 0 0 0;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .kptn-preview-controls .kptn-view-more {
+            color: #94a3b8;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .kptn-preview-controls .kptn-view-more:hover {
+            text-decoration: underline;
+        }
+        .kptn-limit-input {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .kptn-limit-input input {
+            width: 30px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #cbd5e1;
+            border-radius: 6px;
+            padding: 4px 6px;
+            font-size: 12px;
+            height: 26px;
+            box-sizing: border-box;
+        }
+        .kptn-limit-input input:focus {
+            outline: 1px solid rgba(56,189,248,0.4);
+            border-color: rgba(56,189,248,0.3);
+        }
+        .preview-table th {
+            background: rgba(255,255,255,0.05);
+            color: #cbd5e1;
+            text-align: left;
+        }
+        .preview-status {
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+        .kptn-sql-input {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            margin-left: 4px;
+        }
+        .kptn-sql-input.is-visible {
+            display: inline-flex;
+        }
+        .kptn-sql-input input {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #cbd5e1;
+            border-radius: 4px;
+            padding: 2px 4px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 10px;
+            height: 18px;
+            min-width: 80px;
+            max-width: 180px;
+            box-sizing: border-box;
+        }
+        .kptn-sql-input input:focus {
+            outline: 1px solid rgba(56,189,248,0.4);
+            border-color: rgba(56,189,248,0.3);
+        }
+    </style>
+{% if not is_fragment %}
+</head>
+<body>
+{% endif %}
+    <div class="container" id="kptn-lineage-root">
+        <div class="kptn-omnibar">
+            <div class="kptn-omnibar-actions">
+                <button id="kptn-preview-all" class="kptn-preview-all" type="button">Preview All</button>
+                <button id="kptn-filter-all" class="kptn-filter-all" type="button">Filter All</button>
+            </div>
+            <div id="kptn-global-filter-container" class="kptn-global-filter">
+                <input id="kptn-global-filter" type="text" value="WHERE " spellcheck="false" placeholder="WHERE column = value" />
+            </div>
+            <div class="kptn-omnibar-actions kptn-omnibar-right">
+                <button id="kptn-dismiss-warnings" class="kptn-dismiss" type="button" title="Clear column warnings">
+                    Dismiss warnings
+                </button>
+            </div>
+        </div>
+        {{ lineage_html | safe }}
+    </div>
+
+    <script>
+    (function() {
+        function initLineage() {
+            const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
+            const tableMap = {{ table_map_json | safe }};
+            const configPath = {{ config_path_json | safe }};
+            const baseUrl = {{ base_url_json | safe }};
+            const globalFilterInput = document.getElementById('kptn-global-filter');
+            const globalFilterContainer = document.getElementById('kptn-global-filter-container');
+            const openSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h7l3 3v8H3z"/><path d="M10 2.5v3h3"/><path d="M7 6 5 8l2 2"/><path d="M9 10l2-2-2-2"/></svg>';
+            const tableSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.25 4.75 11.25 8l-5 3.25z" fill="currentColor" stroke="none"/></svg>';
+            const filterSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11l-4 4v3l-3 1v-4z"/></svg>';
+            const DEFAULT_LIMIT = 5;
+            const MAX_LIMIT = 200;
+            const previewState = new Map(); // tableName -> {limit, expanded}
+            const columnCache = new Map(); // normalizedTable -> {columns, message}
+            const columnRequests = new Map(); // normalizedTable -> Promise
+
+            function normalize(name) {
+                return (name || '').trim().replace(/^[^:]*:\/\//, '').split('.').slice(-1)[0]?.toLowerCase() || '';
+            }
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            function parseClauses(rawFilter) {
+                const raw = typeof rawFilter === 'string' ? rawFilter : '';
+                return raw
+                    .split(';')
+                    .map((part) => part.trim())
+                    .filter(Boolean)
+                    .map((part) => part.replace(/^where\b/i, '').trim())
+                    .filter(Boolean);
+            }
+            function composeWhere(clauses) {
+                const parts = Array.isArray(clauses) ? clauses.filter(Boolean) : [];
+                if (!parts.length) return '';
+                if (parts.length === 1) return `WHERE ${parts[0]}`;
+                const combined = parts.map((clause) => `(${clause})`).join(' OR ');
+                return `WHERE ${combined}`;
+            }
+            function getPreviewState(tableName) {
+                const key = normalize(tableName);
+                if (!previewState.has(key)) {
+                    previewState.set(key, { limit: DEFAULT_LIMIT, expanded: false });
+                }
+                return previewState.get(key);
+            }
+            function setPreviewState(tableName, updates) {
+                const key = normalize(tableName);
+                const existing = getPreviewState(tableName);
+                previewState.set(key, { ...existing, ...updates });
+            }
+            function requestColumnsFromExtension(tableName) {
+                const key = normalize(tableName);
+                if (columnRequests.has(key)) {
+                    return columnRequests.get(key);
+                }
+                const promise = new Promise((resolve) => {
+                    let settled = false;
+                    const timeout = setTimeout(() => {
+                        if (!settled) {
+                            settled = true;
+                            resolve({ columns: [], message: null, resolvedTable: null });
+                        }
+                    }, 3000);
+
+                    function handleMessage(event) {
+                        const payload = event.data;
+                        if (!payload || payload.type !== 'tableColumns') return;
+                        if ((payload.table || '').toLowerCase() !== tableName.toLowerCase()) return;
+                        settled = true;
+                        clearTimeout(timeout);
+                        window.removeEventListener('message', handleMessage);
+                        const columns = Array.isArray(payload.columns) ? payload.columns.filter(Boolean) : [];
+                        const message = typeof payload.message === 'string' ? payload.message : null;
+                        resolve({ columns, message, resolvedTable: payload.resolvedTable || null });
+                    }
+                    window.addEventListener('message', handleMessage);
+                    vscode.postMessage({ type: 'tableColumns', table: tableName, configPath });
+                });
+                columnRequests.set(key, promise);
+                return promise;
+            }
+            function clearWarnings() {
+                document.querySelectorAll('.kptn-column-note').forEach((el) => {
+                    if (el instanceof HTMLElement) {
+                        el.remove();
+                    }
+                });
+                document.querySelectorAll('.kptn-preview .preview-status').forEach((el) => {
+                    if (el instanceof HTMLElement) {
+                        el.remove();
+                    }
+                });
+            }
+            function buildPreviewSql(name, filterClause, columns, limit) {
+                const columnList = Array.isArray(columns) && columns.length
+                    ? columns.map((col) => `"${String(col).replace(/"/g, '""')}"`).join(', ')
+                    : '*';
+                const parts = (name || '').split('.').map((segment) => `"${segment.replace(/"/g, '""')}"`).filter(Boolean);
+                const qualified = parts.length ? parts.join('.') : '""';
+                const normalizedFilter = typeof filterClause === 'string' ? filterClause.trim() : '';
+                const filterSegment = normalizedFilter ? ` ${normalizedFilter}` : '';
+                const effectiveLimit = Math.max(1, Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT));
+                return `SELECT ${columnList} FROM ${qualified}${filterSegment} LIMIT ${effectiveLimit}`;
+            }
+            function findTableElement(tableName) {
+                const target = (tableName || '').trim().toLowerCase();
+                if (!target) return null;
+                const tables = document.querySelectorAll('.table');
+                for (const table of tables) {
+                    if (!(table instanceof HTMLElement)) continue;
+                    const nameEl = table.querySelector('.table-name');
+                    if (!(nameEl instanceof HTMLElement)) continue;
+                    const textNode = Array.from(nameEl.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
+                    const label = (textNode?.textContent || nameEl.textContent || '').trim().toLowerCase();
+                    if (label === target) {
+                        return table;
+                    }
+                }
+                return null;
+            }
+            function formatCellValue(value) {
+                if (value === null || value === undefined) return 'null';
+                if (typeof value === 'object') {
+                    try {
+                        return JSON.stringify(value);
+                    } catch {
+                        return String(value);
+                    }
+                }
+                return String(value);
+            }
+            function getTableColumns(tableEl) {
+                if (!(tableEl instanceof HTMLElement)) return [];
+                const headers = tableEl.querySelectorAll('th.column');
+                return Array.from(headers)
+                    .map((th) => (th instanceof HTMLElement ? th.textContent || '' : ''))
+                    .map((text) => text.trim())
+                    .filter(Boolean);
+            }
+            function clauseMatchesColumns(clause, columns) {
+                if (!clause || !Array.isArray(columns) || !columns.length) return false;
+                const normalized = clause.toLowerCase();
+                return columns.some((col) => {
+                    const safe = col.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    return new RegExp(`\\b${safe.toLowerCase()}\\b`).test(normalized);
+                });
+            }
+            async function fetchTableColumns(tableName) {
+                const key = normalize(tableName);
+                if (columnCache.has(key)) {
+                    return columnCache.get(key);
+                }
+                const fallback = { columns: [], message: null, resolvedTable: null };
+                if (vscode) {
+                    const result = await requestColumnsFromExtension(tableName);
+                    columnCache.set(key, result);
+                    return result;
+                }
+                try {
+                    const response = await fetch(`${baseUrl || ''}/table-columns?configPath=${encodeURIComponent(configPath)}&table=${encodeURIComponent(tableName)}`);
+                    const payload = await response.json();
+                    const columns = Array.isArray(payload?.columns) ? payload.columns.filter(Boolean) : [];
+                    const message = typeof payload?.message === 'string' ? payload.message : null;
+                    const result = { columns, message, resolvedTable: payload?.resolvedTable || null };
+                    columnCache.set(key, result);
+                    return result;
+                } catch (error) {
+                    const result = { ...fallback, message: (error && error.message) || 'Unable to fetch column metadata' };
+                    columnCache.set(key, result);
+                    return result;
+                }
+            }
+            function filterAvailableColumns(requested, available) {
+                const availableSet = new Set((available || []).map((col) => String(col).toLowerCase()));
+                const valid = (requested || []).filter((col) => availableSet.has(String(col).toLowerCase()));
+                const missing = (requested || []).filter((col) => !availableSet.has(String(col).toLowerCase()));
+                return { valid, missing };
+            }
+            function resolveFilter(tableColumns, localInput, localContainer) {
+                const localClauses = parseClauses(localInput?.value || '');
+                const localEnabled = localContainer?.classList.contains('is-visible') && localClauses.length > 0;
+                if (localEnabled) {
+                    return composeWhere(localClauses);
+                }
+
+                const globalVisible = globalFilterContainer?.classList.contains('is-visible');
+                const globalClauses = parseClauses(globalFilterInput?.value || '');
+                if (globalVisible && globalClauses.length) {
+                    const applicable = globalClauses.filter((clause) => clauseMatchesColumns(clause, tableColumns));
+                    if (applicable.length) {
+                        return composeWhere(applicable);
+                    }
+                }
+                return '';
+            }
+            function renderPreview(tableName, payload) {
+                const tableEl = findTableElement(tableName);
+                if (!tableEl) return;
+                const state = getPreviewState(tableName);
+                if (typeof payload?.limit === 'number') {
+                    state.limit = Math.max(1, Math.min(payload.limit, MAX_LIMIT));
+                }
+
+                // Check for error message
+                if (payload?.message) {
+                    const previewSlot = ensurePreviewSlot(tableEl);
+                    if (previewSlot) {
+                        previewSlot.innerHTML = `<p class="preview-status" style="color: #fca5a5;">${escapeHtml(payload.message)}</p>`;
+                    }
+                    refreshConnections();
+                    return;
+                }
+
+                const columns = Array.isArray(payload?.columns) ? payload.columns : [];
+                const rowsPayload = Array.isArray(payload?.rows) ? payload.rows : [];
+                const row = Array.isArray(payload?.row) ? payload.row : [];
+                const rows = rowsPayload.length ? rowsPayload : (row.length ? [row] : []);
+                if (!columns.length || !rows.length) {
+                    refreshConnections();
+                    return;
+                }
+
+                // Clear any loading message
+                const previewSlot = ensurePreviewSlot(tableEl);
+                if (previewSlot) {
+                    previewSlot.innerHTML = '';
+                }
+
+                const droppedColumns = Array.isArray(payload?.droppedColumns)
+                    ? payload.droppedColumns.filter(Boolean)
+                    : [];
+                const columnMessage = typeof payload?.columnMessage === 'string' ? payload.columnMessage : '';
+
+                let controls = tableEl.querySelector('.kptn-preview-controls');
+                if (!(controls instanceof HTMLElement) && previewSlot) {
+                    controls = document.createElement('div');
+                    controls.className = 'kptn-preview-controls';
+                    previewSlot.appendChild(controls);
+                }
+
+                let previewTable = tableEl.querySelector('table.columns');
+                if (!(previewTable instanceof HTMLTableElement)) {
+                    if (previewSlot) {
+                        previewSlot.innerHTML = '<p class="preview-status" style="color: #fca5a5;">Unable to render preview table.</p>';
+                    }
+                    refreshConnections();
+                    return;
+                }
+
+                let tbody = previewTable.querySelector('tbody');
+                if (!(tbody instanceof HTMLTableSectionElement)) {
+                    tbody = document.createElement('tbody');
+                    previewTable.appendChild(tbody);
+                }
+                tbody.innerHTML = '';
+                tbody.className = 'preview-body';
+
+                const stateExpanded = !!state.expanded;
+                const rowsToRender = stateExpanded ? rows : [rows[0]];
+
+                rowsToRender.forEach((rowValues) => {
+                    const dataRow = document.createElement('tr');
+                    columns.forEach((_, index) => {
+                        const td = document.createElement('td');
+                        td.textContent = formatCellValue(index < rowValues.length ? rowValues[index] : null);
+                        dataRow.appendChild(td);
+                    });
+                    tbody.appendChild(dataRow);
+                });
+
+                if (controls) {
+                    controls.innerHTML = '';
+                    const noteText = droppedColumns.length
+                        ? `Skipped missing columns: ${droppedColumns.join(', ')}`
+                        : columnMessage || '';
+                    if (noteText) {
+                        const note = document.createElement('span');
+                        note.className = 'preview-status kptn-column-note';
+                        note.style.color = 'rgb(145, 97, 34)';
+                        note.textContent = noteText;
+                        controls.appendChild(note);
+                    }
+                    if (rows.length > 1) {
+                        const viewMoreLink = document.createElement('a');
+                        viewMoreLink.className = 'kptn-view-more';
+                        viewMoreLink.textContent = stateExpanded ? 'View less' : `View more (${rows.length})`;
+                        viewMoreLink.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            setPreviewState(tableName, { expanded: !stateExpanded });
+                            renderPreview(tableName, payload);
+                        });
+                        controls.appendChild(viewMoreLink);
+                    }
+
+                    const limitWrapper = document.createElement('div');
+                    limitWrapper.className = 'kptn-limit-input';
+                    const limitLabel = document.createElement('span');
+                    limitLabel.textContent = 'Limit';
+                    const limitInput = document.createElement('input');
+                    limitInput.type = 'text';
+                    limitInput.value = String(state.limit || DEFAULT_LIMIT);
+                    limitInput.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const next = Math.max(1, Math.min(parseInt(limitInput.value, 10) || DEFAULT_LIMIT, MAX_LIMIT));
+                            setPreviewState(tableName, { limit: next, expanded: false });
+                            ensurePreviewSlot(tableEl).innerHTML = '<p class="preview-status">Loading table details...</p>';
+                            const columnList = getTableColumns(tableEl);
+                            const filterClause = resolveFilter(columnList, null, null);
+                            const sqlValue = buildPreviewSql(tableName, filterClause, columnList, next);
+                            loadTablePreviewWithSql(tableName, tableMap[normalize(tableName)] || null, sqlValue, next, filterClause);
+                        }
+                    });
+                    limitWrapper.appendChild(limitLabel);
+                    limitWrapper.appendChild(limitInput);
+                    controls.appendChild(limitWrapper);
+                }
+
+                refreshConnections();
+            }
+            function refreshConnections() {
+                if (typeof updateConnectionPaths === 'function') {
+                    updateConnectionPaths();
+                } else {
+                    window.dispatchEvent(new Event('resize'));
+                }
+            }
+            function ensurePreviewSlot(tableEl) {
+                if (!(tableEl instanceof HTMLElement)) return null;
+                let slot = tableEl.querySelector('.kptn-preview');
+                if (!(slot instanceof HTMLElement)) {
+                    slot = document.createElement('div');
+                    slot.className = 'kptn-preview';
+                    tableEl.appendChild(slot);
+                }
+                return slot;
+            }
+            async function loadTablePreview(name, path) {
+                await loadTablePreviewWithSql(name, path, null);
+            }
+            async function loadTablePreviewWithSql(name, path, sqlOverride, limitOverride, filterOverride) {
+                const tableEl = findTableElement(name);
+                const previewSlot = ensurePreviewSlot(tableEl);
+                const requestedColumns = getTableColumns(tableEl);
+                const state = getPreviewState(name);
+                const limit = Math.max(1, Math.min(limitOverride || state.limit || DEFAULT_LIMIT, MAX_LIMIT));
+                setPreviewState(name, { limit });
+
+                let columnsForQuery = requestedColumns;
+                let droppedColumns = [];
+                let columnMessage = '';
+
+                const metadata = await fetchTableColumns(name);
+                const availableColumns = Array.isArray(metadata?.columns) ? metadata.columns.filter(Boolean) : [];
+                columnMessage = typeof metadata?.message === 'string' ? metadata.message : '';
+
+                if (availableColumns.length) {
+                    const { valid, missing } = filterAvailableColumns(requestedColumns, availableColumns);
+                    columnsForQuery = valid.length ? valid : availableColumns;
+                    droppedColumns = missing;
+                } else {
+                    columnsForQuery = requestedColumns;
+                }
+
+                const filterClause = typeof filterOverride === 'string'
+                    ? filterOverride
+                    : resolveFilter(columnsForQuery, null, null);
+                const hasOverride = typeof sqlOverride === 'string' && sqlOverride.trim();
+                const sql = hasOverride && !droppedColumns.length
+                    ? sqlOverride
+                    : buildPreviewSql(name, filterClause, columnsForQuery, limit);
+
+                if (vscode) {
+                    vscode.postMessage({
+                        type: 'tableMeta',
+                        table: name,
+                        path: path || null,
+                        sql,
+                        limit,
+                        droppedColumns,
+                        columns: requestedColumns,
+                        columnMessage,
+                    });
+                    return;
+                }
+                try {
+                    const response = await fetch(`${baseUrl || ''}/table-preview-query`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ configPath, table: name, sql, limit, columns: requestedColumns }),
+                    });
+                    const payload = await response.json();
+                    payload.droppedColumns = droppedColumns;
+                    if (columnMessage) {
+                        payload.columnMessage = columnMessage;
+                    }
+                    renderPreview(name, payload);
+                } catch (error) {
+                    console.error('Unable to fetch table preview', error);
+                    if (previewSlot) {
+                        previewSlot.innerHTML = `<p class="preview-status" style="color: #fca5a5;">Error: ${escapeHtml(error.message || 'Unable to fetch table preview')}</p>`;
+                    }
+                }
+            }
+            function ensureButtons() {
+                document.querySelectorAll('.table-name').forEach((nameEl) => {
+                    if (!(nameEl instanceof HTMLElement)) return;
+                    const hasOpen = nameEl.querySelector('.kptn-open-file');
+                    const hasMeta = nameEl.querySelector('.kptn-open-table');
+                    const hasFilterToggle = nameEl.querySelector('.kptn-toggle-sql');
+                    let sqlContainer = nameEl.querySelector('.kptn-sql-input');
+                    let sqlInput = sqlContainer ? sqlContainer.querySelector('input') : null;
+                    const textNode = Array.from(nameEl.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
+                    const name = (textNode?.textContent || nameEl.textContent || '').trim();
+                    const key = normalize(name);
+                    const path = tableMap[key];
+                    const tableEl = nameEl.closest('.table');
+                    const previewSlot = ensurePreviewSlot(tableEl);
+                    const columnList = getTableColumns(tableEl);
+                    const defaultFilterValue = 'WHERE ';
+                    let metaBtn = nameEl.querySelector('.kptn-open-table');
+
+                    function bindInputHandlers(inputEl) {
+                        if (!inputEl || inputEl.dataset.kptnBound === '1') return;
+                        inputEl.addEventListener('click', (event) => event.stopPropagation());
+                        inputEl.addEventListener('keydown', (event) => {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                runPreview();
+                            }
+                        });
+                        inputEl.dataset.kptnBound = '1';
+                    }
+
+                    const runPreview = () => {
+                        if (previewSlot) {
+                            previewSlot.innerHTML = '<p class="preview-status">Loading table details...</p>';
+                        } else {
+                            renderPreview(name, { table: name, message: 'Loading table details...' });
+                        }
+                        const state = getPreviewState(name);
+                        const filterClause = resolveFilter(columnList, sqlInput, sqlContainer);
+                        const sqlValue = buildPreviewSql(name, filterClause, columnList, state.limit);
+                        loadTablePreviewWithSql(name, path || null, sqlValue, state.limit, filterClause);
+                    };
+
+                    if (!hasOpen) {
+                        const openBtn = document.createElement('button');
+                        openBtn.className = 'kptn-open-file';
+                        openBtn.type = 'button';
+                        openBtn.title = vscode ? 'Open source' : 'Open source (VS Code only)';
+                        openBtn.innerHTML = openSvg;
+                        openBtn.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            if (vscode && path) {
+                                vscode.postMessage({ type: 'openFile', path });
+                            } else if (vscode && !path) {
+                                vscode.postMessage({ type: 'openFileMissing', table: name });
+                            }
+                        });
+                        nameEl.appendChild(openBtn);
+                    }
+
+                    if (!sqlContainer) {
+                        sqlContainer = document.createElement('div');
+                        sqlContainer.className = 'kptn-sql-input';
+                        sqlInput = document.createElement('input');
+                        sqlInput.type = 'text';
+                        sqlInput.className = 'kptn-sql-input-field';
+                        sqlInput.spellcheck = false;
+                        sqlInput.value = defaultFilterValue;
+                        sqlInput.title = 'Add a WHERE clause for preview';
+                        bindInputHandlers(sqlInput);
+                        sqlContainer.appendChild(sqlInput);
+                        nameEl.appendChild(sqlContainer);
+                    } else if (!sqlInput) {
+                        sqlInput = document.createElement('input');
+                        sqlInput.type = 'text';
+                        sqlInput.className = 'kptn-sql-input-field';
+                        sqlInput.spellcheck = false;
+                        sqlInput.value = defaultFilterValue;
+                        sqlInput.title = 'Add a WHERE clause for preview';
+                        bindInputHandlers(sqlInput);
+                        sqlContainer.appendChild(sqlInput);
+                    } else {
+                        bindInputHandlers(sqlInput);
+                    }
+
+                    if (!hasFilterToggle) {
+                        const filterBtn = document.createElement('button');
+                        filterBtn.className = 'kptn-toggle-sql';
+                        filterBtn.type = 'button';
+                        filterBtn.title = 'Toggle SQL filter';
+                        filterBtn.innerHTML = filterSvg;
+                        filterBtn.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            if (sqlContainer) {
+                                sqlContainer.classList.toggle('is-visible');
+                                if (sqlContainer.classList.contains('is-visible') && sqlInput) {
+                                    sqlInput.focus();
+                                    const length = sqlInput.value.length;
+                                    sqlInput.setSelectionRange(length, length);
+                                }
+                            }
+                        });
+                        nameEl.appendChild(filterBtn);
+                    }
+
+                    if (!hasMeta) {
+                        metaBtn = document.createElement('button');
+                        metaBtn.className = 'kptn-open-table';
+                        metaBtn.type = 'button';
+                        metaBtn.title = 'Table details';
+                        metaBtn.innerHTML = tableSvg;
+                        metaBtn.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            runPreview();
+                        });
+                        metaBtn.dataset.kptnBound = '1';
+                        nameEl.appendChild(metaBtn);
+                    } else if (metaBtn && metaBtn.dataset.kptnBound !== '1') {
+                        metaBtn.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            runPreview();
+                        });
+                        metaBtn.dataset.kptnBound = '1';
+                    }
+                });
+                refreshConnections();
+            }
+
+            function previewAllTables() {
+                const metaButtons = Array.from(document.querySelectorAll('.kptn-open-table'));
+                metaButtons.forEach((btn) => {
+                    if (btn instanceof HTMLElement) {
+                        btn.click();
+                    }
+                });
+            }
+
+            function wirePreviewAll() {
+                const previewAllBtn = document.getElementById('kptn-preview-all');
+                if (!(previewAllBtn instanceof HTMLButtonElement) || previewAllBtn.dataset.kptnBound === '1') {
+                    return;
+                }
+                previewAllBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    previewAllTables();
+                });
+                previewAllBtn.dataset.kptnBound = '1';
+            }
+            function wireGlobalFilter() {
+                const filterBtn = document.getElementById('kptn-filter-all');
+                if (!(filterBtn instanceof HTMLButtonElement) || filterBtn.dataset.kptnBound === '1') {
+                    return;
+                }
+                if (globalFilterInput && globalFilterInput.dataset.kptnBound !== '1') {
+                    globalFilterInput.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            previewAllTables();
+                        }
+                    });
+                    globalFilterInput.dataset.kptnBound = '1';
+                }
+                filterBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    if (globalFilterContainer) {
+                        globalFilterContainer.classList.toggle('is-visible');
+                        if (globalFilterContainer.classList.contains('is-visible') && globalFilterInput) {
+                            globalFilterInput.focus();
+                            const length = globalFilterInput.value.length;
+                            globalFilterInput.setSelectionRange(length, length);
+                        }
+                    }
+                });
+                filterBtn.dataset.kptnBound = '1';
+            }
+            function wireDismissWarnings() {
+                const dismissBtn = document.getElementById('kptn-dismiss-warnings');
+                if (!(dismissBtn instanceof HTMLButtonElement) || dismissBtn.dataset.kptnBound === '1') {
+                    return;
+                }
+                dismissBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    clearWarnings();
+                });
+                dismissBtn.dataset.kptnBound = '1';
+            }
+
+            ensureButtons();
+            wirePreviewAll();
+            wireGlobalFilter();
+            wireDismissWarnings();
+
+            if (vscode) {
+                window.addEventListener('message', (event) => {
+                    const payload = event.data;
+                    if (!payload || payload.type !== 'tablePreview') {
+                        return;
+                    }
+                    renderPreview(payload.table, payload);
+                });
+            }
+
+            document.addEventListener('mouseover', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) return;
+                const tableEl = target.closest('.table');
+                if (!tableEl) return;
+                const nameEl = tableEl.querySelector('.table-name');
+                const name = nameEl ? nameEl.textContent || '' : '';
+                const key = normalize(name);
+                const path = tableMap[key];
+                if (vscode && path) {
+                    vscode.postMessage({ type: 'hoverFile', path });
+                }
+            });
+
+            document.addEventListener('mouseout', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) return;
+                if (!event.relatedTarget || !(event.relatedTarget instanceof HTMLElement)) {
+                    return;
+                }
+                const leavingTable = target.closest('.table') && !event.relatedTarget.closest('.table');
+                if (leavingTable && vscode) {
+                    vscode.postMessage({ type: 'hoverExit' });
+                }
+            });
+        }
+
+        window.initLineage = initLineage;
+        initLineage();
+    })();
+    </script>
+{% if not is_fragment %}
+</body>
+</html>
+{% else %}
+</div>
+{% endif %}
