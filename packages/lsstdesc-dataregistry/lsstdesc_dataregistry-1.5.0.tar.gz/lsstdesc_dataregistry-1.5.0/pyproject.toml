@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools >= 61.0"] # PEP 621 compliant
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+name = "lsstdesc-dataregistry"
+description = "Creation and user API for DESC data registry."
+readme = "README.md"
+authors = [
+    { name = "Joanne Bogart", email = "jrb@slac.stanford.edu" },
+    { name = "Stuart McAlpine", email = "stuart.mcalpine@fysik.su.se" }
+]
+license = { file = "LICENCE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+keywords = ["desc", "python", "registry"]
+# NOTE: Those needing to create a database will also need to install the
+#       GitPython package. It is not needed for accessing an existing db.
+dependencies = [
+    'psycopg2',
+    'sqlalchemy>=2.0.16',
+    'pyyaml',
+    'pandas'
+]
+requires-python = ">=3.9" # Supported versions in CI are 3.9 -> 3.13
+
+[tool.setuptools.dynamic]
+version = {attr = "dataregistry._version.__version__"}
+
+[project.optional-dependencies]
+docs = ["sphinx_rtd_theme", "myst_parser"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+dregs = "dataregistry_cli.cli:main"
+
+[tool.setuptools.package-data]
+"dataregistry" = ["site_config/site_rootdir.yaml", "schema/*.yaml"]
