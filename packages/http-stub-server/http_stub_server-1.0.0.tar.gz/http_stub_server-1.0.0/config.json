@@ -1,0 +1,281 @@
+{
+  "port": 5600,
+  "endpoints": [
+    {
+      "path": "/register",
+      "method": "POST",
+      "status": 201,
+      "delay": 1000,
+      "response": {
+        "success": true,
+        "message": "Account created successfully!",
+        "user": {
+          "id": "{{randomId}}",
+          "name": "{{body.name}}",
+          "email": "{{body.email}}",
+          "phone": "{{body.phone}}"
+        },
+        "token": "{{randomId}}",
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/login",
+      "method": "POST",
+      "status": 200,
+      "delay": 800,
+      "response": {
+        "success": true,
+        "message": "Login successful!",
+        "user": {
+          "id": "{{randomId}}",
+          "email": "{{body.email}}",
+          "name": "{{body.name}}"
+        },
+        "token": "{{randomId}}",
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/categories/unauthorized",
+      "method": "GET",
+      "status": 401,
+      "delay": 100,
+      "response": {
+        "success": false,
+        "error": "Unauthorized",
+        "message": "Please create an account or login first to browse products!",
+        "redirectTo": "/register",
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/categories",
+      "method": "GET",
+      "status": 200,
+      "delay": 300,
+      "response": {
+        "categories": [
+          {"id": 1, "name": "Electronics", "icon": "electronics.png", "itemCount": 250},
+          {"id": 2, "name": "Clothing Store", "icon": "clothing.png", "itemCount": 500},
+          {"id": 3, "name": "TV & Appliances", "icon": "tv.png", "itemCount": 180},
+          {"id": 4, "name": "Smartphones", "icon": "phone.png", "itemCount": 120},
+          {"id": 5, "name": "Kitchen Ware", "icon": "kitchen.png", "itemCount": 300},
+          {"id": 6, "name": "Home Decor", "icon": "home.png", "itemCount": 220}
+        ],
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/cart/add/unauthorized",
+      "method": "POST",
+      "status": 401,
+      "delay": 100,
+      "response": {
+        "success": false,
+        "error": "Unauthorized",
+        "message": "You must be logged in to add items to cart. Please login or create an account first!",
+        "redirectTo": "/login",
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/cart/add",
+      "method": "POST",
+      "status": 200,
+      "delay": 500,
+      "response": {
+        "success": true,
+        "message": "Item added to cart successfully!",
+        "cartItem": {
+          "productId": "{{body.productId}}",
+          "productName": "{{body.productName}}",
+          "price": "{{body.price}}",
+          "quantity": "{{body.quantity}}",
+          "size": "{{body.size}}",
+          "color": "{{body.color}}"
+        },
+        "cartTotal": {
+          "items": 1,
+          "subtotal": "{{body.price}}",
+          "tax": 70,
+          "total": 770
+        },
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/cart",
+      "method": "GET",
+      "status": 200,
+      "delay": 300,
+      "response": {
+        "cartId": "{{randomId}}",
+        "items": [
+          {
+            "productId": 101,
+            "name": "Men's Winter Sweater",
+            "price": 700,
+            "quantity": 1,
+            "size": "L",
+            "color": "Black",
+            "image": "sweater1.jpg"
+          }
+        ],
+        "summary": {
+          "subtotal": 700,
+          "tax": 70,
+          "deliveryCharges": 0,
+          "discount": 0,
+          "total": 770
+        },
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/order/place/unauthorized",
+      "method": "POST",
+      "status": 401,
+      "delay": 100,
+      "response": {
+        "success": false,
+        "error": "Unauthorized",
+        "message": "Cannot place order without login! Please create an account first to complete your purchase.",
+        "redirectTo": "/register",
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/order/place",
+      "method": "POST",
+      "status": 201,
+      "delay": 3000,
+      "response": {
+        "success": true,
+        "message": "Your order has been placed successfully!",
+        "orderId": "ORD{{randomId}}",
+        "orderDetails": {
+          "customerName": "{{body.name}}",
+          "email": "{{body.email}}",
+          "phone": "{{body.phone}}",
+          "address": {
+            "street": "{{body.address}}",
+            "city": "{{body.city}}",
+            "state": "{{body.state}}",
+            "pincode": "{{body.pincode}}"
+          },
+          "items": [
+            {
+              "productId": "{{body.productId}}",
+              "productName": "{{body.productName}}",
+              "price": "{{body.price}}",
+              "quantity": "{{body.quantity}}",
+              "size": "{{body.size}}"
+            }
+          ],
+          "paymentMethod": "{{body.paymentMethod}}",
+          "totalAmount": "{{body.totalAmount}}"
+        },
+        "estimatedDelivery": "3-5 business days",
+        "trackingId": "TRK{{randomId}}",
+        "orderPlacedAt": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/orders",
+      "method": "GET",
+      "status": 200,
+      "delay": 400,
+      "response": {
+        "orders": [
+          {
+            "orderId": "ORD123456",
+            "productName": "Men's Winter Sweater",
+            "price": 700,
+            "quantity": 1,
+            "status": "Delivered",
+            "orderDate": "2025-11-15",
+            "deliveryDate": "2025-11-18"
+          },
+          {
+            "orderId": "ORD123457",
+            "productName": "Casual T-Shirt",
+            "price": 299,
+            "quantity": 2,
+            "status": "In Transit",
+            "orderDate": "2025-11-18",
+            "estimatedDelivery": "2025-11-22"
+          }
+        ],
+        "totalOrders": 2,
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/order/:orderId",
+      "method": "GET",
+      "status": 200,
+      "delay": 300,
+      "response": {
+        "orderId": "{{params.orderId}}",
+        "status": "In Transit",
+        "productName": "Men's Winter Sweater",
+        "price": 700,
+        "quantity": 1,
+        "orderDate": "2025-11-18",
+        "estimatedDelivery": "2025-11-22",
+        "trackingId": "TRK987654",
+        "shippingAddress": {
+          "name": "John Doe",
+          "street": "123 Main Street",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "pincode": "400001"
+        },
+        "trackingHistory": [
+          {"status": "Order Placed", "date": "2025-11-18T10:00:00Z", "location": "Mumbai"},
+          {"status": "Packed", "date": "2025-11-18T14:00:00Z", "location": "Mumbai Warehouse"},
+          {"status": "Shipped", "date": "2025-11-19T08:00:00Z", "location": "Mumbai Hub"},
+          {"status": "In Transit", "date": "2025-11-20T06:00:00Z", "location": "En route to delivery"}
+        ],
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/search",
+      "method": "GET",
+      "status": 200,
+      "delay": 400,
+      "response": {
+        "query": "{{query.q}}",
+        "results": [
+          {"id": 101, "name": "Men's Winter Sweater", "price": 700, "image": "sweater1.jpg", "rating": 4.5},
+          {"id": 105, "name": "Hoodie", "price": 899, "image": "hoodie1.jpg", "rating": 4.8}
+        ],
+        "totalResults": 2,
+        "timestamp": "{{timestamp}}"
+      }
+    },
+    {
+      "path": "/profile",
+      "method": "GET",
+      "status": 200,
+      "delay": 200,
+      "response": {
+        "userId": "{{randomId}}",
+        "name": "{{query.name}}",
+        "email": "{{query.email}}",
+        "phone": "+91-9876543210",
+        "address": {
+          "street": "123 Main Street",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "pincode": "400001"
+        },
+        "memberSince": "2024-01-15",
+        "totalOrders": 12,
+        "timestamp": "{{timestamp}}"
+      }
+    }
+  ]
+}
