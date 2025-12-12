@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2024-present Proxima Fusion GmbH <info@proximafusion.com>
+#
+# SPDX-License-Identifier: MIT
+cc_library(
+    name = "guess_magnetic_axis",
+    srcs = ["guess_magnetic_axis.cc"],
+    hdrs = ["guess_magnetic_axis.h"],
+    deps = [
+        "//vmecpp/common/sizes:sizes",
+        "//vmecpp/common/fourier_basis_fast_poloidal",
+    ],
+)
+
+cc_library(
+    name = "boundaries",
+    srcs = ["boundaries.cc"],
+    hdrs = ["boundaries.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":guess_magnetic_axis",
+        "//vmecpp/common/util:util",
+        "//vmecpp/common/sizes:sizes",
+        "//vmecpp/common/fourier_basis_fast_poloidal",
+        "//vmecpp/common/vmec_indata:vmec_indata",
+        "@abseil-cpp//absl/algorithm:container",
+    ],
+)
