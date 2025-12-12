@@ -1,0 +1,300 @@
+<p align="center">
+  <h1 align="center">Universal Agent Architecture</h1>
+  <p align="center">
+    <strong>A durable, event-driven runtime for sovereign AI agents.</strong>
+  </p>
+</p>
+
+<p align="center">
+  <a href="https://github.com/mjdevaccount/universal_agent_architecture/actions/workflows/ci.yml"><img src="https://github.com/mjdevaccount/universal_agent_architecture/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/universal-agent-arch/"><img src="https://img.shields.io/pypi/v/universal-agent-arch.svg" alt="PyPI"></a>
+  <img src="https://img.shields.io/pypi/pyversions/universal-agent-arch.svg" alt="Python">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/OpenTelemetry-enabled-blueviolet" alt="OTel">
+</p>
+
+---
+
+## What is UAA?
+
+UAA is an **Agent Operating System**—a runtime kernel that provides the deterministic, durable execution layer for non-deterministic AI agents.
+
+Most agent frameworks conflate *what* an agent does with *how* it runs. UAA separates these concerns:
+
+| Layer | Responsibility | Analog |
+|-------|----------------|--------|
+| **Manifest** | Declares graphs, tools, policies | Kubernetes YAML |
+| **Runtime** | Executes state machines, persists checkpoints | Linux Kernel |
+| **Adapters** | Translates to external systems | Device Drivers |
+
+This separation means you can define an agent once and run it anywhere—on a local process, as an AWS Step Function, or inside a LangGraph application—without changing your core logic.
+
+**Provider-agnostic by design.** The kernel has no opinion on which LLM you use. Plug in OpenAI, Anthropic, Bedrock, Ollama, or your own fine-tuned model. The runtime doesn't care; it just executes the graph.
+
+---
+
+## The Five Pillars
+
+UAA is built on five core abstractions. If you understand these, you understand the system.
+
+| Abstraction | Role | Distributed Systems Analog |
+|-------------|------|---------------------------|
+| **Graph** | Declarative state machine defining agent topology | Kubernetes Operator / Temporal Workflow |
+| **Task** | Durable work unit with checkpoint persistence | Celery Job / systemd unit |
+| **Router** | Decision layer for model and tool selection | API Gateway / Load Balancer |
+| **Tools** | Protocol-agnostic capability interface | gRPC Service / Unix Tool |
+| **Observer** | Structured telemetry for every state transition | OpenTelemetry / Prometheus |
+
+### Graph (The OS)
+
+The graph is a directed state machine. Nodes are typed (`router`, `tool`, `human`), edges are conditional, and the entire structure is serializable. Execution can pause at any node and resume later—even on a different machine.
+
+### Task (The Process)
+
+A task is a running instance of a graph. It holds the execution pointer, the accumulated context, and the full step history. Tasks are persisted to a pluggable store (SQLite, Postgres, DynamoDB), enabling crash recovery and distributed execution.
+
+### Router (The Brain)
+
+Routers encapsulate decision-making. They hydrate prompts, select models, and determine which tools to expose. The router abstraction isolates your business logic from the mechanics of LLM invocation.
+
+### Tools (The Hands)
+
+Tools are capabilities. UAA supports multiple protocols out of the box:
+- **MCP** (Model Context Protocol) for inter-agent communication
+- **HTTP** for REST APIs
+- **Local** for Python functions
+- **Subprocess** for CLI tools
+
+### Observer (The Eyes)
+
+Every step emits structured telemetry. The default sink is OpenTelemetry, producing distributed traces that flow to Jaeger, Honeycomb, or Datadog without code changes.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Runtime["UAA Runtime"]
+        API[REST API] --> Engine[Graph Engine]
+        Engine --> |dispatch| Handlers{Node Handlers}
+        Handlers --> RouterH[Router Handler]
+        Handlers --> ToolH[Tool Handler]
+        Handlers --> HumanH[Human Handler]
+        
+        RouterH --> LLM[LLM Client]
+        ToolH --> Executor[Tool Executor]
+        
+        Engine --> |persist| Store[(Task Store)]
+        Engine -.-> |emit| Observer[OTel Sink]
+    end
+    
+    subgraph External["External Systems"]
+        LLM --> OpenAI[OpenAI / Anthropic / Bedrock]
+        Executor --> MCP[MCP Servers]
+        Executor --> HTTP[HTTP APIs]
+        Observer -.-> Jaeger[Jaeger / Honeycomb]
+        Store --> DB[(Postgres / SQLite)]
+    end
+```
+
+---
+
+## Ecosystem
+
+UAA is the **Kernel**. It does not operate alone.
+
+| Repository | Role | Metaphor |
+|------------|------|----------|
+| **[universal_agent_architecture](https://github.com/mjdevaccount/universal_agent_architecture)** | Runtime execution, state management, durability | Linux Kernel |
+| **[universal_agent_fabric](https://github.com/mjdevaccount/universal_agent_fabric)** | Roles, domains, policies → compiled manifests | Userland / distro |
+| **[universal_agent_nexus](https://github.com/mjdevaccount/universal_agent_nexus)** | Adapters for AWS, LangGraph, MCP, Kubernetes | Network / drivers |
+
+The Kernel provides primitives. The Fabric provides opinions. The Nexus provides portability.
+
+---
+
+## Quick Start
+
+### Install
+
+```bash
+pip install universal-agent-arch
+```
+
+### Define a Manifest
+
+```yaml
+# manifest.yaml
+name: "hello-agent"
+version: "0.1.0"
+
+graphs:
+  - name: "main"
+    entry_node: "router"
+    nodes:
+      - id: "router"
+        kind: "router"
+        router: { name: "primary" }
+      - id: "respond"
+        kind: "tool"
+        tool: { name: "echo" }
+    edges:
+      - from_node: "router"
+        to_node: "respond"
+        condition: { trigger: "success" }
+
+routers:
+  - name: "primary"
+    strategy: "llm"
+    system_message: "You are a helpful assistant."
+
+tools:
+  - name: "echo"
+    protocol: "local"
+    description: "Returns the input unchanged."
+```
+
+### Boot the Runtime
+
+```bash
+uvicorn universal_agent.runtime.api:app --reload
+```
+
+### Trigger an Execution
+
+```bash
+curl -X POST "http://localhost:8000/graphs/main/executions" \
+  -H "Content-Type: application/json" \
+  -d '{"input": {"query": "Hello, world"}}'
+```
+
+The runtime will:
+1. Load the manifest
+2. Initialize the graph
+3. Execute the `router` node (LLM call)
+4. Transition to `respond` node (tool call)
+5. Persist the final state
+6. Emit telemetry
+
+---
+
+## Why UAA?
+
+### The Problem with Chains
+
+Most agent frameworks are built around sequential chains. Chains are simple, but they're also brittle:
+
+- **No durability.** If the process dies, you start over.
+- **No observability.** You get logs, maybe. Structured traces? Rarely.
+- **No governance.** Every agent is a snowflake with ad-hoc safety checks.
+
+### The Graph Alternative
+
+UAA models agents as **state machines**, not call chains. This unlocks:
+
+| Capability | How UAA Delivers It |
+|------------|---------------------|
+| **Durability** | Every state transition is checkpointed. Crash? Resume from the last successful step. |
+| **Human-in-the-Loop** | Graphs can suspend at `human` nodes, await approval, and resume asynchronously. |
+| **Policy Enforcement** | Governance rules are evaluated *before* tool execution, not after. |
+| **Distributed Tracing** | Every node is a span. Context propagates across suspend/resume boundaries. |
+
+### Sovereignty
+
+UAA is not a managed service. You own:
+
+- **The Memory.** Task state lives in your database.
+- **The Policy.** Governance rules are code you control.
+- **The Compute.** Run on your laptop, your cloud, your air-gapped datacenter.
+
+---
+
+## Extension Points
+
+The kernel is built on interfaces, not implementations. Every external dependency is injectable.
+
+| Environment Variable | Interface | Default |
+|---------------------|-----------|---------|
+| `UAA_TASK_STORE` | `ITaskStore` | `SQLTaskStore` |
+| `UAA_TASK_QUEUE` | `ITaskQueue` | `InMemoryTaskQueue` |
+| `UAA_LLM_CLIENT` | `BaseLLMClient` | `MockLLMClient` |
+| `UAA_TOOL_EXECUTOR_LOCAL` | `IToolExecutor` | `MockToolExecutor` |
+| `UAA_TOOL_EXECUTOR_MCP` | `IToolExecutor` | `MockToolExecutor` |
+
+To swap implementations:
+
+```bash
+UAA_LLM_CLIENT=mycompany.adapters.AnthropicClient \
+UAA_TASK_STORE=mycompany.adapters.DynamoTaskStore \
+uvicorn universal_agent.runtime.api:app
+```
+
+The kernel remains unchanged. You only implement interfaces.
+
+---
+
+## Directory Structure
+
+```
+universal_agent_architecture/
+├── universal_agent/          # Core kernel
+│   ├── graph/                # State machine engine
+│   │   ├── engine.py         # Execution loop
+│   │   ├── model.py          # Graph/Node/Edge structures
+│   │   └── state.py          # GraphState, StepRecord
+│   ├── task/                 # Durability layer
+│   │   ├── store.py          # ITaskStore implementations
+│   │   └── queue.py          # ITaskQueue implementations
+│   ├── router/               # Decision layer
+│   ├── tools/                # Capability registry
+│   ├── policy/               # Governance engine
+│   ├── memory/               # Context management
+│   ├── observer/             # Telemetry sinks
+│   ├── manifests/            # Schema and loader
+│   ├── runtime/              # API and handlers
+│   │   ├── api.py            # FastAPI endpoints
+│   │   ├── handlers.py       # RouterHandler, ToolHandler
+│   │   └── config.py         # DI configuration
+│   └── contracts.py          # Public interfaces
+├── adapters/                 # Protocol bridges (MCP, etc.)
+├── tests/                    # Unit and conformance tests
+└── infra/                    # Docker, Terraform
+```
+
+---
+
+## Running with Docker
+
+```bash
+# Start the full stack (API + Postgres + Jaeger)
+docker-compose -f infra/docker-compose.yml up -d
+
+# Access points:
+# - API:    http://localhost:8000/docs
+# - Jaeger: http://localhost:16686
+```
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/improvement`)
+3. Write tests for your changes
+4. Ensure CI passes (`pytest tests/ -v`)
+5. Submit a pull request
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for code style and commit message conventions.
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <sub>Built for engineers who ship agents to production.</sub>
+</p>
