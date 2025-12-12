@@ -1,0 +1,84 @@
+Metadata-Version: 2.4
+Name: mpilot
+Version: 1.3.2
+Summary: MPilot is a plugin-based, environmental modeling framework
+License: MIT
+License-File: LICENSE
+Author: Conservation Biology Institute
+Requires-Python: >=3.11
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.9
+Provides-Extra: netcdf
+Requires-Dist: cftime (>=1.6.4,<2.0.0) ; extra == "netcdf"
+Requires-Dist: click (>=8.0.4,<9.0.0)
+Requires-Dist: netCDF4 (>=1.7.2,<2.0.0) ; (python_version >= "3.11") and (extra == "netcdf")
+Requires-Dist: numpy (>=2.3.5,<3.0.0)
+Requires-Dist: ply (>=3.11,<4.0)
+Requires-Dist: six
+Project-URL: Homepage, https://consbio.github.io/mpilot/
+Project-URL: Repository, https://github.com/consbio/mpilot
+Description-Content-Type: text/markdown
+
+# MPilot
+MPilot is a plugin-based, environmental modeling framework based on a bottom-up, many-to-many workflow that can be 
+represented by a directed (not iterating) graph. MPilot is descended from the Environmental Evaluation Modeling System 
+(EEMS), which was initially a fuzzy logic modeling package based on EMDS.
+
+[MPilot Documentation](https://consbio.github.io/mpilot/)
+
+# Installing
+
+MPilot with EEMS can be installed with `pip`:
+
+```bash
+$ pip install mpilot
+```
+
+In order to run MPilot with NetCDF datasets, you'll need to install the NetCDF variant:
+
+```bash
+$ pip install mpilot[netcdf]
+```
+
+# Creating models
+MPilot models are contained in "command files", using a simple scripting language. Here is an example model, which 
+loads two columns of integer data from a CSV file, sums them, and writes the result to a second CSV file.
+
+```text
+A = EEMSRead(
+    InFileName = "input.csv",
+    InFieldName = "A",
+    DataType = "Integer"
+)
+B = EEMSRead(
+    InFileName = "input.csv",
+    InFieldName = "B",
+    DataType = "Integer"
+)
+APlusB = Sum(
+    InFieldNames = [A, B]
+)
+Out = EEMSWrite(
+    OutFileName = "output.csv",
+    OutFieldNames = [A, B, APlusB]
+)
+```
+
+# Running models
+
+Models are run using the included `mpilot` program. The following commands will run a model using the EEMS CSV library 
+and using the EEMS NetCDF library respectively:
+
+```bash
+$ mpilot eems-csv model.mpt
+$ mpilot eems-netcdf model.mpt
+```
+
