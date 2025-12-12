@@ -1,0 +1,1 @@
+"use strict";$(function(){var n=this;$("body").on("click","a[rel*=external]",function(e){window.open(n.href),e.preventDefault()}),$("#setlang > .item:not(.active)").one("click",function(){$(n).prev().submit(),e.preventDefault()}),$(".lazy").Lazy({effect:"fadeIn",visibleOnly:!0,onError:function(e){console.log("error loading",e.data("src"))}})});
