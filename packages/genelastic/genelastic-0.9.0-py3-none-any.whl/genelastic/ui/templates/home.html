@@ -1,0 +1,207 @@
+{% extends "layout.html" %}
+{% block title %}
+  Accueil - BEx
+{% endblock title %}
+{% block content %}
+  <div class="container mt-5">
+    <div class="text-center mb-5">
+      <h1 class="display-4 fw-bold text-primary">Base Expérimentale du CNRGH</h1>
+    </div>
+    <!-- Mode d'affichage -->
+    <div class="mb-4 d-flex justify-content-end align-items-center gap-3">
+      <label class="fw-semibold mb-0">Mode d'affichage :</label>
+      <div class="btn-group" role="group" aria-label="Mode d'affichage">
+        <button id="viewTableBtn"
+                class="btn btn-outline-primary btn-sm active"
+                title="Mode Tableau"
+                aria-pressed="true">
+          <i class="bi bi-table"></i> Tableau
+        </button>
+        <button id="viewListBtn"
+                class="btn btn-outline-primary btn-sm"
+                title="Mode Liste"
+                aria-pressed="false">
+          <i class="bi bi-list"></i> Liste
+        </button>
+      </div>
+    </div>
+    {% macro render_section_header(title) %}
+      <div class="d-flex justify-content-between align-items-center mt-5 mb-4 pb-2 border-bottom">
+        <h2 class="fw-semibold text-secondary">{{ title }}</h2>
+      </div>
+    {% endmacro %}
+    {% macro render_table_section(data_dict, prefix, title) %}
+      {{ render_section_header(title) }}
+      <div class="row g-4 justify-content-center">
+        {% for field, values in data_dict.items() %}
+          {% set clean_name = field.replace('metadata.bi_process.', '')
+                      .replace('metadata.wet_process.', '')
+                      .replace('metadata.', '')
+                      .replace('_', ' ')
+                      .replace('.', ' ')
+                    .title() %}
+          {% set html_id = prefix + clean_name.replace(' ', '') %}
+          {% set canvas_id = 'chart_' + html_id %}
+          {% set is_empty = values|length == 0 %}
+          <div class="col-12 col-md-6 col-lg-4 metadata-table"
+               id="{{ html_id }}"
+               data-label="{{ clean_name }}">
+            <div class="card shadow-sm h-100 {% if is_empty %}opacity-50{% endif %}">
+              <div class="card-header text-white fw-semibold text-center bg-primary d-flex justify-content-between align-items-center">
+                <span>{{ clean_name }}</span>
+              </div>
+              <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center">
+                {% if not is_empty %}
+                  {% if values|length > 1 %}
+                    <canvas id="{{ canvas_id }}"
+                            width="300"
+                            height="300"
+                            data-label="{{ clean_name }}"
+                            data-labels='{{ values.keys() | list | tojson }}'
+                            data-values='{{ values.values() | list | tojson }}'></canvas>
+                  {% else %}
+                    {% for value, count_val in values.items() %}
+                      <div class="text-center">
+                        <p class="mb-1 fw-semibold">{{ value or "—" }}</p>
+                        <span class="badge bg-primary rounded-pill fs-5">{{ count_val }}</span>
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% else %}
+                  <p class="text-muted text-center my-3">Aucune donnée disponible</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endmacro %}
+    {% macro render_list_section(data_dict, prefix, title) %}
+      {{ render_section_header(title) }}
+      <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+        <button class="btn btn-outline-secondary btn-sm expand-all-btn"
+                data-target="{{ prefix }}">Dérouler tout</button>
+        <button class="btn btn-outline-secondary btn-sm collapse-all-btn"
+                data-target="{{ prefix }}">Replier tout</button>
+      </div>
+      <div class="accordion mb-5" id="accordion_{{ prefix }}">
+        {% for field, values in data_dict.items() %}
+          {% set clean_name = field.replace('metadata.', '').replace('_', ' ').replace('.', ' ').title() %}
+          {% set collapse_id = prefix + clean_name.replace(' ', '') %}
+          {% set is_empty = values|length == 0 %}
+          <div class="accordion-item {% if is_empty %}opacity-50{% endif %}">
+            <h2 class="accordion-header" id="heading_{{ collapse_id }}">
+              <button class="accordion-button collapsed"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#collapse_{{ collapse_id }}"
+                      aria-expanded="false"
+                      aria-controls="collapse_{{ collapse_id }}">{{ clean_name }}</button>
+            </h2>
+            <div id="collapse_{{ collapse_id }}"
+                 class="accordion-collapse collapse"
+                 aria-labelledby="heading_{{ collapse_id }}"
+                 data-bs-parent="#accordion_{{ prefix }}">
+              <div class="accordion-body">
+                {% if not is_empty %}
+                  <ul class="list-group">
+                    {% for value, count_val in values.items() %}
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {% if 'wet_process' in field %}
+                          <a href="{{ url_for('routes.wet_process_detail', wet_process_id=value) }}">{{ value or "—" }}</a>
+                        {% elif 'bi_process' in field %}
+                          <a href="{{ url_for('routes.bi_process_detail', bi_process_id=value) }}">{{ value or "—" }}</a>
+                        {% else %}
+                          {{ value or "—" }}
+                        {% endif %}
+                        <span class="badge bg-primary rounded-pill">{{ count_val }}</span>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  <p class="text-muted text-center">Aucune donnée disponible</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endmacro %}
+    {% if wet_count or bi_count %}
+      <!-- Boutons toggle groupes -->
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button id="toggle-all-filters"
+                class="btn btn-outline-primary btn-sm toggle-group-btn">Tout masquer</button>
+        <button id="toggle-wet"
+                class="btn btn-outline-secondary btn-sm toggle-group-btn"
+                data-label="Index Wet-Processes">Masquer Index Wet-Processes</button>
+        <button id="toggle-bi"
+                class="btn btn-outline-secondary btn-sm toggle-group-btn"
+                data-label="Index Bi-Processes">Masquer Index Bi-Processes</button>
+      </div>
+      <!-- Switchs pour métadonnées -->
+      <div class="row gy-3">
+        {% for data_dict, prefix in [(wet_count, 'table_wet_'), (bi_count, 'table_bi_')] %}
+          {% for field, values in data_dict.items() %}
+            {% set clean_name = field.replace('metadata.bi_process.', '')
+                          .replace('metadata.wet_process.', '')
+                          .replace('metadata.', '')
+                          .replace('_', ' ')
+                          .replace('.', ' ')
+                        .title() %}
+            {% set html_id = prefix + clean_name.replace(' ', '') %}
+            {% set is_empty = values|length == 0 %}
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="form-check form-switch {% if is_empty %}opacity-50{% endif %}">
+                <input class="form-check-input meta-toggle"
+                       type="checkbox"
+                       id="toggle_{{ html_id }}"
+                       data-target="{{ html_id }}"
+                       {% if not is_empty %}checked{% endif %}>
+                <label class="form-check-label" for="toggle_{{ html_id }}">{{ clean_name }}</label>
+              </div>
+            </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+      <!-- Vue tableau -->
+      <div id="tableView">
+        {{ render_table_section(wet_count, 'table_wet_', 'Index Wet-Processes') }}
+        {{ render_table_section(bi_count, 'table_bi_', 'Index Bi-Processes') }}
+      </div>
+      <!-- Vue liste (initialement masquée) -->
+      <div id="listView" style="display:none;">
+        {{ render_list_section(wet_count, 'list_wet_', 'Index Wet-Processes') }}
+        {{ render_list_section(bi_count, 'list_bi_', 'Index Bi-Processes') }}
+      </div>
+    {% else %}
+      <p class="text-center text-muted fs-5">Aucune donnée de métadonnées disponible pour le moment.</p>
+    {% endif %}
+    <!-- Modal graphique occurrences -->
+    <div id="chartModal" class="modal-overlay" style="display:none;">
+      <div class="modal-content"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="modalTitle">
+        <button id="closeModalBtn" class="btn-close" aria-label="Fermer">&times;</button>
+        <h4 id="modalTitle" class="mb-3 text-center">Répartition des occurrences</h4>
+        <div class="d-flex gap-3 align-items-start">
+          <canvas id="occurrencesChart" width="300" height="300"></canvas>
+          <div>
+            <div class="mb-3 text-center">
+              <button id="toggleChartTypeBtn" class="btn btn-outline-secondary btn-sm">Changer le type de diagramme</button>
+            </div>
+            <div id="chartLegend" class="chart-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Injection des données en JS -->
+  <script>
+    const metadataCountsWet = {{ wet_count | tojson }};
+    const metadataCountsBi = {{ bi_count | tojson }};
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+{% endblock content %}

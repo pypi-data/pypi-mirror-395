@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+{% block title %}
+  Détails - {{ proc_id }} - BEx
+{% endblock title %}
+{% block content %}
+  <div class="container mt-5">
+    <h2 class="mb-4 text-center text-primary">
+      Détails de la condition
+      <span class="condition-details">{{ proc_id }}</span>
+    </h2>
+    {% if not error %}
+      <!-- Formulaire de sélection pour comparaison -->
+      <form method="get" class="mb-4 d-flex align-items-center gap-2">
+        <label for="compare_with" class="form-label m-0">
+          Comparer la sélection avec une condition bio-expérimentale
+          :
+        </label>
+        <select name="compare_with" id="compare_with" class="form-select w-auto ">
+          <option value="">----------</option>
+          {% for bp in bi_processes %}
+            <option value="{{ bp }}" {% if selected_bi== bp %}selected{% endif %}>{{ bp }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Comparer</button>
+      </form>
+      <div class="row">
+        <!-- Wet Process -->
+        <div class="col-md-6 mb-4">
+          <div class="card shadow-lg border-0 h-100">
+            <div class="card-body">
+              <h5 class="card-title text-center">Wet Process</h5>
+              <div class="table-responsive">
+                <table class="details-table">
+                  <thead>
+                    <tr class="text-center">
+                      <th scope="col">Champ</th>
+                      <th scope="col">Valeur</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for key, value in wet_process.items() %}
+                      <tr>
+                        <td class="fw-bold text-capitalize">{{ key.replace('_', ' ') }}</td>
+                        <td>{{ value }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Bi Process (s’il y en a un sélectionné) -->
+        {% if bi_process_data %}
+          <div class="col-md-6 mb-4">
+            <div class="card shadow-lg border-0 h-100">
+              <div class="card-body">
+                <h5 class="card-title text-center">
+                  Bi Process : <span class="select-compared-process">{{ selected_bi }}</span>
+                </h5>
+                {% if bi_process_data.error %}
+                  <div class="alert alert-danger text-center">{{ bi_process_data.error }}</div>
+                {% else %}
+                  <div class="table-responsive">
+                    <table class="details-table">
+                      <thead>
+                        <tr class="text-center">
+                          <th scope="col">Champ</th>
+                          <th scope="col">Valeur</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for key, value in bi_process_data.items() %}
+                          {% if key == 'steps' %}
+                            <tr>
+                              <td class="fw-bold text-capitalize">Steps</td>
+                              <td>
+                                <button class="btn btn-sm btn-primary"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#biStepsCollapse-{{ proc_id }}"
+                                        aria-expanded="false"
+                                        aria-controls="biStepsCollapse-{{ proc_id }}">Afficher les étapes</button>
+                                <div class="collapse mt-2" id="biStepsCollapse-{{ proc_id }}">
+                                  <div class="table-responsive">
+                                    <table class="details-table table-sm mt-2 text-center"
+                                           style="min-width: 600px">
+                                      <thead>
+                                        <tr>
+                                          <th>Commande</th>
+                                          <th>Nom</th>
+                                          <th>Version</th>
+                                          <th>Sortie</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {% for step in value %}
+                                          <tr>
+                                            <td>{{ step.cmd }}</td>
+                                            <td>{{ step.name }}</td>
+                                            <td>{{ step.version }}</td>
+                                            <td>{{ step.output if 'output' in step else '-' }}</td>
+                                          </tr>
+                                        {% endfor %}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          {% else %}
+                            <tr>
+                              <td class="fw-bold text-capitalize">{{ key.replace('_', ' ') }}</td>
+                              <td>{{ value }}</td>
+                            </tr>
+                          {% endif %}
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="p-3 mb-2 bg-danger text-white text-center" role="alert">{{ error.message }}</div>
+    {% endif %}
+  </div>
+{% endblock content %}

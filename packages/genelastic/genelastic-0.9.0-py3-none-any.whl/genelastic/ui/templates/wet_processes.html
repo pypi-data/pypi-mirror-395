@@ -1,0 +1,116 @@
+{% extends "layout.html" %}
+{% block title %}
+  Wet Processes - BEx
+{% endblock title %}
+{% block content %}
+  <div class="container mt-5">
+    <div class="text-center mb-4">
+      <h1 class="display-5 title">Liste des conditions expérimentales</h1>
+      <p class="lead">Sélectionner les conditions pour afficher les analyses associées.</p>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h3 class="mb-4">Conditions disponibles</h3>
+        <form id="wetForm" method="get" action="{{ request.path }}">
+          <input type="text"
+                 id="wetSearch"
+                 class="form-control mb-3"
+                 placeholder="Rechercher un wet process..." />
+          <div class="row">
+            <div class="col-md-6">
+              <div class="list-group" id="wetProcessList">
+                {% for wet_process in wet_processes %}
+                  <div class="list-group-item wet-process-item">
+                    <div class="form-check">
+                      <input class="form-check-input"
+                             type="checkbox"
+                             id="wet_{{ loop.index }}"
+                             name="wet_processes"
+                             value="{{ wet_process }}"
+                             {% if wet_process in selected_wet_processes %}checked{% endif %} />
+                      <label class="form-check-label" for="wet_{{ loop.index }}">{{ wet_process }}</label>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              <div class="d-flex gap-2 mt-3">
+                <button type="button" class="reset-error-btn btn" id="resetWetSelection">Réinitialiser la sélection</button>
+                <button type="button" class="btn btn-success" id="selectAllWet">Tout sélectionner</button>
+              </div>
+            </div>
+            {% if selected_wet_processes %}
+              <div class="col-md-6">
+                {% if analyses %}
+                  <h4 class="mt-4">Analyses associées :</h4>
+                  <ul class="list-group mt-3">
+                    {% for analysis in analyses %}
+                      <li class="list-group-item">
+                        <a href="{{ url_for('routes.show_analysis_detail', analysis_id=analysis, source='wet') }}"
+                           class="text-decoration-none">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <span>{{ analysis }}</span>
+                            <i class="bi bi-chevron-right"></i>
+                          </div>
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  <div class="alert alert-danger mt-4" role="alert">
+                    <strong>Aucune analyse correspondante !</strong>
+                    Aucun processus associé à ce Wet Process.
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+      document.getElementById('wetSearch').addEventListener('input', function() {
+          const filter = this.value.toLowerCase();
+          const items = document.querySelectorAll('.wet-process-item');
+          items.forEach((item) => {
+              const label = item.querySelector('label').innerText.toLowerCase();
+              if (label.startsWith(filter)) {
+                  item.style.display = '';
+              } else {
+                  item.style.display = 'none';
+              }
+          });
+      });
+
+      document
+          .getElementById('resetWetSelection')
+          .addEventListener('click', function() {
+              const checkboxes = document.querySelectorAll(
+                  '#wetForm input[type="checkbox"]',
+              );
+              checkboxes.forEach((cb) => (cb.checked = false));
+              document.getElementById('wetSearch').value = '';
+              document.getElementById('wetForm').submit();
+          });
+
+      document
+          .getElementById('selectAllWet')
+          .addEventListener('click', function() {
+              document
+                  .querySelectorAll('#wetProcessList .form-check-input')
+                  .forEach((cb) => (cb.checked = true));
+              document.getElementById('wetForm').submit();
+          });
+
+      const wetCheckboxes = document.querySelectorAll('#wetForm input[type="checkbox"]');
+      const resetWetBtn = document.getElementById('resetWetSelection');
+
+      function updateWetResetButton() {
+          const anyChecked = Array.from(wetCheckboxes).some(cb => cb.checked);
+          resetWetBtn.disabled = !anyChecked;
+      }
+
+      wetCheckboxes.forEach(cb => cb.addEventListener('change', updateWetResetButton));
+      updateWetResetButton();
+  </script>
+{% endblock content %}
