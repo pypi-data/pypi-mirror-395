@@ -1,0 +1,67 @@
+entities:   
+  ProfileDimension:
+    table: profile_dimension
+    row_type: multiple
+    fields:
+      dimension_id: {type: string, role: pk}
+      dimension_name: {type: string}
+      dimension_value: {type: string}
+      data_source: {type: string}
+
+  Customer:
+    table: customer
+    row_type: multiple
+    fields:
+      cust_id: {type: string, role: pk}
+      enterprise_tag: {type: string}
+      profile_id: {type: string, role: fk, to: CustomerProfile}
+      category_id: {type: string, role: fk, to: CustomerCategory}
+      business_unit: {type: string}
+      industry: {type: string}
+      profile:
+        type: object
+        from: Customer.profile_id
+        role: embed
+        to: CustomerProfile
+      category:
+        type: object
+        from: Customer.category_id
+        role: embed
+        to: CustomerCategory
+
+  CustomerCategory:
+    table: customer_category
+    row_type: multiple
+    fields:
+      category_id: {type: string, role: pk}
+      category_name: {type: string}
+      industry_alignment: {type: string}
+      requirements:
+        type: "list[object]"
+        from: CustomerCategory.industry_alignment
+        role: embed
+        to: CategoryRequirement.industry_tag
+
+  CustomerProfile:
+    table: customer_profile
+    row_type: multiple
+    fields:
+      profile_id: {type: string, role: pk}
+      dimension_set: {type: list}
+      associated_cust_id: {type: string}
+      update_time: {type: string}
+      dimensions:
+        type: "list[object]"
+        from: CustomerProfile.dimension_set
+        role: embed
+        to: ProfileDimension.dimension_id
+
+  CategoryRequirement:
+    table: category_requirement
+    row_type: multiple
+    fields:
+      dimension_id: {type: string, role: pk}
+      category_name: {type: string}
+      rule_id: {type: list}
+      industry_tag: {type: string}
+      creator_type: {type: string}
