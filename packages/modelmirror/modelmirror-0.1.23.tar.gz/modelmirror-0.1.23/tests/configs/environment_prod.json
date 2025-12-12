@@ -1,0 +1,45 @@
+{
+    "primary_database": {
+        "$mirror": "database_service:primary_db",
+        "host": "prod.db.example.com",
+        "port": 5432,
+        "database_name": "app_prod"
+    },
+    "secondary_database": {
+        "$mirror": "database_service",
+        "host": "prod-secondary.db.example.com",
+        "port": 5432,
+        "database_name": "app_prod_secondary"
+    },
+    "user_service": {
+        "$mirror": "user_service",
+        "database": "$primary_db",
+        "cache_enabled": true
+    },
+    "microservices": [
+        {
+            "$mirror": "simple_service",
+            "name": "prod_service_1"
+        }
+    ],
+    "service_registry": {
+        "main": {
+            "$mirror": "simple_service",
+            "name": "main_service"
+        }
+    },
+    "orchestrator": {
+        "$mirror": "complex_service",
+        "database": "$primary_db",
+        "user_service": {
+            "$mirror": "user_service",
+            "database": "$primary_db",
+            "cache_enabled": true
+        },
+        "config": {
+            "debug": "false"
+        }
+    },
+    "environment": "production",
+    "debug_mode": false
+}
