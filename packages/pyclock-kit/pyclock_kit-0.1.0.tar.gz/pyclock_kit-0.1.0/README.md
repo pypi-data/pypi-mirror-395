@@ -1,0 +1,136 @@
+# PyClockKit 🕐
+
+A simple, lightweight Python package for getting the current time in various formats. Perfect for learning PyPI package publishing!
+
+## Features
+
+- ⏰ Get current local time in custom formats
+- 🌍 Get current UTC time
+- 📊 Get Unix timestamp
+- 🎯 Simple, intuitive API
+- 📦 Zero dependencies
+- 🐍 Python 3.8+ support
+
+## Installation
+
+```bash
+pip install pyclock-kit
+```
+
+## Quick Start
+
+```python
+from pyclock import get_time, get_timestamp, get_utc_time
+
+# Get current time (default format)
+print(get_time())
+# Output: 2025-12-03 22:48:59
+
+# Get time with custom format
+print(get_time("%H:%M:%S"))
+# Output: 22:48:59
+
+# Get Unix timestamp
+print(get_timestamp())
+# Output: 1701637739.123456
+
+# Get UTC time
+print(get_utc_time())
+# Output: 2025-12-03 21:48:59
+```
+
+## API Reference
+
+### `get_time(format=None)`
+
+Get the current local time as a formatted string.
+
+**Parameters:**
+- `format` (str, optional): Format string for `datetime.strftime()`. If `None`, returns `"%Y-%m-%d %H:%M:%S"`.
+
+**Returns:**
+- `str`: Current local time as a formatted string.
+
+**Examples:**
+```python
+get_time()                    # '2025-12-03 22:48:59'
+get_time("%H:%M:%S")          # '22:48:59'
+get_time("%B %d, %Y")         # 'December 03, 2025'
+get_time("%A, %I:%M %p")      # 'Tuesday, 10:48 PM'
+```
+
+### `get_timestamp()`
+
+Get the current Unix timestamp.
+
+**Returns:**
+- `float`: Current time as Unix timestamp (seconds since epoch).
+
+**Example:**
+```python
+get_timestamp()  # 1701637739.123456
+```
+
+### `get_utc_time(format=None)`
+
+Get the current UTC time as a formatted string.
+
+**Parameters:**
+- `format` (str, optional): Format string for `datetime.strftime()`. If `None`, returns `"%Y-%m-%d %H:%M:%S"`.
+
+**Returns:**
+- `str`: Current UTC time as a formatted string.
+
+**Example:**
+```python
+get_utc_time()  # '2025-12-03 21:48:59'
+```
+
+## Development
+
+### Setting up development environment
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/pyclock-kit.git
+cd pyclock-kit
+
+# Install in editable mode with dev dependencies
+pip install -e ".[dev]"
+```
+
+### Running tests
+
+```bash
+pytest
+pytest --cov=pyclock  # Run with coverage
+```
+
+### Code formatting
+
+```bash
+black .
+flake8
+mypy pyclock
+```
+
+## Building and Publishing
+
+See [PUBLISHING.md](PUBLISHING.md) for detailed instructions on how to build and publish this package to PyPI.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Changelog
+
+### 0.1.0 (2025-12-03)
+- Initial release
+- Basic time retrieval functions
+- Support for custom time formats
+- UTC time support
+- Unix timestamp support
