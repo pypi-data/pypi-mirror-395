@@ -1,0 +1,57 @@
+### Basic Configuration ###
+user_token: DEFAULT  # User token to use for Elroy
+database_url: null  # Valid SQLite or Postgres URL for the database. If Postgres, the pgvector extension must be installed
+debug: false  # Enable fail-fast error handling and verbose logging output
+default_assistant_name: "Elroy"  # Default name for the assistant
+include_base_tools: true # Whether to include base tools of the assistant. Note: Memories will still be formed base on context window management.
+custom_tools_path: null  # Path to custom functions to load
+inline_tool_calls: false  # Whether to enable inline tool calls in the assistant (better for some open source models)
+max_ingested_doc_lines: 1000 # Maximum number of lines to ingest from a document. If a document has more lines, it will be ignored.
+default_persona: null # Default system persona for the assistant. See personas.py
+reflect: false # Whether to reflect on recalled memory content. True leads to richer responses, False leads to faster responses
+
+### Model Selection & Configuration ###
+chat_model: null  # The model to use for chat completions, if not provided, inferred from env variables
+chat_model_api_base: null  # Base URL for OpenAI compatible chat model API. Litellm will recognize vars too
+chat_model_api_key: null  # API key for OpenAI compatible chat model API
+embedding_model: "text-embedding-3-small" # The model to use for text embeddings. If not provided, inferred from env variables
+embedding_model_size: 1536  # The size of the embedding model
+embedding_model_api_base: null  # Base URL for OpenAI compatible embedding model API
+embedding_model_api_key: null  # API key for OpenAI compatible embedding model API
+enable_caching: true  # Whether to enable caching for the LLM, both for embeddings and completions
+
+# Deprecated configuration options
+openai_api_key: null  # OpenAI API key (deprecated)
+openai_api_base: null  # OpenAI API base URL (deprecated)
+openai_embedding_api_base: null  # OpenAI API base URL for embeddings (deprecated)
+openai_organization: null  # OpenAI organization ID (deprecated)
+anthropic_api_key: null  # Anthropic API key (deprecated)
+
+# Context Management
+max_assistant_loops: 4  # Maximum number of loops the assistant can run before tools are temporarily made unvailable (returning for the next user message)
+max_tokens: 100000  # Number of tokens that triggers a context refresh and compresion of messages in the context window
+max_context_age_minutes: 720.0  # Maximum age in minutes to keep messages in context
+min_convo_age_for_greeting_minutes: 120.0  # Minimum age in minutes of conversation before the assistant will offer a greeting on login. 0 means assistant will offer greeting each time. To disable greeting, set --first=True
+
+# Memory Consolidation
+memory_cluster_similarity_threshold: 0.21125  # Threshold for memory cluster similarity
+memories_between_consolidation: 4  # How many memories to create before triggering a memory consolidation operation
+messages_between_memory: 20  # Max number of messages to process without creating a memory
+l2_memory_relevance_distance_threshold: 1.24  # L2 distance threshold for memory relevance
+max_memory_cluster_size: 5  # The maximum number of memories that can be consolidated into a single memory at once
+min_memory_cluster_size: 3  # The minimum number of memories that can be consolidated into a single memory at once
+
+# UI Configuration
+show_internal_thought: true  # Show the assistant's internal thought monologue
+system_message_color: "#9ACD32"  # Color for system messages
+user_input_color: "#FFE377"  # Color for user input
+assistant_color: "#77DFD8"  # Color for assistant output
+warning_color: "yellow"  # Color for warning messages
+internal_thought_color: "#708090"  # Color for internal thought messages
+show_memory_panel: true  # Whether to display the memory panel
+
+
+# Shell commands
+shell_commands: false  # Whether to enable shell commands
+allowed_shell_command_prefixes:
+  - .*
