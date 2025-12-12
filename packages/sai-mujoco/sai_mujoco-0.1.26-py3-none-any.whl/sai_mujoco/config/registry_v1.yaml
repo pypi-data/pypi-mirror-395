@@ -1,0 +1,690 @@
+robots:
+  - name: "xarm7_v1"
+    entry_point: "sai_mujoco.robots.xarm7.xarm7_v1:XArm7_v1"
+  - name: "franka_v1"
+    entry_point: "sai_mujoco.robots.franka.franka_v1:Franka_v1"
+  - name: "t1_v1"
+    entry_point: "sai_mujoco.robots.t1.t1_v1:T1_v1"
+  - name: "lower_t1_v1"
+    entry_point: "sai_mujoco.robots.t1.t1_v1:LowerT1_v1"
+  - name: "reachy2_v0"
+    entry_point: "sai_mujoco.robots.reachy2.reachy2_v0:Reachy2_v0"
+  - name: "so101_v0"
+    entry_point: "sai_mujoco.robots.so101.so101_v0:SO101_v0"
+
+environments:
+  # - name: "GolfCourse-v1"
+  #   max_episode_steps: 650
+  #   entry_point: "sai_mujoco.envs.golf_course.golf_course_v1:GolfCourse_v1"
+  #   robot_configs:
+  #     - name: "franka_ik"
+  #       robots:
+  #         franka_v1:
+  #           position: [0.9, -0.5, 0.025]
+  #           orientation: [0.707, 0, 0, 0.707]
+  #           control_freq: 90
+  #           init_qpos:
+  #             {
+  #               "joint1": 0.2555,
+  #               "joint2": -0.0117,
+  #               "joint3": -0.2936,
+  #               "joint4": -2.5540,
+  #               "joint5": 1.5981,
+  #               "joint6": 1.4609,
+  #               "joint7": -1.7311,
+  #             }
+  #     - name: "xarm7_ik"
+  #       robots:
+  #         xarm7_v1:
+  #           position: [0.9, -0.5, 0.021]
+  #           orientation: [0.707, 0, 0, 0.707]
+  #           control_freq: 90
+  #           init_qpos:
+  #             {
+  #               "joint1": 0.0,
+  #               "joint2": 0.0,
+  #               "joint3": 0.0,
+  #               "joint4": 0.9,
+  #               "joint5": 1.5707,
+  #               "joint6": 1.5707,
+  #               "joint7": 4.1,
+  #             }
+
+  - name: "ColorSortPickPlace-v0"
+    max_episode_steps: 3000
+    entry_point: "sai_mujoco.envs.pick_place.pick_place_v1:PickAndPlace_v1"
+    robot_configs:
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [-0.4, 0.0, 0.0]
+            orientation: [1, 0, 0, 0]
+            base_type: "v0/rethink_mount"
+            control_freq: 90
+            size: 1.0
+            obs_cam_names:
+              - robotview
+              - eye_in_hand
+
+      - name: "xarm7_ik"
+        robots:
+          xarm7_v1:
+            position: [-0.4, 0.0, 0.0]
+            orientation: [1, 0, 0, 0]
+            base_type: "v0/rethink_mount"
+            control_freq: 90
+            size: 1.0
+            obs_cam_names:
+              - robotview
+              - eye_in_hand
+
+      - name: "So101_ik"
+        robots:
+          so101_v0:
+            position: [-0.2, 0.0, 0.0]
+            orientation: [1, 0, 0, 0]
+            base_type: "v0/rethink_mount_scaled"
+            control_freq: 20
+            size: 0.6
+            init_qpos:
+              {
+                "shoulder_pan": -0.01612974,
+                "shoulder_lift": 0.0,
+                "elbow_flex": -0.02397936,
+                "wrist_flex": 1.57,
+                "wrist_roll": 0.03932365,
+                "gripper": 1.51639493,
+              }
+            obs_cam_names:
+              - robotview
+              - eye_in_hand
+
+  - name: "PenaltyKick-v0"
+    max_episode_steps: 1000
+    entry_point: "sai_mujoco.envs.football.v0:PenaltyKick_v0"
+    robot_configs:
+      - name: "t1"
+        robots:
+          t1_v1:
+            position: [-5.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+      - name: "lower_t1"
+        robots:
+          lower_t1_v1:
+            position: [-5.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+  - name: "GoaliePenaltyKick-v0"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.football.v0:GoaliePenaltyKick_v0"
+    robot_configs:
+      - name: "t1"
+        robots:
+          t1_v1:
+            position: [-5.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+      - name: "lower_t1"
+        robots:
+          lower_t1_v1:
+            position: [-5.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+  - name: "ObstaclePenaltyKick-v0"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.football.v0:ObstaclePenaltyKick_v0"
+    robot_configs:
+      - name: "t1"
+        robots:
+          t1_v1:
+            position: [-5.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+      - name: "lower_t1"
+        robots:
+          lower_t1_v1:
+            position: [-5.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+  - name: "GoalKeeper-v0"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.football.v0:GoalKeeper_v0"
+    robot_configs:
+      - name: "t1"
+        robots:
+          t1_v1:
+            position: [-10.97, 0.0, 0]
+            orientation: [0, 0, 1.0, 0.0]
+            control_freq: 500
+
+      - name: "lower_t1"
+        robots:
+          lower_t1_v1:
+            position: [-10.97, 0.0, 0]
+            orientation: [1.0, 0.0, 0.0, 0.0]
+            control_freq: 500
+
+  - name: "KickToTarget-v0"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.football.v0:KickToTarget_v0"
+    robot_configs:
+      - name: "t1"
+        robots:
+          t1_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+      - name: "lower_t1"
+        robots:
+          lower_t1_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 500
+
+  - name: "KitchenStoveTurnOn-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.single_stage.kitchen_stove:TurnOnStove_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21012,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+  - name: "KitchenStoveTurnOff-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.single_stage.kitchen_stove:TurnOffStove_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21012,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+  - name: "KitchenDrawerOpen-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.single_stage.kitchen_drawer:OpenDrawer_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.0,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+
+  - name: "KitchenDrawerClose-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.single_stage.kitchen_drawer:CloseDrawer_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+
+  - name: "KitchenPnPCounterToMicrowave-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.single_stage.kitchen_pnp:PnPCounterToMicrowave_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21012,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+
+  - name: "KitchenDryDrinkware-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.multi_stage.washing_dishes.dry_drinkware:DryDrinkware_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21012,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+  - name: "KitchenPreSoakPan-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.multi_stage.washing_dishes.pre_soak_pan:PreSoakPan_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21012,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+  - name: "KitchenSortingCleanup-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.multi_stage.washing_dishes.sorting_cleanup:SortingCleanup_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21012,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+  - name: "KitchenStackBowlsInSink-beta"
+    max_episode_steps: 5000
+    entry_point: "sai_mujoco.envs.kitchen.v0.multi_stage.washing_dishes.stack_bowls:StackBowlsInSink_v0"
+    robot_configs:
+      - name: "reachy2_ik"
+        robots:
+          reachy2_v0:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 12.5
+            init_qpos:
+              {
+                "neck_pitch": 0.35,
+                "tripod_joint": 0.21012,
+                "l_shoulder_pitch": 0.2133,
+                "l_shoulder_roll": 0.02378,
+                "l_elbow_yaw": 0.2842,
+                "l_elbow_pitch": -1.7252,
+                "l_wrist_roll": -0.13599,
+                "l_wrist_pitch": -0.10268,
+                "l_wrist_yaw": 0.30259,
+                "r_shoulder_pitch": 0.234369,
+                "r_shoulder_roll": -0.059239,
+                "r_elbow_yaw": -0.3305,
+                "r_elbow_pitch": -1.75538,
+                "r_wrist_roll": 0.1904505,
+                "r_wrist_pitch": -0.05210,
+                "r_wrist_yaw": -0.42301,
+              }
+            obs_cam_names:
+              - left_camera
+              - right_camera
+              - tof_camera
+      - name: "franka_ik"
+        robots:
+          franka_v1:
+            position: [0.0, 0.0, 0]
+            orientation: [0, 0, 0, 1]
+            control_freq: 20
+            base_type: "v0/omron_mobile_base"
+            init_qpos:
+              {
+                "joint1": -0.01612974,
+                "joint2": -1.03446714,
+                "joint3": -0.02397936,
+                "joint4": -2.27550888,
+                "joint5": 0.03932365,
+                "joint6": 1.51639493,
+                "joint7": 0.69615947,
+              }
+            obs_cam_names:
+              - agentview_center
+              - agentview_right
+              - agentview_left
+              - eye_in_hand
+

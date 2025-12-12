@@ -1,0 +1,62 @@
+robots:
+  - name: "xarm7_v0"
+    entry_point: "sai_mujoco.robots.xarm7.xarm7_v0:XArm7_v0"
+  - name: "franka_v0"
+    entry_point: "sai_mujoco.robots.franka.franka_v0:Franka_v0"
+  - name: "humanoid_v0"
+    entry_point: "sai_mujoco.robots.humanoid.humanoid_v0:Humanoid_v0"
+  - name: "t1_v0"
+    entry_point: "sai_mujoco.robots.t1.t1_v0:T1_v0"
+  - name: "lower_t1_v0"
+    entry_point: "sai_mujoco.robots.t1.t1_v0:LowerT1_v0"
+
+environments:
+  - name: "GolfCourseEnv-v0"
+    max_episode_steps: 650
+    entry_point: "sai_mujoco.envs.golf_course.golf_course_v0:GolfCourseEnv_v0"
+    robots:
+      - xarm7_ik_v0:
+          position: [0.9, -0.5, 0.021]
+          orientation: [0.707, 0, 0, 0.707]
+          init_qpos:
+            {
+              "joint1": 0.0,
+              "joint2": 0.0,
+              "joint3": 0.0,
+              "joint4": 0.9,
+              "joint5": 1.5707,
+              "joint6": 1.5707,
+              "joint7": 4.1,
+            }
+      - franka_ik_v0:
+          position: [0.9, -0.5, 0.025]
+          orientation: [0.707, 0, 0, 0.707]
+          init_qpos:
+            {
+              "joint1": 0.2555,
+              "joint2": -0.0117,
+              "joint3": -0.2936,
+              "joint4": -2.5540,
+              "joint5": 1.5981,
+              "joint6": 1.4609,
+              "joint7": -1.7311,
+            }
+
+  - name: "PickPlaceEnv-v0"
+    max_episode_steps: 500
+    entry_point: "sai_mujoco.envs.pick_place.pick_place_v0:PickAndPlaceEnv_v0"
+    robots:
+      - franka_ik_v0:
+          position: [0.35, 0.2, 0.625]
+          orientation: [1, 0, 0, 0]
+      - xarm7_ik_v0:
+          position: [0.25, 0.25, 0.625]
+          orientation: [1, 0, 0, 0]
+
+  - name: "WalkEnv-v0"
+    max_episode_steps: 1000
+    entry_point: "sai_mujoco.envs.walking.walking_v0:WalkingEnv_v0"
+    robots:
+      - humanoid_v0:
+          position: [0.0, 0.0, 0]
+          orientation: [0, 0, 0, 1]
