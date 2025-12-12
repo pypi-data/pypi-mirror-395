@@ -1,0 +1,184 @@
+Metadata-Version: 2.4
+Name: pytemporal
+Version: 1.4.24
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Database
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: pyarrow>=14.0.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: arro3-core
+Requires-Dist: psutil>=7.0.0
+Requires-Dist: pytest>=7.0 ; extra == 'dev'
+Requires-Dist: pytest-benchmark ; extra == 'dev'
+Requires-Dist: black ; extra == 'dev'
+Requires-Dist: mypy ; extra == 'dev'
+Requires-Dist: ruff ; extra == 'dev'
+Provides-Extra: dev
+License-File: LICENSE-APACHE
+License-File: LICENSE-MIT
+Summary: High-performance bitemporal data processing for Python
+Keywords: bitemporal,timeseries,data-processing,temporal,analytics
+Home-Page: https://github.com/gingermike/pytemporal
+Author: PyTemporal Contributors
+License: MIT OR Apache-2.0
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://github.com/gingermike/pytemporal
+Project-URL: Repository, https://github.com/gingermike/pytemporal
+Project-URL: Documentation, https://gingermike.github.io/pytemporal/
+Project-URL: Changelog, https://github.com/gingermike/pytemporal/blob/main/CHANGELOG.md
+Project-URL: Issue Tracker, https://github.com/gingermike/pytemporal/issues
+Project-URL: Performance Benchmarks, https://gingermike.github.io/pytemporal/
+
+<div align="center">
+<img src="docs/logo_large.svg" alt="PyTemporal" height="400" style="vertical-align: middle;">
+</div>
+
+**High-performance bitemporal data processing for Python**
+
+PyTemporal is a Rust-powered library for processing bitemporal timeseries data with world-class performance (157,000+ rows/second). Perfect for financial services, audit systems, and applications requiring immutable data trails with both business and system time dimensions.
+
+## Quick Start
+
+```bash
+# Install from source
+git clone <your-repo>
+cd pytemporal
+uv run maturin develop --release
+```
+
+```python
+import pandas as pd
+from pytemporal import BitemporalTimeseriesProcessor
+
+# Initialize processor
+processor = BitemporalTimeseriesProcessor(
+    id_columns=['id'],
+    value_columns=['price']
+)
+
+# Process temporal updates
+result = processor.process_updates(
+    current_state=current_df,
+    updates=updates_df, 
+    system_date='2025-01-27'
+)
+
+print(f"Updated {len(result.to_insert)} records")
+```
+
+## Key Features
+
+- **🚀 World-Class Performance**: 157,000+ rows/second throughput
+- **🔄 Bitemporal Processing**: Track both business time and system time
+- **🐍 Python-First**: High-level DataFrame API with pandas integration
+- **⚡ Zero-Copy**: Apache Arrow columnar format for memory efficiency
+- **🔧 Flexible Schema**: Configure ID and value columns dynamically
+- **🎯 Two Update Modes**: Delta updates or full state replacement
+- **🔀 Smart Conflation**: Optional merging of consecutive records with identical values
+- **🏗️ Production Ready**: Comprehensive test coverage and clean architecture
+
+## Documentation
+
+- **[📚 API Reference](docs/API_REFERENCE.md)** - Complete API documentation
+- **[🎯 Usage Examples](docs/EXAMPLES.md)** - Practical code examples
+- **[⚡ Performance Guide](docs/PERFORMANCE.md)** - Benchmarks and optimization tips
+- **[📈 Live Benchmarks](https://gingermike.github.io/pytemporal/bench/)** - Performance dashboard
+- **[📊 Criterion Reports](https://gingermike.github.io/pytemporal/bench/criterion/report/)** - Detailed analysis
+
+## What is Bitemporal Data?
+
+Bitemporal data tracks two time dimensions:
+- **Effective Time**: When events occurred in the real world
+- **As-Of Time**: When information was recorded in the system
+
+This enables powerful queries like "What did we think the price was on Jan 15th, as of Jan 20th?"
+
+## Use Cases
+
+- **Financial Services**: Price histories, portfolio valuations, risk calculations
+- **Audit Systems**: Immutable change tracking with full reconstruction capability  
+- **Regulatory Compliance**: Time-accurate reporting for compliance requirements
+- **Data Warehousing**: Slowly changing dimensions with full history preservation
+
+## Performance
+
+| Dataset Size | Processing Time | Throughput | Memory |
+|--------------|-----------------|------------|---------|
+| 800k × 80 cols | 5.4 seconds | 157k rows/sec | ~14GB |
+| 100k × 20 cols | 0.6 seconds | 167k rows/sec | ~2GB |
+
+*Benchmarked on modern hardware with optimized settings*
+
+## Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ Python DataFrame│───▶│ PyTemporal (Rust)│───▶│ Processed Results│
+│ (Pandas)        │    │ • Arrow Columnar │    │ (DataFrame)     │  
+│                 │    │ • Parallel Proc  │    │                 │
+└─────────────────┘    │ • Timeline Logic │    └─────────────────┘
+                       └──────────────────┘
+```
+
+**Built With:**
+- **Rust**: Core processing engine for maximum performance
+- **Apache Arrow**: Columnar data format for zero-copy operations  
+- **PyO3**: Seamless Rust-Python integration
+- **Rayon**: Data parallelism for multi-core performance
+
+## Development
+
+```bash
+# Run tests
+cargo test                                    # Rust tests
+uv run python -m pytest tests/ -v           # Python tests
+
+# Performance benchmarks  
+cargo bench                                  # Detailed benchmarks
+uv run python validate_refactoring.py       # End-to-end validation
+
+# Build release
+uv run maturin develop --release
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make changes and add tests
+4. Run the test suite: `cargo test && uv run pytest`
+5. Submit a pull request
+
+## License
+
+This project is licensed under either of
+
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in PyTemporal by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
+
+## Acknowledgments
+
+Built with modern Rust performance engineering and extensive profiling to achieve world-class bitemporal processing speeds while maintaining clean, maintainable code.
