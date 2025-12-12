@@ -1,0 +1,255 @@
+--- invenio_theme_tuw/theme/templates/semantic-ui/invenio_app_rdm/records/detail.html	2025-11-10 15:00:39.413427098 +0100
++++ .venv/lib/python3.12/site-packages/invenio_app_rdm/records_ui/templates/semantic-ui/invenio_app_rdm/records/detail.html	2025-10-23 15:25:09.258503288 +0200
+@@ -1,19 +1,15 @@
+-{# -*- coding: utf-8 -*-
+-
++{#
+   Copyright (C) 2020 - 2024 CERN.
+   Copyright (C) 2020 - 2021 Northwestern University.
++  Copyright (C) 2021-2023 TU Wien.
+   Copyright (C)        2021 Graz University of Technology.
+   Copyright (C) 2021 New York University.
+   Copyright (C) 2024 KTH Royal Institute of Technology.
+-  Copyright (C) 2021 - 2024 TU Wien.
+ 
+-  Invenio-Theme-TUW is free software; you can redistribute it and/or modify
++  Invenio RDM Records is free software; you can redistribute it and/or modify
+   it under the terms of the MIT License; see LICENSE file for more details.
+ #}
+ 
+-{#- base: invenio-app-rdm v13.0.0 #}
+-{#- changes: schema.org json-ld in header, removed inline style #}
+-
+ {% if use_theme_basic_template|default(true) %}
+   {%- extends config.BASE_TEMPLATE %}
+   {%- block css %}
+@@ -32,22 +28,10 @@
+ 
+ {%- set can_curate_record = permissions is defined and (permissions.can_edit or permissions.can_review) %}
+ 
+-{#- preview_submission_request is set to true when coming from a community submission request #}
++<!-- preview_submission_request is set to true when coming from a community submission request -->
+ {%- set is_preview_submission_request = preview_submission_request or false %}
+ {%- set show_record_management_menu = can_curate_record and (not is_preview or is_preview_submission_request) %}
+ 
+-{#- change: added this block for google datasets #}
+-{%- block tuw_metadata -%}
+-  {#- this is where the schema.org metadata (as fetched from datacite) is inserted, for google datasets #}
+-  {%- set schemaorg_metadata = tuw_create_schemaorg_metadata(record) %}
+-
+-  {%- if schemaorg_metadata %}
+-    <script type="application/ld+json" nonce="{{ csp_nonce() }}">
+-      {{ schemaorg_metadata|safe }}
+-    </script>
+-  {%- endif %}
+-{%- endblock tuw_metadata %}
+-
+ {%- if record_ui["parent"]["access"]["settings"] %}
+   {%- set allow_user_requests = not current_user.is_anonymous and record_ui["parent"]["access"]["settings"]["allow_user_requests"] %}
+   {%- set allow_guest_requests = current_user.is_anonymous and record_ui["parent"]["access"]["settings"]["allow_guest_requests"] %}
+@@ -60,9 +44,12 @@
+   {%- include "invenio_app_rdm/records/details/meta.html" %}
+ {%- endblock head_meta %}
+ 
++
++
++
+ {%- block page_body %}
+   <section id="banners" class="banners" aria-label="{{ _('Information banner') }}">
+-    {#- COMMUNITY HEADER: hide it when displaying the submission request #}
++    <!-- COMMUNITY HEADER: hide it when displaying the submission request -->
+     {% if not is_preview_submission_request %}
+       {% if community %}
+         {% set is_community_restricted = community.access.visibility == 'restricted' %}
+@@ -81,7 +68,8 @@
+               </div>
+               <div class="page-subheader-element">
+                 <div class="ui header">
+-                  <a href="{{ url_for('invenio_app_rdm_communities.communities_detail', pid_value=community.slug) }}" class="ui small header">
++                  <a
++                  href="{{ url_for('invenio_app_rdm_communities.communities_detail', pid_value=community.slug) }}" class="ui small header">
+                     {{ community.metadata.title }}
+                   </a>
+                   <!-- Show the icon for subcommunities -->
+@@ -90,7 +78,8 @@
+                   {% endif %}
+                   {% if community.parent %}
+                   <div class="sub header">{{ _('Part of') }}
+-                    <a href="{{ url_for('invenio_app_rdm_communities.communities_home', pid_value=community.parent.slug) }}">
++                      <a
++                  href="{{ url_for('invenio_app_rdm_communities.communities_home', pid_value=community.parent.slug) }}">
+                     {{community.parent.metadata.title}}
+                     </a>
+                   </div>
+@@ -111,9 +100,9 @@
+         {% endif %}
+       {% endif %}
+     {% endif %}
+-    {#- /COMMUNITY HEADER #}
++    <!-- /COMMUNITY HEADER -->
+ 
+-    {#- PREVIEW HEADER #}
++    <!-- PREVIEW HEADER -->
+     {% if is_preview %}
+       <div class="ui info flashed bottom attached manage message">
+         <div class="ui container">
+@@ -124,22 +113,18 @@
+           <p>
+             {% if not is_draft %}
+               {{ _("You are previewing a published record.") }}
+-
+             {% elif record_ui["is_published"] %}
+               {{ _("You are previewing changes that have not yet been published.") }}
+-
+             {% elif not record_ui["is_published"] and record_ui["versions"]["index"] == 1 %}
+               {{ _("You are previewing a new record that has not yet been published.") }}
+-
+             {% elif not record_ui["is_published"] and record_ui["versions"]["index"] > 1 %}
+               {{ _("You are previewing a new record version that has not yet been published.") }}
+-
+             {% endif %}
+           </p>
+         </div>
+       </div>
+     {% endif %}
+-    {#- /PREVIEW HEADER #}
++    <!-- /PREVIEW HEADER -->
+ 
+     {% if record_ui["is_published"] and record_ui["links"]["latest_html"] and not record_ui["versions"]["is_latest"] %}
+       <div class="ui warning flashed bottom attached manage message">
+@@ -149,7 +134,8 @@
+               <div class="row">
+                 <p>
+                   {% trans link_start=('<a href="' + record_ui["links"]["latest_html"] + '"><b>')|safe, link_end='</b></a>'|safe %}
+-                  There is a {{ link_start }}newer version{{ link_end }} of the record available.
++                    There is a {{ link_start }}newer version{{ link_end }} of the record
++                    available.
+                   {% endtrans %}
+                 </p>
+               </div>
+@@ -158,16 +144,16 @@
+         </div>
+       </div>
+     {% endif %}
+-
+   </section>
+ 
++
+   <div class="ui container">
+     <div class="ui relaxed grid mt-5">
+       <div class="two column row top-padded">
+ 
+         {# Main content #}
+-        <article class="sixteen wide tablet eleven wide computer column main-record-content">
+-
++        <article
++          class="sixteen wide tablet eleven wide computer column main-record-content">
+           {% if record_ui["access"]["record"] == 'restricted' %}
+             <section id="record-access-status"
+                      class="ui {{ record_ui["ui"]["access_status"]["message_class"] }} message rel-mt-1"
+@@ -184,25 +170,27 @@
+           {% endif %}
+ 
+           {%- block record_body -%}
++
+             {%- block record_header -%}
+-              {%- block record_header_button -%}
+-                {% if is_preview and not is_preview_submission_request and can_curate_record and is_draft %}
+ 
+-                  <nav class="back-navigation rel-pb-2 pl-0" aria-label="{{ _('Back-navigation') }}">
++              {%- block record_header_button -%}
+ 
++                {% if is_preview and not is_preview_submission_request and can_curate_record and is_draft %}
++                  <nav class="back-navigation rel-pb-2 pl-0"
++                       aria-label="{{ _('Back-navigation') }}">
+                     {%- set back_page = url_for('invenio_app_rdm_records.deposit_edit', pid_value=record_ui.id) -%}
+                     {%- set back_btn_label = _('Back to edit') -%}
+-
+-                    <a class="ui button labeled icon small compact" href="{{ back_page }}">
+-                      <i class="ui icon angle left"></i> {{ back_btn_label }}
+-                    </a>
++                    <a class="ui button labeled icon small compact"
++                       href="{{ back_page }}">
++                      <i class="ui icon angle left"></i> {{ back_btn_label }}</a>
+                   </nav>
+-
+                 {% endif %}
++
+               {% endblock record_header_button %}
+ 
+               {% if show_record_management_menu %}
+-                <section id="mobile-record-management" class="ui grid tablet only mobile only">
++                <section id="mobile-record-management"
++                         class="ui grid tablet only mobile only">
+                   <div class="sixteen wide column right aligned">
+                     <button id="manage-record-btn"
+                             class="ui small basic icon button m-0"
+@@ -226,14 +214,16 @@
+                 </section>
+               {% endif %}
+ 
+-              <section id="record-info" aria-label="{{ _('Publication date and version number') }}">
++              <section id="record-info"
++                       aria-label="{{ _('Publication date and version number') }}">
+                 <div class="ui grid middle aligned">
+                   <div class="two column row">
+                     <div class="left floated left aligned column">
+                       <span class="ui" title="{{ _('Publication date') }}">
+                         {{ _('Published') }} {{ record_ui["ui"]["publication_date_l10n_long"] }}
+                       </span>
+-                      <span class="label text-muted"> | {{ _('Version {version_number}').format(version_number=record_ui["ui"]["version"]) }}</span>
++                      <span
++                        class="label text-muted"> | {{ _('Version {version_number}').format(version_number=record_ui["ui"]["version"]) }}</span>
+                     </div>
+                     <div class="right floated right aligned column">
+ 
+@@ -266,15 +256,19 @@
+                 </div>
+               </section>
+               <div class="ui divider hidden"></div>
++
+             {%- endblock record_header -%}
+ 
+             {# Title #}
+             {%- block record_title -%}
+-              <section id="record-title-section" aria-label="{{ _('Record title and creators') }}">
+-                <h1 id="record-title" class="wrap-overflowing-text">{{ metadata.title }}</h1>
++              <section id="record-title-section"
++                       aria-label="{{ _('Record title and creators') }}">
++                <h1 id="record-title"
++                    class="wrap-overflowing-text">{{ metadata.title }}</h1>
+ 
+                 {% if record_ui["ui"]["creators"] or record_ui["ui"]["contributors"] %}
+-                  <section id="creatibutors" aria-label="{{ _('Creators and contributors') }}">
++                  <section id="creatibutors"
++                           aria-label="{{ _('Creators and contributors') }}">
+                     {%- include "invenio_app_rdm/records/details/creatibutors.html" %}
+                   </section>
+                 {% endif %}
+@@ -383,7 +376,8 @@
+ 
+             {# Additional details #}
+             {%- block record_details -%}
+-              <section id="additional-details" class="rel-mt-2" aria-label="{{ _('Additional record details') }}">
++              <section id="additional-details" class="rel-mt-2"
++                       aria-label="{{ _('Additional record details') }}">
+                 {%- include "invenio_app_rdm/records/details/details.html" %}
+               </section>
+             {%- endblock record_details -%}
+@@ -391,13 +385,13 @@
+             {# Record footer #}
+             {%- block record_footer -%}
+             {%- endblock record_footer -%}
+-          {%- endblock record_body %}
+ 
++          {%- endblock record_body %}
+         </article>
+ 
+         {# Sidebar #}
+-        <aside class="sixteen wide tablet five wide computer column sidebar" aria-label="{{ _('Record details') }}">
+-
++        <aside class="sixteen wide tablet five wide computer column sidebar"
++               aria-label="{{ _('Record details') }}">
+           {% block record_sidebar %}
+             {%- include "invenio_app_rdm/records/details/side_bar.html" %}
+           {% endblock record_sidebar %}

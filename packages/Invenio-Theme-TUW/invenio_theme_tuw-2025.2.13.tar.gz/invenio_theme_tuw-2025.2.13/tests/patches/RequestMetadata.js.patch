@@ -1,0 +1,134 @@
+--- invenio_theme_tuw/theme/assets/semantic-ui/js/invenio_theme_tuw/RequestMetadata.js	2025-11-10 14:59:33.908182869 +0100
++++ .venv/lib/python3.12/site-packages/invenio_requests/assets/semantic-ui/js/invenio_requests/request/RequestMetadata.js	2025-10-23 15:25:09.137502145 +0200
+@@ -1,21 +1,20 @@
++// This file is part of InvenioRequests
+ // Copyright (C) 2022 CERN.
+ // Copyright (C) 2024 Graz University of Technology.
+ // Copyright (C) 2024 KTH Royal Institute of Technology.
+-// Copyright (C) 2025 TU Wien.
+ //
+-// Invenio-Theme-TUW is free software; you can redistribute it and/or modify it
++// Invenio RDM Records is free software; you can redistribute it and/or modify it
+ // under the terms of the MIT License; see LICENSE file for more details.
+ 
+-/* base: invenio-requests v7.2.1 */
+-/* change: imports from "@js/invenio_requests/request/[...]" instead of "./[...]" */
+ import { i18next } from "@translations/invenio_requests/i18next";
+ import PropTypes from "prop-types";
+ import React, { Component } from "react";
+-import { Image, toRelativeTime } from "react-invenio-forms";
++import { Image } from "react-invenio-forms";
+ import Overridable from "react-overridable";
+ import { Divider, Header, Icon, Message } from "semantic-ui-react";
+-import RequestStatus from "@js/invenio_requests/request/RequestStatus";
+-import RequestTypeLabel from "@js/invenio_requests/request/RequestTypeLabel";
++import { toRelativeTime } from "react-invenio-forms";
++import RequestStatus from "./RequestStatus";
++import RequestTypeLabel from "./RequestTypeLabel";
+ 
+ const User = ({ user }) => (
+   <div className="flex">
+@@ -51,13 +50,7 @@
+ 
+ const Community = ({ community }) => (
+   <div className="flex">
+-    <Image
+-      src={community.links.logo}
+-      avatar
+-      size="tiny"
+-      className="mr-5"
+-      ui={false}
+-    />
++    <Image src={community.links.logo} avatar size="tiny" className="mr-5" ui={false} />
+     <a href={`/communities/${community.slug}`}>{community.metadata.title}</a>
+   </div>
+ );
+@@ -158,44 +151,20 @@
+   }).isRequired,
+ };
+ 
+-export class RequestMetadata extends Component {
++class RequestMetadata extends Component {
+   isResourceDeleted = (details) => details.is_ghost === true;
+ 
+-  // change: add constructor
+-  constructor(props) {
+-    super(props);
+-    this.state = { recordEndpoint: "records" };
+-  }
+-
+-  // change: add method
+-  async componentDidMount() {
+-    const { request } = this.props;
+-    let endpoint = "records";
+-    try {
+-      if (request.topic?.record) {
+-        let result = await fetch(`/api/records/${request.topic.record}`);
+-        if (result.status != 200) {
+-          endpoint = "uploads";
+-        }
+-      }
+-    } finally {
+-      this.setState({ recordEndpoint: endpoint });
+-    }
+-  }
+-
+   render() {
+     const { request } = this.props;
+     const expandedCreatedBy = request.expanded?.created_by;
+     const expandedReceiver = request.expanded?.receiver;
+-
+-    // change: remove <Overridable> to prevent infinite loop
+     return (
++      <Overridable id="InvenioRequest.RequestMetadata.Layout" request={request}>
+       <>
+         {expandedCreatedBy !== undefined && (
+           <>
+             <Header as="h3" size="tiny">
+-              {/* change: title */}
+-              {i18next.t("Request creator")}
++                {i18next.t("Creator")}
+             </Header>
+             {this.isResourceDeleted(expandedCreatedBy) ? (
+               <DeletedResource details={expandedCreatedBy} />
+@@ -210,8 +179,7 @@
+         )}
+ 
+         <Header as="h3" size="tiny">
+-          {/* change: title */}
+-          {i18next.t("Request receiver")}
++            {i18next.t("Receiver")}
+         </Header>
+         {this.isResourceDeleted(expandedReceiver) ? (
+           <DeletedResource details={expandedReceiver} />
+@@ -250,20 +218,17 @@
+           </>
+         )}
+ 
+-        {/* change: always show record link on rdm-curation requests & base endpoint on state */}
+-        {(request.status === "accepted" || request.type == "rdm-curation") &&
+-          request.topic?.record && (
++          {request.status === "accepted" && request.topic?.record && (
+             <>
+               <Divider />
+               <Header as="h3" size="tiny">
+                 {i18next.t("Record")}
+               </Header>
+-              <a href={`/${this.state.recordEndpoint}/${request.topic.record}`}>
+-                {request.title}
+-              </a>
++              <a href={`/records/${request.topic.record}`}>{request.title}</a>
+             </>
+           )}
+       </>
++      </Overridable>
+     );
+   }
+ }
+@@ -274,5 +239,5 @@
+ 
+ export default Overridable.component(
+   "InvenioRequests.RequestMetadata",
+-  RequestMetadata,
++  RequestMetadata
+ );

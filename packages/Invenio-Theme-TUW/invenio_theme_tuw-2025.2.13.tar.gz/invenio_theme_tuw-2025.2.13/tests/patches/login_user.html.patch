@@ -1,0 +1,61 @@
+--- invenio_theme_tuw/theme/templates/semantic-ui/invenio_theme_tuw/overrides/login_user.html	2025-11-10 15:00:39.414427102 +0100
++++ .venv/lib/python3.12/site-packages/invenio_oauthclient/templates/semantic-ui/invenio_oauthclient/login_user.html	2025-10-23 15:25:09.179502542 +0200
+@@ -1,25 +1,17 @@
+ {# -*- coding: utf-8 -*-
+ 
++  This file is part of Invenio.
+   Copyright (C) 2015-2020 CERN.
++  Copyright (C)      2021 TU Wien.
+   Copyright (C)      2021 Graz University of Technology.
+-  Copyright (C) 2020-2025 TU Wien.
+ 
+-  Invenio-Theme-TUW is free software; you can redistribute it and/or modify it
++  Invenio is free software; you can redistribute it and/or modify it
+   under the terms of the MIT License; see LICENSE file for more details.
+ #}
+-
+-{#- base: invenio-oauthclient v5.2.0 #}
+-{#- changes: conditional super() call, customized heading #}
+-{#- TODO: this is horribly broken right now #}
+-
+ {%- extends config.OAUTHCLIENT_LOGIN_USER_TEMPLATE_PARENT %}
+ 
+ {%- from "invenio_oauthclient/_macros.html" import oauth_button %}
+ 
+-{#- change: header text, style, and element #}
+-{%- block form_header %}
+-  <h1 class="ui small login header">{{ _("Log in to %(site_name)s", site_name=config.THEME_SITENAME) }}</h1>
+-{%- endblock -%}
+ 
+ {%- block form_outer %}
+   {% if config.OAUTHCLIENT_REMOTE_APPS %}
+@@ -29,19 +21,13 @@
+       {% endfor %}
+     </div>
+ 
+-    {#- if the local login is enabled, show it #}
+     {%- if config.ACCOUNTS_LOCAL_LOGIN_ENABLED %}
+       <div class="ui horizontal divider">
+         {{ _("OR") }}
+       </div>
+     {%- endif %}
+   {% endif %}
+-
+-  {#- change: conditional super(), to prevent showing a 'login' button #}
+-  {#-         if there is no other input #}
+-  {% if config.ACCOUNTS_LOCAL_LOGIN_ENABLED %}
+     {{ super() }}
+-  {% endif %}
+ {% endblock %}
+ 
+ {%- block recoverable %}
+@@ -62,9 +48,3 @@
+   </div>
+   {%- endif %}
+ {%- endblock %}
+-
+-{#- change: add custom styling #}
+-{%- block css %}
+-  {{ super() }}
+-  {{ webpack['invenio-theme-tuw-login.css'] }}
+-{%- endblock %}

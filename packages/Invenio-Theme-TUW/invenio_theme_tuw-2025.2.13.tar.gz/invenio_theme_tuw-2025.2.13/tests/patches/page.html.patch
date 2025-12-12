@@ -1,0 +1,231 @@
+--- invenio_theme_tuw/theme/templates/semantic-ui/invenio_theme_tuw/overrides/page.html	2025-11-10 15:00:39.414427102 +0100
++++ .venv/lib/python3.12/site-packages/invenio_theme/templates/semantic-ui/invenio_theme/page.html	2025-10-28 10:05:09.929574741 +0100
+@@ -1,16 +1,12 @@
+ {# -*- coding: utf-8 -*-
+ 
+-  Copyright (C) 2015-2018 CERN.
++  This file is part of Invenio.
++  Copyright (C) 2015-2024 CERN.
+   Copyright (C) 2021 New York University.
+-  Copyright (C) 2020-2025 TU Wien.
+ 
+-  Invenio-Theme-TUW is free software; you can redistribute it and/or modify it
++  Invenio is free software; you can redistribute it and/or modify it
+   under the terms of the MIT License; see LICENSE file for more details.
+ #}
+-
+-{#- base: invenio-theme v4.4.0 #}
+-{#- changes: quite a few, see "change:" comments in the code #}
+-
+ <!DOCTYPE html>
+ <html{% if html_css_classes %} class="{{ html_css_classes|join(' ') }}"{% endif %} lang="{{ current_i18n.locale.language|safe }}" dir="{{ current_i18n.locale.text_direction }}">
+   <head>
+@@ -15,18 +11,14 @@
+ <html{% if html_css_classes %} class="{{ html_css_classes|join(' ') }}"{% endif %} lang="{{ current_i18n.locale.language|safe }}" dir="{{ current_i18n.locale.text_direction }}">
+   <head>
+     {%- block head %}
++
+       {%- block head_meta %}
+         <meta charset="utf-8">
+         <meta http-equiv="X-UA-Compatible" content="IE=edge">
+         <meta name="viewport" content="width=device-width, initial-scale=1">
+ 
+-        {%- if description %}
+-          <meta name="description" content="{{ description }}"/>
+-        {%- endif %}
+-
+-        {%- if keywords %}
+-          <meta name="keywords" content="{{ keywords }}"/>
+-        {%- endif %}
++    {%- if description %}<meta name="description" content="{{ description }}" />{% endif %}
++    {%- if keywords %}<meta name="keywords" content="{{ keywords }}" />{% endif %}
+ 
+         {%- if config.get('THEME_GOOGLE_SITE_VERIFICATION', None) %}
+           {%- for google_id in config.THEME_GOOGLE_SITE_VERIFICATION %}
+@@ -34,16 +26,17 @@
+           {%- endfor %}
+         {%- endif %}
+ 
+-        {%- set meta_generator = get_meta_generator() -%}
+-        {%- if meta_generator -%}
++    {% set meta_generator = get_meta_generator() %}
++    {% if meta_generator %}
+           <meta name="generator" content="{{ meta_generator }}" />
+-        {%- endif -%}
++    {%- endif %}
++
++    {# Add meta tags from an existing "meta_robot_tags" Jinja variable or config #}
++    {% set meta_robot_tags = meta_robot_tags or config.get("THEME_META_ROBOT_TAGS") %}
++    {% for meta_tag in meta_robot_tags %}
++      <meta {{ meta_tag | xmlattr }}>
++    {% endfor %}
+ 
+-        {#- Add meta tags from an existing "meta_robot_tags" Jinja variable or config #}
+-        {%- set meta_robot_tags = meta_robot_tags or config.get("THEME_META_ROBOT_TAGS") %}
+-        {%- for meta_tag in meta_robot_tags %}
+-          <meta {{ meta_tag | xmlattr }} />
+-        {%- endfor %}
+       {%- endblock head_meta %}
+ 
+       {%- block head_title %}
+@@ -52,13 +45,11 @@
+       {%- endblock head_title %}
+ 
+       {%- block head_links %}
+-        {#- change: favicons in 16x16 and 32x32 #}
+-        <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/favicon-32x32.png') }}"/>
+-        <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/favicon-16x16.png') }}"/>
++      <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
+ 
+         {%- if keywords %}
+           <link rel="canonical" href="{{ canonical_url }}"/>
+-        {%- endif %}
++      {% endif %}
+ 
+         {%- block head_links_langs %}
+           {%- if alternate_urls %}
+@@ -69,93 +60,64 @@
+         {%- endblock %}
+ 
+         {%- block head_apple_icons %}
+-          {#- change: removed apple touch icons #}
++        {%- for size in [120, 152, 167, 180] %}
++          {%- set icon_name = 'apple-touch-icon-%d.png' | format(size) %}
++          <link rel="apple-touch-icon" sizes="{{ size }}x{{ size }}" href="{{ url_for('static', filename=icon_name) }}"/>
++        {%- endfor %}
+         {%- endblock head_apple_icons %}
++
+       {%- endblock head_links %}
+ 
+-      {%- block header %}
+-      {%- endblock header %}
++    {%- block header %}{% endblock header %}
+ 
+       {%- block css %}
+-        {{- webpack['theme.css'] }}
+-        {#- change: removed IE8 compat code #}
++      {{ webpack['theme.css'] }}
++      <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
++      <!--[if lt IE 9]>
++        <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
++        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
++      <![endif]-->
+       {%- endblock css %}
+-
+-      {%- block tuw_metadata %}
+-        {#- change: added tuw_metadata block #}
+-      {%- endblock tuw_metadata -%}
+-
+-      {%- block tracking %}
+-        {#- change: added matomo block #}
+-        {%- if config.get("THEME_TUW_MATOMO_ENABLED", False) %}
+-          {{- webpack["invenio-theme-tuw-tracking.js"] }}
+-        {%- endif %}
+-      {%- endblock tracking %}
+     {%- endblock head %}
+   </head>
+ 
+-  {#- change: formatting, shape of isMathJaxEnabled #}
+-    <body data-invenio-config='{{ {"isMathJaxEnabled": config.THEME_MATHJAX_CDN != ""} | tojson }}' class="{{ body_css_classes|join(' ') -}}" {% if g.ln %} lang="{{ g.ln.split('_', 1)[0]|safe }}" {% if rtl_direction %}{{ rtl_direction|safe }} {% endif %}{% endif -%} itemscope itemtype="http://schema.org/WebPage" data-spy="scroll" data-target=".scrollspy-target">
+-    {#- change: added matomo code #}
+-    {%- if config.get("THEME_TUW_MATOMO_ENABLED", False) and config.get("THEME_TUW_MATOMO_URL", None) %}
+-      {%- set matomo_url = config.get("THEME_TUW_MATOMO_URL", "").rstrip("/") + "/" %}
+-      {%- set matomo_site_id = config.get("THEME_TUW_MATOMO_SITE_ID", 1) %}
+-
+-      <input id="matomo-url" type="hidden" value="{{ matomo_url }}"/>
+-      <input id="matomo-site-id" type="hidden" value="{{ matomo_site_id }}"/>
+-    {%- endif %}
++  <body data-invenio-config='{{ { "isMathJaxEnabled": config.THEME_MATHJAX_CDN, } | tojson }}' {% if body_css_classes %} class="{{ body_css_classes|join(' ') }}"{% endif %}{% if g.ln %} lang="{{ g.ln.split('_', 1)[0]|safe }}"{% if rtl_direction %} {{ rtl_direction|safe }}{% endif %}{% endif %} itemscope itemtype="http://schema.org/WebPage" data-spy="scroll" data-target=".scrollspy-target">
+ 
+     {%- block body %}
++
+       {%- block bypasslinks %}
+-        <a id="skip-to-main" class="ui button primary ml-5 mt-5 skip-link" href="#main">
+-          {{_('Skip to main')}}
+-        </a>
++      <a id="skip-to-main" class="ui button primary ml-5 mt-5 skip-link" href="#main">{{_('Skip to main')}}</a>
+       {%- endblock bypasslinks %}
+ 
+-      {#- change: removed browserupgrade block (IE < 8) #}
+-      {#- change: most of the body_inner block #}
++      {%- block browserupgrade %}
++      <!--[if lt IE 8]>
++        <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
++      <![endif]-->
++      {%- endblock browserupgrade %}
+       {%- block body_inner %}
+-        {#- same as upstream #}
++
+         {%- block page_header %}
+-          {%- include config.THEME_HEADER_TEMPLATE %}
++          {% include config.THEME_HEADER_TEMPLATE %}
+         {%- endblock page_header %}
+ 
+-        {#- the banner, flashed messages, and breadcrumbs were moved here from the header #}
+-        {%- block site_banner %}
+-          {% from 'invenio_banners/banner.html' import banner %}
+-          {{ banner() }}
+-        {%- endblock %}
+-
+-        {%- block flashmessages %}
+-          {%- from "invenio_theme/macros/messages.html" import flashed_messages with context -%}
+-          {{ flashed_messages() }}
+-        {%- endblock %}
+-
+-        {%- block breadcrumbs %}
+-        {%- endblock breadcrumbs %}
+-
+-        <main id="main" class="invenio-page-body">
+-          {%- block page_hero %}
+-          {%- endblock page_hero %}
++        <main id="main">
++        <div class="invenio-page-body">
+           {%- block page_body %}
+-            {%- include "invenio_theme/body.html" %}
++            {% include "invenio_theme/body.html" %}
+           {%- endblock page_body %}
++        </div>
+         </main>
+ 
+-        {#- same as upstream #}
+         {%- block page_footer %}
+-          {%- include config.THEME_FOOTER_TEMPLATE %}
++          {% include config.THEME_FOOTER_TEMPLATE %}
+         {%- endblock page_footer %}
++
+       {%- endblock body_inner %}
+ 
+       {%- block javascript %}
+-        {#- change: add static path for FDT if enabled (we need the nonce for CSP, it's not included in the provided script tag) #}
+-        {%- if config.DEBUG_TB_ENABLED -%}
+-          <script type="text/javascript" nonce="{{ csp_nonce() }}">var DEBUG_TOOLBAR_STATIC_PATH = '{{ url_for("_debug_toolbar.static", filename="") }}'</script>
+-        {%- endif -%}
+-        {%- if config.THEME_MATHJAX_CDN -%}
+-          {#- change: added nonce for the inline script #}
+-          <script type="text/javascript" nonce="{{ csp_nonce() }}">
++
++        {% if config.THEME_MATHJAX_CDN %}
++          <script type="text/javascript">
+             window.MathJax = {
+               tex: {
+                 inlineMath: [['$', '$'], ['\\(', '\\)']],
+@@ -164,13 +126,15 @@
+             };
+           </script>
+           <script type="text/javascript" src="{{ config.THEME_MATHJAX_CDN }}"></script>
+-        {%- endif -%}
+-        {%- include config.THEME_JAVASCRIPT_TEMPLATE %}
++        {% endif %}
++
++        {% include config.THEME_JAVASCRIPT_TEMPLATE %}
+       {%- endblock javascript %}
+ 
+       {%- block trackingcode %}
+-        {%- include config.THEME_TRACKINGCODE_TEMPLATE %}
+-      {%- endblock trackingcode %}
++        {% include config.THEME_TRACKINGCODE_TEMPLATE %}
++      {%- endblock %}
++
+     {%- endblock body %}
+   </body>
+ </html>
