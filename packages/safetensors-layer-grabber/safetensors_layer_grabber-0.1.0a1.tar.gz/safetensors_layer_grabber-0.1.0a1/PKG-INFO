@@ -1,0 +1,102 @@
+Metadata-Version: 2.4
+Name: safetensors-layer-grabber
+Version: 0.1.0a1
+Summary: Extracts all weights corresponding to a specific layer or block from large models saved in safetensors format, and exports them as a PyTorch-compatible state dict.
+Author-email: Jifeng Wu <jifengwu2k@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/jifengwu2k/safetensors-layer-grabber
+Project-URL: Bug Tracker, https://github.com/jifengwu2k/safetensors-layer-grabber/issues
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=2
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch
+Requires-Dist: safetensors
+Dynamic: license-file
+
+# safetensors-layer-grabber
+
+Extracts all weights corresponding to a specific layer or block from large models saved
+in [safetensors](https://github.com/huggingface/safetensors) format, and exports them as a PyTorch-compatible
+state dict.
+
+## Example
+
+```bash
+python -m safetensors_layer_grabber \
+  --model-dir ~/models/my_model \
+  --layer model.layers.12.mlp \
+  --output layer12_mlp.ckpt
+```
+
+## Features
+
+- **Targeted Extraction:** Extract weights corresponding to any layer or nested component by name prefix (e.g.
+  `model.layers.8.self_attn`)
+- **Flexible Output:** Choose your output filename, or default to `<layer>.ckpt`
+- **Efficient:** Works directly with multipart safetensors files; no need to load the entire model
+
+## Installation
+
+```bash
+pip install safetensors-layer-grabber
+```
+
+## Arguments
+
+| Argument    | Required | Description                                                         |
+|-------------|----------|---------------------------------------------------------------------|
+| --model-dir | Yes      | Directory containing `.safetensors` files of the model              |
+| --layer     | Yes      | Layer/component prefix to extract (e.g. `model.layers.8.self_attn`) |
+| --output    | No       | Output file name (defaults to `<layer>.ckpt`)                       |
+
+## Understanding Parameter Names
+
+### In safetensors files
+
+Safetensors model shards store parameters as key–tensor pairs, with keys like:
+
+```
+model.layers.8.self_attn.q_proj.weight
+model.layers.8.self_attn.k_proj.weight
+model.layers.8.self_attn.v_proj.bias
+```
+
+### In the extracted `.ckpt` file
+
+When you use a prefix with `--layer`, **that prefix is stripped** from the keys in the saved state dict.
+
+- **Example:**
+    - Input safetensors key: `model.layers.8.self_attn.q_proj.weight`
+    - Layer argument: `model.layers.8.self_attn`
+    - Output key in `.ckpt`: `q_proj.weight`
+- **Another example:**
+    - Input safetensors key: `model.layers.10.mlp.fc1.weight`
+    - Layer argument: `model.layers.10.mlp`
+    - Output key in `.ckpt`: `fc1.weight`
+
+#### Key Mapping Table
+
+| Safetensors key                        | Layer argument           | Saved .ckpt key |
+|----------------------------------------|--------------------------|-----------------|
+| model.layers.8.self_attn.q_proj.weight | model.layers.8.self_attn | q_proj.weight   |
+| model.layers.8.self_attn.k_proj.bias   | model.layers.8.self_attn | k_proj.bias     |
+| model.layers.8.self_attn.inner.linear  | model.layers.8.self_attn | inner.linear    |
+
+This makes the exported layer weights easy to load with `torch.load` or directly into submodules.
+
+## FAQ & Notes
+
+- If the specified `--layer` prefix **doesn't match any weights exactly**, the script will raise an exception and not
+  write a file.
+- If no `.safetensors` files are found in the directory, an error will be raised.
+
+## Contributing
+
+Contributions are welcome! Please submit pull requests or open issues on the GitHub repository.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
