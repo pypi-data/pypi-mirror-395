@@ -1,0 +1,23 @@
+title: "General DHCP Inventory"
+description: "LXC Inventory extension for the setup_kea playbook."
+extend_schema: lxc_inv_schema.yaml
+properties:
+  lxcs:
+    items:
+      required:
+        - vars
+      properties:
+        parameters:
+          properties:
+            net0:
+              description: |
+                Network interface the dhcp will serve on. This has to be named "pve" instead of the normal eth0 for the dhcp playbooks to work,
+                they configure kea to listen on this interface name.
+              pattern: "\\bname=pve\\b"
+        vars:
+          required:
+            - kea_dhcp_main
+          properties:
+            kea_dhcp_main:
+              description: "Determines the lxc that will be the dhcp master instance. One lxc should be set to true, the other to false."
+              type: boolean

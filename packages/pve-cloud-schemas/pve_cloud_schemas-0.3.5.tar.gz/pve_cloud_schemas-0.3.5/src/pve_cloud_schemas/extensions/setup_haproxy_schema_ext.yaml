@@ -1,0 +1,31 @@
+title: "HAProxy Inventory"
+description: "LXC Inventory extension for the setup_proxy playbook."
+extend_schema: lxc_inv_schema.yaml
+required:
+  - static_includes
+properties:
+  static_includes:
+    additionalProperties: false
+    required:
+      - postgres_stack
+    properties:
+      postgres_stack:
+        type: string
+        description: |
+          Stack fqdn for postgres patroni stack. On the presence of the host the playbook will fetch
+          proxy configuration from the database. This is needed so that after the initial setup everything
+          still works.
+        examples:
+          - patroni.your-cloud.domain
+  lxcs:
+    items:
+      required:
+        - vars
+      properties:
+        vars:
+          required:
+            - keepalived_master
+          properties:
+            keepalived_master:
+              description: One LXC should have this set to true the other to false.
+              type: boolean
