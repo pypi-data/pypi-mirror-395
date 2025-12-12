@@ -1,0 +1,91 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:plone="http://namespaces.plone.org/plone">
+
+    <include package="plone.contentrules" file="meta.zcml" />
+    <include package="plone.app.contentrules" />
+
+    <!-- Create new version -->
+
+    <adapter factory=".version.CopyActionExecutor" />
+
+    <browser:page
+        name="eea.dexterity.indicators.Copy"
+        for="plone.app.contentrules.browser.interfaces.IRuleActionAdding"
+        class=".version.CopyAddFormView"
+        permission="plone.app.contentrules.ManageContentRules"
+        />
+
+    <browser:page
+        name="edit"
+        for=".version.ICopyAction"
+        class=".version.CopyEditFormView"
+        permission="plone.app.contentrules.ManageContentRules"
+        />
+
+    <plone:ruleAction
+        name="eea.dexterity.indicators.Copy"
+        title="IMSv4: Create new version"
+        description="Copy the triggering item to a specific folder and intialize editing version"
+        for="*"
+        event="zope.interface.interfaces.IObjectEvent"
+        schema=".version.ICopyAction"
+        factory=".version.CopyAction"
+        addview="eea.dexterity.indicators.Copy"
+        editview="edit"
+        />
+
+    <!-- Retract and rename old Indicator -->
+
+    <adapter factory=".actions.RetractAndRenameOldVersionExecutor" />
+
+    <browser:page
+        for="plone.app.contentrules.browser.interfaces.IRuleActionAdding"
+        name="eea.dexterity.indicators.retract_and_rename_old_version"
+        class=".actions.RetractAndRenameOldVersionAddForm"
+        permission="plone.app.contentrules.ManageContentRules"
+      />
+
+    <plone:ruleAction
+        name="eea.dexterity.indicators.retract_and_rename_old_version"
+        title="IMSv4: Retract and rename old Indicator"
+        description="IMSv4: Retract and rename old Indicator"
+        for="*"
+        event="zope.interface.interfaces.IObjectEvent"
+        addview="eea.dexterity.indicators.retract_and_rename_old_version"
+        schema=".actions.IRetractAndRenameOldVersionAction"
+        factory=".actions.RetractAndRenameOldVersionAction"
+        />
+
+    <!-- Enable/disable discussions -->
+
+    <adapter factory=".actions.EnableDisableDiscussionActionExecutor" />
+
+    <browser:page
+        for="plone.app.contentrules.browser.interfaces.IRuleActionAdding"
+        name="eea.dexterity.indicators.EnableDisableDiscussion"
+        class=".actions.EnableDisableDiscussionAddForm"
+        permission="plone.app.contentrules.ManageContentRules"
+      />
+
+    <browser:page
+        for=".actions.IEnableDisableDiscussionAction"
+        name="edit"
+        class=".actions.EnableDisableDiscussionEditForm"
+        permission="plone.app.contentrules.ManageContentRules"
+      />
+
+    <plone:ruleAction
+        name="eea.dexterity.indicators.enable_disable_discussion"
+        title="Enable/disable discussions"
+        description="Enable and disable discussions"
+        for="*"
+        event="zope.interface.interfaces.IObjectEvent"
+        addview="eea.dexterity.indicators.EnableDisableDiscussion"
+        editview="edit"
+        schema=".actions.IEnableDisableDiscussionAction"
+        factory=".actions.EnableDisableDiscussionAction"
+        />
+
+</configure>
