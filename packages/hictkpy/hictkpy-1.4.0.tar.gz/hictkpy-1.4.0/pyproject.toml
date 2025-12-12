@@ -1,0 +1,176 @@
+# Copyright (C) 2023 Roberto Rossini <roberros@uio.no>
+#
+# SPDX-License-Identifier: MIT
+
+[build-system]
+requires = [
+  "conan>=2.0.5",
+  "nanobind>=2", # This is required in order to run stubgen
+  "numpy>=2",
+  "scikit-build-core>=0.10",
+  "typing_extensions",
+]
+
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "hictkpy"
+dynamic = ["version"]
+description = "Python bindings for hictk: read and write .cool and .hic files directly from Python"
+license = "MIT"
+license-files = ["LICENSE", "external/licenses/*"]
+readme = "README.md"
+authors = [
+  {name = "Roberto Rossini", email = "roberros@uio.no"}
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Free Threading :: 1 - Unstable",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+dependencies = []
+
+optional-dependencies.numpy = [
+  "numpy",
+]
+
+optional-dependencies.pandas = [
+  "hictkpy[pyarrow]",
+  "pandas>=2.1.0,!=2.2.0",
+]
+
+optional-dependencies.pyarrow = [
+  "pyarrow>=16",
+]
+
+optional-dependencies.scipy = [
+  "scipy",
+]
+
+optional-dependencies.all = [
+  "hictkpy[numpy,pandas,pyarrow,scipy]",
+]
+
+[dependency-groups]
+
+test = [
+  "pytest>=8.0",
+]
+
+docs = [
+  "furo==2024.8.6",
+  "ipython>=8.37,<10",
+  "sphinx>=8.1,<9",
+  "sphinx-copybutton>=0.5.2,<0.6",
+]
+
+dev = [
+  "hictkpy[all]",
+  {include-group = "docs"},
+  {include-group = "test"},
+  "black>=25.1",
+  "clang-format>=20.1",
+  "isort>=6.0",
+  "gersemi>=0.22",
+]
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build/{wheel_tag}"
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+sdist.include = [
+  "cmake/.clang-tidy.in",
+  "external/**",
+  "src/_version.py",
+  "utils/devel/stubgen.py"
+]
+sdist.exclude = [
+  ".*",
+  "docs/rtd/**",
+  "utils/devel"
+]
+wheel.expand-macos-universal-tags = true
+cmake.build-type = "Release"  # "Debug"
+cmake.version = "CMakeLists.txt"
+
+[tool.scikit-build.cmake.define]
+BUILD_SHARED_LIBS = { env="HICTKPY_BUILD_SHARED_LIBS", default="OFF" }
+CMAKE_C_STANDARD = { env="HICTKPY_C_STANDARD", default=11 }
+CMAKE_CXX_STANDARD = { env="HICTKPY_CXX_STANDARD", default=17 }
+CMAKE_OSX_DEPLOYMENT_TARGET = { env="HICTKPY_OSX_DEPLOYMENT_TARGET", default="14.0" }
+CMAKE_PROJECT_TOP_LEVEL_INCLUDES = { env="HICTKPY_PROJECT_TOP_LEVEL_INCLUDES", default="cmake/conan_provider.cmake" }
+CONAN_INSTALL_ARGS = { env="HICTKPY_CONAN_INSTALL_ARGS", default="--build=missing;--update;--options=*/*:shared=False" }
+HICTKPY_BUILD_PORTABLE_WHEELS_WIN = { env="HICTKPY_BUILD_PORTABLE_WHEELS_WIN", default="OFF" }
+
+[tool.setuptools_scm]
+write_to = "src/_version.py"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = [
+  "error",
+  "ignore:(ast.Str|Attribute s|ast.NameConstant|ast.Num) is deprecated:DeprecationWarning:_pytest",
+  "ignore:datetime\\.datetime\\.utcfromtimestamp\\(\\)*:DeprecationWarning",  # https://github.com/pytest-dev/pytest/issues/11528
+  "ignore:The global interpreter lock \\(GIL\\) has been enabled to load module*:RuntimeWarning",
+]
+testpaths = [
+  "test/python"
+]
+
+[tool.cibuildwheel]
+build-frontend = "build[uv]"
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64:2025.10.19-2"
+manylinux-i686-image = "quay.io/pypa/manylinux_2_28_i686:2025.10.19-2"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64:2025.10.19-2"
+manylinux-ppc64le-image = "quay.io/pypa/manylinux_2_28_ppc64le:2025.10.19-2"
+manylinux-s390x-image = "quay.io/pypa/manylinux_2_28_s390x:2025.10.19-2"
+manylinux-pypy_x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64:2025.10.19-2"
+manylinux-pypy_i686-image = "quay.io/pypa/manylinux_2_28_i686:2025.10.19-2"
+manylinux-pypy_aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64:2025.10.19-2"
+
+skip = ["cp3??t-win*", "cp315*", "*musllinux*", "pp*"]
+test-command = "uv run pytest {project}/test -v"
+test-extras = ["all"]
+test-groups = ["test"]
+test-skip = []
+
+# Setuptools bug causes collision between pypy and cpython artifacts
+before-build = [
+  "rm -rf '{project}/build'",
+]
+
+[tool.cibuildwheel.linux]
+before-all = [
+  "dnf install -y --setopt=install_weak_deps=False clang lld llvm-devel zstd",
+  "tar -C /tmp/ -xf /host/tmp/dependencies.conan.tar",
+]
+
+[tool.ruff]
+extend-select = [
+  "B", # flake8-bugbear
+  "B904",
+  "I", # isort
+  "PGH", # pygrep-hooks
+  "RUF", # Ruff-specific
+  "UP", # pyupgrade
+]
+extend-ignore = [
+  "E501", # Line too long
+]
+target-version = "py310"
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
