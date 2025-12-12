@@ -1,0 +1,257 @@
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "amqp.jinja.include" as amqp -%}
+{%- import "util.jinja.include" as util -%}
+{{ util.CommonFileHeader() }}
+
+{%- set messagegroups = root.messagegroups %}
+{%- set package_name = project_name | lower | replace('-', '_') %}
+package {{ package_name }};
+
+import org.junit.jupiter.api.*;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import org.apache.qpid.protonj2.client.*;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Integration tests for AMQP consumer using Testcontainers with ActiveMQ Artemis
+ */
+@Testcontainers
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class {{ class_name | strip_namespace }} {
+    private static final Logger logger = LogManager.getLogger({{ class_name | strip_namespace }}.class);
+    private static final String QUEUE_NAME = "exampleQueue";
+    private static final int MESSAGE_TIMEOUT_SECONDS = 20;
+    private static final int CONSUMER_STARTUP_DELAY_MS = 1000;
+    private static final int MAX_RETRY_ATTEMPTS = 2;
+    private static final String AMQP_BROKER = System.getenv().getOrDefault("AMQP_BROKER", "artemis");
+    
+    @Container
+    private static GenericContainer<?> brokerContainer = createBrokerContainer();
+    
+    private URI brokerUrl;
+    
+    private static GenericContainer<?> createBrokerContainer() {
+        String broker = System.getenv().getOrDefault("AMQP_BROKER", "artemis");
+        logger.info("Creating AMQP broker container for: {}", broker);
+        
+        if ("rabbitmq".equalsIgnoreCase(broker)) {
+            String rabbitmqVersion = System.getenv().getOrDefault("RABBITMQ_VERSION", "4");
+            String imageTag = rabbitmqVersion.equals("3") ? "3-management" : "4-management";
+            logger.info("Using RabbitMQ version: {}", imageTag);
+            
+            GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse("rabbitmq:" + imageTag))
+                .withExposedPorts(5672, 15672)
+                .withEnv("RABBITMQ_DEFAULT_USER", "guest")
+                .withEnv("RABBITMQ_DEFAULT_PASS", "guest");
+            
+            // RabbitMQ 3.x requires AMQP 1.0 plugin, RabbitMQ 4.0+ has native support
+            if (rabbitmqVersion.equals("3")) {
+                container.withCommand("bash", "-c", 
+                    "rabbitmq-plugins enable rabbitmq_amqp1_0 && docker-entrypoint.sh rabbitmq-server");
+            }
+            
+            return container.waitingFor(Wait.forLogMessage(".*Server startup complete.*", 1)
+                    .withStartupTimeout(Duration.ofSeconds(120)));
+        } else {
+            // Default: ActiveMQ Artemis
+            return new GenericContainer<>(DockerImageName.parse("apache/activemq-artemis:latest"))
+                .withExposedPorts(5672)
+                .withEnv("ARTEMIS_USER", "guest")
+                .withEnv("ARTEMIS_PASSWORD", "guest")
+                .withEnv("ANONYMOUS_LOGIN", "true")
+                .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(60)));
+        }
+    }
+    
+    @BeforeAll
+    public void setUp() throws Exception {
+        String host = brokerContainer.getHost();
+        Integer port = brokerContainer.getMappedPort(5672);
+        brokerUrl = new URI("amqp://" + host + ":" + port + "/" + QUEUE_NAME);
+        logger.info("{} broker URL: {}", AMQP_BROKER, brokerUrl);
+    }
+    
+    {%- for messagegroupid, messagegroup in messagegroups.items() %}
+    {%- set pascal_group_name = messagegroupid | pascal %}
+    {%- set class_name = (pascal_group_name | strip_namespace) + "EventConsumer" %}
+    
+    {%- for messageid, message in messagegroup.messages.items() %}
+    {%- set messagename = messageid | pascal | strip_namespace %}
+    {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+    
+    @Test
+    @DisplayName("Test {{ messagename }} message reception")
+    public void test{{ messagename }}Message() throws Exception {
+        logger.info("Starting test{{ messagename }}Message");
+        
+        // Retry logic for flaky tests in CI environments
+        Exception lastException = null;
+        for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                logger.info("Attempt {}/{} for test{{ messagename }}Message", attempt, MAX_RETRY_ATTEMPTS);
+                executeTest{{ messagename }}();
+                logger.info("Test{{ messagename }}Message succeeded on attempt {}", attempt);
+                return; // Test passed, exit
+            } catch (Exception ex) {
+                lastException = ex;
+                logger.warn("Attempt {}/{} failed: {}", attempt, MAX_RETRY_ATTEMPTS, ex.getMessage());
+                if (attempt < MAX_RETRY_ATTEMPTS) {
+                    Thread.sleep(2000); // Wait before retry
+                }
+            }
+        }
+        // All attempts failed
+        logger.error("Test{{ messagename }}Message failed after {} attempts", MAX_RETRY_ATTEMPTS);
+        throw lastException;
+    }
+    
+    private void executeTest{{ messagename }}() throws Exception {
+        PlainEndpointCredential credential = new PlainEndpointCredential("guest", "guest");
+        {{ class_name }} consumer = {{ class_name }}.createConsumer(
+            credential,
+            new HashMap<>(),
+            List.of(brokerUrl)
+        );
+        
+        CountDownLatch messageReceived = new CountDownLatch(5);
+        List<{{ message_body_type }}> receivedMessages = new ArrayList<>();
+        
+        consumer.on{{ messagename }}((context, cloudEvent, data) -> {
+            try {
+                logger.info("{{ messagename }} message received");
+                assertNotNull(cloudEvent, "CloudEvent should not be null");
+                assertNotNull(data, "Message data should not be null");
+                receivedMessages.add(data);
+                context.accept(); // Accept the message
+                messageReceived.countDown();
+            } catch (AssertionError ex) {
+                logger.error("Assertion failed during message processing", ex);
+                context.reject("Assertion failed", ex.getMessage());
+            } catch (Exception ex) {
+                logger.error("Error processing message", ex);
+                context.reject("Processing error", ex.getMessage());
+            }
+        });
+        
+        consumer.start();
+        
+        // Allow consumer to fully initialize before sending messages
+        logger.info("Waiting {}ms for consumer to stabilize...", CONSUMER_STARTUP_DELAY_MS);
+        Thread.sleep(CONSUMER_STARTUP_DELAY_MS);
+        
+        Client client = null;
+        Connection connection = null;
+        try {
+            // Send test message using ProtonJ2 Client
+            client = Client.create();
+            ConnectionOptions connOptions = new ConnectionOptions();
+            connOptions.user("guest");
+            connOptions.password("guest");
+            
+            connection = client.connect(brokerUrl.getHost(), brokerUrl.getPort(), connOptions);
+            Sender sender = connection.openSender(QUEUE_NAME);
+            
+            {%- if cloudEvents.isCloudEvent(message) %}
+            // Create CloudEvent with test data
+            {%- if message_body_type != "byte[]" %}
+            // Create test data instance
+            {{ message_body_type }} testData = new {{ message_body_type }}();
+            // TODO: Initialize testData fields
+            byte[] eventData = new com.fasterxml.jackson.databind.ObjectMapper()
+                .writeValueAsBytes(testData);
+            {%- else %}
+            // For byte[] data type, create valid JSON test data
+            byte[] eventData = "\"Test data\"".getBytes();
+            {%- endif %}
+            
+            // Build CloudEvent
+            io.cloudevents.CloudEvent cloudEvent = io.cloudevents.core.builder.CloudEventBuilder.v1()
+                .withId(UUID.randomUUID().toString())
+                {%- if "type" in message.envelopemetadata and "value" in message.envelopemetadata["type"] %}
+                .withType("{{ message.envelopemetadata["type"]["value"] }}")
+                {%- else %}
+                .withType("{{ messageid }}")
+                {%- endif %}
+                .withSource(URI.create("urn:example-com:test-source"))
+                .withDataContentType("application/json")
+                .withData(eventData)
+                .build();
+            
+            // Serialize CloudEvent to JSON
+            byte[] cloudEventBytes = new io.cloudevents.jackson.JsonFormat()
+                .serialize(cloudEvent);
+            
+            // Create AMQP message with CloudEvent payload
+            Message<byte[]> testMessage = Message.create(cloudEventBytes);
+            testMessage.messageId(UUID.randomUUID().toString());
+            testMessage.contentType("application/cloudevents+json");
+            {%- else %}
+            // Create AMQP message with direct payload
+            {%- if message_body_type != "byte[]" %}
+            {{ message_body_type }} testData = new {{ message_body_type }}();
+            // TODO: Initialize testData fields
+            byte[] eventData = new com.fasterxml.jackson.databind.ObjectMapper()
+                .writeValueAsBytes(testData);
+            {%- else %}
+            byte[] eventData = "Test".getBytes();
+            {%- endif %}
+            
+            Message<byte[]> testMessage = Message.create(eventData);
+            testMessage.messageId(UUID.randomUUID().toString());
+            testMessage.contentType("application/json");
+            {%- set protocolopts = message.get('protocoloptions', {}) %}
+            {%- if protocolopts.get('application_properties') %}
+            {%- for propname, propspec in protocolopts.application_properties.items() %}
+            {%- if propspec.get('value') %}
+            testMessage.property("{{ propname }}", "{{ propspec.value }}");
+            {%- endif %}
+            {%- endfor %}
+            {%- endif %}
+            {%- endif %}
+            
+            // Send 5 messages
+            for (int i = 0; i < 5; i++) {
+                sender.send(testMessage);
+            }
+            
+            // Wait for all messages to be received (increased timeout for CI reliability)
+            boolean result = messageReceived.await(MESSAGE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            assertTrue(result, "All 5 messages should be received and processed successfully");
+            assertEquals(5, receivedMessages.size(), "Should receive exactly 5 messages");
+            
+            logger.info("Message received validation completed - {} messages received", receivedMessages.size());
+            
+            sender.close();
+            connection.close();
+            client.close();
+        } catch (Exception ex) {
+            logger.error("Test failed", ex);
+            throw ex;
+        } finally {
+            consumer.stop();
+            try {
+                if (connection != null) connection.close();
+                if (client != null) client.close();
+            } catch (Exception closeEx) {
+                logger.debug("Error closing connection: " + closeEx.getMessage());
+            }
+        }
+    }
+    
+    {%- endfor %}
+    {%- endfor %}
+}

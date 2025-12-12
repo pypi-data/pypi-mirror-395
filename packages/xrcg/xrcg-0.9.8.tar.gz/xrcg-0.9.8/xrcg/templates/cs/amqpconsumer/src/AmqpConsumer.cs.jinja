@@ -1,0 +1,317 @@
+{%- import "util.jinja.include" as util -%}
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{{ util.CommonFileHeader() }}
+{%- set uses_cloudevents = cloudEvents.usesCloudEvents(root) %}
+
+using Amqp;
+using Amqp.Sasl;
+{%- if uses_cloudevents %}
+{{ cloudEvents.CloudEventsUsings() }}
+{%- endif %}
+using Microsoft.Extensions.Logging;
+
+namespace {{ project_name | pascal }}
+{
+    {{ util.EndpointCredentialClasses() | indent(4) }}
+
+    /// <summary>
+    /// Context object that provides message disposition operations.
+    /// </summary>
+    public class MessageContext
+    {
+        private readonly IReceiverLink _receiver;
+        private readonly global::Amqp.Message _message;
+        private bool _disposed = false;
+
+        internal MessageContext(IReceiverLink receiver, global::Amqp.Message message)
+        {
+            _receiver = receiver;
+            _message = message;
+        }
+
+        /// <summary>
+        /// Accepts the message, indicating successful processing.
+        /// </summary>
+        public void Accept()
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(MessageContext));
+            _receiver.Accept(_message);
+            _disposed = true;
+        }
+
+        /// <summary>
+        /// Releases the message back to the sender for redelivery.
+        /// </summary>
+        public void Release()
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(MessageContext));
+            _receiver.Release(_message);
+            _disposed = true;
+        }
+
+        /// <summary>
+        /// Rejects the message, indicating permanent failure.
+        /// </summary>
+        public void Reject()
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(MessageContext));
+            _receiver.Reject(_message);
+            _disposed = true;
+        }
+
+        /// <summary>
+        /// Modifies the message delivery state.
+        /// </summary>
+        /// <param name="deliveryFailed">Indicates if delivery failed.</param>
+        /// <param name="undeliverableHere">Indicates if the message is undeliverable here.</param>
+        public void Modify(bool deliveryFailed, bool undeliverableHere = false)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(MessageContext));
+            _receiver.Modify(_message, deliveryFailed, undeliverableHere, null);
+            _disposed = true;
+        }
+    }
+
+    public class AmqpConsumer : IDisposable
+    {
+        public event Func<Message, MessageContext, ILogger, Task>? DispatchMessageAsync;
+        {%- if uses_cloudevents %}
+        public event Func<CloudEvent, MessageContext, ILogger, Task>? DispatchCloudEventAsync;
+        {%- endif %}
+        
+        private const string ERROR_LOG_TEMPLATE = "Error in AmqpConsumer: {0}";
+        private const string VERBOSE_LOG_TEMPLATE = "AmqpConsumer: {0}";
+
+        private Connection? _connection;
+        private Session? _session;
+        private ReceiverLink? _receiverLink;
+        {%- if uses_cloudevents %}
+        private CloudEventFormatter _jsonFormatter = new JsonEventFormatter();
+        private CloudEventFormatter _protoFormatter = new ProtobufEventFormatter();
+        private CloudEventFormatter _avroFormatter = new global::CloudNative.CloudEvents.Avro.AvroEventFormatter();
+        {%- endif %}
+        private string? _node;
+        private EndpointCredential _credential;
+        private Uri _endpoint;
+        private ILogger Logger { get; }
+
+        /// <summary>
+        /// Creates a new AMQP consumer endpoint.
+        /// </summary>
+        /// <param name="logger">The logger to use for this endpoint.</param>
+        /// <param name="credential">The credential to use for this endpoint.</param>
+        /// <param name="options">The options to use for this endpoint.</param>
+        /// <param name="endpoints">The endpoints to use for this endpoint.</param>
+        /// <param name="deserializeCloudEventData">The function to use to deserialize the CloudEvent data.</param>
+        public AmqpConsumer(EndpointCredential credential, Uri endpoint, Dictionary<string, string>? options = null, ILoggerFactory? loggerFactory = null)
+        {
+            ArgumentNullException.ThrowIfNull(credential);
+            ArgumentNullException.ThrowIfNull(endpoint);
+            Logger = loggerFactory != null ? loggerFactory.CreateLogger(GetType()) : new LoggerFactory().CreateLogger(GetType());
+            _credential = credential;
+            _endpoint = endpoint;
+            if (options != null && options.TryGetValue("node", out var node))
+            {
+                _node = node;
+            }
+        }
+
+        /// <summary>
+        /// Starts the endpoint.
+        /// </summary>
+        /// <returns>A task that completes when the endpoint has started.</returns>
+        public async Task StartAsync()
+        {
+            var factory = new ConnectionFactory();
+            Address address = new Address(
+                _endpoint.Host,
+                _endpoint.Port == -1 ? _endpoint.Scheme == "amqps" ? 5671 : 5672 : _endpoint.Port,
+                path: _node != null ? _node : _endpoint.AbsolutePath, scheme: _endpoint.Scheme.ToUpper(),
+                user: (_credential as PlainEndpointCredential)?.ClientId,
+                password: (_credential as PlainEndpointCredential)?.ClientSecret);
+
+            if (_credential is TokenEndpointCredential tokenCredential)
+            {
+                factory.SASL.Profile = SaslProfile.Anonymous;
+            }
+
+            try
+            {
+                _connection = await factory.CreateAsync(address).ConfigureAwait(false);
+                Logger.LogInformation(VERBOSE_LOG_TEMPLATE, "Connection to endpoint created");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error connecting to endpoint");
+                throw;
+            }
+
+            _session = new Session(_connection);
+            if (_credential is TokenEndpointCredential)
+            {
+                try
+                {
+                    var token = await ((TokenEndpointCredential)_credential).GetTokenAsync().ConfigureAwait(false);
+                    var cbsSender = new SenderLink(_session, "$cbs", "$cbs");
+                    var request = new global::Amqp.Message(token);
+                    request.Properties.MessageId = Guid.NewGuid().ToString();
+                    request.ApplicationProperties["operation"] = "put-token";
+                    request.ApplicationProperties["type"] = "amqp:jwt";
+                    request.ApplicationProperties["name"] = string.Format("amqp://{0}/{1}", address.Host, address.Path);
+                    await cbsSender.SendAsync(request).ConfigureAwait(false);
+                    await cbsSender.CloseAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error sending token to endpoint");
+                    throw;
+                }
+            }
+            Logger.LogInformation(VERBOSE_LOG_TEMPLATE, "Starting AMQP consumer endpoint");
+            _receiverLink = new ReceiverLink(_session, "consumer-link", address.Path);
+            _receiverLink.Start(10, OnMessage);
+        }
+
+        protected void Dispose(bool disposing)
+        {
+            if (_receiverLink != null)
+            {
+                try
+                {
+                    _receiverLink.Close(TimeSpan.FromSeconds(5));
+                }
+                catch (TimeoutException)
+                {
+                    // Expected if close times out
+                }
+                _receiverLink = null;
+            }
+            if (_session != null)
+            {
+                try
+                {
+                    _session.Close(TimeSpan.FromSeconds(5));
+                }
+                catch (TimeoutException)
+                {
+                    // Expected if close times out
+                }
+                _session = null;
+            }
+            if (_connection != null)
+            {
+                try
+                {
+                    _connection.Close(TimeSpan.FromSeconds(5));
+                }
+                catch (TimeoutException)
+                {
+                    // Expected if close times out
+                }
+                _connection = null;
+            }
+        }
+
+        protected void Deliver<T>(T message, MessageContext context)
+        {
+            if (message is Message && DispatchMessageAsync != null)
+            {
+                var task = DispatchMessageAsync.Invoke((Message)(object)message, context, Logger);
+                // Fire and forget - errors logged by dispatcher
+                _ = task.ContinueWith(t => {
+                    if (t.IsFaulted)
+                    {
+                        Logger.LogError(t.Exception, "Error in DispatchMessageAsync handler");
+                    }
+                }, TaskScheduler.Default);
+            }
+            else if (message is CloudEvent && DispatchCloudEventAsync != null)
+            {
+                var task = DispatchCloudEventAsync.Invoke((CloudEvent)(object)message, context, Logger);
+                // Fire and forget - errors logged by dispatcher
+                _ = task.ContinueWith(t => {
+                    if (t.IsFaulted)
+                    {
+                        Logger.LogError(t.Exception, "Error in DispatchCloudEventAsync handler");
+                    }
+                }, TaskScheduler.Default);
+            }
+        }
+
+        /// <summary>
+        /// Called when a message is received.
+        /// </summary>
+        /// <param name="receiver">The receiver link.</param>
+        /// <param name="message">The message.</param>
+        private void OnMessage(IReceiverLink receiver, global::Amqp.Message message)
+        {
+            var context = new MessageContext(receiver, message);
+            try
+            {
+                {%- set extraindent = 0 %}
+                {%- if uses_cloudevents %}
+                {%- set extraindent = 4 %}
+                if (message.IsCloudEvent())
+                {
+                    CloudEventFormatter formatter;
+                    var contentType = message.Properties.ContentType?.ToString().Split(';')[0];
+                    if (contentType != null && contentType.EndsWith("+proto"))
+                    {
+                        formatter = _protoFormatter;
+                    }
+                    else if (contentType != null && contentType.EndsWith("+avro"))
+                    {
+                        formatter = _avroFormatter;
+                    }
+                    else
+                    {
+                        formatter = _jsonFormatter;
+                    }
+                    var cloudEvent = message.ToCloudEvent(formatter);
+                    Deliver(cloudEvent, context);
+                }
+                else
+                {
+                {%- endif %}    
+                {%- filter indent(extraindent) %}
+                Deliver(message, context);
+                {%- endfilter %}
+                {%- if uses_cloudevents %}
+                }
+                {%- endif %}
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error processing message");
+            }
+        }
+
+        /// <summary>
+        /// Stops the endpoint.
+        /// </summary>
+        public async Task StopAsync()
+        {
+            Logger.LogInformation(VERBOSE_LOG_TEMPLATE, "Stopping AMQP consumer endpoint");
+            if (_receiverLink != null)
+                await _receiverLink.CloseAsync().ConfigureAwait(false);
+            if (_session != null)
+                await _session.CloseAsync().ConfigureAwait(false);
+            if (_connection != null)
+                await _connection.CloseAsync().ConfigureAwait(false);
+        }
+
+        ~AmqpConsumer()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
+
+}

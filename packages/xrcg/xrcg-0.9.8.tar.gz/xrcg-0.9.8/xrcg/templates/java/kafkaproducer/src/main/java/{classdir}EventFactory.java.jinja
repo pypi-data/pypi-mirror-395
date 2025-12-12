@@ -1,0 +1,190 @@
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "kafka.jinja.include" as kafka -%}
+{%- import "util.jinja.include" as util -%}
+{{ util.CommonFileHeader() }}
+
+{%- set messagegroups = root.messagegroups %}
+{%- set package_name = project_name | lower | replace('-', '_') %}
+
+{% for messagegroupid, messagegroup in messagegroups.items() -%}
+{%- set pascal_group_name = messagegroupid | pascal %}
+{%- set class_name = (pascal_group_name | strip_namespace) + "EventFactory" %}
+{%- set group_package = (package_name ~ "." ~ messagegroupid) | lower | replace('-', '_') %}
+{%- set package_dir = group_package.replace('.', '/') %}
+
+package {{ group_package }};
+
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+{%- if cloudEvents.usesCloudEvents(root) %}
+import io.cloudevents.CloudEvent;
+import io.cloudevents.core.builder.CloudEventBuilder;
+import io.cloudevents.jackson.JsonFormat;
+{%- endif %}
+
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
+{%- if cloudEvents.usesCloudEvents(root) %}
+
+/**
+ * Content mode for CloudEvents serialization.
+ */
+enum ContentMode {
+    /** Binary content mode - CloudEvent attributes as headers, data as body */
+    BINARY,
+    /** Structured content mode - Entire CloudEvent as JSON body */
+    STRUCTURED
+}
+{%- endif %}
+
+/**
+ * Factory class to create Kafka ProducerRecords for the {{ messagegroupid }} message group.
+ */
+public class {{ class_name }} {
+    private static final Logger log = LogManager.getLogger({{ class_name }}.class);
+    {%- if cloudEvents.usesCloudEvents(root) %}
+    private static final String CE_PREFIX = "ce_";
+    private static final JsonFormat JSON_FORMAT = new JsonFormat();
+    {%- endif %}
+    
+    {% for messageid, message in messagegroup.messages.items() -%}
+    {%- set messagename = messageid | pascal | strip_namespace %}
+    {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+    {%- set isCloudEvent = cloudEvents.isCloudEvent(message) %}
+    {%- set schemaObj = schema_object(root, message.get('dataschemauri') or message.get('dataschema')) %}
+    
+    /**
+     * Create a Kafka ProducerRecord for {{ messagename }} message.
+     * 
+     * @param topic The Kafka topic name
+     * @param data The message data
+     * @param key The message key (nullable)
+     {%- if isCloudEvent %}
+     * @param contentMode CloudEvents content mode (BINARY or STRUCTURED)
+     * @param format Content type format for structured mode (default: "application/json")
+     {%- endif %}
+     * @return ProducerRecord ready to be sent
+     * @throws Exception if there's an error creating the message
+     */
+    public static ProducerRecord<byte[], byte[]> create{{ messagename }}Message(
+            String topic,
+            {{ message_body_type }} data,
+            String key{% if isCloudEvent %},
+            ContentMode contentMode,
+            String format{% endif %}) throws Exception {
+        
+        byte[] keyBytes = key != null ? key.getBytes(StandardCharsets.UTF_8) : null;
+        Headers headers = new RecordHeaders();
+        
+        {%- if isCloudEvent %}
+        // Create CloudEvent
+        CloudEvent cloudEvent = CloudEventBuilder.v1()
+            .withId(UUID.randomUUID().toString())
+            {%- if message.envelopemetadata and message.envelopemetadata.type and message.envelopemetadata.type.value %}
+            .withType("{{ message.envelopemetadata.type.value }}")
+            {%- else %}
+            .withType("{{ messageid }}")
+            {%- endif %}
+            {%- if message.envelopemetadata and message.envelopemetadata.source %}
+            {%- if message.envelopemetadata.source.value and message.envelopemetadata.source.type != "uritemplate" %}
+            .withSource(URI.create("{{ message.envelopemetadata.source.value }}"))
+            {%- else %}
+            .withSource(URI.create("urn:{{ messagegroupid }}"))
+            {%- endif %}
+            {%- else %}
+            .withSource(URI.create("urn:{{ messagegroupid }}"))
+            {%- endif %}
+            {%- if "datacontenttype" in message.metadata and "value" in message.metadata.datacontenttype %}
+            .withDataContentType("{{ message.metadata.datacontenttype.value }}")
+            {%- else %}
+            .withDataContentType("application/json")
+            {%- endif %}
+            .withData(serializeData(data))
+            .build();
+        
+        byte[] bodyBytes;
+        
+        if (contentMode == ContentMode.STRUCTURED) {
+            // Structured content mode - entire CloudEvent as JSON payload
+            bodyBytes = JSON_FORMAT.serialize(cloudEvent);
+            headers.add("content-type", format.getBytes(StandardCharsets.UTF_8));
+        } else {
+            // Binary content mode - CloudEvent attributes as headers, data as body
+            cloudEvent.getAttributeNames().forEach(attrName -> {
+                Object attrValue = cloudEvent.getAttribute(attrName);
+                if (attrValue != null) {
+                    String headerValue = attrValue instanceof URI ? 
+                        ((URI) attrValue).toString() : attrValue.toString();
+                    headers.add(CE_PREFIX + attrName, headerValue.getBytes(StandardCharsets.UTF_8));
+                }
+            });
+            
+            // Serialize the data as the body
+            bodyBytes = serializeData(data);
+            headers.add("content-type", "application/json".getBytes(StandardCharsets.UTF_8));
+        }
+        
+        return new ProducerRecord<>(topic, null, keyBytes, bodyBytes, headers);
+        
+        {%- else %}
+        // Create native Kafka message
+        byte[] bodyBytes;
+        String contentType;
+        
+        {%- if schemaObj and "format" in schemaObj %}
+        {%- if schemaObj.format.lower().startswith("avro") %}
+        // Serialize as Avro
+        bodyBytes = data.toByteArray("avro/binary");
+        contentType = "application/avro";
+        {%- elif schemaObj.format.lower().startswith("protobuf") %}
+        // Serialize as Protobuf
+        bodyBytes = data.toByteArray();
+        contentType = "application/protobuf";
+        {%- else %}
+        // Serialize as JSON
+        bodyBytes = serializeData(data);
+        contentType = "application/json";
+        {%- endif %}
+        {%- else %}
+        // Serialize as JSON (default)
+        bodyBytes = serializeData(data);
+        contentType = "application/json";
+        {%- endif %}
+        
+        headers.add("content-type", contentType.getBytes(StandardCharsets.UTF_8));
+        
+        {%- set protocolopts = message.get('protocoloptions', {}) %}
+        {%- if protocolopts.get('headers') %}
+        // Add protocol-specific headers
+        {%- for headername, headerspec in protocolopts.headers.items() %}
+        {%- if headerspec.get('value') %}
+        headers.add("{{ headername }}", "{{ headerspec.value }}".getBytes(StandardCharsets.UTF_8));
+        {%- endif %}
+        {%- endfor %}
+        {%- endif %}
+        
+        return new ProducerRecord<>(topic, null, keyBytes, bodyBytes, headers);
+        {%- endif %}
+    }
+    
+    {% endfor %}
+    
+    /**
+     * Serialize data object to JSON bytes.
+     * 
+     * @param data The data object
+     * @return JSON byte array
+     * @throws Exception if serialization fails
+     */
+    private static byte[] serializeData(Object data) throws Exception {
+        return new com.fasterxml.jackson.databind.ObjectMapper()
+            .writeValueAsBytes(data);
+    }
+}
+{% endfor -%}
