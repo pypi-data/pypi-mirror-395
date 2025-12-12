@@ -1,0 +1,157 @@
+###############################################################################
+# Caterva2 - On demand access to remote Blosc2 data repositories
+#
+# Copyright (c) 2023 ironArray SLU <contact@ironarray.io>
+# https://www.blosc.org
+# License: GNU Affero General Public License v3.0
+# See LICENSE.txt for details about copyright and rights to use.
+###############################################################################
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "caterva2"
+description = "A high-performance storage and computation system for Blosc2 datasets"
+long-description = "README.md"
+requires-python = ">=3.11"
+readme = "README.md"
+authors = [
+    {name = "ironArray SLU", email = "contact@ironarray.io"},
+]
+dynamic = ["version"]
+keywords = ["blosc2"]
+license = {text = "GNU Affero General Public License version 3"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Unix",
+]
+dependencies = [
+    "blosc2>=3.12.1",
+    "httpx[http2]",
+]
+
+[tool.hatch.version]
+path = "caterva2/__init__.py"
+
+[project.optional-dependencies]
+agent = [
+    "watchfiles",
+]
+
+base-services = [
+    "fastapi>=0.109",
+    "pydantic>=2",
+    "safer",
+    "uvicorn",
+]
+server = [
+    "aiosqlite",
+    "caterva2[base-services]",
+    "fastapi-mail",
+    "fastapi-users[sqlalchemy]",
+    "uvicorn[standard]",
+    "furl",
+    "jinja2",
+    "markdown",
+    "nbconvert",
+    "pillow",
+    "pygments",
+    "python-dotenv",
+    "python-multipart",
+    "jupyterlite-core[contents]==0.6.2",
+    "jupyterlite-pyodide-kernel==0.6.1",
+]
+services = [
+    "caterva2[base-services]",
+    "caterva2[hdf5]",
+    "caterva2[server]",
+]
+dev = [
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+# Currently used to enable HDF5 support at the client.
+hdf5 = [
+    "h5py",
+    "b2h5py>=0.5.1",
+    "hdf5plugin",
+    "msgpack",
+]
+clients = [
+    "rich",
+    "textual",
+]
+tools = [
+    "caterva2[hdf5]",
+]
+tests = [
+    "caterva2[clients]",
+    "caterva2[services]",
+    "pytest<8",
+]
+blosc2-plugins = [
+    "blosc2-grok",
+]
+
+[tool.hatch.build.targets.wheel]
+only-include = ["caterva2", "root-example"]
+
+[project.urls]
+Home = "https://github.com/ironArray/Caterva2"
+
+[project.scripts]
+# Main commands with unified naming scheme
+cat2-server = "caterva2.services.server:main"
+cat2-agent = "caterva2.clients.agent:main"
+cat2-client = "caterva2.clients.cli:main"
+cat2-admin = "caterva2.tools.admin:main"
+
+
+[tool.ruff]
+line-length = 109
+
+[tool.ruff.lint]
+extend-select = [
+    "B",
+    "C4",
+    "C90",
+    "I",
+    "NPY",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "TCH",
+    "UP",
+]
+ignore = [
+    "B008",  # function call in default argument is normal in FastAPI
+    "B028",
+    "C901",  # Checks for functions with a high McCabe complexity
+    "PT011",
+    "SIM103",
+    "RET505",
+    "RET508",
+    "RUF005",
+    "RUF015",
+    "SIM108",
+    "UP038",  # https://github.com/astral-sh/ruff/issues/7871
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"caterva2/tests/**" = ["F841", "SIM115"]

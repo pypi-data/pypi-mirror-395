@@ -1,0 +1,62 @@
+<h3>{{ path }}</h3>
+
+<ul class="nav nav-tabs" id="tabs">
+    {% for tab in tabs %}
+        <li class="nav-item" role="presentation">
+            <button type="button" id="{{ tab.name }}-tab"
+                    data-bs-toggle="tab" data-bs-target="#{{ tab.name }}-tab-pane"
+                    role="tab" aria-controls="{{ tab.name }}-tab-pane"
+                    {% if loop.first %}
+                        class="nav-link active" aria-selected="true"
+                    {% else %}
+                        class="nav-link" aria-selected="false"
+                    {% endif %}
+            >
+                {{ tab.label }}
+            </button>
+        </li>
+    {% endfor %}
+    <li class="nav-item ms-auto">
+        <a href="{{ url_with_query(request, current_url, fullscreen=(None if is_fullscreen else 1)) }}"
+           class="nav-link notab text-decoration-none">
+            <i class="fa-solid fa-{{ 'minimize' if is_fullscreen else 'maximize' }}"></i>
+            {{ "Exit full screen" if is_fullscreen else "Full screen" }}
+        </a>
+    </li>
+    <li class="nav-item">
+        <a href="{{ url("api/download/") }}{{ path }}" class="nav-link notab text-decoration-none">
+            <i class="fa-solid fa-download"></i> Download
+        </a>
+    </li>
+    {% if can_delete %}
+    <li class="nav-item">
+        <a href="#" class="nav-link notab text-decoration-none link-danger"
+           hx-delete="{{ url("htmx/delete/") }}{{path}}" hx-confirm="Do you confirm deletion?">
+            <i class="fa-solid fa-trash"></i> Delete
+        </a>
+    </li>
+    {% endif %}
+</ul>
+
+<div class="tab-content" id="myTabContent">
+    {% for tab in tabs %}
+        <div id="{{ tab.name }}-tab-pane" role="tabpanel" aria-labelledby="tab-{{ tab.name }}"
+             tabindex="0" class="tab-pane fade {% if loop.first %}show active{% endif %}"
+             {% if tab.url %}
+             hx-get="{{ tab.url }}" hx-trigger="load"
+             {% endif %}
+        >
+            {% if tab.include %}{% include tab.include %}{% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+<script>
+    // If the url has a hash open the appropriate tab
+    openTab(window.location.hash);
+
+    // Append hash to the url when a tab is clicked, so the url can be copied including the hash
+    document.querySelector('#tabs').addEventListener('shown.bs.tab', function (event) {
+        window.location.hash = event.target.id.slice(0, -4);
+    })
+</script>

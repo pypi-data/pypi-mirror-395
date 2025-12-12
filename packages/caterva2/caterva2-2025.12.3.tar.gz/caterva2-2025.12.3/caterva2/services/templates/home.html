@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+
+    {# Vendor asets #}
+    <link href="{{ url('static/vendor/fontawesome-6.5.1.min.css') }}" rel="stylesheet">
+
+    {# 2.0.2 breaks data viewer https://github.com/ironArray/Caterva2/issues/74 #}
+    <script src="{{ url('static/vendor/htmx-2.0.1.min.js') }}"></script>
+    <script src="{{ url('static/vendor/htmx-idiomorph-ext-0.3.0.min.js') }}"></script>
+
+    {# Project's assets #}
+    <link href="{{ main_css }}" rel="stylesheet">
+    <script src="{{ main_js }}" type="module"></script>
+</head>
+
+<body class="vh-100">
+
+{% if user_login_enabled %}
+<div class="alert alert-primary mb-0 rounded-0 d-flex justify-content-between">
+    <div>
+        {% if username %}
+        Logged in as {{ username }}.
+        <form action="{{ url('auth/jwt/logout') }}" method="post" class="d-inline-block" id="logout-form"
+              onsubmit="submitForm(this, '{{ url("logout") }}'); return false">
+            <button type="submit" class="btn btn-link">Sign out</button>
+        </form>
+        {% else %}
+        <a href="{{ url('login') }}">Sign in</a>
+        {% endif %}
+    </div>
+    <div>
+        {% if username %}
+        {% if usage_quota %}
+            <div class="progress" role="progressbar" style="width: 200px; height: 100%"
+                 title="Disk usage: {{ usage_percent }} % ({{ usage_total }} of {{ usage_quota }})"
+                 aria-label="Disk usage" aria-valuenow="{{ usage_percent }}" aria-valuemin="0" aria-valuemax="100"
+            >
+                <div class="progress-bar overflow-visible text-dark bg-warning" style="width: {{ usage_percent }}%">
+                    Disk usage: {{ usage_percent }} %
+                </div>
+            </div>
+        {% else %}
+            Disk usage:
+            {{ usage_total }}
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div id="alert-error"></div>
+
+<template id="alert-error-template">{% include 'error.html' %}</template>
+
+<span class="d-flex gap-3 float-end m-3 " style="font-size: 1.1rem">
+    {#
+    <a href="/static/jupyterlite/repl/index.html" target="blank_" class="text-decoration-none">
+        <i class="fa-solid fa-terminal"></i> Repl
+    </a>
+    #}
+
+    <a href="https://ironarray.io/caterva2" target="blank_" class="text-decoration-none">
+        <i class="fa-regular fa-circle-question"></i> Help
+    </a>
+</span>
+
+<!-- Main section -->
+{% if is_fullscreen %}
+    <div id="fullscreen">
+        {% include 'includes/loading.html' %}
+        <div id="meta"{% if meta_url %} hx-get="{{ meta_url }}" hx-trigger="load"{% endif %}></div>
+    </div>
+{% else %}
+    <div id="page">
+        <div id="root-list-wrapper" hx-get="{{ roots_url }}" hx-trigger="load"></div>
+        <div id="prompt-wrapper">
+            {% include "includes/prompt.html" %}
+        </div>
+        <div id="path-list-wrapper">
+            {% include 'includes/loading.html' %}
+            <div id="path-list"{% if paths_url %} hx-get="{{ paths_url }}" hx-trigger="load"{% endif %}>
+            </div>
+        </div>
+        <div id="meta-wrapper">
+            {% include 'includes/loading.html' %}
+            <div id="meta"{% if meta_url %} hx-get="{{ meta_url }}" hx-trigger="load"{% endif %}></div>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+htmx.on('htmx:beforeSwap', function (evt) {
+    // Allow 400 responses to swap, we treat these as form validation errors
+    let detail = evt.detail;
+    let xhr = detail.xhr;
+    if (xhr.status === 200) {
+        clearContent("#alert-error");
+    }
+    else if (xhr.status === 400) {
+        detail.isError = false;  // Avoid error message in console
+        detail.shouldSwap = true;
+        detail.target = htmx.find("#alert-error");
+    }
+    else if (xhr.status === 413) {
+        detail.isError = false;  // Avoid error message in console
+        showAlert(`${xhr.status} ${xhr.statusText}`);
+    }
+    else if (xhr.status === 500) {
+        detail.isError = false;  // Avoid error message in console
+        showAlert(`${xhr.status} ${xhr.statusText}`);
+        //showAlert(ev.detail.error, "danger");
+    }
+})
+</script>
+
+</body>
+</html>

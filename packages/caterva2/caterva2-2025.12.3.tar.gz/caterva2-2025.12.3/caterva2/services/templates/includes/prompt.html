@@ -1,0 +1,76 @@
+{% if username %}
+<form id="form-prompt"
+      hx-post="{{ cmd_url }}" hx-include="#dataset-list input"
+      hx-on::before-request="handleSubmit(event, this)"
+      hx-on::after-request="resetForm(event, this)"
+>
+    <div class="d-flex">
+        <div class="input-group me-2">
+            <input class="form-control" name="command" type="text" placeholder="Prompt" aria-label="Prompt" value="">
+            <span class="input-group-text" role="button" data-bs-toggle="offcanvas"
+                  data-bs-target="#offcanvasPromptHelp" aria-controls="offcanvasPromptHelp">
+                <i class="fa-regular fa-question"></i>
+            </span>
+        </div>
+        <button class="btn btn-outline-success d-flex align-items-center gap-1" type="submit">GO</button>
+    </div>
+</form>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasPromptHelp"
+     aria-labelledby="offcanvasPromptHelpLabel" style="width: 700px">
+  <div class="offcanvas-header">
+    <h4 class="offcanvas-title" id="offcanvasPromptHelpLabel">Prompt Help</h4>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+      <h5>List of commands</h5>
+      <dl>
+          {% for command in commands %}
+            <dt>{{ command.expected }}</dt>
+            <dd>{{ command.__doc__ }}</dd>
+          {% endfor %}
+      </dl>
+      <hr>
+      <h5>Expressions</h5>
+      <pre>x = &lt;expression&gt; # locals</pre>
+      <p>
+      Where <strong>x</strong> is the name of the new file and <strong>expression</strong> is a mathematical expression
+          including variables that references datasets. These variables may either refer to
+          aliases for files displayed for the selected roots, or to elements in
+          <strong>locals</strong>, which is of the form
+          <code>{"var1": "filename",...}</code> where var1 appears in the expression.
+
+      <p>Examples:</p>
+      <ul>
+          <li>
+              <code>x = a + b * 2</code>
+              <p>Here <strong>x</strong> will be a lazy expression with
+                  <strong>a</strong> and <strong>b</strong> as operands.
+                  That means that <strong>x</strong> will not be evaluated until it is needed.
+              </p>
+          </li>
+          <li>
+              <code>x := a + b * 2</code>
+              <p>Here <strong>x</strong> will eagerly execute the expression with
+                  <strong>a</strong> and <strong>b</strong> as operands.
+                  That means that <strong>x</strong> will be evaluated immediately and stored.
+              </p>
+          </li>
+          <li>
+              <code>x = arange(10)</code>
+              <p>Here <strong>x</strong> will be a lazy array, with int64 elements, from 0 to 9 (included).</p>
+          </li>
+          <li>
+              <code>x = a + b # {"a" :"@personal/afile.b2nd"}</code>
+              <p>Here the lazy expression will be computed using the provided file in the <code>locals</code> dictionary
+                  in place of <code>a</code>, and the file aliased by <code>b</code>.</p>
+          </li>
+          <li>
+              <code>x := a[:10]</code>
+              <p>Here the lazy expression is executed eagerly and saves a slice of the file aliased by <code>a</code>.</p>
+          </li>
+      </ul>
+  </div>
+</div>
+
+{% endif %}
