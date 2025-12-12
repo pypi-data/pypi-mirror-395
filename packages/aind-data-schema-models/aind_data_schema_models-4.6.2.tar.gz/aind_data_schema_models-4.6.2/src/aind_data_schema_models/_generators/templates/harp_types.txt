@@ -1,0 +1,29 @@
+"""Harp device types"""
+{% raw -%}
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Literal, Union
+from typing_extensions import Annotated
+{% endraw %}
+
+class HarpDeviceTypeModel(BaseModel):
+    """Base model for platform"""
+    model_config = ConfigDict(frozen=True)
+    whoami: int = Field(..., title="Harp whoami value")
+    name: str = Field(..., title="Harp device type name")
+
+{% for _, row in data.iterrows() %}
+class {{ row['name'] | to_class_name_underscored }}(HarpDeviceTypeModel):
+    """Model {{row['name']}}"""
+    name: Literal["{{ row['name'] }}"] = "{{ row['name'] }}"
+    whoami: Literal[{{ row['whoami'] }}] = {{ row['whoami'] }}
+
+{% endfor %}
+class HarpDeviceType:
+    """Harp device types"""
+{% for _, row in data.iterrows() %}
+    {{ row['name'] | to_class_name | upper }} = {{ row['name'] | to_class_name_underscored }}()
+{%- endfor %}
+
+    ALL = tuple(HarpDeviceTypeModel.__subclasses__())
+
+    ONE_OF = Annotated[Union[tuple(HarpDeviceTypeModel.__subclasses__())], Field(discriminator="name")]
