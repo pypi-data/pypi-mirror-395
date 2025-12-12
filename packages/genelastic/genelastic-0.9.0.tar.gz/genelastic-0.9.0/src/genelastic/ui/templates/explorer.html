@@ -1,0 +1,356 @@
+{% extends "layout.html" %}
+{% block title %}
+  Explorer - BEx
+{% endblock title %}
+{% block content %}
+  <div class="container py-5">
+    <h1 class="mb-4 text-primary fw-bold display-5">Explorer les métadonnées</h1>
+    <p class="mb-4 text-muted fs-5">Déroulez chaque catégorie et cochez les valeurs que vous souhaitez sélectionner.</p>
+    <div class="d-flex justify-content-end mb-3">
+      <button id="toggleAllBtn" class="btn btn-sm btn-outline-primary shadow-sm">Tout dérouler</button>
+    </div>
+    <div class="accordion" id="metadataAccordion">
+      {% for field, values in metadata_counts.items() %}
+        {% set clean_name = field.replace('metadata.bi_process.', '')
+                  .replace('metadata.wet_process.', '')
+                  .replace('metadata.', '')
+                  .replace('_', ' ')
+                  .replace('.', ' ')
+                .title() %}
+        {% set collapse_id = 'collapse' + clean_name.replace(' ', '') %}
+        {% set is_empty = values|length == 0 %}
+        <div class="accordion-item mb-3 shadow-sm rounded {% if is_empty %}opacity-50{% endif %}"
+             style="border: 1px solid #dee2e6">
+          <h2 class="accordion-header" id="heading{{ collapse_id }}">
+            <button class="accordion-button collapsed fs-6"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#{{ collapse_id }}"
+                    aria-expanded="false"
+                    aria-controls="{{ collapse_id }}"
+                    style="background-color: #f8f9fa">{{ clean_name }}</button>
+          </h2>
+          <div id="{{ collapse_id }}"
+               class="accordion-collapse collapse"
+               aria-labelledby="heading{{ collapse_id }}"
+               data-bs-parent="#metadataAccordion">
+            <div class="accordion-body p-3">
+              {% if not is_empty %}
+                <form class="metadata-values-form" data-field="{{ field }}">
+                  <div class="list-group">
+                    {% for value, count_val in values.items() %}
+                      {% set input_id = (collapse_id + '_' + loop.index|string) %}
+                      <label class="list-group-item d-flex justify-content-between align-items-center rounded"
+                             for="{{ input_id }}"
+                             style="cursor: pointer;
+                                    transition: background-color 0.15s ease">
+                        <div>
+                          <input type="checkbox"
+                                 class="form-check-input me-3 metadata-checkbox"
+                                 id="{{ input_id }}"
+                                 data-value="{{ value }}"
+                                 data-field="{{ field }}">
+                          {% if 'wet_process' in field %}
+                            <a href="{{ url_for('routes.wet_process_detail', wet_process_id=value) }}"
+                               class="text-decoration-none link-primary fw-semibold"
+                               style="transition: color 0.2s">{{ value or "—" }}</a>
+                          {% elif 'bi_process' in field %}
+                            <a href="{{ url_for('routes.bi_process_detail', bi_process_id=value) }}"
+                               class="text-decoration-none link-primary fw-semibold"
+                               style="transition: color 0.2s">{{ value or "—" }}</a>
+                          {% else %}
+                            <span class="fw-normal">{{ value or "—" }}</span>
+                          {% endif %}
+                        </div>
+                        <span class="badge bg-primary rounded-pill px-3 py-2 fw-semibold">{{ count_val }}</span>
+                      </label>
+                    {% endfor %}
+                  </div>
+                </form>
+              {% else %}
+                <p class="text-muted text-center fst-italic">Aucune donnée disponible</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <!-- Panier flottant -->
+    <div id="floatingCart"
+         class="position-fixed bottom-0 end-0 m-4 bg-white border rounded shadow p-4 d-flex flex-column"
+         style="width: 340px;
+                height: 380px;
+                z-index: 1050;
+                box-shadow: 0 8px 20px rgb(0 123 255 / 0.25);
+                overflow: hidden">
+      <h5 class="fw-bold text-primary d-flex align-items-center gap-2 mb-3"
+          style="font-size: 1.35rem">
+        🛒 Panier
+        <span class="badge bg-primary rounded-pill fs-6" id="cartCount">0</span>
+      </h5>
+      <div id="selectedMetadata"
+           class="flex-grow-1 d-flex flex-column gap-3"
+           style="overflow-y: auto;
+                  padding-right: 4px;
+                  margin-bottom: 1rem"></div>
+      <div class="pt-2 border-top" style="background-color: white">
+        <div class="d-flex flex-column gap-2 mt-3">
+          <button id="validateCart1Btn"
+                  class="btn btn-outline-success fw-semibold shadow-sm"
+                  style="font-size: 1rem">Valider panier 1</button>
+          <button id="validateCart2Btn"
+                  class="btn btn-outline-warning fw-semibold shadow-sm"
+                  style="font-size: 1rem"
+                  disabled>Valider panier 2</button>
+          <button id="compareBtn"
+                  class="btn btn-secondary fw-semibold shadow-sm"
+                  style="font-size: 1rem"
+                  disabled>Comparer mes deux paniers</button>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button id="validateBtn"
+                  class="btn btn-primary flex-grow-1 shadow-sm fw-semibold"
+                  style="font-size: 1rem">Valider la sélection</button>
+          <button id="clearCartBtn"
+                  class="btn btn-outline-secondary flex-grow-1 shadow-sm fw-semibold"
+                  style="font-size: 1rem">Vider le panier</button>
+        </div>
+      </div>
+    </div>
+    <button id="toggleCartBtn"
+            class="btn btn-primary rounded-circle shadow position-fixed bottom-0 end-0 m-4 d-flex align-items-center justify-content-center"
+            style="width: 58px;
+                   height: 58px;
+                   z-index: 1060">🛒</button>
+    <!-- Modale de comparaison -->
+    <div class="modal fade"
+         id="compareModal"
+         tabindex="-1"
+         aria-labelledby="compareModalLabel"
+         aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold text-primary" id="compareModalLabel">
+              Comparaison des deux
+              paniers
+            </h5>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-6">
+                <h6 class="text-success">🛒 Panier 1</h6>
+                <ul id="cart1List" class="list-group list-group-flush small">
+                </ul>
+              </div>
+              <div class="col-md-6">
+                <h6 class="text-warning">🛒 Panier 2</h6>
+                <ul id="cart2List" class="list-group list-group-flush small">
+                </ul>
+              </div>
+            </div>
+            <hr>
+            <div>
+              <h6 class="text-secondary">🎯 Métadonnées communes</h6>
+              <ul id="commonList" class="list-group list-group-flush small">
+              </ul>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-secondary fw-semibold"
+                    data-bs-dismiss="modal">Fermer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+      const selectedSet = new Set();
+      let cart1 = null;
+      let cart2 = null;
+
+      const selectedContainer = document.getElementById('selectedMetadata');
+      const cartCountBadge = document.getElementById('cartCount');
+      const validateCart1Btn = document.getElementById('validateCart1Btn');
+      const validateCart2Btn = document.getElementById('validateCart2Btn');
+      const compareBtn = document.getElementById('compareBtn');
+
+      function capitalizeWords(str) {
+          return str.replace(/\b\w/g, c => c.toUpperCase());
+      }
+
+      function updateCartUI() {
+          selectedContainer.innerHTML = '';
+
+          if (selectedSet.size === 0) {
+              selectedContainer.innerHTML = '<p class="text-muted fst-italic text-center">Aucune sélection</p>';
+          } else {
+              selectedSet.forEach(item => {
+                  const [field, value] = item.split('||');
+                  const cleanName = field.replace('metadata.', '').replace(/[_\.]/g, ' ');
+                  const displayText = `${capitalizeWords(cleanName.trim())}: ${value}`;
+
+                  const badge = document.createElement('div');
+                  badge.className = 'badge bg-primary d-flex justify-content-between align-items-center rounded-pill px-3 py-2';
+                  badge.style.cursor = 'default';
+                  badge.textContent = displayText;
+
+                  const btnClose = document.createElement('button');
+                  btnClose.type = 'button';
+                  btnClose.className = 'btn-close btn-close-white btn-sm ms-3';
+                  btnClose.setAttribute('aria-label', `Retirer ${displayText}`);
+                  btnClose.style.filter = 'drop-shadow(0 0 1px rgba(0,0,0,0.3))';
+                  btnClose.addEventListener('click', () => {
+                      selectedSet.delete(item);
+                      updateCartUI();
+                      updateCheckboxes();
+                  });
+
+                  badge.appendChild(btnClose);
+                  selectedContainer.appendChild(badge);
+              });
+          }
+
+          cartCountBadge.textContent = selectedSet.size;
+
+          validateCart1Btn.disabled = (selectedSet.size === 0) || (cart1 !== null);
+          validateCart2Btn.disabled = (selectedSet.size === 0) || (cart1 === null) || (cart2 !== null);
+
+          updateCheckboxes();
+      }
+
+      function updateCheckboxes() {
+          document.querySelectorAll('.metadata-checkbox').forEach(checkbox => {
+              const key = `${checkbox.dataset.field}||${checkbox.dataset.value}`;
+              checkbox.checked = selectedSet.has(key);
+          });
+      }
+
+      document.querySelectorAll('.metadata-checkbox').forEach(checkbox => {
+          checkbox.addEventListener('change', () => {
+              const key = `${checkbox.dataset.field}||${checkbox.dataset.value}`;
+              if (checkbox.checked) {
+                  selectedSet.add(key);
+              } else {
+                  selectedSet.delete(key);
+              }
+              updateCartUI();
+          });
+      });
+
+      document.getElementById('validateBtn').addEventListener('click', () => {
+          console.log('Sélection validée:', Array.from(selectedSet));
+      });
+
+      document.getElementById('clearCartBtn').addEventListener('click', () => {
+          selectedSet.clear();
+          updateCartUI();
+      });
+
+      document.getElementById('toggleAllBtn').addEventListener('click', () => {
+          const accordionItems = document.querySelectorAll('.accordion-collapse');
+          const allExpanded = Array.from(accordionItems).every(item => item.classList.contains('show'));
+
+          accordionItems.forEach(item => {
+              const bsCollapse = bootstrap.Collapse.getOrCreateInstance(item);
+              if (allExpanded) {
+                  bsCollapse.hide();
+              } else {
+                  bsCollapse.show();
+              }
+          });
+
+          document.getElementById('toggleAllBtn').textContent = allExpanded ? 'Tout dérouler' : 'Tout replier';
+      });
+
+      document.getElementById('toggleCartBtn').addEventListener('click', () => {
+          const cart = document.getElementById('floatingCart');
+          cart.style.display = (cart.style.display === 'none' || cart.style.display === '') ? 'block' : 'none';
+      });
+
+      validateCart1Btn.addEventListener('click', () => {
+          cart1 = new Set(selectedSet);
+          validateCart1Btn.disabled = true;
+          validateCart2Btn.disabled = false;
+          selectedSet.clear();
+          updateCartUI();
+          console.log('Panier 1 validé :', Array.from(cart1));
+      });
+
+      validateCart2Btn.addEventListener('click', () => {
+          cart2 = new Set(selectedSet);
+          validateCart2Btn.disabled = true;
+          compareBtn.disabled = false;
+          selectedSet.clear();
+          updateCartUI();
+          console.log('Panier 2 validé :', Array.from(cart2));
+      });
+
+      compareBtn.addEventListener('click', () => {
+          const cart1List = document.getElementById('cart1List');
+          const cart2List = document.getElementById('cart2List');
+          const commonList = document.getElementById('commonList');
+
+          cart1List.innerHTML = '';
+          cart2List.innerHTML = '';
+          commonList.innerHTML = '';
+
+          const arr1 = Array.from(cart1);
+          const arr2 = Array.from(cart2);
+          const commons = arr1.filter(item => cart2.has(item));
+
+          function createListItems(arr, container) {
+              arr.forEach(item => {
+                  const li = document.createElement('li');
+                  li.className = 'list-group-item';
+                  li.innerHTML = `<strong>${item.split('||')[0].replace('metadata.', '').replace(/[_\.]/g, ' ')}</strong>: ${item.split('||')[1]}`;
+                  container.appendChild(li);
+              });
+          }
+
+          createListItems(arr1, cart1List);
+          createListItems(arr2, cart2List);
+          createListItems(commons, commonList);
+
+          const compareModal = new bootstrap.Modal(document.getElementById('compareModal'));
+          compareModal.show();
+      });
+      const cart = document.getElementById('floatingCart');
+      const toggleBtn = document.getElementById('toggleCartBtn');
+
+      // Cache le panier au départ
+      cart.classList.add('d-none');
+
+      // Affiche le panier quand la souris entre sur le bouton
+      toggleBtn.addEventListener('mouseenter', () => {
+          cart.classList.remove('d-none');
+      });
+
+      // Masque le panier quand la souris quitte le bouton ET le panier (pour éviter flicker)
+      function hideCartIfNotHover() {
+          // On attend un petit délai pour voir si la souris est toujours sur le bouton ou panier
+          setTimeout(() => {
+              const isOverBtn = toggleBtn.matches(':hover');
+              const isOverCart = cart.matches(':hover');
+              if (!isOverBtn && !isOverCart) {
+                  cart.classList.add('d-none');
+              }
+          }, 100); // délai 100ms, ajuste si besoin
+      }
+
+      toggleBtn.addEventListener('mouseleave', hideCartIfNotHover);
+      cart.addEventListener('mouseleave', hideCartIfNotHover);
+
+      // Si la souris entre sur le panier, on garde affiché
+      cart.addEventListener('mouseenter', () => {
+          cart.classList.remove('d-none');
+      });
+      // Initial update
+      updateCartUI();
+  </script>
+{% endblock content %}

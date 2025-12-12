@@ -1,0 +1,152 @@
+[build-system]
+requires = ["uv_build>=0.9.2,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "genelastic"
+version = "0.9.0"
+requires-python = ">= 3.11"
+authors = [
+    { name = "CNRGH" },
+    { name = "Pierrick ROGER", email = "pierrick.roger@cnrgh.fr" },
+    { name = "Maxime BLANCHON", email = "maxime.blanchon@cnrgh.fr" }]
+description = "Generate and store genetic data into an Elasticsearch database."
+readme = "README.md"
+license = "CECILL-2.1"
+license-files  = ["LICENSE"]
+keywords = ["CNRGH", "genelastic", "generation", "storage", "elasticsearch", "database"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.11"
+]
+
+dependencies = [
+    "elasticsearch >= 8.18.1, < 8.19.0",
+    "PyVCF3 >= 1.0.3, < 2.0.0",
+    "schema >= 0.7.7, < 0.8.0",
+    "PyYAML >= 6.0.2, < 7.0.0",
+    "biophony >= 1.3.0, < 1.4.0",
+    "colorlog >= 6.9.0, < 7.0.0",
+    "tqdm >= 4.67.1, < 5.0.0",
+]
+
+[dependency-groups]
+# 'dev' is a special dependency group included by default during 'uv run'
+# or 'uv sync' commands.
+# See https://docs.astral.sh/uv/concepts/projects/dependencies/#default-groups
+dev = [
+    "ansible-core >= 2.19.3, < 2.20.0",
+    "sphinx >= 8.2.3, < 9.0.0",
+    "sphinx-autoapi >= 3.6.0, < 4.0.0",
+    "furo >= 2024.8.6, < 2024.9.0",
+    "pytest >= 8.4.2, < 9.0.0",
+    "mypy >= 1.16.0, < 2.0.0",
+    "coverage >= 7.8.0, < 8.0.0",
+    "yamllint >= 1.37.0, < 2.0.0",
+    "ruff >= 0.8.6, < 0.9.0",
+    "pre-commit >= 4.0.1, < 5.0.0",
+    "djlint >= 1.34.1, < 2.0.0",
+    "time-machine >= 2.16.0, < 3.0.0",
+    "types-PyYAML >= 6.0.12.20250402, < 7.0.0.0",
+    "types-requests >= 2.32.0.20250328, < 3.0.0.0",
+    "types-tqdm >= 4.67.0.20250809, < 5.0.0.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "flask >= 3.1.0, < 4.0.0",
+    "environs >= 14.1.1, < 15.0.0",
+    "connexion[flask,swagger-ui,uvicorn] >= 3.2.0, < 4.0.0",
+    "gunicorn >= 23.0.0, < 24.0.0"
+]
+
+ui = [
+    "flask >= 3.1.0, < 4.0.0",
+    "requests >= 2.32.3, < 3.0.0",
+    "environs >= 14.1.1, < 15.0.0",
+    "uvicorn >= 0.34.0, < 0.35.0",
+    "asgiref >= 3.8.1, < 4.0.0",
+    "gunicorn >= 23.0.0, < 24.0.0"
+]
+
+[project.scripts]
+gnl-data = "genelastic.import_data.cli.gen_data:main"
+gnl-import = "genelastic.import_data.cli.import_data:main"
+gnl-info = "genelastic.import_data.cli.info:main"
+gnl-integrity = "genelastic.import_data.cli.integrity:main"
+gnl-start-api = "genelastic.api.cli_start_api:main"
+gnl-start-ui = "genelastic.ui.cli_start_ui:main"
+gnl-validate = "genelastic.import_data.cli.validate:main"
+gnl-check = "genelastic.import_data.cli.cli_check:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 80
+target-version = "py311"
+
+[tool.ruff.lint]
+ignore = [
+    "E501",
+    "D100",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "D205",
+    "D415",
+    "TRY400",
+    "S311", # Disable rule 'Standard pseudo-random generators are not suitable for cryptographic purposes'.
+    # Bellow are rules disabled as they conflict with 'ruff format'.
+    # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    "W191",
+    "E111",
+    "E114",
+    "E117",
+    "D206",
+    "D300",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "COM812",
+    "COM819",
+    "ISC001",
+    "ISC002",
+]
+select = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101", # Disable "Use of assert detected" rule.
+    "PLR2004", # Disable "Magic value used in comparison" rule.
+    "SLF001"  # Disable "Private member accessed" rule.
+]
+
+# Re-enable the following rules when /snvs_* routes are either fixed or
+# deleted.
+"src/genelastic/api/routes.py" = [
+    "ERA001",
+    "TD003",
+    "FIX002"
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.coverage.report]
+skip_empty = true
+
+[tool.coverage.html]
+skip_empty = true
+
+[tool.djlint]
+indent = 2
+profile = "jinja"
+format_css = true
+format_js = true

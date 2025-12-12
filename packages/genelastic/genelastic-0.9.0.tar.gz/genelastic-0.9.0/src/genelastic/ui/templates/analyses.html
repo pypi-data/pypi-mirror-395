@@ -1,0 +1,98 @@
+{% extends "layout.html" %}
+{% block title %}
+  Analyses - BEx
+{% endblock title %}
+{% block content %}
+  <div class="container mt-5">
+    <div class="text-center mb-4">
+      <h1 class="display-5 title">Liste des Analyses</h1>
+      <p class="lead">Cliquer sur une analyse pour afficher les détails associés.</p>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="input-group">
+          <input list="analyses-list"
+                 id="search-analyses"
+                 class="form-control"
+                 placeholder="Rechercher une analyse..."
+                 autocomplete="off" />
+          <button id="apply-btn" class="btn btn-primary" type="button" disabled>Appliquer</button>
+        </div>
+        <datalist id="analyses-list"></datalist>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h3 class="mb-4">Analyses disponibles :</h3>
+        <ul class="list-group" id="analyses-ul">
+          {% for analyse in analyses %}
+            <li class="list-group-item">
+              <a href="{{ url_for('routes.show_analysis_detail', analysis_id=analyse) }}"
+                 class="text-decoration-none">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span>{{ analyse }}</span>
+                  <i class="bi bi-chevron-right"></i>
+                </div>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <script>
+      const input = document.getElementById('search-analyses');
+      const datalist = document.getElementById('analyses-list');
+      const applyBtn = document.getElementById('apply-btn');
+
+      let currentOptions = [];
+
+      function updateApplyButton() {
+          const val = input.value.trim();
+          applyBtn.disabled = !currentOptions.includes(val);
+      }
+
+      input.addEventListener('input', async () => {
+          const query = input.value.trim();
+
+          if (query.length === 0) {
+              datalist.innerHTML = '';
+              currentOptions = [];
+              updateApplyButton();
+              return;
+          }
+
+          try {
+              const res = await fetch(
+                  `/search_analyses?q=${encodeURIComponent(query)}`,
+              );
+              const data = await res.json();
+
+              datalist.innerHTML = '';
+              currentOptions = [];
+
+              data.results.forEach((analysis) => {
+                  const option = document.createElement('option');
+                  option.value = analysis;
+                  datalist.appendChild(option);
+                  currentOptions.push(analysis);
+              });
+
+              updateApplyButton();
+          } catch (e) {
+              console.error('Erreur recherche analyses:', e);
+          }
+      });
+
+      input.addEventListener('change', () => {
+          updateApplyButton();
+      });
+
+      applyBtn.addEventListener('click', () => {
+          const val = input.value.trim();
+          if (currentOptions.includes(val)) {
+              window.location.href = `/analysis/${encodeURIComponent(val)}`;
+          }
+      });
+  </script>
+{% endblock content %}

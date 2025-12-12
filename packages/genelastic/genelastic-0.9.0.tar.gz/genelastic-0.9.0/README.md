@@ -1,0 +1,652 @@
+# genelastic
+
+**Genelastic** is a set of tools for genetic technologies comparisons.
+
+It includes a set of scripts to import and manage genetics data in an
+Elasticsearch database, as well as a REST API serving a dedicated user
+interface to query, visualize and compare imported data.
+
+## Table of contents
+
+- [I - Prerequisites](#i---prerequisites)
+- [II - Installation](#ii---installation)
+- [III - Core concepts](#iii---core-concepts)
+- [IV - Bundle file definition](#iv---bundle-file-definition)
+- [V - Scripts usage](#v---scripts-usage)
+- [VI - Servers usage](#vi---servers-usage)
+- [VII - For developers](#vii---for-developers)
+
+## I - Prerequisites
+
+- `python` >= 3.11
+
+## II - Installation
+
+- With **pipx** (recommended):
+
+  ```bash
+  pipx install genelastic
+  ```
+
+  `pipx` installs `genelastic` in its own isolated
+  virtual environment and makes all scripts (`gnl-*`) available globally.
+
+- Or with **pip**:
+
+  ```bash
+  python -m venv .venv
+  source .venv/bin/activate  # Activate the virtual environment
+  pip install genelastic
+  ```
+
+  It is recommended to install `genelastic` inside its own virtual
+  environment to avoid conflicts with globally installed Python packages.
+  To run the scripts, you need to activate the environment first.
+
+Test the installation by running one of the genelastic scripts:
+
+```bash
+gnl-import -h  # Print the help message and exit.
+```
+
+## III - Core concepts
+
+This section introduces the main ideas behind **Genelastic**. It explains how
+a bundle (YAML manifest) describes analyses, how files are located with
+file prefixes and tags, which data file types are supported, and how they are
+imported into Elasticsearch.
+
+### Bundle
+
+A **bundle** is a YAML manifest that describes one or several analyses.\
+It defines:
+
+- metadata for each analysis,
+- the path where the related files are stored,
+- the naming rules (file prefix and tags) to automatically locate those files.
+
+The bundle itself is **not** imported into Elasticsearch.
+Instead, `gnl-import` uses it to build filename patterns (regular expressions
+with named groups), retrieve matching files, and import both the files'
+contents and the associated metadata into the database. Because the regex is
+built from tags, the metadata can always be re-extracted from the filenames if
+needed.
+
+### Analysis
+
+An **analysis** is the central unit described in a bundle.\
+It combines:
+
+- a set of metadata fields (sample, source, reference genome, etc.),
+- one wet lab and one bioinformatics process,
+- a `data_path` where files are located,
+- and a `file_prefix` that defines the naming pattern of all files belonging
+  to the analysis.
+
+The analysis acts as a template: it tells Genelastic how to find the right
+files and how to attach them to the correct metadata.
+
+### File prefix and tags
+
+A **file prefix** is a naming template made of tags, each tag representing a
+metadata field. When processing a bundle, Genelastic replaces tags with their
+values to build a filename pattern, a regular expression used to automatically
+retrieve files in `data_path`.
+
+By default, tags use `%` as a start delimiter and `""` (empty char) as an end
+delimiter. Both delimiters can be overridden if needed.
+
+For example, the following tags are all valid:
+
+- `%S` uses default start delimiter (`%`) and default end delimiter (`""`),
+- `%S%` uses default start delimiter (`%`) and custom end delimiter (`%`),
+- `$S$` uses custom start delimiter (`$`) and custom end delimiter (`$`).
+
+However, not all characters are allowed as delimiters (see [Tags](#tags)).
+
+**Default tags** provided by Genelastic:
+
+- `%S` => `sample_name`
+- `%F` => `source`
+- `%W` => `wet_process`
+- `%B` => `bi_process`
+- `%D` => `cov_depth`
+- `%A` => `barcode`
+- `%R` => `reference_genome`
+
+Custom tags can also be defined.
+
+#### Example
+
+Suppose the bundle defines the following analysis:
+
+```yaml
+---
+- analyses:
+  - file_prefix: "%S_%F_%W_%B_%D_%R_rep-1"
+    data_path: "/data/"
+    sample_name: "HG002"  # %S
+    source: "CNRGH"  # %F
+    wet_process: "novaseqxplus-25b"  # %W
+    bi_process: "dragen-4123"  # %B
+    cov_depth: 30  # %D
+    reference_genome: "hg38"  # %R
+# ...
+```
+
+Genelastic expands tags and automatically retrieve matching files:
+
+```text
+- HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1.cov
+- HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1.vcf.gz
+```
+
+### Data files
+
+A **data file** is any file belonging to an analysis that is imported into the
+database. Each data file has a **type** and an **extension**.
+
+Supported **raw** data file types:
+
+- **VCF** (gzipped or not): type = `vcf`, ext = `vcf`,
+- **Coverage** in TSV format: type = `cov`, ext = `cov`.
+
+Supported **metrics** data file types:
+
+- **QC**: type = `qc`, ext = `yml` / `yaml`,
+- **SV** (gzipped or not): type = `sv`, ext = `json`,
+- **Smallvar** (gzipped or not): type = `smallvar`, ext = `json`.
+
+During import, Genelastic automatically handles gzipped files.
+Each line of each data file is parsed and transformed into a document, enriched
+with the analysis metadata, and indexed into the Elasticsearch index
+corresponding to the file type.
+
+### Processes
+
+An analysis can also reference:
+
+- a **wet lab process** (sequencing metadata),
+- and a **bioinformatics process** (pipeline metadata).
+
+These processes provide contextual metadata about how the data was generated
+(wet lab) and processed (bioinformatics). They enable filtering and comparison
+of analyses based on production and pipeline characteristics.
+
+### Benefits
+
+Using bundles brings several advantages:
+
+- Metadata is defined once per analysis, not repeated for each file,
+- Files are retrieved automatically using filename patterns built from file
+  prefixes, avoiding manual lists,
+- Metadata and file contents are imported consistently into Elasticsearch,
+- Analyses remain reproducible and traceable thanks to regex-based matching.
+
+## IV - Bundle file definition
+
+### Bundle
+
+*Attributes:*
+
+- `version` *(int)*: **required**, version of the bundle. Currently, Genelastic
+  only supports **version 3**, which is specified in this document,
+- `analyses` *(List\[[Analysis](#analysis-1)\])*: **optional**,
+  list of analyses to import,
+- `wet_processes` *(List\[[WetProcess](#wetprocess)\])*: **optional**,
+  wet lab process metadata,
+- `bi_processes` *(List\[[BiProcess](#biprocess)\])*: **optional**,
+  bioinformatics process metadata,
+- `tags` *([Tags](#tags))*: **optional**, custom tags used in the file prefix.
+
+*Bundle example:*
+
+```yaml
+---
+version: 3
+analyses:
+  - # First analysis definition
+  - # Second analysis definition
+  - # etc...
+wet_processes:
+  - # First wet lab process definition.
+  - # etc...
+bi_processes:
+  - # First bioinformatics process definition.
+  - # etc...
+tags:
+  # Tags definition.
+```
+
+### Analysis
+
+*Attributes:*
+
+- `file_prefix` *(str)*: **required**, file prefix to identify analysis files.
+  The file prefix describes the naming convention of the analysis data files
+  using tags. It represents the fixed part of the filename, thus must not
+  include regular expressions. To account for variable filename parts, use the
+  `suffix` attribute.
+- `suffix` *(str)*: **optional**, suffix appended to the file prefix to match
+  data files with varying filename suffix (default: `""`),
+- `data_path` *(str)*: **optional**, path to the directory where analysis
+  files are stored. If it is relative, the full path is resolved relative to
+  the bundle file location (default: `bundle file location`),
+- `wet_process` *(str)*: **optional**, identifier of the wet lab process
+  used for the analysis,
+- `bi_process` *(str)*: **optional**, identifier of the bioinformatics
+  process used for the analysis,
+- `sample_name` *(str)*: **optional**, metadata field to define sample name,
+- `source` *(str)*: **optional**, metadata field to define source,
+- `barcode` *(str)*: **optional**, metadata field to define barcode,
+- `reference_genome` *(str)*: **optional**, metadata field to define
+  reference genome,
+- `flowcell` *(str)*: **optional**, metadata field to define flowcell,
+- `lanes` *(List[int])*: **optional**, metadata field to define
+  lanes,
+- `seq_indices` *(List[str])*: **optional**, metadata field to define
+  sequencing indices,
+- `cov_depth` *(int)*: **optional**, metadata field to define
+  coverage depth,
+- `qc_comment` *(str)*: **optional**, metadata field to define
+  quality control comment.
+
+*Analysis example:*
+
+```yaml
+---
+- analyses:
+  - file_prefix: "%S_%F_%W_%B_%D_%R_rep-1"
+    suffix: "_(?P<type>sv|smallvar|qc)"
+    data_path: "/data/"
+    sample_name: "HG002"  # %S
+    source: "CNRGH"  # %F
+    wet_process: "novaseqxplus-25b"  # %W
+    bi_process: "dragen-4123"  # %B
+    cov_depth: 30  # %D
+    reference_genome: "hg38"  # %R
+```
+
+### WetProcess
+
+*Attributes:*
+
+- `proc_id` *(str)*: **required**, identifier of the wet lab process,
+- `manufacturer` *(str)*: **required**, sequencer manufacturer,
+- `sequencer` *(str)*: **required**, sequencer model,
+- `generic_kit` *(str)*: **required**, generic kit name,
+- `fragmentation` *(int)*: **required**, fragment size (bp),
+- `reads_size` *(int)*: **required**, reads size,
+- `input_type` *(str)*: **required**, input type,
+- `amplification` *(str)*: **required**, amplification method,
+- `flowcell_type` *(str)*: **required**, flowcell type,
+- `sequencing_type` *(str)*: **required**, sequencing type,
+- `desc` *(str)*: **optional**, description of the wet lab process.
+- `library_kit` *(str)*: **optional**, library kit name,
+- `sequencing_kit` *(str)*: **optional**, sequencing kit name,
+- `error_rate_expected` *(float)*: **optional**, expected error rate.
+
+*WetProcess Example:*
+
+```yaml
+---
+wet_processes:
+  - proc_id: "novaseqxplus-25b"
+    manufacturer: "illumina"
+    sequencer: "novaseqxplus"
+    generic_kit: "truseq-illumina"
+    fragmentation: 350
+    reads_size: 300
+    input_type: "gdna"
+    amplification: "pcr-free"
+    flowcell_type: "25b"
+    sequencing_type: "wgs"
+```
+
+### BiProcess
+
+*Attributes:*
+
+- `proc_id` *(str)*: **required**, identifier of the bioinformatics process,
+- `name` *(str)*: **required**, name of the bioinformatics process,
+- `pipeline_version` *(str)*: **required**, version of the bioinformatics
+  pipeline,
+- `sequencing_type` *(str)*: **required**, sequencing type,
+- `steps` *(List\[[BiProcess.Step](#biprocessstep)\])*: **optional**,
+  list of steps in the bioinformatics pipeline,
+- `desc` *(str)*: **optional**, description of the bioinformatics process.
+
+#### BiProcess.Step
+
+*Attributes:*
+
+- `name` *(str)*: **required**, name of the step,
+- `cmd` *(str)*: **required**, command used in the step,
+- `version` *(str)*: **optional**, version of the command,
+- `output` *(str)*: **optional**, output of the command.
+
+*BiProcess example:*
+
+```yaml
+---
+bi_processes:
+  - proc_id: "dragen-4123"
+    name: dragen
+    pipeline_version: "4.1.2.3"
+    steps:
+      - {name: basecalling, cmd: bclconvert, version: "3.9.3.2"}
+      - {name: trimming, cmd: dragen}
+      - {name: mapping, cmd: dragmap}
+      - {name: postmapping, cmd: dragen, version: "4.1.23"}
+      - {name: smallvarcalling, cmd: dragen, version: "4.1.23"}
+      - {name: svcalling, cmd: dragen, version: "4.1.23"}
+      - {name: secondary_qc, cmd: dragen, version: "4.1.23"}
+    sequencing_type: "wgs"
+```
+
+### Tags
+
+*Attributes:*
+
+- `delimiter`: *([Tags.Delimiter](#tagsdelimiter))*: **optional**,
+  defines the special characters used to delimit tags within a file prefix.
+  Each tag is identified by a start and an optional end delimiter, surrounding
+  a tag name that maps to a metadata field.
+- `match`: *(Dict\[str, [Tags.Match](#tagsmatch)\])*: **optional**,
+  custom tags definition. Keys are the tag names, and values are the
+  corresponding tag definitions. A tag name must contain at least one
+  alphanumeric character: `a-z`, `A-Z` and `0-9`.
+
+#### Tags.Delimiter
+
+*Attributes:*
+
+- `start` *(str)*: **optional**, character marking the **beginning of a tag**.
+  It must be one special character, excluding the following:
+  `(`, `)`, `?`, `<`, `>` (default: `%`),
+- `end` *(str)*: **optional**, character marking the **end of a tag**.
+  It must be one special character, excluding the following:
+  `(`, `)`, `?`, `<`, `>` (default: `""`). If omitted or empty, the tag ends
+  immediately after the tag name. Default: `""` (no explicit end delimiter).
+
+#### Tags.Match
+
+*Attributes:*
+
+- `field` *(str)*: **required**, metadata field name associated with the tag,
+- `regex` *(str)*: **required**, regular expression to match the expected
+  metadata value in the filename.
+
+*Tags example:*
+
+```yaml
+---
+tags:
+  delimiter:
+    start: "#"
+    end: "#"
+  match:
+    Z:
+      field: custom_field
+      regex: "[^_-]+"
+```
+
+## V - Scripts usage
+
+**Genelastic** provides the following scripts:
+
+- `gnl-data`: Create a bundle with randomly generated analyses, metadata,
+  processes, and data files for testing,
+- `gnl-validate`: Standalone script that statically validates YAML bundles.
+  Useful locally or in CI pipelines to ensure bundles follow the
+  [expected schema](#iv---bundle-file-definition) before integrating them into
+  a repository,
+- `gnl-import`: Import bundles to an Elasticsearch database,
+- `gnl-info`: Query information about genetic data already imported,
+- `gnl-integrity`: Check the integrity of previously imported data.
+
+### Import behavior
+
+Among these, `gnl-import` is the central script. It starts by statically
+validating YAML bundles, like `gnl-validate` does. Then, it parses bundles data
+files, and imports the resulting documents (records built from the files and
+metadata) into the Elasticsearch database.
+
+#### Dry-run
+
+`gnl-import` can run in "dry-run" mode, letting you check what would happen
+without touching Elasticsearch.
+
+- `-D`: parse the files, build the documents, but stop before import.
+  Useful to check that the right files are selected and can be read correctly.
+- `-DD`: only list the files matching your file prefix, without parsing or
+  import. Useful to check that your `file_prefix` is correct.
+
+#### Single-match vs multi-match
+
+By default, `gnl-import` runs in **single-match** mode:
+
+- Every tag used in the `file_prefix` must have its corresponding metadata
+  field explicitly defined.
+- For example, if the file prefix contains `%S`, then the field `sample_name`
+  must be provided in the analysis. Otherwise, an error is raised,
+- Only files that exactly match the declared metadata are imported.
+
+This mode is best suited for environments where data files belonging to a
+single analysis are grouped together in a dedicated directory.
+
+With the option `--multi-match`, the behavior changes:
+
+- Undefined metadata fields are tolerated,
+- When a tag has no defined value, it is replaced by its corresponding
+  regular expression. For example, `%S` normally maps to `sample_name`.
+  If this metadata field is not defined, `%S` expands to its default regex
+  (`[^_]+`), which matches any non-underscore sequence. Users can override
+  these defaults in the bundle (via [`Tags.Match`](#tagsmatch)).
+- All files matching the defined metadata and regex expansions are collected,
+- Each **unique combination of values** found in the filenames results in a new
+  analysis with its own ID.
+
+This mode is best suited for environments where multiple analyses share a
+single directory of data files. It is more flexible than single-match, but
+also carries the risk of importing more files than expected if regex patterns
+are too permissive. **Carefully check matches in dry-run mode
+(`-D` / `-DD`) before importing.**
+
+**Example:**
+
+```yaml
+---
+- analyses:
+  - file_prefix: "%S_%F_%W_%B_%D_%R_rep-1"
+    data_path: "/data/"
+    # sample_name (%S) is omitted
+    source: "CNRGH"  # %F
+    wet_process: "novaseqxplus-25b"  # %W
+    bi_process: "dragen-4123"  # %B
+    cov_depth: 30  # %D
+    reference_genome: "hg38"  # %R
+```
+
+In multi-match mode, the `%S` tag expands to its regex (`[^_]+`), so all
+sample names are accepted. The following files are matched:
+
+```text
+- HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1.vcf
+- HG003_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1.vcf
+- HG004_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1.vcf
+```
+
+Three analyses are automatically created, each with its own `sample_name`
+derived from the filename:
+
+- `HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1`,
+- `HG003_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1`,
+- `HG004_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1`
+
+#### Metrics
+
+In addition to raw data files (`.vcf`, `.cov`), Genelastic also supports
+metrics data files.
+
+A **metrics data file** is identified by the `.metrics` suffix, which appears
+**before the file extension**. This suffix can optionally include metadata
+about the tools used to generate the metrics and their versions.
+
+The format for this metadata is:
+
+```text
+.metrics_<TOOL>-<VERSION>[_<TOOL>-<VERSION>...]
+```
+
+- Multiple tools can be listed, separated by underscores (`_`),
+- Each version must contain at least one number and is separated from the tool
+  name by a hyphen (`-`).
+
+For raw files, their `type` is the same as their `extension`.
+
+For metrics files, however, multiple metrics types may share the same extension
+(e.g. `.json`). To distinguish them, the `suffix` attribute in the analysis
+definition must specify a regex that extracts the `type` from the filename.
+If no `suffix` is defined, Genelastic will raise an error.
+
+**Example:**
+
+```yaml
+---
+- analyses:
+  - file_prefix: "%S_%F_%W_%B_%D_%R_rep-1"
+    suffix: "_(?P<type>sv|smallvar|qc)"
+    data_path: "/data/"
+    sample_name: "HG002"  # %S
+    source: "CNRGH"  # %F
+    wet_process: "novaseqxplus-25b"  # %W
+    bi_process: "dragen-4123"  # %B
+    cov_depth: 30  # %D
+    reference_genome: "hg38"  # %R
+```
+
+This will match files such as:
+
+```text
+- HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1_smallvar.vcf
+- HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1_smallvar.cov
+- HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1_smallvar.metrics_happy-2-0-0_giab-3-0-0.json
+- HG002_CNRGH_novaseqxplus-25b_dragen-4123_30_hg38_rep-1_qc.metrics.json
+```
+
+In this example, the analysis includes both raw data files and metrics files.
+The value of the `metrics` field in the imported document depends on the file
+type:
+
+- **Non-metrics files** (e.g. VCF, Coverage):
+
+  ```json
+  {
+    "metrics": null
+  }
+  ```
+
+- **Metrics files without tool metadata** (e.g. QC):
+
+  ```json
+  {
+    "metrics": []
+  }
+  ```
+
+- **Metrics files with tool metadata** (e.g. Smallvar):
+
+  ```json
+  {
+    "metrics": [
+      {
+        "tool": "happy",
+        "version": "2.0.0"
+      },
+      {
+        "tool": "giab",
+        "version": "3.0.0"
+      }
+    ]
+  }
+  ```
+
+## VI - Servers usage
+
+Genelastic includes two servers: an **API server** and a **UI server**.
+The UI does not communicate directly with Elasticsearch: it always goes
+through the API server, which acts as a gateway and provides HTTP endpoints.
+
+### API server
+
+The API server needs to know how to connect to Elasticsearch. Configure it
+through the following environment variables:
+
+- `GENAPI_ES_URL`: URL of the Elasticsearch server,
+- `GENAPI_ES_ENCODED_API_KEY`: Encoded API key,
+- `GENAPI_ES_INDEX_PREFIX`: Prefix to identify indices of interest,
+- `GENAPI_ES_CERT_FP`: Certificate fingerprint of the Elasticsearch server.
+
+Start the API server in development mode:
+
+```bash
+gnl-start-api dev
+```
+
+### UI server
+
+The UI server only needs the address of the API server:
+
+- `GENUI_API_URL`: URL of the API server.
+
+Start the UI server in development mode:
+
+```bash
+gnl-start-ui dev
+```
+
+### Development vs production
+
+Both `gnl-start-api` and `gnl-start-ui` support two modes:
+
+- dev: development mode (hot reload, debug logs, not optimized),
+- prod: production mode (optimized build, suitable for deployment).
+
+## VII - For developers
+
+### Prerequisites
+
+- `python` >= 3.11
+- `uv` >= 0.9
+- `make`
+
+### Installation
+
+To install development dependencies, run the following commands:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+make
+```
+
+### Pre-commit hooks setup
+
+This project uses [pre-commit](https://pre-commit.com/) to manage Git hooks
+scripts. To install project hooks, run:
+
+```bash
+pre-commit install
+```
+
+After that, each commit will succeed only if all hooks (defined in
+`.pre-commit-config.yaml`) pass.
+
+If necessary (though not recommended),
+you can skip these hooks by using the `--no-verify` / `-n` option when
+committing:
+
+```bash
+git commit -m "My commit message" --no-verify # This commit will not run installed hooks.
+```
