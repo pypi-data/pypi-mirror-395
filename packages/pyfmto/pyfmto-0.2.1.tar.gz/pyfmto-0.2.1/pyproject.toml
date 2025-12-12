@@ -1,0 +1,157 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyfmto"
+authors = [{name = "Xiaoxu Zhang", email = "xxzhang_official@163.com"}]
+description = "A Python library for federated many-task optimization research"
+readme = "README.md"
+requires-python = ">=3.9"
+license-files = ["LICENSE"]
+dynamic = ["version"]
+dependencies = [
+    "fastapi",
+    "jinja2",
+    "matplotlib",
+    "msgpack",
+    "numpy",
+    "openpyxl",
+    "opfunu",
+    "pandas",
+    "pillow",
+    "pydantic",
+    "pydantic_core",
+    "pyDOE",
+    "pyvista",
+    "pyyaml",
+    "requests",
+    "ruamel-yaml",
+    "scienceplots",
+    "scikit-learn",
+    "scipy",
+    "seaborn",
+    "setproctitle",
+    "tabulate",
+    "tqdm",
+    "uvicorn",
+    "wrapt",
+    "rich",
+   ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+]
+
+[project.optional-dependencies]
+dev = [
+    # build
+    "build",
+    "pyproject_hooks",
+    "setuptools",
+    # test
+    "coverage",
+    "pytest",
+    "pytest-cov",
+    "pytest-env",
+    "iniconfig",
+    # types check
+    "mypy",
+    "mypy_extensions",
+    "types-PyYAML",
+    "types-tabulate",
+    "types-requests",
+    "typing-inspection",
+    "typing_extensions",
+    # quality check
+    "flake8",
+    "flake8-pyproject",
+    "pycodestyle",
+    "pyflakes",
+    "mccabe",
+    # other
+    "click",
+    "pluggy",
+    "sniffio",
+    "psutil",
+    "threadpoolctl",
+    "six",
+    "zipp",
+    "packaging",
+    "tomli",
+    "certifi",
+    "charset-normalizer",
+    "idna",
+    "urllib3",
+    "h11",
+    "annotated-types",
+    "contourpy",
+    "cycler",
+    "fonttools",
+    "kiwisolver",
+    "pyparsing",
+    "joblib",
+    "python-dateutil",
+    "starlette",
+    'deepdiff',
+]
+
+[project.scripts]
+pyfmto = "pyfmto.utilities.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Xiaoxu-Zhang/pyfmto"
+
+[tool.setuptools.dynamic]
+version = {attr = "pyfmto.__version__"}
+
+# tool configurations
+[tool.setuptools.package-data]
+"pyfmto.problems" = ["*.yaml", "datasets/**/*"]
+"pyfmto.utilities" = ["*.yaml"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=pyfmto",
+    "--cov-report=html:coverage/html"
+]
+env = ["COLUMNS=120"]
+testpaths = ["tests/"]
+filterwarnings = [
+    "ignore:FigureCanvasAgg is non-interactive",
+    "ignore:pkg_resources is deprecated as an API",
+    "ignore:Precision loss occurred in moment calculation"
+]
+
+[tool.coverage.run]
+data_file = "coverage/.coverage"
+source = ["pyfmto"]
+
+[tool.coverage.html]
+directory = "coverage/html"
+
+[tool.mypy]
+files = ["src/"]
+exclude = ["src/pyfmto/problems/benchmarks/", "problems/*", "algorithms/*"]
+follow_imports = "skip"
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.flake8]
+exclude = ["*temp*", "problems/*", "algorithms/*"]
+max-line-length = 120
+count = true
