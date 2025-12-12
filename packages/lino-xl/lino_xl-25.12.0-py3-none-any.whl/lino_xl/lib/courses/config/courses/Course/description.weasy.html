@@ -1,0 +1,112 @@
+{% extends "courses/Course/base.wk.html" %}
+{% set pv =  ar.action_param_values %}
+
+{%- block head %}
+{{ super() }}
+<style type="text/css">
+table {
+    border-collapse: collapse;
+}
+table, td, th {
+    border: 1px solid black;
+}
+body {
+    font-family: "Liberation sans", "arial";
+    font-size: 10pt;
+}
+
+p {
+    padding: 0;
+    margin: 0;
+}
+
+@page {
+    margin: 10mm; margin-top: 15mm; margin-bottom: 15mm;
+    size: portrait;
+    @bottom-right {
+        content: counter(page) "/" counter(pages);
+    }
+}
+
+
+@media print {
+  tr.avoid {
+    page-break-inside: avoid !important;
+  }
+}
+@media screen {
+    div.footer_div {
+        display: none;
+    }
+}
+@media print {
+    div.footer_div {
+        position: fixed;
+        bottom: -5mm;
+        width: 100%;
+        border-top: solid 1pt;
+        padding: 2pt;
+    }
+}
+
+</style>
+{%- endblock %}
+
+{%- block intro %}
+<ul>
+{% for k in ['line', 'teacher', 'room', 'start_date'] %}
+<li>{{obj._meta.get_field(k).verbose_name}} : {{getattr(obj, k)}}</li>
+{% endfor %}
+
+<li>{{_("Scheduled meetings")}}:
+{% set events = obj.events_by_course().order_by('start_date') %}
+{% set events = rt.models.system.PeriodEvents.started.add_filter(events, pv)%}
+{% for e in events %}
+{{obj.every_unit.get_date_formatter()(e.start_date)}}
+{% endfor %}
+</li>
+</ul>
+
+{%- endblock %}
+
+{%- block main %}
+{{ super() }}
+
+
+<div class="footer_div">{{obj}}</div>
+
+<h2>{{_("List of participants")}}</h2>
+<table border="1" width="100%">
+<thead>
+<tr>
+<td>{{_("No.")}}</td>
+<td>{{_("Participant")}}</td>
+<td>{{_("Sex")}}</td>
+<td>{{_("Age")}}</td>
+<td>{{_("Municipality")}}</td>
+{% if pv.show_remarks %}
+<td>{{_("Remark")}}</td>
+{% endif %}
+</tr>
+</thead>
+
+<tbody>
+{% for enrolment in obj.get_enrolments(
+   start_date=pv.start_date,
+   end_date=pv.end_date) %}
+<tr class="avoid">
+<td>{{loop.index}}</td>
+<td>{{enrolment.pupil.last_name.upper()}} {{enrolment.pupil.first_name}}</td>
+<td>{{enrolment.pupil.gender}}</td>
+<td>{{enrolment.pupil.age}}</td>
+<td>{{enrolment.pupil.zip_code}} {{enrolment.pupil.city}}</td>
+{% if pv.show_remarks %}
+<td>{{enrolment.remark}}</td>
+{% endif %}
+</tr>
+{% endfor %}
+
+</tbody>
+</table>
+
+{%- endblock %}

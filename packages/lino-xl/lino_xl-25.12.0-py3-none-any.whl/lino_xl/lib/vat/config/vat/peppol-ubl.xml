@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+{#
+
+  This template file is derived from the base-example.xml file at
+  https://github.com/OpenPEPPOL/peppol-bis-invoice-3/blob/master/rules/examples/base-example.xml
+  Vocabulary: https://docs.peppol.eu/poacc/billing/3.0/syntax/ubl-invoice/tree/
+
+#}
+<{{iif(obj.is_reversal(), "CreditNote", "Invoice")}}
+  xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+  xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">
+
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID>
+  <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
+  <cbc:ID>{{str(obj)}}</cbc:ID>
+  <cbc:IssueDate>{{obj.voucher_date}}</cbc:IssueDate>
+  {% if obj.due_date %}
+  <cbc:DueDate>{{obj.due_date}}</cbc:DueDate>
+  {% endif %}
+  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+  <cbc:AccountingCost>1234:5678:9012</cbc:AccountingCost>
+  {{xml_element("cbc:BuyerReference", obj.your_ref or "abc123")}}
+  <cac:InvoicePeriod>
+    {{xml_element("cbc:DescriptionCode", "3")}}{#3=Invoice document issue date time#}
+  </cac:InvoicePeriod>
+  {% if obj.printed_by %}
+    {% set pth = obj.printed_by.get_target_file().path %}
+    <cac:AdditionalDocumentReference>
+      {{xml_element("cbc:ID", obj)}}
+      {{xml_element("cbc:DocumentDescription", _("PDF version"))}}
+      <cac:Attachment>
+        <cbc:EmbeddedDocumentBinaryObject mimeCode="application/pdf" filename="{{pth.name}}">
+          {{base64.b64encode(pth.read_bytes()).decode()}}
+        </cbc:EmbeddedDocumentBinaryObject>
+      </cac:Attachment>
+    </cac:AdditionalDocumentReference>
+  {% endif %}
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      {{site_company.endpoint_id.as_xml("cbc:EndpointID")}}
+      <cac:PartyName>
+        <cbc:Name>{{escape(str(site_company))}}</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>{{escape(site_company.street)}}</cbc:StreetName>
+        <cbc:AdditionalStreetName>{{escape(site_company.street_no+site_company.street_box)}}</cbc:AdditionalStreetName>
+        <cbc:CityName>{{escape(str(site_company.city))}}</cbc:CityName>
+        <cbc:PostalZone>{{site_company.zip_code}}</cbc:PostalZone>
+        <cac:Country>
+          <cbc:IdentificationCode>{{site_company.country.isocode}}</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        {{site_company.get_company_id("cbc:CompanyID")}}
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{escape(str(site_company))}}</cbc:RegistrationName>
+        {{site_company.get_company_id("cbc:CompanyID")}}
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      {{obj.partner.endpoint_id.as_xml("cbc:EndpointID")}}
+      <cac:PartyName>
+        <cbc:Name>{{escape(str(obj.partner))}}</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        {{xml_element("cbc:StreetName", obj.partner.street)}}
+        {{xml_element("cbc:AdditionalStreetName", obj.partner.street_no+obj.partner.street_box)}}
+        {{xml_element("cbc:CityName", str(obj.partner.city))}}
+        {{xml_element("cbc:PostalZone", str(obj.partner.zip_code))}}
+        <cac:Country>
+          <cbc:IdentificationCode>{{obj.partner.country.isocode}}</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        {{obj.partner.get_company_id("cbc:CompanyID")}}
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>{{escape(str(obj.partner))}}</cbc:RegistrationName>
+        {{obj.partner.get_company_id("cbc:CompanyID")}}
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:Name>{{escape(str(obj.partner))}}</cbc:Name>
+        {{xml_element("cbc:Telephone", obj.partner.phone)}}
+        {{xml_element("cbc:ElectronicMail", obj.partner.email)}}
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  {% if False %}
+  <cac:Delivery>
+      <cbc:ActualDeliveryDate>2017-11-01</cbc:ActualDeliveryDate>
+      <cac:DeliveryLocation>
+          <cbc:ID schemeID="0088">9483759475923478</cbc:ID>
+          <cac:Address>
+              <cbc:StreetName>Delivery street 2</cbc:StreetName>
+              <cbc:AdditionalStreetName>Building 56</cbc:AdditionalStreetName>
+              <cbc:CityName>Stockholm</cbc:CityName>
+              <cbc:PostalZone>21234</cbc:PostalZone>
+              <cac:Country>
+                  <cbc:IdentificationCode>SE</cbc:IdentificationCode>
+              </cac:Country>
+          </cac:Address>
+      </cac:DeliveryLocation>
+      <cac:DeliveryParty>
+          <cac:PartyName>
+              <cbc:Name>Delivery party Name</cbc:Name>
+          </cac:PartyName>
+      </cac:DeliveryParty>
+  </cac:Delivery>
+  <cac:PaymentMeans>
+      <cbc:PaymentMeansCode name="Credit transfer">30</cbc:PaymentMeansCode>
+      <cbc:PaymentID>Snippet1</cbc:PaymentID>
+      <cac:PayeeFinancialAccount>
+          <cbc:ID>IBAN32423940</cbc:ID>
+          <cbc:Name>AccountName</cbc:Name>
+          <cac:FinancialInstitutionBranch>
+              <cbc:ID>BIC324098</cbc:ID>
+          </cac:FinancialInstitutionBranch>
+      </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  {% endif %}
+  <cac:PaymentTerms>
+    <cbc:Note>{{obj.payment_term}}</cbc:Note>
+  </cac:PaymentTerms>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="EUR">{{obj.total_vat}}</cbc:TaxAmount>
+    {% for cat, rule, total_base, total_vat in obj.vat_subtotals if total_vat or total_base %}
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="EUR">{{total_base}}</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="EUR">{{total_vat}}</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>{{cat}}</cbc:ID>
+        <cbc:Percent>{{rule.rate*100}}</cbc:Percent>
+        {% if cat == "AE" %}{# https://docs.peppol.eu/poacc/billing/3.0/codelist/vatex/ #}
+        <cbc:TaxExemptionReasonCode>VATEX-EU-AE</cbc:TaxExemptionReasonCode>
+        {% endif %}
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+    {% endfor %}
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="EUR">{{obj.total_base or 0}}</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="EUR">{{obj.total_base or 0}}</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="EUR">{{obj.total_incl or 0}}</cbc:TaxInclusiveAmount>
+    <cbc:ChargeTotalAmount currencyID="EUR">0</cbc:ChargeTotalAmount>
+    <cbc:PrepaidAmount currencyID="EUR">0</cbc:PrepaidAmount>
+    <cbc:PayableRoundingAmount currencyID="EUR">0</cbc:PayableRoundingAmount>
+    <cbc:PayableAmount currencyID="EUR">{{obj.total_incl or 0}}</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+
+  {% for item in obj.items.exclude(product__subtotal=True).filter(total_base__isnull=False) %}
+  <cac:InvoiceLine>
+    <cbc:ID>{{item.seqno}}</cbc:ID>
+    {% if item.description %}
+    <cbc:Note >{{item.description}}</cbc:Note>
+    {% endif %}
+    {% if item.product %}
+    <cbc:InvoicedQuantity unitCode="{{item.product.delivery_unit.value}}">{{item.qty.as_decimal(2) or 1}}</cbc:InvoicedQuantity>
+    {% else %}
+    <cbc:InvoicedQuantity unitCode="XPP">1</cbc:InvoicedQuantity>
+    {% endif %}
+    <cbc:LineExtensionAmount currencyID="EUR">{{myround(item.total_base)}}</cbc:LineExtensionAmount>
+    {{xml_element("cbc:AccountingCost", item.get_base_account(item.voucher.journal.trade_type))}}
+    {# Buyer accounting reference. Where to book the relevant data into the Buyer’s financial accounts. #}
+    {% if dd.is_installed("invoicing") and item.invoiceable %}
+    <cac:OrderLineReference>
+      {{xml_element("cbc:LineID", item.invoiceable)}}
+    </cac:OrderLineReference>
+    {% endif %}
+    {% if item.discount_amount %}
+    <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReasonCode>95</cbc:AllowanceChargeReasonCode>
+    <cbc:Amount currencyID="EUR">{{myround(item.discount_amount)}}</cbc:Amount>
+    </cac:AllowanceCharge>
+    {% endif %}
+    <cac:Item>
+      {{xml_element("cbc:Description", item.description)}}
+      {{xml_element("cbc:Name", item.product)}}
+      {% if False %}
+        <!-- Associates the item with its identification according to a standard system. -->
+        <cac:StandardItemIdentification>
+          <cbc:ID schemeID="0088">1234567890</cbc:ID>
+        </cac:StandardItemIdentification>
+        <cac:OriginCountry>
+          <cbc:IdentificationCode>NO</cbc:IdentificationCode>
+        </cac:OriginCountry>
+        <cac:CommodityClassification>
+          <cbc:ItemClassificationCode listID="SRV">09348023</cbc:ItemClassificationCode>
+        </cac:CommodityClassification>
+      {% endif %}
+      {% set rule = item.get_vat_rule(item.get_trade_type()) %}
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>{{item.get_peppol_vat_category()}}</cbc:ID>
+        <cbc:Percent>{{rule.rate*100}}</cbc:Percent>
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="EUR">{{item.unit_price or myround(item.total_base/(item.qty or 1))}}</cbc:PriceAmount>
+    </cac:Price>
+    </cac:InvoiceLine>
+  {% endfor %}
+</{{iif(obj.is_reversal(), "CreditNote", "Invoice")}}>

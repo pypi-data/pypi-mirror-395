@@ -1,0 +1,39 @@
+{% extends "subscriptions/Subscription/base.weasy.html" %}
+{%- block pagesize %}portrait{%- endblock %};
+{%- block main %}
+
+<div class="footer_div">{{obj}}</div>
+
+<p>This is an agreement between {{settings.SITE.site_config.site_company}}
+and {{obj.partner}}.
+</p><p>
+  It is about {{obj.invoiceable_product}}.
+  It starts on {{obj.start_date}} and ends on {{obj.end_date}}.
+  Invoicing periodicity: {{obj.subscription_periodicity}}.
+
+</p><p>{{obj.description}}
+</p><p>Each invoice will contain the following items:</p>
+
+<p></p>
+
+<table border="1" width="45%">
+<thead><tr>
+<td>{{_("No.")}}</td>
+<td>{{_("Product")}}</td>
+<td>{{_("Quantity")}}</td>
+<td>{{_("Remark")}}</td>
+</tr></thead>
+<tbody>
+{% for oi in obj.items.all() %}
+<tr class="avoid">
+<td>{{loop.index}}</td>
+<td>{{tostring(oi.product)}}</td>
+<td>{{oi.title}}</td>
+<td>{{oi.qty}}</td>
+<td>{{oi.total_base}}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{%- endblock %}

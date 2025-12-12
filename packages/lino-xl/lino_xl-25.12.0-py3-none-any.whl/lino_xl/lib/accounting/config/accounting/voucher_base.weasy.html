@@ -1,0 +1,228 @@
+{% set site_op = settings.SITE.plugins.contacts.site_owner %}
+{% set show_printed_time = False %}
+{% set show_site_op_in_footer = False %}
+{%- extends "weasyprint/base.weasy.html" -%}
+{%- block pagesize %}portrait{%- endblock %}
+
+{% if site_op  %}
+{%- block bottomleft %}
+@bottom-left {
+    vertical-align: top;
+    content: '{{", ".join(site_op.get_address_lines())}}'
+}
+{%- endblock bottomleft %}
+{%- block bottomright %}
+@bottom-right {
+    vertical-align: top;
+    white-space: pre;
+    content: '{%- block doctitle %}{{babelattr(obj.journal, 'printed_name')}} {{obj.number}}/{{obj.accounting_period.year}}{%- endblock %}'
+             '\A{{_("Page")}} ' counter(page) ' {{_("of {0}").format("")}} ' counter(pages)
+             {%- if show_printed_time -%}
+             '\A{{_("Printed")}} {{fdm(dd.today())}} {{_("at")}} {{now.time().strftime("%H:%M")}}'
+             {%- endif %};
+}
+{%- endblock bottomright %}
+{%- endif %}
+
+{%- block main %}
+<div style="height:{{dd.plugins.weasyprint.space_before_recipient}}mm;"></div>
+
+<div class="recipient">
+<span style="font-size:80%">{{_("Recipient")}}:</span><br>
+{{obj.recipient.get_address_html()}}
+</div>
+
+<div style="height:5mm;"></div>
+
+<p style="text-align:right;">{{_("Date")}}: {{fdl(obj.voucher_date)}}</p>
+
+<h1>{{babelattr(obj.journal, 'printed_name')}} {{obj.number}}/{{obj.accounting_period.year}}</h1>
+
+<table class="preamble">
+<tr>
+<td>
+{{_("Our reference")}}: {{obj}}
+<br>{{_("Your reference")}}: {{obj.your_ref}}
+{% if  getattr(obj, 'invoicing_min_date', None) %}
+<br>{{_("Period from {} to {}").format(obj.invoicing_min_date, obj.invoicing_max_date)}}
+{% endif %}
+</td>
+<td>
+{{_("Your VAT id")}}: {{obj.partner.vat_id or _("N/A")}}
+<br>{{_("Your customer id")}}: {{obj.partner.id}}
+{% if false and obj.partner.vat_id %}
+{%  set xmlfile, url = obj.make_xml_file(ar) %}
+<br>{{_("e-invoice")}}: <a href="{url}">{url}</a>
+{% endif %}
+</td></tr></table>
+
+{% if obj.intro %}
+<div style="height:2mm;"></div>
+{% if obj.intro.startswith("<") %}
+{{obj.intro}}
+{% else %}
+{{restify(obj.intro)}}
+{% endif %}
+<div style="height:2mm;"></div>
+{% else %}
+<div style="height:10mm;"></div>
+{% endif %}
+
+{% block body %}
+
+{% set colnames = obj.get_columns_to_print() %}
+
+{#
+{% if not obj.report_assets() and 'asset' in colnames %}
+{% do colnames.remove('asset') %}
+{% endif %}
+#}
+
+{% macro cell(item, colname) %}
+  {% if colname == "title" %}
+  <td>
+    {% if item.description %}
+      <p><b>{{str(item.title or item.product)}}</b></p>
+      {% if item.description.startswith("<") %}
+        {{item.description}}
+      {% else %}
+        {{restify(item.description)}}
+      {% endif %}
+    {% else %}
+      <p>{{str(item.title or item.product)}}</p>
+    {% endif %}
+  </td>
+  {% elif colname == "product" %}
+    <td>{{item.product or ""}}</td>
+  {% elif colname == "invoiceable" %}
+    <td>{{item.invoiceable or ""}}</td>
+  {% elif colname == "unit_price" %}
+  <td class="number-cell">
+    {{decfmt(item.unit_price)}}
+  </td>
+  {% elif colname == "qty" %}
+  <td class="number-cell">
+    {% if item.unit_price %}
+    {{decfmt(item.qty)}}
+    {% endif %}
+  </td>
+  {% elif colname == "amount" %}
+  <td class="number-cell">{{decfmt(item.amount)}}</td>
+  {% elif colname == "discount_rate" %}
+  <td class="number-cell">
+    {% if item.discount_rate %}
+      {{decfmt(item.discount_rate)}}%
+    {% endif %}
+  </td>
+  {% elif colname == "total_incl" %}
+  <td class="number-cell">
+    {{decfmt(item.total_incl)}}
+  </td>
+  {% elif colname == "total_base" %}
+  <td class="number-cell">
+    {{decfmt(item.total_base)}}
+  </td>
+  {% else %}
+    <td>{{colname}}</td>
+  {% endif %}
+{% endmacro %}
+
+<div>
+<table border="1" width="100%">
+  <tr>
+    {% for colname in colnames %}
+    <th>{{obj.get_column_heading(colname)}}</th>
+    {#<th>{{getattr(rt.models.trading.InvoiceItem, colname).field.verbose_name}}</th>#}
+    {% endfor %}
+  </tr>
+{% for item in obj.items.order_by('seqno') %}
+  {% if item.product.subtotal %}
+  <tr style="background-color: lightgrey;">
+  {% else %}
+  <tr>
+  {% endif %}
+  {% for colname in colnames %}
+  {{ cell(item, colname) }}
+  {% endfor %}
+  </tr>
+{% endfor %}
+</table>
+</div>
+
+{% endblock %}
+
+<div style="height:5mm;"></div>
+
+{% if len(obj.vat_subtotals) > 1 %}
+  <div style="width:80mm; float:right;">
+  <table border="1">
+  <tr>
+    <th>{{_("VAT category")}}</th>
+    <th>{{_("Total excl. VAT")}}</th>
+    <th>{{_("VAT")}}</th>
+    <th>{{_("Total incl. VAT")}}</th>
+  </tr>
+  {% for cat, rule, total_base, total_vat in obj.vat_subtotals if total_vat or total_base %}
+  <tr>
+    <td>{{cat}} ({{"{:.0%}".format(rule.rate)}})</td>
+    <td class="number-cell">{{decfmt(total_base)}}</td>
+    <td class="number-cell">{{decfmt(total_vat)}}</td>
+    <td class="number-cell">{{decfmt(total_base+total_vat)}}</td>
+  </tr>
+  {% endfor %}
+  <tr>
+    <td>{{_("Totals")}}</td>
+    <td class="number-cell">{{decfmt(obj.total_base)}}</td>
+    <td class="number-cell">{{decfmt(obj.total_vat)}}</td>
+    <td class="number-cell">{{decfmt(obj.total_incl)}}</td>
+  </tr>
+  </table>
+  </div>
+{% else %}
+  <div style="width:60mm; float:right;">
+  <table border="1">
+  <tr><td>{{_("Total excl. VAT")}}</td><td class="number-cell">{{decfmt(obj.total_base)}}</td></tr>
+  <tr><td>{{_("VAT")}}</td><td class="number-cell">{{decfmt(obj.total_vat)}}</td></tr>
+  <tr><td>{{_("Total incl. VAT")}}</td><td class="number-cell">{{decfmt(obj.total_incl)}}</td></tr>
+  </table>
+  </div>
+{% endif %}
+
+<div style="page-break-inside: avoid;">
+
+{% block payment %}
+<p class="Default">
+{% if obj.due_date %}
+{{_("Due date")}} : {{fds(obj.due_date)}}
+<br/>
+{% endif %}
+{% if obj.payment_term %}
+{{_("Payment terms")}} : {{obj.payment_term}}
+{% endif %}
+</p>
+{% endblock payment %}
+
+<div style="clear:right;"></div>
+
+{% block ending %}
+{% if False %}
+<p class="Default"">
+{{_("With best regards.")}}
+<br>
+<br>
+<br>{{this.user}}
+</p>
+{% if show_site_op_in_footer %}
+<p class="Default"">
+{% for ln in site_op.get_address_lines() %}
+{{ln}},
+{% endfor %}
+{{tostring(site_op.contact_details)}}
+</p>
+{% endif %}
+{% endif %}
+{% endblock ending %}
+
+</div>
+
+{%- endblock main %}

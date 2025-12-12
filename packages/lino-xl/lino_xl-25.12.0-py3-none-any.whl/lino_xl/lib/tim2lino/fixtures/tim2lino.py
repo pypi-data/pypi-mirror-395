@@ -1,0 +1,15 @@
+# -*- coding: UTF-8 -*-
+# Copyright 2009-2017 Rumma & Ko Ltd
+# License: GNU Affero General Public License v3 (see file COPYING for details)
+
+from importlib import import_module
+from django.conf import settings
+
+
+def objects():
+    mod = import_module(settings.SITE.plugins.tim2lino.timloader_module)
+    tim = mod.TimLoader(settings.SITE.plugins.tim2lino.tim_data_path)
+    for obj in tim.objects():
+        yield obj
+
+    tim.finalize()
