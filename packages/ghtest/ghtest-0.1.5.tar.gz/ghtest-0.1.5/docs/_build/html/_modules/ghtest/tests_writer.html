@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ghtest.tests_writer &#8212; ghtest  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for ghtest.tests_writer</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># coding: utf-8</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pprint</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">textwrap</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.tests_creator</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScenarioStep</span><span class="p">,</span> <span class="n">SuggestedFunctionTests</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.test_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaseTestResult</span><span class="p">,</span> <span class="n">RunTestWithCassette</span><span class="p">,</span> <span class="n">_stable_repr</span>
+
+
+<div class="viewcode-block" id="TestArtifact">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.tests_writer.TestArtifact">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestArtifact</span><span class="p">:</span>
+    <span class="n">suggestion</span><span class="p">:</span> <span class="n">SuggestedFunctionTests</span>
+    <span class="n">run</span><span class="p">:</span> <span class="n">RunTestWithCassette</span></div>
+
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestWriterResult</span><span class="p">:</span>
+    <span class="n">test_modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span>
+    <span class="n">scenario_modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScenarioDefinition</span><span class="p">:</span>
+    <span class="n">suggestion</span><span class="p">:</span> <span class="n">SuggestedFunctionTests</span>
+    <span class="n">cases</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ScenarioStep</span><span class="p">,</span> <span class="n">CaseTestResult</span><span class="p">]]</span>
+
+
+<span class="n">ExceptionAssertionMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;presence&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">]</span>
+<span class="n">_EXCEPTION_ASSERTION_MODES</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;presence&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_DataStore</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">inline_limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">160</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_dir</span> <span class="o">=</span> <span class="n">base_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inline_limit</span> <span class="o">=</span> <span class="n">inline_limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">used</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">literal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">literal</span> <span class="o">=</span> <span class="n">_format_literal</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_inline</span><span class="p">(</span><span class="n">literal</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">literal</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_data_file</span><span class="p">(</span><span class="n">literal</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;_load_data(</span><span class="si">{</span><span class="n">filename</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_should_inline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">literal</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">literal</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">literal</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inline_limit</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_data_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">literal</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">used</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="si">}</span><span class="s2">.py&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dir</span> <span class="o">/</span> <span class="n">filename</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DATA = </span><span class="si">{</span><span class="n">literal</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filename</span>
+
+
+<div class="viewcode-block" id="write_test_modules">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.tests_writer.write_test_modules">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_test_modules</span><span class="p">(</span>
+    <span class="n">artifacts</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TestArtifact</span><span class="p">],</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">max_cases_per_module</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">inline_char_limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">160</span><span class="p">,</span>
+    <span class="n">include_scenarios</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">include_return_summary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">exception_assertion</span><span class="p">:</span> <span class="n">ExceptionAssertionMode</span> <span class="o">=</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TestWriterResult</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">exception_assertion</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_EXCEPTION_ASSERTION_MODES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Invalid exception assertion mode </span><span class="si">{</span><span class="n">exception_assertion</span><span class="si">!r}</span><span class="s2">; &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;expected one of </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_EXCEPTION_ASSERTION_MODES</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">out_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">out_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">out_dir</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span>
+    <span class="n">data_store</span> <span class="o">=</span> <span class="n">_DataStore</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">inline_limit</span><span class="o">=</span><span class="n">inline_char_limit</span><span class="p">)</span>
+
+    <span class="n">case_defs</span><span class="p">,</span> <span class="n">scenario_defs</span> <span class="o">=</span> <span class="n">_collect_cases</span><span class="p">(</span><span class="n">artifacts</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">case_defs</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">scenario_defs</span><span class="p">:</span>
+        <span class="n">_cleanup_empty_data_dir</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TestWriterResult</span><span class="p">(</span><span class="n">test_modules</span><span class="o">=</span><span class="p">[],</span> <span class="n">scenario_modules</span><span class="o">=</span><span class="p">[])</span>
+
+    <span class="n">modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">scenario_modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">module_index</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">current_cases</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">case_def</span> <span class="ow">in</span> <span class="n">case_defs</span><span class="p">:</span>
+        <span class="n">test_src</span> <span class="o">=</span> <span class="n">_render_test_function</span><span class="p">(</span>
+            <span class="n">case_def</span><span class="p">,</span>
+            <span class="n">data_store</span><span class="p">,</span>
+            <span class="n">out_dir</span><span class="p">,</span>
+            <span class="n">include_return_summary</span><span class="o">=</span><span class="n">include_return_summary</span><span class="p">,</span>
+            <span class="n">exception_assertion</span><span class="o">=</span><span class="n">exception_assertion</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">test_src</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">current_cases</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">test_src</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_cases</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">max_cases_per_module</span><span class="p">:</span>
+            <span class="n">need_loader</span> <span class="o">=</span> <span class="n">data_store</span><span class="o">.</span><span class="n">used</span>
+            <span class="n">module_path</span> <span class="o">=</span> <span class="n">_write_module</span><span class="p">(</span>
+                <span class="n">out_dir</span><span class="p">,</span>
+                <span class="n">module_index</span><span class="p">,</span>
+                <span class="n">current_cases</span><span class="p">,</span>
+                <span class="n">data_loader</span><span class="o">=</span><span class="n">need_loader</span><span class="p">,</span>
+                <span class="n">include_return_summary</span><span class="o">=</span><span class="n">include_return_summary</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module_path</span><span class="p">)</span>
+            <span class="n">current_cases</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">module_index</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">data_store</span><span class="o">.</span><span class="n">used</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="n">current_cases</span><span class="p">:</span>
+        <span class="n">need_loader</span> <span class="o">=</span> <span class="n">data_store</span><span class="o">.</span><span class="n">used</span>
+        <span class="n">module_path</span> <span class="o">=</span> <span class="n">_write_module</span><span class="p">(</span>
+            <span class="n">out_dir</span><span class="p">,</span>
+            <span class="n">module_index</span><span class="p">,</span>
+            <span class="n">current_cases</span><span class="p">,</span>
+            <span class="n">data_loader</span><span class="o">=</span><span class="n">need_loader</span><span class="p">,</span>
+            <span class="n">include_return_summary</span><span class="o">=</span><span class="n">include_return_summary</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module_path</span><span class="p">)</span>
+        <span class="n">data_store</span><span class="o">.</span><span class="n">used</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="n">include_scenarios</span> <span class="ow">and</span> <span class="n">scenario_defs</span><span class="p">:</span>
+        <span class="n">scenario_modules</span> <span class="o">=</span> <span class="n">_write_scenario_modules</span><span class="p">(</span>
+            <span class="n">out_dir</span><span class="p">,</span>
+            <span class="n">data_store</span><span class="p">,</span>
+            <span class="n">scenario_defs</span><span class="p">,</span>
+            <span class="n">include_return_summary</span><span class="o">=</span><span class="n">include_return_summary</span><span class="p">,</span>
+            <span class="n">exception_assertion</span><span class="o">=</span><span class="n">exception_assertion</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">data_store</span><span class="o">.</span><span class="n">used</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">_cleanup_empty_data_dir</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">TestWriterResult</span><span class="p">(</span><span class="n">test_modules</span><span class="o">=</span><span class="n">modules</span><span class="p">,</span> <span class="n">scenario_modules</span><span class="o">=</span><span class="n">scenario_modules</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cleanup_empty_data_dir</span><span class="p">(</span><span class="n">data_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">data_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">data_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+            <span class="n">data_dir</span><span class="o">.</span><span class="n">rmdir</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_collect_cases</span><span class="p">(</span>
+    <span class="n">artifacts</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TestArtifact</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span>
+    <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">SuggestedFunctionTests</span><span class="p">,</span> <span class="n">CaseTestResult</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span> <span class="n">List</span><span class="p">[</span><span class="n">ScenarioDefinition</span><span class="p">]</span>
+<span class="p">]:</span>
+    <span class="n">collected</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">SuggestedFunctionTests</span><span class="p">,</span> <span class="n">CaseTestResult</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">scenarios</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ScenarioDefinition</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">artifact</span> <span class="ow">in</span> <span class="n">artifacts</span><span class="p">:</span>
+        <span class="n">suggestion</span> <span class="o">=</span> <span class="n">artifact</span><span class="o">.</span><span class="n">suggestion</span>
+        <span class="n">run_cases</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">cases</span><span class="p">)</span>
+
+        <span class="n">scenario</span> <span class="o">=</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">scenario</span>
+        <span class="n">scenario_case_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">steps</span><span class="p">)</span> <span class="k">if</span> <span class="n">scenario</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">scenario_cases</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CaseTestResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">scenario</span> <span class="ow">and</span> <span class="n">scenario_case_count</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">run_cases</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">scenario_case_count</span><span class="p">:</span>
+            <span class="n">steps</span> <span class="o">=</span> <span class="n">scenario</span><span class="o">.</span><span class="n">steps</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">run_cases</span><span class="p">[</span><span class="o">-</span><span class="n">scenario_case_count</span><span class="p">:]</span>
+            <span class="n">expected_targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">]</span>
+            <span class="n">actual_targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">case</span><span class="o">.</span><span class="n">target</span> <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">candidate</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">actual_targets</span> <span class="o">==</span> <span class="n">expected_targets</span><span class="p">:</span>
+                <span class="n">scenario_cases</span> <span class="o">=</span> <span class="n">candidate</span>
+                <span class="n">run_cases</span> <span class="o">=</span> <span class="n">run_cases</span><span class="p">[:</span><span class="o">-</span><span class="n">scenario_case_count</span><span class="p">]</span>
+                <span class="n">paired</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="n">scenario_cases</span><span class="p">))</span>
+                <span class="n">scenarios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">ScenarioDefinition</span><span class="p">(</span><span class="n">suggestion</span><span class="o">=</span><span class="n">suggestion</span><span class="p">,</span> <span class="n">cases</span><span class="o">=</span><span class="n">paired</span><span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="n">main_cases</span> <span class="o">=</span> <span class="p">[</span><span class="n">case</span> <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">run_cases</span> <span class="k">if</span> <span class="n">case</span><span class="o">.</span><span class="n">target</span> <span class="o">==</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">main_cases</span><span class="p">):</span>
+            <span class="n">collected</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">suggestion</span><span class="p">,</span> <span class="n">case</span><span class="p">,</span> <span class="n">idx</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">collected</span><span class="p">,</span> <span class="n">scenarios</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_test_function</span><span class="p">(</span>
+    <span class="n">item</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">SuggestedFunctionTests</span><span class="p">,</span> <span class="n">CaseTestResult</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+    <span class="n">data_store</span><span class="p">:</span> <span class="n">_DataStore</span><span class="p">,</span>
+    <span class="n">out_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">include_return_summary</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">exception_assertion</span><span class="p">:</span> <span class="n">ExceptionAssertionMode</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">suggestion</span><span class="p">,</span> <span class="n">case</span><span class="p">,</span> <span class="n">case_idx</span> <span class="o">=</span> <span class="n">item</span>
+    <span class="n">func_name</span> <span class="o">=</span> <span class="n">_make_test_name</span><span class="p">(</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="p">,</span> <span class="n">case_idx</span><span class="p">)</span>
+    <span class="n">lines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;def </span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">():&quot;</span><span class="p">)</span>
+
+    <span class="n">filepath_code</span> <span class="o">=</span> <span class="n">_relativize_path_code</span><span class="p">(</span><span class="n">suggestion</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;    func = import_function(</span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">module</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="n">filepath_code</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">params_literal</span> <span class="o">=</span> <span class="n">_format_literal</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="n">params_literal</span><span class="p">))</span>
+    <span class="n">volatile_literal</span> <span class="o">=</span> <span class="n">_format_literal</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">volatile_return_fields</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;volatile_fields&quot;</span><span class="p">,</span> <span class="n">volatile_literal</span><span class="p">))</span>
+    <span class="n">cassette_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="s2">&quot;cassette_path&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cassette_path</span><span class="p">:</span>
+        <span class="n">cassette_path_code</span> <span class="o">=</span> <span class="n">_relativize_path_code</span><span class="p">(</span><span class="n">cassette_path</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    cassette_path = </span><span class="si">{</span><span class="n">cassette_path_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;    vcr_recorder = vcr.VCR(serializer=&#39;yaml&#39;, match_on=[&#39;uri&#39;, &#39;method&#39;, &#39;body&#39;], record_mode=&#39;none&#39;)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    with vcr_recorder.use_cassette(cassette_path):&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;        result = call_with_capture(func, target=</span><span class="si">{qual!r}</span><span class="s2">, params=params, volatile_return_fields=volatile_fields)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">qual</span><span class="o">=</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;    result = call_with_capture(func, target=</span><span class="si">{qual!r}</span><span class="s2">, params=params, volatile_return_fields=volatile_fields)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">qual</span><span class="o">=</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">case</span><span class="o">.</span><span class="n">exception</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.exception is None&quot;</span><span class="p">)</span>
+        <span class="n">return_literal</span><span class="p">,</span> <span class="n">is_repr</span> <span class="o">=</span> <span class="n">_literal_or_repr</span><span class="p">(</span>
+            <span class="k">case</span><span class="o">.</span><span class="n">return_value</span><span class="p">,</span> <span class="n">data_store</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">_return&quot;</span>
+        <span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_return&quot;</span><span class="p">,</span> <span class="n">return_literal</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">is_repr</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert repr(result.return_value) == expected_return&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.return_value == expected_return&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_exception_assertion_lines</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="n">exception_assertion</span><span class="p">))</span>
+
+    <span class="n">printed_literal</span><span class="p">,</span> <span class="n">printed_repr</span> <span class="o">=</span> <span class="n">_literal_or_repr</span><span class="p">(</span>
+        <span class="k">case</span><span class="o">.</span><span class="n">printed</span><span class="p">,</span> <span class="n">data_store</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">_stdout&quot;</span>
+    <span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_output&quot;</span><span class="p">,</span> <span class="n">printed_literal</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">printed_repr</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert repr(result.printed) == expected_output&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.printed == expected_output&quot;</span><span class="p">)</span>
+    <span class="n">reads_literal</span> <span class="o">=</span> <span class="n">_format_file_access_list</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">file_reads</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_reads&quot;</span><span class="p">,</span> <span class="n">reads_literal</span><span class="p">))</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.file_reads == expected_reads&quot;</span><span class="p">)</span>
+    <span class="n">writes_literal</span> <span class="o">=</span> <span class="n">_format_file_access_list</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">file_writes</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_writes&quot;</span><span class="p">,</span> <span class="n">writes_literal</span><span class="p">))</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.file_writes == expected_writes&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">include_return_summary</span><span class="p">:</span>
+        <span class="n">summary_literal</span> <span class="o">=</span> <span class="n">data_store</span><span class="o">.</span><span class="n">literal</span><span class="p">(</span>
+            <span class="k">case</span><span class="o">.</span><span class="n">return_summary</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">_return_summary&quot;</span>
+        <span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_return_summary&quot;</span><span class="p">,</span> <span class="n">summary_literal</span><span class="p">))</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;    assert_return_summary(result.return_summary, expected_return_summary, target=</span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_module</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">module_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">tests</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">data_loader</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">include_return_summary</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="n">module_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;test_generated_</span><span class="si">{</span><span class="n">module_index</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">module_path</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">.py&quot;</span>
+    <span class="n">header_lines</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;import vcr&quot;</span><span class="p">,</span> <span class="s2">&quot;from pathlib import Path&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">include_return_summary</span><span class="p">:</span>
+        <span class="n">header_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;from ghtest.test_utils import assert_return_summary, call_with_capture, import_function&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">header_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;from ghtest.test_utils import call_with_capture, import_function&quot;</span>
+        <span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">header_lines</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="n">data_loader</span><span class="p">:</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_DATA_LOADER_TEMPLATE</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tests</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">header</span> <span class="o">+</span> <span class="n">body</span>
+    <span class="n">module_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">module_path</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_scenario_modules</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">data_store</span><span class="p">:</span> <span class="n">_DataStore</span><span class="p">,</span>
+    <span class="n">scenarios</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ScenarioDefinition</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">include_return_summary</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">exception_assertion</span><span class="p">:</span> <span class="n">ExceptionAssertionMode</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+    <span class="n">modules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">scenario_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;scenarios&quot;</span>
+    <span class="n">scenario_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">scenario_dir</span> <span class="o">/</span> <span class="s2">&quot;__init__.py&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">scenario_def</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scenarios</span><span class="p">):</span>
+        <span class="n">module_path</span> <span class="o">=</span> <span class="n">_write_scenario_module</span><span class="p">(</span>
+            <span class="n">scenario_dir</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">,</span>
+            <span class="n">scenario_def</span><span class="p">,</span>
+            <span class="n">data_store</span><span class="p">,</span>
+            <span class="n">include_return_summary</span><span class="o">=</span><span class="n">include_return_summary</span><span class="p">,</span>
+            <span class="n">exception_assertion</span><span class="o">=</span><span class="n">exception_assertion</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">module_path</span><span class="p">)</span>
+        <span class="n">data_store</span><span class="o">.</span><span class="n">used</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">modules</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_scenario_module</span><span class="p">(</span>
+    <span class="n">scenario_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">definition</span><span class="p">:</span> <span class="n">ScenarioDefinition</span><span class="p">,</span>
+    <span class="n">data_store</span><span class="p">:</span> <span class="n">_DataStore</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">include_return_summary</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">exception_assertion</span><span class="p">:</span> <span class="n">ExceptionAssertionMode</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="n">scenario</span> <span class="o">=</span> <span class="n">definition</span><span class="o">.</span><span class="n">suggestion</span><span class="o">.</span><span class="n">scenario</span>
+    <span class="n">resource</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">scenario</span><span class="p">:</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="n">scenario</span><span class="o">.</span><span class="n">resource</span>
+    <span class="n">safe_resource</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="n">ch</span> <span class="k">if</span> <span class="n">ch</span><span class="o">.</span><span class="n">isalnum</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;_&quot;</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="p">(</span><span class="n">resource</span> <span class="ow">or</span> <span class="n">definition</span><span class="o">.</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">safe_resource</span> <span class="o">=</span> <span class="n">safe_resource</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;scenario&quot;</span>
+    <span class="n">module_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;test_scenario_</span><span class="si">{</span><span class="n">safe_resource</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">module_path</span> <span class="o">=</span> <span class="n">scenario_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">.py&quot;</span>
+
+    <span class="k">if</span> <span class="n">include_return_summary</span><span class="p">:</span>
+        <span class="n">header_import</span> <span class="o">=</span> <span class="s2">&quot;from ghtest.test_utils import assert_return_summary, call_with_capture, import_function&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">header_import</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;from ghtest.test_utils import call_with_capture, import_function&quot;</span>
+        <span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">        import os</span>
+<span class="s2">        import vcr</span>
+<span class="s2">        from pathlib import Path</span>
+
+<span class="s2">        </span><span class="si">{</span><span class="n">header_import</span><span class="si">}</span>
+
+<span class="s2">        _SCENARIO_ENV = &quot;GHTEST_RUN_SCENARIOS&quot;</span>
+<span class="s2">        _SCENARIO_LIVE_ENV = &quot;GHTEST_SCENARIO_LIVE&quot;</span>
+<span class="s2">        _USE_RECORDED_CASSETTES = os.environ.get(_SCENARIO_LIVE_ENV) != &#39;1&#39;</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">data_store</span><span class="o">.</span><span class="n">used</span><span class="p">:</span>
+        <span class="n">data_store</span><span class="o">.</span><span class="n">used</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">needs_loader</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">_render_scenario_function</span><span class="p">(</span>
+        <span class="n">definition</span><span class="p">,</span>
+        <span class="n">data_store</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">,</span>
+        <span class="n">scenario_dir</span><span class="p">,</span>
+        <span class="n">include_return_summary</span><span class="o">=</span><span class="n">include_return_summary</span><span class="p">,</span>
+        <span class="n">exception_assertion</span><span class="o">=</span><span class="n">exception_assertion</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">needs_loader</span> <span class="o">=</span> <span class="n">data_store</span><span class="o">.</span><span class="n">used</span>
+    <span class="k">if</span> <span class="n">needs_loader</span><span class="p">:</span>
+        <span class="c1"># Scenarios are in a subdir, so data is one level up</span>
+        <span class="n">loader_code</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_DATA_LOADER_TEMPLATE</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="s2">&quot;Path(__file__).with_name(&#39;data&#39;)&quot;</span><span class="p">,</span> <span class="s2">&quot;Path(__file__).parent.parent / &#39;data&#39;&quot;</span>
+        <span class="p">)</span>
+        <span class="n">loader</span> <span class="o">=</span> <span class="n">loader_code</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">loader</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">loader</span> <span class="o">+</span> <span class="n">body</span>
+    <span class="n">module_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">module_path</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_scenario_function</span><span class="p">(</span>
+    <span class="n">definition</span><span class="p">:</span> <span class="n">ScenarioDefinition</span><span class="p">,</span>
+    <span class="n">data_store</span><span class="p">:</span> <span class="n">_DataStore</span><span class="p">,</span>
+    <span class="n">scenario_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">out_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">include_return_summary</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">exception_assertion</span><span class="p">:</span> <span class="n">ExceptionAssertionMode</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">scenario</span> <span class="o">=</span> <span class="n">definition</span><span class="o">.</span><span class="n">suggestion</span><span class="o">.</span><span class="n">scenario</span>
+    <span class="n">resource</span> <span class="o">=</span> <span class="n">scenario</span><span class="o">.</span><span class="n">resource</span> <span class="k">if</span> <span class="n">scenario</span> <span class="k">else</span> <span class="n">definition</span><span class="o">.</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span>
+    <span class="n">func_name</span> <span class="o">=</span> <span class="n">_make_test_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">resource</span><span class="si">}</span><span class="s2">_scenario&quot;</span><span class="p">,</span> <span class="n">scenario_index</span><span class="p">)</span>
+    <span class="n">lines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="sa">f</span><span class="s2">&quot;def </span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">():&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;    # Scenario tests are now enabled by default&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;    pass&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">case</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">definition</span><span class="o">.</span><span class="n">cases</span><span class="p">):</span>
+        <span class="n">comment</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">description</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;Step </span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    # </span><span class="si">{</span><span class="n">comment</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">filepath_code</span> <span class="o">=</span> <span class="n">_relativize_path_code</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;    func = import_function(</span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">module</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="n">filepath_code</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">params_literal</span> <span class="o">=</span> <span class="n">_format_literal</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="n">params_literal</span><span class="p">))</span>
+        <span class="n">volatile_literal</span> <span class="o">=</span> <span class="n">_format_literal</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">volatile_return_fields</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;volatile_fields&quot;</span><span class="p">,</span> <span class="n">volatile_literal</span><span class="p">))</span>
+        <span class="n">cassette_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="s2">&quot;cassette_path&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">call_line</span> <span class="o">=</span> <span class="s2">&quot;result = call_with_capture(func, target=</span><span class="si">{qual!r}</span><span class="s2">, params=params, volatile_return_fields=volatile_fields)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">qual</span><span class="o">=</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">cassette_path</span><span class="p">:</span>
+            <span class="n">cassette_path_code</span> <span class="o">=</span> <span class="n">_relativize_path_code</span><span class="p">(</span><span class="n">cassette_path</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    cassette_path = </span><span class="si">{</span><span class="n">cassette_path_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    if _USE_RECORDED_CASSETTES:&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;        vcr_recorder = vcr.VCR(serializer=&#39;yaml&#39;, match_on=[&#39;uri&#39;, &#39;method&#39;, &#39;body&#39;], record_mode=&#39;none&#39;)&quot;</span>
+            <span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;        with vcr_recorder.use_cassette(cassette_path):&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;            </span><span class="si">{</span><span class="n">call_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    else:&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;        </span><span class="si">{</span><span class="n">call_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">call_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">case</span><span class="o">.</span><span class="n">exception</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.exception is None&quot;</span><span class="p">)</span>
+            <span class="n">return_literal</span><span class="p">,</span> <span class="n">return_repr</span> <span class="o">=</span> <span class="n">_literal_or_repr</span><span class="p">(</span>
+                <span class="k">case</span><span class="o">.</span><span class="n">return_value</span><span class="p">,</span>
+                <span class="n">data_store</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">_step_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">_return&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_return&quot;</span><span class="p">,</span> <span class="n">return_literal</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">return_repr</span><span class="p">:</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert repr(result.return_value) == expected_return&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.return_value == expected_return&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_exception_assertion_lines</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="n">exception_assertion</span><span class="p">))</span>
+
+        <span class="n">printed_literal</span><span class="p">,</span> <span class="n">printed_repr</span> <span class="o">=</span> <span class="n">_literal_or_repr</span><span class="p">(</span>
+            <span class="k">case</span><span class="o">.</span><span class="n">printed</span><span class="p">,</span>
+            <span class="n">data_store</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">_step_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">_stdout&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_output&quot;</span><span class="p">,</span> <span class="n">printed_literal</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">printed_repr</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert repr(result.printed) == expected_output&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.printed == expected_output&quot;</span><span class="p">)</span>
+        <span class="n">reads_literal</span> <span class="o">=</span> <span class="n">_format_file_access_list</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">file_reads</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_reads&quot;</span><span class="p">,</span> <span class="n">reads_literal</span><span class="p">))</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.file_reads == expected_reads&quot;</span><span class="p">)</span>
+        <span class="n">writes_literal</span> <span class="o">=</span> <span class="n">_format_file_access_list</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">file_writes</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_writes&quot;</span><span class="p">,</span> <span class="n">writes_literal</span><span class="p">))</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    assert result.file_writes == expected_writes&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">include_return_summary</span><span class="p">:</span>
+            <span class="n">summary_literal</span> <span class="o">=</span> <span class="n">data_store</span><span class="o">.</span><span class="n">literal</span><span class="p">(</span>
+                <span class="k">case</span><span class="o">.</span><span class="n">return_summary</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">_step_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">_return_summary&quot;</span>
+            <span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_format_assignment</span><span class="p">(</span><span class="s2">&quot;expected_return_summary&quot;</span><span class="p">,</span> <span class="n">summary_literal</span><span class="p">))</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;    assert_return_summary(result.return_summary, expected_return_summary, target=</span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_test_name</span><span class="p">(</span><span class="n">qualname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ch</span> <span class="k">if</span> <span class="n">ch</span><span class="o">.</span><span class="n">isalnum</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;_&quot;</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">qualname</span><span class="p">)</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;func&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;test_</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_case_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_literal</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">sort_dicts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_assignment</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">literal</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">literal</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">literal</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">literal</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+    <span class="n">formatted</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+    <span class="n">formatted</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">formatted</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_literal_or_repr</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">data_store</span><span class="p">:</span> <span class="n">_DataStore</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+    <span class="n">literal</span> <span class="o">=</span> <span class="n">data_store</span><span class="o">.</span><span class="n">literal</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">literal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">literal</span><span class="p">,</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="n">_stable_repr</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_exception_assertion_lines</span><span class="p">(</span>
+    <span class="n">case</span><span class="p">:</span> <span class="n">CaseTestResult</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">ExceptionAssertionMode</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">indent</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;    &quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">case</span><span class="o">.</span><span class="n">exception</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">indent</span><span class="si">}</span><span class="s2">assert result.exception is None&quot;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">indent</span><span class="si">}</span><span class="s2">assert result.exception is not None&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">):</span>
+        <span class="n">exc_type</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">case</span><span class="o">.</span><span class="n">exception</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">case</span><span class="o">.</span><span class="n">exception</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">indent</span><span class="si">}</span><span class="s2">assert result.exception.__class__.__module__ + &#39;.&#39; + result.exception.__class__.__name__ == </span><span class="si">{</span><span class="n">exc_type</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">exception</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">indent</span><span class="si">}</span><span class="s2">assert str(result.exception) == </span><span class="si">{</span><span class="n">message</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lines</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_literal_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">_is_literal_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_literal_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="n">_DATA_LOADER_TEMPLATE</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;import importlib.util&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;from pathlib import Path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;def _load_data(filename: str):&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;    data_path = Path(__file__).with_name(&#39;data&#39;) / filename&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;    spec = importlib.util.spec_from_file_location(f&#39;</span><span class="si">{__name__}</span><span class="s2">.</span><span class="si">{filename}</span><span class="s2">&#39;, data_path)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;    module = importlib.util.module_from_spec(spec)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;    assert spec.loader is not None&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;    spec.loader.exec_module(module)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;    return module.DATA&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_relativize_path_code</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">abs_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">abs_path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="n">rel_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">abs_path</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">)</span>
+        <span class="c1"># Use forward slashes for consistency in generated code</span>
+        <span class="n">rel_path</span> <span class="o">=</span> <span class="n">rel_path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;str((Path(__file__).parent / </span><span class="si">{</span><span class="n">rel_path</span><span class="si">!r}</span><span class="s2">).resolve())&quot;</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_file_access_list</span><span class="p">(</span><span class="n">access_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span> <span class="n">out_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;[]&quot;</span>
+    <span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">access_list</span><span class="p">:</span>
+        <span class="n">path_code</span> <span class="o">=</span> <span class="n">_relativize_path_code</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+        <span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">path_code</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">mode</span><span class="si">!r}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;[&quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;]&quot;</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;TestArtifact&quot;</span><span class="p">,</span> <span class="s2">&quot;write_test_modules&quot;</span><span class="p">]</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">ghtest</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, k4144.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
