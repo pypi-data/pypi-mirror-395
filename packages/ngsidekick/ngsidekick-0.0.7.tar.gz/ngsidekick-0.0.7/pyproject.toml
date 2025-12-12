@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling>=1.27", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ngsidekick"
+description = "Tools for neuroglancer scenes."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Stuart Berg", email = "bergs@janelia.hhmi.org" }
+]
+keywords = ["neuroglancer", "connectomics", "visualization"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "License :: OSI Approved :: BSD License"
+]
+dependencies = [
+  "numpy",
+  "pandas",
+  "numba",
+  "tqdm",
+  "tensorstore",
+  "neuroglancer",
+  "requests",
+  "flask"
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/janelia-flyem/ngsidekick"
+Repository = "https://github.com/janelia-flyem/ngsidekick"
+Issues = "https://github.com/janelia-flyem/ngsidekick/issues"
+
+[project.scripts]
+make-bucket-public = "ngsidekick:make_bucket_public"
+ngvideo-helper = "ngsidekick.ngvideo_helper:main"
+cors-webserver = "ngsidekick.bin.cors_webserver:main"
+
+
+[project.optional-dependencies]
+test = ["pytest>=7", "bokeh"]
+gcs = ["google-cloud-storage"]
+docs = [
+  "sphinx>=7.0",
+  "sphinx-piccolo-theme",
+  "sphinx-autodoc-typehints",
+  "myst-parser",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q -m 'not manual'"
+testpaths = ["tests"]
+markers = [
+    "manual: marks tests as requiring manual inspection (deselected by default)",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ngsidekick"]
+include = [
+  "src/ngsidekick/py.typed",
+  "LICENSE",
+]
+
+
