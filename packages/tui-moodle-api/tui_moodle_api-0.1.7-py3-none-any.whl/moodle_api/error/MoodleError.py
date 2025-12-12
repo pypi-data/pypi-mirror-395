@@ -1,0 +1,2 @@
+class MoodleError(Exception):
+    pass
