@@ -1,0 +1,107 @@
+DEBUT(LANG='FR')
+
+
+mesh1 = LIRE_MAILLAGE(identifier='0:1',
+                      UNITE=20)
+
+model_NL = AFFE_MODELE(identifier='1:1',
+                       AFFE=_F(MODELISATION='PLAN',
+                               PHENOMENE='THERMIQUE',
+                               TOUT='OUI'),
+                       MAILLAGE=mesh1)
+
+Cv00 = DEFI_FONCTION(identifier='2:1',
+                     NOM_PARA='TEMP',
+                     PROL_DROITE='CONSTANT',
+                     PROL_GAUCHE='CONSTANT',
+                     VALE=(20.0, 2070000, 99.9, 2070000, 100.1, 2070000, 115.0, 2070000, 200.0, 2254000, 400.0, 2403500, 1200.0, 2226399))
+
+Cv15 = DEFI_FONCTION(identifier='2:1',
+                     NOM_PARA='TEMP',
+                     PROL_DROITE='CONSTANT',
+                     PROL_GAUCHE='CONSTANT',
+                     VALE=(20.0, 2070000, 99.9, 2070000, 100.1, 3381000, 115.0, 3381000, 200.0, 2254000, 400.0, 2403500, 1200.0, 2226399))
+
+Cv30 = DEFI_FONCTION(identifier='2:1',
+                     NOM_PARA='TEMP',
+                     PROL_DROITE='CONSTANT',
+                     PROL_GAUCHE='CONSTANT',
+                     VALE=(20.0, 2070000, 99.9, 2070000, 100.1, 4646000, 115.0, 4646000, 200.0, 2254000, 400.0, 2403500, 1200.0, 2226399))
+
+Cv = {{ capacity_curve }}
+
+FIREISO = DEFI_FONCTION(identifier='3:1',
+                        NOM_PARA='INST',
+                        PROL_DROITE='CONSTANT',
+                        PROL_GAUCHE='CONSTANT',
+                        VALE=(0.0, 20.0, 3.0, 502.3, 5.0, 576.4, 10.0, 678.4, 30.0, 841.8, 60.0, 945.3, 90.0, 1006.0, 120.0, 1049.0, 180.0, 1109.7))
+
+FIREHC = DEFI_FONCTION(identifier='3:1',
+                        NOM_PARA='INST',
+                        PROL_DROITE='CONSTANT',
+                        PROL_GAUCHE='CONSTANT',
+                        VALE=(0.0, 20.0, 3.0, 886.9, 5.0, 947.7, 10.0, 1033.9, 30.0, 1097.7, 60.0, 1100.0, 90.0, 1100.0, 120.0, 1100.0, 180.0, 1100.0))
+
+FIREHCM = DEFI_FONCTION(identifier='3:1',
+                        NOM_PARA='INST',
+                        PROL_DROITE='CONSTANT',
+                        PROL_GAUCHE='CONSTANT',
+                        VALE=(0.0, 20.0, 3.0, 1047.5, 5.0, 1119.5, 10.0, 1221.7, 30.0, 1297.2, 60.0, 1300.0, 90.0, 1300.0, 120.0, 1300.0, 180.0, 1300.0))
+
+FIRERWS = DEFI_FONCTION(identifier='3:1',
+                        NOM_PARA='INST',
+                        PROL_DROITE='CONSTANT',
+                        PROL_GAUCHE='CONSTANT',
+                        VALE=(0.0, 20.0, 3.0, 890.0, 5.0, 1140.0, 10.0, 1200.0, 30.0, 1300.0, 60.0, 1350.0, 90.0, 1300.0, 120.0, 1200.0, 180.0, 1200.0))
+
+FIRE = {{ fire_curve }}
+
+CONDMIN = DEFI_FONCTION(identifier='4:1',
+                        NOM_PARA='TEMP',
+                        PROL_DROITE='CONSTANT',
+                        PROL_GAUCHE='CONSTANT',
+                        VALE=(20.0, 1.3330, 256.0, 1.0492, 492.0, 0.8289, 728.0, 0.6720, 964.0, 0.5787, 1200.0, 0.5488))
+
+CONDMAX = DEFI_FONCTION(identifier='4:1',
+                        NOM_PARA='TEMP',
+                        PROL_DROITE='CONSTANT',
+                        PROL_GAUCHE='CONSTANT',
+                        VALE=(20.0, 1.9514, 256.0, 1.4427, 492.0, 1.0531, 728.0, 0.7827, 964.0, 0.6316, 1200.0, 0.5996))
+
+COND = {{ conduttivity }}
+
+mater_NL = DEFI_MATERIAU(identifier='5:1',
+                         THER_NL=_F(LAMBDA=COND,
+                                    RHO_CP=Cv))
+
+fieldma1_NL = AFFE_MATERIAU(identifier='6:1',
+                            AFFE=_F(GROUP_MA=('RECT', ),
+                                    MATER=(mater_NL, )),
+                            MODELE=model_NL)
+
+listr0 = DEFI_LIST_REEL(identifier='7:1',
+                        DEBUT=0.0,
+                        INTERVALLE=_F(JUSQU_A=10800.0,
+                                      PAS=600.0))
+
+null = DEFI_CONSTANTE(identifier='8:1',
+                      VALE=0.0)
+
+load_NL = AFFE_CHAR_THER_F(identifier='9:1',
+                           MODELE=model_NL,
+                           TEMP_IMPO=_F(GROUP_MA=({{ boundary_list }}),
+                                        TEMP=FIRE))
+
+resther0 = THER_NON_LINE(identifier='10:1',
+                         CHAM_MATER=fieldma1_NL,
+                         ETAT_INIT=_F(VALE=20.0),
+                         EXCIT=_F(CHARGE=load_NL),
+                         INCREMENT=_F(LIST_INST=listr0),
+                         CONVERGENCE=_F(ITER_GLOB_MAXI=20),
+                         MODELE=model_NL)
+
+IMPR_RESU(identifier='11:1',
+          RESU=_F(RESULTAT=resther0),
+          UNITE=80)
+
+FIN()
