@@ -1,0 +1,177 @@
+#****************************************************************************
+#* vl_sim_image_builder.py
+#*
+#* Copyright 2023-2025 Matthew Ballance and Contributors
+#*
+#* Licensed under the Apache License, Version 2.0 (the "License"); you may 
+#* not use this file except in compliance with the License.  
+#* You may obtain a copy of the License at:
+#*  
+#*   http://www.apache.org/licenses/LICENSE-2.0
+#*  
+#* Unless required by applicable law or agreed to in writing, software 
+#* distributed under the License is distributed on an "AS IS" BASIS, 
+#* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+#* See the License for the specific language governing permissions and 
+#* limitations under the License.
+#*
+#* Created on:
+#*     Author: 
+#*
+#****************************************************************************
+import os
+import json
+import logging
+import shutil
+import dataclasses as dc
+from pydantic import BaseModel
+import pydantic.dataclasses as pdc
+from toposort import toposort
+from dv_flow.mgr import FileSet, TaskDataResult, TaskMarker, TaskRunCtxt
+from typing import Any, ClassVar, List, Tuple
+from dv_flow.libhdlsim.log_parser import LogParser
+from dv_flow.libhdlsim.vl_sim_data import VlSimImageData
+
+from .util import merge_tokenize
+
+@dc.dataclass
+class VlSimImageBuilder(object):
+    ctxt : TaskRunCtxt
+    input : Any = dc.field(default=None)
+    markers : List = dc.field(default_factory=list)
+    output : List = dc.field(default_factory=list)
+    memento : Any = dc.field(default=None)
+
+    _log : ClassVar = logging.getLogger("VlSimImage")
+
+    def getRefTime(self, rundir):
+        raise NotImplementedError()
+
+    async def build(self, input, data : VlSimImageData) -> Tuple[int,bool]:
+        raise NotImplementedError()
+
+    def parseLog(self, log):
+        parser = LogParser(notify=lambda m: self.markers.append(m))
+        with open(log, "r") as fp:
+            for line in fp.readlines():
+                parser.line(line)
+
+    async def run(self, ctxt, input) -> TaskDataResult:
+        for f in os.listdir(input.rundir):
+            self._log.debug("sub-elem: %s" % f)
+        status = 0
+
+        self.input = input
+        data = VlSimImageData()
+        data.top.extend(input.params.top)
+        data.args.extend(merge_tokenize(input.params.args))
+        data.compargs.extend(merge_tokenize(input.params.compargs))
+        data.elabargs.extend(merge_tokenize(input.params.elabargs))
+        data.incdirs.extend(merge_tokenize(input.params.incdirs))
+        data.defines.extend(merge_tokenize(input.params.defines))
+        # Convert vpilibs from params (strings) to tuples (path, None)
+        data.vpi.extend([(vpi, None) for vpi in input.params.vpilibs])
+        data.dpi.extend(input.params.dpilibs)
+        data.trace = input.params.trace
+
+        self._gatherSvSources(data, input)
+
+        self._log.debug("files: %s" % str(data.files))
+
+        status,in_changed = await self.build(input, data)
+
+
+
+        self.output.append(FileSet(
+                src=input.name, 
+                filetype="simDir", 
+                basedir=input.rundir))
+
+        return TaskDataResult(
+            memento=self.memento if status == 0 else None,
+            status=status,
+            output=self.output,
+            changed=in_changed,
+            markers=self.markers
+        )
+    
+    def _gatherSvSources(self, data : VlSimImageData, input):
+        # input must represent dependencies for all tasks related to filesets
+        # references must support transitivity
+
+        for fs in input.inputs:
+            self._log.debug("Processing dataset of type %s from task %s" % (
+                fs.type,
+                fs.src
+            ))
+            if fs.type == "std.FileSet":
+                self._log.debug("fs.filetype=%s fs.basedir=%s" % (fs.filetype, fs.basedir))
+                data.defines.extend(fs.defines)
+
+                if fs.filetype == "cSource" or fs.filetype == "cppSource":
+                    for file in fs.files:
+                        path = os.path.join(fs.basedir, file)
+                        self._log.debug("path: basedir=%s fullpath=%s" % (fs.basedir, path))
+                        data.csource.append(path)
+                elif fs.filetype == "verilogIncDir":
+                    if len(fs.basedir.strip()) > 0:
+                        data.incdirs.append(fs.basedir)
+                elif fs.filetype in ("verilogInclude", "systemVerilogInclude"):
+                    self._addIncDirs(data, fs.basedir, fs.incdirs)
+                elif fs.filetype == "simLib":
+                    if len(fs.files) > 0:
+                        for file in fs.files:
+                            path = os.path.join(fs.basedir, file)
+                            self._log.debug("path: basedir=%s fullpath=%s" % (fs.basedir, path))
+                            if len(path.strip()) > 0:
+                                data.libs.append(path)
+                    else:
+                        data.libs.append(fs.basedir)
+                    self._addIncDirs(data, fs.basedir, fs.incdirs)
+                elif fs.filetype == "systemVerilogDPI":
+                    for file in fs.files:
+                        path = os.path.join(fs.basedir, file)
+                        self._log.debug("path: basedir=%s fullpath=%s" % (fs.basedir, path))
+                        data.dpi.append(path)
+                elif fs.filetype == "verilogVPI":
+                    # Extract entrypoint from attributes if present
+                    entrypoint = None
+                    for attr in fs.attributes:
+                        if attr.startswith("entrypoint="):
+                            entrypoint = attr.split("=", 1)[1]
+                            break
+                    
+                    for file in fs.files:
+                        path = os.path.join(fs.basedir, file)
+                        self._log.debug("path: basedir=%s fullpath=%s entrypoint=%s" % (fs.basedir, path, entrypoint))
+                        data.vpi.append((path, entrypoint))
+                else:
+                    data.sysv |= (fs.filetype == "systemVerilogSource")
+                    for file in fs.files:
+                        path = os.path.join(fs.basedir, file)
+                        self._log.debug("path: basedir=%s fullpath=%s" % (fs.basedir, path))
+                        dir = os.path.dirname(path)
+                        data.files.append(path)
+                    self._addIncDirs(data, fs.basedir, fs.incdirs)
+            elif fs.type == "hdlsim.SimCompileArgs":
+                data.compargs.extend(merge_tokenize(fs.args))
+                for inc in fs.incdirs:
+                    if len(inc.strip()) > 0:
+                        data.incdirs.append(inc)
+                data.defines.extend(fs.defines)
+            elif fs.type == "hdlsim.SimElabArgs":
+                self._log.debug("fs.type=%s" % fs.type)
+                data.elabargs.extend(merge_tokenize(fs.args))
+                # Convert vpilibs from SimElabArgs (strings) to tuples (path, None)
+                data.vpi.extend([(vpi, None) for vpi in fs.vpilibs])
+                data.dpi.extend(fs.dpilibs)
+
+    def _addIncDirs(self, data, basedir, incdirs):
+        self._log.debug("_addIncDirs base=%s incdirs=%s" % (basedir, incdirs))
+        data.incdirs.extend([os.path.join(basedir, i) for i in incdirs])
+        self._log.debug("data.incdirs: %s" % data.incdirs)
+
+
+class VlTaskSimImageMemento(BaseModel):
+    svdeps : dict = pdc.Field(default_factory=dict)
+
