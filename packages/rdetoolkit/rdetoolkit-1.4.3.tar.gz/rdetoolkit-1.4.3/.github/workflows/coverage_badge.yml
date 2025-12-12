@@ -1,0 +1,56 @@
+name: Pytest and coverage measurement and create badges
+
+on:
+  pull_request:
+    branches:
+      - 'develop-*'
+      - 'develop/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: ${{ !(startsWith(github.head_ref, 'docs-') || startsWith(github.head_ref, 'docs/') ||
+      startsWith(github.head_ref, 'doc-') || startsWith(github.head_ref, 'doc/')) }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup uv (Python 3.11)
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+      - name: Cache uv
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('requirements-dev.lock') }}
+          restore-keys: uv-${{ runner.os }}-
+      - name: Create venv (Python 3.11)
+        run: uv venv .venv --python 3.11
+      - name: Install dependencies (uv in venv)
+        run: |
+          source .venv/bin/activate
+          uv pip install -r requirements-dev.lock
+          uv pip install -e .
+          uv pip install coverage-badge
+      - name: Run pytest
+        run: |
+          source .venv/bin/activate
+          python -m pytest --junitxml=pytest.xml --cov-report=term-missing --cov=src tests/
+      - name: Generate coverage badge
+        run: |
+          source .venv/bin/activate
+          coverage-badge -o docs/img/coverage.svg -f
+      - name: Commit coverage badge
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/img/coverage.svg
+          git add pytest.xml
+          git add Cargo.lock
+          git commit -m "chore: Update coverage badge" || echo "No changes to commit"
+          git push origin HEAD || echo "No changes to push"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
