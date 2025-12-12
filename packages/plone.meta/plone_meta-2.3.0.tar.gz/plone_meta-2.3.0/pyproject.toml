@@ -1,0 +1,105 @@
+# This is the pyproject.toml of plone.meta itself, *not* of generated projects.
+
+[build-system]
+requires = ["setuptools>=68.2,<80", "wheel"]
+# We must set a build-backend, because the default build-backend needs a setup.py.
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plone.meta"
+version = "2.3.0"
+description = "Applies a standard set of configuration files for Plone repositories"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">= 3.10"
+authors = [
+  { name = "Plone Foundation", email = "releaseteam@plone.org" },
+  { name = "Gil Forcada Codinachs", email = "gil.gnome@gmail.com" },
+]
+keywords = ["plone", "packaging"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "Jinja2",
+  "editorconfig",
+  "pyyaml",
+  "tomlkit",
+  "tox",
+  "validate-pyproject[all]",
+  "zest.releaser",
+]
+
+[project.urls]
+Homepage = "https://github.com/plone/meta"
+"Issue Tracker" = "https://github.com/plone/meta/issues"
+Changelog = "https://github.com/plone/meta/blob/2.x/CHANGES.md"
+Documentation = "https://6.docs.plone.org/developer-guide/standardize-python-project-configuration.html"
+
+[project.scripts]
+config-package = "plone.meta.config_package:main"
+multi-call = "plone.meta.multi_call:main"
+re-enable-actions = "plone.meta.re_enable_actions:main"
+switch-to-pep420 = "plone.meta.pep_420:main"
+
+[tool.towncrier]
+directory = "news/"
+filename = "CHANGES.md"
+start_string = "<!-- towncrier release notes start -->\n"
+title_format = "## {version} ({project_date})"
+template = "news/.changelog_template.jinja"
+underlines = ["", "", ""]
+issue_format = "[#{issue}](https://github.com/plone/meta/issues/{issue})"
+
+[[tool.towncrier.type]]
+directory = "breaking"
+name = "Breaking changes:"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "New features:"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bug fixes:"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "internal"
+name = "Internal:"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "documentation"
+name = "Documentation:"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "tests"
+name = "Tests:"
+showcontent = true
+
+[tool.isort]
+profile = "plone"
+
+[tool.black]
+target-version = ["py313"]
+
+[tool.codespell]
+ignore-words-list = "discreet,thet,"
+
+[tool.check-manifest]
+ignore = [".editorconfig", ".flake8", ".pre-commit-config.yaml", "tox.ini"]

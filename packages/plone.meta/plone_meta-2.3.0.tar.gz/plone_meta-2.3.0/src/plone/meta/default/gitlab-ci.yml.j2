@@ -1,0 +1,137 @@
+image: %(custom_image)s
+##
+# Add extra configuration options in .meta.toml:
+#  [gitlab]
+#  custom_images = {"3.13" = "python:3.13-bookworm", "3.12" = "python:3.12-bookworm"}
+##
+
+stages:
+  - qa
+  - test
+
+##
+# To modify the list of default jobs being created add in .meta.toml:
+# [gitlab]
+# jobs = [
+#    "lint",
+#    "release-ready",
+#    "dependencies",
+#    "circular-dependencies",
+#    "testing",
+#    "coverage",
+#    ]
+##
+
+##
+# JOBS
+##
+{% if "lint" in jobs %}
+lint:
+  stage: qa
+  variables:
+    PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
+  cache:
+    paths:
+      - ${PRE_COMMIT_HOME}
+  script:
+    - pip install tox
+    - tox -e lint
+  except:
+    - schedules
+{% endif %}
+
+{% if "release-ready" in jobs %}
+release-ready:
+  stage: qa
+  script:
+    - pip install tox
+    - tox -e release-check
+  except:
+    - schedules
+{% endif %}
+
+{% if "dependencies" in jobs %}
+dependencies:
+  stage: qa
+  script:
+    - pip install tox
+    - tox -e dependencies
+  except:
+    - schedules
+{% endif %}
+
+{% if "circular-dependencies" in jobs %}
+circular-dependencies:
+  stage: qa
+  script:
+    - apt-get update
+    - apt-get install -y graphviz graphviz-dev
+    - pip install tox
+    - tox -e circular
+  except:
+    - schedules
+{% endif %}
+
+{% if "testing" in jobs %}
+testing:
+  stage: test
+  image: $DOCKER_IMAGE
+  script:
+%(os_dependencies)s
+    - pip install tox
+    - tox -e $TOX_ENV -- --xml reports
+  parallel:
+    matrix:
+{% for docker_image, tox_env in testing_matrix %}
+      - DOCKER_IMAGE: %(docker_image)s
+        TOX_ENV: %(tox_env)s
+{% endfor %}
+  artifacts:
+      when: always
+      reports:
+        junit:
+          - reports/testreports/*.xml
+
+##
+# Add extra test/coverage commands in .meta.toml:
+#  [gitlab]
+#  os_dependencies = """
+#      - apt-get install libxslt libxml2
+#  """
+##
+  except:
+    - schedules
+{% endif %}
+
+{% if "coverage" in jobs %}
+coverage:
+  stage: test
+  script:
+%(os_dependencies)s
+    - pip install tox
+    - tox -e coverage
+##
+# Add extra test/coverage commands in .meta.toml:
+#  [gitlab]
+#  os_dependencies = """
+#      - apt-get install libxslt libxml2
+#  """
+##
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+  coverage: '/TOTAL.* \*\*(\d+)\%\*\*/'
+  except:
+    - schedules
+{% endif %}
+
+%(extra_lines)s
+##
+# Add extra configuration options in .meta.toml:
+#  [gitlab]
+#  extra_lines = """
+#  _your own configuration lines_
+#  """
+##
