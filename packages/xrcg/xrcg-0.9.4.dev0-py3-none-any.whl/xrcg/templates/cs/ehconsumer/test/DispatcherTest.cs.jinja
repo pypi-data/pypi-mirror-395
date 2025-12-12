@@ -1,0 +1,293 @@
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "eventhubs.jinja.include" as eventhub -%}
+{%- import "util.jinja.include" as util -%}
+{%- import "amqp.jinja.include" as amqp -%}
+{{ util.CommonFileHeader() }}
+{%- set messagegroups = root.messagegroups %}
+{%- set uses_cloudevents_message = (root | exists("envelope","CloudEvents/1.0")) %}
+{%- set uses_plain_amqp_message = (root | exists("protocol","AMQP/1.0")) %}
+{%- set uses_amqp_endpoint = amqp.uses_amqp_endpoint(root) %}
+
+#nullable enable
+
+using System;
+using System.IO;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Threading;
+using Azure;
+using Azure.Core;
+using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Processor;
+using Azure.Messaging.EventHubs.Producer;
+using Azure.Storage.Blobs;
+using Xunit;
+using Microsoft.Extensions.Logging;
+using Testcontainers.Azurite;
+using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Networks;
+
+using {{ project_name | pascal }};
+{%- for messagegroupid, messagegroup in messagegroups.items() %}
+{%- set pascal_group_name = messagegroupid | pascal %}
+using {{ project_name | pascal }}.{{ pascal_group_name | pascal  }};
+{%- endfor %}
+{%- if uses_cloudevents_message %}
+{{ eventhub.CloudEventsUsings() }}
+{%- endif %}
+
+namespace {{ project_name | pascal }}.Test
+{
+    public class {{ project_name | pascal | strip_dots}}Fixture : IAsyncLifetime
+    {
+        public AzuriteContainer? AzuriteContainer { get; protected set; }
+        public IContainer? EmulatorContainer { get; protected set; }
+        public INetwork? Network { get; protected set; }
+        public string? EventHubConnectionString { get; protected set; }
+        public string? BlobStorageConnectionString { get; protected set; }
+        public BlobContainerClient? BlobClient { get; protected set; }
+        private ILoggerFactory _loggerFactory;
+        private ILogger _logger;
+
+        public ILoggerFactory GetLoggerFactory()
+        {
+            return _loggerFactory;
+        }
+
+        private string? emulatorConfigFilePath = null;
+        private const string emulatorConfig = @"{
+                      ""UserConfig"": {
+                        ""NamespaceConfig"": [
+                          {
+                            ""Type"": ""EventHub"",
+                            ""Name"": ""emulatorNs1"",
+                            ""Entities"": [
+                              {
+                                ""Name"": ""eh1"",
+                                ""PartitionCount"": ""2"",
+                                ""ConsumerGroups"": [
+                                  {
+                                    ""Name"": ""cg1""
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ], 
+                        ""LoggingConfig"": {
+                          ""Type"": ""File""
+                        }
+                      }
+                    }";
+
+        public {{ project_name | pascal | strip_dots}}Fixture()
+        {
+            _loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddDebug().AddConsole();
+            });
+            _logger = _loggerFactory.CreateLogger<{{ project_name | pascal | strip_dots}}Fixture>();
+        }
+
+        public async Task InitializeAsync()
+        {
+            try
+            {
+                Network = new NetworkBuilder()
+                    .WithName(Guid.NewGuid().ToString("D"))
+                    .Build();
+                emulatorConfigFilePath = Path.GetTempFileName();
+                File.WriteAllText(emulatorConfigFilePath, emulatorConfig);  
+                if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) ||
+                    System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+                {
+                    File.SetUnixFileMode(emulatorConfigFilePath, UnixFileMode.UserRead | UnixFileMode.UserWrite | 
+                                UnixFileMode.GroupRead | UnixFileMode.GroupWrite | 
+                                UnixFileMode.OtherRead | UnixFileMode.OtherWrite);
+                }
+                AzuriteContainer = new AzuriteBuilder()
+                    .WithImage("mcr.microsoft.com/azure-storage/azurite:latest")
+                    .WithCommand("--skipApiVersionCheck")
+                    .WithNetwork(Network)
+                    .WithNetworkAliases("azurite")
+                    .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged(".*Azurite Blob service is successfully listening"))
+                    .Build();
+                
+                EmulatorContainer = new ContainerBuilder()
+                        .WithImage("mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest")
+                        .WithBindMount(emulatorConfigFilePath,"/Eventhubs_Emulator/ConfigFiles/Config.json")
+                        .WithPortBinding(5672, false)
+                        .WithNetwork(Network)
+                        .WithNetworkAliases("eventhubs-emulator")
+                        .WithEnvironment("BLOB_SERVER", "azurite")
+                        .WithEnvironment("METADATA_SERVER", "azurite")
+                        .WithEnvironment("ACCEPT_EULA", "Y")
+                        .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged(".*Emulator is launching with config"))
+                        .Build();
+
+                await Network.CreateAsync();
+                await AzuriteContainer.StartAsync();
+                await EmulatorContainer.StartAsync();
+                EventHubConnectionString = $"Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;EntityPath=eh1;";
+                BlobStorageConnectionString = AzuriteContainer.GetConnectionString();
+                BlobClient = new BlobContainerClient(BlobStorageConnectionString, "eventhub-checkpoints");
+                if ( !await BlobClient.ExistsAsync())
+                {
+                    await BlobClient.CreateAsync();
+                    if ( !await BlobClient.ExistsAsync())
+                    {
+                        throw new Exception("Blob container not created");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during InitializeAsync");
+                throw;
+            }
+        }
+
+        public async Task DisposeAsync()
+        {
+            try
+            {
+                if (EmulatorContainer != null)
+                {
+                    await EmulatorContainer.StopAsync();
+                }
+                if (AzuriteContainer != null)
+                {
+                    await AzuriteContainer.StopAsync();
+                }
+                if (Network != null)
+                {
+                    await Network.DeleteAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred during DisposeAsync: {ex.Message}");
+            }
+            finally
+            {
+                if (emulatorConfigFilePath != null && File.Exists(emulatorConfigFilePath))
+                {
+                    File.Delete(emulatorConfigFilePath);
+                }
+            }
+        }
+    }
+
+    [CollectionDefinition("EventHubs emulator")]
+    public class {{ project_name | pascal | strip_dots}}CollectionFixture : ICollectionFixture<{{ project_name | pascal | strip_dots}}Fixture>
+    {
+    }
+
+    {%- for messagegroupid, messagegroup in messagegroups.items() %}
+    {%- set pascal_group_name = messagegroupid | pascal %}
+    {%- set class_name = (pascal_group_name | strip_namespace) + "EventDispatcher" %}
+    {%- set test_class_name = ( project_name | strip_dots | pascal )+( pascal_group_name | strip_dots )+"Tests" %}
+    [Collection("EventHubs emulator")]
+    public class {{ test_class_name }}
+    {
+        private readonly {{ project_name | pascal | strip_dots}}Fixture _fixture;
+        private readonly ILogger _logger;
+
+        public {{ test_class_name }}({{ project_name | pascal | strip_dots}}Fixture fixture)
+        {
+            _fixture = fixture;
+            _logger = _fixture.GetLoggerFactory().CreateLogger<{{ test_class_name }}>();
+        }
+
+#pragma warning disable CS8604 // init takes care of nullables 
+
+        {%- for messageid, message in messagegroup.messages.items() %}
+        {%- set messagename = messageid | strip_namespace | pascal %}
+        [Fact]
+        public async Task Test{{ messagename }}Message()
+        {
+            _logger.LogInformation("Starting Test{{ messagename }}Message");
+            try
+            {   var dispatcher = new {{ class_name }}();
+                var messageReceived = new TaskCompletionSource<bool>();
+                var receivedCount = 0;
+                var receivedMessages = new System.Collections.Concurrent.ConcurrentBag<object>();
+
+                dispatcher.{{ messagename }}Async += (eventData, cloudEvent, eventDataObj) =>
+                {
+                    try
+                    {
+                        _logger.LogInformation("{{ messagename }} message received");
+                        Assert.NotNull(eventData);
+                        Assert.NotNull(cloudEvent);
+                        Assert.NotNull(eventDataObj);
+                        receivedMessages.Add(eventDataObj);
+                        Interlocked.Increment(ref receivedCount);
+                        if (receivedCount >= 5)
+                        {
+                            messageReceived.SetResult(true);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occurred during {{ messagename }} message processing");
+                        messageReceived.SetException(ex);
+                    }
+                    return Task.CompletedTask;
+                };
+
+                var processorClient = dispatcher.CreateEventProcessorClient(
+                    _fixture.BlobClient, _fixture.EventHubConnectionString, "$Default");
+
+                await processorClient.StartProcessingAsync();
+                _logger.LogInformation("Event Processor started");
+
+                var producerClient = new EventHubProducerClient(_fixture.EventHubConnectionString, "eh1");
+                {%- set message_body_type = util.body_type(data_project_name, root, message) -%}
+                
+                // Send 5 messages to test proper message handling
+                for (int i = 0; i < 5; i++)
+                {
+                    using var eventBatch = await producerClient.CreateBatchAsync();
+                    {%- if message_body_type != "byte[]" %}
+                    var eventDataTest = new {{ message_body_type }}Tests();
+                    var eventDataInstance = eventDataTest.CreateInstance();
+                    var eventData = new EventData(new BinaryData(eventDataInstance.ToByteArray("application/json")));
+                    {%- else %}
+                    var eventData = new EventData(new BinaryData(""));
+                    {%- endif %}
+                    eventData.ContentType = "application/json";
+                    {%- if "type" in message.envelopemetadata and "value" in message.envelopemetadata["type"] %}
+                    eventData.Properties["cloudEvents_type"] = "{{ message.envelopemetadata["type"]["value"] }}";
+                    {%- else %}
+                    eventData.Properties["cloudEvents_type"] = "{{ messageid }}";
+                    {%- endif %}
+                    eventData.Properties["cloudEvents_specversion"] = "1.0";
+                    eventData.Properties["cloudEvents_source"] = "/test";
+                    eventData.Properties["cloudEvents_id"] = Guid.NewGuid().ToString();
+                    eventBatch.TryAdd(eventData);
+                    await producerClient.SendAsync(eventBatch);
+                }
+                _logger.LogInformation("5 test events sent");
+
+                var messageReceivedTask = await Task.WhenAny(messageReceived.Task, Task.Delay(15000));
+                Assert.True(messageReceived.Task.IsCompleted, "Not all messages were received within the timeout period.");
+                Assert.Equal(5, receivedCount);
+                Assert.Equal(5, receivedMessages.Count);
+                _logger.LogInformation($"All {receivedCount} messages received validation completed");
+
+                await processorClient.StopProcessingAsync();
+                _logger.LogInformation("Event Processor stopped");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during Test{{ messagename }}Message");
+                throw;
+            }
+        }
+
+        {%- endfor %}
+    }
+    {%- endfor %}
+}

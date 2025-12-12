@@ -1,0 +1,258 @@
+{#- CloudEvents macros -#}
+
+{%- macro isCloudEvent(message) %}
+{%- if message.envelope and message.envelope.lower().startswith("cloudevents") -%}
+true
+{%- endif -%}
+{%- endmacro %}
+
+{%- macro usesCloudEvents(root) %}
+{%- if (root.messagegroups | exists("envelope","CloudEvents/1.0")) -%}
+true
+{%- endif -%}
+{%- endmacro %}
+
+{%- macro CloudEventsUsings() %}
+using CloudNative.CloudEvents;
+using CloudNative.CloudEvents.Core;
+using CloudNative.CloudEvents.SystemTextJson;
+using CloudNative.CloudEvents.Protobuf;
+using CloudNative.CloudEvents.Amqp;
+using CloudNative.CloudEvents.Avro;
+{% endmacro %}
+
+{#- Generates a list of arguments for "send" methods that correspond to placeholders in uritemplates -#}
+{%- macro DeclareUriTemplateArguments(message) -%}
+{%- for attrname in ['source', 'type'] if attrname not in message.envelopemetadata -%}
+, string {{ attrname }}
+{%- endfor -%}
+{%- for attrname in message.envelopemetadata if attrname not in ["datacontenttype", "dataschema"] -%}
+{%- set attribute = message.envelopemetadata[attrname] -%}
+    {%- if attribute.type == "uritemplate" -%}
+        {%- for placeholder in attribute.value | regex_search('\\{([A-Za-z0-9_]+)\\}') -%}
+        , string {{ placeholder }}
+        {%- endfor -%}    
+    {%- elif attribute.value is not defined -%}
+        {%- if not attrname == "time" and not attrname == "id" -%}
+        , string {{ attrname }}{%- if not attribute.required %} = default! {%- endif %}{% endif -%}
+    {%- endif -%}
+{%- endfor -%} 
+{%- endmacro -%}
+
+{#- Generates a CloudNative.CloudEvents.CloudEvent object from cloudEventDefinition as message -#}
+{%- macro DeclareCloudNativeCloudEvent(variable, message) -%}
+CloudEvent {{ variable }} = new CloudEvent()
+{
+{%- if "type" not in message.envelopemetadata %}
+    Type = "{{ message.messageid }}",
+{%- endif %}
+{%- if "source" not in message.envelopemetadata %}
+    Source = new Uri(source),
+{%- endif %}
+{%- for attrname in message.envelopemetadata -%}
+{%- set attribute = message.envelopemetadata[attrname] -%}
+{%- if attrname in ["datacontenttype"] %}
+    DataContentType = contentType,
+{%- endif -%}
+{%- if attrname in ["dataschema"] and message.dataschemauri %}
+    DataSchema = new Uri("xreg:{{message.dataschemauri.lstrip('#/')}}", UriKind.RelativeOrAbsolute),
+{%- endif -%}
+{%- if attrname in ["subject", "type"] %}
+    {%- set attrProp = attrname | pascal %}
+    {{ attrProp }} = {% if attribute.value -%}$"{{ attribute.value }}"{%- else -%}{{ attrname }}{%- endif -%},
+{%- endif -%}
+{%- if attrname in [ "source"] -%}
+    {%- set attrProp = attrname | pascal | replace("Dataschema", "DataSchema") %}
+    {{ attrProp }} = {% if attribute.value -%}new Uri($"{{ attribute.value }}", UriKind.RelativeOrAbsolute){%- else -%}new Uri({{ attrname }}){%- endif -%},
+{%- endif -%}
+{%- if attrname in ["time"] %}
+    {{ attrname | pascal }} = {% if attribute.value -%}
+        {%- if attribute.value == "0001-01-01T00:00:00+00:00" -%}
+            DateTime.UtcNow
+        {%- else -%}   
+            DateTime.Parse("{{- attribute.value -}}")
+        {%- endif -%}
+        {%- else -%}
+            DateTime.UtcNow
+        {%- endif -%},
+{%- endif -%}
+{%- if attrname in ["id"] %}
+    {{ attrname | pascal }} = Guid.NewGuid().ToString(),
+{%- endif -%}
+{%- endfor %}
+};
+{% for attrname in message.envelopemetadata -%}
+{%- set attribute = message.envelopemetadata[attrname] -%}
+{%- if attrname not in ["id", "time", "source", "subject", "type", "dataschema", "datacontenttype", "source"] -%}
+cloudEvent.SetAttributeFromString("{{ attrname }}",{%- if attribute.value -%}"{{ attribute.value }}"{%- else -%}{{ attrname }}{%- endif -%});
+{%- endif -%}
+{%- endfor -%}
+{%- endmacro -%}
+
+{#- get the the datacontenttype attribute value from the message declaration if it exists #}
+{%- macro GetDataContentType(message, default) -%}
+{%- if message.envelope == "CloudEvents/1.0" and "envelopemetadata" in message and "datacontentype" in message.envelopemetadata and "value" in message.envelopemetadata["datacontenttype"] -%}
+"{{ message.envelopemetadata["datacontenttype"].value }}"
+{%- else -%}
+{{ default }}
+{%- endif -%}
+{%- endmacro -%}
+
+
+{#- Generates a CloudNative.CloudEvents.CloudEvent object from cloudEventDefinition as message -#}
+{%- macro DeclareCloudNativeCloudEventFromJson(variable, json, message) -%}
+};
+{% for attrname in message.envelopemetadata -%}
+{%- set attribute = message.envelopemetadata[attrname] -%}
+{%- if attrname not in ["id", "time", "source", "subject", "type", "dataschema", "datacontenttype", "source"] -%}
+cloudEvent.SetAttributeFromString("{{ attrname }}",{%- if attribute.value -%}"{{ attribute.value }}"{%- else -%}{{ attrname }}{%- endif -%});
+{%- endif -%}
+{%- endfor -%}
+{%- endmacro -%}
+
+{%- macro DeclareDispatchObjectsArgs( project_name, messagegroups, withType) -%}
+{%- for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("envelope","CloudEvents/1.0")) -%}
+{%- set messagegroupname = messagegroupid  | pascal %}
+{%- if withType -%}global::{{ messagegroupname | concat_namespace(project_name) | pascal }}.I{{ messagegroupname | strip_namespace }}Dispatcher {% endif %}{{ messagegroupid  | strip_namespace | camel }}Dispatcher{%- if not loop.last %}, {%- endif -%}
+{%- endfor %}
+{%- endmacro-%}
+
+{%- macro DeclareDispatchObjectField(project_name,messagegroupid,messagegroup) %}
+{%- set messagegroupname = messagegroupid | pascal %}
+global::{{ messagegroupname | concat_namespace(project_name) | pascal }}.I{{ messagegroupname | strip_namespace }}Dispatcher {{ messagegroupid | strip_namespace | camel }}Dispatcher;
+{%- endmacro-%}
+
+{%- macro DeclareDispatchObjectsFields(project_name,messagegroups) %}
+{%- for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("envelope","CloudEvents/1.0")) -%}
+{{ DeclareDispatchObjectField( project_name, messagegroupid, messagegroup )}}
+{%- endfor %}
+{%- endmacro-%}
+
+
+{%- macro DeclareDispatchObjectMock(project_name,messagegroupid,messagegroup) %}
+{%- set messagegroupname = messagegroupid | pascal %}
+private Mock<global::{{ messagegroupname | concat_namespace(project_name) | pascal }}.I{{ messagegroupname | strip_namespace }}Dispatcher> _{{ messagegroupid | strip_namespace | camel }}DispatcherMock;
+{%- endmacro-%}
+
+{%- macro SetupDispatchObjectMock(project_name,messagegroupid,messagegroup) %}
+{%- set messagegroupname = messagegroupid | pascal %}
+_{{ messagegroupid | strip_namespace | camel }}DispatcherMock = new Mock<global::{{ messagegroupname | concat_namespace(project_name) | pascal }}.I{{ messagegroupname | strip_namespace }}Dispatcher>();
+{%- endmacro-%}
+
+{%- macro SetupDispatchObjectMocks(project_name,messagegroups) %}
+{%- for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("envelope","CloudEvents/1.0")) -%}
+{{ SetupDispatchObjectMock( project_name, messagegroupid, messagegroup )}}
+{%- endfor %}
+{%- endmacro-%}
+
+{%- macro DeclareDispatchObjectMocks(project_name,messagegroups) %}
+{%- for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("envelope","CloudEvents/1.0")) -%}
+{{ DeclareDispatchObjectMock( project_name, messagegroupid, messagegroup )}}
+{%- endfor %}
+{%- endmacro-%}
+
+
+{%- macro DeclareDispatchObjectsConstructor(project_name, class_name, messagegroups, args, body) %}
+{%- if messagegroups | exists("envelope","CloudEvents/1.0") %}
+public {{ class_name }}( {{ args }}{%- if args %}, {%- endif -%}
+    {%- for messagegroupid, messagegroup in messagegroups.items() -%}
+    {%- set messagegroupname = messagegroupid  | pascal -%} 
+    global::{{ messagegroupname | concat_namespace(project_name) | pascal }}.I{{ messagegroupname | strip_namespace }}Dispatcher {{ messagegroupid  | strip_namespace | camel }}Dispatcher
+    {%- if not loop.last -%}, {%- endif -%}
+    {%- endfor -%}
+)
+{
+    {%- for messagegroupid, messagegroup in messagegroups.items() -%}
+    {%- set messagegroupname = messagegroupid  | pascal %}
+    this.{{ messagegroupid  | strip_namespace | camel }}Dispatcher = {{ messagegroupid  | strip_namespace | camel }}Dispatcher;
+    {%- endfor %}
+    {{ body | indent(4) }}
+}
+{% endif -%}
+{%- endmacro -%}
+
+{%- macro DispatchToDispatchObject(project_name, data_project_name, root, cloudEvent, messagegroupid, messagegroup, logger) -%}
+var cloudEventType = {{ cloudEvent }}.Type;
+switch (cloudEventType)
+{
+    {% for messageid, message in messagegroup.messages.items() -%}
+    {% set messagename = messageid | pascal %}
+    case "{{ messageid }}":
+        if ( this.{{ messagegroupid | strip_namespace | camel }}Dispatcher != null )
+        {
+            await this.{{ messagegroupid | strip_namespace | camel }}Dispatcher.On{{ messagename | strip_namespace }}Async({{ cloudEvent }},
+            {%- if message.dataschemauri or message.dataschema -%}
+            global::{{ ( message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( project_name, root, message.dataschemaformat) | pascal }}.FromData({{ cloudEvent }}.Data, {{cloudEvent}}.DataContentType)
+            {%- else -%}
+            {{ cloudEvent }}.Data
+            {%- endif %});
+            break;
+        }
+        break;
+    {% endfor %}
+    default:
+        {{ logger }}.LogError("Unsupported CloudEvent type {eventType}", cloudEventType);
+        break;
+}
+{%- endmacro -%}
+
+
+{%- macro DispatchToDispatchObjects(project_name, data_project_name, root, cloudEvent, messagegroups, logger) -%}
+{%- if messagegroups | exists("envelope","CloudEvents/1.0") -%}
+var cloudEventType = {{ cloudEvent }}.Type;
+switch (cloudEventType)
+{
+    {% for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("envelope","CloudEvents/1.0")) -%}
+    {% for messageid, message in messagegroup.messages.items() -%}
+    {% set messagename = messageid | pascal %}
+    case "{{ messageid }}":
+        if ( this.{{ messagegroupid  | strip_namespace | camel }}Dispatcher != null )
+        {
+            await this.{{ messagegroupid  | strip_namespace | camel }}Dispatcher.On{{ messagename | strip_namespace }}Async({{ cloudEvent }},
+            {%- if message.dataschemauri or message.dataschema -%}
+            global::{{ ( message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( data_project_name, root, message.dataschemaformat) | pascal }}.FromData({{ cloudEvent }}.Data, {{cloudEvent}}.DataContentType)
+            {%- else -%}
+            {{ cloudEvent }}.Data
+            {%- endif %});
+            break;
+        }
+        break;
+    {% endfor %}
+    {% endfor %}
+    default:
+        {{ logger }}.LogError("Unsupported CloudEvent type {eventType}", cloudEventType);
+        break;
+}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro DeclareDispatchInterfaces(project_name, data_project_name, root, use_azure_messaging=false) -%}
+{%- set messagegroups = root.messagegroups -%}
+{%- if messagegroups | exists("envelope","CloudEvents/1.0") %}
+{%- set function_name = project_name | pascal | strip_dots -%}
+using System.Threading.Tasks;
+{%- if use_azure_messaging %}
+using Azure.Messaging;
+{%- else %}
+using CloudNative.CloudEvents;
+{%- endif %}
+{%- for messagegroupid, messagegroup in messagegroups.items() if (messagegroup | exists("envelope","CloudEvents/1.0")) -%}
+{%- set messagegroupname = messagegroupid  | pascal %}
+namespace {{ messagegroupname | concat_namespace(project_name) | pascal }}
+{
+    public interface I{{ messagegroupname | strip_namespace }}Dispatcher
+    {
+        {%- for messageid, message in messagegroup.messages.items() if (message | exists("envelope","CloudEvents/1.0")) -%}
+        {%- set messagename = messageid | strip_namespace | pascal -%}
+        {%- if message.dataschemauri or message.dataschema -%}
+        {%- set dataType = 'global::' + (( message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( data_project_name, root, message.dataschemaformat)  | pascal) -%}
+        {%- else -%}
+        {%- set dataType = "object" -%}
+        {%- endif %}   
+        Task On{{ messagename | strip_namespace }}Async(CloudEvent cloudEvent, {{ dataType }}? data);
+        {%- endfor %}
+    }
+}
+{%- endfor -%}
+{%- endif -%}
+{%- endmacro -%}

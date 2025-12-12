@@ -1,0 +1,201 @@
+{#- AMQP macros for Java - supports both Proton-J and Qpid JMS -#}
+
+{%- macro is_amqp(message) -%}
+{%- if message.protocol and message.protocol.lower().startswith("amqp") -%}
+true
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro uses_amqp_protocol(root) -%}
+{%- if (root.messagegroups | exists("protocol","AMQP/1.0")) -%}
+true
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro uses_amqp_endpoint(root) -%}
+{%- if (root.endpoints | exists("protocol","AMQP/1.0")) -%}
+true
+{%- endif -%}
+{%- endmacro -%}
+
+{#- ProtonJ2 imports for pure AMQP client -#}
+{%- macro ProtonJImports() -%}
+import org.apache.qpid.protonj2.client.Message;
+{%- endmacro -%}
+
+{#- Qpid JMS imports for JMS over AMQP -#}
+{%- macro QpidJmsImports() -%}
+import jakarta.jms.*;
+import org.apache.qpid.jms.JmsConnectionFactory;
+import org.apache.qpid.jms.message.JmsMessage;
+import org.apache.qpid.jms.provider.amqp.AmqpConnection;
+{%- endmacro -%}
+
+{#- URI template argument extraction -#}
+{%- macro EmitArguments(props) -%}
+{%- for propname, prop in props.items() %}
+{%- if prop.type == "uritemplate" -%}
+{%- for placeholder in prop.value | regex_search('\\{([A-Za-z0-9_]+)\\}') -%}
+, String {{ placeholder }}
+{%- endfor -%}
+{%- elif prop.value is not defined -%}
+, String {{ propname }}
+{%- endif -%}
+{%- endfor -%}
+{%- endmacro -%}
+
+{#- Declare URI template arguments from protocol options -#}
+{%- macro DeclareUriTemplateArguments(message) -%}
+{%- if message.protocoloptions %}
+{%- if message.protocoloptions.header %}{{ EmitArguments(message.protocoloptions.header) }}{% endif -%}
+{%- if message.protocoloptions.footer %}{{ EmitArguments(message.protocoloptions.footer) }}{% endif -%}
+{%- if message.protocoloptions["message-annotations"] %}{{ EmitArguments(message.protocoloptions["message-annotations"]) }}{% endif -%}
+{%- if message.protocoloptions["delivery-annotations"] %}{{ EmitArguments(message.protocoloptions["delivery-annotations"]) }}{% endif -%}
+{%- if message.protocoloptions.properties %}{{ EmitArguments(message.protocoloptions.properties) }}{% endif -%}
+{%- if message.protocoloptions["application-properties"] %}{{ EmitArguments(message.protocoloptions["application-properties"]) }}{% endif -%}
+{%- endif -%}
+{%- endmacro -%}
+
+{#- Create ProtonJ2 message from protocol options -#}
+{%- macro CreateProtonMessage(message, dataVar) -%}
+Message<?> message = Message.create({{ dataVar }});
+{%- if message.protocoloptions %}
+{%- if message.protocoloptions.properties %}
+
+// Set message properties
+{%- for propname, prop in message.protocoloptions.properties.items() %}
+{%- if propname == "message-id" %}
+message.messageId({% if prop.value %}"{{ prop.value }}"{% else %}java.util.UUID.randomUUID().toString(){% endif %});
+{%- elif propname == "user-id" %}
+message.userId({% if prop.value %}"{{ prop.value }}".getBytes(){% else %}userId.getBytes(){% endif %});
+{%- elif propname == "to" %}
+message.to({% if prop.value %}"{{ prop.value }}"{% else %}to{% endif %});
+{%- elif propname == "subject" %}
+message.subject({% if prop.value %}"{{ prop.value }}"{% else %}subject{% endif %});
+{%- elif propname == "reply-to" %}
+message.replyTo({% if prop.value %}"{{ prop.value }}"{% else %}replyTo{% endif %});
+{%- elif propname == "correlation-id" %}
+message.correlationId({% if prop.value %}"{{ prop.value }}"{% else %}correlationId{% endif %});
+{%- elif propname == "content-type" %}
+message.contentType({% if prop.value %}"{{ prop.value }}"{% else %}contentType{% endif %});
+{%- elif propname == "content-encoding" %}
+message.contentEncoding({% if prop.value %}"{{ prop.value }}"{% else %}contentEncoding{% endif %});
+{%- elif propname == "absolute-expiry-time" %}
+message.expiryTime({% if prop.value %}{{ prop.value }}{% else %}absoluteExpiryTime{% endif %});
+{%- elif propname == "creation-time" %}
+message.creationTime({% if prop.value %}{{ prop.value }}{% else %}System.currentTimeMillis(){% endif %});
+{%- elif propname == "group-id" %}
+message.groupId({% if prop.value %}"{{ prop.value }}"{% else %}groupId{% endif %});
+{%- elif propname == "group-sequence" %}
+message.groupSequence({% if prop.value %}{{ prop.value }}{% else %}groupSequence{% endif %});
+{%- elif propname == "reply-to-group-id" %}
+message.replyToGroupId({% if prop.value %}"{{ prop.value }}"{% else %}replyToGroupId{% endif %});
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- if message.protocoloptions["application-properties"] %}
+
+// Set application properties
+{%- for propname, prop in message.protocoloptions["application-properties"].items() %}
+message.property("{{ propname }}", {% if prop.value %}{% if prop.type == "integer" %}{{ prop.value }}{% elif prop.type == "boolean" %}{{ prop.value }}{% else %}"{{ prop.value }}"{% endif %}{% else %}{{ propname }}{% endif %});
+{%- endfor %}
+{%- endif %}
+{%- if message.protocoloptions["message-annotations"] %}
+
+// Set message annotations
+{%- for propname, prop in message.protocoloptions["message-annotations"].items() %}
+message.annotation("{{ propname }}", {% if prop.value %}{% if prop.type == "integer" %}{{ prop.value }}{% elif prop.type == "boolean" %}{{ prop.value }}{% else %}"{{ prop.value }}"{% endif %}{% else %}{{ propname }}{% endif %});
+{%- endfor %}
+{%- endif %}
+{%- if message.protocoloptions["delivery-annotations"] %}
+
+// Set delivery annotations
+{%- for propname, prop in message.protocoloptions["delivery-annotations"].items() %}
+message.annotation("{{ propname }}", {% if prop.value %}{% if prop.type == "integer" %}{{ prop.value }}{% elif prop.type == "boolean" %}{{ prop.value }}{% else %}"{{ prop.value }}"{% endif %}{% else %}{{ propname }}{% endif %});
+{%- endfor %}
+{%- endif %}
+{%- if message.protocoloptions.header %}
+
+// Set header properties
+{%- for propname, prop in message.protocoloptions.header.items() %}
+{%- if propname == "durable" %}
+message.durable({% if prop.value %}{{ prop.value }}{% else %}durable{% endif %});
+{%- elif propname == "priority" %}
+message.priority({% if prop.value %}(short){{ prop.value }}{% else %}priority{% endif %});
+{%- elif propname == "ttl" %}
+message.timeToLive({% if prop.value %}{{ prop.value }}{% else %}ttl{% endif %});
+{%- elif propname == "first-acquirer" %}
+message.firstAcquirer({% if prop.value %}{{ prop.value }}{% else %}firstAcquirer{% endif %});
+{%- elif propname == "delivery-count" %}
+message.deliveryCount({% if prop.value %}{{ prop.value }}{% else %}deliveryCount{% endif %});
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- endif %}
+{%- endmacro -%}
+
+{#- Create JMS message with AMQP properties -#}
+{%- macro CreateJmsMessage(messageVar, message, dataVar) -%}
+// Note: JMS message must be created outside this macro
+{{ messageVar }}.writeBytes({{ dataVar }});
+
+{%- if message.protocoloptions %}
+// Set JMS properties
+{%- if message.protocoloptions.properties %}
+{%- for propname, prop in message.protocoloptions.properties.items() %}
+{%- if propname == "message-id" %}
+{{ messageVar }}.setJMSMessageID({% if prop.value %}"{{ prop.value }}"{% else %}java.util.UUID.randomUUID().toString(){% endif %});
+{%- elif propname == "correlation-id" %}
+{{ messageVar }}.setJMSCorrelationID({% if prop.value %}"{{ prop.value }}"{% else %}correlationId{% endif %});
+{%- elif propname == "content-type" %}
+{{ messageVar }}.setJMSType({% if prop.value %}"{{ prop.value }}"{% else %}contentType{% endif %});
+{%- elif propname == "subject" %}
+{{ messageVar }}.setStringProperty("JMSXGroupID", {% if prop.value %}"{{ prop.value }}"{% else %}subject{% endif %});
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+
+// Set application properties
+{%- if message.protocoloptions["application-properties"] %}
+{%- for propname, prop in message.protocoloptions["application-properties"].items() %}
+{{ messageVar }}.setObjectProperty("{{ propname }}", {% if prop.value %}{% if prop.type == "integer" %}{{ prop.value }}{% elif prop.type == "boolean" %}{{ prop.value }}{% else %}"{{ prop.value }}"{% endif %}{% else %}{{ propname }}{% endif %});
+{%- endfor %}
+{%- endif %}
+{%- endif %}
+{%- endmacro -%}
+
+{#- Extract AMQP properties from Proton message -#}
+{%- macro ExtractProtonProperties(messageVar) -%}
+Properties props = {{ messageVar }}.getProperties();
+ApplicationProperties appProps = {{ messageVar }}.getApplicationProperties();
+MessageAnnotations msgAnnotations = {{ messageVar }}.getMessageAnnotations();
+DeliveryAnnotations deliveryAnnotations = {{ messageVar }}.getDeliveryAnnotations();
+Header header = {{ messageVar }}.getHeader();
+{%- endmacro -%}
+
+{#- Extract data from Proton message -#}
+{%- macro ExtractProtonData(messageVar) -%}
+byte[] data = null;
+if ({{ messageVar }}.getBody() instanceof Data) {
+    data = ((Data){{ messageVar }}.getBody()).getValue().getArray();
+} else if ({{ messageVar }}.getBody() instanceof AmqpValue) {
+    Object value = ((AmqpValue){{ messageVar }}.getBody()).getValue();
+    if (value instanceof Binary) {
+        data = ((Binary)value).getArray();
+    } else if (value instanceof String) {
+        data = ((String)value).getBytes();
+    }
+}
+{%- endmacro -%}
+
+{#- Extract data from JMS message -#}
+{%- macro ExtractJmsData(messageVar) -%}
+byte[] data = null;
+if ({{ messageVar }} instanceof BytesMessage) {
+    BytesMessage bytesMsg = (BytesMessage){{ messageVar }};
+    data = new byte[(int)bytesMsg.getBodyLength()];
+    bytesMsg.readBytes(data);
+} else if ({{ messageVar }} instanceof TextMessage) {
+    data = ((TextMessage){{ messageVar }}).getText().getBytes();
+}
+{%- endmacro -%}

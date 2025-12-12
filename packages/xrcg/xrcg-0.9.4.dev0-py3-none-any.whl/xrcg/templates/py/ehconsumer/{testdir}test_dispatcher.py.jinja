@@ -1,0 +1,239 @@
+{% import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "eventhubs.jinja.include" as eventhub -%}
+{%- import "util.include.jinja" as util -%}
+{%- set messagegroups = root.messagegroups %}
+{%- set uses_cloudevents_message = (root | exists("envelope","CloudEvents/1.0")) %}
+{%- set uses_plain_amqp_message = (root | exists("protocol","AMQP/1.0")) %}
+{%- set uses_amqp_endpoint = (root | exists("protocol","AMQP/1.0")) %}
+{%- set function_name = project_name | pascal | strip_dots -%}
+# pylint: disable=missing-function-docstring, wrong-import-position, import-error, no-name-in-module, import-outside-toplevel, no-member, redefined-outer-name, unused-argument, unused-variable, invalid-name, redefined-outer-name, missing-class-docstring
+
+import asyncio
+import logging
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../{{data_project_name}}/src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../{{data_project_name}}/tests')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../{{main_project_name}}/src')))
+
+import tempfile
+import pytest
+import pytest_asyncio
+from azure.eventhub import EventData
+from azure.eventhub.aio import EventHubConsumerClient, EventHubProducerClient
+from azure.storage.blob.aio import BlobServiceClient as BlobServiceClientAsync
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.network import Network
+from testcontainers.azurite import AzuriteContainer
+from testcontainers.core.waiting_utils import wait_for_logs
+
+{%- set imports = [] %}
+{%- set test_imports = [] %}
+{%- for messagegroupid, messagegroup in messagegroups.items() %}
+{%- set groupname = messagegroupid | pascal %}
+{%- set class_name = ( groupname | strip_dots ) + "EventDispatcher" %}
+from {{main_project_name}}.dispatcher import {{class_name}}
+{%- for messageid, message in messagegroup.messages.items() %}
+{%- set type_name = util.DeclareDataType( data_project_name, root, message ) %}
+{%- if type_name != "object" %}
+{%- set import_statement = "from " + (data_project_name | dotunderscore | lower) + " import " + (type_name | pascal | strip_namespace) %}
+{%- if import_statement not in imports %}
+{%- set _ = imports.append(import_statement) %}
+{{ import_statement }}
+{%- endif %}
+{%- set test_class_name = "Test_" + (type_name | pascal | strip_namespace) %}
+{%- set test_module_name = "test_" + (type_name | dotunderscore | lower) %}
+{%- set test_import_statement = "from " + test_module_name + " import " + test_class_name %}
+{%- if test_import_statement not in test_imports %}
+{%- set _ = test_imports.append(test_import_statement) %}
+{{ test_import_statement }}
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+
+@pytest_asyncio.fixture(scope="function")
+async def event_hub_emulator():
+    with Network() as network:
+        with AzuriteContainer("mcr.microsoft.com/azure-storage/azurite:3.31.0") \
+                .with_command('azurite -l /data --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose') \
+                .with_bind_ports(10000, 10000) \
+                .with_bind_ports(10001, 10001) \
+                .with_bind_ports(10002, 10002) \
+                .with_network(network) \
+                .with_network_aliases("azurite") as azurite_container:
+            try:
+                wait_for_logs(azurite_container, ".*Azurite Blob service is successfully", timeout=10)
+            except TimeoutError as e:
+                stdoutlog,stderrlog = azurite_container.get_logs()
+                print(stdoutlog)
+                print(stderrlog)
+                raise e
+            config_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+            config_content = '''
+            {
+            "UserConfig": {
+                "NamespaceConfig": [
+                {
+                    "Type": "EventHub",
+                    "Name": "emulatorNs1",
+                    "Entities": [
+                    {
+                        "Name": "eh1",
+                        "PartitionCount": "2",
+                        "ConsumerGroups": [
+                        {
+                            "Name": "cg1"
+                        }
+                        ]
+                    }
+                    ]
+                }
+                ], 
+                "LoggingConfig": {
+                "Type": "File"
+                }
+            }
+            }
+            '''
+            config_file.write(config_content)
+            config_file.flush()
+            config_file.close()
+            config_file_path = config_file.name
+            os.chmod(config_file_path, 0o666)
+
+            try:
+                with DockerContainer("mcr.microsoft.com/azure-messaging/eventhubs-emulator:latest") \
+                        .with_volume_mapping(config_file_path, "/Eventhubs_Emulator/ConfigFiles/Config.json") \
+                        .with_bind_ports(5672, 5672) \
+                        .with_network(network) \
+                        .with_network_aliases("eventhubs-emulator") \
+                        .with_env("BLOB_SERVER", "azurite") \
+                        .with_env("METADATA_SERVER", "azurite") \
+                        .with_env("ACCEPT_EULA", "Y") as event_hubs_emulator_container:
+                    try:
+                        wait_for_logs(event_hubs_emulator_container, ".*Emulator is launching with config", timeout=10)
+                    except TimeoutError as e:
+                        stdoutlog,stderrlog = event_hubs_emulator_container.get_logs()
+                        print(stdoutlog)
+                        print(stderrlog)
+                        raise e
+
+                    event_hub_connection_str = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;EntityPath=eh1;"
+                    blob_storage_connection_str = azurite_container.get_connection_string()
+
+                    yield {
+                        "event_hub_connection_str": event_hub_connection_str,
+                        "blob_storage_connection_str": blob_storage_connection_str,
+                        "network": network,
+                        "azurite_container": azurite_container,
+                        "event_hubs_emulator_container": event_hubs_emulator_container
+                    }
+            finally:
+                os.unlink(config_file_path)
+
+{%- for messagegroupid, messagegroup in messagegroups.items() %}
+{%- set groupname = messagegroupid | pascal %}
+{%- set class_name = ( groupname | strip_dots ) + "EventDispatcher" %}
+{%- set test_class_name = (project_name | pascal | strip_dots) + (groupname | strip_dots) + "Tests" %}
+
+{%- for messageid, message in messagegroup.messages.items() %}
+{%- set messagename = messageid | pascal | strip_dots | strip_namespace %}
+{%- set test_function_name = "test_" + groupname | lower | replace(" ", "_") + "_" + messagename | lower | replace(" ", "_") %}
+{%- set type_name = util.DeclareDataType( data_project_name, root, message ) %}
+{%- set isCloudEvent = (message | exists("envelope","CloudEvents/1.0")) %}
+{%- set is_amqpMessage = (message | exists("protocol","AMQP/1.0")) %}
+
+@pytest.mark.asyncio
+async def {{ test_function_name | dotunderscore }}(event_hub_emulator):
+    """Test the {{ messagename }} message from the {{ groupname }} message group"""
+
+    # Turn on logging if running in debugger
+    if sys.gettrace() is not None:
+        logging.basicConfig(level=logging.DEBUG)
+        azure_logger = logging.getLogger('azure')
+        azure_logger.setLevel(logging.DEBUG)
+        logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
+
+    event_hub_conn_str = event_hub_emulator["event_hub_connection_str"]
+    blob_storage_conn_str = event_hub_emulator["blob_storage_connection_str"]
+
+    dispatcher = {{ class_name }}()
+
+    future = asyncio.Future()
+    received_count = 0
+    received_data_list = []
+    
+    async def set_future(_cx, _e, {%if isCloudEvent %}_ce,{% endif %} data):
+        nonlocal received_count
+        received_count += 1
+        received_data_list.append(data)
+        if received_count >= 5:
+            future.set_result(data)
+        return future
+
+    dispatcher.{{ messageid | dotunderscore | snake }}_async = set_future
+
+    async with BlobServiceClientAsync.from_connection_string(blob_storage_conn_str) as blob_service_client:
+        container_client = blob_service_client.get_container_client("eventhub-checkpoints")
+        await container_client.create_container()
+        await blob_service_client.close()
+
+    async with dispatcher.create_processor_from_connection_strings(
+        "$Default", event_hub_conn_str, "eh1", 
+        blob_storage_conn_str, "eventhub-checkpoints") as processor:
+
+        producer = EventHubProducerClient.from_connection_string(event_hub_conn_str, eventhub_name="eh1")
+        event_data_batch = await producer.create_batch()
+        {%- if type_name != "object" %}
+        # Create valid test data using the test helper
+        test_instance = Test_{{ type_name | pascal | strip_namespace }}.create_instance()
+        test_json = test_instance.to_json()
+        event_data = EventData(test_json.encode('utf-8'))
+        {%- else %}
+        event_data = EventData(b'{}')
+        {%- endif %}
+        event_data.content_type = "application/json"
+        {%- if isCloudEvent %}
+        event_data.properties = {
+            "cloudEvents_type": "{{ messageid }}",
+            "cloudEvents_specversion": "1.0",
+            "cloudEvents_source": "/test",
+            "cloudEvents_id": "test-id"
+        }
+        {% else %}
+        {%- set message_application_properties = message.protocoloptions['application_properties'] if 'application_properties' in message.protocoloptions else None %}
+        {%- set message_properties = message.protocoloptions.properties %}
+        {%- if message_application_properties %}
+        {%- for key, prop in message_application_properties.items() if "value" in prop %}
+        event_data.raw_amqp_message.application_properties['{{ key }}'] = '{{ prop.value }}'
+        {%- if not loop.last %} and {% endif -%}
+        {%- endfor -%}
+        {%- endif -%}
+        {%- if message_properties -%}
+        {%- if message_application_properties.values() | selectattr("value") | count > 0 -%} and {% endif -%}
+        {%- for key, prop in message_properties.items() if "value" in prop %}
+        event_data.raw_amqp_message.properties['{{ key }}'] = '{{ prop.value }}'
+        {%- if not loop.last %} and {%- endif -%}
+        {%- endfor %}
+        {%- endif %}
+        {%- endif %}
+        event_data_batch.add(event_data)
+        
+        # Send 5 batches (each with 1 event) to test message settlement
+        for i in range(5):
+            await producer.send_batch(event_data_batch)
+            # Create new batch for next iteration
+            if i < 4:
+                event_data_batch = await producer.create_batch()
+                event_data_batch.add(event_data)
+        
+        # Wait for all 5 messages to be received
+        await asyncio.wait_for(future, timeout=15)
+        assert received_count == 5, f"Expected 5 messages, got {received_count}"
+        assert len(received_data_list) == 5, f"Expected 5 data items, got {len(received_data_list)}"
+        await producer.close()
+
+{% endfor %}
+{% endfor %}

@@ -1,0 +1,9 @@
+{%- for messagegroupid, messagegroup in root.messagegroups.items() -%}
+   {%- for messageid, message in messagegroup.messages.items() %}
+SELECT type, *
+INTO [output{{messageid | strip_namespace | pascal }}] 
+FROM [input]
+WHERE type = '{{messageid}}'
+
+    {% endfor -%}
+{%- endfor %}

@@ -1,0 +1,1026 @@
+{%- import "util.jinja.include" as util -%}
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- set messagegroups = root.messagegroups %}
+{%- set uses_cloudevents_message = cloudEvents.usesCloudEvents(root) %}
+{% for messagegroupid, messagegroup in messagegroups.items() -%}
+{%- set groupname = messagegroupid | pascal -%}
+{%- set class_name = (groupname | strip_namespace) + "EventConsumer" %}
+# {{ project_name | pascal }} - Azure Event Hubs Consumer
+
+Auto-generated Event Hubs consumer for {{ groupname }} message group.
+
+## Overview
+
+This consumer makes it easy to receive and process events from Azure Event Hubs. It handles all the complexity of connecting, consuming, checkpointing, and error handling - you just write your business logic!
+
+## What is Azure Event Hubs?
+
+Azure Event Hubs is a real-time data streaming platform for receiving millions of events per second. It's commonly used for:
+- Telemetry and logging at scale
+- IoT device data
+- Real-time analytics pipelines
+- Application monitoring
+
+This library gives you a simple way to consume those events without dealing with complex streaming APIs.
+
+## Quick Start
+
+### 1. Install and Build
+
+```bash
+dotnet build
+```
+
+### 2. Get Your Connection String
+
+From Azure Portal:
+1. Go to your Event Hubs Namespace
+2. Click "Shared access policies"  
+3. Select a policy (or create one with Listen permission)
+4. Copy the "Connection string"
+
+### 3. Basic Usage
+
+```csharp
+using {{ project_name | pascal }};
+using Azure.Storage.Blobs;
+using Azure.Identity;
+using Microsoft.Extensions.Logging;
+
+// Storage is required for checkpointing (tracking which events you've processed)
+var storageClient = new BlobContainerClient(
+    "YOUR-STORAGE-CONNECTION-STRING",
+    "checkpoint-container");
+
+// Create the consumer
+var consumer = new {{ class_name }}(
+    "YOUR-EVENTHUB-CONNECTION-STRING",
+    "YOUR-EVENTHUB-NAME",
+    "$Default",  // Consumer group name
+    storageClient,
+    loggerFactory);
+
+// Register handlers for events you care about
+{%- set first_message = messagegroup.messages.items() | first %}
+{%- if first_message %}
+{%- set messageid, message = first_message %}
+{%- set messagename = messageid | strip_dots | pascal %}
+{%- set message_body_type = util.body_type(data_project_name, root, message) %}
+consumer.{{ messagename }}Async += async (partition, cloudEvent, data) =>
+{
+    Console.WriteLine($"Received {{ messagename }}: {cloudEvent.Id}");
+    // Process your data here
+    await ProcessDataAsync(data);
+};
+{%- endif %}
+
+// Start consuming
+await consumer.StartAsync();
+
+// Keep running (until you want to stop)
+await Task.Delay(Timeout.Infinite, cancellationToken);
+
+// Cleanup
+await consumer.StopAsync();
+await consumer.DisposeAsync();
+```
+
+### 4. Using Azure AD Authentication (Recommended for Production)
+
+```csharp
+using Azure.Identity;
+
+var credential = new DefaultAzureCredential();
+
+var consumer = new {{ class_name }}(
+    "YOUR-NAMESPACE.servicebus.windows.net",
+    "YOUR-EVENTHUB-NAME",
+    "$Default",
+    storageClient,
+    credential,
+    loggerFactory);
+```
+
+## Event Handlers
+
+Register handlers for the events you want to process:
+
+{% for messageid, message in messagegroup.messages.items() -%}
+{%- set messagename = messageid | strip_dots | pascal %}
+{%- set message_body_type = util.body_type(data_project_name, root, message) %}
+### {{ messagename }}
+
+**Event Type:** `{{ messageid }}`  
+**Data Type:** `{{ message_body_type }}`  
+{% if message.description -%}**Description:** {{ message.description }}{%- endif %}
+
+```csharp
+consumer.{{ messagename }}Async += async (partitionId, cloudEvent, data) =>
+{
+    if (data != null)
+    {
+        // Your processing logic
+        Console.WriteLine($"Processing {{ messagename }} from partition {partitionId}");
+        await SaveToDatabaseAsync(data);
+    }
+};
+```
+
+**Common Patterns:**
+
+```csharp
+// Database persistence
+consumer.{{ messagename }}Async += async (pid, ce, data) =>
+{
+    await _dbContext.{{ messagename }}s.AddAsync(data);
+    await _dbContext.SaveChangesAsync();
+};
+
+// API call
+consumer.{{ messagename }}Async += async (pid, ce, data) =>
+{
+    await _httpClient.PostAsJsonAsync("https://api.example.com/process", data);
+};
+
+// Message forwarding
+consumer.{{ messagename }}Async += async (pid, ce, data) =>
+{
+    await _queueClient.SendMessageAsync(JsonSerializer.Serialize(data));
+};
+```
+
+{% endfor %}
+
+### Unhandled Events
+
+Process events that don't match any registered handler:
+
+```csharp
+consumer.UnhandledEventAsync += async (partitionId, cloudEvent) =>
+{
+    _logger.LogInformation("Received unhandled event type: {Type} from partition {Partition}",
+        cloudEvent.Type, partitionId);
+};
+```
+
+## Checkpointing
+
+**Checkpointing** is how the consumer remembers which events it has processed. This prevents re-processing events after a restart.
+
+### How It Works
+
+1. Consumer reads events from Event Hubs
+2. Your handlers process the events
+3. Consumer automatically saves checkpoints to Azure Blob Storage
+4. If the app restarts, it resumes from the last checkpoint
+
+### Checkpoint Storage Setup
+
+```csharp
+// Option 1: Connection string
+var storageClient = new BlobContainerClient(
+    "DefaultEndpointsProtocol=https;AccountName=...",
+    "checkpoints");
+
+// Option 2: Azure AD (recommended)
+var storageClient = new BlobContainerClient(
+    new Uri("https://YOUR-STORAGE.blob.core.windows.net/checkpoints"),
+    new DefaultAzureCredential());
+
+// Create container if it doesn't exist
+await storageClient.CreateIfNotExistsAsync();
+```
+
+The container will store checkpoint data automatically. Don't modify these files manually!
+
+## Error Handling
+
+### Automatic Error Recovery
+
+The consumer automatically handles:
+- **Deserialization errors**: Logs and continues to next event
+- **Connection failures**: Automatically reconnects
+- **Partition rebalancing**: Handles when partitions move between consumers
+
+### Custom Error Handling
+
+```csharp
+consumer.ProcessingErrorAsync += async (partitionId, cloudEvent, exception) =>
+{
+    _logger.LogError(exception, "Failed to process event {EventId} from partition {Partition}",
+        cloudEvent?.Id, partitionId);
+    
+    // Optionally: Send to dead-letter queue
+    if (cloudEvent != null)
+    {
+        await _deadLetterQueue.SendAsync(cloudEvent);
+    }
+};
+
+consumer.DeserializationErrorAsync += async (partitionId, cloudEvent, exception) =>
+{
+    _logger.LogWarning(exception, "Failed to deserialize event from partition {Partition}",
+        partitionId);
+    
+    // Event is logged but not re-processed
+};
+```
+
+## Consumer Groups
+
+Consumer groups allow multiple applications to read from the same Event Hub independently.
+
+**Default consumer group**: `$Default` (always exists)
+
+**When to create a new consumer group:**
+- You have multiple applications consuming the same Event Hub
+- Each application needs to process all events independently
+
+```csharp
+// Consumer Group 1 - Real-time analytics
+var analyticsConsumer = new {{ class_name }}(
+    connectionString,
+    eventHubName,
+    "analytics-group",  // Separate consumer group
+    analyticsStorageClient,
+    loggerFactory);
+
+// Consumer Group 2 - Data archival
+var archivalConsumer = new {{ class_name }}(
+    connectionString,
+    eventHubName,
+    "archival-group",  // Different consumer group
+    archivalStorageClient,
+    loggerFactory);
+```
+
+Both consumers receive all events independently!
+
+## Partitions
+
+Event Hubs divides data into **partitions** for parallel processing.
+
+### How Partitions Work
+
+- Your Event Hub has N partitions (e.g., 4, 8, 16)
+- Events are distributed across partitions
+- Each consumer instance reads from one or more partitions
+- Partitions provide ordering guarantees within that partition
+
+### Multiple Consumer Instances
+
+Run multiple instances for better throughput:
+
+```bash
+# Instance 1 (processes partitions 0-1)
+dotnet run
+
+# Instance 2 (processes partitions 2-3)
+dotnet run
+
+# Partitions are automatically distributed!
+```
+
+The consumer library handles partition distribution automatically using the checkpoint storage.
+
+## Lifecycle Management
+
+### Start and Stop
+
+```csharp
+// Start consuming (non-blocking)
+await consumer.StartAsync();
+_logger.LogInformation("Consumer started");
+
+// Do other work or wait
+await SomeOtherWorkAsync();
+
+// Graceful shutdown
+await consumer.StopAsync();
+_logger.LogInformation("Consumer stopped gracefully");
+```
+
+### Async Disposal
+
+```csharp
+await using var consumer = new {{ class_name }}(
+    connectionString,
+    eventHubName,
+    consumerGroup,
+    storageClient,
+    loggerFactory);
+
+consumer.{{ messagegroup.messages.keys() | first | strip_dots | pascal }}Async += async (p, ce, data) =>
+{
+    await ProcessAsync(data);
+};
+
+await consumer.StartAsync();
+await Task.Delay(TimeSpan.FromMinutes(5)); // Run for 5 minutes
+
+// Automatically stops and disposes
+```
+
+## Configuration
+
+### Connection String Format
+
+```
+Endpoint=sb://YOUR-NAMESPACE.servicebus.windows.net/;SharedAccessKeyName=YOUR-POLICY;SharedAccessKey=YOUR-KEY;EntityPath=YOUR-EVENTHUB
+```
+
+Or without EntityPath (specify Event Hub name separately):
+```
+Endpoint=sb://YOUR-NAMESPACE.servicebus.windows.net/;SharedAccessKeyName=YOUR-POLICY;SharedAccessKey=YOUR-KEY
+```
+
+### Application Settings
+
+```json
+{
+  "EventHubs": {
+    "ConnectionString": "Endpoint=sb://...",
+    "EventHubName": "my-eventhub",
+    "ConsumerGroup": "$Default",
+    "StorageConnectionString": "DefaultEndpointsProtocol=https;..."
+  }
+}
+```
+
+Load in code:
+```csharp
+var config = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+var consumer = new {{ class_name }}(
+    config["EventHubs:ConnectionString"],
+    config["EventHubs:EventHubName"],
+    config["EventHubs:ConsumerGroup"],
+    new BlobContainerClient(config["EventHubs:StorageConnectionString"], "checkpoints"),
+    loggerFactory);
+```
+
+## Monitoring
+
+### Built-in Logging
+
+The consumer logs important events:
+- Connection status
+- Partition assignments
+- Processing errors
+- Checkpoint updates
+
+Configure logging:
+```csharp
+using Microsoft.Extensions.Logging;
+
+var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder
+        .AddConsole()
+        .AddDebug()
+        .SetMinimumLevel(LogLevel.Information);
+});
+```
+
+### Metrics to Monitor
+
+- **Events processed per second**: Your throughput
+- **Processing latency**: Time from event arrival to completion
+- **Consumer lag**: How far behind real-time you are
+- **Errors**: Failed events or deserialization issues
+
+## Testing
+
+### Run Unit Tests
+
+```bash
+dotnet test
+```
+
+### Integration Testing
+
+The test project includes examples using Testcontainers or Azure Emulator:
+
+```csharp
+[Fact]
+public async Task ConsumesEventsSuccessfully()
+{
+    // Arrange: Set up test Event Hub
+    var testEventHub = await CreateTestEventHubAsync();
+    var consumer = new {{ class_name }}(/* test config */);
+    
+    var receivedEvents = new List<{{ util.body_type(data_project_name, root, messagegroup.messages.values() | first) }}>();
+    consumer.{{ messagegroup.messages.keys() | first | strip_dots | pascal }}Async += async (p, ce, data) =>
+    {
+        receivedEvents.Add(data);
+    };
+    
+    await consumer.StartAsync();
+    
+    // Act: Send test events
+    await SendTestEventsAsync(testEventHub);
+    
+    // Wait for processing
+    await Task.Delay(2000);
+    
+    // Assert
+    Assert.NotEmpty(receivedEvents);
+    await consumer.StopAsync();
+}
+```
+
+## Production-Ready Patterns
+
+This section provides production-ready patterns for building reliable Event Hubs consumer applications.
+
+### 1. Batch Processing with Checkpointing
+
+Process events in batches for better throughput and efficient checkpointing:
+
+```csharp
+public class BatchEventHubsConsumer
+{
+    private readonly {{ class_name }} _consumer;
+    private readonly List<(CloudEvent, {{ util.body_type(data_project_name, root, messagegroup.messages.values() | first) }})> _batch = new();
+    private readonly SemaphoreSlim _batchLock = new(1, 1);
+    private readonly int _batchSize;
+    private readonly TimeSpan _batchTimeout;
+    private DateTime _lastProcessTime = DateTime.UtcNow;
+
+    public BatchEventHubsConsumer({{ class_name }} consumer, int batchSize = 100, TimeSpan? batchTimeout = null)
+    {
+        _consumer = consumer;
+        _batchSize = batchSize;
+        _batchTimeout = batchTimeout ?? TimeSpan.FromSeconds(5);
+
+        // Register handler
+{%- set first_message = messagegroup.messages.items() | first %}
+{%- if first_message %}
+{%- set messageid, message = first_message %}
+{%- set messagename = messageid | strip_dots | pascal %}
+{%- set message_body_type = util.body_type(data_project_name, root, message) %}
+        _consumer.{{ messagename }}Async += OnEventReceivedAsync;
+{%- endif %}
+
+        // Start background batch processor
+        _ = Task.Run(ProcessBatchPeriodically);
+    }
+
+    private async Task OnEventReceivedAsync(string partition, CloudEvent cloudEvent, {{ message_body_type }} data)
+    {
+        await _batchLock.WaitAsync();
+        try
+        {
+            _batch.Add((cloudEvent, data));
+
+            if (_batch.Count >= _batchSize)
+            {
+                await ProcessBatchAsync();
+            }
+        }
+        finally
+        {
+            _batchLock.Release();
+        }
+    }
+
+    private async Task ProcessBatchPeriodically()
+    {
+        while (true)
+        {
+            await Task.Delay(_batchTimeout);
+            
+            await _batchLock.WaitAsync();
+            try
+            {
+                if (_batch.Count > 0 && DateTime.UtcNow - _lastProcessTime >= _batchTimeout)
+                {
+                    await ProcessBatchAsync();
+                }
+            }
+            finally
+            {
+                _batchLock.Release();
+            }
+        }
+    }
+
+    private async Task ProcessBatchAsync()
+    {
+        if (_batch.Count == 0) return;
+
+        var currentBatch = _batch.ToList();
+        _batch.Clear();
+        _lastProcessTime = DateTime.UtcNow;
+
+        try
+        {
+            // Process all events in parallel
+            await Task.WhenAll(currentBatch.Select(item => ProcessEventAsync(item.Item1, item.Item2)));
+            Console.WriteLine($"Successfully processed batch of {currentBatch.Count} events");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error processing batch: {ex.Message}");
+            // Consider DLQ or retry logic here
+        }
+    }
+
+    private async Task ProcessEventAsync(CloudEvent cloudEvent, {{ message_body_type }} data)
+    {
+        // Your business logic here
+        await Task.CompletedTask;
+    }
+}
+```
+
+### 2. Circuit Breaker for Downstream Dependencies
+
+Protect downstream systems from cascading failures:
+
+```csharp
+public class CircuitBreaker
+{
+    private int _failureCount = 0;
+    private DateTime _lastFailureTime = DateTime.MinValue;
+    private readonly int _failureThreshold;
+    private readonly TimeSpan _timeout;
+    private CircuitState _state = CircuitState.Closed;
+
+    public CircuitBreaker(int failureThreshold = 5, TimeSpan? timeout = null)
+    {
+        _failureThreshold = failureThreshold;
+        _timeout = timeout ?? TimeSpan.FromSeconds(60);
+    }
+
+    public async Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken = default)
+    {
+        if (_state == CircuitState.Open)
+        {
+            if (DateTime.UtcNow - _lastFailureTime >= _timeout)
+            {
+                Console.WriteLine("Circuit breaker: Transitioning to HalfOpen state");
+                _state = CircuitState.HalfOpen;
+            }
+            else
+            {
+                throw new InvalidOperationException("Circuit breaker is open. Downstream service unavailable.");
+            }
+        }
+
+        try
+        {
+            var result = await action();
+            
+            if (_state == CircuitState.HalfOpen)
+            {
+                Console.WriteLine("Circuit breaker: Success in HalfOpen, transitioning to Closed");
+                _state = CircuitState.Closed;
+                _failureCount = 0;
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _failureCount++;
+            _lastFailureTime = DateTime.UtcNow;
+
+            if (_failureCount >= _failureThreshold)
+            {
+                Console.WriteLine($"Circuit breaker: Threshold ({_failureThreshold}) reached, opening circuit");
+                _state = CircuitState.Open;
+            }
+
+            throw;
+        }
+    }
+
+    private enum CircuitState { Closed, Open, HalfOpen }
+}
+
+// Usage in event handler
+{%- if first_message %}
+var circuitBreaker = new CircuitBreaker(failureThreshold: 5, timeout: TimeSpan.FromMinutes(1));
+
+consumer.{{ messagename }}Async += async (partition, cloudEvent, data) =>
+{
+    try
+    {
+        await circuitBreaker.ExecuteAsync(async () =>
+        {
+            await SaveToDatabaseAsync(data);
+            return true;
+        });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("Circuit breaker is open"))
+    {
+        Console.WriteLine($"Skipping event {cloudEvent.Id} due to open circuit");
+        // Consider routing to DLQ or parking lot
+    }
+};
+{%- endif %}
+```
+
+### 3. Retry Logic with Azure.Core Policies
+
+Leverage built-in Azure SDK retry policies for transient failures:
+
+```csharp
+using Azure.Core;
+using Azure.Core.Pipeline;
+using Polly;
+using Polly.Retry;
+
+public class ResilientEventProcessor
+{
+    private readonly AsyncRetryPolicy _retryPolicy;
+
+    public ResilientEventProcessor()
+    {
+        // Configure Polly retry policy
+        _retryPolicy = Policy
+            .Handle<HttpRequestException>()
+            .Or<TimeoutException>()
+            .Or<Azure.RequestFailedException>(ex => IsTransient(ex))
+            .WaitAndRetryAsync(
+                retryCount: 3,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(100 * Math.Pow(2, retryAttempt - 1)),
+                onRetry: (exception, timeSpan, retryCount, context) =>
+                {
+                    Console.WriteLine($"Retry {retryCount} after {timeSpan.TotalMilliseconds}ms due to: {exception.Message}");
+                });
+    }
+
+    public async Task ProcessEventWithRetryAsync(CloudEvent cloudEvent, {{ util.body_type(data_project_name, root, messagegroup.messages.values() | first) }} data)
+    {
+        await _retryPolicy.ExecuteAsync(async () =>
+        {
+            // Your processing logic that might fail transiently
+            await CallExternalServiceAsync(data);
+        });
+    }
+
+    private static bool IsTransient(Azure.RequestFailedException ex)
+    {
+        return ex.Status switch
+        {
+            408 => true, // Request Timeout
+            429 => true, // Too Many Requests
+            500 => true, // Internal Server Error
+            502 => true, // Bad Gateway
+            503 => true, // Service Unavailable
+            504 => true, // Gateway Timeout
+            _ => false
+        };
+    }
+
+    private async Task CallExternalServiceAsync({{ util.body_type(data_project_name, root, messagegroup.messages.values() | first) }} data)
+    {
+        // External call implementation
+        await Task.CompletedTask;
+    }
+}
+```
+
+### 4. Application Insights Integration
+
+Deep integration with Azure Application Insights for observability:
+
+```csharp
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility;
+
+public class ObservableEventConsumer
+{
+    private readonly TelemetryClient _telemetry;
+    private readonly {{ class_name }} _consumer;
+
+    public ObservableEventConsumer({{ class_name }} consumer, string instrumentationKey)
+    {
+        _consumer = consumer;
+        var config = TelemetryConfiguration.CreateDefault();
+        config.ConnectionString = $"InstrumentationKey={instrumentationKey}";
+        _telemetry = new TelemetryClient(config);
+
+{%- if first_message %}
+        _consumer.{{ messagename }}Async += ProcessWithTelemetryAsync;
+{%- endif %}
+    }
+
+    private async Task ProcessWithTelemetryAsync(string partition, CloudEvent cloudEvent, {{ message_body_type }} data)
+    {
+        using var operation = _telemetry.StartOperation<RequestTelemetry>("Process-{{ messagename }}");
+        operation.Telemetry.Properties["CloudEvent.Id"] = cloudEvent.Id ?? string.Empty;
+        operation.Telemetry.Properties["CloudEvent.Type"] = cloudEvent.Type ?? string.Empty;
+        operation.Telemetry.Properties["CloudEvent.Source"] = cloudEvent.Source?.ToString() ?? string.Empty;
+        operation.Telemetry.Properties["Partition"] = partition;
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            await ProcessEventAsync(data);
+            
+            stopwatch.Stop();
+            operation.Telemetry.Success = true;
+            operation.Telemetry.Duration = stopwatch.Elapsed;
+
+            _telemetry.TrackMetric("EventProcessingDuration", stopwatch.Elapsed.TotalMilliseconds, 
+                new Dictionary<string, string> { { "EventType", cloudEvent.Type ?? "unknown" } });
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            operation.Telemetry.Success = false;
+            operation.Telemetry.Duration = stopwatch.Elapsed;
+            
+            _telemetry.TrackException(ex, new Dictionary<string, string>
+            {
+                { "CloudEvent.Id", cloudEvent.Id ?? string.Empty },
+                { "Partition", partition }
+            });
+            
+            throw;
+        }
+    }
+
+    private async Task ProcessEventAsync({{ message_body_type }} data)
+    {
+        // Your business logic
+        await Task.CompletedTask;
+    }
+}
+
+// Configure Application Insights in Startup
+public static void ConfigureApplicationInsights(IServiceCollection services, IConfiguration configuration)
+{
+    services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = configuration["ApplicationInsights:ConnectionString"];
+        options.EnableAdaptiveSampling = true;
+        options.EnableQuickPulseMetricStream = true;
+    });
+}
+```
+
+### 5. Backpressure Control
+
+Control memory usage and processing rate with semaphore-based backpressure:
+
+```csharp
+public class BackpressureEventConsumer
+{
+    private readonly {{ class_name }} _consumer;
+    private readonly SemaphoreSlim _semaphore;
+
+    public BackpressureEventConsumer({{ class_name }} consumer, int maxConcurrentEvents = 100)
+    {
+        _consumer = consumer;
+        _semaphore = new SemaphoreSlim(maxConcurrentEvents, maxConcurrentEvents);
+
+{%- if first_message %}
+        _consumer.{{ messagename }}Async += ProcessWithBackpressureAsync;
+{%- endif %}
+    }
+
+    private async Task ProcessWithBackpressureAsync(string partition, CloudEvent cloudEvent, {{ message_body_type }} data)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            await ProcessEventAsync(cloudEvent, data);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    private async Task ProcessEventAsync(CloudEvent cloudEvent, {{ message_body_type }} data)
+    {
+        // Your processing logic
+        Console.WriteLine($"Processing event {cloudEvent.Id} with {_semaphore.CurrentCount} slots available");
+        await Task.Delay(100); // Simulate work
+    }
+}
+```
+
+### 6. Consumer Lag Monitoring
+
+Track and alert on consumer lag to ensure timely processing:
+
+```csharp
+using System.Diagnostics.Metrics;
+using Azure.Messaging.EventHubs;
+
+public class LagMonitoringConsumer
+{
+    private static readonly Meter Meter = new Meter("MyApp.EventHubs.Consumer", "1.0.0");
+    private static readonly ObservableGauge<long> ConsumerLag = Meter.CreateObservableGauge<long>(
+        "eventhubs.consumer.lag",
+        () => GetCurrentLag(),
+        "events",
+        "Number of events behind the latest event");
+
+    private static readonly Counter<long> EventsProcessed = Meter.CreateCounter<long>(
+        "eventhubs.consumer.events.processed",
+        "events",
+        "Number of events processed");
+
+    private static readonly Histogram<double> ProcessingDuration = Meter.CreateHistogram<double>(
+        "eventhubs.consumer.processing.duration",
+        "ms",
+        "Event processing duration");
+
+    private readonly {{ class_name }} _consumer;
+    private static long _lastSequenceNumber = 0;
+    private static long _latestSequenceNumber = 0;
+
+    public LagMonitoringConsumer({{ class_name }} consumer)
+    {
+        _consumer = consumer;
+
+{%- if first_message %}
+        _consumer.{{ messagename }}Async += ProcessWithMetricsAsync;
+{%- endif %}
+    }
+
+    private async Task ProcessWithMetricsAsync(string partition, CloudEvent cloudEvent, {{ message_body_type }} data)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var tags = new TagList { { "partition", partition } };
+
+        try
+        {
+            // Extract sequence number if available
+            if (cloudEvent.ExtensionAttributes?.TryGetValue("sequencenumber", out var seqObj) == true 
+                && long.TryParse(seqObj?.ToString(), out var sequenceNumber))
+            {
+                _lastSequenceNumber = sequenceNumber;
+                // You would typically get latest from Event Hubs management API
+            }
+
+            await ProcessEventAsync(data);
+            
+            stopwatch.Stop();
+            EventsProcessed.Add(1, tags);
+            ProcessingDuration.Record(stopwatch.Elapsed.TotalMilliseconds, tags);
+        }
+        catch (Exception)
+        {
+            stopwatch.Stop();
+            ProcessingDuration.Record(stopwatch.Elapsed.TotalMilliseconds, tags);
+            throw;
+        }
+    }
+
+    private static long GetCurrentLag()
+    {
+        return Math.Max(0, _latestSequenceNumber - _lastSequenceNumber);
+    }
+
+    private async Task ProcessEventAsync({{ message_body_type }} data)
+    {
+        await Task.CompletedTask;
+    }
+}
+```
+
+### 7. Dead Letter Queue Pattern
+
+Route failed events to a dead letter queue for later analysis:
+
+```csharp
+using Azure.Messaging.EventHubs.Producer;
+
+public class DLQEventConsumer
+{
+    private readonly {{ class_name }} _consumer;
+    private readonly EventHubProducerClient _dlqProducer;
+    private readonly int _maxRetries;
+
+    public DLQEventConsumer(
+        {{ class_name }} consumer,
+        EventHubProducerClient dlqProducer,
+        int maxRetries = 3)
+    {
+        _consumer = consumer;
+        _dlqProducer = dlqProducer;
+        _maxRetries = maxRetries;
+
+{%- if first_message %}
+        _consumer.{{ messagename }}Async += ProcessWithDLQAsync;
+{%- endif %}
+    }
+
+    private async Task ProcessWithDLQAsync(string partition, CloudEvent cloudEvent, {{ message_body_type }} data)
+    {
+        int retryCount = 0;
+        Exception? lastException = null;
+
+        while (retryCount < _maxRetries)
+        {
+            try
+            {
+                await ProcessEventAsync(data);
+                return; // Success
+            }
+            catch (Exception ex) when (IsTransient(ex))
+            {
+                lastException = ex;
+                retryCount++;
+                
+                if (retryCount < _maxRetries)
+                {
+                    var delay = TimeSpan.FromMilliseconds(100 * Math.Pow(2, retryCount - 1));
+                    Console.WriteLine($"Transient error. Retry {retryCount}/{_maxRetries} after {delay.TotalMilliseconds}ms");
+                    await Task.Delay(delay);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Non-transient error, send to DLQ immediately
+                await SendToDLQAsync(cloudEvent, data, ex, retryCount);
+                return;
+            }
+        }
+
+        // Max retries exceeded, send to DLQ
+        await SendToDLQAsync(cloudEvent, data, lastException!, retryCount);
+    }
+
+    private async Task SendToDLQAsync(CloudEvent cloudEvent, {{ message_body_type }} data, Exception error, int retryCount)
+    {
+        var dlqEvent = new EventData(cloudEvent.Data?.ToArray() ?? Array.Empty<byte>());
+        dlqEvent.Properties["OriginalEventId"] = cloudEvent.Id;
+        dlqEvent.Properties["OriginalEventType"] = cloudEvent.Type;
+        dlqEvent.Properties["ErrorMessage"] = error.Message;
+        dlqEvent.Properties["ErrorType"] = error.GetType().Name;
+        dlqEvent.Properties["RetryCount"] = retryCount;
+        dlqEvent.Properties["FailedAt"] = DateTime.UtcNow.ToString("O");
+
+        await _dlqProducer.SendAsync(new[] { dlqEvent });
+        Console.WriteLine($"Event {cloudEvent.Id} sent to DLQ after {retryCount} retries: {error.Message}");
+    }
+
+    private static bool IsTransient(Exception ex)
+    {
+        return ex is TimeoutException or HttpRequestException;
+    }
+
+    private async Task ProcessEventAsync({{ message_body_type }} data)
+    {
+        await Task.CompletedTask;
+    }
+}
+```
+
+## Performance Tips
+
+1. **Use async/await**: Never block with `.Result` or `.Wait()`
+2. **Batch database operations**: Save multiple records at once
+3. **Parallel processing**: Use multiple consumer instances
+4. **Increase partitions**: More partitions = more parallelism
+5. **Monitor lag**: Watch checkpoint updates and consumer lag metrics
+
+## Troubleshooting
+
+**Not receiving events**: Check connection string, Event Hub name, and that events are being sent
+
+**Slow processing**: Consider running multiple instances or optimizing handlers
+
+**Duplicate events**: Can happen after crashes; make handlers idempotent
+
+**Checkpoint errors**: Verify storage connection string and container exists
+
+**Connection timeouts**: Check network connectivity and firewall rules
+
+## Learn More
+
+- [Azure Event Hubs Documentation](https://learn.microsoft.com/azure/event-hubs/)
+- [Event Hubs .NET SDK](https://learn.microsoft.com/dotnet/api/overview/azure/messaging.eventhubs-readme)
+- [CloudEvents Specification](https://cloudevents.io/)
+- [xRegistry CLI Documentation](https://github.com/xregistry/codegen)
+
+## Dependencies
+
+- `Azure.Messaging.EventHubs` - Event Hubs SDK
+- `Azure.Messaging.EventHubs.Processor` - Event processor for checkpointing
+- `Azure.Storage.Blobs` - Checkpoint storage
+- `Azure.Identity` - Azure AD authentication
+- `CloudNative.CloudEvents` - CloudEvents support
+- `Microsoft.Extensions.Logging` - Logging
+
+## Generated Code
+
+This code was auto-generated by [xRegistry CLI](https://github.com/xregistry/codegen).
+
+**Message Group:** {{ groupname }}  
+**Protocol:** Azure Event Hubs (AMQP)  
+**Envelope:** CloudEvents 1.0  
+**Checkpointing:** Azure Blob Storage
+{% endfor %}
