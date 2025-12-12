@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=77", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "turbo-turtle"
+authors = [
+    {name = "Kyle Brindley", email = "kbrindley@lanl.gov"},
+    {name = "Thomas Roberts", email = "tproberts@lanl.gov"},
+]
+description = "Solid body modeling tools for 2D sketched, 2D axisymmetric, and 3D revolved models"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "BSD-3-Clause"
+license-files = ["LICENSE.txt"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering"
+]
+dynamic = ["version"]
+dependencies = [
+    "lazy_loader >=0.4",
+    "matplotlib >=3",
+    "scons >=4.6",
+    "waves-workflows >=0.13.0"
+]
+
+[project.optional-dependencies]
+gmsh = ["gmsh"]
+
+[tool.setuptools]
+packages = [
+    "turbo_turtle",
+    "turbo_turtle._abaqus_python",
+    "turbo_turtle._abaqus_python.turbo_turtle_abaqus",
+    "turbo_turtle._tests",
+    "turbo_turtle.tutorials",
+]
+zip-safe = false
+
+[project.scripts]
+turbo-turtle = "turbo_turtle._main:main"
+
+[project.urls]
+homepage = "https://github.com/lanl-aea/turbo-turtle"
+documentation = "https://lanl-aea.github.io/turbo-turtle/"
+repository = "https://github.com/lanl-aea/turbo-turtle"
+changelog = "https://lanl-aea.github.io/turbo-turtle/changelog.html"
+
+[tool.setuptools_scm]
+write_to = "turbo_turtle/_version.py"
+
+[tool.pytest.ini_options]
+markers = [
+    "systemtest: marks system tests, e.g. the tutorials",
+    "require_third_party: marks system tests that require third-party software command line calls",
+    "cubit_python: marks Cubit Python API unit tests that require a Cubit import",
+    "abaqus: tests requiring the Abaqus executable",
+    "cubit: tests requiring the Cubit executable",
+    "gmsh: tests requiring the Gmsh executable",
+]
+addopts = "--ignore=_abaqus_python --ignore=turbo_turtle/_abaqus_python --tb=long --showlocals --failed-first --strict-markers -m 'not systemtest' -ra"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = ["build", "install", "conda-environment", "conda-pkgs", "pip-build-test"]
+extend-include = ["SConstruct", "SConscript", "*.scons"]
+
+[tool.ruff.lint]
+extend-select = [
+    "A", "B", "D", "E", "F", "I", "N", "W",
+    "ANN", "ARG", "BLE", "C4", "ERA", "FURB", "ISC", "NPY", "PD", "PERF", "PGH", "PL", "PTH", "RUF", "T10"
+]
+# TODO: decide how to handle *args/**kwargs type annotations and remove ignores for ANN00[23]
+extend-ignore = ["ANN002", "ANN003", "B028", "D203", "D213", "PLR0912", "PLR0913", "PLR0915", "PLR1730", "PLR2004"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"*SConstruct" = ["F821"]
+"*SConscript" = ["F821"]
+"*.scons" = ["F821"]
+"legacy_geometry.py" = ["ANN", "PTH", "UP", "FURB188", "B905", "E402", "B904"]
+
+[tool.mypy]
+disable_error_code = [
+    "import-untyped",
+    "import-not-found"
+]
+exclude = [
+    "_tests",
+    "_abaqus_python"
+]
+packages = ["turbo_turtle"]
