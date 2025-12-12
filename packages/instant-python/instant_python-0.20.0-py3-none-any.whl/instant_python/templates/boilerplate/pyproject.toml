@@ -1,0 +1,134 @@
+{% set feature_to_main_dependencies = {
+    "async_sqlalchemy": ["sqlalchemy", "asyncpg", "psycopg2-binary", "pydantic", "pydantic-settings"],
+    "async_alembic": ["alembic", "pydantic", "pydantic-settings"],
+    "event_bus": ["pika", "sindripy"],
+    "fastapi_application": ["fastapi[standard]"],
+    "value_objects": ["sindripy"]
+} %}
+{% macro get_main_dependencies() -%}
+    {%- set deps = [] -%}
+    {%- for feature, dependencies in feature_to_main_dependencies.items() -%}
+        {%- if feature in template.built_in_features -%}
+            {%- set _ = deps.extend(dependencies) -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {% for dep in deps %}
+    "{{ dep }}",
+    {% endfor -%}
+{%- endmacro %}
+{% set has_github_actions_or_makefile = ["github_actions", "makefile"] | is_in(template.built_in_features) %}
+{% set feature_to_dev_dependencies = {
+    "release": {
+    "python-semantic-release": ["github_actions"]
+    },
+    "lint": {
+    "mypy": ["github_actions", "makefile", "precommit_hook"],
+    "ruff": ["github_actions", "makefile", "precommit_hook"],
+    "pip-audit": ["github_actions"],
+    "pre-commit": ["precommit_hook"]
+    },
+    "test": {
+    "pytest": ["github_actions", "makefile", "precommit_hook"],
+    "pytest-asyncio": ["async_alembic", "async_sqlalchemy"]
+    }
+} %}
+{% macro get_dev_group_dependencies(group_name) -%}
+    {%- set deps_result = [] -%}
+    {%- set group = feature_to_dev_dependencies[group_name] -%}
+    {%- for dep, required_features in group.items() -%}
+        {%- if required_features | length == 0 or required_features | is_in(template.built_in_features) -%}
+            {%- set _ = deps_result.append(dep) -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- for dep in deps_result %}
+    "{{ dep }}",
+    {% endfor -%}
+{%- endmacro -%}
+{% set release_deps = get_dev_group_dependencies("release") %}
+{% set lint_deps = get_dev_group_dependencies("lint") %}
+{% set test_deps = get_dev_group_dependencies("test") %}
+[project]
+name = "{{ general.slug }}"
+version = "{{ general.version }}"
+description = "{{ general.description }}"
+authors = [{name = "{{ general.author }}", email = "{{ git.email }}"}]
+dependencies = [
+{{ get_main_dependencies() }}]
+requires-python = "=={{ general.python_version }}.*"
+readme = "README.md"
+license = { file = "LICENSE" }
+
+{% if general.dependency_manager == "pdm" %}
+[tool.pdm]
+distribution = false
+{% endif %}
+{% if release_deps.strip() or lint_deps.strip() or test_deps.strip() %}
+[dependency-groups]
+{% if release_deps.strip() %}
+release = [
+{{ release_deps }}]
+{% endif %}
+{% if lint_deps.strip() %}
+lint = [
+{{ lint_deps }}]
+{% endif %}
+{% if test_deps.strip() %}
+test = [
+{{ test_deps }}]
+{% endif %}
+{% endif %}
+
+{% if dependencies | has_dependency("ruff") or has_github_actions_or_makefile %}
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "C4", "UP", "I"]
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["{{ general.source_name }}", "test"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+{% endif %}
+
+{% if "github_actions" in template.built_in_features %}
+[project.optional-dependencies]
+build = ["uv>=0.7.21"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+commit_message = "bump: new version {version} created"
+commit_parser = "conventional"
+major_on_zero = false
+allow_zero_version = true
+no_git_verify = false
+tag_format = "{version}"
+build_command = """
+    pip install -e '.[build]'
+    {{ general.dependency_manager }} lock --upgrade-package {{ general.slug }}
+    git add {{ general.dependency_manager }}.lock
+"""
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf", "refactor", "test", "build"]
+allowed_tags = ["feat", "fix", "refactor", "perf", "build"]
+default_bump_level = 0
+parse_squash_commits = false
+ignore_merge_commits = true
+
+[tool.semantic_release.changelog]
+changelog_file = "CHANGELOG.md"
+exclude_commit_patterns = ['''^Merge pull request #''', '''^Merge branch ''']
+mode = "update"
+#template_dir = "docs/changelog"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG"
+output_format = "md"
+mask_initial_release = false
+{% endif %}
