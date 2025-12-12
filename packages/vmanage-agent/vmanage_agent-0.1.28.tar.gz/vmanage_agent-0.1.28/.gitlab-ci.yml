@@ -1,0 +1,39 @@
+image: python:3.8
+
+stages:
+  - setup 
+  - build
+  - deploy
+
+
+before_script:
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - export PATH="/root/.cargo/bin:$PATH"
+  - uv pip install --system tox
+
+Set Up:
+  stage: setup 
+  script:
+    - uv run tox
+Build:
+  stage: build 
+  script: 
+    - echo "Resolving dependencies and installing package"
+    - uv pip install --system -r requirements.txt
+
+Deploy:
+  stage: deploy
+  script:
+    - echo "This is the publishing stage"
+    - uv pip install --system awscli
+    - echo "Repository gitlab configured ..."
+    - uv build
+    - echo "Build done ..."
+    - export KEY=`ls ./dist -t | sed -n 2p`
+    - mv ./dist/${KEY} ./dist/minion-latest.tar.gz
+    - uv run aws s3 sync ./dist ${AWS_S3_BUCKET} --acl public-read
+    - echo "Publishing done!"
+
+  only:
+    - main 
+    
