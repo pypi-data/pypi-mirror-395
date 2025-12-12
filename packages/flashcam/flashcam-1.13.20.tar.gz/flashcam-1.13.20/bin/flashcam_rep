@@ -1,0 +1,34 @@
+#!/bin/bash
+
+if [ "$1" != "" ]; then
+
+    echo new in 1.6
+
+
+
+    echo ONE FILE AVI
+    outname=`basename $1 .avi`
+    ls -1 $1 | grep -e ".avi$" |  xargs -n 1 -I III ffmpeg -i III -c:v copy -c:a copy ${outname}_repr.avi
+
+    echo ONE FILE MKV
+    echo not repr
+    outname=`basename $1 .mkv`
+
+    ls -1 $1 | grep -e ".mkv$" |  grep -v repr  | xargs -n 1 -I III ffmpeg -i "III" -c copy ${outname}_repr.mkv
+
+    # ls -1 $1 | grep -e ".mkv$" |  grep -v repr |  xargs -n 1 -I III | | xargs -n 1 -I III ffmpeg -i "III" -c copy IIIrepr.mkv
+    # rename  "s/mkvrepr/repr/"  ${1}
+
+else
+    echo USE FOR ONE FILE ONLY
+    echo "FOR MORE USE ls -1 | xargs -n 1"
+    # echo ALL AVI but not rep...avi
+    # #
+    # echo REPAIRING AVI
+    # #
+    # ls -1 *avi | grep -ve  "^rep" | xargs -n 1 -I III ffmpeg -i III -c:v copy -c:a copy repIII
+
+    # echo REPAIRING MKV ... NO
+
+
+fi
