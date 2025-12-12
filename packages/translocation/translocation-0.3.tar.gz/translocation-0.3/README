@@ -1,0 +1,183 @@
+
+TRANSLOCATION
+=============
+
+Introduction
+------------
+
+**TRANSLOCATION** is a Python3 module that helps to deal with multi-lattice translocation defects. If translocation defects are present, they may affect the quality of electron density dramatically.
+
+**TRANSLOCATION** works with MTZ files with intensities or structure factors, HKL files from XDS, hkl files for SHELX, and also with SCA files.
+
+Installation
+------------
+
+**TRANSLOCATION** is a module that can be installed using PIP from `https://pypi.org/project/translocation`:
+
+.. code-block:: bash
+
+    python3 -m pip install translocation
+
+Dependencies
+------------
+
+*TRANSLOCATION* has no dependencies for text-based data files. `GEMMI <https://github.com/project-gemmi/gemmi>`_ is required for work with MTZ files.
+
+Example
+-------
+
+The very first structure tested with *TRANSLOCATION* is S1 nuclease in complex with RNA segments (Adámková *et al.*, 2022).
+
+K. Adámková, T. Kovaľ, L.H. Oestergaard, J. Dušková, M. Malý, L. Švecová, T. Skálová, P. Kolenko, J. Dohnálek. (2022). Atomic resolution studies of S1 nuclease complexes reveal details of RNA interaction with the enzyme despite multiple lattice-translocation defects. *Acta Cryst. D* **78**, 1194-1209.
+
+Working with MTZ files
+-----------------------
+
+*TRANSLOCATION* allows modification of intensities or structure factors.
+
+Work with MTZ files requires specification of labels used. *TRANSLOCATION* does not fill the original values with new calculated values. Instead, it adds two new columns (including sigmas) with new appendix (e.g. FP_NEW).
+
+Intensities
+~~~~~~~~~~~
+
+*Example*:
+
+.. code-block:: bash
+
+    python3 -m translocation -o new_file.mtz --mtz_I file_with_intensities.mtz --I_label I_cryst --SIGI_label SIGI_cryst --k1 0.09 --fc1 0.4 0.3 0.0 --k2 0.13 --fc2 ...
+
+The **new_file.mtz** file will contain all original information, but also new columns ``I_label_new`` and ``SIGI_label_new``. These are to be used in *CTRUNCATE* or in the refinement.
+
+Structure factors
+~~~~~~~~~~~~~~~~~
+
+*Example*:
+
+.. code-block:: bash
+
+    python3 -m translocation -o new_file.mtz --mtz_F file_with_intensities.mtz --F_label F_cryst --SIGF_label SIGF_cryst --k1 0.09 --fc1 0.4 0.3 0.0 --k2 0.13 --fc2 ...
+
+As previously, the **new_file.mtz** file will contain all original information, but also new columns ``F_label_new`` and ``SIGF_label_new``. These are to be used in the refinement.
+
+Working with HKL files
+----------------------
+
+*TRANSLOCATION* provides modification of intensities of ``XDS_ASCII.HKL`` file from the `XDS <https://xds.mr.mpg.de/>`_.
+
+*Example*:
+
+.. code-block:: bash
+
+    python3 -m translocation -o new_file.HKL --HKL XDS_ASCII.HKL --k1 0.09 --fc1 0.4 0.3 0.0 --k2 0.13 --fc2 ...
+
+The **new_file.HKL** contains corrected intensities that can be further processed with standard tools like AIMLESS or any other software. **Please, archive the original XDS_ASCII.HKL!**
+
+Working with hkl files
+----------------------
+
+hkl files suitable for refinement with *SHELX* contain structure factors. They cannot be mixed up with HKL files from *XDS*!
+
+*Example*:
+
+.. code-block:: bash
+
+    python3 -m translocation -o new_file.hkl --hkl original_file.hkl --k1 0.09 --fc1 0.4 0.3 0.0 --k2 0.13 --fc2 ...
+
+The **new_file.hkl** contains corrected structure factors only. **Please, archive the original_file.hkl!**
+
+Working with SCA files
+----------------------
+
+*TRANSLOCATION* provides modification of intensities of SCA files. Various programs produce different headers of the SCA files. Therefore, it is necessary to check the file and specify how many initial lines belong to the header.
+
+The ``original_file.sca`` starts with following lines:
+
+.. code-block:: none
+
+    1
+    -987
+    83.500    96.740    57.970    90.000    90.000    90.000 c 2 2 21
+    0   0   2   155.1     3.7
+    0   0   3    -0.0     0.1
+    0   0   4  2852.9    56.1
+    0   0   5    -0.1     0.2
+    0   0   6   531.2    11.3
+    0   0   7     0.5     0.3
+    0   0   8   384.1     8.5
+
+The first three lines is header information. They must be omitted (ignored) this way:
+
+.. code-block:: bash
+
+    python3 -m translocation -o new_file.sca --sca original_file.sca --sca_ignore 3 --k1 0.09 --fc1 0.4 0.3 0.0 --k2 0.13 --fc2 ...
+
+The **new_file.sca** contains corrected intensities that can be further processed with standard tools. **Please, archive the original_file.sca!**
+
+Known issues with SCA files
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In some cases, the correction causes dramatic increase of the intensities. For example:
+
+.. code-block:: none
+
+    0   0   4482852.9    56.1
+
+where the programs cannot find the right numbers for the intensities. To avoid this, scaling of all intensities and their sigmas is required.
+
+Help
+----
+
+.. code-block:: bash
+
+    python3 -m translocation --help
+
+prints following code:
+
+.. code-block:: none
+
+    python3 -m translocation --help
+
+    ###################################################
+
+    Correction for MULTI-LATTICE TRANSLOCATION defects
+
+    https://github.com/kolenpe1/translocation - source
+    https://pypi.org/project/translocation   - install
+
+    ###################################################
+
+    usage: TRANSLOCATION [-h] [-c CELL [CELL ...]] [--mtz_I MTZ_I] [--I_label I_LABEL] [--SIGI_label SIGI_LABEL] [--mtz_F MTZ_F] [--F_label F_LABEL]
+              [--SIGF_label SIGF_LABEL] [--hkl HKL] [--HKL HKL] [--sca SCA] [--sca_ignore SCA_IGNORE] [--k1 K1] [--fc1 FC1 [FC1 ...]]
+              [--k2 K2] [--fc2 FC2 [FC2 ...]] [--k3 K3] [--fc3 FC3 [FC3 ...]] [--k4 K4] [--fc4 FC4 [FC4 ...]] [--k5 K5]
+              [--fc5 FC5 [FC5 ...]] [--force] [-o OUTPUT_FILE]
+
+    options:
+      -h, --help            show this help message and exit
+      -c CELL [CELL ...], --cell CELL [CELL ...]
+                            unit cell parameters
+      --mtz_I MTZ_I         input MTZ file with intensities
+      --I_label I_LABEL     label for intensities
+      --SIGI_label SIGI_LABEL
+                         label for sigmas
+      --mtz_F MTZ_F         input MTZ file with structure factors
+      --F_label F_LABEL     label for structure factors
+      --SIGF_label SIGF_LABEL
+                            label for sigmas
+      --hkl HKL             input file with SHELX-like structure factors
+      --HKL HKL             XDS_ASCII.HKL input file from XDS
+      --sca SCA             input SCA file with intensities
+     --sca_ignore SCA_IGNORE
+                            how many initial lines should be ignored (do not contain data)
+      --k1 K1               fraction of the 1st translocation disorder
+      --fc1 FC1 [FC1 ...]   fractional coordinates of the 1st translocation disorder
+      --k2 K2               fraction of the 2nd translocation disorder
+      --fc2 FC2 [FC2 ...]   fractional coordinates of the 2nd translocation disorder
+      --k3 K3               fraction of the 3rd translocation disorder
+      --fc3 FC3 [FC3 ...]   fractional coordinates of the 3rd translocation disorder
+      --k4 K4               fraction of the 4th translocation disorder
+      --fc4 FC4 [FC4 ...]   fractional coordinates of the 4th translocation disorder
+      --k5 K5               fraction of the 5th translocation disorder
+      --fc5 FC5 [FC5 ...]   fractional coordinates of the 5th translocation disorder
+      --force, -f           forcing output file
+      -o OUTPUT_FILE, --output_file OUTPUT_FILE
+
