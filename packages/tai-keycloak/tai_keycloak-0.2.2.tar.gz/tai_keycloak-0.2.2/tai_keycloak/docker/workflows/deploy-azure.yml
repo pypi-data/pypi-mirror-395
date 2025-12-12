@@ -1,0 +1,228 @@
+# =============================================================================
+# GitHub Actions Workflow: Build and Deploy Keycloak to Azure Web App
+# =============================================================================
+#
+# Este workflow:
+# 1. Construye la imagen Docker de Keycloak en modo Azure
+# 2. La sube a Azure Container Registry (ACR)
+# 3. La despliega en Azure Web App
+#
+# REQUISITOS:
+# - Azure Container Registry creado
+# - Azure Web App con soporte para contenedores
+# - Service Principal con permisos necesarios
+#
+# SECRETOS REQUERIDOS EN GITHUB (Settings → Secrets and variables → Actions):
+# - AZURE_CREDENTIALS: JSON del service principal
+# - ACR_USERNAME: Usuario del ACR
+# - ACR_PASSWORD: Contraseña del ACR
+# - ACR_LOGIN_SERVER: URL del ACR (ej: myregistry.azurecr.io)
+# - AZURE_WEBAPP_NAME: Nombre de la Web App
+# - KC_BOOTSTRAP_ADMIN_USERNAME: Usuario admin de Keycloak
+# - KC_BOOTSTRAP_ADMIN_PASSWORD: Contraseña admin
+# - KEYCLOAK_API_CLIENT_SECRET: Secret del cliente API
+# - KC_DB_URL_HOST: Host de PostgreSQL
+# - KC_DB_USERNAME: Usuario de PostgreSQL
+# - KC_DB_PASSWORD: Contraseña de PostgreSQL
+# - KC_HOSTNAME: Hostname público (ej: https://myapp.azurewebsites.net)
+#
+# =============================================================================
+
+name: Deploy Keycloak to Azure Web App
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - 'tai_keycloak/docker/**'
+      - '.github/workflows/deploy-azure.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  KEYCLOAK_VERSION: 26.4.5
+  IMAGE_NAME: keycloak
+  DEPLOYMENT_MODE: azure
+
+jobs:
+  # ===========================================================================
+  # Job: Build and Push Docker Image to ACR
+  # ===========================================================================
+  build-and-push:
+    name: Build and Push to ACR
+    runs-on: ubuntu-latest
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔐 Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      
+      - name: 🏷️ Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ env.KEYCLOAK_VERSION }}-{{sha}}
+      
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: 🔨 Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./tai_keycloak/docker
+          file: ./tai_keycloak/docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            KEYCLOAK_VERSION=${{ env.KEYCLOAK_VERSION }}
+            DEPLOYMENT_MODE=${{ env.DEPLOYMENT_MODE }}
+            KC_BOOTSTRAP_ADMIN_USERNAME=${{ secrets.KC_BOOTSTRAP_ADMIN_USERNAME }}
+            KC_BOOTSTRAP_ADMIN_PASSWORD=${{ secrets.KC_BOOTSTRAP_ADMIN_PASSWORD }}
+            KEYCLOAK_API_CLIENT_SECRET=${{ secrets.KEYCLOAK_API_CLIENT_SECRET }}
+            KC_DB=postgres
+            KC_DB_URL_HOST=${{ secrets.KC_DB_URL_HOST }}
+            KC_DB_URL_PORT=5432
+            KC_DB_URL_DATABASE=keycloak
+            KC_DB_USERNAME=${{ secrets.KC_DB_USERNAME }}
+            KC_DB_PASSWORD=${{ secrets.KC_DB_PASSWORD }}
+            KC_HTTP_PORT=80
+            KC_LOG_LEVEL=INFO
+            KC_HOSTNAME=${{ secrets.KC_HOSTNAME }}
+            KC_HOSTNAME_PATH=/
+            KC_PROXY_HEADERS=xforwarded
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: ✅ Build Summary
+        run: |
+          echo "### 🎉 Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Job: Deploy to Azure Web App
+  # ===========================================================================
+  deploy:
+    name: Deploy to Azure Web App
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ steps.deploy.outputs.webapp-url }}
+    
+    steps:
+      - name: 🔐 Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: 🚀 Deploy to Azure Web App
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      
+      - name: 🔧 Configure Web App Settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          app-settings-json: |
+            [
+              {
+                "name": "WEBSITES_PORT",
+                "value": "80",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+                "value": "false",
+                "slotSetting": false
+              },
+              {
+                "name": "DOCKER_ENABLE_CI",
+                "value": "true",
+                "slotSetting": false
+              },
+              {
+                "name": "DOCKER_REGISTRY_SERVER_URL",
+                "value": "https://${{ secrets.ACR_LOGIN_SERVER }}",
+                "slotSetting": false
+              },
+              {
+                "name": "DOCKER_REGISTRY_SERVER_USERNAME",
+                "value": "${{ secrets.ACR_USERNAME }}",
+                "slotSetting": false
+              },
+              {
+                "name": "DOCKER_REGISTRY_SERVER_PASSWORD",
+                "value": "${{ secrets.ACR_PASSWORD }}",
+                "slotSetting": false
+              }
+            ]
+      
+      - name: 🧪 Health Check
+        run: |
+          echo "Waiting for Web App to be ready..."
+          sleep 60
+          
+          WEBAPP_URL="${{ steps.deploy.outputs.webapp-url }}"
+          HEALTH_URL="${WEBAPP_URL}/health/ready"
+          
+          echo "Checking health at: $HEALTH_URL"
+          
+          for i in {1..10}; do
+            if curl -f -s "$HEALTH_URL" > /dev/null; then
+              echo "✅ Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i/10 failed, retrying in 30s..."
+            sleep 30
+          done
+          
+          echo "❌ Health check failed after 10 attempts"
+          exit 1
+      
+      - name: 📊 Deployment Summary
+        if: always()
+        run: |
+          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Web App:** ${{ secrets.AZURE_WEBAPP_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ steps.deploy.outputs.webapp-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Health Check:** ${{ steps.deploy.outputs.webapp-url }}/health/ready" >> $GITHUB_STEP_SUMMARY
+      
+      - name: 🧹 Logout from Azure
+        if: always()
+        run: az logout
