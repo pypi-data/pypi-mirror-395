@@ -1,0 +1,50 @@
+{% load i18n %}<!DOCTYPE html>
+<html{% block iommi_html_tag_attrs %} lang="{% get_current_language as LANGUAGE_CODE %}{{ LANGUAGE_CODE }}"{% endblock %}>
+<head>
+    <title>{% block title %}{% if title %}{{ title }}{% endif %}{% endblock %}</title>
+    {% block iommi_head_contents %}{% endblock %}
+    {% if assets %}
+        {% for asset in assets.values %}
+            {% if not asset.in_body %}
+                {{ asset }}
+            {% endif %}
+        {% endfor %}
+    {% elif request.iommi_fallback_assets %}
+        {% for asset in request.iommi_fallback_assets.values %}
+            {% if not asset.in_body %}
+                {{ asset }}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    {% block iommi_head_contents_last %}{% endblock %}
+</head>
+<body{% block iommi_body_tag_attrs %}{% if request.iommi_main_menu %} class="sidebar_menu_active"{% endif %}{% endblock %}>
+    {% block iommi_main_menu %}
+        {% if request.iommi_main_menu %}
+            {{ request.iommi_main_menu }}
+        {% endif %}
+    {% endblock %}
+
+    {% block iommi_top %}{% endblock %}
+
+    {% if container %}{{ container.iommi_open_tag }}{% elif request.iommi_fallback_container %}{{ request.iommi_fallback_container.iommi_open_tag }}{% endif %}
+        {% block content %}{% endblock %}
+    {% if container %}{{ container.iommi_close_tag }}{% elif request.iommi_fallback_container %}{{ request.iommi_fallback_container.iommi_close_tag }}{% endif %}
+
+    {% block iommi_bottom %}{% endblock %}
+
+    {% if assets %}
+        {% for asset in assets.values %}
+            {% if asset.in_body %}
+                {{ asset }}
+            {% endif %}
+        {% endfor %}
+    {% elif request.iommi_fallback_assets %}
+        {% for asset in request.iommi_fallback_assets.values %}
+            {% if asset.in_body %}
+                {{ asset }}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</body>
+</html>
