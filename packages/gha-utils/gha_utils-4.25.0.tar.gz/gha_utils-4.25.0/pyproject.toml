@@ -1,0 +1,204 @@
+[project]
+# Docs: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+name = "gha-utils"
+version = "4.25.0"
+# Python versions and their status: https://devguide.python.org/versions/
+requires-python = ">= 3.10"
+description = "⚙️ CLI helpers for GitHub Actions + reuseable workflows"
+authors = [{ name = "Kevin Deldycke", email = "kevin@deldycke.com" }]
+readme = "readme.md"
+keywords = [
+    'build-automation',
+    'changelog-formatter',
+    'ci-cd',
+    'cli',
+    'formatting',
+    'github-actions',
+    'labels',
+    'linting',
+    'markdown',
+    'mypy',
+    'nuitka',
+    'packaging',
+    'pypi',
+    'python',
+    'release-automation',
+    'sphinx',
+    'sponsorship',
+    'terminal',
+    'typo',
+    'workflow-reusable',
+    'yaml',
+]
+classifiers = [
+    # See: https://pypi.org/pypi?%3Aaction=list_classifiers
+    'Development Status :: 5 - Production/Stable',
+    'Environment :: Console',
+    'Framework :: Sphinx',
+    'Framework :: Pelican',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
+    'Operating System :: MacOS :: MacOS X',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX :: Linux',
+    "Operating System :: POSIX :: BSD :: FreeBSD",
+    "Operating System :: POSIX :: BSD :: NetBSD",
+    "Operating System :: POSIX :: BSD :: OpenBSD",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    'Programming Language :: Python :: Implementation :: CPython',
+    'Programming Language :: Unix Shell',
+    'Topic :: Documentation :: Sphinx',
+    'Topic :: File Formats :: JSON',
+    'Topic :: Security',
+    'Topic :: Software Development :: Build Tools',
+    'Topic :: Software Development :: Compilers',
+    'Topic :: Software Development :: Documentation',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Software Development :: Quality Assurance',
+    'Topic :: Software Development :: Version Control :: Git',
+    'Topic :: System :: Archiving :: Packaging',
+    'Topic :: System :: Installation/Setup',
+    'Topic :: System :: Shells',
+    'Topic :: System :: Software Distribution',
+    'Topic :: Terminals',
+    'Topic :: Text Processing :: Markup :: HTML',
+    'Topic :: Text Processing :: Markup :: Markdown',
+    'Topic :: Utilities',
+    'Typing :: Typed',
+]
+# Semantic versioning works in theory. In practice, it is hard to guarantee.
+# That's why we rely on >= specifier instead of ~= to relax constraints. This gives more freedom to packagers to
+# release hotfixes for security vulnerabilities in the future.
+# See also discussion about upper limits at: https://iscinumpy.dev/post/bound-version-constraints/#tldr
+# All minimal version choice are documented. Reasons to bump a minimal version are:
+# - bug fixes,
+# - security fixes,
+# - new code path we depends on,
+# - aligns minimal Python requirements to ours,
+# - adds new explicit support Python version.
+dependencies = [
+    "backports.strenum >= 1.3.1 ; python_version < '3.11'",
+    # boltons 25.0.0 is the first version to support Python 3.13.
+    "boltons >= 25.0.0",
+    # v0.32.2 is the first fixing an issue preventing compilation with Nuitka.
+    # v1.1.1 and later have some regressions: see https://github.com/callowayproject/bump-my-version/issues/331
+    "bump-my-version >= 0.32.2, < 1.1.1",
+    # Click Extra 7.0.0 renames several internals.
+    "click-extra >= 7.0.0",
+    # Extra Platforms 4.0.0 is the first one to support Python 3.14.
+    "extra-platforms >= 4.0.0",
+    # v25.0 is the first version we used when we last changed the requirement.
+    "packaging >= 25.0",
+    # v0.3.3 is the first version we used.
+    # XXX In the future, replace py-walk with wcmatch once the latter supports gitignore files:
+    # https://github.com/facelessuser/wcmatch/issues/226
+    "py-walk >= 0.3.3",
+    # PyDriller 2.6.0 is the first version we used when we last changed the requirement.
+    "PyDriller >= 2.6",
+    # v0.9.0 supports the latest metadata specifications.
+    "pyproject-metadata >= 0.9.0",
+    # PyYAML 6.0.3 is the first version to support Python 3.14.
+    "pyyaml >= 6.0.3",
+    # Tomli 2.3.0 is the first version to support Python 3.14.
+    "tomli >= 2.3.0 ; python_version < '3.11'",
+    # wcmatch 10.0 fix some inconsistencies in globbing and symlinks.
+    "wcmatch >= 10.0",
+]
+
+# Runtime extra dependency groups, also relying on >= specifiers as explained above.
+[project.optional-dependencies]
+
+# Non-runtime development dependency groups, using the ~= specifier to reduce randomness.
+# Unless the package has been referenced in sections above, in which case we align the version specifier.
+[dependency-groups]
+test = [
+    "coverage [toml] ~= 7.12.0",
+    "pytest ~= 9.0.0",
+    "pytest-cases ~= 3.9.1",
+    "pytest-cov ~= 7.0.0",
+    "pytest-github-actions-annotate-failures ~= 0.3.0",
+    "pytest-randomly ~= 4.0.0",
+]
+typing = ["types-boltons ~= 25.0.0.20250822", "types-PyYAML ~= 6.0.12.9"]
+
+[project.urls]
+"Homepage" = 'https://github.com/kdeldycke/workflows'
+"Repository" = 'https://github.com/kdeldycke/workflows'
+"Funding" = "https://github.com/sponsors/kdeldycke"
+"Issues" = "https://github.com/kdeldycke/workflows/issues"
+"Changelog" = "https://github.com/kdeldycke/workflows/blob/main/changelog.md"
+
+[project.scripts]
+gha-utils = "gha_utils.__main__:main"
+
+[tool.uv]
+package = true
+# 0.9.0 is the snapshot version we used when we migrated from requirements/uv.txt to pyproject.toml.
+required-version = ">= 0.9.0"
+
+[tool.mypy]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+pretty = true
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["py_walk.*"]
+
+[tool.pytest]
+# https://docs.pytest.org/en/latest/customize.html#pyproject-toml
+addopts = [
+    "--durations=10",
+    "--cov=gha_utils",
+    "--cov-branch",
+    "--cov-precision=2",
+    "--cov-report=term",
+    "--cov-report=xml",
+    "--junitxml=junit.xml",
+    "--override-ini=junit_family=legacy",
+]
+# Make sure tests that are expected to fail do not resurrect and start working all of a sudden.
+xfail_strict = true
+
+[tool.bumpversion]
+current_version = "4.25.0"
+allow_dirty = true
+ignore_missing_files = true
+
+[[tool.bumpversion.files]]
+# Update Python package version in any __init__.py file.
+glob = "./**/__init__.py"
+ignore_missing_version = true
+
+[[tool.bumpversion.files]]
+# Update version in project section.
+filename = "./pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+# Update the version in Markdown changelog.
+filename = "./changelog.md"
+search = "## [{current_version} (unreleased)]("
+replace = "## [{new_version} (unreleased)]("
+
+[[tool.bumpversion.files]]
+# Update the version in the citation file.
+filename = "./citation.cff"
+search = "version: {current_version}"
+replace = "version: {new_version}"
+
+[[tool.bumpversion.files]]
+# Update the release date in the citation file.
+filename = "./citation.cff"
+regex = true
+search = "date-released: \\d{{4}}-\\d{{2}}-\\d{{2}}"
+replace = "date-released: {utcnow:%Y-%m-%d}"
