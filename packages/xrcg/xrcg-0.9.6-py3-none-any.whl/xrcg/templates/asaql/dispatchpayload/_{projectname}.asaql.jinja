@@ -1,0 +1,58 @@
+{#-
+
+WITH ContosoERPEventsPurchaseOrderCreated AS (
+    SELECT id, type, data AS PurchaseOrderData, *
+    FROM [input]
+    WHERE type = 'Contoso.ERP.Events.PurchaseOrderCreated'
+)
+
+SELECT event.id, event.type, event.time, event.source, event.PurchaseOrderData.orderId, event.PurchaseOrderData.customerId, event.PurchaseOrderData.total,
+       GetRecordPropertyValue(items, 'productId' ) as productId, GetRecordPropertyValue(items, 'quantity' ) as quantity, GetRecordPropertyValue(items, 'unitCost' ) as unitCost
+INTO [output]
+FROM ContosoERPEventsPurchaseOrderCreated as event
+CROSS APPLY
+    GetArrayElements(PurchaseOrderData.items) AS items 
+
+
+-#}
+
+WITH {% for messagegroupid, messagegroup in root.messagegroups.items() -%}
+{%- for messageid, message in messagegroup.messages.items() %}
+{%- if not loop.first -%},
+{% endif %}{{ messageid | strip_dots  | pascal }} AS (
+    SELECT type, {% if message.dataschemauri or message.dataschema -%}data AS {{ (message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( project_name, root, message.dataschemaformat) | strip_namespace  | pascal }}, {% endif -%} *
+    FROM [input]
+    WHERE type = '{{messageid}}'
+)
+{%- endfor -%}
+{%- endfor -%}
+
+{%- for messagegroupid, messagegroup in root.messagegroups.items() -%}
+{%- for messageid, message in messagegroup.messages.items() %}
+{%- if message.dataschemauri %}
+SELECT {% for attrname, attribute in message.envelopemetadata.items() %}
+{%- if not loop.first-%},{%- endif -%}event.{{ attrname }}{%- endfor -%}
+{%- set schemalist = get("select:"+((message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( project_name, root, message.dataschemaformat))).split(",") -%}
+{%- for item in schemalist if item.strip() -%}
+,event.{{ item }}
+{%- endfor -%}
+{%- set itemlist= get("selectitem:"+((message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( project_name, root, message.dataschemaformat))).split(",") %}
+{%- for item in itemlist if item.strip() -%}
+,{{ item }}
+{%- endfor %}
+INTO [output{{ messageid | strip_namespace | pascal }}]
+FROM {{ messageid | strip_dots  | pascal }} as event
+{% set apply = get("apply:"+((message.dataschemauri if message.dataschemauri else message.dataschema) | schema_type( project_name, root, message.dataschemaformat))) %}
+{%- if apply -%}
+CROSS APPLY
+    {{ apply }}
+{% endif -%}
+{%- else %}
+SELECT {% for attrname, attribute in message.envelopemetadata.items() %}
+{%- if not loop.first-%},{%- endif -%}event.{{ attrname }}{%- endfor %}
+INTO [output{{ messageid | strip_namespace | pascal }}]
+FROM {{ messageid | strip_dots  | pascal }} as event
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+

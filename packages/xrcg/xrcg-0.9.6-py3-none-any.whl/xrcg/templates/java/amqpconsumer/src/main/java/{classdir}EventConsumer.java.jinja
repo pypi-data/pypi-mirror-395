@@ -1,0 +1,531 @@
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "amqp.jinja.include" as amqp -%}
+{%- import "util.jinja.include" as util -%}
+{{ util.CommonFileHeader() }}
+
+{%- set messagegroups = root.messagegroups %}
+{%- set uses_cloudevents_message = cloudEvents.usesCloudEvents(root) %}
+{%- set uses_amqp_message = amqp.uses_amqp_protocol(root) %}
+{%- set uses_amqp_endpoint = amqp.uses_amqp_endpoint(root) %}
+
+{% for messagegroupid, messagegroup in messagegroups.items() -%}
+{%- set groupname = messagegroupid | pascal -%}
+{%- set package_name = project_name | lower | replace('-', '_') %}
+package {{ package_name }};
+
+import org.apache.qpid.protonj2.client.Message;
+{%- if uses_cloudevents_message %}
+{{ cloudEvents.CloudEventsImports() }}
+{%- endif %}
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
+{%- set class_name = (groupname | strip_namespace) + "EventConsumer" %}
+
+/**
+ * Event consumer for the {{ groupname }} message group.
+ * 
+ * <p>This class receives and dispatches AMQP 1.0 messages, supporting both CloudEvents
+ * envelope format and plain AMQP messages. It provides type-safe message routing to
+ * registered handler functions using the {@link TriConsumer} functional interface.</p>
+ * 
+ * <p>The consumer automatically detects message format (CloudEvents vs. plain AMQP),
+ * deserializes message payloads based on content type, and routes messages to the
+ * appropriate handler based on CloudEvent type or AMQP subject.</p>
+ * 
+ * <h2>Features</h2>
+ * <ul>
+ *   <li>CloudEvents structured and binary content modes</li>
+ *   <li>Plain AMQP messages with subject-based routing</li>
+ *   <li>Message settlement (accept, reject, release)</li>
+ *   <li>Automatic deserialization of message payloads</li>
+ *   <li>Fluent API for handler registration</li>
+ * </ul>
+ * 
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Create consumer
+ * {{ class_name }} consumer = {{ class_name }}.createConsumer(
+ *     credentials,
+ *     options,
+ *     endpoints
+ * );
+ * 
+ * // Register handlers
+ * {%- set first_message = messagegroup.messages.items() | first %}
+ * {%- if first_message %}
+ * {%- set messageid, message = first_message %}
+ * {%- set messagename = messageid | pascal | strip_namespace %}
+ * {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+ * consumer.on{{ messagename }}((context, {% if cloudEvents.isCloudEvent(message) %}cloudEvent, {% else %}message, {% endif %}data) -> {
+ *     System.out.println("Received: " + data);
+ *     context.accept();  // Acknowledge successful processing
+ * });
+ * {%- endif %}
+ * 
+ * // Start consuming
+ * consumer.start();
+ * }</pre>
+ * 
+ * @see MessageContext
+ * @see TriConsumer
+ */
+public class {{ class_name }} {
+    private static final Logger logger = LogManager.getLogger({{ class_name }}.class);
+    private AmqpConsumer endpoint;
+    
+    {% for messageid, message in messagegroup.messages.items() -%}
+    {%- set messagename = messageid | pascal | strip_namespace %}
+    {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+    {%- if cloudEvents.isCloudEvent(message) %}
+    private TriConsumer<MessageContext, io.cloudevents.CloudEvent, {{ message_body_type }}> {{ messagename | lower }}Handler;
+    {%- else %}
+    private TriConsumer<MessageContext, Message<?>, {{ message_body_type }}> {{ messagename | lower }}Handler;
+    {%- endif %}
+    {% endfor %}
+    
+    {%- if uses_amqp_message %}
+    private TriConsumer<MessageContext, Message<?>, Void> unhandledMessageHandler;
+    {%- endif %}
+    {%- if uses_cloudevents_message %}
+    private TriConsumer<MessageContext, io.cloudevents.CloudEvent, Void> unhandledEventHandler;
+    {%- endif %}
+    
+    private {{ class_name }}(AmqpConsumer endpoint) {
+        this.endpoint = endpoint;
+    }
+    
+    {%- if root.endpoints %}
+    {%- for endpointid, endpoint in root.endpoints.items() %}
+    {%- if endpoint.usage and "consumer" in endpoint.usage %}
+    {%- set protocol = endpoint.protocol | lower %}
+    {%- set options = endpoint.protocoloptions %}
+    {%- set endpoints = endpoint.endpoints %}
+    
+    /**
+     * Create a consumer for the predefined endpoint: {{ endpointid }}.
+     * 
+     * <p>This factory method creates a consumer configured for the {{ endpointid }}
+     * endpoint with its predefined protocol options and URIs from the message
+     * group definition.</p>
+     * 
+     * @param credential the authentication credentials to use for the connection
+     * @return a configured {{ class_name }} instance ready to register handlers
+     * @throws Exception if consumer creation or connection fails
+     * 
+     * @see #createConsumer(EndpointCredential, Map, List)
+     */
+    public static {{ class_name }} createConsumerFor{{ endpointid | pascal | strip_namespace }}(
+        EndpointCredential credential
+    ) throws Exception {
+        {%- if options %}
+        Map<String, String> options = new HashMap<>();
+        {%- for key, value in options.items() %}
+        options.put("{{ key }}", "{{ value }}");
+        {%- endfor %}
+        {%- else %}
+        Map<String, String> options = new HashMap<>();
+        {%- endif %}
+        
+        List<URI> endpoints = List.of(
+        {%- for epo in endpoints %}
+            URI.create("{{ epo.uri }}")
+            {%- if not loop.last -%},{%- endif %}
+        {%- endfor %}
+        );
+        
+        {{ class_name }} consumer = new {{ class_name }}(null);
+        AmqpConsumer amqpConsumer = new AmqpConsumer(
+            credential,
+            options,
+            endpoints,
+            (message, context, log) -> {
+                try {
+                    consumer.dispatchMessage(message, context, log);
+                } catch (Exception ex) {
+                    log.error("Error in message handler: " + ex.getMessage(), ex);
+                }
+            }
+        );
+        consumer.endpoint = amqpConsumer;
+        return consumer;
+    }
+    {%- endif %}
+    {%- endfor %}
+    {%- endif %}
+    
+    /**
+     * Create a consumer with custom configuration.
+     * 
+     * <p>This factory method allows full control over consumer configuration,
+     * including custom protocol options and endpoint URIs.</p>
+     * 
+     * <h3>Example</h3>
+     * <pre>{@code
+     * Map<String, String> options = new HashMap<>();
+     * options.put("prefetch", "10");
+     * 
+     * List<URI> endpoints = List.of(
+     *     URI.create("amqp://localhost:5672/my-queue")
+     * );
+     * 
+     * {{ class_name }} consumer = {{ class_name }}.createConsumer(
+     *     credentials,
+     *     options,
+     *     endpoints
+     * );
+     * }</pre>
+     * 
+     * @param credential the authentication credentials to use for the connection
+     * @param options protocol-specific options (e.g., "prefetch", "sasl-mechanism")
+     * @param endpoints list of AMQP endpoint URIs to connect to
+     * @return a configured {{ class_name }} instance ready to register handlers
+     * @throws Exception if consumer creation or connection fails
+     */
+    public static {{ class_name }} createConsumer(
+        EndpointCredential credential,
+        Map<String, String> options,
+        List<URI> endpoints
+    ) throws Exception {
+        {{ class_name }} consumer = new {{ class_name }}(null);
+        AmqpConsumer amqpConsumer = new AmqpConsumer(
+            credential,
+            options,
+            endpoints,
+            (message, context, log) -> {
+                try {
+                    consumer.dispatchMessage(message, context, log);
+                } catch (Exception ex) {
+                    log.error("Error in message handler: " + ex.getMessage(), ex);
+                }
+            }
+        );
+        consumer.endpoint = amqpConsumer;
+        return consumer;
+    }
+    
+    // Handler registration methods
+    {% for messageid, message in messagegroup.messages.items() -%}
+    {%- set messagename = messageid | pascal | strip_namespace %}
+    {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+    {%- set message_description = message.description | default('') %}
+    /**
+     * Register a handler for {{ messageid }} messages.
+     * {%- if message_description %}
+     * 
+     * <p>{{ message_description }}</p>
+     * {%- endif %}
+     * 
+     * <p>The handler will be invoked when a message of this type is received.
+     * Use the {@link MessageContext} to acknowledge (accept/reject/release) the message.</p>
+     * 
+     * <h3>Handler Parameters</h3>
+     * <ul>
+     *   <li>{@code context} - {@link MessageContext} for message settlement</li>
+     * {%- if cloudEvents.isCloudEvent(message) %}
+     *   <li>{@code cloudEvent} - The complete {@link io.cloudevents.CloudEvent} envelope</li>
+     * {%- else %}
+     *   <li>{@code message} - The AMQP {@link Message} object</li>
+     * {%- endif %}
+     *   <li>{@code data} - The deserialized message payload of type {@link {{ message_body_type }}}</li>
+     * </ul>
+     * 
+     * <h3>Example</h3>
+     * <pre>{@code
+     * consumer.on{{ messagename }}((context, {% if cloudEvents.isCloudEvent(message) %}cloudEvent, {% else %}message, {% endif %}data) -> {
+     *     try {
+     *         // Process the message
+     *         processData(data);
+     *         
+     *         // Acknowledge successful processing
+     *         context.accept();
+     *     } catch (TransientException e) {
+     *         // Temporary error - release for retry
+     *         context.release();
+     *     } catch (Exception e) {
+     *         // Permanent error - reject
+     *         context.reject();
+     *     }
+     * });
+     * }</pre>
+     * 
+     * @param handler the message handler function
+     * @return this consumer instance for method chaining
+     * 
+     * @see MessageContext#accept()
+     * @see MessageContext#reject()
+     * @see MessageContext#release()
+     */
+    {%- if cloudEvents.isCloudEvent(message) %}
+    public {{ class_name }} on{{ messagename }}(TriConsumer<MessageContext, io.cloudevents.CloudEvent, {{ message_body_type }}> handler) {
+        this.{{ messagename | lower }}Handler = handler;
+        return this;
+    }
+    {%- else %}
+    public {{ class_name }} on{{ messagename }}(TriConsumer<MessageContext, Message<?>, {{ message_body_type }}> handler) {
+        this.{{ messagename | lower }}Handler = handler;
+        return this;
+    }
+    {%- endif %}
+    
+    {% endfor %}
+    
+    {%- if uses_amqp_message %}
+    /**
+     * Register a handler for unrecognized AMQP messages.
+     * 
+     * <p>This handler will be invoked when a plain AMQP message is received that
+     * doesn't match any registered message type.</p>
+     * 
+     * <h3>Example</h3>
+     * <pre>{@code
+     * consumer.onUnhandledMessage((context, message, data) -> {
+     *     logger.warn("Unhandled message subject: " + message.property("subject"));
+     *     context.reject();  // Reject unknown message types
+     * });
+     * }</pre>
+     * 
+     * @param handler the handler for unrecognized messages
+     * @return this consumer instance for method chaining
+     */
+    public {{ class_name }} onUnhandledMessage(TriConsumer<MessageContext, Message<?>, Void> handler) {
+        this.unhandledMessageHandler = handler;
+        return this;
+    }
+    {%- endif %}
+    
+    {%- if uses_cloudevents_message %}
+    /**
+     * Register a handler for unrecognized CloudEvents.
+     * 
+     * <p>This handler will be invoked when a CloudEvent is received that
+     * doesn't match any registered event type.</p>
+     * 
+     * <h3>Example</h3>
+     * <pre>{@code
+     * consumer.onUnhandledEvent((context, cloudEvent, data) -> {
+     *     logger.warn("Unhandled CloudEvent type: " + cloudEvent.getType());
+     *     context.reject();  // Reject unknown event types
+     * });
+     * }</pre>
+     * 
+     * @param handler the handler for unrecognized CloudEvents
+     * @return this consumer instance for method chaining
+     */
+    public {{ class_name }} onUnhandledEvent(TriConsumer<MessageContext, io.cloudevents.CloudEvent, Void> handler) {
+        this.unhandledEventHandler = handler;
+        return this;
+    }
+    {%- endif %}
+    
+    /**
+     * Start consuming messages from the configured AMQP endpoint.
+     * 
+     * <p>This method establishes the connection to the AMQP broker and begins
+     * receiving messages. Messages will be dispatched to registered handlers
+     * as they arrive.</p>
+     * 
+     * <p><strong>Note:</strong> Ensure all handlers are registered before calling this method.</p>
+     * 
+     * @throws Exception if connection to the broker fails or other startup errors occur
+     * 
+     * @see #stop()
+     */
+    public void start() throws Exception {
+        endpoint.start();
+    }
+    
+    /**
+     * Stop consuming messages and close the connection.
+     * 
+     * <p>This method gracefully shuts down the consumer, closing the connection
+     * to the AMQP broker. Any messages being processed will complete, but no
+     * new messages will be received.</p>
+     * 
+     * <p>After calling this method, the consumer can be restarted by calling
+     * {@link #start()} again.</p>
+     * 
+     * @throws Exception if an error occurs during shutdown
+     * 
+     * @see #start()
+     */
+    public void stop() throws Exception {
+        endpoint.stop();
+    }
+    
+    /**
+     * Dispatch incoming AMQP messages to the appropriate handler.
+     * 
+     * <p>This internal method determines the message format (CloudEvents vs. plain AMQP),
+     * extracts the message data, and routes to the registered handler based on
+     * CloudEvent type or AMQP subject.</p>
+     * 
+     * @param message the AMQP message to dispatch
+     * @param context the message context for settlement operations
+     * @param log the logger for diagnostic output
+     */
+    private void dispatchMessage(Message<?> message, MessageContext context, Logger log) {
+        try {
+            log.info("Dispatching message with content-type: " + message.contentType());
+            {%- if uses_cloudevents_message %}
+            // Check if this is a CloudEvent
+            if (isCloudEvent(message)) {
+                log.info("Message identified as CloudEvent");
+                io.cloudevents.CloudEvent cloudEvent = extractCloudEvent(message);
+                dispatchCloudEvent(cloudEvent, context, log);
+                return;
+            } else {
+                log.info("Message is NOT a CloudEvent");
+            }
+            {%- endif %}
+            
+            {%- if uses_amqp_message %}
+            // Dispatch as AMQP message
+            log.info("Attempting AMQP message dispatch");
+            dispatchAmqpMessage(message, context, log);
+            {%- endif %}
+        } catch (Exception ex) {
+            log.error("Error dispatching message: " + ex.getMessage(), ex);
+            ex.printStackTrace();
+        }
+    }
+    
+    {%- if uses_cloudevents_message %}
+    private void dispatchCloudEvent(io.cloudevents.CloudEvent cloudEvent, MessageContext context, Logger log) throws Exception {
+        String eventType = cloudEvent.getType();
+        log.info("Dispatching CloudEvent of type: " + eventType);
+        
+        switch (eventType) {
+            {% for messageid, message in messagegroup.messages.items() -%}
+            {%- set messagename = messageid | pascal | strip_namespace %}
+            {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+            {%- if cloudEvents.isCloudEvent(message) %}
+            {%- if "type" in message.envelopemetadata and "value" in message.envelopemetadata["type"] -%}
+            case "{{ message.envelopemetadata["type"]["value"] }}":
+            {%- else -%}
+            case "{{ messageid }}":
+            {%- endif %}
+                if ({{ messagename | lower }}Handler != null) {
+                    byte[] dataBytes = {{ cloudEvents.GetCloudEventData("cloudEvent") }};
+                    {{ message_body_type }} data;
+                    
+                    // Determine format from CloudEvent datacontenttype
+                    String dataContentType = cloudEvent.getDataContentType();
+                    {%- set schemaObj = schema_object(root, message.get('dataschemauri') or message.get('dataschema')) %}
+                    {%- if schemaObj and "format" in schemaObj %}
+                    {%- if schemaObj.format.lower().startswith("avro") %}
+                    if (dataContentType != null && dataContentType.contains("avro")) {
+                        data = {{ message_body_type }}.fromData(dataBytes, "Avro");
+                    } else {
+                        // Default to JSON if content type doesn't specify avro
+                        data = new com.fasterxml.jackson.databind.ObjectMapper().readValue(dataBytes, {{ message_body_type }}.class);
+                    }
+                    {%- elif schemaObj.format.lower().startswith("protobuf") %}
+                    data = {{ message_body_type }}.parseFrom(dataBytes);
+                    {%- else %}
+                    data = new com.fasterxml.jackson.databind.ObjectMapper().readValue(dataBytes, {{ message_body_type }}.class);
+                    {%- endif %}
+                    {%- else %}
+                    // Default to JSON deserialization if no schema format is specified
+                    data = new com.fasterxml.jackson.databind.ObjectMapper().readValue(dataBytes, {{ message_body_type }}.class);
+                    {%- endif %}
+                    {{ messagename | lower }}Handler.accept(context, cloudEvent, data);
+                } else {
+                    log.warn("No handler registered for " + eventType);
+                }
+                break;
+            {%- endif %}
+            {% endfor %}
+            default:
+                log.warn("Unhandled CloudEvent type: " + eventType);
+                if (unhandledEventHandler != null) {
+                    unhandledEventHandler.accept(context, cloudEvent, null);
+                }
+                break;
+        }
+    }
+    
+    private boolean isCloudEvent(Message<?> message) throws Exception {
+        // Check for CloudEvents content type
+        if (message.contentType() != null && 
+            message.contentType().contains("cloudevents")) {
+            return true;
+        }
+        // Note: ProtonJ2 client API doesn't expose applicationProperties() directly
+        // CloudEvents detection relies primarily on content-type header
+        return false;
+    }
+    
+    private io.cloudevents.CloudEvent extractCloudEvent(Message<?> message) throws Exception {
+        byte[] messageBody = (byte[]) message.body();
+        return {{ cloudEvents.DeserializeCloudEvent("messageBody") }};
+    }
+    {%- endif %}
+    
+    {%- if uses_amqp_message %}
+    private void dispatchAmqpMessage(Message<?> message, MessageContext context, Logger log) throws Exception {
+        // Extract subject from application properties
+        Object subjectObj = message.property("subject");
+        String subject = subjectObj != null ? subjectObj.toString() : null;
+        
+        log.info("Dispatching AMQP message with subject: " + subject);
+        
+        if (subject != null) {
+            switch (subject) {
+                {% for messageid, message in messagegroup.messages.items() -%}
+                {%- set messagename = messageid | pascal | strip_namespace %}
+                {%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+                {%- if not cloudEvents.isCloudEvent(message) %}
+                case "{{ messageid }}":
+                    if ({{ messagename | lower }}Handler != null) {
+                        byte[] data = (byte[]) message.body();
+                        {{ message_body_type }} payload;
+                        
+                        // Determine deserialization format from content-type
+                        String contentType = message.contentType();
+                        {%- set schemaObj = schema_object(root, message.get('dataschemauri') or message.get('dataschema')) %}
+                        {%- if schemaObj and "format" in schemaObj %}
+                        {%- if schemaObj.format.lower().startswith("avro") %}
+                        if (contentType != null && contentType.contains("avro")) {
+                            payload = {{ message_body_type }}.fromData(data, "Avro");
+                        } else {
+                            // Default to JSON if content type doesn't specify avro
+                            payload = new com.fasterxml.jackson.databind.ObjectMapper().readValue(data, {{ message_body_type }}.class);
+                        }
+                        {%- elif schemaObj.format.lower().startswith("protobuf") %}
+                        payload = {{ message_body_type }}.parseFrom(data);
+                        {%- else %}
+                        payload = new com.fasterxml.jackson.databind.ObjectMapper().readValue(data, {{ message_body_type }}.class);
+                        {%- endif %}
+                        {%- else %}
+                        payload = new com.fasterxml.jackson.databind.ObjectMapper().readValue(data, {{ message_body_type }}.class);
+                        {%- endif %}
+                        {{ messagename | lower }}Handler.accept(context, message, payload);
+                    } else {
+                        log.warn("No handler registered for " + subject);
+                    }
+                    break;
+                {%- endif %}
+                {% endfor %}
+                default:
+                    log.warn("Unhandled message subject: " + subject);
+                    if (unhandledMessageHandler != null) {
+                        unhandledMessageHandler.accept(context, message, null);
+                    }
+                    break;
+            }
+        }
+    }
+    
+    private <T> T deserialize(byte[] data, Class<T> clazz) throws Exception {
+        // Basic deserialization - extend as needed
+        return new com.fasterxml.jackson.databind.ObjectMapper().readValue(data, clazz);
+    }
+    {%- endif %}
+}
+{% endfor -%}

@@ -1,0 +1,167 @@
+{%- import "util.include.jinja" as util -%}
+# pylint: disable=line-too-long, trailing-whitespace, missing-module-docstring, missing-function-docstring, missing-class-docstring, redefined-outer-name, unused-argument, broad-exception-caught, broad-exception-raised, invalid-name, trailing-newlines, wrong-import-position, import-error, no-name-in-module
+
+import os
+import sys
+import pytest
+import pytest_asyncio
+import asyncio
+import time
+import paho.mqtt.client as mqtt
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.waiting_utils import wait_for_logs
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../{{data_project_name}}/src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../{{data_project_name}}/tests')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../{{main_project_name}}/src')))
+
+import {{ data_project_name | dotunderscore | lower }}
+{%- set messagegroups = root.messagegroups %}
+{%- set imports = [] %}
+{%- set test_imports = [] %}
+{%- for messagegroupid, messagegroup in messagegroups.items() -%}
+{%- for messageid, message in messagegroup.messages.items() -%}
+{%- set type_name = util.DeclareDataType( data_project_name, root, message ) %}
+{%- if type_name != "object" %}
+{%- set class_name = type_name | strip_namespace %}
+{%- set import_statement = "from " + (data_project_name | dotunderscore | lower) + " import " + class_name %}
+{%- if import_statement not in imports %}
+{%- set _ = imports.append(import_statement) %}
+{{ import_statement }}
+{%- endif %}
+{%- set test_class_name = "Test_" + (type_name | pascal | strip_namespace) %}
+{%- set test_module_name = "test_" + (type_name | dotunderscore | lower) %}
+{%- set test_import_statement = "from " + test_module_name + " import " + test_class_name %}
+{%- if test_import_statement not in test_imports %}
+{%- set _ = test_imports.append(test_import_statement) %}
+{{ test_import_statement }}
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+
+{%- for messagegroupid, messagegroup in messagegroups.items() -%}
+{%- set parts = messagegroupid.split('.') -%}
+{%- set groupName = parts | join('_') | lower %}
+{%- set groupname = messagegroupid | pascal %}
+{%- set class_name = ( groupname | strip_dots )+"MqttClient" %}
+from {{main_project_name}} import {{ class_name }}
+{%- endfor %}
+
+@pytest_asyncio.fixture
+async def mosquitto_broker():
+    """Start Mosquitto MQTT broker in container."""
+    container = DockerContainer("eclipse-mosquitto:2.0")
+    container.with_exposed_ports(1883)
+    container.with_command("mosquitto -c /mosquitto-no-auth.conf")
+    
+    container.start()
+    
+    try:
+        # Wait for Mosquitto to start
+        wait_for_logs(container, "mosquitto version .* running", timeout=10)
+        await asyncio.sleep(2)  # Additional stabilization time
+        
+        # Get mapped port
+        broker_port = container.get_exposed_port(1883)
+        broker_host = "localhost"
+        
+        yield broker_host, broker_port
+    finally:
+        container.stop()
+
+{%- for messagegroupid, messagegroup in messagegroups.items() -%}
+{%- set parts = messagegroupid.split('.') -%}
+{%- set groupName = parts | join('_') | lower %}
+{%- set groupname = messagegroupid | pascal %}
+{%- set class_name = ( groupname | strip_dots )+"MqttClient" %}
+
+{% for messageid, message in messagegroup.messages.items() if (message | exists("envelope","CloudEvents/1.0")) -%}
+{%- set messagename = messageid | dotunderscore | snake %}
+{%- set type_name = util.DeclareDataType( data_project_name, root, message ) %}
+
+@pytest.mark.asyncio
+async def test_{{groupName}}_{{messagename.split('.')[-1]}}_py(mosquitto_broker):
+    """Test publishing and receiving {{ messageid }} message via MQTT."""
+    broker_host, broker_port = mosquitto_broker
+    
+    {%- if type_name != "object" %}
+    # Create valid test data using the test helper
+    test_data = Test_{{ type_name | pascal | strip_namespace }}.create_instance()
+    {%- else %}
+    test_data = None
+    {%- endif %}
+    
+    # Create subscriber client
+    subscriber_mqtt = mqtt.Client(client_id="test_subscriber")
+    loop = asyncio.get_running_loop()
+    subscriber_client = {{ class_name }}(subscriber_mqtt, content_mode='structured', loop=loop)
+    
+    # Create publisher client
+    publisher_mqtt = mqtt.Client(client_id="test_publisher")
+    publisher_client = {{ class_name }}(publisher_mqtt, content_mode='structured', loop=loop)
+    
+    # Track received messages (expecting 5)
+    received_data = []
+    received_event = asyncio.Event()
+    
+    async def on_{{messagename.split('.')[-1]}}(mqtt_msg, cloud_event, data: {{type_name}}):
+        """Handler for {{ messageid }} messages."""
+        received_data.append(data)
+        {%- if "type" in message.envelopemetadata and "value" in message.envelopemetadata["type"] %}
+        assert cloud_event['type'] == "{{ message.envelopemetadata["type"]["value"] }}"
+        {%- else %}
+        assert cloud_event['type'] == "{{ messageid }}"
+        {%- endif %}
+        if len(received_data) >= 5:
+            received_event.set()
+    
+    # Register handler
+    subscriber_client.{{messagename.split('.')[-1]}}_async = on_{{messagename.split('.')[-1]}}
+    
+    # Connect both clients
+    await subscriber_client.connect(broker_host, broker_port)
+    await publisher_client.connect(broker_host, broker_port)
+    
+    # Subscribe to topic
+    test_topic = "test/{{groupName}}/{{messagename.split('.')[-1]}}"
+    await subscriber_client.subscribe([test_topic])
+    
+    # Wait for subscription to be active
+    await asyncio.sleep(1)
+    
+    # Publish 5 messages to test message settlement and ordering
+    for i in range(5):
+        await publisher_client.publish_{{messagename.split('.')[-1]}}(
+            topic=test_topic,
+            {%- for attrname, attribute in message.envelopemetadata.items() %}
+            {%- if attribute.type == "uritemplate" and attribute.value %}
+            {%- set phs = attribute.value | regex_search('\\{([A-Za-z0-9_]+)\\}') %}
+            {%- if phs %}
+            {%- for placeholder in phs %}
+            {{ placeholder | snake }}=f"test_{{placeholder}}_{i}",
+            {%- endfor %}
+            {%- endif %}
+            {%- elif not attribute.value %}
+            _{{ attrname | snake }}=f"test_{{attrname}}_{i}",
+            {%- endif %}
+            {%- endfor %}
+            data=test_data,
+            content_type="application/json"
+        )
+    
+    # Wait for all 5 messages to be received (with timeout)
+    try:
+        await asyncio.wait_for(received_event.wait(), timeout=10.0)
+    except asyncio.TimeoutError:
+        pytest.fail(f"Did not receive all 5 messages within timeout, got {len(received_data)}")
+    
+    # Verify all 5 messages received
+    assert len(received_data) == 5, f"Expected 5 messages, got {len(received_data)}"
+    
+    # Cleanup
+    await subscriber_client.disconnect()
+    await publisher_client.disconnect()
+
+{% endfor %}
+{% endfor %}
