@@ -1,0 +1,394 @@
+import dataclasses
+import importlib
+import pathlib
+import subprocess
+import typing as t
+import warnings
+
+import yaml
+import znflow
+import znjson
+from fsspec import AbstractFileSystem
+
+from zntrack.add import DVCImportPath
+from zntrack.config import (
+    FIELD_TYPE,
+    PARAMS_FILE_PATH,
+    ZNTRACK_FIELD_SUFFIX,
+    ZNTRACK_INDEPENDENT_OUTPUT_TYPE,
+    FieldTypes,
+)
+
+from .node import Node
+from .utils import module_handler
+
+
+def _reconstruct_value_recursively(value):
+    """Recursively reconstruct values, handling dataclasses in collections."""
+    if isinstance(value, dict) and "_cls" in value:
+        # This is a nested dataclass, reconstruct it
+        cls_path = value["_cls"]
+        if not isinstance(cls_path, str) or "." not in cls_path:
+            raise ValueError(f"Invalid class path format: {cls_path}")
+        try:
+            module_name, class_name = cls_path.rsplit(".", 1)
+            module = importlib.import_module(module_name)
+            nested_cls = getattr(module, class_name)
+        except (ImportError, AttributeError, ValueError) as e:
+            raise ImportError(f"Failed to import class {cls_path}: {e}") from e
+
+        if not dataclasses.is_dataclass(nested_cls):
+            raise TypeError(f"Class {cls_path} is not a dataclass")
+
+        # Recursively process nested parameters
+        nested_params = _reconstruct_nested_dataclasses(value)
+        try:
+            return nested_cls(**nested_params)
+        except TypeError as e:
+            raise TypeError(f"Failed to instantiate {cls_path}: {e}") from e
+    elif isinstance(value, list):
+        return [_reconstruct_value_recursively(item) for item in value]
+    elif isinstance(value, tuple):
+        return tuple(_reconstruct_value_recursively(item) for item in value)
+    elif isinstance(value, set):
+        # Note: Sets are serialized as lists, so this won't be called during normal flow
+        return {_reconstruct_value_recursively(item) for item in value}
+    elif isinstance(value, dict):
+        return {k: _reconstruct_value_recursively(v) for k, v in value.items()}
+    else:
+        return value
+
+
+def _reconstruct_nested_dataclasses(params: dict) -> dict:
+    """Recursively reconstruct nested dataclasses from their dictionary representation."""
+    if not isinstance(params, dict):
+        return params
+
+    reconstructed_params = {}
+    for key, value in params.items():
+        if key == "_cls":
+            continue
+        reconstructed_params[key] = _reconstruct_value_recursively(value)
+    return reconstructed_params
+
+
+@dataclasses.dataclass
+class DataclassContainer:
+    cls: t.Any
+    fields: dict = dataclasses.field(default_factory=dict)
+
+    def get_with_params(
+        self,
+        node_name,
+        attr_name,
+        index: int | None,
+        fs: AbstractFileSystem,
+        path: pathlib.Path,
+    ):
+        """Get an instance of the dataclass with the parameters from the params file.
+
+        Attributes
+        ----------
+        node_name : str
+            The name of the node.
+        attr_name : str
+            The name of the attribute.
+        index : int | None
+            The index in the parameter file, if the node attribute
+            is a list of dataclasses. None if a single dataclass.
+
+        """
+        with fs.open(path / PARAMS_FILE_PATH) as f:
+            all_params = yaml.safe_load(f)
+        if index is not None:
+            dc_params = all_params[node_name][attr_name][index]
+        else:
+            dc_params = all_params[node_name][attr_name]
+        dc_params.pop("_cls", None)
+
+        # Recursively reconstruct nested dataclasses
+        reconstructed_params = _reconstruct_nested_dataclasses(dc_params)
+
+        return self.cls(**reconstructed_params, **self.fields)
+
+
+def _enforce_str_list(content) -> list[str]:
+    if isinstance(content, (str, pathlib.Path)):
+        return [pathlib.Path(content).as_posix()]
+    elif isinstance(content, (list, tuple)):
+        return [pathlib.Path(x).as_posix() for x in content]
+    else:
+        raise ValueError(f"found unsupported content type '{content}'")
+
+
+class NodeDict(t.TypedDict):
+    module: str
+    name: str
+    cls: str
+    remote: t.Optional[t.Any]
+    rev: t.Optional[t.Any]
+
+
+class NodeConverter(znjson.ConverterBase):
+    level = 100
+    instance = Node
+    representation = "zntrack.Node"
+    remote: t.Optional[str] = None
+    rev: t.Optional[str] = None
+    path: t.Optional[pathlib.Path] = None
+
+    def encode(self, obj: Node) -> NodeDict:
+        return {
+            "module": module_handler(obj),
+            "name": obj.name,
+            "cls": obj.__class__.__name__,
+            "remote": obj.state.remote,
+            "rev": obj.state.rev,
+        }
+
+    def decode(self, s: dict) -> Node:
+        if s["remote"] is None:
+            if self.remote is not None:
+                s["remote"] = self.remote
+        if s["rev"] is None:
+            if self.rev is not None:
+                s["rev"] = self.rev
+        module = importlib.import_module(s["module"])
+        cls = getattr(module, s["cls"])
+        if self.path is not None:
+            return cls.from_rev(
+                name=s["name"],
+                remote=s["remote"] if s["remote"] != "" else None,
+                rev=s["rev"] if s["rev"] != "" else None,
+                path=self.path,
+            )
+        return cls.from_rev(name=s["name"], remote=s["remote"], rev=s["rev"])
+
+
+def create_node_converter(remote: str | None, rev: str | None, path: pathlib.Path):
+    class CustomConverter(NodeConverter):
+        """Custom converter for zntrack.Node."""
+
+    CustomConverter.path = path
+    CustomConverter.remote = remote
+    CustomConverter.rev = rev
+
+    return CustomConverter
+
+
+class ConnectionConverter(znjson.ConverterBase):
+    """Convert a znflow.Connection object to dict and back."""
+
+    level = 100
+    representation = "znflow.Connection"
+    instance = znflow.Connection
+
+    def encode(self, obj: znflow.Connection) -> dict:
+        """Convert the znflow.Connection object to dict."""
+        if obj.item is not None:
+            raise NotImplementedError("znflow.Connection getitem is not supported yet.")
+        # Can not use `dataclasses.asdict` because it automatically
+        # converts nested dataclasses to dict.
+        return {
+            "instance": obj.instance,
+            "attribute": obj.attribute,
+            "item": obj.item,
+        }
+
+    def decode(self, value: dict) -> znflow.Connection:
+        """Create znflow.Connection object from dict."""
+        return znflow.Connection(**value)
+
+
+class CombinedConnectionsConverter(znjson.ConverterBase):
+    """Convert a znflow.Connection object to dict and back."""
+
+    level = 100
+    representation = "znflow.CombinedConnections"
+    instance = znflow.CombinedConnections
+
+    def encode(self, obj: znflow.CombinedConnections) -> dict:
+        """Convert the znflow.Connection object to dict."""
+        if obj.item is not None:
+            raise NotImplementedError(
+                "znflow.CombinedConnections getitem is not supported yet."
+            )
+        return {
+            "connections": obj.connections,
+            "item": obj.item,
+        }
+
+    def decode(self, value: dict) -> znflow.CombinedConnections:
+        """Create znflow.Connection object from dict."""
+        return znflow.CombinedConnections(**value)
+
+
+def node_to_output_paths(node: Node, attribute: str) -> t.List[str]:
+    """Get all output paths for a node."""
+    # TODO: this should be a part of the DVCPlugin!
+    if not isinstance(node, Node):
+        raise ValueError(f"Expected a Node object, got {type(node)}")
+    import_path = None
+    if node._external_:
+        # DODO: use the dvc_stage hash instead!
+        # try use the one including the outputs
+        import_path = pathlib.Path(
+            "external", node.state.get_stage_hash(include_outs=True)[:32]
+        )
+        import_path.mkdir(exist_ok=True, parents=True)
+        # we need to make the parent directory of the output
+        # that directory is probably best described by using the node.name
+        # of the node that depends on the import?
+        # or we use a hash from commit / node name / repo path <-- only validate answer!
+        # we want to run dvc import remote get_path(node, "attribute")
+        # --rev rev --out /.../get_path(node, "attribute").name
+        # use --no-download option while building
+        # check how dvc repro or paraffin would download files?
+        # Do we want the user to force download?
+        # have zntrack.Path(path, remote, rev, is_dvc_tracked, is_db)
+        #  to use dvc import-url / import-db in the graph
+        # return []
+        # raise NotImplementedError
+    if attribute is None:
+        fields = dataclasses.fields(node)
+    else:
+        try:
+            fields = [node.state.get_field(attribute)]
+        except AttributeError:
+            # if you e.g. pass a property, we can not
+            # determine what data is used and need
+            # to assume all fields are used.
+            # TODO: tests
+            # TODO: have a custom decorator which defines the fields used?
+            fields = dataclasses.fields(node)
+    paths = []
+    for field in fields:
+        option_type = field.metadata.get(FIELD_TYPE)
+
+        if any(
+            option_type is x
+            for x in [
+                FieldTypes.PARAMS,
+                FieldTypes.PARAMS,
+                FieldTypes.DEPS,
+                FieldTypes.DEPS_PATH,
+                None,
+            ]
+        ):
+            continue
+        if node._external_:
+            warnings.warn("External nodes are currently always loaded dynamically.")
+            continue
+        if field.metadata.get(ZNTRACK_INDEPENDENT_OUTPUT_TYPE) is True:
+            paths.append((node.nwd / "node-meta.json").as_posix())
+            if node._external_:
+                raise NotImplementedError
+                # paths.append((import_path / "node-meta.json").as_posix())
+        if option_type in [
+            FieldTypes.OUTS,
+            FieldTypes.PLOTS,
+            FieldTypes.METRICS,
+        ]:
+            suffix = field.metadata[ZNTRACK_FIELD_SUFFIX]
+            paths.append((node.nwd / field.name).with_suffix(suffix).as_posix())
+        elif option_type == FieldTypes.OUTS_PATH:
+            paths.extend(_enforce_str_list(getattr(node, field.name)))
+        elif option_type == FieldTypes.PLOTS_PATH:
+            paths.extend(_enforce_str_list(getattr(node, field.name)))
+        elif option_type == FieldTypes.METRICS_PATH:
+            paths.extend(_enforce_str_list(getattr(node, field.name)))
+
+    if len(paths) == 0:
+        if node._external_:
+            node_meta_path = import_path / "node-meta.json"
+            if not node_meta_path.exists():
+                cmd = [
+                    "dvc",
+                    "import",
+                    node.state.remote,
+                    (node.nwd / "node-meta.json").as_posix(),
+                ]
+                if node.state.rev is not None:
+                    cmd.extend(["--rev", node.state.rev])
+                cmd.append("--no-download")  # consider using --no-exec
+                cmd.extend(["--out", node_meta_path.as_posix()])
+                subprocess.check_call(cmd)
+            paths.append(node_meta_path.as_posix())
+        else:
+            # for nodes with no outputs, we rely on 'node-meta.json'
+            paths.append((node.nwd / "node-meta.json").as_posix())
+
+    return paths
+
+
+class DataclassConverter(znjson.ConverterBase):
+    """Convert a python dataclass object to dict and back.
+
+    This converter does not return an instance, but
+    only the class inside a DataclassContainer.
+    Saving the values must be done separately.
+
+    Attributes
+    ----------
+    representation: str
+        representation inside the dict for deserialization.
+    level: int
+        The level in which the encoding should be applied. A higher number means it will
+        try this first. E.g. test small numpy conversion before pickle
+        first.
+
+    """
+
+    level = 20
+    representation = "@dataclasses.dataclass"
+
+    def encode(self, obj: object) -> dict:
+        """Convert a dataclass object to a serializable dict."""
+        module = module_handler(obj)
+        cls = obj.__class__.__name__
+
+        # Collect relevant fields (PARAMS_PATH, DEPS_PATH)
+        fields = {
+            field.name: getattr(obj, field.name)
+            for field in dataclasses.fields(obj)
+            if field.metadata.get(FIELD_TYPE)
+            in {FieldTypes.PARAMS_PATH, FieldTypes.DEPS_PATH}
+        }
+
+        result = {"module": module, "cls": cls}
+        if fields:
+            result["fields"] = fields
+        return result
+
+    def decode(self, value: dict) -> DataclassContainer:
+        """Create znflow.Connection object from dict."""
+        module = importlib.import_module(value["module"])
+        cls = getattr(module, value["cls"])
+        return DataclassContainer(cls=cls, fields=value.get("fields", {}))
+
+    def __eq__(self, other) -> bool:
+        if dataclasses.is_dataclass(other) and not isinstance(
+            other, (Node, znflow.Connection, znflow.CombinedConnections)
+        ):
+            return True
+        return False
+
+
+class DVCImportPathConverter(znjson.ConverterBase):
+    """Convert a DVCImportPath object to to pathlib.
+
+    We do not want to store the information about the DVCImportPath
+    as this is handled in the "path.dvc" file.
+    Thus, we just make use of the pathlib.Path representation.
+    """
+
+    level = 100
+    instance = DVCImportPath
+    representation = "pathlib.Path"
+
+    def encode(self, obj: DVCImportPath) -> str:
+        return obj.path.as_posix()
+
+    def decode(self, value: str) -> pathlib.Path:
+        # fallback decoder if used over pathlib converter
+        return pathlib.Path(value)

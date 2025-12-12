@@ -1,0 +1,75 @@
+# This workflow will install Python dependencies, run tests
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  schedule:
+    - cron: '14 3 * * 1'  # at 03:14 on Monday.
+
+jobs:
+  pytest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.13"
+          - "3.12"
+          - "3.11"
+          - "3.10"
+        os:
+          - ubuntu-latest
+
+    services:
+      # Label used to access the service container
+      mlflow:
+        # Docker Hub image
+        image: pythonf/mlflow:v2.16.0
+        options: >-
+          --health-cmd="curl --fail http://localhost:5000/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 5000:5000
+      aim:
+        # Docker Hub image
+        image: pythonf/aim:v3.24.0
+        options: >-
+          --health-cmd="curl --fail http://localhost:43800/status || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 43800:43800
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install the project
+        run: uv sync --all-extras --dev
+      - name: Setup git user
+        run: |
+          git config --global user.name "John Doe"
+          git config --global user.email johndoe@example.com
+          git config --global init.defaultBranch "main"
+      - name: Pytest
+        run: |
+          uv run python --version
+          uv run pytest --cov --junitxml=junit.xml -o junit_family=legacy
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
