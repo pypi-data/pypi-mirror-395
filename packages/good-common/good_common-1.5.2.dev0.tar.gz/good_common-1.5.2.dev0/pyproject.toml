@@ -1,0 +1,177 @@
+[project]
+name = "good-common"
+dynamic = ["version"]
+description = "Good Kiwi Common Library"
+authors = [
+    { name = "Chris Goddard", email = "chris@goodkiwi.llc" }
+]
+dependencies = [
+    "fast-depends>=2.4.8",
+    "loguru>=0.7.2",
+    "pyfarmhash>=0.3.2",
+    "multipledispatch>=1.0.0",
+    "nest-asyncio>=1.6.0",
+    "python-box-notify",
+    "jsonlines>=4.0.0",
+    "orjson>=3.10.18",
+    "python-slugify>=8.0.4",
+    "pyyaml>=6.0.2",
+    "jsonpath-rust-bindings>=0.7.0",
+    "result>=0.17.0",
+    "tqdm>=4.66.5",
+    "python-dateutil>=2.9.0.post0",
+    "courlan>=1.3.0",
+    "anyio>=4.9.0",
+    "tldextract>=5.3.0",
+    "uuid-utils>=0.11.0",
+    "ruamel-yaml>=0.18.12",
+    "setproctitle>=1.3.6",
+    "python-ulid>=3.1.0",
+    "dateparser>=1.2.2",
+    "tenacity>=9.1.2",
+    "httpx>=0.28.1",
+    "cytoolz>=1.0.0",
+    "pydantic>=2.11.9",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Cython",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+readme = "README.md"
+requires-python = ">= 3.12.8"
+
+# [project.optional-dependencies]
+# fastdepends3 = [
+#     "fast-depends==3.0.0a11",
+# ]
+
+# Example of how to register URL plugins via entry points
+# Add this section to your plugin package's pyproject.toml:
+# [project.entry-points."good_common.url_plugins"]
+# my_plugin = "my_package.url_plugins:MyURLPlugin"
+
+[build-system]
+requires = [
+    "setuptools>=68.0.0",
+    "wheel",
+    "cython>=3.0.0",
+    "numpy>=1.24.0",
+    "hatch-vcs",
+    "setuptools-scm[toml]"
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"good_common" = ["py.typed"]
+"good_common.utilities" = ["*.pyx", "*.pxd", "*.c"]
+
+[tool.setuptools_scm]
+write_to = "src/good_common/_version.py"
+local_scheme = "no-local-version"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { local_scheme = "no-local-version" }
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/good_common/_version.py"
+
+[tool.uv]
+managed = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=1.0.0",
+    "nest-asyncio>=1.6.0",
+    "ipykernel>=6.29.5",
+    "pkginfo>=1.12.1.2",
+    "mypy>=1.17.1",
+    "types-pyyaml>=6.0.12.20250822",
+    "types-tqdm>=4.67.0.20250809",
+    "types-python-dateutil>=2.9.0.20250822",
+    "types-dateparser>=1.2.2.20250809",
+    "types-pyfarmhash>=0.4.0.20240902",
+    "cython>=3.0.0",
+    "setuptools>=68.0.0",
+    "numpy>=1.24.0",
+    "setuptools-scm>=9.2.0",
+    "build>=1.3.0",
+    "good-dev>=0.1.1",
+    "coverage>=7.11.3",
+    "ruff>=0.14.5",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/good_common"]
+
+[tool.pytest.ini_options]
+# Configuration for pytest
+addopts = [
+    "-ra",  # Show all test outcomes except passed
+    "--tb=short",  # Short traceback format
+]
+# Test discovery patterns
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Asyncio settings for async tests
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# Warning filters
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestUnknownMarkWarning",
+]
+
+# Markers for custom test categories
+markers = [
+    "benchmark: marks tests as benchmark tests (deselect with '-m \"not benchmark\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
+show_error_codes = true
+
+# Allow incremental type checking
+incremental = true
+
+# Per-module options
+[[tool.mypy.overrides]]
+module = [
+    "good_common.types._url_parser_cy",
+    "good_common.types._url_patterns_cy",
+    "good_common.utilities._collections_cy",
+    "good_common.utilities._functional_cy",
+    "good_common.utilities._strings_cy",
+    "cytoolz.*",
+    "pkg_resources.*",
+]
+ignore_missing_imports = true
