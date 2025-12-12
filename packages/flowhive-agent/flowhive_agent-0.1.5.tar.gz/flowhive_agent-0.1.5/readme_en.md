@@ -1,0 +1,318 @@
+# FlowHive Agent
+
+> User Server Agent - The compute node component of FlowHive distributed GPU task scheduling platform
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/flowhive-agent.svg)](https://badge.fury.io/py/flowhive-agent)
+
+## Overview
+
+FlowHive Agent is the compute node component that runs on GPU servers. It connects to the Control Server via WebSocket and handles:
+
+- **Node Registration & Heartbeat**: Automatically registers with Control Server and maintains connection health
+- **Task Execution**: Receives and executes tasks (Python scripts, shell commands, distributed training jobs)
+- **GPU Monitoring**: Real-time GPU metrics collection (utilization, memory, processes) via NVML
+- **Log Streaming**: Streams stdout/stderr logs back to Control Server in real-time
+- **Resource Management**: Intelligent task scheduling based on GPU memory availability and priorities
+
+## Directory Structure
+
+```
+agent/
+├── flowhive_agent/
+│   ├── core/              # Core agent logic
+│   │   ├── task.py        # Task models and state machine
+│   │   ├── executor.py    # Task execution engine (subprocess, torchrun)
+│   │   ├── task_manager.py # Task scheduler and manager
+│   │   └── gpu_monitor.py # GPU monitoring via NVML
+│   ├── cli/               # Command-line interface
+│   │   └── flowhive.py    # Main CLI entry point
+│   └── __init__.py
+├── scripts/               # Demo and testing scripts
+│   ├── demo_task_manager.py
+│   └── demo_shell_test.py
+├── tests/                 # Pytest test cases
+├── pyproject.toml         # Package configuration
+├── requirements.txt       # Python dependencies
+└── README.md
+```
+
+## Installation
+
+### Option 1: Install from PyPI (Recommended)
+
+```bash
+pip install flowhive-agent
+```
+
+### Option 2: Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/Dramwig/FlowHive.git
+cd FlowHive/agent
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
+```
+
+### Requirements
+
+- Python 3.10 or higher
+- NVIDIA GPU with CUDA drivers (for GPU monitoring)
+- Operating System: Linux, Windows, or macOS
+
+## Quick Start
+
+### 1. Configure Agent
+
+After installation, configure the agent to connect to your Control Server:
+
+```bash
+# Set user credentials
+flowhive config user.username "your-username"
+flowhive config user.email "your-email@example.com"
+flowhive config user.password "your-password"
+
+# Set Control Server URL
+flowhive config control_base_url "http://127.0.0.1:8001"
+
+# Set agent label (optional, for identification)
+flowhive config label "gpu-server-01"
+
+# Verify configuration
+flowhive config
+```
+
+### 2. Start Agent
+
+```bash
+flowhive run
+```
+
+The agent will:
+- Automatically register with the Control Server
+- Start GPU monitoring (if NVIDIA GPU is available)
+- Begin listening for task assignments
+- Send periodic heartbeats
+
+### 3. Test Locally (Without Control Server)
+
+For quick testing of task execution without a Control Server:
+
+```bash
+cd agent
+python scripts/demo_task_manager.py
+```
+
+Run custom commands:
+
+```bash
+python scripts/demo_task_manager.py "python -c \"print('Hello FlowHive!')\"" --timeout 10
+```
+
+Logs will be saved to `agent_logs/` directory.
+
+## Configuration
+
+### WebSocket Connection
+
+The agent communicates with Control Server via WebSocket. The protocol is automatically determined from the `control_base_url`:
+
+- `http://` → `ws://` (Plain WebSocket)
+- `https://` → `wss://` (Secure WebSocket, recommended for production)
+
+### Production Configuration Example
+
+```bash
+# Use HTTPS/WSS for secure communication (recommended)
+flowhive config control_base_url "https://your-control-server.com"
+flowhive config user.username "prod-user"
+flowhive config user.password "secure-password"
+flowhive config label "prod-gpu-node-01"
+```
+
+### Configuration File Location
+
+Configuration is stored in:
+- **Linux/macOS**: `~/.config/flowhive/config.toml`
+- **Windows**: `%USERPROFILE%\.config\flowhive\config.toml`
+
+### Environment Variables
+
+You can also use environment variables (they override config file):
+
+```bash
+export FLOWHIVE_CONTROL_URL="http://127.0.0.1:8001"
+export FLOWHIVE_USERNAME="your-username"
+export FLOWHIVE_PASSWORD="your-password"
+flowhive run
+```
+
+## Key Features
+
+### GPU Monitoring
+- **Real-time Metrics**: GPU utilization, memory usage, temperature, power consumption
+- **Process Tracking**: Per-process GPU memory allocation
+- **NVML Integration**: Direct access to NVIDIA Management Library
+- **Multi-GPU Support**: Automatic detection and monitoring of all available GPUs
+
+### Task Scheduling
+- **Memory-Aware Scheduling**: Tasks scheduled based on available GPU memory
+- **Priority Queue**: Support for task priorities and fair scheduling
+- **Concurrent Execution**: Multiple tasks can run simultaneously if resources allow
+- **Retry Mechanism**: Automatic retry for failed tasks with configurable policies
+
+### Task Execution
+- **Multiple Executors**: Support for `subprocess`, `torchrun`, and shell commands
+- **Environment Variables**: Inject custom environment variables per task
+- **Container Support**: Execute tasks in containerized environments
+- **Distributed Training**: Native support for PyTorch distributed training via `torchrun`
+
+### Reliability
+- **OOM Recovery**: Automatic detection and handling of out-of-memory errors
+- **Heartbeat Service**: Periodic health checks (1-5s interval) with Control Server
+- **Graceful Shutdown**: Proper cleanup of running tasks on agent shutdown
+- **Log Streaming**: Real-time stdout/stderr streaming to Control Server
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      FlowHive Agent                         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐   ┌──────────────┐   ┌─────────────────┐  │
+│  │   CLI Tool   │   │ Task Manager │   │  GPU Monitor    │  │
+│  │  (flowhive)  │   │              │   │   (NVML)        │  │
+│  └──────┬───────┘   └──────┬───────┘   └────────┬────────┘  │
+│         │                  │                    │           │
+│         └──────────────────┼────────────────────┘           │
+│                            │                                │
+│                   ┌────────▼────────┐                       │
+│                   │  WebSocket      │                       │
+│                   │  Client         │                       │
+│                   └────────┬────────┘                       │
+└────────────────────────────┼────────────────────────────────┘
+                             │
+                             │ ws:// or wss://
+                             │
+                   ┌─────────▼──────────┐
+                   │  Control Server    │
+                   │  (FastAPI + WS)    │
+                   └────────────────────┘
+```
+
+## CLI Commands
+
+```bash
+# Configuration management
+flowhive config                          # Show all configuration
+flowhive config <key> <value>            # Set configuration value
+flowhive config <key>                    # Get configuration value
+
+# Run agent
+flowhive run                             # Start agent and connect to Control Server
+
+# Examples
+flowhive config user.username "alice"
+flowhive config control_base_url "https://control.example.com"
+flowhive run
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install pytest pytest-asyncio
+
+# Run all tests
+pytest tests/
+
+# Run specific test
+pytest tests/test_task_manager.py
+
+# Run with coverage
+pytest --cov=flowhive_agent tests/
+```
+
+### Building Package
+
+```bash
+# Install build tools
+pip install build twine
+
+# Build distribution
+python -m build
+
+# Upload to PyPI (maintainers only)
+twine upload dist/*
+```
+
+## Troubleshooting
+
+### Agent Cannot Connect to Control Server
+
+1. Verify Control Server is running and accessible
+2. Check `control_base_url` configuration
+3. Ensure firewall allows WebSocket connections
+4. Check logs for connection errors
+
+### GPU Monitoring Not Working
+
+1. Ensure NVIDIA drivers are installed: `nvidia-smi`
+2. Verify `nvidia-ml-py` is installed: `pip list | grep nvidia-ml-py`
+3. Check GPU permissions (may need to run as root/admin)
+
+### Tasks Stuck in Queue
+
+1. Check GPU memory availability
+2. Verify task resource requirements
+3. Check agent logs for errors
+4. Ensure agent is connected to Control Server
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Related Projects
+
+- [Control Server](../control-server/) - Central scheduling and control component
+- [Web Client](../web-client/) - Browser-based visualization and management UI
+- [FlowHive Documentation](../docs/) - Complete platform documentation
+
+## License
+
+This Agent component is licensed under the **MIT License**. See [LICENSE](./LICENSE) for details.
+
+**Note**: This is only the Agent component. The Control Server and Web Client are proprietary software and not covered by this license.
+
+## Support
+
+- 📖 [Documentation](../docs/)
+- 🐛 [Issue Tracker](https://github.com/Dramwig/FlowHive/issues)
+- 💬 [Discussions](https://github.com/Dramwig/FlowHive/discussions)
+
+---
+
+Made with ❤️ by the FlowHive Team
