@@ -1,0 +1,3 @@
+from typing import Any, Dict
+
+def search_app_context() -> Dict[str, Any]: ...
