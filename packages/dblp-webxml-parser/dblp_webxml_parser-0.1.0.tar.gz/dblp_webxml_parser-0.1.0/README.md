@@ -1,0 +1,136 @@
+# dblp-webxml-parser
+
+A lightweight Python library for parsing DBLP website XML pages.
+
+> ⚠️ **Note**: This is NOT a parser for the [DBLP XML database dump](https://dblp.org/xml/) (`dblp.xml.gz`). This library parses the **live XML pages** served by the DBLP website (e.g., `https://dblp.org/rec/xxx.xml`).
+
+## Features
+
+- 🔍 **RecordPageParser** - Parse publication record pages (`https://dblp.org/rec/xxx.xml`)
+- 👤 **PersonPageParser** - Parse author/person pages (`https://dblp.org/pid/xxx.xml`)
+- 📚 **VenuePageParser** - Parse venue pages (`https://dblp.org/db/xxx/index.xml`)
+- 🪶 **Zero dependencies** - Uses only Python standard library
+- 🐍 **Python 3.10+** - Modern Python with type hints
+
+## Installation
+
+```bash
+pip install dblp-webxml-parser
+```
+
+## Quick Start
+
+### Parse a Publication Record
+
+```python
+import urllib.request
+from dblp_webxml_parser import RecordPageParser
+
+# Fetch and parse a record page
+url = "https://dblp.org/rec/conf/cvpr/HeZRS16.xml"
+with urllib.request.urlopen(url) as response:
+    xml_text = response.read().decode("utf-8")
+
+record = RecordPageParser(xml_text)
+print(f"Title: {record.title}")
+print(f"Year: {record.year}")
+print(f"Type: {record.type}")
+print(f"Key: {record.key}")
+print(f"Authors: {[a.name for a in record.authors]}")
+```
+
+### Parse a Person Page
+
+```python
+from dblp_webxml_parser import PersonPageParser
+
+# Parse a person page
+person = PersonPageParser(xml_text)
+print(f"Name: {person.name}")
+print(f"PID: {person.pid}")
+print(f"Publications: {len(list(person.publications))}")
+
+# Iterate over publications
+for pub in person.publications:
+    print(f"  - {pub.title} ({pub.year})")
+```
+
+### Parse a Venue Page
+
+```python
+from dblp_webxml_parser import VenuePageParser
+
+# Parse a venue page (conference/journal)
+venue = VenuePageParser(xml_text)
+print(f"Venue: {venue.title}")
+
+# Get all publications in this venue
+for pub in venue.publications:
+    print(f"  - {pub.title}")
+```
+
+## API Reference
+
+### RecordPageParser
+
+Parses record pages from `https://dblp.org/rec/xxx.xml`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `key` | `str \| None` | DBLP paper key |
+| `type` | `str` | Publication type (article, inproceedings, etc.) |
+| `title` | `str \| None` | Publication title |
+| `year` | `int \| None` | Publication year |
+| `month` | `int \| None` | Publication month |
+| `authors` | `Iterator[RecordAuthor]` | Authors iterator |
+| `venue` | `str \| None` | Venue name (journal/booktitle/series) |
+| `venue_type` | `str \| None` | Venue type (journal/proceedings/book) |
+| `journal` | `str \| None` | Journal name |
+| `booktitle` | `str \| None` | Book/proceedings title |
+| `volume` | `str \| None` | Volume number |
+| `number` | `str \| None` | Issue number |
+| `pages` | `str \| None` | Page range |
+| `ees` | `Iterator[str]` | Electronic edition URLs |
+| `url` | `str \| None` | DBLP URL |
+| `crossref` | `str \| None` | Crossref key |
+
+### RecordAuthor
+
+Author information from a record.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `str \| None` | Author name |
+| `pid` | `str \| None` | DBLP person ID |
+| `orcid` | `str \| None` | ORCID identifier |
+
+### PersonPageParser
+
+Parses person pages from `https://dblp.org/pid/xxx.xml`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `pid` | `str \| None` | DBLP person ID |
+| `name` | `str \| None` | Primary name |
+| `names` | `Iterator[str]` | All name variants |
+| `publications` | `Iterator[RecordParser]` | Publications iterator |
+
+### VenuePageParser
+
+Parses venue pages from `https://dblp.org/db/xxx/index.xml`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `title` | `str \| None` | Venue title |
+| `publications` | `Iterator[RecordParser]` | Publications iterator |
+
+## Comparison with Other Tools
+
+| Tool | Purpose |
+|------|---------|
+| **dblp-webxml-parser** (this) | Parse live XML pages from DBLP website |
+| dblp-parser | Parse the DBLP XML database dump file |
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
