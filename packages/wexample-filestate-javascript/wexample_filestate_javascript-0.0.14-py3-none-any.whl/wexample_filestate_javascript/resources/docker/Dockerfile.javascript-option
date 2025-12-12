@@ -1,0 +1,22 @@
+# Base image with Node.js
+FROM node:20-alpine
+
+# Create user with UID 1000
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+# Install Biome globally
+RUN npm install -g @biomejs/biome
+
+# Copy Biome configuration and set ownership
+COPY biome.json /home/appuser/biome.json
+RUN chown appuser:appuser /home/appuser/biome.json
+
+# Switch to appuser
+USER appuser
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Keep container running
+CMD ["tail", "-f", "/dev/null"]
