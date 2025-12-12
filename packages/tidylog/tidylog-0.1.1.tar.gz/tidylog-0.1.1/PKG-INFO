@@ -1,0 +1,84 @@
+Metadata-Version: 2.4
+Name: tidylog
+Version: 0.1.1
+Summary: Clean, colorized structured logging for Python with JSON extra fields
+Project-URL: Repository, https://github.com/param-ai/tidylog.git
+Author: Ayush Joshi
+License-Expression: MIT
+License-File: LICENSE
+Keywords: colorized,formatter,json,logging,structured-logging
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Logging
+Classifier: Typing :: Typed
+Requires-Python: >=3.9
+Provides-Extra: livekit
+Requires-Dist: livekit-agents; extra == 'livekit'
+Description-Content-Type: text/markdown
+
+# TidyLog
+
+Clean, colorized structured logging for Python with JSON extra fields.
+
+## Installation
+
+```bash
+pip install tidylog
+```
+
+## Usage
+
+### Console Logging
+
+```python
+from tidylog import get_logger
+
+logger = get_logger(__name__)
+logger.info("User logged in", extra={"user_id": 123, "ip": "192.168.1.1"})
+```
+
+Output:
+```
+2024-01-15 10:30:00 - myapp - INFO - User logged in - {"user_id": 123, "ip": "192.168.1.1"}
+```
+
+### File Logging
+
+```python
+from tidylog import setup_file_logging
+
+handler = setup_file_logging(
+    "logs/app.log",
+    level="DEBUG",
+    logger_names=["myapp", "myapp.api"],
+)
+```
+
+## Examples
+
+```bash
+# Install in development mode
+poetry install
+
+# Run examples
+poetry run python examples/console_logging.py
+poetry run python examples/file_logging.py
+poetry run python examples/custom_formatter.py
+```
+
+## Build & Deploy
+
+```bash
+pip install build twine
+python -m build
+twine upload dist/*
+```
