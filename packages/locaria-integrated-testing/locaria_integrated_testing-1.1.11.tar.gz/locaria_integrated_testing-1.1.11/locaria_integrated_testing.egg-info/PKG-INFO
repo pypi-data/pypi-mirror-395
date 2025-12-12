@@ -1,0 +1,415 @@
+Metadata-Version: 2.4
+Name: locaria-integrated-testing
+Version: 1.1.11
+Summary: A lightweight, automated testing system for data pipelines and tools
+Author: Locaria Data Team
+License: MIT
+Keywords: testing,data-quality,pipeline,validation
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: google-cloud-bigquery>=3.0.0
+Requires-Dist: google-cloud-firestore>=2.0.0
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: protobuf<6.0.0,>=3.20.2
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: flake8>=4.0.0; extra == "dev"
+
+# Locaria Integrated Testing Framework
+
+A lightweight, automated testing system for data pipelines and tools. Focuses on business-logic validation, data quality checks, and operational sanity tests rather than UI or cosmetic testing.
+
+## Features
+
+- **Business Logic Validation** - Test time splits sum to 100%, financial ratios are within bounds, etc.
+- **Data Quality Checks** - Schema validation, null checks, row count sanity, data freshness
+- **Configurable Thresholds** - Firestore-based configuration for easy threshold updates
+- **Integrated Logging** - BigQuery batch logging for persistent test result storage
+- **Email Alerts** - Real-time failure notifications via existing email manager API
+- **Pipeline-Specific Tests** - Custom business logic validation for different data domains
+
+## Quick Start
+
+### Basic Usage
+
+All generic test methods support two optional permission fields:
+
+- `issue_owner` – who should receive the alert email (string or list, defaults to `"analytics_hub.data_team_ack"`).
+- `issue_ack_access` – who should be able to view/acknowledge the issue in the FIN Profitability acknowledgment manager (defaults to `issue_owner`, but can differ).
+
+```python
+from locaria_integrated_testing import DataQualityTests, FreshnessTests, RowCountTests, DuplicateTests, create_testkit
+
+# Initialize TestKit directly (works with any configstore or no configstore)
+testkit = create_testkit(
+    repository_name="your_repository",
+    pipeline_name="your_pipeline",
+    bigquery_client=None,  # Required: BigQuery client instance for test result logging
+    firestore_project_id=None,  # Optional: defaults to "locaria-dev-config-store"
+    fail_on_error=False  # Optional: if True, pipeline stops on test failures
+)
+
+# Initialize test classes
+data_quality_tests = DataQualityTests(testkit, caller_script="your_pipeline.py")
+freshness_tests = FreshnessTests(testkit, caller_script="your_pipeline.py")
+row_count_tests = RowCountTests(testkit, caller_script="your_pipeline.py")
+duplicate_tests = DuplicateTests(testkit, caller_script="your_pipeline.py")
+
+try:
+    # Your data pipeline code
+    df = extract_data()
+    
+    # Stage 1: Data quality tests with explicit permissions
+    data_quality_tests.check_data_completeness(
+        df, 
+        completeness_threshold=0.95,
+        issue_owner="analytics_hub.data_team_ack",
+        issue_ack_access="analytics_hub.ops_ack"
+    )
+    duplicate_tests.check_duplicate_records(
+        df, 
+        ["employee_id", "date"],
+        issue_owner="analytics_hub.data_team_ack",
+        issue_ack_access="analytics_hub.ops_ack"
+    )
+    
+    # Stage 2: Transform and load
+    df_transformed = transform_data(df)
+    row_count_tests.check_row_count_change(
+        df_transformed, 
+        "table_name", 
+        "append",
+        issue_owner="analytics_hub.data_team_ack",
+        issue_ack_access="analytics_hub.ops_ack"
+    )
+    
+    # Stage 3: Freshness checks
+    load_to_bq(df_transformed, table="finance.time_splits")
+    freshness_tests.check_data_freshness(
+        df_transformed, 
+        "timestamp",
+        issue_owner="analytics_hub.data_team_ack",
+        issue_ack_access="analytics_hub.ops_ack"
+    )
+    
+finally:
+    # Always finalize the test run
+    testkit.finalize_run()
+```
+
+For complete working examples, see the [plunet_employee_table pipeline](https://github.com/Locaria/locate_2_pulls/blob/main/UpdatesHourly/plunet_employee_table.py) or [update_global_content_table pipeline](https://github.com/Locaria/locate_2_pulls/blob/main/UpdatesHourly/update_global_content_table.py) in the locate_2_pulls repository.
+
+## Environment Setup
+
+The framework is configstore-agnostic and accepts arguments directly. You can use it with any configstore implementation or without one entirely. TestKit requires a BigQuery client for logging test results to BigQuery.
+
+### Required Parameters
+
+- **bigquery_client**: A Google Cloud BigQuery client instance. This is required for logging test results to the `locaria-dev-config-store.cross_project_logging.integrated_test_logs` table.
+
+### Optional Environment Variables
+
+For configuration when not using a configstore:
+
+```bash
+# Email API configuration (fallback)
+export EMAIL_API_URL="https://your-app.appspot.com/api/tools/send_email_direct"
+```
+
+### Default Configuration
+
+The framework uses sensible defaults when parameters are not provided:
+- **Firestore Project**: `locaria-dev-config-store` (default, can be overridden via `firestore_project_id`)
+- **BigQuery Logging**: Test results are written to `locaria-dev-config-store.cross_project_logging.integrated_test_logs` during `finalize_run()`
+- **Email API**: Can be configured via environment variable `EMAIL_API_URL`
+
+If you're using a configstore (like the one in locate_2_pulls), you can extract values from it and pass them to TestKit. The framework doesn't depend on any specific configstore implementation.
+
+## Test Classes
+
+### SchemaTests
+
+Schema validation tests for data quality assurance:
+
+- `check_required_columns()` - Validate required columns exist
+- `check_data_types()` - Validate column data types
+- `check_null_constraints()` - Check for nulls in critical fields
+- `check_unique_constraints()` - Validate unique key constraints
+- `check_column_values()` - Check values within expected ranges or sets
+- `check_schema_completeness()` - Comprehensive schema validation
+
+### DataQualityTests
+
+Data quality tests for common validation scenarios. All methods support optional `issue_owner` (email recipients) and `issue_ack_access` (acknowledgment UI access) parameters for permission management:
+
+- `check_numeric_ranges()` - Values within expected ranges
+- `check_data_completeness()` - Data completeness above threshold
+- `check_column_completeness()` - Column-level completeness validation
+- `check_date_ranges()` - Date values within reasonable bounds
+
+### FreshnessTests
+
+Data freshness tests for ensuring data is up-to-date. All methods support optional `issue_owner` / `issue_ack_access` parameters:
+
+- `check_data_freshness()` - Verify data is up-to-date
+- `check_timestamp_progression()` - Timestamps moving forward
+- `check_data_consistency()` - Data frequency and gap validation
+- `check_partition_freshness()` - BigQuery partition freshness validation
+- `check_data_age_distribution()` - Data age distribution analysis
+
+## Configuration
+
+Configuration is stored in Firestore in the `locaria-dev-config-store` project (default, can be overridden via `firestore_project_id` parameter) under the `integrated_testing_config` collection.
+
+### Default Configuration
+
+```json
+{
+  "thresholds": {
+    "row_count_change": {
+      "warn_percentage": 20,
+      "fail_percentage": 50
+    },
+    "out_of_office_percentage": {
+      "warn_threshold": 25,
+      "fail_threshold": 35
+    },
+    "time_split_tolerance": {
+      "precision": 0.01
+    },
+    "data_freshness": {
+      "max_age_hours": 24,
+      "warn_age_hours": 12
+    }
+  },
+  "test_switches": {
+    "enable_schema_validation": true,
+    "enable_business_logic_checks": true,
+    "enable_freshness_checks": true,
+    "enable_row_count_validation": true
+  },
+  "email_alerts": {
+    "failure_recipients": ["data_team@locaria.com"],
+    "warning_recipients": ["data_team@locaria.com"],
+    "digest_frequency": "daily"
+  }
+}
+```
+
+### Managing Configuration
+
+```python
+from modules.integrated_tests import ConfigManager
+
+# Initialize config manager
+config_manager = ConfigManager()
+
+# Create default configuration for a repository
+config_manager.create_default_config_for_repository("your_repository")
+
+# Update thresholds
+config_manager.update_thresholds(
+    "your_repository",
+    "row_count_change",
+    {"warn_percentage": 15, "fail_percentage": 40}
+)
+
+# Update test switches
+config_manager.update_test_switches(
+    "your_repository",
+    {"enable_schema_validation": False}
+)
+```
+
+## Test Severity Levels
+
+- **FAIL** - Stops pipeline execution, logs error, sends immediate email alert
+- **WARN** - Continues pipeline execution, logs warning, sends digest email
+- **PASS** - Test passed, logs success
+
+## Email Templates
+
+The framework uses pre-configured email templates in the email manager:
+
+- **Test Failure Alert** - Immediate notification for FAIL results
+- **Test Warning Digest** - Grouped notification for WARN results
+
+### Permission-Aware Recipients
+
+When you include an `issue_owner` permission (string or list) in the `metrics` of
+`log_warn`/`log_fail`, TestKit now looks up the Access Controller Firestore
+(`locaria-prod-authenticator`) to determine which users have that permission.
+Their email addresses are automatically appended to the `send_email_direct`
+request (using `append_recipients`) so the correct acknowledge owners are
+copied without manual configuration.
+
+Override the lookup project with `TESTKIT_ACCESS_CONTROL_PROJECT=<project_id>`
+if you maintain a different Access Controller instance. If the resolver cannot
+connect (e.g., missing credentials), the framework gracefully falls back to the
+static recipients configured in Firestore.
+
+## Acknowledgment System
+
+The acknowledgment system prevents email spam by allowing users to acknowledge known issues, which mutes them for a configurable period. Both warnings and failures can be acknowledged and stored in Firestore. The system supports permission-based access control through two fields:
+
+- `issue_owner`: determines which permission group(s) receive the alert email. This field also serves as the default acknowledgment permission when `issue_ack_access` is not provided.
+- `issue_ack_access`: (optional) determines who can see and acknowledge the issue in the Analytics Hub web interface. Provide this when you need a broader (or narrower) acknowledgment audience than the email recipients.
+
+When you log an issue with `log_warn` or `log_fail`, include one or both fields in the metrics dictionary. If you provide a list for either field, users with any of those permissions can acknowledge the issue. Users with admin permissions can see and acknowledge all issues regardless of the settings.
+
+The system works by detecting issues during test execution and storing them in Firestore during `finalize_run()`. The email system checks acknowledgment status before sending notifications, preventing spam for known issues. Users can acknowledge issues through the web interface, which mutes them for a configurable period (default 7 days). Mute periods expire automatically, and expired issues are archived for historical tracking.
+
+### Firestore Structure
+
+```text
+Collection: pipeline_acknowledgments
+└── Document: {repo}%{pipeline}%{test_name}
+    └── Subcollection: issues
+        └── Document: {issue_key_simple}
+            - acknowledged: bool
+            - muted_until: timestamp (UTC)
+            - status: "WARN" or "FAIL"
+            - identifier: str
+            - details: str
+            - issue_first_occurrence: timestamp (UTC)
+            - issue_last_occurrence: timestamp (UTC)
+            - issue_owner: str or List[str]
+            - issue_ack_access: Optional[str or List[str]]
+            - acknowledged_by / acknowledged_at / acknowledgment_reason
+    └── Subcollection: archives
+        └── Document: {issue_key_simple}
+            - Archived issues (expired mutes or manually deleted)
+```
+
+### Web Interface
+
+The acknowledgment system includes a modern web interface accessible at `/tools/acknowledgment-manager` in the [Analytics Hub](https://locaria-dev-finance-reports.ew.r.appspot.com/tools/acknowledgment-manager). The interface automatically filters issues based on your user permissions, showing only issues where you have the required `issue_ack_access` permission (or `issue_owner` when no explicit access list is provided).
+
+The web interface provides real-time filtering by repository, pipeline, test type, and issue status. You can acknowledge or unacknowledge individual issues with configurable mute periods, view comprehensive issue information including first and last occurrence timestamps and ownership details, and perform bulk operations to handle multiple issues at once. Expired mutes are automatically archived, and manual deletions are also archived for historical tracking.
+
+For implementation details, see the [acknowledgment manager routes](https://github.com/Locaria/FIN_profitability_gcp/blob/main/routes/tools_routes.py) and [acknowledgment manager module](https://github.com/Locaria/FIN_profitability_gcp/blob/main/modules/tools/acknowledgment_manager_simple.py) in the FIN_profitability_gcp repository.
+
+## Documentation
+
+Comprehensive documentation is available in the `documentation/` directory:
+
+- [How to Add Existing Tests to Pipelines](documentation/how_to_add_existing_tests_to_pipelines.md) - Step-by-step guide for integrating tests into your pipelines
+- [How to Design New Tests](documentation/how_to_design_new_tests.md) - Guide for creating custom business logic tests
+
+## Examples
+
+See the locate_2_pulls repository for complete pipeline implementations:
+
+- [plunet_employee_table.py](https://github.com/Locaria/locate_2_pulls/blob/main/UpdatesHourly/plunet_employee_table.py) - Complete pipeline with both generic and business logic tests
+- [update_global_content_table.py](https://github.com/Locaria/locate_2_pulls/blob/main/UpdatesHourly/update_global_content_table.py) - Pipeline demonstrating data quality and completeness tests
+- [capacity_tracker_linguists_days_off.py](https://github.com/Locaria/locate_2_pulls/blob/main/UpdatesHourly/capacity_tracker_linguists_days_off.py) - Complex business logic validation example
+
+## Architecture
+
+```
+integrated_tests/
+├── __init__.py                 # Main module exports
+├── main/
+│   └── testkit.py             # Core framework and orchestration
+├── utils/
+│   └── config_manager.py      # Firestore configuration management
+├── generic_tests/
+│   ├── __init__.py
+│   ├── schema_tests.py        # Schema validation tests
+│   ├── data_quality_tests.py  # Data quality tests
+│   └── freshness_tests.py     # Data freshness tests
+├── pipeline_specific_tests/   # Business logic tests per domain
+│   └── __init__.py
+├── examples/
+│   └── sample_pipeline.py     # Usage examples
+└── README.md
+```
+
+## Best Practices
+
+### Test Design
+
+Focus on business logic and data quality rather than just schema validation. Use descriptive test names that clearly explain the business rule being validated. Test at multiple stages of your pipeline: during data intake, after transformation, after loading to BigQuery, and in post-load validation. Include both positive and negative test cases to ensure comprehensive coverage.
+
+### Permission Management
+
+Always explicitly specify the `issue_owner` parameter when calling test methods, even though it has a default value. This makes permission assignment clear and consistent across your codebase. Use a single permission string for issues that should be handled by one team, or a list of permissions when multiple teams need access. When the people who should acknowledge an issue differ from the people who should be emailed, add an `issue_ack_access` list so the right teams can mute issues without spamming the wider distribution. The default `"analytics_hub.data_team_ack"` remains appropriate for most data quality issues unless you need to route alerts elsewhere.
+
+### Error Handling
+
+Always use try/finally blocks to ensure `testkit.finalize_run()` executes even when exceptions occur. This guarantees that test results are logged and emails are sent. Handle missing data gracefully by checking for None or empty DataFrames before running tests. Provide meaningful error messages that include context about what data was being tested and why the test failed. Log sufficient context in the metrics dictionary to enable effective debugging later.
+
+### Performance
+
+Batch test operations when possible to reduce overhead. Use efficient pandas operations like vectorized comparisons rather than iterating over rows. Avoid unnecessary data copies by working with views or using in-place operations when appropriate. Cache configuration values when they're accessed frequently during a pipeline run.
+
+### Configuration
+
+Use Firestore for dynamic configuration that can be updated without code changes. Provide sensible defaults for all thresholds and settings. Document all thresholds and switches clearly so other team members understand what each setting controls. Version control configuration changes by tracking them in your repository's changelog or configuration management system.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **BigQuery Logging Not Working**
+   - Verify BigQuery client is properly initialized
+   - Check BigQuery permissions for the service account
+   - Ensure `cross_project_logging` dataset exists in `locaria-dev-config-store`
+   - Verify `integrated_test_logs` table exists or can be created
+
+2. **Email Alerts Not Sending**
+   - Check `EMAIL_API_URL` environment variable
+   - Verify email templates are configured in email manager
+   - Check network connectivity
+
+3. **Firestore Configuration Issues**
+   - Verify `locaria-dev-config-store` project access
+   - Check collection and document permissions
+   - Ensure configuration document exists
+
+4. **Test Failures**
+   - Check test thresholds in Firestore
+   - Verify data quality and schema
+   - Review test logic and business rules
+
+### Debug Mode
+
+Enable debug logging by setting the log level in configuration:
+
+```python
+config_manager.update_repository_config(
+    "your_repository",
+    {"logging": {"log_level": "DEBUG"}}
+)
+```
+
+## Contributing
+
+When adding new tests:
+
+1. Follow the existing naming conventions
+2. Include comprehensive error handling
+3. Add configuration options for thresholds
+4. Update documentation
+5. Add examples for new functionality
+
+## Additional Resources
+
+- [How to Add Existing Tests to Pipelines](documentation/how_to_add_existing_tests_to_pipelines.md) - Comprehensive guide for integrating tests
+- [How to Design New Tests](documentation/how_to_design_new_tests.md) - Guide for creating custom business logic tests
+- [Pipeline Examples](https://github.com/Locaria/locate_2_pulls/tree/main/UpdatesHourly) - Real-world pipeline implementations in locate_2_pulls
+- [Analytics Hub Acknowledgment Interface](https://locaria-dev-finance-reports.ew.r.appspot.com/tools/acknowledgment-manager) - Web interface for managing test issues
+
+## Support
+
+For questions or issues, contact the Data Team at data_team@locaria.com.
