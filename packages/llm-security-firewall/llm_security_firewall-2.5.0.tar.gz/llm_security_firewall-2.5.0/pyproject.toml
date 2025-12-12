@@ -1,0 +1,160 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-security-firewall"
+version = "2.5.0"
+description = "Cognitive Security Middleware - The 'Electronic Stability Program' (ESP) for Large Language Models. Bidirectional containment system with defense-in-depth architecture (6 validation layers), stateful tracking, and mathematical safety constraints. Validated against Unicode/encoding attacks, pattern evasion, multilingual/polyglot attacks (12+ languages including Basque, Maltese), and memory/session attacks. Protocol-based hexagonal architecture with LangChain integration."
+authors = [{name = "Joerg Bollwahn", email = "sookoothaii@proton.me"}]
+maintainers = [{name = "Joerg Bollwahn", email = "sookoothaii@proton.me"}]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+keywords = ["llm", "security", "firewall", "ai-safety", "adversarial-robustness", "memory-poisoning", "evidence-validation", "dempster-shafer", "conformal-prediction"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    # Core dependencies (required for basic operation - ~54 MB baseline)
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "pyyaml>=6.0",
+    "blake3>=0.3.0",
+    "requests>=2.31.0",
+    "pydantic>=2.0.0",  # Data validation for hak_gal.core.session_manager
+    "psutil>=5.9.0",  # System utilities for performance tests
+    "cryptography>=41.0.0",  # AES-GCM encryption for log redaction
+    # ONNX Runtime (lightweight, PyTorch-free alternative)
+    "onnx>=1.14.0",
+    "onnxruntime>=1.16.0",
+    "tokenizers>=0.20.0",  # Lightweight tokenizer (no PyTorch dependency)
+]
+
+[project.optional-dependencies]
+# Core installation (ONNX-only, ~54 MB baseline)
+# Install with: pip install llm-security-firewall
+# This provides pattern matching, ONNX embeddings, and basic validation
+# Memory footprint: ~54 MB (under 300 MB target)
+
+# Full ML capabilities (PyTorch + transformers, ~1.3 GB when loaded)
+# Install with: pip install llm-security-firewall[full]
+# This enables all validators including TruthPreservationValidator, TopicFence
+# Memory footprint: ~54 MB baseline, +1.3 GB when heavy validators are used
+full = [
+    "sentence-transformers>=2.2.0",  # PyTorch-based semantic guard (fallback)
+    "torch>=2.0.0",  # Required for sentence-transformers and perplexity detector
+    "transformers>=4.30.0",  # Required for TruthPreservationValidator and TopicFence
+    "scikit-learn>=1.3.0",  # Required for some validators
+]
+
+# Database support (optional)
+database = [
+    "psycopg[binary]>=3.1.0",
+    "redis>=5.0.0",  # Redis for per-tenant rate limiting and caching
+]
+
+# Development dependencies (OPTIONAL - not required for runtime operation)
+# Install with: pip install -e .[dev]
+# Or use: pip install -r requirements-dev.txt
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "types-PyYAML>=6.0.0",
+    "types-requests>=2.31.0",
+]
+# LangChain integration (optional)
+# Install with: pip install llm-security-firewall[langchain]
+langchain = [
+    "langchain>=0.0.200",
+]
+monitoring = [
+    "prometheus-client>=0.17.0",
+]
+
+# Optional Plugins ("Niemand muss aber jeder darf")
+personality = [
+    "psycopg3>=3.2.12",
+    "numpy>=1.24.0",
+]
+biometrics = [
+    "psycopg3>=3.2.12",
+    "scikit-learn>=1.3.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+]
+care = [
+    "psycopg3>=3.2.12",
+    "prometheus-client>=0.17.0",
+    "numpy>=1.24.0",
+]
+# Legacy full (includes all plugins)
+full-all = [
+    "llm-security-firewall[personality,biometrics,care,monitoring,full,database]",
+]
+
+[project.urls]
+Homepage = "https://github.com/sookoothaii/llm-security-firewall"
+Repository = "https://github.com/sookoothaii/llm-security-firewall"
+Issues = "https://github.com/sookoothaii/llm-security-firewall/issues"
+Changelog = "https://github.com/sookoothaii/llm-security-firewall/blob/main/CHANGELOG.md"
+
+[project.scripts]
+llm-firewall = "llm_firewall.cli:main"
+
+[project.entry-points."llm_firewall"]
+guard = "llm_firewall.guard:guard"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --strict-markers"
+
+[tool.coverage.run]
+source = ["src/llm_firewall"]
+omit = ["*/tests/*", "*/examples/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+# Ignored rules:
+# S101: assert in tests (pytest standard)
+# S105: hardcoded test passwords (safe fixtures)
+# E501: line length (handled by formatter)
+# S110/S112: try-except-pass (defensive coding)
+# E722: bare except (legacy code)
+# E402: imports after sys.path manipulation (script pattern)
+# F841: unused variables in tests (intentional placeholders)
+# E701: multiple statements on one line (compact test helpers)
+# S104: binding to all interfaces (examples only)
+# F601: duplicate dict keys (false positive in multilingual)
+ignore = [
+    "S101", "S105", "E501", "S110", "S112", "E722",
+    "E402", "F841", "E701", "S104", "F601"
+]
