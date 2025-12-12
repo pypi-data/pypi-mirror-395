@@ -1,0 +1,380 @@
+Metadata-Version: 2.4
+Name: quantumrings-cuda12x
+Version: 0.11.2314
+Summary: A Quantum Development Library
+Author-email: "Quantum Rings Inc." <contact@quantumrings.com>
+Project-URL: Homepage, https://www.quantumrings.com
+Project-URL: Documentation, https://portal.quantumrings.com/doc/
+Project-URL: API Reference, https://portal.quantumrings.com/doc/modules.html
+Keywords: quantum,quantum circuit,quantum computing,quantum programming language,quantum register,quantum tools,tools,sdk
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: Scientific/Engineering
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Python: ==3.14.*
+Description-Content-Type: text/x-rst
+License-File: LICENSE.rst
+Dynamic: license-file
+Dynamic: requires-python
+
+===============================================
+Welcome to the Quantum Rings SDK for NVIDIA GPU
+===============================================
+
+This document serves as a guide for installing the Quantum Rings SDK in the GPU-enabled mode. Before starting the installation process, 
+please review the sections that outline the minimum system requirements and supported GPU architectures.
+
+Additionally, the section titled "Feedback and Getting Support" provides links for submitting feedback or obtaining further assistance.
+
+Finding the Latest Version of the SDK
+-------------------------------------
+
+- 0.11.2311 -- For Python 3.11 based installations
+- 0.11.2312 -- For Python 3.12 based installations
+- 0.11.2313 -- For Python 3.13 based installations
+- 0.11.2314 -- For Python 3.14 based installations
+
+
+Minimum System Requirements
+---------------------------
+
+A system with specifications exceeding the minimum requirements is recommended. 
+Lower specifications may limit the number of qubits supported and could result in poor performance.
+
+-  Operating systems recommended:
+
+   -  Ubuntu 22.04.4 LTS
+   -  Ubuntu 24.04.4 LTS
+   -  Windows 11 Pro
+   -  WSL2 based Linux Instances on Windows 11 Pro
+
+-  64-bit Intel i9 x86 CPU (14 cores 20 logical processors recommended) or equivalent
+
+-  NVIDIA GB10 Grace Blackwell Superchip
+
+-  DDR5 or better memory channels recommended
+
+-  32 GB Installed physical memory
+
+-  18 GB Available physical memory
+
+-  64-bit Python version 3.11, 3.12, 3.13, or 3.14
+
+
+Supported GPU Architectures
+---------------------------
+
+* Amphere, compute capabilities 8.0, 8.6
+* Hopper, compute capability 9.0
+* Blackwell, compute capability 10.0
+* or later
+
+A minimum of 4 GB global memory on the GPU is required to run the SDK. 
+The actual amount of memory needed depends upon the number of qubits used and the gate operations involved.
+CUDA Toolkit 12.x or 13.x is required to install the GPU version of the SDK.
+
+
+======================
+Installation Procedure
+======================
+
+The Quantum Rings SDK now supports Nvidia GPUs in both native mode and with the Qiskit toolkit. The following steps outline the installation procedure.
+
+
+**STEP - 1**
+
+To obtain your license for the `Quantum Rings SDK <https://www.quantumrings.com/>`_,  register by selecting the **Login** option from the menu.
+
+If you are already registered, you can skip this step.
+
+Next, log in to the `Quantum Rings portal <https://portal.quantumrings.com/developer/>`_. 
+To download your access keys, select the **Manage Keys** option in the left sidebar.
+
+
+**STEP - 2**
+
+.. note::
+    
+    If you are using a university supercomputer or a cloud instance with NVIDIA GPUs, your system administrator may have already installed the necessary 
+    NVIDIA drivers for you. In such cases, you can skip this step.
+
+.. warning::
+
+    This step may be challenging, and you may need professional help. Installing device drivers can make your installation unstable. Always proceed with a backup and read all
+    documentation carefully. Ensure you install the correct drivers for your hardware platform. Installing open source drivers may not be a good idea.
+
+Update the `NVIDIA drivers <https://www.nvidia.com/en-us/drivers/>`_ for your system.
+For some Linux distributions, you may need to install the NVIDIA drivers directly from the distribution. Please search for the documentation
+from your Linux operating system provider and follow their recommendation.
+
+If you are installing on WSL-based Linux, you must update the NVIDIA driver in Windows. It will automatically apply to the WSL Linux instance.
+
+Note down the driver version by running the ``nvidia-smi`` command in the terminal and observing the version displayed in the top panel. 
+You will need to know the driver version to install the CUDA Toolkit later.
+
+
+**STEP - 3**
+
+Create a virtual environment for your Python version using the following example.
+
+.. code-block:: console
+
+    virtualenv --python=/usr/bin/python3.11 myenv311
+    source myenv31/bin/activate
+
+In some installations, the virtual environment can be created as follows:
+
+.. code-block:: console
+
+    python3.11 -m venv myenv311
+    source myenv311/bin/activate
+
+Note that installing a Python virtual environment may require additional steps.
+
+You can optionally install Jupyter Notebook using the following command.
+
+.. code-block:: console
+
+    pip install notebook
+
+
+**STEP - 4**
+
+Choose the appropriate CUDA Toolkit (CTK) for your driver version. Section 2.2 CUDA Driver in `Release notes <https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html>`_ outlines the CUDA Driver version 
+range and the CUDA Toolkit (CTK) you could install.
+Install the CUDA Toolkit (CTK) by following the instructions in the link: `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_
+Follow the instructions on the screen after installing and setting up the CUDA Toolkit, and set the paths as directed.
+
+
+.. note::
+
+	Linux Users:
+
+	After installing the CUDA Toolkit, you may have to set the environment variable ``LD_LIBRARY_PATH`` to point to the folder where the CUDA Toolkit library was installed.
+	If this is not set, then there may be runtime linkage errors when you import QuantumRingsLib in your Python code.
+
+    Assuming ``/usr/local/cuda-13.0`` is where your CUDA Toolkit is installed, add the following two lines at the bottom of your profile ``~/.profile``.
+
+    .. code-block:: console
+
+        PATH="$PATH:$/usr/local/cuda-13.0/bin"
+        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$/usr/local/cuda-13.0/lib64"
+
+.. note::
+    
+	Windows Users:
+
+	Ensure that the environment variable ``CUDA_PATH`` is set to the folder where the CUDA Toolkit is installed. Also, ensure that the environment variable ``PATH`` includes the path where
+	CUDA Toolkit components are installed. 
+
+    In addition, you have to tell Python where the CUDA dynamically linkable libraries (DLLs) are located. 
+    
+    Note that:
+    
+    If you are using CUDA Toolkit version 12.x, the runtume is usually installed at: ``C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.9\\bin``
+    If you are using CUDA Toolkit version 13.x, the runtume is usually installed at: ``C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.0\\bin\\x64``
+
+    Use the following lines at the top of your code, before importing QuantumRingsLib.
+
+    .. code-block:: console
+
+        import os
+        import platform
+
+        if platform.system() == "Windows":
+            cuda_path = os.getenv("CUDA_PATH", "")
+            if "" == cuda_path:
+                #set a hard-coded path
+                cuda_path = "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.0\\bin\\x64"
+            else:
+                #create from the environment
+                if "13" in cuda_path:
+                    cuda_path += "\\bin\\x64"
+                else:
+                    cuda_path += "\\bin"
+
+            os.add_dll_directory(cuda_path)
+
+        import QuantumRingsLib
+
+
+If environment variables are not set correctly, linker errors will occur, and the SDK will not load. 
+If you are a Windows user, see additional instructions in `Section 6` to set up the DLL search path with Python.
+
+If you are using your university supercomputer or a cloud environment with NVIDIA GPUs, 
+your system administrator may already have installed the necessary runtime components optimized for your hardware platform. 
+You may only need to select the CUDA Toolkit module. Selecting the CUDA Toolkit is typically done using a module loader, as shown below. 
+Browse the modules installed in your system and choose the most recent CUDA Toolkit. 
+Note that your system may use a different way of loading runtime components.
+
+.. code-block:: console
+
+    module load cuda-12.6.1-gcc-12.1.0
+
+
+**STEP - 5**
+
+To install the Quantum Rings SDK, use the command appropriate for your CUDA Toolkit version:
+
+If you are using CUDA Toolkit version 13.x:
+
+.. code-block:: console
+
+    pip install quantumrings-nvidia-gpu
+
+or
+
+.. code-block:: console
+
+    pip install quantumrings[cuda13x]
+
+
+If you are using CUDA Toolkit version 12.x:
+
+.. code-block:: console
+
+    pip install quantumrings[cuda12x]
+
+
+
+**STEP - 6**
+
+Try running the following Python program in your Jupyter notebook to ensure everything is functioning correctly.
+
+.. code-block:: python
+
+    # For Windows users. Linux users may skip this.
+    # Setup the CUDA Toolkit path with Python
+    import os
+    import platform
+
+    if platform.system() == "Windows":
+        cuda_path = os.getenv("CUDA_PATH", "")
+        if "" == cuda_path:
+            #set a hard-coded path
+            cuda_path = "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.0\\bin\\x64"
+        else:
+            #create from the environment
+            if "13" in cuda_path:
+                cuda_path += "\\bin\\x64"
+            else:
+                cuda_path += "\\bin"
+
+        os.add_dll_directory(cuda_path)
+    #
+    #
+    
+    import QuantumRingsLib
+    from QuantumRingsLib import QuantumRegister, AncillaRegister, ClassicalRegister, QuantumCircuit
+    from QuantumRingsLib import QuantumRingsProvider
+    from QuantumRingsLib import job_monitor
+    from QuantumRingsLib import JobStatus
+    from QuantumRingsLib import OptimizeQuantumCircuit
+    from matplotlib import pyplot as plt
+    import numpy as np
+    import math
+
+    provider = QuantumRingsProvider(token =<YOUR_TOKEN_HERE>, name=<YOUR_ACCOUNT_NAME_HERE>)
+    backend = provider.get_backend("amber_quantum_rings")
+    numberofqubits = 50
+    shots = 100
+    
+    q = QuantumRegister(numberofqubits , 'q')
+    c = ClassicalRegister(numberofqubits , 'c')
+    qc = QuantumCircuit(q, c)
+
+    qc.h(0)
+    for i in range (qc.num_qubits - 1):
+        qc.cnot(i, i + 1)
+
+    qc.measure_all()
+
+    job = backend.run(qc, shots=shots)
+    job_monitor(job)
+
+    result = job.result()
+    counts = result.get_counts()
+    print(counts)
+
+
+
+Using the GPU Mode
+------------------
+
+Certain programs with a large number of qubits (> 22), complex entanglement, and many gate operations can benefit from using a GPU.
+
+
+To switch to the GPU mode, select the ``amber_quantum_rings`` backend as follows:
+
+.. code-block:: console
+
+    backend = provider.get_backend("amber_quantum_rings")
+
+To switch to the CPU mode, select the ``scarlet_quantum_rings`` backend as follows:
+
+.. code-block:: console
+
+    backend = provider.get_backend("scarlet_quantum_rings")
+
+.. note::
+
+   Programs with a few qubits and gate operations usually run faster on the CPU mode with the ``scarlet_quantum_rings`` backend. 
+   You can also use the hybrid backend ``serin_quantum_rings`` backend, which uses CPU for most  operations and switches to the GPU mode for complex operations.
+
+
+You can also store the backend name in the configuration file using the key ``backend`` and allow the method ``provider.get_backend`` select it automatically 
+by not providing any arguments. To save the backend name in the configuration file, please follow the instructions in the SDK.
+Once the backend name is saved in the configuration file, you can obtain the backend by providing no arguments to the ``provider.get_backend`` method as follows:
+
+.. code-block:: console
+
+    provider = QuantumRingsProvider()
+    backend = provider.get_backend()
+
+
+Installing on an AWS SageMaker instance
+---------------------------------------
+
+
+AWS SageMaker instances may not be preconfigured with the CUDA runtime. To install the CUDA runtime, open a terminal from the Jupyter notebook. Ensure that you are a 
+`root` user with read rights in your working folder. Follow the instructions found in the link : `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_ 
+to install the toolkit corresponding to the driver version. You may not be allowed to update the CUDA drivers. You may want to disable this from the installation process. 
+Set `LD_LIBRARY_PATH` and `PATH` as directed, or export them from a cell in the Jupyter notebook.  Install `quantumrings-nvidia-gpu` as 
+described in this document.
+
+
+Using a hybrid Mode
+-------------------
+
+On personal computers with a NVIDIA GPU containing lower memory, running the quantum circuit in a hybrid mode can be useful. In the hybrid mode,
+most operations are done by the CPU utilizing the CPU memory. Certain complex operations involving large matrices are offloaded to the GPU for added performance.
+To use the hybrid mode, select the `serin_quantum_rings` engine.
+
+.. code-block:: console
+
+	backend = provider.get_backend("serin_quantum_rings")
+
+
+============================
+Feedback and getting support
+============================
+
+We love to hear from you! Please join our `Discord community <https://discord.com/invite/dZJvX5AfkS>`_ to discuss anything quantum computing.
+
+
+`SDK Documentation <https://portal.quantumrings.com/doc/>`_
+
+`FAQ <https://portal.quantumrings.com/developer/support/>`_ (Requires you to login)
+
+`Managing your license keys <https://portal.quantumrings.com/developer/keys/>`_ (Requires you to login)
+
+`Need more qubits? Request here <https://portal.quantumrings.com/developer/keys/>`_ (Requires you to login)
+
+
+
+
+
