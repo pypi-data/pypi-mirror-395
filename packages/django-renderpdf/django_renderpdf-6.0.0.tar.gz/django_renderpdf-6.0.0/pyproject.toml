@@ -1,0 +1,118 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+
+[project]
+name = "django-renderpdf"
+authors = [
+    {name = "Hugo Osvaldo Barrera", email = "hugo@whynothugo.nl"},
+]
+description = "Django app to render django templates as PDF files."
+readme = "README.rst"
+requires-python = ">=3.10"
+keywords = ["django", "weasyprint", "pdf"]
+license = {text = "ISC"}
+classifiers = [
+    "Development Status :: 6 - Mature",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.1",
+    "Framework :: Django :: 5.2",
+    "License :: OSI Approved :: ISC License (ISCL)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "django>=4.2",
+    "weasyprint>=63,<68",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+]
+lint = [
+    "ruff",
+    "mypy",
+    "django-stubs",
+]
+
+[project.urls]
+repository = "https://github.com/WhyNotHugo/django-renderpdf/"
+documentation = "https://django-renderpdf.readthedocs.io/"
+changelog = "https://github.com/WhyNotHugo/django-renderpdf/blob/main/CHANGELOG.rst"
+issues = "https://github.com/WhyNotHugo/django-renderpdf/issues/"
+funding = "https://whynothugo.nl/sponsor/"
+
+[tool.coverage.run]
+source = ["django_renderpdf"]
+
+[tool.pytest.ini_options]
+addopts = """
+  --cov=django_renderpdf
+  --cov-report=term-missing:skip-covered
+  --no-cov-on-fail
+  --color=yes
+"""
+DJANGO_SETTINGS_MODULE = "testapp.settings"
+
+[tool.ruff.lint]
+extend-select = [
+    # "A", Conflicts with some Django-defined names.
+    "ANN",
+    "B",
+    "BLE",
+    "C4", # Comprehensions
+    "E",
+    "ERA",
+    "FBT",
+    "G",
+    "I",
+    "ICN",
+    "INP",
+    "INT",
+    "ISC",
+    "N",
+    "PGH",
+    "PIE",
+    "PLE",
+    "PT",
+    "PYI",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "SIM",
+    "TCH",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+]
+ignore = [
+  "ANN002",  # Annotations for *args
+  "ANN003",  # Annotations for **kwargs
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.mypy]
+[[tool.mypy.overrides]]
+module = "weasyprint"
+ignore_missing_imports = true
+
+[tool.setuptools]
+packages = ["django_renderpdf"]
+
+[tool.setuptools_scm]
+write_to = "django_renderpdf/version.py"
+version_scheme = "post-release"
