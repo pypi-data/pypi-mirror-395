@@ -1,0 +1,231 @@
+======
+README
+======
+
+The util.py module provides methods for cleanup HTML content. Let's test what
+the method can do for us. As you can see the method only removes the html and
+body tags.:
+
+  >>> from pprint import pprint
+  >>> from j01.editor import util
+
+
+clean
+-----
+
+A simple clean method call with default allowed tags looks like:
+
+  >>> raw = "<html><body><div>Here comes content</div></body></html>"
+  >>> print(util.clean(raw))
+  <div>Here comes content</div>
+
+The method will allways convert <br> tags to <br />:
+
+  >>> raw = "<html><body><div>Here<br> comes</div></body></html>"
+  >>> print(util.clean(raw))
+  <div>Here<br /> comes</div>
+
+and bold <b> tags will always converted to <strong> tags:
+
+  >>> raw = "<html><body><div><b>Here</b> comes content</div></body></html>"
+  >>> print(util.clean(raw))
+  <div><strong>Here</strong> comes content</div>
+
+The Id attribute is by default allowed:
+
+  >>> raw = '<html><body><div><div id="foo">Here</div> comes</div></body></html>'
+  >>> print(util.clean(raw))
+  <div><div id="foo">Here</div> comes</div>
+
+but any style attribute get removed:
+
+  >>> raw = '<html><body><div><div style="font-size:11px">Here</div> comes</div></body></html>'
+  >>> print(util.clean(raw))
+  <div><div>Here</div> comes</div>
+
+Bad tags also get cleanup up:
+
+  >>> raw = "<html><body><div><b>Here</div></body></html>"
+  >>> '<div><strong>Here</strong></div>' in util.clean(raw)
+  True
+
+
+And of corse <a> tags get rendered with it's relevant attributes and the query
+arguments get escaped:
+
+  >>> url = 'http://sv1.refline.ch/100000/0004/index.html?cid=<CID>&amp;lang=<LANG>'
+  >>> link = '<A class="apply" href="%s" target="_top">link</a>' % url
+  >>> raw = '<html><body><div>%s</div></body></html>' % link
+  >>> print(util.clean(raw))
+  <div><a class="apply" href="http://sv1.refline.ch/100000/0004/index.html?cid=&lt;CID>&amp;lang=&lt;LANG>" target="_top">link</a></div>
+
+
+simpleHTML
+----------
+
+We provide some cleanup methods which uses a predefined tag white list. Let's
+test the simeHTML method which only uses a small set of HTML tags. First check
+the tag white list:
+
+  >>> for t in util.ALLOWED_TAGS:
+  ...    print(t)
+  a
+  abbr
+  acronym
+  b
+  br
+  blockquote
+  code
+  div
+  em
+  i
+  li
+  ol
+  p
+  span
+  strong
+  ul
+
+and our default allowed attributes
+
+  >>> for k,v in sorted(util.ALLOWED_ATTRIBUTES.items()):
+  ...    print(k)
+  ...    for vitem in sorted(v):
+  ...        print("  ",vitem)
+    a
+       class
+       href
+       id
+       name
+       target
+    abbr
+       class
+       id
+       title
+    acronym
+       class
+       id
+       title
+    b
+       class
+       id
+       title
+    blockquote
+       class
+       id
+       title
+    br
+    code
+       class
+       id
+       title
+    div
+       class
+       id
+       title
+    em
+       class
+       id
+       title
+    i
+       class
+       id
+       title
+    li
+       class
+       id
+       title
+    ol
+       class
+       id
+       title
+    p
+       class
+       id
+       title
+    span
+       class
+       id
+       title
+    strong
+       class
+       id
+       title
+    ul
+       class
+       id
+       title
+
+simpleHTML - <div>:
+
+  >>> raw = "<html><body><div><div>Here</div> comes</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div><div>Here</div> comes</div>
+
+simpleHTML - <p>:
+
+  >>> raw = "<html><body><div><p>Here</p> comes</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div><p>Here</p> comes</div>
+
+simpleHTML - <strong>:
+
+  >>> raw = "<html><body><div><strong>Here</strong> comes</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div><strong>Here</strong> comes</div>
+
+simpleHTML - <em>:
+
+  >>> raw = "<html><body><div><em>Here</em> comes</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div><em>Here</em> comes</div>
+
+simpleHTML - <ul>/<li>:
+
+  >>> raw = "<html><body><div><ul><li>Here</li></ul> comes</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div><ul><li>Here</li></ul> comes</div>
+
+simpleHTML - <ol>/<li>:
+
+  >>> raw = "<html><body><div><ol><li>Here</li></ol> comes</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div><ol><li>Here</li></ol> comes</div>
+
+simpleHTML - <br> -> <br />:
+
+  >>> raw = "<html><body><div>Here<br> comes</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div>Here<br /> comes</div>
+
+simpleHTML - <b></b> -> <strong></strong>:
+
+  >>> raw = "<html><body><div><b>Here</b> comes content</div></body></html>"
+  >>> print(util.simpleHTML(raw))
+  <div><strong>Here</strong> comes content</div>
+
+simpleHTML - id attribute doesn't get removed:
+
+  >>> raw = '<html><body><div><div id="foo">Here</div> comes</div></body></html>'
+  >>> print(util.simpleHTML(raw))
+  <div><div id="foo">Here</div> comes</div>
+
+simpleHTML - class attribute doesn't get removed:
+
+  >>> raw = '<html><body><div><div class="foo">Here</div> comes</div></body></html>'
+  >>> print(util.simpleHTML(raw))
+  <div><div class="foo">Here</div> comes</div>
+
+simpleHTML - style attribute get removed:
+
+  >>> raw = '<html><body><div><div style="font-size:11px">Here</div> comes</div></body></html>'
+  >>> print(util.simpleHTML(raw))
+  <div><div>Here</div> comes</div>
+
+simpleHTML - href with our special cid and language marker:
+
+  >>> url = 'http://sv1.refline.ch/100000/0004/index.html?cid=<CID>&amp;lang=<LANG>'
+  >>> link = '<A class="apply" href="%s" target="_top">link</a>' % url
+  >>> raw = '<html><body><div>%s</div></body></html>' % link
+  >>> print(util.simpleHTML(raw))
+  <div><a class="apply" href="http://sv1.refline.ch/100000/0004/index.html?cid=&lt;CID>&amp;lang=&lt;LANG>" target="_top">link</a></div>
