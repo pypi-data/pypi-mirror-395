@@ -1,0 +1,31 @@
+# This is part of the logging package and it's used when no other configuration file is found.
+# We don't use the Python logging default configuration, since it has limits like hiding the
+# INFO level.
+#
+# Our default sends logs to stderr, has INFO as threshold and has a reasonably nice message format.
+#
+version: 1
+
+handlers:
+
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    stream: ext://sys.stderr
+    formatter: simpleFormatter
+
+formatters:
+  simpleFormatter:
+    # The formatter class, this is the default
+    #class: logging.Formatter
+    
+    # A way to refer to a Python object via its FQN. This might be useful if you have your own
+    # formatter.
+    #class: !!python/name:logging.Formatter
+    format: '%(asctime)s [%(levelname)-7s] [%(name)-10s] [%(threadName)-8s] %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+
+root:
+  level: INFO
+  handlers: [console]
