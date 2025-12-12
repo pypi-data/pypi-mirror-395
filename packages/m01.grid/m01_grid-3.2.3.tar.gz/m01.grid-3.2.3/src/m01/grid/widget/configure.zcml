@@ -1,0 +1,48 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:z3c="http://namespaces.zope.org/z3c"
+    i18n_domain="p01">
+
+  <!-- IDataConverter -->
+  <adapter
+      factory=".converter.FileUploadDataConverter"
+      />
+
+
+  <!-- FileUploadWidget for z3c.form -->
+  <class class=".FileUploadWidget">
+    <require
+        permission="zope.Public"
+        interface="..interfaces.IFileUploadWidget"
+        />
+  </class>
+  <adapter
+      factory=".FileUploadFieldWidget"
+      for="m01.grid.schema.IFileUpload
+           m01.grid.layer.IFileUploadWidgetLayer"
+      />
+
+  <z3c:widgetTemplate
+      mode="display"
+      widget="..interfaces.IFileUploadWidget"
+      layer="m01.grid.layer.IFileUploadWidgetLayer"
+      template="widget_display.pt"
+      />
+
+  <z3c:widgetTemplate
+      mode="input"
+      widget="..interfaces.IFileUploadWidget"
+      layer="m01.grid.layer.IFileUploadWidgetLayer"
+      template="widget_input.pt"
+      />
+
+
+  <!-- error view snippets -->
+  <adapter
+      factory=".error.FileErrorViewSnippet"
+      trusted="True"
+      permission="zope.Public"
+      />
+
+
+</configure>
