@@ -1,0 +1,218 @@
+[project]
+name = "qat-compiler"
+# This name has the -compiler suffix in order to use the poetry and twine tools to build and publish to PyPI
+# witout having to manually adjust the dist file names.
+description = "A low-level quantum compiler and runtime which facilitates executing quantum IRs."
+readme = "README.rst"
+license = "BSD-3-Clause"
+requires-python = ">=3.10,<3.13"
+dynamic = ["dependencies"]
+authors = [
+    { name = "Hamid El Maazouz", email = "helmaazouz@oqc.tech" },
+    { name = "Harry Waring", email = "hwaring@oqc.tech" },
+    { name = "Jamie Friel", email = "jfriel@oqc.tech" },
+    { name = "John Dumbell", email = "jdumbell@oqc.tech" },
+    { name = "Kajsa Eriksson Rosenqvist", email = "keriksson.rosenqvist@oqc.tech" },
+    { name = "Owen Arnold", email = "oarnold@oqc.tech" },
+    { name = "Benjamin Sach", email = "bsach@oqc.tech" },
+    { name = "Daria Van Hende", email = "dvanhende@oqc.tech" },
+    { name = "Luke Causer", email = "lcauser@oqc.tech" },
+    { name = "Russell Rundle", email = "rrundle@oqc.tech"}
+]
+version = "3.1.0"
+
+[project.urls]
+repository = "https://github.com/oqc-community/qat"
+documentation = "https://oqc-community.github.io/qat/main/index.html"
+homepage = "https://oqc.tech/"
+
+[tool.poetry]
+requires-poetry = ">=2.0"
+packages = [
+    { include = "qat", from = "src/" }
+]
+
+[tool.poetry.scripts]
+format-code = "scripts.poetry_scripts:format_code"
+generate-report =  "scripts.ci.generate_report:main"
+jupytext-sync = "scripts.poetry_scripts:jupytext_sync"
+build-docs = "scripts.poetry_scripts:build_docs"
+
+[tool.poetry.dependencies]
+numpy = ">=1.26.4"
+networkx = ">=2.5"
+matplotlib = "^3.7.5"
+logging-config = "^1.0.4"
+qutip = ">=5.2.0"
+toml = "^0.10.2"
+openqasm3 = { version = "^1.0.0", extras = ["parser"] }
+pytket = "^1.41.0"
+qiskit = ">=1.4.2,<3.0.0"
+qiskit-aer = "^0.17.1"
+qiskit-experiments = "^0.11.0"
+scipy = ">=1.15.2"
+pyqir = "^0.11.0" # TODO: Resolve issues with pyqir v0.12 use COMPILER-821
+regex = ">=3.6.1"
+jsonpickle = ">=4.0.5"
+qblox-instruments = "0.17.1"
+lark-parser = "^0.12.0"
+pydantic = "2.11.7"
+pydantic-settings = ">=2.5.2"
+compiler-config = "^0.2.0"
+pydantic-extra-types = "^2.10.4"
+numpydantic = ">=1.6.7"
+semver = "^3.0.2"
+frozendict = "^2.4.6"
+piny = {version = "^1.1.0"}
+more-itertools = "^10.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pip-audit = "^2.9.0"
+coverage = "~7.9.1"
+pytest = "~8.3.5"
+pytest-cov = ">=6.2.1"
+pytest-mock = "^3.14.0"
+docplex = "^2.21.207"
+pre-commit = "^4.2.0"
+pytest-benchmark = "^4.0.0"
+jinja2 = "^3.1.5"
+jupytext = "^1.17.2"
+nbmake = "^1.5.5"
+nbstripout = "^0.8.1"
+ruff = "^0.12.4"
+pip-licenses = "^5.0.0"
+
+[tool.poetry.group.licenses]
+optional = true
+
+[tool.poetry.group.licenses.dependencies]
+pip-licenses = "^5.0.0"
+
+[tool.poetry.group.release]
+optional = true
+
+[tool.poetry.group.release.dependencies]
+twine = "^6.1.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^8.0.0"
+sphinx-rtd-theme = { version = "^3.0.0" }
+sphinx-autodoc-typehints = "^3.0.0"
+sphinx-paramlinks = "^0.6.0"
+sphinx-multiversion = "^0.2.4"
+sphinx-pyproject = "^0.3.0"
+dunamai = "^1.24.1"
+
+[tool.poetry.group.notebook]
+optional = true
+
+[tool.poetry.group.notebook.dependencies]
+notebook = "^7.4.1"
+
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+enable = false
+pattern = "default-unprefixed"
+vcs = "git"
+metadata = false
+dirty = false
+style = "pep440"
+format-jinja = """
+    {%- if distance == 0 -%}
+        {{ serialize_pep440(base) }}
+    {%- else -%}
+        {{ serialize_pep440(base, post=distance, dev=timestamp) }}
+    {%- endif -%}
+"""
+
+[build-system]
+requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.sphinx-pyproject]
+copyright = "2025, Oxford Quantum Circuits Ltd"
+add_module_names = false
+autoclass_content = "both"
+extensions = [
+    "sphinx_multiversion",
+    "sphinx_rtd_theme",
+    "sphinx.ext.autodoc",
+    "sphinx_autodoc_typehints",
+    "sphinx_paramlinks",
+    "sphinx.ext.graphviz",
+]
+templates_path = ["_templates"]
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]
+html_logo = "qat-logo.png"
+html_theme_options.logo_only = false
+html_theme_options.prev_next_buttons_location = "bottom"
+html_theme_options.style_external_links = false
+html_theme_options.vcs_pageview_mode = ""
+html_theme_options.collapse_navigation = false
+html_theme_options.sticky_navigation = true
+html_theme_options.navigation_depth=6
+html_theme_options.includehidden=true
+html_theme_options.titles_only=false
+
+[tool.ruff]
+line-length = 92
+extend-exclude = ["benchmarks/**"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore imports not at top of notebook files
+"notebooks/**" = ["E402"]
+# Ignore a == b comparisons for tests
+"tests/**" = ["E711", "E712", "E721"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["qat"]
+known-local-folder = ["tests", "benchmarks"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib", "--doctest-modules"
+]
+testpaths = ['src', 'tests']
+filterwarnings = [
+    # Set warnings to raise errors in pytest runs.
+    "error",
+    # Specific warnings can be set to be handled differently if needed,
+    # E.g.:
+    # "default::DeprecationWarning", to show Deprecation Warnings
+    # "ignore:::qutip", to ignore warnings raised from the qutip package
+    # see more options: https://docs.pytest.org/en/7.1.x/how-to/capture-warnings.html
+    #
+    # Temporary default for pre-existing issues. Tickets exist for addressing these:
+    # Lark using deprecated version on sre_parse and sre_constants
+    'default:.*sre_[parse|constants]:DeprecationWarning:lark.utils',
+    # The GlobalisePhasedX pass is unreliable and deprecated. Ticket added to resolve
+    'default:.*GlobalisePhasedX:DeprecationWarning',
+    # TODO: Change to passive_reset_time. 428, 455
+    'default:.*to modify the reset time of qubits to their ground state:UserWarning:',
+    # TODO - `qblox-instruments` to fix deprecation warnings regarding QCodes
+    'default::qcodes.utils.deprecate.QCoDeSDeprecationWarning:',
+    # TODO - remove when purr is dropped COMPILER-844
+    'default:DOWN_CONVERT PostProcessing is deprecated:DeprecationWarning',
+    'default:WaveformV1 support is deprecated:DeprecationWarning:qat.*.purr',
+]
+markers = [
+  "ab_test",
+  "experimental",
+  "legacy",
+]
+
+[tool.jupytext.formats]
+"notebooks/ipynb/" = "ipynb"
+"notebooks/scripts/" = "py:percent"
+
+[tool.jupytext]
+notebook_metadata_filter = "-kernelspec"
