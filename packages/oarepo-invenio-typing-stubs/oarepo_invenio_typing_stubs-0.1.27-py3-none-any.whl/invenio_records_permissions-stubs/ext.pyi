@@ -1,0 +1,9 @@
+from typing import Optional
+
+from flask import Flask
+from invenio_records_permissions import config as config
+
+class InvenioRecordsPermissions:
+    def __init__(self, app: Optional[Flask] = None) -> None: ...
+    def init_app(self, app: Flask) -> None: ...
+    def init_config(self, app: Flask) -> None: ...
