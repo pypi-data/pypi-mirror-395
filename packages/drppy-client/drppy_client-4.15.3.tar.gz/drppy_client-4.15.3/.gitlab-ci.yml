@@ -1,0 +1,60 @@
+stages:
+  - lint
+  - build
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  TEST_PYPI_REPOSITORY_URL: "https://test.pypi.org/legacy/"
+  PYPI_REPOSITORY_URL: "https://upload.pypi.org/legacy/"
+
+before_script:
+  - apt-get update && apt-get install -y python3-venv
+  - python3 -m venv venv
+  - source venv/bin/activate
+  - pip install --upgrade pip
+  - pip install pycodestyle
+  - pip install build
+  - pip install twine
+  - if [ -f test-requirements.txt ]; then pip install -r test-requirements.txt; fi
+
+lint-pep8:
+  stage: lint
+  script:
+    - pycodestyle --max-line-length=180 drppy_client/* examples/*
+
+build:
+  stage: build
+  script:
+    - export PACKAGE_VERSION=$(./tools/version.sh)
+    - echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> variables.env
+    - python -m build
+    - SDIST_FILE=$(ls dist/*.tar.gz)
+    - tar -tzf $SDIST_FILE | grep -F "examples/drpcli.py" || (echo "examples/drpcli.py is missing!" && exit 1)
+    - tar -tzf $SDIST_FILE | grep -F "api/custom_overrides.py" || (echo "the custom_overrides used for monkey patching got removed!!" && exit 1)
+  artifacts:
+    paths:
+      - dist/
+      - variables.env
+
+deploy-testpypi:
+  stage: deploy
+  only:
+    - /^test-.*/
+  script:
+    - source variables.env
+    - echo "Deploying test version $PACKAGE_VERSION to TestPyPI"
+    - export TWINE_USERNAME="__token__"
+    - export TWINE_PASSWORD="$TWINE_TEST_TOKEN"  # OIDC token for trusted publisher
+    - twine upload --verbose --repository-url "$TEST_PYPI_REPOSITORY_URL" dist/*
+
+deploy-pypi:
+  stage: deploy
+  only:
+    - /^v\d+\.\d+\.\d+$/
+  script:
+    - source variables.env
+    - echo "Deploying release version $PACKAGE_VERSION to PyPI"
+    - export TWINE_USERNAME="__token__"
+    - export TWINE_PASSWORD="$TWINE_PROD_TOKEN"  # OIDC token for trusted publisher
+    - twine upload --verbose --repository-url "$PYPI_REPOSITORY_URL" dist/*
