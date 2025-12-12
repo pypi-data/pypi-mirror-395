@@ -1,0 +1,92 @@
+# SPDX-FileCopyrightText: 2021-2025 The Ikarus Developers ikarus@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: CC0-1.0
+
+name: CodeStyle
+
+on:
+  push:
+    paths-ignore:
+      - '.github/workflows/ghpages.yml'
+  pull_request:
+    types: [opened]
+    branches:
+      - main
+    paths-ignore:
+      - '.github/workflows/ghpages.yml'
+  workflow_dispatch:
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
+
+jobs:
+  format-check:
+    name: Check for formatting errors
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: "**/cpm_modules"
+          key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+      - uses: actions/checkout@v4
+        with:
+         path: 'repo'
+      - name: Install format dependencies
+        run: |
+          pip install clang-format==18.1.8
+          clang-format --version
+          pip install cmake_format==0.6.13 pyyaml
+          pip install black==24.4.2
+
+      - name: configure
+        run: cmake -S "cmake/FormatTarget" -Bbuild -DADD_FORMATTARGET=TRUE
+
+      - name: check style
+        run: |
+          cmake --build build --target format
+          cmake --build build --target check-format
+          python -m black . --check
+
+  REUSE:
+    name: REUSE Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: REUSE Compliance Check
+        uses: fsfe/reuse-action@v1
+
+  codespell:
+    name: Check for spelling errors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: codespell-project/actions-codespell@master
+        with:
+          check_filenames: true
+          skip: ./docs/literature.bib,./codespellignore
+          ignore_words_file: codespellignore
+
+  lint-markdown:
+    name: Check for markdown errors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: articulate/actions-markdownlint@v1
+        with:
+          config: .markdownlint.yaml
+          files: '**/*.md'
+
+  lint-filenames:
+    name: Lint filenames
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validating lowercase file names
+        uses: scheduleonce/lint-filenames@v2.0.0
+        with:
+          path: '{./ikarus/**,./python/**}'
+          pattern: '^[a-z0-9_\-]+(\.hh|\.cpp|\.inl|\.py|\.py\.in|\.cc|\.msh|)$|CMakeLists\.txt'
+          # match all lowercase names with extensions .hh/.cpp/.inl/.py/.py.in/.cc and ignore CMakeLists.txt
