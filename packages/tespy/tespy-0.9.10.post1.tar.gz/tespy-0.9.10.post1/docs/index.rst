@@ -1,0 +1,31 @@
+.. _label:
+
+.. include:: landing.rst
+
+..  toctree::
+    :maxdepth: 3
+    :caption:  First steps
+    :hidden:
+
+    getting_started
+    basic_tutorials
+    building_blocks
+    examples_benchmarks
+
+..  toctree::
+    :maxdepth: 2
+    :caption:  Advanced topics
+    :hidden:
+
+    advanced_features
+    advanced_tutorials
+    integration
+    documentation
+
+..  toctree::
+    :maxdepth: 2
+    :caption: Community
+    :hidden:
+
+    community
+    knowledge_center
