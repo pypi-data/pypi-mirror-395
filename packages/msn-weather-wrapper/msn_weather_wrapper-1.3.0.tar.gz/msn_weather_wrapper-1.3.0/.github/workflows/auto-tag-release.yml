@@ -1,0 +1,187 @@
+name: Auto-Version and Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: auto-version-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  auto-version:
+    name: Auto-Increment Version and Release
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout merged code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Determine version bump type
+        id: bump_type
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+          PR_LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+
+          echo "PR Title: $PR_TITLE"
+          echo "PR Branch: $PR_BRANCH"
+          echo "PR Labels: $PR_LABELS"
+
+          # Determine bump type based on PR labels, title, or branch prefix
+          BUMP_TYPE="patch"
+
+          # Check labels first (highest priority)
+          if echo "$PR_LABELS" | grep -qi "breaking\|major"; then
+            BUMP_TYPE="major"
+          elif echo "$PR_LABELS" | grep -qi "feature\|enhancement\|minor"; then
+            BUMP_TYPE="minor"
+          elif echo "$PR_LABELS" | grep -qi "bugfix\|fix\|patch"; then
+            BUMP_TYPE="patch"
+          # Check PR title for conventional commit prefixes
+          elif echo "$PR_TITLE" | grep -qiE "^(feat|feature)(\(.*\))?!:"; then
+            BUMP_TYPE="major"
+          elif echo "$PR_TITLE" | grep -qiE "^(feat|feature)(\(.*\))?:"; then
+            BUMP_TYPE="minor"
+          elif echo "$PR_TITLE" | grep -qiE "^(fix|bugfix|perf|refactor)(\(.*\))?:"; then
+            BUMP_TYPE="patch"
+          # Check branch prefix
+          elif echo "$PR_BRANCH" | grep -qiE "^(breaking|major)/"; then
+            BUMP_TYPE="major"
+          elif echo "$PR_BRANCH" | grep -qiE "^(feat|feature)/"; then
+            BUMP_TYPE="minor"
+          elif echo "$PR_BRANCH" | grep -qiE "^(fix|bugfix|hotfix)/"; then
+            BUMP_TYPE="patch"
+          fi
+
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "🎯 Determined bump type: $BUMP_TYPE"
+
+      - name: Get current version and increment
+        id: version
+        run: |
+          CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Current version: $CURRENT_VERSION"
+
+          # Parse version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          # Increment based on bump type
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "🆕 New version: $NEW_VERSION"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag v$NEW_VERSION already exists - skipping"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag v$NEW_VERSION does not exist"
+          fi
+
+      - name: Update version in pyproject.toml
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+          echo "✏️  Updated pyproject.toml to version $NEW_VERSION (locally, will not commit)"
+
+      - name: Configure Git
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          # Tag the merge commit (not a new commit with version bump)
+          git tag -a "v$NEW_VERSION" \
+                  -m "Release v$NEW_VERSION" \
+                  -m "Auto-generated from PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" \
+                  -m "" \
+                  -m "Version bump: ${{ steps.bump_type.outputs.bump_type }}" \
+                  -m "Previous version: ${{ steps.version.outputs.current }}"
+          git push origin "v$NEW_VERSION"
+          echo "🏷️  Created and pushed tag v$NEW_VERSION"
+          echo "⚠️  Note: pyproject.toml will be updated by the CI/CD pipeline"
+
+      - name: Generate summary
+        if: always()
+        run: |
+          if [ "${{ steps.check_tag.outputs.exists }}" == "true" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # ⚠️  Version Already Exists
+
+          Version **v${{ steps.version.outputs.new }}** already exists in the repository.
+
+          **Current version**: v${{ steps.version.outputs.current }}
+          **Attempted version**: v${{ steps.version.outputs.new }}
+          **Bump type**: ${{ steps.bump_type.outputs.bump_type }}
+
+          No action taken to avoid conflicts.
+          EOF
+          else
+            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # 🎉 Auto-Release Created!
+
+          Successfully bumped version and created release tag!
+
+          ## Version Information
+          - **Previous version**: v${{ steps.version.outputs.current }}
+          - **New version**: v${{ steps.version.outputs.new }}
+          - **Bump type**: ${{ steps.bump_type.outputs.bump_type }}
+          - **PR**: #${{ github.event.pull_request.number }}
+
+          ## What Happens Next
+          The tag will automatically trigger the CI/CD pipeline to:
+          - 📦 Build Python package
+          - 🐍 Publish to PyPI
+          - 🐳 Build and push container images
+          - 📋 Generate SBOM reports
+          - 🚀 Create GitHub Release with all artifacts
+
+          ## Monitor Progress
+          - [View CI/CD Runs](https://github.com/${{ github.repository }}/actions/workflows/ci.yml)
+          - [View Releases](https://github.com/${{ github.repository }}/releases)
+
+          ## Bump Type Rules
+          - **Major (X.0.0)**: Breaking changes, labels: `major`, `breaking`
+          - **Minor (0.X.0)**: New features, labels: `minor`, `feature`, `enhancement`
+          - **Patch (0.0.X)**: Bug fixes, labels: `patch`, `fix`, `bugfix` (default)
+          EOF
+          fi
