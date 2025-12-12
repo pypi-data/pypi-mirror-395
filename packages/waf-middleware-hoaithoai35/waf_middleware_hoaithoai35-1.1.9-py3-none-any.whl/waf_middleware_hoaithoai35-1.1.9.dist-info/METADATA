@@ -1,0 +1,69 @@
+Metadata-Version: 2.1
+Name: waf-middleware-hoaithoai35
+Version: 1.1.9
+Summary: A powerful WAF Middleware for Flask with SQLi, XSS, and Logic protection
+Home-page: https://github.com/HoaiThoai/waf-middleware
+Author: Nguyen Hoai Thoai
+Author-email: hoaithoai35@gmail.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: Flask>=2.0.0
+Requires-Dist: requests>=2.25.0
+
+# WAF Middleware for Flask
+
+Đây là thư viện tường lửa ứng dụng Web (WAF) mạnh mẽ dành cho Flask, được xây dựng như một đồ án chuyên ngành.
+
+## Tính năng Chính
+- **Chống Injection:** Ngăn chặn SQL Injection, Command Injection.
+- **Chống Web Attacks:** XSS (Cross-Site Scripting), LFI (Local File Inclusion).
+- **Phòng thủ Logic:**
+    - **Honeypot:** Bẫy hacker và tự động Ban IP.
+    - **GeoIP:** Chặn truy cập từ các quốc gia không mong muốn.
+    - **Anti-CSRF:** Bảo vệ người dùng khỏi giả mạo request.
+- **Chống DDoS:** Rate Limiting (Giới hạn tần suất truy cập).
+- **Hệ thống Cảnh báo:** Tích hợp Bot Telegram báo cáo thời gian thực.
+
+## Cài đặt
+
+Bạn có thể cài đặt thư viện thông qua file `.whl` (đã đóng gói):
+
+```bash
+pip install waf_middleware-1.0.0-py3-none-any.whl
+Hướng dẫn Sử dụng
+Tích hợp WAF vào ứng dụng Flask của bạn chỉ với 2 dòng code:
+
+Python
+
+from flask import Flask
+from waf_middleware import Firewall
+
+app = Flask(__name__)
+
+# Cấu hình Secret Key (Bắt buộc cho Session)
+app.config['SECRET_KEY'] = 'your-secret-key'
+
+# Khởi chạy WAF
+# Lưu ý: Điền Token Telegram trong file cấu hình nếu muốn nhận cảnh báo
+waf = Firewall(app)
+
+@app.route('/')
+def index():
+    return "Web này đã được bảo vệ bởi WAF Middleware!"
+
+if __name__ == "__main__":
+    app.run(debug=True)
+Yêu cầu hệ thống
+Python 3.8+
+
+Flask
+
+SQLAlchemy
+
+Requests
+
+Tác giả: Nguyễn Hoài Thoại
+
