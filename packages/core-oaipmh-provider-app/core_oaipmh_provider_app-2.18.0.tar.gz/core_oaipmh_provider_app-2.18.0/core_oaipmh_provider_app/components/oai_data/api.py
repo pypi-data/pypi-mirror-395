@@ -1,0 +1,180 @@
+""" OaiData API
+"""
+
+import logging
+
+from core_main_app.commons import exceptions
+from core_main_app.components.template.models import Template
+from core_main_app.utils.datetime import datetime_now
+from core_oaipmh_provider_app.commons import status
+from core_oaipmh_provider_app.components.oai_data.models import OaiData
+
+logger = logging.getLogger(__name__)
+
+
+def upsert(oai_data):
+    """Create or update an OaiData.
+
+    Args:
+        oai_data: OaiData to create or update.
+
+    Returns:
+        OaiData instance.
+
+
+    """
+    return oai_data.save()
+
+
+def delete(oai_data):
+    """Delete an OaiData.
+
+    Args:
+        oai_data: OaiData to delete.
+
+    """
+    oai_data.delete()
+
+
+def get_by_id(oai_data_id):
+    """Get an OaiData by its id.
+
+    Args:
+        oai_data_id: Id of the OaiData.
+
+    Returns:
+        OaiData instance.
+
+    """
+    return OaiData.get_by_id(oai_data_id=oai_data_id)
+
+
+def get_by_data(data):
+    """Get an OaiData by its data.
+
+    Args:
+        data: Data instance.
+
+    Returns:
+        OaiData instance.
+
+    """
+    return OaiData.get_by_data(data=data)
+
+
+def get_all_by_template(template, from_date=None, until_date=None):
+    """Get all OaiData used by a template.
+
+    Args:
+        template: The template.
+        from_date: From date
+        until_date: Until date
+
+    Returns:
+        List of OaiData.
+
+    """
+    return OaiData.get_all_by_template_and_timeframe(
+        template=template, from_date=from_date, until_date=until_date
+    )
+
+
+def get_all_by_template_list(template_list, from_date=None, until_date=None):
+    """Get all OaiData used by a list of templates.
+
+    Args:
+        template_list: List of templates.
+        from_date: From date
+        until_date: Until date
+
+    Returns:
+        List of OaiData.
+
+    """
+    return OaiData.get_all_by_template_list_and_timeframe(
+        template_list=template_list, from_date=from_date, until_date=until_date
+    )
+
+
+def get_all_by_data_list(data_list, from_date=None, until_date=None):
+    """Get all OaiData from a specific data list.
+
+    Args:
+        data_list: The template.
+        from_date: From date
+        until_date: Until date
+
+    Returns:
+        List of OaiData.
+
+    """
+    return OaiData.get_all_by_data_list_and_timeframe(
+        data_list=data_list, from_date=from_date, until_date=until_date
+    )
+
+
+def get_all():
+    """Get all OaiData.
+
+    Returns:
+        List of OaiData.
+
+    """
+    return OaiData.get_all()
+
+
+def get_all_by_status(status_):
+    """Get all OaiData by their status.
+
+    Args:
+        status_: Status.
+
+    Returns:
+        List of OaiData.
+
+    """
+    return OaiData.get_all_by_status(status=status_)
+
+
+def get_earliest_data_date():
+    """Get the earliest OaiData date
+    Returns:
+        Date of the earliest OaiData.
+
+    """
+    return OaiData.get_earliest_data_date()
+
+
+def upsert_from_data(document, force_update=False):
+    """Create or Update an OaiData from a Data document.
+    Args:
+        document: Data document
+        force_update: Force the Update of the OaiData (oai_date_stamp).
+
+    Returns:
+
+    """
+    try:
+        oai_data = get_by_data(document)
+        if force_update:
+            oai_data.oai_date_stamp = datetime_now()
+            upsert(oai_data)
+    except exceptions.DoesNotExist:
+        # Create only if the record is published and the workspace is public.
+        if not document.workspace or not document.workspace.is_public:
+            return
+
+        # Create only if the record is in XML format.
+        if document.template.format != Template.XSD:
+            return
+
+        oai_data = OaiData()
+        oai_data.status = status.ACTIVE
+        oai_data.data = document
+        oai_data.template = document.template
+        oai_data.oai_date_stamp = datetime_now()
+        upsert(oai_data)
+    except Exception as exception:
+        logger.warning(
+            "upsert_from_data threw an exception: %s", str(exception)
+        )

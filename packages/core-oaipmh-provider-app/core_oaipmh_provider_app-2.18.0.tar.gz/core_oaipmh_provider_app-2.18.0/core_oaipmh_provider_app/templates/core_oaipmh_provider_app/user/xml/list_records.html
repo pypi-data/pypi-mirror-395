@@ -1,0 +1,21 @@
+{% extends "core_oaipmh_provider_app/user/xml/base.html" %}
+
+{% block content %}
+  <ListRecords>
+    {% for i in items %}
+    <record>
+        {% include 'core_oaipmh_provider_app/user/xml/header.html' %}
+        {% if not i.deleted %}
+        <metadata>
+            {% autoescape off %}
+            {{ i.xml|safe }}
+            {% endautoescape %}
+        </metadata>
+        {% endif %}
+    </record>
+    {% endfor %}
+    {% if resumption_token %}
+        {% include "core_oaipmh_provider_app/user/xml/resumption_token.xml" %}
+    {% endif %}
+  </ListRecords>
+{% endblock %}

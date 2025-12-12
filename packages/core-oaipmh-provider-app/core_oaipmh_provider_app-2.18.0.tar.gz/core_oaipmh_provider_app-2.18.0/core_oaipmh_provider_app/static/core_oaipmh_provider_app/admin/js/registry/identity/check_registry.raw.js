@@ -1,0 +1,1 @@
+var checkRegistryGetUrl = "{% url 'core-admin:core_oaipmh_provider_app_check_registry' %}";

@@ -1,0 +1,44 @@
+{% extends 'core_main_app/_render/admin/theme/tools/box.html' %}
+
+{% block box_title %}Mapping <br/>
+<small>
+   Map a template with an XSLT to convert the template toward metadata format
+    <b>{{ data.metadata_format.metadata_prefix }}</b>.
+</small>
+{% endblock %}
+{% block box_tools %}
+<div class="btn-group {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+    <a href="{% url 'core-admin:core_oaipmh_provider_app_metadata_formats'%}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Previous page
+    </a>
+    {% url 'core-admin:core_oaipmh_provider_app_add_template_mapping' data.metadata_format.id as add_url %}
+    {% include 'core_main_app/common/buttons/add.html' with label='Add Mapping' %}
+</div>
+{% endblock %}
+{% block box_body %}
+<table class="table table-bordered table-striped table-hover">
+    <tr>
+        <th width="40%;">Template</th>
+        <th width="40%;">XSLT name</th>
+        <th width="20%;">Actions</th>
+    </tr>
+    {% for xsl_template in data.xsl_templates %}
+        <tr objectid="{{ xsl_template.id }}">
+            <td>{{ xsl_template.template_title }}</td>
+            <td>{{ xsl_template.xslt.name }}</td>
+            <td>
+                {% url 'core-admin:core_oaipmh_provider_app_edit_template_mapping' xsl_template.id as edit_url %}
+                {% include 'core_main_app/common/buttons/edit.html' %}
+                {% url 'core-admin:core_oaipmh_provider_app_delete_template_mapping' xsl_template.id as delete_url %}
+                {% include 'core_main_app/common/buttons/delete.html' %}
+        </tr>
+    {% empty %}
+        <tr>
+            <td class="empty add" colspan="5">
+                There are currently no mappings. Please
+                <a href="{% url 'core-admin:core_oaipmh_provider_app_add_template_mapping' data.metadata_format.id %}" >add a new one</a>.
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}

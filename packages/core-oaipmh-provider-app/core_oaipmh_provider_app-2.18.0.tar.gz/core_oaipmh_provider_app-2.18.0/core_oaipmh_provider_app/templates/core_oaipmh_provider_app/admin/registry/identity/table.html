@@ -1,0 +1,80 @@
+{% extends 'core_main_app/_render/admin/theme/tools/box.html' %}
+
+{% block box_title %}Identity{% endblock %}
+
+{% block box_tools %}
+<div class="btn-group {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+    {% url 'core-admin:core_oaipmh_provider_app_edit_identity' data.data_provider.id as edit_url %}
+    {% include 'core_main_app/common/buttons/edit.html' %}
+    <span>
+        <div class="btn btn-secondary check-status-btn">
+            <i class="fas fa-check-circle"></i> Check status
+        </div>
+    </span>
+</div>
+{% endblock %}
+
+{% block box_body %}
+<table class="data-table">
+    <tr>
+        <td>Status</td>
+        <td class="text-center" url="{{ data.data_provider.baseURL }}" id="Status">---</td>
+    </tr>
+    <tr class="invisible"><td colspan="2"></td></tr>
+    <tr>
+        <td>Name</td>
+        <td>{{ data.data_provider.name }}</td>
+    </tr>
+    <tr>
+        <td>Admin Email</td>
+        <td>
+            {% for admin in data.data_provider.admins %}
+                {{ admin }}
+            {% endfor %}
+        </td>
+    </tr>
+    <tr>
+        <td>Base URL</td>
+        <td>
+            <span class="base-url">
+                {{data.data_provider.baseURL}}
+            </span>
+            <button class="btn btn-secondary btn-sm {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} copy-base-url-btn">
+                <i class="fas fa-copy"></i> Copy URL
+            </button>
+        </td>
+    </tr>
+    <tr>
+        <td>Has Deleted Record</td>
+        <td>{{ data.data_provider.deleted }}</td>
+    </tr>
+    <tr>
+        <td>Granularity</td>
+        <td>{{ data.data_provider.granularity }}</td>
+    </tr>
+    <tr>
+        <td>Protocol Version</td>
+        <td>{{ data.data_provider.protocol_version }}</td>
+    </tr>
+    <tr>
+        <td>Delimiter</td>
+        <td>{{ data.data_provider.identifier_delimiter }}</td>
+    </tr>
+    <tr>
+        <td>Scheme</td>
+        <td>{{ data.data_provider.identifier_scheme }}</td>
+    </tr>
+    <tr>
+        <td>Repository Identifier</td>
+        <td>{{ data.data_provider.repository_identifier }}</td>
+    </tr>
+    <tr>
+        <td>Sample Identifier</td>
+        <td>{{ data.data_provider.sample_identifier }}</td>
+    </tr>
+    <tr>
+        <td>Enable Harvesting</td>
+        <td>{{ data.data_provider.enable_harvesting }}</td>
+    </tr>
+</table>
+{% endblock %}
