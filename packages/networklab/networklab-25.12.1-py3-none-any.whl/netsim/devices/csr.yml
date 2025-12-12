@@ -1,0 +1,42 @@
+---
+description: Cisco CSR 1000v
+parent: ios
+interface_name: GigabitEthernet{ifindex}
+ifindex_offset: 2
+virtualbox:
+  image: cisco/csr1000v
+clab:
+  image: vrnetlab/vr-csr:17.03.04
+  node:
+    kind: cisco_csr1000v
+  interface.name: eth{ifindex-1}
+  build: https://containerlab.dev/manual/kinds/vr-csr/
+group_vars:
+  netlab_device_type: csr
+  ansible_user: vagrant
+  ansible_ssh_pass: vagrant
+  ansible_become_password: vagrant
+node:
+  min_mtu: 1500
+features:
+  initial:
+    ipv4:
+      unnumbered: true
+    min_mtu: 68
+    min_phy_mtu: 1500
+    max_mtu: 9216
+  sr: true
+  vlan:
+    model: l3-switch
+    svi_interface_name: BDI{vlan}
+  vxlan: true
+libvirt:
+  image: cisco/csr1000v
+  build: https://netlab.tools/labs/csr/
+  create_template:
+  create:
+    virt-install --connect=qemu:///system --name=vm_box --os-variant=rhel4.0
+      --arch=x86_64 --cpu host --vcpus=1 --hvm
+      --ram=4096 --disk path=vm.qcow2,bus=ide,format=qcow2
+      --network=network:vagrant-libvirt,model=virtio
+      --graphics none --import

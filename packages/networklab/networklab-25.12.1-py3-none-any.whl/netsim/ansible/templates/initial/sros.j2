@@ -1,0 +1,222 @@
+{% macro if_name(i,name=None) -%}
+{{ name or i.ifname }}
+{%- endmacro %}
+
+{% macro declare_router(i,sub_path="",intf_cfg=False,vrf_config=True) -%}
+{#
+    This macro selects the SR/OS service in which the current object
+    is configured. The global routing instance is "router Base" unless
+    we have to configure the global SVI interfaces, in which case we
+    have to use "ies default". VRFs use "vprn X" service.
+
+    The selection logic thus goes like that:
+
+    * If the interface is in VRF, use 'vprn' instance (in_base and in_ise
+      are set to False)
+    * If the interface is not in a VRF, assume we have to use 'ies' service
+    * However, if the interface does not have a VLAN, or is a route VLAN
+      interface, we have to create it in 'router Base'
+    * Finally, non-interface objects are created in 'router Base' for non-VRF
+      interfaces
+
+    Sounds confusing? Yeah, it is...
+#}
+{%  set service_name = i.vrf if i.vrf is defined else 'default' %}
+{%  set in_ise = i.vrf is not defined %}
+{%  set in_base = in_ise and
+                    (i.vlan is not defined or
+                     i.vlan.mode|default('irb')=='route' or
+                     not intf_cfg) %}
+{%  set base_path = "router[router-name=Base]" if in_base else 
+                    "service/ies[service-name="+service_name+"]" if in_ise
+                    else "service/vprn[service-name="+service_name+"]" %}
+
+{# Minimal service config must exist #}
+{%  if not in_base and vrf_config %}
+- path: configure/{{ base_path }}
+  val:
+   customer: "1"
+   admin-state: enable
+   service-id: {{ vrfs[i.vrf].vrfidx if i.vrf is defined else 1 }}
+#   ecmp: {{ 1 if 'ixr' in clab.type else 64 }}
+{%  endif %}
+
+- path: configure/{{ base_path }}{{ sub_path }}
+{%- endmacro %}
+
+{#
+   This macro is just a convenient wrapper around the more generic declare_router
+   macro. That one expects an interface data structure and extracts VRF from it,
+   this one takes VRF as the parameter (it can also be missing) and fakes the minimal
+   data structure that makes declare_router happy
+#}
+{% macro configure_router(vrf="",sub_path="") -%}
+{%   if vrf  %}
+{{     declare_router({ 'vrf': vrf },sub_path=sub_path) }}
+{%   else %}
+{{     declare_router({},sub_path=sub_path) }}
+{%   endif %}
+{%- endmacro %}
+
+{% macro declare_interface(i,name=None) %}
+{% set ifname = if_name(i,name or i.ifname) %}
+{{ declare_router(i,sub_path="/interface[interface-name=" + ifname + "]",intf_cfg=True) }}
+{% endmacro %}
+
+{% macro ip_addr(v,ip,ifname) %}
+{% set _ip = ip|ipaddr('address') %}
+{% set _pre = ip|ipaddr('prefix') %}
+{% if v=='4' %}
+   ipv4:
+    primary:
+     address: "{{ _ip }}"
+     prefix-length: {{ _pre }}
+{% else %}
+   ipv6:
+    address:
+    - ipv6-address: "{{ _ip }}"
+      prefix-length: {{ _pre }}
+{% endif %}
+{% endmacro %}
+
+{% macro interface(name,desc,ip_v4,ip_v6,port,l,vlan=0) -%}
+{{ declare_interface(l,name) }}
+  val:
+   admin-state: {{ "disable" if l.shutdown|default(False) else "enable" }}
+   description: "{{ desc }}{{ 'vlan= '+vlan|string if vlan else '' }}"
+{% if l.mtu is defined %}
+   ip-mtu: {{ l.mtu }}
+{% endif %}
+{% if port %}
+{%  if l.vrf is defined %}
+   sap:
+   - sap-id: "{{ port }}"
+{%  else %}
+   port: "{{ port }}"
+{%  endif %}
+{% elif name!='system' and l.type in ['loopback','stub'] %}
+   loopback: {{ True if l.vrf is defined else '[null]' }}
+{% endif %}
+{% if ip_v4 is string and ip_v4|ipv4 %}
+{{  ip_addr('4',ip_v4,name) }}
+{% elif ip_v4 == True %}
+   ipv4:
+    unnumbered:
+{%  if l.vrf is defined and loopback.ipv4|default('')|ipv4 %}
+     ip-address: {{ loopback.ipv4|ipaddr('address') }}
+{%  else %}
+     system: [null]
+{%  endif %}
+{% endif %}
+{% if ip_v6 is string and ip_v6|ipv6 %}
+{{ ip_addr('6',ip_v6,name) }}
+{% elif ip_v6 == True %}
+   ipv6: { }
+{% endif %}
+{% if ip_v6 and l.type != 'loopback' and role|default('router') == 'router' %}
+{{ declare_router(l) }}
+  val:
+    ipv6:
+      router-advertisement:
+        interface:
+        - ip-int-name: {{ l.ifname }}
+          admin-state: enable
+          min-advertisement-interval: 3
+          max-advertisement-interval: 5
+{%   if l.gateway.protocol|default('') == 'vrrp' %}
+          use-virtual-mac: True
+{%   endif %}
+{% endif %}
+{%- endmacro -%}
+
+{% macro port(l,vlan=0,tagged=False,native=False) %}
+{%  set v4 = l.ipv4|default(False) %}
+{%  set v6 = l.ipv6|default(False) %}
+{%  set in_base = l.vrf is not defined and (l.vlan is not defined or l.vlan.mode|default('irb')=='route') %}
+
+{%  if l.ifname == "system" %}
+{%   set desc = "System interface" %}
+{%  elif l.type == "loopback" %}
+{%   set desc = "Loopback" %}
+{%  elif l.name is defined %}
+{%   set desc = l.name|replace('->','~') + " (" + l.role|default('') + ")" %}
+{%  elif l.type == "stub" %}
+{%   set desc = "Stub interface" %}
+{%  endif %}
+
+{%  set portname = l.parent_ifname if l.type=='vlan_member' else l.ifname %}
+{%  set portname = portname.replace('eth-','') %}
+{%  if 'ixr' in clab.type and clab.type != 'ixr-x' %}
+{#  Remove connector from port name for IXR platform #}
+{%  set portname = portname.replace("c","") %}
+{%  endif %}
+{%  if l.type in ['p2p','lan','vlan_member','stub'] %}
+{%   if 'c' in portname %}
+- path: configure/port[port-id={{portname}}]
+  val:
+   admin-state: enable
+   connector:
+    breakout: "c1-100g"
+{%    set portname = portname + '/1' %}
+{%   endif %}
+- path: configure/port[port-id={{ portname }}]
+  val:
+   admin-state: enable
+   ethernet:
+{%   set eth_header = 14 + (4 if tagged else 0) %}
+{%   if l.mtu is defined and '_use_ip_mtu' not in l %}
+    mtu: {{ l.mtu + eth_header }} # max 9800
+{%   endif %}
+{%   if l._port_mode is defined %}
+    mode: {{ l._port_mode }}
+{%   endif %}
+{%   if tagged %}
+{%    set portname = portname + ':' + vlan|string %}
+    encap-type: dot1q
+{%   endif %}
+{%  endif %}
+
+{% if v4 or v6 %}
+{%  if l.type not in ['loopback','svi'] %}
+{{ interface(l.ifname,desc,v4,v6,portname,l,vlan=vlan) }}
+{%  else %}
+{{ interface(l.ifname,desc,v4,v6,None,l) }}
+{%  endif %}
+{% endif %}
+{%- endmacro -%}
+
+updates:
+{% if 'ixr' in clab.type %}
+- path: configure/system/resource
+  val:
+   ecmp-profile:
+   - profile-id: 1
+     type: ip # or mpls
+     links: 16
+     groups: 64
+{%  if 'mpls' in module %}
+   - profile-id: 2
+     type: mpls
+     links: 16
+     groups: 64
+{%  endif %}
+{% endif %}
+{#
+  Configure default card and MDA for the SRSIM container. Submit a PR if you
+  want to use a different hardware configuration
+#}
+{% if 'srsim' in clab.kind %}
+{%   for card in netlab_srsim_hw %}
+- path: configure/card[slot-number={{ card['slot-number'] }}]
+  val:
+{{     card|to_nice_yaml(indent=2)|indent(4,first=True) }}
+{%   endfor %}
+{% endif %}
+{# Enable ECMP=64 by default #}
+- path: configure/router[router-name=Base]
+  val:
+   ecmp: {{ 1 if 'ixr' in clab.type else 64 }}
+
+{% for l in netlab_interfaces if l.vlan is not defined and l.subif_index is not defined %}
+{{  port(l) }}
+{% endfor %}

@@ -1,0 +1,129 @@
+---
+description: Cumulus VX 4.x or 5.x configured without NVUE
+support:
+  level: obsolete
+  caveats:
+  - The last Cumulus 4.x image was released in September 2022
+interface_name: swp{ifindex}
+loopback_interface_name: lo{ifindex if ifindex else ""}
+tunnel_interface_name: "tun{ifindex}"
+lag_interface_name: "bond{lag.ifindex}"
+mgmt_if: eth0
+mtu: 1500
+libvirt:
+  image: CumulusCommunity/cumulus-vx:4.4.5
+virtualbox:
+  image: CumulusCommunity/cumulus-vx:4.3.0
+clab:
+  kmods:
+  node:
+    kind: cvx
+    runtime: docker
+    config_templates:
+      interfaces: /etc/network/interfaces
+      hosts: /etc/hosts:shared
+  image: networkop/cx:4.4.0                         # Note: dated and known to have issues, unsupported
+  caveats:
+  - Cumulus 4.x containers are out-of-date and not supported
+  group_vars:
+    ansible_connection: docker
+    ansible_user: root
+external:
+  image: none
+group_vars:
+  ansible_user: vagrant
+  ansible_ssh_pass: vagrant
+  ansible_network_os: cumulus
+  ansible_connection: paramiko
+  netlab_show_command: [ sudo, vtysh, -c, 'show $@' ]
+  netlab_initial: always
+evpn._start_transit_vlan: 3900
+features:
+  initial:
+    system_mtu: True
+    ipv4:
+      unnumbered: True
+    ipv6:
+      lla: True
+  bfd: True
+  bgp:
+    ipv6_lla: True
+    rfc8950: true
+    activate_af: True
+    local_as: True
+    vrf_local_as: True
+    import: [ ospf, ripv2, connected, static, vrf ]
+    community:
+      standard: [ standard, large ]
+      large: [ large ]
+      extended: [ extended ]
+      2octet: [ standard ]
+  dhcp:
+    client:
+      ipv4: True
+      ipv6: True
+      routing: True
+    relay:
+      ipv4: True
+  evpn:
+    irb: True
+    asymmetrical_irb: True
+  gateway:
+    protocol: [ anycast, vrrp ]
+  lag:
+    passive: False
+  ospf:
+    unnumbered: True
+    import: [ bgp, ripv2, connected, static, vrf ]
+    default: true
+    password: true
+    priority: true
+    timers: true
+  ripv2:
+    ipv4: true
+    ipv6: true
+    passive: true
+    import: [ bgp, isis, ospf, connected, static, vrf ]
+  routing:
+    policy:
+      set:
+        locpref: True
+        med: True
+        weight: True
+        prepend: True
+        community:
+          standard: True
+          large: True
+          extended: True
+          append: True
+      match:
+        prefix: True
+        nexthop: True
+        aspath: True
+        community:
+          standard: True
+    prefix: True
+    aspath: True
+    community:
+      standard: True
+    static:
+      vrf: True
+      inter_vrf: True
+  stp:
+    supported_protocols: [ stp, rstp ]
+    # Platform supports pvrst too, but current implementation based on single VLAN-aware bridge
+    # does not in current (old) version
+    enable_per_port: True
+    port_type: True
+  vlan:
+    model: switch
+    svi_interface_name: "vlan{vlan}"
+    subif_name: "{ifname}.{vlan.access_id}"
+  vrf:
+    ospfv2: True
+    bgp: True
+    ripv2: True
+    ripng: True
+  vxlan: True
+
+graphite.icon: switch

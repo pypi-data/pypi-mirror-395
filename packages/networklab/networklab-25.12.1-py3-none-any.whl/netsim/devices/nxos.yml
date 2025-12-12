@@ -1,0 +1,72 @@
+---
+description: Cisco Nexus 9300v
+support:
+  level: best-effort
+interface_name: Ethernet1/{ifindex}
+mgmt_if: mgmt0
+loopback_interface_name: loopback{ifindex}
+virtualbox:
+  image: cisco/nexus9300v
+clab:
+  group_vars:
+    ansible_ssh_pass: admin
+    ansible_user: admin
+    netlab_ready: [ ssh ]
+  image: vrnetlab/vr-n9kv:9.3.8
+  node:
+    kind: cisco_n9kv
+  interface.name: eth{ifindex}
+  build: https://containerlab.dev/manual/kinds/vr-n9kv/
+group_vars:
+  ansible_user: vagrant
+  ansible_ssh_pass: vagrant
+  ansible_network_os: nxos
+  ansible_connection: network_cli
+  netlab_check_retries: 50
+  netlab_check_delay: 10
+  # yamllint disable-line rule:line-length
+  netlab_ssh_args: "-o KexAlgorithms=+diffie-hellman-group14-sha1 -o PubkeyAcceptedKeyTypes=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa"
+bfd:           # NXOS requires lower default timer values
+  min_rx: 500
+evpn._start_transit_vlan: 3800
+features:
+  initial:
+    ipv4:
+      unnumbered: true
+    ipv6:
+      lla: true
+    generate_mac: [ ethernet ]
+  bfd: true
+  bgp: true
+  eigrp: true
+  evpn:
+    irb: true
+  gateway:
+    protocol: [ vrrp ]
+  isis:
+    circuit_type: true
+    unnumbered:
+      ipv4: true
+      ipv6: true
+  ospf:
+    unnumbered: true
+    timers: true
+    password: true
+    priority: true
+  vlan:
+    model: l3-switch
+    native_routed: true
+    subif_name: '{ifname}.{subif_index}'
+    svi_interface_name: vlan{vlan}
+  vrf:
+    ospfv2: True
+    bgp: True
+  vxlan: true
+
+libvirt:
+  create_template: nxos.xml.j2
+  image: cisco/nexus9300v
+  build: https://netlab.tools/labs/nxos/
+external:
+  image: none
+graphite.icon: nexus5000

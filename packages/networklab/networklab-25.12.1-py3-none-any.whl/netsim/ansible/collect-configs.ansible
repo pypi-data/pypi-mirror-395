@@ -1,0 +1,45 @@
+#!/usr/bin/env ansible-playbook
+---
+- name: Collect device configurations
+  hosts: all:!unprovisioned
+  gather_facts: false
+  vars:
+    cwd: "{{ lookup('env','PWD') }}"
+    target_dir: "{{ target|default('config') }}"
+    config_dir: "{{ target_dir if target_dir.startswith('/') else cwd+'/'+target_dir }}"
+    cfg_suffix: "{{ suffix|default('cfg') }}"
+    node_provider: "{{ provider|default(netlab_provider) }}"
+  tasks:
+  - name: Set variables that cannot be set with VARS
+    set_fact:
+      netlab_device_type: "{{ netlab_device_type|default(ansible_network_os) }}"
+
+  - name: Create '{{ config_dir }}' directory
+    file:
+      path: "{{ config_dir }}"
+      state: directory
+    run_once: true
+    delegate_to: localhost
+
+  - name: Find configuration collection script
+    set_fact:
+      collect_script: "{{ lookup('first_found',params,errors='ignore') }}"
+    vars:
+      params:
+        paths: "{{ paths_collect.dirs }}"
+        files: "{{ paths_ready.files }}"
+
+  - include_tasks: "{{ collect_script }}"
+    name: Collect device configurations
+    when: collect_script is string and collect_script != ''
+    args:
+      apply:
+        vars:
+          netsim_action: fetch-config
+
+  - name: Copy collected configuration to '{{ config_dir }}' directory
+    copy:
+      content: "{{ ansible_net_config }}"
+      dest: "{{ config_dir }}/{{ inventory_hostname }}.{{ cfg_suffix }}"
+    delegate_to: localhost
+    when: ansible_net_config is defined

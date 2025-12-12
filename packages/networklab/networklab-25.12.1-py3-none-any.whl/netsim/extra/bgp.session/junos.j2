@@ -1,0 +1,152 @@
+{# Make sure BFD variable exists ;) #}
+{% set bfd = bfd|default({}) %}
+
+{% if bgp._junos_default_originate|default(false) %}
+routing-options {
+  static {
+    route 0.0.0.0/0 discard no-install;
+  }
+  rib inet6.0 {
+    static {
+      route ::/0 discard no-install;
+    }
+  }
+}
+{% endif %}
+{% for vname,vdata in (vrfs|default({})).items() %}
+{%   if vdata.bgp._junos_default_originate|default(false) %}
+routing-instances {
+  {{vname}} {
+    routing-options {
+      static {
+        route 0.0.0.0/0 discard no-install;
+      }
+      rib {{vname}}.inet6.0 {
+        static {
+          route ::/0 discard no-install;
+        }
+      }
+    }
+  }
+}
+{%   endif %}
+{% endfor %}
+
+{#
+   Macro for neighbor attributes
+#}
+{% macro bgp_neighbor(n,bfd,af,k) %}
+{%   if n.as_override|default(false) %}
+  as-override;
+{%   endif %}
+{%   if n.allowas_in is defined %}
+  family {{ 'inet' if af == 'ipv4' else 'inet6' }} unicast loops {{ n.allowas_in }};
+{%   endif %}
+{%   if n.bfd|default(False) %}
+{%     if bfd %}
+  bfd-liveness-detection {
+    minimum-interval {{ bfd.min_tx|default(1000) }};
+    minimum-receive-interval {{ bfd.min_rx|default(1000) }};
+    multiplier {{ bfd.multiplier|default(3) }};
+  }
+{%     else %}
+  bfd-liveness-detection;
+{%     endif %}
+{%   endif %}
+{%   if n.passive|default(false) %}
+  passive;
+{%   endif %}
+{%   if n.remove_private_as|default(false) %}
+  remove-private;
+{%   endif %}
+
+{# n.default_originate, if present, is handled on device quirk python code to avoid clashing/overwriting policies #}
+
+{%   if n.password is defined %}
+  authentication-key "{{ n.password }}";
+{%   endif %}
+{%   if n.timers is defined %}
+{%     if n.timers.hold|default(0) %}
+  hold-time {{ n.timers.hold }};
+{%     elif n.timers.keepalive|default(0) %}
+  hold-time {{ n.timers.keepalive * 3 }};
+{%     endif %}
+{%   endif %}
+{%- endmacro %}
+
+{# Main BGP Instance #}
+protocols {
+  bgp {
+{% for af in ['ipv4','ipv6'] if bgp[af] is defined and loopback[af] is defined %}
+{%   for n in bgp.neighbors if n[af] is defined and n.type == 'ibgp' %}
+{%     if loop.first %}
+    group ibgp-peers-{{ af }} {
+{%     endif %}
+      neighbor {{ n[af] }} {
+        {# IBGP neighbor within an address family #}
+        {{ bgp_neighbor(n,bfd,af,'ibgp') }}
+      }
+{%     if loop.last %}
+    }
+{%     endif %}
+{%   endfor %}
+{% endfor %}
+{% for n in bgp.neighbors if n.type == 'ebgp' %}
+{%   if loop.first %}
+    group ebgp-peers {
+{%   endif %}
+{%   for af in ['ipv4','ipv6'] if n[af] is defined %}
+      neighbor {{ n[af] }} {
+        {# EBGP neighbor #}
+        {{ bgp_neighbor(n,bfd,af,'ebgp') }}
+      }
+{%   endfor %}
+{%     if loop.last %}
+    }
+{%     endif %}
+{% endfor %}
+  }
+}
+
+{# VRF -> BGP Instances #}
+routing-instances {
+{% for vname,vdata in (vrfs|default({})).items() %}
+
+  {{vname}} {
+    protocols {
+      bgp {
+{%   for af in ['ipv4','ipv6'] if vdata.af[af] is defined and vdata.loopback_address[af] is defined %}
+{%     for n in vdata.bgp.neighbors|default([]) if n[af] is defined and n.type == 'ibgp' %}
+{%       if loop.first %}
+        group ibgp-peers-{{ af }} {
+{%       endif %}
+          neighbor {{ n[af] }} {
+            {# THIS HERE IS THE NEIGHBOR (VRF->iBGP) #}
+            {{ bgp_neighbor(n,bfd,af,'ibgp') }}
+          }
+{%       if loop.last %}
+        }
+{%       endif %}
+{%     endfor %}
+{%   endfor %}
+
+{%   for n in vdata.bgp.neighbors|default([]) if n.type == 'ebgp' %}
+{%     if loop.first %}
+        group ebgp-peers {
+{%     endif %}
+{%     for af in ['ipv4','ipv6'] if n[af] is defined %}
+          neighbor {{ n[af] }} {
+            {# THIS HERE IS THE NEIGHBOR (VRF->eBGP) #}
+            {{ bgp_neighbor(n,bfd,af,'ebgp') }}
+          }
+{%     endfor %}
+{%     if loop.last %}
+        }
+{%     endif %}
+{%   endfor %}
+      }
+    }
+  }
+
+{% endfor %}
+}

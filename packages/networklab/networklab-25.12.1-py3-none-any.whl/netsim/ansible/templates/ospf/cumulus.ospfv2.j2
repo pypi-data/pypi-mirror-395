@@ -1,0 +1,57 @@
+{% import "templates/routing/_default.ios.j2" as ospf_default %}
+{% import "templates/routing/_redistribute.frr.j2" as redistribute with context %}
+!
+router ospf
+{% if ospf.router_id|ipv4 %}
+ ospf router-id {{ ospf.router_id }}
+{% endif %}
+{% for l in interfaces|default([]) if l.ospf.passive|default(False) %}
+ passive-interface {{ l.ifname }}
+{% endfor %}
+{% if ospf.reference_bandwidth is defined %}
+ auto-cost reference-bandwidth {{ ospf.reference_bandwidth }}
+{% endif %}
+ timers throttle spf 10 50 500
+ timers throttle lsa all 100
+ timers lsa min-arrival 100
+{{ ospf_default.config(ospf,'ipv4') }}
+{{ redistribute.config(ospf,af='ipv4') }}
+!
+{% if 'ipv4' in loopback %}
+interface {{ loopback.ifname }}
+ ip ospf area {{ ospf.area }}
+{% endif %}
+!
+{% for l in interfaces|default([]) if 'ospf' in l and ('ipv4' in l or 'ipv4' in l.dhcp.client|default({})) %}
+interface {{ l.ifname }}
+! {{ l.name|default("") }}
+ ip ospf area {{ l.ospf.area }}
+{%   if l.ospf.network_type is defined %}
+ ip ospf network {{ l.ospf.network_type }}
+{%   endif %}
+{%   if l.ospf.cost is defined %}
+ ip ospf cost {{ l.ospf.cost }}
+{%   endif %}
+{%   if l.ospf.bfd|default(False) %}
+{%     set link_bfd = l.bfd|default({}) %}
+ ip ospf bfd {{
+   link_bfd.multiplier|default(bfd.multiplier)|default(3)
+   }} {{ 
+   link_bfd.min_rx|default(bfd.min_rx)|default(500) }} {{ 
+   link_bfd.min_tx|default(bfd.min_tx)|default(500) }}
+{%   endif %}
+{%   if l.ospf.timers.hello is defined %}
+ ip ospf hello-interval {{ l.ospf.timers.hello }}
+{%   endif %}
+{%   if l.ospf.timers.dead is defined %}
+ ip ospf dead-interval {{ l.ospf.timers.dead }}
+{%   endif %}
+{%   if l.ospf.priority is defined %}
+ ip ospf priority {{ l.ospf.priority }}
+{%   endif %}
+{%   if l.ospf.password is defined %}
+ ip ospf authentication-key {{ l.ospf.password }}
+ ip ospf authentication
+{%   endif %}
+!
+{% endfor %}

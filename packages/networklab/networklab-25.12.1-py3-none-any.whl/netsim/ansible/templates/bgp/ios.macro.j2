@@ -1,0 +1,49 @@
+!
+{#
+   Global BGP neighbor definition
+#}
+{% macro neighbor_global(n,ip) %}
+  neighbor {{ ip }} remote-as {{ n.as }}
+{% if n.local_as is defined %}
+  neighbor {{ ip }} local-as {{ n.local_as }}{% 
+    if n.replace_global_as|default(True) and n.type != 'localas_ibgp' %} no-prepend replace-as{% endif +%}
+{% endif %}
+  neighbor {{ ip }} description {{ n.name }}
+{% if n._source_intf is defined %}
+  neighbor {{ ip }} update-source {{ n._source_intf.ifname }}
+{% endif %}
+{%- endmacro %}
+{#
+   Address family BGP neighbor definition
+#}
+{% macro neighbor_af(n,ip,bgp) %}
+  neighbor {{ ip }} activate
+  neighbor {{ ip }} advertisement-interval 0
+{% if n.next_hop_self|default(False) %}
+  neighbor {{ ip }} next-hop-self{% if n.next_hop_self == 'all' %} all{% endif +%}
+{% endif %}
+{% if n.rr_client|default(False) %}
+  neighbor {{ ip }} route-reflector-client
+{% endif %}
+{% if n.type in bgp.community|default({}) %}
+{%   set c_list = bgp.community[n.type] %}
+{#   Deal with IOS/XE regression to the 90s #}
+{%   if 'standard' in c_list and 'extended' in c_list %}
+  neighbor {{ ip }} send-community both
+{%   else %}
+{%     for c_type in c_list %}
+  neighbor {{ ip }} send-community {{ c_type }}
+{%     endfor %}
+{%   endif %}
+{% endif %}
+{%- endmacro -%}
+{#
+   BGP network statement
+#}
+{% macro bgp_network(af,pfx) %}
+{%   if af == 'ipv4' %}
+  network {{ pfx|ipaddr('network') }} mask {{ pfx|ipaddr('netmask') }}
+{%   else %}
+  network {{ pfx|ipaddr('0') }}
+{%   endif %}
+{%- endmacro %}

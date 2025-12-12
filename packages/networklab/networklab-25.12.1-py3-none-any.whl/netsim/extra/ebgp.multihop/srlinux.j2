@@ -1,0 +1,33 @@
+{% macro ebgp_session(n,af,vrf) -%}
+{%   if n.multihop is defined %}
+- path: /network-instance[name={{vrf}}]/protocols/bgp
+  value:
+    neighbor:
+    - peer-address: {{ n[af]|ipaddr('address') }}
+      multihop:
+        admin-state: enable
+        maximum-hops: {{ n.multihop|int }}
+{%     if n._source_intf[af] is defined  %}
+      transport:
+        local-address: "{{ n._source_intf[af]|ipaddr('address') }}"
+{%     endif %}
+      description: "{{ n.name }} (multihop={{n.multihop|int}})"
+{%   endif %}
+{%- endmacro %}
+
+updates:
+{% for af in ['ipv4','ipv6'] %}
+{%   for n in bgp.neighbors if n[af] is defined %}
+{{     ebgp_session(n,af,'default') -}}
+{%   endfor %}
+{% endfor %}
+
+{% if vrfs is defined %}
+{%   for vname,vdata in vrfs.items() if vdata.bgp is defined %}
+{%     for af in ['ipv4','ipv6'] %}
+{%       for n in vdata.bgp.neighbors if n[af] is defined %}
+{{         ebgp_session(n,af,vname) -}}
+{%       endfor %}
+{%     endfor %}
+{%   endfor %}
+{% endif %}

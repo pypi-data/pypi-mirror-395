@@ -1,0 +1,142 @@
+name: {{ name }}
+prefix: "{{ defaults.providers.clab.lab_prefix|default( "" ) }}"
+
+{# We have to deal with mgmt._network not being defined or being False-ish #}
+mgmt:
+  network: {{ addressing.mgmt._network|default('') or 'netlab_mgmt' }}
+  ipv4-subnet: {{ addressing.mgmt.ipv4|default('172.20.20.0/24') }}
+  # Note: 'start' not validated
+{% if defaults.addressing.mgmt.ipv6 is defined %}
+  ipv6-subnet: {{ defaults.addressing.mgmt.ipv6 }}
+{% endif %}
+{% if addressing.mgmt._bridge|default('') %}
+  bridge: {{ addressing.mgmt._bridge }}
+{% endif %}
+topology:
+  nodes:
+{% for name,n in nodes.items() if not (n.unmanaged|default(False)) %}
+{%   set clab = n.clab|default({}) %}
+    {{ name }}:
+{%   if 'network-mode' not in clab or clab['network-mode'] != 'none' %}
+{%     if n.mgmt.ipv4 is defined %}
+      mgmt-ipv4: {{ n.mgmt.ipv4 }}
+{%     endif %}
+{%     if n.mgmt.ipv6 is defined %}
+      mgmt-ipv6: {{ n.mgmt.ipv6 }}
+{%     endif %}
+{%   endif %}
+{%   set kind = clab.kind | default(n.device) %}
+      kind: {{ kind }}
+{%   if kind == 'linux' and 'restart-policy' not in clab %}
+      restart-policy: 'no'
+{%   endif %}
+{%   for cset in defaults.providers.clab.attributes.node._keys
+         if clab[cset] is defined and cset not in defaults.providers.clab.node_config_special %}
+{%     if clab[cset] is string %}
+      {{ cset }}: '{{ clab[cset] }}'
+{%     else %}
+      {{ cset }}: {{ clab[cset] }}
+{%     endif %}
+{%   endfor %}
+      image: {{ clab.image|default(n.box) }}
+      runtime: {{ clab.runtime|default(defaults.providers.clab.runtime) }}
+{%   if groups is defined %}
+      group: {% for g in groups if n.name in groups[g].members %}{{'' if loop.first else ','}}{{g}}{% endfor +%}
+{%   endif %}
+{%   if 'srl-agents' in clab %}
+      extras:
+        srl-agents: {{ clab['srl-agents'] }}
+{%   endif %}
+{%   if 'binds' in clab %}
+      binds:
+{%     for bind_item in clab.binds %}
+      - {{ bind_item }}
+{%     endfor %}
+{%   endif %}
+{%   if 'startup-config' in clab %}
+{%     set cfg = clab['startup-config'] %}
+      startup-config: {{ ("|\n" + cfg) | indent(8) if '\n' in cfg else cfg }}
+{%   endif %}
+{% endfor %}
+
+{% if links|default([]) %}
+{# Define bridges for links with less (stub) or more than 2 nodes #}
+{% set bridge_type = defaults.providers.clab.bridge_type|default('bridge') %}
+{% for b in links|rejectattr('node_count','le',2)|selectattr('bridge','defined')|map(attribute='bridge')|unique %}
+    {{ b }}:
+      kind: {{ bridge_type }}
+{% endfor %}
+
+  links:
+{% for l in links %}
+{% if l.clab is defined and l.clab.uplink|default(False) %}
+{#
+    Uplink ==> create MACVTAP endpoint
+#}
+{%   for n in nodes.values() if not (n.unmanaged|default(False)) %}
+{%     for nl in n.interfaces|default([]) if nl.linkindex|default(0) == l.linkindex %}
+{%       set clab = nl.clab|default({}) %}
+  - endpoints:
+    - "{{ n.name }}:{{ clab.name|default(nl.ifname) }}"
+    - "macvlan:{{ l.clab.uplink }}"
+{%     endfor %}
+{%   endfor %}
+{% elif l.node_count == 1 %}
+{#
+    stub link implemented with dummy device
+#}
+{%   for n in nodes.values() if not (n.unmanaged|default(False)) %}
+{%     for nl in n.interfaces|default([]) if nl.linkindex|default(0) == l.linkindex %}
+{%       if loop.first %}
+  - type: dummy
+    endpoint:
+      node: "{{ n.name }}"
+{%       set clab = nl.clab|default({}) %}
+      interface: "{{ clab.name|default(nl.ifname) }}"
+{%       endif %}
+{%     endfor %}
+{%   endfor %}
+{% elif l.node_count == 2 %}
+{#
+    point-to-point link between two containers
+#}
+  - endpoints:
+{%   for n in nodes.values() if not (n.unmanaged|default(False)) %}
+{%     for nl in n.interfaces|default([]) if nl.linkindex|default(0) == l.linkindex %}
+{%       set clab = nl.clab|default({}) %}
+    - "{{ n.name }}:{{ clab.name|default(nl.ifname) }}"
+{%     endfor %}
+{%   endfor %}
+{% else %}
+{#
+    link with more or less than two endpoints, or a multi-provider link
+#}
+{%   for n in nodes.values() if not (n.unmanaged|default(False)) %}
+{%     for nl in n.interfaces|default([]) if nl.linkindex|default(0) == l.linkindex %}
+{%       set clab = nl.clab|default({}) %}
+  - endpoints:
+    - "{{ n.name }}:{{ clab.name|default(nl.ifname) }}"
+{# 
+    Whatever we try to do to make the bridge interface names sane, someone
+    inevitably finds a "counter-example" because (for example) one could not
+    possibly make the node names unique in the first 10 characters
+    (see #2564 for details).
+
+    As a desperate attempt to get away from that nasty can of worms, we'll
+    make the bridge interface names cryptic and made of three parts:
+
+    * nbi{multilab.id} to handle the multilab scenarios
+    * n{id} to make interface names unique based on node ID
+    * i{id} to distinguish between interfaces on the node
+
+    None of these components can use 'native' node or interface names, or
+    we run out of the 16-character limit. Please note this only applies to
+    bridge-side part of vEth pair; the overly-long names of VM interfaces
+    connected to a bridge are left to Vagrant).
+#}
+    - "{{ l.bridge }}:bni{{ defaults.multilab.id|default(0) }}n{{ n.id }}i{{ nl.ifindex }}"
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}

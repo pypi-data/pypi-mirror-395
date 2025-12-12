@@ -1,0 +1,14 @@
+---
+- set_fact:
+    junos_phy_iflist: >-
+      {{ interfaces|rejectattr('virtual_interface','defined') }}
+
+- name: Wait for first interface ({{ junos_phy_iflist[0].junos_interface }})
+  junos_command:
+    commands:
+    - show interfaces terse
+    wait_for:
+    - result[0] contains {{ junos_phy_iflist[0].junos_interface }}
+    interval: 5
+    retries: 60
+  when: junos_phy_iflist
