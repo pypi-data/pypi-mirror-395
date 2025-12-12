@@ -1,0 +1,803 @@
+from __future__ import annotations
+
+import dataclasses
+from collections import deque
+from functools import cached_property
+from typing import Any, Callable, Generic, Hashable, Iterable, List, Optional, cast
+
+from cappa.arg import Arg, ArgAction, ArgActionType, Group
+from cappa.command import Command, Subcommand
+from cappa.completion.types import Completion, FileCompletion
+from cappa.help import format_arg, format_subcommand_names
+from cappa.invoke import fulfill_deps
+from cappa.output import Exit, HelpExit, Output
+from cappa.typing import T, assert_type
+
+
+class BadArgumentError(RuntimeError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        value: Any,
+        command: Command[Any],
+        arg: Arg[Any] | Subcommand | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.value = value
+        self.command = command
+        self.arg = arg
+
+
+@dataclasses.dataclass
+class HelpAction(RuntimeError):
+    command: Command[Any]
+    command_name: str
+
+    @classmethod
+    def from_parse_state(cls, parse_state: ParseState, command: Command[Any]):
+        raise cls(command, parse_state.prog)
+
+
+@dataclasses.dataclass
+class VersionAction(RuntimeError):
+    version: Arg[Any]
+
+    @classmethod
+    def from_arg(cls, arg: Arg[Any]):
+        raise cls(arg)
+
+
+class CompletionAction(RuntimeError):
+    def __init__(
+        self,
+        *completions: Completion | FileCompletion,
+        value: str = "complete",
+        arg: Arg[Any] | None = None,
+    ) -> None:
+        self.completions = completions
+        self.value = value
+        self.arg = arg
+
+    @classmethod
+    def from_value(cls, value: Value[str], arg: Arg[Any]):
+        raise cls(value=value.value, arg=arg)
+
+
+def backend(
+    command: Command[T],
+    argv: list[str],
+    output: Output,
+    prog: str,
+    provide_completions: bool = False,
+) -> tuple[Any, Command[T], dict[str, Any]]:
+    parse_state = ParseState.from_command(
+        argv, command, output=output, provide_completions=provide_completions
+    )
+    context = ParseContext.from_command(parse_state.current_command)
+
+    try:
+        try:
+            parse(parse_state, context)
+        except HelpAction as e:
+            raise HelpExit(
+                e.command.help_formatter(e.command, e.command_name),
+                code=0,
+                prog=parse_state.prog,
+            )
+        except VersionAction as e:
+            raise Exit(cast(str, e.version.value_name), code=0, prog=parse_state.prog)
+        except BadArgumentError as e:
+            if parse_state.provide_completions and e.arg:
+                completions = e.arg.completion(e.value) if e.arg.completion else []
+                raise CompletionAction(*completions)
+
+            raise Exit(str(e), code=2, prog=parse_state.prog, command=e.command)
+    except CompletionAction as e:
+        from cappa.completion.base import execute, format_completions
+
+        if provide_completions:
+            completions = format_completions(*e.completions)
+            raise Exit(completions, code=0)
+
+        execute(command, prog, e.value, cast(Arg[Any], e.arg), output=output)
+
+    if provide_completions:
+        raise Exit(code=0)
+
+    return (parse_state, parse_state.current_command or command, context.result)
+
+
+@dataclasses.dataclass
+class ParseState:
+    """The overall state of the argument parse."""
+
+    remaining_args: deque[RawArg | RawOption]
+    command_stack: list[Command[Any]]
+    output: Output
+    provide_completions: bool = False
+
+    @classmethod
+    def from_command(
+        cls,
+        argv: list[str],
+        command: Command[Any],
+        output: Output,
+        provide_completions: bool = False,
+    ):
+        args = RawArg.collect(argv, provide_completions=provide_completions)
+        return cls(
+            args,
+            command_stack=[command],
+            output=output,
+            provide_completions=provide_completions,
+        )
+
+    @property
+    def current_command(self):
+        return self.command_stack[-1]
+
+    @property
+    def prog(self):
+        return " ".join(c.real_name() for c in self.command_stack)
+
+    def push_command(self, command: Command[Any]):
+        self.command_stack.append(command)
+
+    def push_arg(self, arg: RawArg):
+        self.remaining_args.appendleft(arg)
+
+    def has_values(self) -> bool:
+        return bool(self.remaining_args)
+
+    def peek_value(self):
+        if not self.remaining_args:
+            return None
+        return self.remaining_args[0]
+
+    def next_value(self):
+        return self.remaining_args.popleft()
+
+
+@dataclasses.dataclass
+class ParseContext:
+    """The parsing context specific to a command."""
+
+    command: Command[Any]
+    arguments: deque[Arg[Any] | Subcommand]
+    missing_options: set[str]
+    arguments_by_field_name: dict[str, list[Arg[Any]]]
+    arguments_by_value_name: dict[str, Arg[Any]]
+    propagated_options: set[str]
+    parent_context: ParseContext | None = None
+    exclusive_args: dict[str, Arg[Any]] = dataclasses.field(default_factory=lambda: {})
+
+    result: dict[str, Any] = dataclasses.field(default_factory=lambda: {})
+
+    @classmethod
+    def from_command(
+        cls,
+        command: Command[Any],
+        parent_context: ParseContext | None = None,
+    ) -> ParseContext:
+        arguments_by_field_name: dict[str, list[Arg[Any]]] = {}
+        arguments_by_value_name: dict[str, Arg[Any]] = {}
+        propagated_options: set[str] = set()
+        unique_field_names: set[str] = set()
+
+        def add_option_names(arg: Arg[Any]):
+            for opts in (arg.short, arg.long):
+                if not opts:
+                    continue
+
+                for key in cast(List[str], opts):
+                    if key in arguments_by_value_name:
+                        raise ValueError(f"Conflicting option string: {key}")
+
+                    arguments_by_value_name[key] = arg
+
+        native_command_field_names: set[str] = set()
+        for arg in command.options:
+            field_name = cast(str, arg.field_name)
+
+            if arg.action not in ArgAction.meta_actions():
+                unique_field_names.add(field_name)
+
+            native_command_field_names.add(field_name)
+            arguments_by_field_name.setdefault(field_name, []).append(arg)
+            add_option_names(arg)
+
+        for arg in command.propagated_arguments:
+            field_name = cast(str, arg.field_name)
+
+            if field_name in native_command_field_names:
+                continue
+
+            propagated_options.add(field_name)
+            arguments_by_field_name.setdefault(field_name, []).append(arg)
+            add_option_names(arg)
+
+        arguments = deque(command.positional_arguments)
+
+        return cls(
+            command=command,
+            parent_context=parent_context,
+            arguments_by_field_name=arguments_by_field_name,
+            arguments_by_value_name=arguments_by_value_name,
+            propagated_options=propagated_options,
+            arguments=arguments,
+            missing_options=unique_field_names,
+        )
+
+    @cached_property
+    def propagated_context(self) -> dict[str, ParseContext]:
+        parent_context = (
+            self.parent_context.propagated_context if self.parent_context else {}
+        )
+        self_options = {
+            assert_type(o.field_name, str): o
+            for o in self.command.options
+            if o.propagate
+        }
+        self_context: dict[str, ParseContext] = dict.fromkeys(self_options, self)
+        return {**parent_context, **self_context}
+
+    def next_argument(self):
+        return self.arguments.popleft()
+
+    def resolve_context(self, field_name: str, option: RawOption | None = None):
+        context = self
+        if option and field_name in self.propagated_options:
+            context = self.propagated_context[field_name]
+        return context
+
+    def set_result(
+        self,
+        field_name: str,
+        value: Any,
+        option: RawOption | None = None,
+        has_value: bool = True,
+    ):
+        if option and field_name in self.missing_options:
+            self.missing_options.remove(field_name)
+
+        if has_value:
+            self.result[field_name] = value
+
+    def push(self, command: Command[Any], name: str) -> ParseContext:
+        nested_context = ParseContext.from_command(command, parent_context=self)
+        nested_context.result["__name__"] = name
+        return nested_context
+
+
+@dataclasses.dataclass
+class RawArg:
+    raw: str
+    end: bool = False
+
+    @classmethod
+    def collect(
+        cls, argv: list[str], *, provide_completions: bool = False
+    ) -> deque[RawArg | RawOption]:
+        result: list[RawArg | RawOption] = []
+
+        encountered_double_dash = False
+        for arg in argv:
+            if encountered_double_dash:
+                item: RawArg | RawOption | None = cls(arg)
+            else:
+                item = RawArg.from_str(arg, provide_completions=provide_completions)
+
+            if item is None:
+                encountered_double_dash = True
+
+                # Indicate to the arg consumption loop that it should stop consuming the
+                # current argument. Irrelevant to options, whose name-argument is consumed
+                # ahead of the value.
+                if result:
+                    result[-1].end = True
+            else:
+                result.append(item)
+
+        return deque(result)
+
+    @classmethod
+    def from_str(
+        cls, arg: str, *, provide_completions: bool = False
+    ) -> RawArg | RawOption | None:
+        skip = arg == "--" and not provide_completions
+        if skip:
+            return None
+
+        is_option = arg and arg[0] == "-" and (provide_completions or len(arg) > 1)
+
+        if is_option:
+            return RawOption.from_str(arg)
+
+        return cls(arg)
+
+
+@dataclasses.dataclass
+class RawOption:
+    name: str
+    is_long: bool
+    value: str | None = None
+    end: bool = False
+
+    @classmethod
+    def from_str(cls, arg: str) -> RawOption:
+        is_long = arg.startswith("--")
+        is_explicit = "=" in arg
+
+        name = arg
+        value = None
+        if is_explicit:
+            name, value = arg.split("=", 1)
+        return cls(name=name, is_long=is_long, value=value)
+
+
+def parse(parse_state: ParseState, context: ParseContext) -> None:
+    while True:
+        while isinstance(parse_state.peek_value(), RawOption):
+            arg = cast(RawOption, parse_state.next_value())
+
+            if arg.is_long:
+                parse_option(parse_state, context, arg)
+            else:
+                parse_short_option(parse_state, context, arg)
+
+        parse_args(parse_state, context)
+
+        if not parse_state.has_values():
+            break
+
+    # Options are not explicitly iterated over because they can occur multiple times non-contiguouesly.
+    # So instead we check afterward, if there are any missing which we haven't yet fulfilled.
+    required_missing_options = [
+        arg
+        for opt_name in sorted(context.missing_options)
+        for arg in context.arguments_by_field_name[opt_name]
+        if arg.required
+    ]
+    if required_missing_options:
+        names = ", ".join([opt.names_str("/") for opt in required_missing_options])
+        raise BadArgumentError(
+            f"The following arguments are required: {names}",
+            value="",
+            command=parse_state.current_command,
+            arg=required_missing_options[0],
+        )
+
+
+def parse_option(
+    parse_state: ParseState, context: ParseContext, raw: RawOption
+) -> None:
+    if raw.name not in context.arguments_by_value_name:
+        possible_options: dict[str, Arg[Any]] = {
+            name: arg
+            for name, arg in context.arguments_by_value_name.items()
+            if name.startswith(raw.name)
+        }
+
+        if parse_state.provide_completions:
+            options: list[Completion] = []
+            for name, option in possible_options.items():
+                rendered_help = str(
+                    format_arg(
+                        parse_state.output.output_console,
+                        context.command.help_formatter,
+                        option,
+                    )
+                ).strip()
+                completion = Completion(name, help=rendered_help, arg=option)
+                options.append(completion)
+
+            raise CompletionAction(*options)
+
+        message = f"Unrecognized arguments: {raw.name}"
+        if possible_options:
+            message += f" (Did you mean: {', '.join(possible_options.keys())})"
+
+        raise BadArgumentError(
+            message, value=raw.name, command=parse_state.current_command
+        )
+
+    arg = context.arguments_by_value_name[raw.name]
+
+    consume_arg(parse_state, context, arg, raw)
+
+
+def parse_short_option(
+    parse_state: ParseState, context: ParseContext, arg: RawOption
+) -> None:
+    if arg.name == "-" and parse_state.provide_completions:
+        return parse_option(parse_state, context, arg)
+
+    virtual_options, virtual_arg = generate_virtual_args(
+        arg, context.arguments_by_value_name
+    )
+    *first_virtual_options, last_virtual_option = virtual_options
+
+    for opt in first_virtual_options:
+        parse_option(parse_state, context, opt)
+
+    if virtual_arg:
+        parse_state.push_arg(virtual_arg)
+
+    parse_option(parse_state, context, last_virtual_option)
+    return None
+
+
+def generate_virtual_args(
+    arg: RawOption, options: dict[str, Any]
+) -> tuple[list[RawOption], RawArg | None]:
+    """Produce "virtual" options from short (potentially concatenated) options.
+
+    Examples:
+        -abc -> -a, -b, -c
+        -c0 -> -c 0
+        -abc0 -> -a, -b, -c, 0
+    """
+    result: list[RawOption] = []
+
+    partial_arg = ""
+    remaining_arg = arg.name[1:]
+    while remaining_arg:
+        partial_arg += remaining_arg[0]
+        remaining_arg = remaining_arg[1:]
+
+        option_name = f"-{partial_arg}"
+
+        option = options.get(option_name)
+        if option:
+            result.append(RawOption(option_name, is_long=True, value=arg.value))
+            partial_arg = ""
+
+            # An option which requires consuming further arguments should consume
+            # the rest of the concatenated character sequence as its value.
+            if option.num_args:
+                partial_arg = remaining_arg
+                break
+
+    if not result:
+        # i.e. -p, where -p is not a real short option. It will get skipped above.
+        return ([RawOption(arg.name, is_long=True, value=arg.value)], None)
+
+    raw_arg = None
+    if partial_arg:
+        raw_arg = RawArg(partial_arg)
+
+    return (result, raw_arg)
+
+
+def parse_args(parse_state: ParseState, context: ParseContext) -> None:
+    while context.arguments:
+        if isinstance(parse_state.peek_value(), RawOption):
+            break
+
+        arg = context.next_argument()
+
+        if isinstance(arg, Subcommand):
+            consume_subcommand(parse_state, context, arg)
+        else:
+            consume_arg(parse_state, context, arg)
+    else:
+        value = parse_state.peek_value()
+        if value is None or isinstance(value, RawOption):
+            return
+
+        raw_values: list[str] = []
+        while parse_state.peek_value():
+            next_val = parse_state.next_value()
+            if not isinstance(next_val, RawArg):
+                break
+            raw_values.append(next_val.raw)
+
+        raise BadArgumentError(
+            f"Unrecognized arguments: {', '.join(raw_values)}",
+            value=raw_values,
+            command=parse_state.current_command,
+        )
+
+
+def consume_subcommand(
+    parse_state: ParseState, context: ParseContext, arg: Subcommand
+) -> Any:
+    try:
+        value = parse_state.next_value()
+    except IndexError:
+        if not arg.required:
+            return
+
+        raise BadArgumentError(
+            f"A command is required: {{{format_subcommand_names(arg.names())}}}",
+            value="",
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    assert isinstance(value, RawArg), value
+    if value.raw not in arg.options:
+        message = f"Invalid command '{value.raw}'"
+        possible_values = [name for name in arg.names() if name.startswith(value.raw)]
+        if possible_values:
+            message += f" (Did you mean: {format_subcommand_names(possible_values)})"
+
+        raise BadArgumentError(
+            message,
+            value=value.raw,
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    command = arg.options[value.raw]
+    check_deprecated(parse_state, command)
+
+    parse_state.push_command(command)
+    nested_context = context.push(command, value.raw)
+
+    parse(parse_state, nested_context)
+
+    name = cast(str, arg.field_name)
+    context.result[name] = nested_context.result
+
+
+def iter_arg_values(
+    parse_state: ParseState,
+    num_args: int,
+    option: RawOption | None,
+) -> Iterable[str]:
+    """Collect argument values from the parse state."""
+    # If option has explicit value (e.g., --opt=val), yield it and stop
+    if option and option.value:
+        yield option.value
+        return
+
+    # If option ends with --, don't collect more values
+    if option and option.end:
+        return
+
+    remaining = num_args
+    while remaining:
+        if isinstance(parse_state.peek_value(), RawOption):
+            break
+
+        try:
+            next_val = cast(RawArg, parse_state.next_value())
+        except IndexError:
+            break
+
+        yield next_val.raw
+
+        if next_val.end:
+            break
+
+        # num_args == -1 means unbounded, so remaining will always be truthy
+        remaining -= 1
+
+
+def arg_bypasses_action(
+    arg: Arg[Any],
+    values: list[str],
+    expected_count: int,
+    option: RawOption | None,
+    parse_state: ParseState,
+) -> bool:
+    """Check whether the current argument is in a state that bypasses action processing."""
+    is_option = bool(option)
+    is_positional = not is_option
+
+    is_option_collecting_values = option and not (option.value or option.end)
+
+    is_single_value = expected_count == 1
+    is_fixed_count = expected_count > 0
+    is_unbounded = expected_count < 0
+
+    has_value = bool(values)
+    has_expected_value = is_fixed_count and len(values) == expected_count
+    expects_value = option or arg.required
+
+    if has_expected_value:
+        return False
+
+    if is_single_value and not has_value and expects_value:
+        raise BadArgumentError(
+            f"Option '{arg.value_name}' requires an argument",
+            value="",
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    if is_single_value:
+        return not has_value
+
+    is_unbounded_empty = is_unbounded and not has_value
+    if not is_fixed_count and not is_unbounded_empty:
+        return False
+
+    is_optional_positional_without_value = (
+        is_positional and not arg.required and not has_value
+    )
+
+    is_unbounded_optional_without_value = (
+        is_unbounded_empty and not arg.required and is_option_collecting_values
+    )
+
+    if (
+        not is_optional_positional_without_value
+        and not is_unbounded_optional_without_value
+    ):
+        names_str = arg.names_str("/")
+        count_desc = "at least one" if is_unbounded else expected_count
+        message = (
+            f"Argument '{names_str}' requires {count_desc} values, found {len(values)}"
+        )
+        if values:
+            quoted = [f"'{v}'" for v in values]
+            message += f" ({', '.join(quoted)} so far)"
+        raise BadArgumentError(
+            message,
+            value=values,
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    return is_optional_positional_without_value
+
+
+def check_exclusive_group(
+    arg: Arg[Any],
+    context: ParseContext,
+    result: Any,
+    parse_state: ParseState,
+) -> None:
+    """Check if arg violates exclusive group constraints."""
+    group = cast(Optional[Group], arg.group)
+    if not group or not group.exclusive:
+        return
+
+    group_name = group.name
+    exclusive_arg = context.exclusive_args.get(group_name)
+
+    if exclusive_arg and exclusive_arg != arg:
+        raise BadArgumentError(
+            f"Argument '{arg.names_str('/')}' is not allowed with argument"
+            f" '{exclusive_arg.names_str('/')}'",
+            value=result,
+            command=parse_state.current_command,
+            arg=arg,
+        )
+
+    context.exclusive_args[group_name] = arg
+
+
+def consume_arg(
+    parse_state: ParseState,
+    context: ParseContext,
+    arg: Arg[Any],
+    option: RawOption | None = None,
+) -> Any:
+    field_name = cast(str, arg.field_name)
+
+    # Determine how many values to collect
+    expected_count = arg.num_args if arg.num_args is not None else 1
+    if ArgAction.is_non_value_consuming(arg.action):
+        expected_count = 0
+
+    values = list(iter_arg_values(parse_state, expected_count, option))
+
+    if arg_bypasses_action(arg, values, expected_count, option, parse_state):
+        return
+
+    # Convert single-value args to scalar
+    result: str | list[str] = values[0] if expected_count == 1 else values
+
+    # Handle completions for args with values
+    if parse_state.provide_completions and not parse_state.has_values() and values:
+        if arg.completion:
+            completions: list[Completion] | list[FileCompletion] = arg.completion(
+                result
+            )
+        else:
+            completions = [FileCompletion(values[-1])]
+        raise CompletionAction(*completions)
+
+    check_exclusive_group(arg, context, result, parse_state)
+
+    action_handler = determine_action_handler(arg.action)
+    resolved_context = context.resolve_context(field_name, option)
+
+    fulfilled_deps: dict[Hashable, Any] = {
+        Command: parse_state.current_command,
+        Output: parse_state.output,
+        ParseContext: resolved_context,
+        ParseState: parse_state,
+        Arg: arg,
+        Value: Value(result),
+        Any: result,
+    }
+    if option:
+        fulfilled_deps[RawOption] = option
+
+    kwargs = fulfill_deps(action_handler, fulfilled_deps).kwargs
+    result = action_handler(**kwargs)
+
+    resolved_context.set_result(
+        field_name, result, option, assert_type(arg.has_value, bool)
+    )
+
+    check_deprecated(parse_state, arg, option)
+
+
+def check_deprecated(
+    parse_state: ParseState,
+    arg: Arg[Any] | Command[Any],
+    option: RawOption | None = None,
+) -> None:
+    if not arg.deprecated:
+        return
+
+    if option:
+        kind = "Option"
+        name = option.name
+    else:
+        if isinstance(arg, Command):
+            kind = "Command"
+            name = arg.real_name()
+        else:
+            kind = "Argument"
+            name = arg.names_str("/")
+
+    message = f"{kind} `{name}` is deprecated"
+    if isinstance(arg.deprecated, str):
+        message += f": {arg.deprecated}"
+
+    parse_state.output.error(message)
+
+
+@dataclasses.dataclass
+class Value(Generic[T]):
+    value: T
+
+
+def store_true():
+    return True
+
+
+def store_false():
+    return False
+
+
+def store_count(context: ParseContext, arg: Arg[Any]):
+    return context.result.get(cast(str, arg.field_name), 0) + 1
+
+
+def store_set(value: Value[Any]):
+    return value.value
+
+
+def store_append(context: ParseContext, arg: Arg[Any], value: Value[Any]):
+    result = context.result.setdefault(cast(str, arg.field_name), [])
+    result.append(value.value)
+    return result
+
+
+def determine_action_handler(action: ArgActionType | None):
+    assert action
+
+    if isinstance(action, ArgAction):
+        return process_options[action]
+
+    return action
+
+
+process_options: dict[ArgAction, Callable[..., Any]] = {
+    ArgAction.help: HelpAction.from_parse_state,
+    ArgAction.version: VersionAction.from_arg,
+    ArgAction.completion: CompletionAction.from_value,
+    ArgAction.set: store_set,
+    ArgAction.store_true: store_true,
+    ArgAction.store_false: store_false,
+    ArgAction.count: store_count,
+    ArgAction.append: store_append,
+}
