@@ -1,0 +1,270 @@
+# Copyright 2017- Robot Framework Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import re
+import string
+import sys
+import time
+from contextlib import contextmanager
+from functools import total_ordering
+from pathlib import Path
+
+from github.Issue import Issue as GitHubIssue
+from invoke import Exit
+
+from .repo import get_repository
+
+TYPE_ORDER_LIST = list(string.ascii_lowercase)
+
+
+class ReleaseNotesGenerator:
+    def __init__(
+        self,
+        repository,
+        title,
+        intro,
+        default_targets=(),
+        type_order: "list[str] | None" = None,
+    ):
+        self.repository = repository
+        self.title = title
+        self.intro = intro
+        self.default_targets = default_targets
+        self._output = None
+        self._type_order = type_order
+
+    def generate(self, version, username=None, password=None, file=sys.stdout):
+        if version.dev:
+            raise Exit(
+                f"Cannot create release notes for development version '{version}'."
+            )
+        issues = self._get_issues(version, username, password)
+        with self._output_enabled(file, version):
+            self._write_intro(version)
+            self._write_most_important_enhancements(issues, version)
+            self._write_backwards_incompatible_changes(issues, version)
+            self._write_deprecated_features(issues, version)
+            self._write_acknowledgements(issues, version)
+            self._write_issue_table(issues, version)
+            self._write_targets(issues)
+
+    def _get_issues(self, version, username=None, password=None):
+        repository = get_repository(self.repository, username, password)
+        issues = self._get_issues_in_milestone(repository, version)
+        return sorted(issues)
+
+    def _get_issues_in_milestone(self, repository, version):
+        milestone = self._get_milestone(repository, version)
+        for data in repository.get_issues(milestone=milestone, state="all"):
+            issue = Issue(data, repository.full_name, self._type_order)
+            if issue.included_in_release_notes(version):
+                yield issue
+
+    def _get_milestone(self, repository, version):
+        for milestone in repository.get_milestones(state="all"):
+            if milestone.title == version.milestone:
+                return milestone
+        raise Exit(
+            f"Milestone '{version.milestone}' not found from "
+            f"repository '{repository.full_name}'."
+        )
+
+    @contextmanager
+    def _output_enabled(self, file, version):
+        if isinstance(file, (str, Path)):
+            self._output = open(str(file).format(version=version), "w")
+            close = True
+        else:
+            self._output = file
+            close = False
+        try:
+            yield
+        finally:
+            if close:
+                print(self._output.name)
+                self._output.close()
+            self._output = None
+
+    def _write_intro(self, version):
+        self._write_header(self.title.format(version=version), level=1)
+        intro = self.intro.format(version=version, date=time.strftime("%A %B %-d, %Y"))
+        self._write(intro, newlines=2)
+
+    def _write_most_important_enhancements(self, issues, version):
+        self._write_issues_with_label(
+            "Most important enhancements",
+            issues,
+            version,
+            "priority: critical",
+            "priority: high",
+        )
+
+    def _write_backwards_incompatible_changes(self, issues, version):
+        self._write_issues_with_label(
+            "Backwards incompatible changes", issues, version, "backwards incompatible"
+        )
+
+    def _write_deprecated_features(self, issues, version):
+        self._write_issues_with_label(
+            "Deprecated features", issues, version, "deprecation"
+        )
+
+    def _write_acknowledgements(self, issues, version):
+        self._write_issues_with_label(
+            "Acknowledgements", issues, version, "acknowledge"
+        )
+
+    def _write_issue_table(self, issues, version):
+        self._write_header("Full list of fixes and enhancements")
+        headers = ["ID", "Type", "Priority", "Summary"]
+        if version.preview:
+            headers.append("Added")
+
+        self._write("| " + " | ".join(headers) + " |")
+        self._write("|" + "|".join(["---"] * len(headers)) + "|")
+
+        for issue in issues:
+            row = [issue.id, issue.type, issue.priority, issue.summary]
+            if version.preview:
+                row.append(issue.preview or "")
+            self._write("| " + " | ".join(row) + " |")
+
+        self._write()
+        self._write(
+            "Altogether {} issue{}. View on the [issue tracker]"
+            "(https://github.com/{}/issues?q=milestone%3A{}).".format(
+                len(issues),
+                "s" if len(issues) != 1 else "",
+                self.repository,
+                version.milestone,
+            )
+        )
+
+    def _write_targets(self, issues):
+        self._write()
+        for target in self.default_targets:
+            self._write(target)
+
+    def _write_header(self, header, level=2):
+        hashes = "#" * level
+        self._write(f"{hashes} {header}", newlines=2)
+
+    def _write_issues_with_label(self, header, issues, version, *labels):
+        issues = [
+            issue for issue in issues if any(label in issue.labels for label in labels)
+        ]
+        if not issues:
+            return
+        self._write_header(header)
+        self._write("**EXPLAIN** or remove these.", newlines=2)
+        for issue in issues:
+            self._write(f"- {issue.summary} ({issue.id}", newlines=0)
+            if version.preview and issue.preview:
+                self._write(f", {issue.preview})")
+            else:
+                self._write(")")
+
+    def _write(self, message="", newlines=1, link_issues=True):
+        message += "\n" * newlines
+        if link_issues:
+            # Replace issue references like #123 with markdown links.
+            message = re.sub(
+                r"(#\d+)",
+                lambda m: f"[{m.group(1)}](https://github.com/{self.repository}/issues/{m.group(1).lstrip('#')})",
+                message,
+            )
+        self._output.write(message)
+
+
+@total_ordering
+class Issue:
+    NOT_SET = "---"
+    PRIORITIES = ["critical", "high", "medium", "low", NOT_SET]
+
+    def __init__(
+        self,
+        issue: GitHubIssue,
+        repository: str,
+        type_order: "list[str] | None" = None,
+    ):
+        self.id = f"#{issue.number}"
+        self.milestone = issue.milestone.title
+        # Avoid escaping problems with zero-width space in cases like `\`.
+        self.summary = issue.title.replace("\\`", "\\\N{ZERO WIDTH SPACE}`")
+        self.labels = [label.name for label in issue.get_labels()]
+        self.url = f"https://github.com/{repository}/issues/{issue.number}"
+        self.type = self._get_type(issue)
+        self._custom_type_order = type_order
+
+    def _get_type(self, issue: GitHubIssue):
+        if issue.type is not None:
+            return issue.type.name.lower()
+        label_types = ["bug", "enhancement", "task"]
+        for label in self.labels:
+            if label in label_types:
+                return label
+        return self.NOT_SET
+
+    @property
+    def preview(self):
+        for label in self.labels:
+            if label.startswith(("alpha ", "beta ", "rc ")):
+                return label
+        return None
+
+    @property
+    def priority(self):
+        priorities = ["priority: " + prio for prio in self.PRIORITIES]
+        for label in self.labels:
+            if label in priorities:
+                return label.split(": ")[1]
+        return self.NOT_SET
+
+    def included_in_release_notes(self, version):
+        if self.type == "task":
+            return False
+        if "no notes" in self.labels:
+            return False
+        return version.is_included(self)
+
+    @property
+    def _type_order(self) -> int:
+        if self._custom_type_order:
+            try:
+                return self._custom_type_order.index(self.type)
+            except ValueError:
+                message = (
+                    f"Issue type '{self.type}' not found in custom "
+                    f"order: {self._custom_type_order}."
+                )
+                raise ValueError(message)
+        firsts_letter = self.type[0] if self.type != self.NOT_SET else "z"
+        return TYPE_ORDER_LIST.index(firsts_letter)
+
+    @property
+    def sort_key(self):
+        return (
+            self.PRIORITIES.index(self.priority),
+            self._type_order,
+            self.id,
+        )
+
+    def __eq__(self, other):
+        return isinstance(other, Issue) and self.id == other.id
+
+    def __lt__(self, other):
+        return self.sort_key < other.sort_key
+
+    def __str__(self):
+        return f"{self.id} {self.summary}"
