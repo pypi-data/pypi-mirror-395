@@ -1,0 +1,72 @@
+use std::{fs::write, io::Error, path::Path};
+
+use conspire::{
+    constitutive::solid::{
+        elastic::doc::almansi_hamel,
+        hyperelastic::{
+            doc::arruda_boyce, doc::fung, doc::gent, doc::mooney_rivlin, doc::neo_hookean,
+            doc::saint_venant_kirchhoff,
+        },
+    },
+    math::integrate::doc::{EXPLICIT, bogacki_shampine, dormand_prince, verner_8, verner_9},
+};
+
+fn main() -> Result<(), Error> {
+    math()?;
+    constitutive()
+}
+
+fn math() -> Result<(), Error> {
+    let methods = [
+        vec![["math/integrate/explicit", EXPLICIT]],
+        bogacki_shampine(),
+        dormand_prince(),
+        verner_8(),
+        verner_9(),
+    ];
+    methods.iter().try_for_each(|method| {
+        let path = method[0][0];
+        write(
+            Path::new(format!("src/{path}/doc.md").as_str()),
+            method[0][1].replace("```math", "$$").replace("```", "$$"),
+        )
+    })
+}
+
+fn constitutive() -> Result<(), Error> {
+    let models = [
+        almansi_hamel(),
+        arruda_boyce(),
+        fung(),
+        gent(),
+        mooney_rivlin(),
+        neo_hookean(),
+        saint_venant_kirchhoff(),
+    ];
+    models.iter().try_for_each(|model| {
+        let path = model[0][0];
+        write(
+            Path::new(format!("src/{path}/doc.md").as_str()),
+            model[0][1].replace("$`", "$").replace("`$", "$"),
+        )?;
+        model.iter().skip(1).try_for_each(|[method, doc]| {
+            if doc.is_empty() {
+                write(
+                    Path::new(format!("src/{path}/{method}.md").as_str()),
+                    "@private",
+                )
+            } else {
+                write(
+                    Path::new(format!("src/{path}/{method}.md").as_str()),
+                    doc.replace("```math", "$$")
+                        .replace("```", "$$")
+                        .replace("\\begin{aligned}", "")
+                        .replace("\\end{aligned}", "")
+                        .replace("&", "")
+                        .replace("\\\\", "")
+                        .replace("\n", ""),
+                )
+            }
+        })
+    })
+}
