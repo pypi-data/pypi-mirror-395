@@ -1,0 +1,86 @@
+[project]
+name = "smtdata-lake-reports"
+version = "1.6.0"
+description = "Python SDK for building Lake Reports in SMT Data ITBI Cloud"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "arrow>=1.3.0",
+    "boto3>=1.40.15,<1.42.1",
+    "fsspec>=2025.9.0",
+    "loguru>=0.7.3",
+    "pandas>=2.3.2",
+    "pyarrow>=21.0.0",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.1",
+    "s3fs>=2025.9.0",
+    "sqlalchemy>=2.0.43",
+    "sqlalchemy-trino>=0.5.0",
+    "sqlglot>=27.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.0",
+    "pytest-snapshot>=0.9.0",
+    "ruff>=0.12.7",
+    "uv-build>=0.8.3,<0.10.0",
+]
+
+[project.scripts]
+testing-demo = "testing_demo:main"
+
+[build-system]
+requires = ["uv_build>=0.8.3,<0.9.0"]
+build-backend = "uv_build"
+
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: fast, isolated tests",
+    "integration: tests that hit external systems or slow paths"
+]
+minversion = "7.0"
+addopts = [
+    "--strict-markers",
+    "--maxfail=2",
+    "--durations=10", # slowest 10 tests
+    "-m (not integration)",
+    "--cov=smtdata_lake_reports",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=60"
+]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["smtdata_lake_reports"]
+
+[tool.coverage.report]
+show_missing = true
+omit = [
+    "tests/*",
+    "*/__init__.py",
+]
+
+[tool.ruff]
+line-length = 140
+
+[tool.ruff.lint]
+# Add the `line-too-long` rule to the enforced rule set. By default, Ruff omits rules that
+# overlap with the use of a formatter, like Black, but we can override this behavior by
+# explicitly adding the rule.
+extend-select = ["E501"]
+
+
+##
+# TestPyPI is a copy of PyPI for testing package publishing.
+# Storage is wiped on their own schedule
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
