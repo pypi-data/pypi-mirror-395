@@ -1,0 +1,1121 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LpjGuess.Runner</name>
+    </assembly>
+    <members>
+        <member name="T:LpjGuess.Runner.ExperimentResult">
+            <summary>
+            Result of an experiment run.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.ExperimentResult.TotalJobs">
+            <summary>
+            Total number of jobs submitted.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.ExperimentResult.SuccessfulJobs">
+            <summary>
+            Number of jobs that completed successfully.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.ExperimentResult.FailedJobs">
+            <summary>
+            Number of jobs that failed.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.ExperimentResult.Error">
+            <summary>
+            Error message, if any.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.ExperimentResult.JobDurations">
+            <summary>
+            Dictionary mapping job names to their durations.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.ExperimentResult.#ctor(System.Int32,System.Int32,System.Int32,System.Collections.Generic.Dictionary{System.String,System.TimeSpan},System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.ExperimentResult"/> instance.
+            </summary>
+            <param name="totalJobs">Total number of jobs submitted.</param>
+            <param name="successfulJobs">Number of jobs that completed successfully.</param>
+            <param name="failedJobs">Number of jobs that failed.</param>
+            <param name="jobDurations">Dictionary mapping job names to their durations.</param>
+            <param name="error">Error message, if any.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.ExperimentRunner">
+            <summary>
+            Public API for running experiments.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.ExperimentRunner.RunAsync(LpjGuess.Runner.Models.RunnerConfiguration,LpjGuess.Runner.Models.IProgressReporter,LpjGuess.Runner.Models.IOutputHelper,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously runs an experiment.
+            </summary>
+            <param name="config">Configuration for the experiment.</param>
+            <param name="reporter">Optional progress reporter. If null, progress is ignored.</param>
+            <param name="helper">Optional output helper. If null, output is ignored.</param>
+            <param name="ct">Cancellation token.</param>
+            <returns>An <see cref="T:LpjGuess.Runner.ExperimentResult"/> with summary information.</returns>
+        </member>
+        <member name="M:LpjGuess.Runner.ExperimentRunner.RunAsync(LpjGuess.Runner.Models.RunnerConfiguration,System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously runs an experiment with default reporter/output.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.ExperimentRunner.Run(LpjGuess.Runner.Models.RunnerConfiguration,LpjGuess.Runner.Models.IProgressReporter,LpjGuess.Runner.Models.IOutputHelper)">
+            <summary>
+            Runs an experiment synchronously.
+            </summary>
+            <param name="config">Configuration for the experiment.</param>
+            <param name="progress">Optional progress reporter.</param>
+            <param name="output">Optional output helper.</param>
+            <returns>An <see cref="T:LpjGuess.Runner.ExperimentResult"/> summarizing the run.</returns>
+        </member>
+        <member name="T:LpjGuess.Runner.Extensions.EnumerableExtensions">
+            <summary>
+            Extension methods for enumerable types.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Extensions.EnumerableExtensions.AllCombinations``1(System.Collections.Generic.List{System.Collections.Generic.List{``0}})">
+            <summary>
+            Return all combinations of the items in the list.
+            </summary>
+            <remarks>
+            todo: rewrite with less allocations? For now it's enough.
+            This was taken from here:
+            https://stackoverflow.com/a/545740
+            </remarks>
+            <param name="list">2D input data.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.ConsoleOutputHelper">
+            <summary>
+            Class which handles standard output/error by streaming it to the console.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.ConsoleOutputHelper.ReportOutput(System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:LpjGuess.Runner.Models.ConsoleOutputHelper.ReportError(System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:LpjGuess.Runner.Models.ConsoleProgressReporter">
+            <summary>
+            Helper class which writes progress updates to standard output.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.ConsoleProgressReporter.ReportProgress(System.Double,System.TimeSpan,System.Int32,System.Int32)">
+            <inheritdoc /> 
+        </member>
+        <member name="T:LpjGuess.Runner.Models.CpuAffinity">
+            <summary>
+            This class is used to set the CPU affinity of a process.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.CpuAffinity.processorCount">
+            <summary>
+            The number of processors on the system.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.CpuAffinity.assignedCpus">
+            <summary>
+            The set of CPUs that have been assigned to processes.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.CpuAffinity.cpu">
+            <summary>
+            The CPU that this instance is assigned to.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CpuAffinity.#ctor(System.Int32)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.CpuAffinity"/> instance.
+            </summary>
+            <param name="cpu">The CPU to assign to.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CpuAffinity.SetAffinity(System.Diagnostics.Process)">
+            <summary>
+            Set the CPU affinity of the given process.
+            </summary>
+            <param name="process">The process to set the CPU affinity for.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CpuAffinity.SetProcessorAffinity(System.Diagnostics.Process)">
+            <summary>
+            Set the CPU affinity of the given process.
+            </summary>
+            <param name="proc">The process to set the CPU affinity for.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CpuAffinity.Acquire">
+            <summary>
+            Acquire a CPU affinity for a process.
+            </summary>
+            <returns>A <see cref="T:LpjGuess.Runner.Models.CpuAffinity"/> instance.</returns>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CpuAffinity.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:LpjGuess.Runner.Models.CustomOutputHelper">
+            <summary>
+            A class which handles stdout/stderr messages from the model via a custom
+            callback function.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.CustomOutputHelper.outputCallback">
+            <summary>
+            Standard output handler function.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.CustomOutputHelper.errorCallback">
+            <summary>
+            Standard error handler function.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CustomOutputHelper.#ctor(System.Action{System.String,System.String},System.Action{System.String,System.String})">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.CustomOutputHelper"/> instance.
+            </summary>
+            <param name="outputCallback">Standard output handler function.</param>
+            <param name="errorCallback">Standard error handler function.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CustomOutputHelper.ReportError(System.String,System.String)">
+            <inheritdoc /> 
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CustomOutputHelper.ReportOutput(System.String,System.String)">
+            <inheritdoc /> 
+        </member>
+        <member name="T:LpjGuess.Runner.Models.CustomProgressReporter">
+            <summary>
+            A class which allows the use of a custom/dynamic progress handling method.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.CustomProgressReporter.callback">
+            <summary>
+            User-defined callback function which handles progress reports. The
+            parameters are: progress as percentage (0-100), elapsed time, number of
+            complete jobs, and total number of jobs.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CustomProgressReporter.#ctor(System.Action{System.Double,System.TimeSpan,System.Int32,System.Int32})">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.CustomProgressReporter"/> instance.
+            </summary>
+            <param name="callback">User-defined callback function which handles
+            progress reports. The parameters are: progress as percentage (0-100),
+            elapsed time, number of complete jobs, and total number of jobs.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.CustomProgressReporter.ReportProgress(System.Double,System.TimeSpan,System.Int32,System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="T:LpjGuess.Runner.Models.IOutputHelper">
+            <summary>
+            Interface to a class which handles stdout/stderr data from the model.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.IOutputHelper.ReportOutput(System.String,System.String)">
+            <summary>
+            Report a message received from a job's stdout stream.
+            </summary>
+            <param name="jobName">Name of the job.</param>
+            <param name="output">Standard output received from the job.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.IOutputHelper.ReportError(System.String,System.String)">
+            <summary>
+            Report a message received from the job's stderr stream.
+            </summary>
+            <param name="jobName">Name of the job.</param>
+            <param name="output">Standard error received from the job.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.IProgressReporter">
+            <summary>
+            Interface for progress reporters.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.IProgressReporter.ReportProgress(System.Double,System.TimeSpan,System.Int32,System.Int32)">
+            <summary>
+            Handle a progress update.
+            </summary>
+            <param name="percent">Current progress as percentage (0-100).</param>
+            <param name="elapsed">Total elapsed walltime since start of job.</param>
+            <param name="ncomplete">Number of finished jobs.</param>
+            <param name="njob">Total number of jobs.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.IRunner">
+            <summary>
+            Interface for running LPJ-Guess simulations.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.IRunner.RunAsync(LpjGuess.Runner.Models.Job,System.Threading.CancellationToken)">
+            <summary>
+            Run the simulation.
+            </summary>
+            <param name="job">The job to be run.</param>
+            <param name="ct">Cancellation token.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.IMonitorableRunner">
+            <summary>
+            Interface to a runner which can be monitored.
+            </summary>
+        </member>
+        <member name="E:LpjGuess.Runner.Models.IMonitorableRunner.ProgressChanged">
+            <summary>
+            Event raised when progress is reported.
+            </summary>
+        </member>
+        <member name="E:LpjGuess.Runner.Models.IMonitorableRunner.OutputReceived">
+            <summary>
+            Event raised when standard output is written.
+            </summary>
+        </member>
+        <member name="E:LpjGuess.Runner.Models.IMonitorableRunner.ErrorReceived">
+            <summary>
+            Event raised when standard error is written.
+            </summary>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.IRunnerConfiguration">
+            <summary>
+            An interface to a class which describes how to run lpj-guess. Data in this
+            class is not particular to running a specific simulation, but rather it
+            provides a way of running lpj-guess.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.IRunnerConfiguration.GuessPath">
+            <summary>
+            Path to the lpj-guess executable.
+            </summary>
+            <remarks>
+            Does this belong in the interface?
+            </remarks>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.IRunnerConfiguration.Name">
+            <summary>
+            Name of this runner (used for display purposes only).
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.IRunnerConfiguration.CreateRunner(System.String)">
+            <summary>
+            Create a <see cref="T:LpjGuess.Runner.Models.IRunner"/> instance for this configuration.
+            </summary>
+            <param name="inputModule">The input module to use.</param>
+            <returns>An <see cref="T:LpjGuess.Runner.Models.IRunner"/> instance.</returns>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.Job">
+            <summary>
+            A job to be run.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.Job.Name">
+            <summary>
+            The name of the job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.Job.InsFile">
+            <summary>
+            The path to the ins file.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.Job.#ctor(System.String,System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.Job"/> instance.
+            </summary>
+            <param name="name">The name of the job.</param>
+            <param name="insFile">The path to the ins file.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.JobManager">
+            <summary>
+            Manages the execution of LPJ-Guess jobs.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.settings">
+            <summary>
+            Configuration parameters for the run.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.progressReporter">
+            <summary>
+            Progress reporter helper.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.outputHandler">
+            <summary>
+            Helper object which handles standard output/errror from the model.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.jobs">
+            <summary>
+            The jobs managed by this job manager instance.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.jobProgress">
+            <summary>
+            Dictionary mapping jobs to those jobs' progress percentages.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.jobStartTime">
+            <summary>
+            Dictionary mapping jobs to those jobs' start times.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.jobEndTime">
+            <summary>
+            Dictionary mapping jobs to those jobs' end times.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.startTime">
+            <summary>
+            Start time of the job manager.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.JobManager.lastUpdate">
+            <summary>
+            The last time that a progress message was written.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.#ctor(LpjGuess.Runner.Models.JobManagerConfiguration,LpjGuess.Runner.Models.IProgressReporter,LpjGuess.Runner.Models.IOutputHelper,System.Collections.Generic.IEnumerable{LpjGuess.Runner.Models.Job})">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.JobManager"/> instance.
+            </summary>
+            <param name="settings">Run settings.</param>
+            <param name="progressReporter">Progress reporter helper.</param>
+            <param name="outputHandler">Output handler helper.</param>
+            <param name="jobs">Jobs to be run.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.RunAllAsync(System.Threading.CancellationToken)">
+            <summary>
+            Run all of the jobs.
+            </summary>
+            <param name="ct">Cancellation token.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.GetJobDuration(LpjGuess.Runner.Models.Job)">
+            <summary>
+            Get the duration of a job.
+            </summary>
+            <param name="job">The job to get the duration of.</param>
+            <returns>The duration of the job.</returns>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.RunJobAsync(LpjGuess.Runner.Models.Job,System.Threading.CancellationToken)">
+            <summary>
+            Run a job asynchronously.
+            </summary>
+            <param name="job">The job to run.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.HandleStderr(System.Object,LpjGuess.Runner.Models.OutputEventArgs)">
+            <summary>
+            Handle a standard error message written by a running job.
+            </summary>
+            <param name="sender">Sender object (a runner instance in practice).</param>
+            <param name="args">Event data.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.HandleStdout(System.Object,LpjGuess.Runner.Models.OutputEventArgs)">
+            <summary>
+            Handle a standard output message written by a running job.
+            </summary>
+            <param name="sender">Sender object (a runner instance in practice).</param>
+            <param name="args">Event data.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.HandleProgress(System.Object,LpjGuess.Runner.Models.ProgressEventArgs)">
+            <summary>
+            Handle a progress message written by a job and intercepted by a job
+            runner.
+            </summary>
+            <param name="sender">The job to which this progress pertains.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.WriteProgress">
+            <summary>
+            Write a message containing the current progress toward completion.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManager.CreateRunner">
+            <summary>
+            Create a runner for the job.
+            </summary>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.JobManagerConfiguration">
+            <summary>
+            Configuration parameters for a job manager.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.JobManagerConfiguration.RunConfig">
+            <summary>
+            Configuration settings describing how the jobs should be run.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.JobManagerConfiguration.CpuCount">
+            <summary>
+            Max number of CPUs to use.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.JobManagerConfiguration.DryRun">
+            <summary>
+            True to do a dry run. False to actually run jobs.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.JobManagerConfiguration.InputModule">
+            <summary>
+            The input module to use for the jobs.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.JobManagerConfiguration.#ctor(LpjGuess.Runner.Models.IRunnerConfiguration,System.Int32,System.Boolean,System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.JobManagerConfiguration"/> instance.
+            </summary>
+            <param name="runConfig">Configuration settings describing how the jobs should be run.</param>
+            <param name="cpuCount">Max number of CPUs to use.</param>
+            <param name="dryRun">True to do a dry run. False to actually run jobs.</param>
+            <param name="inputModule">The input module to use for the jobs.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.LocalRunner">
+            <summary>
+            A class which runs the model in the local environment (ie without PBS).
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.LocalRunner.settings">
+            <summary>
+            Path to the model executable.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.LocalRunner.inputModule">
+            <summary>
+            The input module to use.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.LocalRunner.output">
+            <summary>
+            Standard output and error generated by the child process.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.LocalRunner.#ctor(LpjGuess.Runner.Models.LocalRunnerConfiguration,System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.LocalRunner"/> instance.
+            </summary>
+            <param name="settings">Configuration parameters controlling how the job should be run.</param>
+            <param name="inputModule">The input module to use.</param>
+        </member>
+        <member name="E:LpjGuess.Runner.Models.LocalRunner.ProgressChanged">
+            <inheritdoc /> 
+        </member>
+        <member name="E:LpjGuess.Runner.Models.LocalRunner.OutputReceived">
+            <inheritdoc /> 
+        </member>
+        <member name="E:LpjGuess.Runner.Models.LocalRunner.ErrorReceived">
+            <inheritdoc /> 
+        </member>
+        <member name="M:LpjGuess.Runner.Models.LocalRunner.RunAsync(LpjGuess.Runner.Models.Job,System.Threading.CancellationToken)">
+            <inheritdoc /> 
+        </member>
+        <member name="T:LpjGuess.Runner.Models.LocalRunnerConfiguration">
+            <summary>
+            Configuration settings which describe a way of running lpj-guess on the
+            local machine (with no parallelisation).
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.LocalRunnerConfiguration.GuessPath">
+            <inheritdoc />
+        </member>
+        <member name="P:LpjGuess.Runner.Models.LocalRunnerConfiguration.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:LpjGuess.Runner.Models.LocalRunnerConfiguration.UseCpuAffinity">
+            <summary>
+            Whether to use CPU affinity to pin the process to a single CPU.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.LocalRunnerConfiguration.#ctor(System.String,System.String,System.Boolean)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.LocalRunnerConfiguration"/> instance.
+            </summary>
+            <param name="guessPath">Path to the lpj-guess executable.</param>
+            <param name="name">Name of the runner.</param>
+            <param name="useCpuAffinity">Whether to use CPU affinity to pin the process to a single CPU.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.LocalRunnerConfiguration.#ctor">
+            <summary>
+            Constructor provided for serialisation only. Don't call this.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.LocalRunnerConfiguration.CreateRunner(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:LpjGuess.Runner.Models.ModelException">
+            <summary>
+            Exception thrown when a model run fails.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.ModelException.#ctor(System.String,System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.ModelException"/> instance.
+            </summary>
+            <param name="message">The message to display.</param>
+            <param name="modelOutput">Standard output and error from the model.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.NullProgressReporter">
+            <summary>
+            Progress reporter which ignores all progress updates.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.NullProgressReporter.ReportProgress(System.Double,System.TimeSpan,System.Int32,System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="T:LpjGuess.Runner.Models.OutputEventArgs">
+            <summary>
+            Standard output/error event data.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.OutputEventArgs.JobName">
+            <summary>
+            Name of the job which wrote the message.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.OutputEventArgs.Data">
+            <summary>
+            The data written by the model.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.OutputEventArgs.#ctor(System.String,System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.OutputEventArgs" /> instance.
+            </summary>
+            <param name="jobName">Name of the job which wrote the message.</param>
+            <param name="data">The data written by the model.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.OutputIgnorer">
+            <summary>
+            Output helper which ignores output coming from the model.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.OutputIgnorer.ReportError(System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:LpjGuess.Runner.Models.OutputIgnorer.ReportOutput(System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:LpjGuess.Runner.Models.ParameterGroupConfig">
+            <summary>
+            Configuration model for parameter groups in TOML input files.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.ParameterGroupConfig.Name">
+            <summary>
+            Name of the parameter group.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.ParameterGroupConfig.Parameters">
+            <summary>
+            Dictionary of parameter names to their possible values.
+            All parameters in a group must have the same number of values.
+            </summary>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.ParameterValues">
+            <summary>
+            Represents a set of values to apply to a specific parameter.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.ParameterValues.Name">
+            <summary>
+            Name of the parameter.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.ParameterValues.Values">
+            <summary>
+            List of values to apply to the parameter.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.ParameterValues.#ctor(System.String,System.Collections.Generic.List{System.String})">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.ParameterValues"/> instance.
+            </summary>
+            <param name="name">Name of the parameter.</param>
+            <param name="values">List of values to apply to the parameter.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.PbsRunner">
+            <summary>
+            A class which runs LPJ-Guess on gadi via PBS.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.PbsRunner.submitScript">
+            <summary>
+            Name of the lpj-guess submission script.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.PbsRunner.inputModule">
+            <summary>
+            The input module to use.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Models.PbsRunner.settings">
+            <summary>
+            Settings to be used for the run.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunner.#ctor(LpjGuess.Runner.Models.PbsRunnerConfiguration,System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.PbsRunner"/> instance.
+            </summary>
+            <param name="settings">Runner settings.</param>
+            <param name="inputModule">The input module to use.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunner.RunAsync(LpjGuess.Runner.Models.Job,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunner.GenerateConfFile(System.String,System.String)">
+            <summary>
+            Generate the config file which may be passed to the submit script.
+            </summary>
+            <param name="insFile">Path to the .ins file.</param>
+            <param name="factName">A name which uniquely identifies this factorial.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunner.Write(System.IO.TextWriter,System.String,System.TimeSpan)">
+            <summary>
+            Write a shell-quoted integer key-value pair to the output .conf file.
+            </summary>
+            <param name="writer">The output text writer.</param>
+            <param name="key">Key.</param>
+            <param name="value">Value.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunner.Write(System.IO.TextWriter,System.String,System.UInt32)">
+            <summary>
+            Write a shell-quoted integer key-value pair to the output .conf file.
+            </summary>
+            <param name="writer">The output text writer.</param>
+            <param name="key">Key.</param>
+            <param name="value">Value.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunner.Write(System.IO.TextWriter,System.String,System.Int32)">
+            <summary>
+            Write a shell-quoted integer key-value pair to the output .conf file.
+            </summary>
+            <param name="writer">The output text writer.</param>
+            <param name="key">Key.</param>
+            <param name="value">Value.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunner.Write(System.IO.TextWriter,System.String,System.String)">
+            <summary>
+            Write a shell-quoted key-value pair to the output .conf file.
+            </summary>
+            <param name="writer">The output text writer.</param>
+            <param name="key">Key.</param>
+            <param name="value">Value.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.PbsRunnerConfiguration">
+            <summary>
+            Configuration parameters for a PBS job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.GuessPath">
+            <inheritdoc />
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.DryRun">
+            <summary>
+            True to create job directory tree but not submit job. False to
+            additionally submit the job to PBS for execution.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.OutputDirectory">
+            <summary>
+            Job output directory.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.CpuCount">
+            <summary>
+            Number of CPUs to allocate to the job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.Walltime">
+            <summary>
+            Maximum walltime allowed for the job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.Memory">
+            <summary>
+            Amount of memory to be allocated to the job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.Queue">
+            <summary>
+            Queue to which the job should be submitted.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.Project">
+            <summary>
+            PBS project under which the job should be submitted.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.EmailNotifications">
+            <summary>
+            True to send email notifications.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.PbsRunnerConfiguration.EmailAddress">
+            <summary>
+            Email address to which notifications should be sent.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunnerConfiguration.#ctor(System.String,System.String,System.Boolean,System.String,System.Int32,System.TimeSpan,System.UInt32,System.String,System.String,System.Boolean,System.String)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.PbsRunnerConfiguration"/> instance.
+            </summary>
+            <param name="guessPath">Path to the lpj-guess executable.</param>
+            <param name="name">Name of the runner.</param>
+            <param name="dryRun">True to create job directory tree but not submit job. False to additionally submit the job to PBS for execution.</param>
+            <param name="outputDirectory">Job output directory.</param>
+            <param name="cpuCount">Number of CPUs to allocate to the job.</param>
+            <param name="walltime">Maximum walltime allowed for the job.</param>
+            <param name="memory">Amount of memory to be allocated to the job.</param>
+            <param name="queue">Queue to which the job should be submitted.</param>
+            <param name="project">PBS project under which the job should be submitted.</param>
+            <param name="emailNotifications">True to send email notifications.</param>
+            <param name="emailAddress">Email address to which notifications should be sent.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunnerConfiguration.#ctor">
+            <summary>
+            Constructor provided for serialization purposes only. Don't call this.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.PbsRunnerConfiguration.CreateRunner(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:LpjGuess.Runner.Models.ProgressEventArgs">
+            <summary>
+            Progress event arguments.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.ProgressEventArgs.Percentage">
+            <summary>
+            Current progress percentage (0-100).
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.ProgressEventArgs.Source">
+            <summary>
+            Job name.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.ProgressEventArgs.#ctor(System.Int32,LpjGuess.Runner.Models.Job)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.ProgressEventArgs"/> instance.
+            </summary>
+            <param name="percentage">Job progress as a percentage.</param>
+            <param name="job">The job which sent this progress update.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.RunnerConfiguration">
+            <summary>
+            Holds configuration settings for the runner tool.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunnerConfiguration.Settings">
+            <summary>
+            Run settings.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunnerConfiguration.Factors">
+            <summary>
+            Factorial combinations.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunnerConfiguration.InsFiles">
+            <summary>
+            Input files.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunnerConfiguration.Pfts">
+            <summary>
+            PFTs.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.RunnerConfiguration.#ctor(LpjGuess.Runner.Models.RunSettings,System.Collections.Generic.IEnumerable{LpjGuess.Core.Interfaces.Factorial.ISimulation},System.Collections.Generic.IEnumerable{System.String},System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Create a new runner configuration.
+            </summary>
+            <param name="settings">Run settings.</param>
+            <param name="factors">Factorial combinations.</param>
+            <param name="insFiles">Input files.</param>
+            <param name="pfts">PFTs.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.RunSettings">
+            <summary>
+            Describes settings for a run.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.Parallel">
+            <summary>
+            Iff true, the processing code will be executed in parallel.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.DryRun">
+            <summary>
+            Iff true, the run directory will be created but the job will not be
+            submitted.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.RunLocal">
+            <summary>
+            If true, will run the model in the local environment. If false, will
+            submit the jobs to PBS.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.OutputDirectory">
+            <summary>
+            Output directory of the run.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.GuessPath">
+            <summary>
+            Path to the LPJ-Guess executable.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.InputModule">
+            <summary>
+            Input module to be used by LPJ-Guess.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.CpuCount">
+            <summary>
+            Number of CPUs to be allocated to the job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.Walltime">
+            <summary>
+            Maximum walltime allowed for the job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.Memory">
+            <summary>
+            Amount of memory to be allocated to the job, in GiB.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.Queue">
+            <summary>
+            Queue to which the job should be submitted.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.Project">
+            <summary>
+            PBS project under which the job should be submitted.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.EmailNotifications">
+            <summary>
+            True to enable email notifications for the job, false otherwise.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.EmailAddress">
+            <summary>
+            Email address to be used for the job. Only used if
+            <see cref="P:LpjGuess.Runner.Models.RunSettings.EmailNotifications"/> is true.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.JobName">
+            <summary>
+            Name of the job.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.FullFactorial">
+            <summary>
+            Iff true, all combinations of parameters will be run.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.Parameters">
+            <summary>
+            Parameters to be passed to the model.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.RunSettings.UseCpuAffinity">
+            <summary>
+            True to use CPU affinity to pin each LPJ-Guess process to a single CPU
+            (ie prevent context-switching of a guess process between CPUs). No
+            effect on MacOS. Recommended: true.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.RunSettings.#ctor(System.Boolean,System.Boolean,System.String,System.String,System.String,System.UInt16,System.TimeSpan,System.UInt32,System.String,System.String,System.Boolean,System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.RunSettings"/> instance.
+            </summary>
+            <param name="dryRun">Iff true, the run directory will be created but the job will not be submitted.</param>
+            <param name="runLocal">Iff true, the job will be run locally. Otherwise, it will be submitted to PBS.</param>
+            <param name="outputDirectory">Output directory of the run.</param>
+            <param name="guessPath">Path to the LPJ-Guess executable.</param>
+            <param name="inputModule">Input module to be used by LPJ-Guess.</param>
+            <param name="cpuCount">Number of CPUs to be allocated to the job.</param>
+            <param name="walltime">Maximum walltime allowed for the job.</param>
+            <param name="memory">Amount of memory to be allocated to the job.</param>
+            <param name="queue">Queue to which the job shoudl be submitted.</param>
+            <param name="project">PBS project under which the job should be submitted.</param>
+            <param name="emailNotifications">True to enable email notifications for the job, false otherwise.</param>
+            <param name="emailAddress">Email address to be used for the job. Only used if emailNotifications is true.</param>
+            <param name="jobName">Name of the job.</param>
+            <param name="fullFactorial">Iff true, all combinations of parameters will be run.</param>
+            <param name="useCpuAffinity">True to use CPU affinity to pin each LPJ-Guess process to a single CPU (ie prevent context-switching of a guess process between CPUs). No effect on MacOS. Recommended: true.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.RunSettings.Local(System.String,System.String,System.String,System.UInt16,System.String,System.Boolean)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Models.RunSettings"/> instance for local execution.
+            </summary>
+            <param name="guessPath">Path to the LPJ-Guess executable.</param>
+            <param name="outputDirectory">Output directory of the run.</param>
+            <param name="inputModule">Input module to be used by LPJ-Guess.</param>
+            <param name="cpuCount">Number of CPUs to be allocated to the job.</param>
+            <param name="jobName">Name of the job.</param>
+            <param name="useCpuAffinity">True to use CPU affinity to pin each
+            LPJ-Guess process to a single CPU (ie prevent context-switching of a
+            guess process between CPUs). No effect on MacOS. Recommended:
+            true.
+            </param>
+            <remarks>
+            This is only necessary/useful because this class contains parameters for
+            both local and remote runs, some of which are useful only in remote runs
+            or vice versa. We should really refactor that abstraction out of this
+            class, but for now, this serves as a convenience method to create a <see
+            cref="T:LpjGuess.Runner.Models.RunSettings"/> instance for local execution, accepting only
+            parameters that are meaningful in that context.
+            </remarks>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.RunSettings.ToJobManagerConfig">
+            <summary>
+            Convert this run settings to a job manager configuration.
+            </summary>
+            <returns>A <see cref="T:LpjGuess.Runner.Models.JobManagerConfiguration"/> instance.</returns>
+        </member>
+        <member name="T:LpjGuess.Runner.Models.SimulationGeneratorConfig">
+            <summary>
+            Holds configuration settings for the runner tool.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.SimulationGeneratorConfig.OutputDirectory">
+            <summary>
+            Output directory into which jobs will be generated.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.SimulationGeneratorConfig.Parallel">
+            <summary>
+            Whether to generate jobs in parallel.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.SimulationGeneratorConfig.CpuCount">
+            <summary>
+            Number of CPUs to use for job generation if parallel generation is enabled.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.SimulationGeneratorConfig.Simulations">
+            <summary>
+            Simulations to generate from each instruction file.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.SimulationGeneratorConfig.InsFiles">
+            <summary>
+            Instruction files.
+            </summary>
+        </member>
+        <member name="P:LpjGuess.Runner.Models.SimulationGeneratorConfig.Pfts">
+            <summary>
+            PFTs to enable.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Models.SimulationGeneratorConfig.#ctor(System.String,System.Boolean,System.UInt16,System.Collections.Generic.IEnumerable{LpjGuess.Core.Interfaces.Factorial.ISimulation},System.Collections.Generic.IEnumerable{System.String},System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Create a new runner configuration.
+            </summary>
+            <param name="outputDirectory">Output directory into which jobs will be generated.</param>
+            <param name="parallel">Whether to generate jobs in parallel.</param>
+            <param name="cpuCount">Number of CPUs to use for job generation if parallel generation is enabled.</param>
+            <param name="simulations">Simulations to generate from each instruction file.</param>
+            <param name="insFiles">Instruction files.</param>
+            <param name="pfts">The PFTs to enable.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Services.IPathResolver">
+            <summary>
+            Resolves paths for generated simulations.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.IPathResolver.GenerateTargetInsFilePath(System.String,LpjGuess.Core.Interfaces.Factorial.ISimulation)">
+            <summary>
+            Generate a target instruction file path for the specified simulation.
+            </summary>
+            <param name="insFile">The instruction file.</param>
+            <param name="simulation">The simulation.</param>
+            <returns>The target instruction file path.</returns>
+        </member>
+        <member name="T:LpjGuess.Runner.Services.ISimulationService">
+            <summary>
+            Interface to a service for generating jobs to be run.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.ISimulationService.GenerateAllJobs(System.Threading.CancellationToken)">
+            <summary>
+            Generate all jobs for these instructions.
+            </summary>
+            <param name="ct">Cancellation token.</param>
+        </member>
+        <member name="T:LpjGuess.Runner.Services.SimulationPathResolver">
+            <summary>
+            Resolves paths for generated simulations.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Services.SimulationPathResolver.config">
+            <summary>
+            The configuration parameters.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.SimulationPathResolver.#ctor(LpjGuess.Runner.Models.SimulationGeneratorConfig)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Services.SimulationPathResolver"/> instance.
+            </summary>
+            <param name="config">The configuration.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.SimulationPathResolver.GenerateTargetInsFilePath(System.String,LpjGuess.Core.Interfaces.Factorial.ISimulation)">
+            <inheritdoc/>
+        </member>
+        <member name="T:LpjGuess.Runner.Services.SimulationService">
+            <summary>
+            Changes to be applied to a collection of LPJ-Guess instruction files.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Services.SimulationService.pathResolver">
+            <summary>
+            The path resolver.
+            </summary>
+        </member>
+        <member name="F:LpjGuess.Runner.Services.SimulationService.config">
+            <summary>
+            The configuration to use.
+            </summary>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.SimulationService.#ctor(LpjGuess.Runner.Models.SimulationGeneratorConfig)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Services.SimulationService"/> instance.
+            </summary>
+            <param name="config">The configuration to use.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.SimulationService.#ctor(LpjGuess.Runner.Services.IPathResolver,LpjGuess.Runner.Models.SimulationGeneratorConfig)">
+            <summary>
+            Create a new <see cref="T:LpjGuess.Runner.Services.SimulationService"/> instance.
+            </summary>
+            <param name="pathResolver">The path resolver.</param>
+            <param name="config">The configuration to use.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.SimulationService.GenerateAllJobs(System.Threading.CancellationToken)">
+            <summary>
+            Generate all jobs for these instructions.
+            </summary>
+            <param name="ct">Cancellation token.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.SimulationService.GenerateJobs(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Generate all jobs to be run for the specified instruction file.
+            </summary>
+            <param name="insFile">Path to the instruction file.</param>
+            <param name="ct">Cancellation token.</param>
+        </member>
+        <member name="M:LpjGuess.Runner.Services.SimulationService.GenerateSimulation(System.String,LpjGuess.Core.Interfaces.Factorial.ISimulation)">
+            <summary>
+            Generate the specified simulation for the given instruction file.
+            </summary>
+            <param name="insFile">Path to the instruction file.</param>
+            <param name="simulation">The simulation.</param>
+            <returns>A job encapsulating the generated simulation.</returns>
+        </member>
+    </members>
+</doc>
