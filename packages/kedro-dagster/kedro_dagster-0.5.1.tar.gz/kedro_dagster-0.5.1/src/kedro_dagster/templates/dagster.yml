@@ -1,0 +1,43 @@
+# Dagster loggers configuration
+loggers:
+  file_logger:
+    log_level: INFO
+    formatters:
+      simple:
+        format: "[%(asctime)s] %(levelname)s - %(message)s"
+    handlers:
+      - class: logging.handlers.RotatingFileHandler
+        level: INFO
+        formatter: simple
+        filename: dagster_run_info.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+        delay: True
+
+# Dagster schedules configuration
+schedules:
+  daily: # Schedule name
+    cron_schedule: "0 0 * * *" # Schedule parameters
+
+# Dagster executors configuration
+executors:
+  sequential: # Executor name
+    in_process: # Executor parameters
+
+# Dagster jobs configuration
+jobs:
+  # You may filter pipelines by using e.g. `node_names`` to define a job
+  # data_processing: # Job name
+  #   pipeline: # Pipeline filter parameters
+  #     pipeline_name: data_processing
+  #     node_names:
+  #     - preprocess_companies_node
+  #     - preprocess_shuttles_node
+
+  default:
+    pipeline:
+      pipeline_name: __default__
+    loggers: ["file_logger"]
+    schedule: daily
+    executor: sequential
