@@ -1,0 +1,87 @@
+// from NONMEM 7.4 spec:
+//
+// $DATA  [filename|*] [(format)] [IGNORE=c1] [NULL=c2]
+//        [IGNORE=(list)...|ACCEPT=(list)...]
+//        [NOWIDE|WIDE] [CHECKOUT]
+//        [RECORDS=n1|RECORDS=label]
+//        [LRECL=n2] [NOREWIND|REWIND]
+//        [NOOPEN] [LAST20=n3] [TRANSLATE=(list)]
+//        [BLANKOK]
+//        [MISDAT=@r@...]
+
+root : (filename | ASTERISK) any_option*
+
+ASTERISK: "*"
+// dataset (always, unless only ASTERISK terminal)
+filename: FILENAME | QFILENAME
+
+// option rules
+?any_option : IGNORE EQUALS? char        -> ignchar
+            | IGNORE EQUALS? _list       -> ignore
+            | NULL EQUALS? char          -> null
+            | ACCEPT EQUALS? _list       -> accept
+            | KEY (EQUALS VALUE)?        -> option
+            | format
+
+format: "(" FORMAT ")"
+
+// specific option terminals
+char: CHAR
+IGNORE : "IGNORE" | "IGNOR" | "IGNO" | "IGN"
+ACCEPT : "ACCEPT" | "ACCEP" | "ACCE" | "ACC"
+NULL   : "NULL" | "NUL"
+EQUALS : "="
+
+// generic option terminals (key-value pairs)
+KEY   : /(?!(;|IGN|ACC|NUL))\w+/      // TODO: parse all options or use priority (instead of negative lookahead)
+VALUE : /(?!(;|IGN|ACC|NUL))[^\s=]+/  // TODO: parse all options or use priority (instead of negative lookahead)
+
+// _list is only a container (filter thus on accept/ignore)
+_list  : "(" _list_items ")"
+_list_items : (_list_items ",")? filter
+filter : column operator? expr
+
+?operator.1: OP_EQ
+           | OP_NE
+           | OP_LT
+           | OP_LT_EQ
+           | OP_GT
+           | OP_GT_EQ
+           | OP_STR_EQ
+           | OP_STR_NE
+
+?expr: EXPR
+     | QEXPR
+
+?column: COLUMN
+COLUMN: /\w+/  // TODO: verify correct coverage
+
+// common operators
+OP_EQ     : ".EQN."
+OP_NE     : ".NEN."
+OP_LT     : ".LT." | "<"
+OP_LT_EQ  : ".LE." | "<="
+OP_GT     : ".GT." | ">"
+OP_GT_EQ  : ".GE." | ">="
+OP_STR_EQ : ".EQ." | "==" | "="
+OP_STR_NE : ".NE." | "/="
+
+// common naked/enquoted text terminals
+FILENAME  : /[^"',;()=\s]+/
+QFILENAME : /"[^"]*"/
+          | /'[^']*'/
+
+EXPR  : /[^"',;()=<>\/.\s][^"',;()=\s]*/
+QEXPR : /"[^"]*"/
+      | /'[^']*'/
+
+FORMAT  : /[^"',;()=\s]+/
+
+CHAR : /"[^"]"/
+     | /'[^']'/
+     | /[^';()=\s]/
+
+%import .definitions (WS, COMMENT, NEWLINE)
+%ignore WS
+%ignore COMMENT
+%ignore NEWLINE

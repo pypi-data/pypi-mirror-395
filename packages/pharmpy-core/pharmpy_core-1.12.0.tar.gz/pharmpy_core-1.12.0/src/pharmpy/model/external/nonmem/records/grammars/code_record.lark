@@ -1,0 +1,259 @@
+// A precedence climbing grammar is used for expressions
+// The top level has one full line of code per rule
+
+root: _empty_lines? (pseudo _empty_lines?)? _statements_and_verbatims?
+_empty_lines: _empty_lines? empty_line
+empty_line: NEWLINE
+
+_statements_and_verbatims: _statements_and_verbatims? (statement | verbatim) _empty_lines?
+_statements: _statements? statement _empty_lines?
+
+pseudo: _lpar_pseudo_statement pseudo_statement ")" NEWLINE
+pseudo_statement: PSEUDO_STATEMENT?
+// LALR(1) hack: PSEUDO_STATEMENT matches almost anything so we need to lower
+// its priority.
+PSEUDO_STATEMENT.-1: /[^)]+/
+
+// NOTE trailing NEWLINE needs to be optional in case of EOF
+verbatim: VERBATIM_STATEMENT NEWLINE
+VERBATIM_STATEMENT: /"[^\n]*/
+
+// NOTE trailing NEWLINE needs to be optional in case of EOF
+statement: _statement NEWLINE?
+
+_statement: assignment
+          | logical_if
+          | block_if
+          | while
+          | exit
+          | call
+          | return
+
+exit: EXIT (("1" | "2") (SIGNED_INT)?)?
+call: CALL CNAME _lpar _atoms _rpar
+_atoms: (_atoms _sep)? atom
+return: RETURN
+assignment: assignable EQUALS real_expr
+EQUALS: "="
+
+_lpar: "("
+// LALR(1) hack: the following helps the contextual lexer to
+// distinguish between low-priority PSEUDO_STATEMENT and CNAME
+_lpar_pseudo_statement: "("
+_rpar: ")"
+_sep: ","
+
+_condition: _lpar bool_expr _rpar
+
+while: DOWHILE _condition _empty_lines _statements_and_verbatims? ENDDO
+
+block_if: block_if_start (block_if_elseif)* (block_if_else)? block_if_end
+block_if_start: IF _condition THEN _empty_lines _statements_and_verbatims?
+block_if_elseif: ELSEIF _condition THEN _empty_lines _statements_and_verbatims?
+block_if_else: ELSE _empty_lines _statements_and_verbatims?
+block_if_end: ENDIF
+
+EXIT.9   : "EXIT"i
+CALL.9   : /CALL\s+/i
+RETURN.9 : "RETURN"i
+DOWHILE.9: "DO WHILE"i
+         | "DOWHILE"i
+ENDDO.9  : "END DO"i
+         | "ENDDO"i
+IF.9     : "IF"i FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD
+THEN.9   : "THEN"i
+ELSE.9   : "ELSE"i
+ELSEIF.9 : "ELSE IF"i
+         | "ELSEIF"i
+ENDIF.9  : "END IF"i
+         | "ENDIF"i
+
+logical_if: IF _condition (assignment | exit | call)
+bool_expr: or_expr
+
+?or_expr: and_expr
+        | or_expr lor and_expr           -> instruction_infix
+        // NOTE Left-associativity for logical or
+
+?and_expr: not_expr
+         | and_expr land not_expr        -> instruction_infix
+         // NOTE Left-associativity for logical and
+
+?not_expr: eq_expr
+         | lnot eq_expr                         -> instruction_unary
+
+?eq_expr: rel_expr
+        | rel_expr _eq_op eq_expr        -> instruction_infix
+
+?rel_expr: real_expr
+         | real_expr _rel_op real_expr   -> instruction_infix
+
+lor: LOR
+LOR: ".OR."i
+
+land: LAND
+LAND: ".AND."i
+
+lnot: LNOT
+LNOT: ".NOT."i
+
+_eq_op: eq | ne
+eq: EQ
+EQ: "==" | ".EQ."i
+
+ne: NE
+NE: "/=" | ".NE."i
+
+_rel_op: lt | le | gt | ge
+lt: LT
+LT: ".LT."i | "<"
+le: LE
+LE: ".LE."i | "<="
+gt: GT
+GT: ".GT."i | ">"
+ge: GE
+GE: ".GE."i | ">="
+
+real_expr: add_expr
+
+?add_expr: mul_expr
+         | add_expr _add_op mul_expr  -> instruction_infix
+         // NOTE Left-associativity for addition and subtraction
+
+?mul_expr: sign_expr
+         | mul_expr _mul_op sign_expr -> instruction_infix
+         // NOTE Left-associativity for multiplication and division
+
+?sign_expr: pow_expr
+          | _sign pow_expr                   -> instruction_unary
+
+?pow_expr: atom
+         | atom pow_op sign_expr      -> instruction_infix
+         // NOTE Right-associativity for exponentiation
+
+_sign: pos_op | neg_op
+pos_op: POS
+POS: "+"
+neg_op: NEG
+NEG: "-"
+
+_add_op: add_op | sub_op
+add_op  : ADD
+ADD: "+"
+sub_op  : SUB
+SUB: "-"
+
+_mul_op : mul_op | div_op
+mul_op  : MUL
+MUL: "*"
+div_op  : DIV
+DIV: "/"
+
+pow_op : POW
+POW: "**"
+
+
+?atom: img
+     | symbol
+     | number
+     | _lpar real_expr _rpar -> real_expr
+
+img: _fn1 _lpar real_expr _rpar
+   | _fn2 _lpar real_expr _sep real_expr _rpar
+
+_fn1: exp | pexp
+    | log | plog
+    | log10 | plog10
+    | sqrt | psqrt
+    | sin | cos | tan
+    | asin | acos | atan
+    | abs
+    | int
+    | loggamma
+    | pdz
+    | pzr
+    | pnp
+    | phe
+    | png
+    | phi
+
+exp: "EXP"i | "DEXP"i
+pexp: "PEXP"i
+log: "LOG"i | "DLOG"i | "ALOG"i
+plog: "PLOG"i
+log10: "LOG10"i | "DLOG10"i | "ALOG10"i
+plog10: "PLOG10"i
+sqrt: "SQRT"i | "DSQRT"i
+psqrt: "PSQRT"i
+sin: "SIN"i | "DSIN"i
+cos: "COS"i | "DCOS"i
+tan: "TAN"i | "DTAN"i | "PTAN"i
+asin: "ASIN"i | "PASIN"i
+acos: "ACOS"i | "PACOS"i
+atan: "ATAN"i | "PATAN"i
+abs: "ABS"i | "DABS"i
+int: "INT"i | "DINT"i
+loggamma: "GAMLN"i
+pdz: "PDZ"i
+pzr: "PZR"i
+pnp: "PNP"i
+phe: "PHE"i
+png: "PNG"i
+phi: PHI
+
+// NOTE The following is a generic recipe to allow any NONMEM function name to
+// be used as a symbol by the modeler. Here it is applied to PHI but the recipe
+// can be repeated for each function. Note the higher priority given to the
+// token. This works without additional changes because the token is more
+// specific than variable names that are not function names.
+// Overwriting NONMEM function names with own symbols is frowned upon in
+// general so we will only enable this on a case-by-case basis.
+PHI.2: "PHI"i FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD
+
+_fn2: mod
+mod: "MOD"i | "DMOD"i
+
+assignable: vector
+          | name
+
+symbol: parameter
+      | vector
+      | name
+
+vector: name (_subscript | _double_subscript)
+parameter: (array | matrix) _subscript
+         | matrix _double_subscript
+
+_subscript: _lpar (name | index) _rpar
+_double_subscript: _lpar index _sep index _rpar
+
+array: THETA | ETA | EPS
+matrix: OMEGA | SIGMA
+name: CNAME
+index: SIGNED_INT
+
+number: SIGNED_INT
+      | FLOAT | FLOAT2
+
+FLOAT.2: SIGN? /\d*/ "." /\d+/ FLOAT_EXPONENT?
+       | SIGN? /\d+/ "."? FLOAT_EXPONENT
+FLOAT2.1: SIGN? /\d+/ DOT_NOT_FOLLOWED_BY_AMBIGUOUS_BOOLEAN_EXPR_OPERATOR_LOOK_AHEAD
+SIGN: "-" | "+"
+FLOAT_EXPONENT: /[ed][-+]?\d+/i
+DOT_NOT_FOLLOWED_BY_AMBIGUOUS_BOOLEAN_EXPR_OPERATOR_LOOK_AHEAD: /\.(?!((AND|OR|NOT|EQ|NE|LT|LE|GT|GE)\.))/
+
+// NOTE Higher priority compared to vector name tokens
+THETA.1: "THETA"i FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD
+ETA.1: "ETA"i FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD
+EPS.1: ("EPS"i | "ERR"i) FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD
+OMEGA.1: "OMEGA"i FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD
+SIGMA.1: "SIGMA"i FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD
+
+CONT: "&" WS? NEWLINE
+FOLLOWED_BY_A_PARENTHESIS_LOOKAHEAD: /(?=(([ \x00\t]+|&[ \x00\t]*\n)*\())/
+
+%import .definitions (COMMENT, NEWLINE, WS)
+%import common (CNAME, SIGNED_INT)
+%ignore WS
+%ignore COMMENT
+%ignore CONT
