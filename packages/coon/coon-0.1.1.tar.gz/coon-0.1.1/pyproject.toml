@@ -1,0 +1,118 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "coon"
+version = "0.1.1"
+description = "Code-Oriented Object Notation - Token-efficient compression for Dart/Flutter code"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "COON Contributors"}
+]
+keywords = [
+    "compression",
+    "dart",
+    "flutter",
+    "llm",
+    "token-efficient",
+    "code-compression"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Text Processing :: Filters",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+cli = ["click>=8.0"]  # Deprecated: Use @coon/cli package instead
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.0",
+    "ruff>=0.1",
+    "click>=8.0",
+]
+all = ["coon[cli,dev]"]
+
+# Deprecated: CLI has moved to standalone @coon/cli package
+# This entry is kept for backwards compatibility
+[project.scripts]
+coon-py = "coon.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/coon/coon"
+Documentation = "https://github.com/coon/coon#readme"
+Repository = "https://github.com/coon/coon"
+Issues = "https://github.com/coon/coon/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/coon"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["coon"]
+
+[tool.coverage.run]
+source = ["src/coon"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
