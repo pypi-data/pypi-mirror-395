@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motus Command - Command Center</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <!-- Local Only Security Badge -->
+    <div class="local-only-badge">Local Only (127.0.0.1)</div>
+    <!-- Version Badge -->
+    <div class="version-badge" id="version-badge">v0.3.0</div>
+
+    <!-- Floating Orbs Background -->
+    <div class="orb-container">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="orb orb-4"></div>
+        <div class="orb orb-5"></div>
+        <div class="orb orb-6"></div>
+    </div>
+    <div class="container" style="position:relative;z-index:1;">
+        <header class="header">
+            <div class="logo">🎯 MC</div>
+            <div class="breadcrumbs" id="breadcrumbs">
+                <span class="breadcrumb active">All Sessions</span>
+            </div>
+            <div class="header-actions">
+                <button class="export-btn" id="export-btn" onclick="exportSummary()" disabled title="Select a session to export">
+                    📋 Export Summary
+                </button>
+                <div class="connection-status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="panel" id="sessions-panel">
+            <div class="panel-title">📡 Sessions</div>
+            <div class="session-filter">
+                <button class="filter-toggle active" data-filter="active" onclick="setSessionFilter('active')">Active</button>
+                <button class="filter-toggle" data-filter="all" onclick="setSessionFilter('all')">All</button>
+            </div>
+            <div id="sessions"></div>
+        </div>
+
+        <div class="panel" id="feed-panel">
+            <div class="panel-title">⚡ Live Feed</div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <div class="filter-row">
+                    <span class="filter-label">Search</span>
+                    <input type="text"
+                           class="filter-search"
+                           id="search-filter"
+                           placeholder="Filter events by content..."
+                           oninput="applyFilters()">
+                </div>
+
+                <div class="filter-row">
+                    <span class="filter-label">Tools</span>
+                    <div class="filter-chips">
+                        <div class="filter-chip" data-tool="Read" onclick="toggleToolFilter('Read')">Read</div>
+                        <div class="filter-chip" data-tool="Write" onclick="toggleToolFilter('Write')">Write</div>
+                        <div class="filter-chip" data-tool="Edit" onclick="toggleToolFilter('Edit')">Edit</div>
+                        <div class="filter-chip" data-tool="Bash" onclick="toggleToolFilter('Bash')">Bash</div>
+                        <div class="filter-chip" data-tool="Glob" onclick="toggleToolFilter('Glob')">Glob</div>
+                        <div class="filter-chip" data-tool="Grep" onclick="toggleToolFilter('Grep')">Grep</div>
+                        <div class="filter-chip" data-tool="THINK" onclick="toggleToolFilter('THINK')">Think</div>
+                        <div class="filter-chip" data-tool="SPAWN" onclick="toggleToolFilter('SPAWN')">Spawn</div>
+                    </div>
+                </div>
+
+                <div class="filter-row">
+                    <span class="filter-label">Risk</span>
+                    <div class="filter-chips">
+                        <div class="filter-chip risk-all active" data-risk="all" onclick="setRiskFilter('all')">All</div>
+                        <div class="filter-chip risk-safe" data-risk="safe" onclick="setRiskFilter('safe')">Safe</div>
+                        <div class="filter-chip risk-medium" data-risk="medium" onclick="setRiskFilter('medium')">Medium</div>
+                        <div class="filter-chip risk-high" data-risk="high" onclick="setRiskFilter('high')">High</div>
+                    </div>
+                    <button class="clear-filters-btn" onclick="clearAllFilters()">Clear Filters</button>
+                </div>
+
+                <div class="results-count" id="results-count"></div>
+            </div>
+
+            <div id="feed">
+                <div class="empty-state">Waiting for events...</div>
+            </div>
+        </div>
+
+        <div class="panel" id="context-panel">
+            <div class="panel-title">🧠 Context</div>
+
+            <!-- Agent Status Panel (simplified) -->
+            <div class="working-memory" id="working-memory">
+                <div class="working-memory-header" onclick="toggleWorkingMemory()">
+                    <span class="working-memory-title">
+                        <span>📊</span> Agent Status
+                    </span>
+                    <span class="health-badge waiting" id="health-badge">
+                        <span id="health-percent">—</span>
+                    </span>
+                </div>
+                <div class="working-memory-content health-waiting" id="wm-content">
+                    <!-- Status Bar -->
+                    <div class="wm-section">
+                        <div class="status-bar-container">
+                            <div class="status-bar" id="status-bar" style="width: 50%"></div>
+                        </div>
+                        <div class="status-row">
+                            <span id="health-status-icon">⏳</span>
+                            <span class="health-status-text" id="health-status-text">Waiting...</span>
+                        </div>
+                    </div>
+                    <!-- Current Goal -->
+                    <div class="wm-section">
+                        <div class="wm-label">Current Focus</div>
+                        <div class="wm-goal" id="wm-goal">Waiting for task...</div>
+                    </div>
+                    <!-- Active Files -->
+                    <div class="wm-section">
+                        <div class="wm-label">Active</div>
+                        <div class="wm-focus" id="wm-focus">
+                            <span class="wm-focus-item">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Intent Tracker Panel -->
+            <div class="intent-tracker" id="intent-tracker">
+                <div class="intent-tracker-header" onclick="toggleIntentTracker()">
+                    <span class="intent-tracker-title">
+                        <span>🎯</span> Intent Tracker
+                    </span>
+                    <span class="intent-count" id="intent-count">0</span>
+                </div>
+                <div class="intent-tracker-content" id="intent-content">
+                    <div class="intent-stats" id="intent-stats">
+                        <div class="intent-stat">
+                            <span class="stat-label">Tokens</span>
+                            <span class="stat-value" id="stat-tokens">—</span>
+                        </div>
+                        <div class="intent-stat">
+                            <span class="stat-label">Cache</span>
+                            <span class="stat-value" id="stat-cache">—</span>
+                        </div>
+                        <div class="intent-stat">
+                            <span class="stat-label">Files</span>
+                            <span class="stat-value" id="stat-files">—</span>
+                        </div>
+                    </div>
+                    <div class="intent-list" id="intent-list">
+                        <div class="empty-state">Select a session to see intents</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Machine Panel -->
+            <div class="time-machine" id="time-machine">
+                <div class="time-machine-header" onclick="toggleTimeMachine()">
+                    <span class="time-machine-title">
+                        <span>⏰</span> Time Machine
+                    </span>
+                    <span class="snapshot-count" id="snapshot-count">0</span>
+                </div>
+                <div class="time-machine-content" id="time-machine-content">
+                    <div class="time-machine-files" id="time-machine-files">
+                        <div class="empty-state">Select a session to see file history</div>
+                    </div>
+                    <div class="time-machine-viewer" id="time-machine-viewer" style="display:none;">
+                        <div class="viewer-header">
+                            <span class="viewer-filename" id="viewer-filename"></span>
+                            <button class="viewer-close" onclick="closeSnapshotViewer()">×</button>
+                        </div>
+                        <div class="viewer-versions" id="viewer-versions"></div>
+                        <pre class="viewer-content" id="viewer-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Knowledge Graph Panel -->
+            <div class="knowledge-graph" id="knowledge-graph">
+                <div class="knowledge-graph-header" onclick="toggleKnowledgeGraph()">
+                    <span class="knowledge-graph-title">
+                        <span>🕸️</span> Knowledge Graph
+                    </span>
+                    <span class="kg-count" id="kg-count">0</span>
+                </div>
+                <div class="knowledge-graph-content" id="knowledge-graph-content">
+                    <div class="kg-stats" id="kg-stats">
+                        <div class="kg-stat">
+                            <span class="stat-value" id="kg-read">—</span>
+                            <span class="stat-label">Read</span>
+                        </div>
+                        <div class="kg-stat">
+                            <span class="stat-value" id="kg-modified">—</span>
+                            <span class="stat-label">Modified</span>
+                        </div>
+                    </div>
+                    <div class="kg-dirs" id="kg-dirs">
+                        <div class="empty-state">Select a session to see file graph</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="context">
+                <div class="empty-state">Select a session</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>
