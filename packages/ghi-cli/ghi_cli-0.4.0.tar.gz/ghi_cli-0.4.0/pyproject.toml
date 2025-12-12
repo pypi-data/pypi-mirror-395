@@ -1,0 +1,45 @@
+[project]
+name = "ghi-cli"
+version = "0.4.0"
+description = ""
+authors = [
+    {name = "Gabriel Dornas",email = "gabrielbdornas@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "taskipy (>=1.14.1,<2.0.0)",
+    "python-dotenv[cli] (>=1.2.1,<2.0.0)"
+]
+
+[project.scripts]
+ghi = "ghi.cli:main"
+
+[tool.poetry]
+packages = [{ include = "ghi" }]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "ipdb (>=0.13.13,<0.14.0)",
+    "pytest (>=9.0.1,<10.0.0)"
+]
+
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "$version"
+version_scheme = "pep440"
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.taskipy.tasks]
+publish = { cmd = "dotenv run poetry publish --build -n", help = "Publish the package on Pypi." }
