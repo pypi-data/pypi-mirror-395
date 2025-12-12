@@ -1,0 +1,269 @@
+# tuul
+
+[](https://www.google.com/search?q=https://badge.fury.io/py/tuul)
+[](https://www.google.com/search?q=https://github.com/your-org/tuul/actions)
+[](https://www.google.com/search?q=https://pypi.org/project/tuul/)
+[](https://opensource.org/licenses/MIT)
+
+The official Python SDK for the **Tuul API**.
+
+This library provides convenient access to the Tuul Generative, Conversation, and Lite Mode APIs from any Python 3.9+ application. It includes type definitions for all request parameters and response fields, and offers both synchronous and asynchronous clients powered by `httpx`.
+
+-----
+
+## Installation
+
+```bash
+pip install tuul
+```
+
+## Authentication & Configuration
+
+### 1\. API Key
+
+The SDK expects an API Key to be provided either via the client constructor or environment variables.
+
+```bash
+export TUUL_API_KEY="tuul_live_..."
+```
+
+### 2\. IP Whitelisting (Important)
+
+Tuul enforces IP whitelisting for project instances.
+
+> **Note:** If you receive a `403 PermissionError` or `401 AuthenticationError`, please verify that your server's outgoing IP address is whitelisted in your **Tuul Project Settings \> Security**.
+
+-----
+
+
+## Usage
+
+### Generative API
+
+Standard text generation for creative or analytical tasks. This endpoint often requires specific IDs for billing and context.
+
+```python
+import os
+import uuid
+from tuul import TuulClient
+
+# 1. Initialize the client using the API key from environment variables
+client = TuulClient(api_key=os.environ.get("TUUL_API_KEY"))
+
+# 2. Define the mandatory IDs (often set as ENV vars or in a .env file)
+AGENT_ID = os.environ.get("TUUL_AGENT_ID", "DGW-DEFAULT-AGENT")
+SESSION_ID = str(uuid.uuid4()) # Use a unique ID for each session
+
+response = client.generative.create(
+    prompt="Write a haiku about Python code.",
+    agent_id=AGENT_ID,                 
+    session_id=SESSION_ID
+)
+
+print(response.content)
+# Output:
+# Indentations deep,
+# Logic flows like water stream,
+# Code compiles in peace.
+```
+
+### Lite Mode API
+
+Optimized for low-latency, real-time applications. Use **characteristics** to provide fine-grained context without complex system prompts.
+
+```python
+# Assuming client is already initialized from the Generative API example
+# client = TuulClient(api_key=os.environ.get("TUUL_API_KEY"))
+
+# Define a characteristic list for the model's behavior
+characteristics = [
+    {"key": "persona", "value": "strict editor"},
+    {"key": "language", "value": "english"}
+]
+
+resp = client.lite.generate(
+    prompt="Correct this spelling: helecopter and gramar",
+    session_id="spellcheck-task-1",
+    characteristics=characteristics,
+    cache_session=False
+)
+print(resp.content) 
+# Output: helicopter and grammar
+```
+
+-----
+
+## 🔁 Async Usage
+
+`tuul` provides an `AsyncTuulClient` for use with `asyncio`, which is recommended for high-concurrency applications. It is crucial to use the `async with` block for proper resource management.
+
+```python
+import asyncio
+import os
+from tuul import AsyncTuulClient
+
+async def generate_response(client: AsyncTuulClient, prompt: str, session_id: str):
+    """Helper function to run a generative call."""
+    AGENT_ID = os.getenv("TUUL_AGENT_ID", "DGW-DEFAULT-AGENT")
+    
+    response = await client.generative.create(
+        prompt=prompt,
+        agent_id=AGENT_ID,
+        session_id=session_id
+    )
+    print(f"[{session_id}] Response: {response.content.strip()[:50]}...")
+
+async def main():
+    api_key = os.getenv("TUUL_API_KEY")
+    if not api_key:
+        print("Error: TUUL_API_KEY environment variable is not set.")
+        return
+
+    # Use 'async with' to ensure the client connection is closed properly
+    async with AsyncTuulClient(api_key=api_key) as client:
+        # Run multiple requests concurrently
+        await asyncio.gather(
+            generate_response(client, "What is a monad?", "async-1"),
+            generate_response(client, "Describe a closure.", "async-2")
+        )
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+
+## Error Handling
+
+The library throws custom exceptions mapped to HTTP status codes.
+
+```python
+from tuul import TuulClient
+from tuul.exceptions import PermissionError, RateLimitError, APIConnectionError
+
+client = TuulClient(api_key="...")
+
+try:
+    client.generative.create(prompt="...")
+except PermissionError:
+    # Handles 403 Forbidden
+    print("Check your IP Whitelist in Tuul Settings.")
+except RateLimitError:
+    # Handles 429 Too Many Requests
+    print("Slow down! You are hitting rate limits.")
+except APIConnectionError:
+    # Handles network failures (DNS, Timeout)
+    print("Network trouble. Please retry.")
+```
+
+-----
+
+## Advanced Configuration
+
+### Timeouts and Retries
+
+By default, the client retries connection errors and 429/5xx errors 3 times with exponential backoff.
+
+```python
+client = TuulClient(
+    api_key="...",
+    timeout=60.0,      # Increase timeout to 60 seconds
+    max_retries=5      # Retry up to 5 times
+)
+```
+
+-----
+
+
+## CLI Usage
+
+The package includes a simple command-line interface (CLI) for quick testing and interaction with the Tuul API.
+
+### Configuration
+
+You have three options for setting your mandatory keys and IDs (in order of precedence):
+
+1.  **Command-Line Flags** (e.g., `--api-key`).
+2.  **Environment Variables** (using `export` in your terminal).
+3.  **`.env` File** (recommended for local development).
+
+#### Using the `.env` File (Recommended)
+
+To avoid typing the keys for every command, create a file named **`.env`** in the root of your project directory and add the following:
+
+```ini
+# .env file content (variables are automatically loaded by the CLI)
+
+TUUL_API_KEY="sk_live_..."
+TUUL_AGENT_ID="DGW-DEFAULT-AGENT"
+TUUL_AGENT_VERSION="V1"
+```
+
+-----
+
+### 1\.  Generative API (`tuul generate`)
+
+This command calls the full **Generative API** endpoint. It supports advanced features like web search and reasoning. It automatically uses `TUUL_AGENT_ID`, `TUUL_AGENT_VERSION`, and `TUUL_PLATFORM_ID` from your environment if not provided.
+
+| Parameter | Required? | Default (from Env/Code) | Description |
+| :--- | :--- | :--- | :--- |
+| `prompt` | Yes | None | The input text for the AI. |
+| `--session-id` | Yes | None | A unique identifier for the conversation session. |
+| `--agent-id` | No | `TUUL_AGENT_ID` | The ID of the language model agent. |
+| `--web-search` | No | `False` | Enables real-time web search capability. |
+
+#### Example Usage
+
+To override the default agent with a custom one:
+
+```bash
+tuul generate "Why is the sky blue?" --session-id "query-1" --agent-id "DWG-1FH4IERETG"
+```
+
+To use the default configuration from your `.env` file:
+
+```bash
+tuul generate "What are the latest stock market trends?" --session-id "trends-5"
+```
+
+-----
+
+### 2\. Lite Mode (`tuul lite`)
+
+This command calls the **Lite Mode API**, designed for fast, low-latency requests. It accepts custom characteristics to give the model context.
+
+| Parameter | Required? | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `prompt` | Yes | None | The input text for the AI. |
+| `--session-id` | Yes | None | A unique identifier for the request. |
+| `--characteristic` / `-c` | No | None | Context in `key=value` format (e.g., `-c user_age=30`). |
+| `--cache` | No | `False` | Enables caching for the session (boolean flag). |
+
+#### Example Usage
+
+```bash
+tuul lite "Say hello in French" --session-id "lite-test-001"
+```
+
+With custom characteristics:
+
+```bash
+tuul lite "What is the capital of Canada?" --session-id "lite-geo-5" -c "query_type=geo" --cache
+```
+
+#### Example Output
+
+```
+Response (Lite): La capitale du Canada est Ottawa.
+Latency: 150.25ms
+```
+
+-----
+
+## 📦 Final Notes
+
+* **Lite Mode** is ideal for chatbots, real-time editors, instant search, or any scenario where **speed matters more than complex reasoning**.
+* **Generative Mode** is recommended for long-form, analytical, or web-enhanced tasks.
+* The CLI automatically loads configuration from environment variables or your `.env` file, keeping your workflow clean and secure.
+* All commands return structured JSON behind the scenes, making the SDK easy to integrate into pipelines or logging systems.
+
+---
