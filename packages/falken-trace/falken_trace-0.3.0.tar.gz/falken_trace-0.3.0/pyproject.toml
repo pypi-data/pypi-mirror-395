@@ -1,0 +1,110 @@
+[project]
+name = "falken-trace"
+version = "0.3.0"
+description = "Enhances traces with code metadata"
+authors = [
+    { name = "Baz", email = "info@baz.co" }
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["observability", "tracing"]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed"
+]
+readme = "README.md"
+
+requires-python = ">=3.10"
+
+dependencies = [
+    "typing-extensions>=4.6.0,<5.0.0",
+    "wrapt>=1.15.0,<3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/baz-scm/falken-trace-py"
+Repository = "https://github.com/baz-scm/falken-trace-py"
+Changelog = "https://github.com/baz-scm/falken-trace-py/blob/main/CHANGELOG.md"
+Releases = "https://github.com/baz-scm/falken-trace-py/releases"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0,<2.0.0",
+    "prek>=0.2.19,<0.3.0",
+    "pytest>=9.0.0,<10.0.0",
+    # integration tests
+    "ddtrace>=3.9.1,<5.0.0",
+    "fastapi>=0.115.12,<1.0.0",
+    # For the FastAPI test client
+    "httpx>=0.28.1,<1.0.0",
+]
+
+[build-system]
+requires = ["uv_build~=0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+required-version = "~=0.9.0"
+
+[tool.uv.build-backend]
+module-name = "falken_trace"
+module-root = ""
+source-include = ["tests/**"]
+
+[tool.mypy]
+files = "falken_trace"
+
+python_version = "3.10"
+local_partial_types = true # will become the new default from version 2
+allow_redefinition_new = true # will become the new default from version 2
+fixed_format_cache = true # new caching mechanism
+strict = true
+pretty = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "A",
+    "ANN",
+    "ARG",
+    "B",
+    "C4",
+    "E",
+    "F",
+    "FURB",
+    "I",
+    "ISC",
+    "N",
+    "PERF",
+    "PIE",
+    "PLE",
+    "PLW",
+    "PT",
+    "PYI",
+    "RUF",
+    "S",
+    "SIM",
+    "T10",
+    "TC",
+    "UP",
+    "W",
+    "YTT",
+]
+ignore = ["E501"] # ruff fromat takes care of it
+
+fixable = ["I001"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["ANN001", "ARG001", "S101"]
+
+[tool.pytest]
+strict = true
