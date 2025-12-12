@@ -1,0 +1,48 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import psutil
+import re
+import shutil
+from okerrupdate.utils import kmgt
+
+# read parameters
+prefix = os.getenv('PREFIX')
+maxlim = int(os.getenv('MAXLIM','90'))
+ignore_device = os.getenv('IGNORE_DEVICE','^/dev/loop')
+ignore_fstype = os.getenv('IGNORE_FSTYPE','devpts')
+ignore_mount = os.getenv('IGNORE_MOUNT','')  # '^/media/|^/snap/'
+all_partitions = int(os.getenv('ALL','0'))
+
+for p in psutil.disk_partitions(all=bool(all_partitions)):
+    print("# ", p)
+    if ignore_device:
+        if re.search(ignore_device, p.device):
+            #print("ignore device", ignore_device)
+            continue
+
+    if ignore_fstype:
+        if re.search(ignore_fstype, p.fstype):
+            # print("ignore fstype", ignore_fstype)
+            continue
+
+    if ignore_mount:
+        if re.search(ignore_mount, p.mountpoint):
+            #print("ignore device", ignore_device)
+            continue
+    u = shutil.disk_usage(p.mountpoint)
+    
+    perc = u.used * 100 / u.total
+    total = kmgt(u.total)
+    used = kmgt(u.used)
+    free = kmgt(u.free)
+
+    data = """
+NAME: {prefix}df-{mount}
+TAGS: df
+METHOD: numerical|maxlim={maxlim}
+DETAILS: {perc:.2f}%, {used}/{total} used, {free} free
+STATUS: {perc:.2f}
+""".lstrip().format(prefix=prefix, maxlim=maxlim, mount=p.mountpoint, perc=perc, used=used, total=total, free=free)
+    print(data)

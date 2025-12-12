@@ -1,0 +1,84 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import glob
+import time
+import re
+
+def kmgt(sz, frac=1):
+    t = {
+        'K': pow(1024, 1),
+        'M': pow(1024, 2),
+        'G': pow(1024, 3),
+        'T': pow(1024, 4),
+        '': 1}
+
+    for k in sorted(t, key=t.__getitem__, reverse=True):
+        if sz >= t[k]:
+            n = sz / float(t[k])
+            tpl = "{:." + str(frac) + "f}{}"
+            return tpl.format(n, k)
+
+def timesuffix2sec(timesuffix):
+    suf = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
+
+    r = re.match('(\d+)(d|h|m|s|day|days|hour|hours|hr|min|minute|minutes|sec|seconds)?$', timesuffix)
+    if r is None:
+        raise ValueError('Cannot parse \'{}\'. Valid examples are: 10s, 5m, 2h'.format(timesuffix))
+
+    r = re.match('(\d+)([dhmsDHMS])?', timesuffix)
+    if r is None:
+        raise ValueError('Bad time/suffix value {}'.format(timesuffix))
+
+    n = int(r.group(1))
+    try:
+        suffix = r.group(2).lower()
+    except:
+        suffix = 's'
+    return n * suf[suffix]
+
+# read parameters
+prefix = os.getenv('PREFIX')
+pathlist = os.getenv('PATHLIST','/var/mybackups/*')
+fresh = timesuffix2sec(os.getenv('FRESH','1d'))
+completed = timesuffix2sec(os.getenv('COMPLETED','1min'))
+date = os.getenv('DATEFMT','[0-9][0-9\-]{7,}')
+datesub = os.getenv('DATESUB','DATE')
+minlim = os.getenv('MINLIM','10k')
+diffmin = os.getenv('DIFFMIN','0')
+skip = os.getenv('SKIP','')
+
+
+# prepare filelist (only most recent file per each template)
+files = dict()
+
+for path in pathlist.split(' '):
+    for curpath in glob.glob(path):
+        tpl = re.sub(date, datesub, os.path.basename(curpath))
+        if tpl not in files:
+            files[tpl] = curpath
+        else:
+            if os.stat(curpath).st_mtime > os.stat(files[tpl]).st_mtime:
+                files[tpl] = curpath
+
+for curpath in files.values():
+    if skip and re.search(skip, curpath):
+        continue
+
+    if time.time() - os.stat(curpath).st_mtime < completed:
+        continue
+
+    if time.time() - os.stat(curpath).st_mtime > fresh:
+        continue
+
+    tpl = re.sub(date, datesub, os.path.basename(curpath))
+    sz = os.stat(curpath).st_size
+
+    print("NAME: {}{}".format(prefix, tpl))
+    print("TAGS: backups")
+    print("DETAILS: {}: {}".format(os.path.basename(curpath), kmgt(sz)))
+    print("METHOD: numerical|minlim={}|diffmin={}".format(minlim, diffmin))
+    print("STATUS: {}".format(sz))
+    print()
+
