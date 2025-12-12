@@ -1,0 +1,269 @@
+Metadata-Version: 2.4
+Name: agrifrika-shared
+Version: 0.3.12
+Summary: Shared utilities and models for Agrifrika microservices
+Home-page: https://github.com/agrifrika/agrifrika-backend
+Author: Agrifrika Team
+Author-email: Agrifrika Team <tech@agrifrika.com>
+License: MIT
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: python-dateutil>=2.8.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.10.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: boto3>=1.26.0; extra == "dev"
+Requires-Dist: moto>=4.0.0; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
+# Agrifrika Shared Package
+
+Shared utilities, models, and AWS clients for all Agrifrika microservices.
+
+## Features
+
+- **Response Builders**: Standardized API response formatting
+- **Request Parsers**: Lambda event parsing with Pydantic validation
+- **Structured Logging**: JSON-formatted logs for CloudWatch Logs Insights
+- **AWS Clients**: Singleton boto3 clients with retry logic
+- **DynamoDB Client**: High-level DynamoDB operations wrapper
+- **Cognito Client**: User management operations wrapper
+- **Exception Classes**: Custom business and validation exceptions
+- **Validators**: Common validation utilities (email, phone, etc.)
+
+## Installation
+
+### Development Installation (Editable Mode)
+
+For local development, install in editable mode so changes are reflected immediately:
+
+```bash
+cd agrifrika-backend/shared
+pip install -e .
+```
+
+### Production Installation
+
+```bash
+pip install agrifrika-shared
+```
+
+### With Development Dependencies
+
+```bash
+pip install -e ".[dev]"
+```
+
+## Usage
+
+### Response Builders
+
+```python
+from agrifrika_shared.utils.response_builder import success_response, error_response
+
+# Success response
+return success_response({"user_id": "123"}, "User created successfully", 201)
+
+# Error response
+return error_response("User not found", 404, error_code="USER_NOT_FOUND")
+```
+
+### Request Parsing
+
+```python
+from agrifrika_shared.utils.request_parser import parse_lambda_event
+from pydantic import BaseModel
+
+class CreateUserRequest(BaseModel):
+    email: str
+    name: str
+
+def handler(event, context):
+    # Automatically parse and validate
+    request = parse_lambda_event(event, CreateUserRequest)
+    print(request.email)  # Validated email
+```
+
+### Structured Logging
+
+```python
+from agrifrika_shared.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+logger.info("user_created", user_id="123", email="test@example.com")
+# Output: {"timestamp": "2025-01-15T10:30:00Z", "level": "INFO", "message": "user_created", ...}
+```
+
+### AWS Clients
+
+```python
+from agrifrika_shared.aws.clients import get_dynamodb_resource, get_cognito_client
+
+# DynamoDB
+dynamodb = get_dynamodb_resource()
+table = dynamodb.Table('users')
+
+# Cognito
+cognito = get_cognito_client()
+response = cognito.admin_get_user(UserPoolId='...', Username='...')
+```
+
+### DynamoDB Client
+
+```python
+from agrifrika_shared.aws.dynamo_client import DynamoDBClient
+
+client = DynamoDBClient()
+
+# Put item
+client.put_item('users', {'id': '123', 'name': 'John'})
+
+# Get item
+user = client.get_item('users', {'id': '123'})
+
+# Query
+from boto3.dynamodb.conditions import Key
+result = client.query('users', Key('status').eq('active'), index_name='StatusIndex')
+```
+
+### Cognito Client
+
+```python
+from agrifrika_shared.aws.cognito_client import CognitoClient
+
+client = CognitoClient()
+
+# Create user
+user = client.create_user(
+    'test@example.com',
+    'TempPass123!',
+    attributes={'given_name': 'John', 'family_name': 'Doe'}
+)
+
+# Add to group
+client.add_user_to_group('test@example.com', 'Admins')
+```
+
+### Custom Exceptions
+
+```python
+from agrifrika_shared.utils.exceptions import NotFoundError, ValidationError
+
+# Raise exceptions
+if not user:
+    raise NotFoundError('User', user_id)
+
+if not validate_email(email):
+    raise ValidationError('Invalid email format', field='email')
+```
+
+## Project Structure
+
+```
+agrifrika_shared/
+├── __init__.py
+├── models/              # Pydantic models (to be added)
+│   ├── __init__.py
+│   ├── base.py
+│   ├── user.py
+│   └── ...
+├── utils/               # Utility functions
+│   ├── __init__.py
+│   ├── request_parser.py
+│   ├── response_builder.py
+│   ├── logger.py
+│   ├── exceptions.py
+│   └── validators.py
+├── aws/                 # AWS client wrappers
+│   ├── __init__.py
+│   ├── clients.py
+│   ├── dynamo_client.py
+│   └── cognito_client.py
+└── config/              # Configuration
+    ├── __init__.py
+    └── settings.py
+```
+
+## Development
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Running Tests with Coverage
+
+```bash
+pytest --cov=agrifrika_shared --cov-report=html
+```
+
+### Code Formatting
+
+```bash
+# Format with black
+black agrifrika_shared/
+
+# Sort imports
+isort agrifrika_shared/
+
+# Lint with ruff
+ruff check agrifrika_shared/
+```
+
+### Type Checking
+
+```bash
+mypy agrifrika_shared/ --strict
+```
+
+## Integration with Services
+
+To use the shared package in a service:
+
+1. Add to `requirements.txt`:
+   ```
+   -e ../../../shared
+   boto3==1.28.0
+   pydantic==2.5.0
+   ```
+
+2. Install dependencies:
+   ```bash
+   cd services/aggregator_service
+   pip install -r requirements.txt
+   ```
+
+3. Import and use:
+   ```python
+   from agrifrika_shared.utils import success_response, parse_lambda_event
+   from agrifrika_shared.aws.dynamo_client import DynamoDBClient
+   ```
+
+## Environment Variables
+
+The shared package uses the following environment variables:
+
+- `AWS_REGION`: AWS region (default: us-east-1)
+- `COGNITO_USER_POOL_ID`: Cognito user pool ID (required for CognitoClient)
+- `LOG_LEVEL`: Logging level (default: INFO)
+
+## Contributing
+
+1. Make changes to the shared package
+2. Add tests for new functionality
+3. Run tests and linting
+4. Update this README if adding new features
+
+## License
+
+MIT
