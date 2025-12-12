@@ -1,0 +1,406 @@
+/**
+ * Ontonaut StreamingWidget Styles
+ * Simple input/output with streaming (like CodeEditor)
+ */
+
+.ontonaut-stream-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  margin: 8px 0;
+  transition: box-shadow 0.2s ease;
+}
+
+.ontonaut-stream-container:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ontonaut-stream-container[data-theme="dark"] {
+  background: #1a1a1a;
+  border-color: #333333;
+  color: #e0e0e0;
+}
+
+/* Toolbar */
+.ontonaut-stream-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #fafbfc;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-toolbar {
+  background: #252525;
+  border-bottom-color: #333333;
+}
+
+.ontonaut-stream-language {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-language {
+  color: #9ca3af;
+  background: #1f1f1f;
+}
+
+.ontonaut-stream-run-button,
+.ontonaut-stream-clear-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #10b981;
+  color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ontonaut-stream-run-button:hover:not(.disabled) {
+  background: #059669;
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.25);
+}
+
+.ontonaut-stream-run-button:active:not(.disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ontonaut-stream-run-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ontonaut-stream-clear-button {
+  background: white;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-clear-button {
+  background: #1f1f1f;
+  color: #9ca3af;
+  border-color: #333333;
+}
+
+.ontonaut-stream-clear-button:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-clear-button:hover {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+.ontonaut-stream-clear-button:active {
+  transform: translateY(0);
+  background: #f3f4f6;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-clear-button:active {
+  background: #1a1a1a;
+}
+
+.ontonaut-stream-run-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Input Section */
+.ontonaut-stream-input-section {
+  position: relative;
+  min-height: 80px;
+}
+
+.ontonaut-stream-input {
+  width: 100%;
+  padding: 12px;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 20px;
+  border: none;
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  background: white;
+  color: #24292e;
+  tab-size: 4;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-input {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+.ontonaut-stream-input:focus {
+  background: #fafbfc;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-input:focus {
+  background: #252525;
+}
+
+.ontonaut-stream-input::placeholder {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.ontonaut-stream-input.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Tabs Section */
+.ontonaut-stream-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 10px 0;
+  background: #fafbfc;
+  border-top: 1px solid #e8eaed;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-tabs {
+  background: #252525;
+  border-top-color: #333333;
+}
+
+.ontonaut-stream-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.ontonaut-stream-tabs::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.ontonaut-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.ontonaut-tab:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.ontonaut-tab.active {
+  background: white;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-tab {
+  background: #1f1f1f;
+  color: #9ca3af;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-tab:hover {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-tab.active {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+.ontonaut-tab-current {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white !important;
+}
+
+.ontonaut-tab-current:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.ontonaut-tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ontonaut-tab-close {
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  padding: 0 2px;
+}
+
+.ontonaut-tab-close:hover {
+  opacity: 1;
+  color: #dc2626;
+}
+
+/* Output Section */
+.ontonaut-stream-output-section {
+  background: #fafbfc;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-output-section {
+  background: #252525;
+}
+
+.ontonaut-stream-output-label {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-output-label {
+  color: #9ca3af;
+  border-bottom-color: #333333;
+}
+
+.ontonaut-stream-output {
+  margin: 0;
+  padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  background: white;
+  color: #1f2937;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-output {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+/* Code formatting in output */
+.ontonaut-stream-output .code-block {
+  background: #f6f8fa;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  position: relative;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-output .code-block {
+  background: #161616;
+  border-color: #333333;
+}
+
+.ontonaut-stream-output .code-block::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ontonaut-stream-output .code-block code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+  color: #1f2937;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-output .code-block code {
+  color: #e0e0e0;
+}
+
+.ontonaut-stream-output .inline-code {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-output .inline-code {
+  background: #2a2a2a;
+  border-color: #404040;
+  color: #f87171;
+}
+
+.ontonaut-stream-error {
+  margin: 0;
+  padding: 10px;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: white;
+  color: #1f2937;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ontonaut-stream-error {
+  color: #dc2626;
+  background: #fef2f2;
+  border-left: 2px solid #dc2626;
+}
+
+.ontonaut-stream-container[data-theme="dark"] .ontonaut-stream-error {
+  color: #f87171;
+  background: #2a1a1a;
+  border-left-color: #f87171;
+}
+
+.ontonaut-stream-error:empty {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ontonaut-stream-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .ontonaut-stream-input {
+    font-size: 12px;
+  }
+}
