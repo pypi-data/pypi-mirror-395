@@ -1,0 +1,49 @@
+{# ####### CMD: Set command variables on a per-os_type basis ####### #}
+{% if 'ios' in os_type |string %}
+{% set ha_state_cmd = "show redundancy" %}
+{% set sw_stack_cmd = "show switch detail" %}
+{% elif 'nxos' in os_type |string %}
+{% elif 'asa' in os_type |string %}
+{% set ha_state_cmd = "show failover" %}
+{% elif 'wlc' in os_type |string %}
+{% set ha_state_cmd = "show redundancy summary" %}
+{% elif 'panos' in os_type |string %}
+{% set ha_state_cmd = "show high-availability all" %}
+{% endif %}
+
+
+{# ##### VAL_CMDS/DESIRED_STATE: Build a dict of validation commands or desired state of each sub-feature ##### #}
+- {{ feature }}:
+{% set generate_val_file = sub_features.__class__.__name__ == 'list' %}
+{% set desired_state = sub_features.__class__.__name__ == 'dict' %}
+{% for sub_feat in (sub_features if generate_val_file else sub_features.items()) %}
+{% set input_vars = None if generate_val_file else sub_feat[1] %}
+{% set sub_feat = sub_feat if generate_val_file else sub_feat[0] %}
+
+{# ### HA_STATE: {local_state: ACTIVE, peer_state: STANDBY HOT} ### #}
+{% if sub_feat == 'ha_state' and ha_state_cmd is defined %}
+    ha_state:
+      {{ ha_state_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        local: {{ input_vars.local }}
+        peer: {{ input_vars.peer }}
+{% endif %}
+{# ### SWI_STACK: {switchx: {priority: x, role: x, state: Ready}} ### #}
+{% elif sub_feat == 'sw_stack' and sw_stack_cmd is defined %}
+    sw_stack:
+      {{ sw_stack_cmd }}:
+{% if generate_val_file %}
+        VALIDATE
+{% elif desired_state %}
+        _mode: strict
+{% for each_swi, swi_info in input_vars.items() %}
+        {{ each_swi }}:
+          priority: {{ swi_info.priority }}
+          role: {{ swi_info.role }}
+          state: Ready
+{% endfor %}{% endif %}
+
+{# ##### End statements: for sub_feature and sub_feature conditional  ##### #}
+{% endif %}{% endfor %}
