@@ -1,0 +1,107 @@
+Metadata-Version: 2.4
+Name: syndisco
+Version: 2.0.5
+Summary: Automated experiment creation and execution using LLM agents
+Project-URL: Homepage, https://github.com/dimits-ts/synthetic_discussion_framework
+Project-URL: Issues, https://github.com/dimits-ts/synthetic_discussion_framework/issues
+Author-email: Dimitris Tsirmpas <dim.tsirmaps@aueb.gr>
+License-Expression: GPL-3.0
+License-File: LICENSE
+Keywords: discussion,large language models,llm,llm agents,llms,local,self-hosting,synthetic
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: GPU :: NVIDIA CUDA :: 11.8
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Version Control :: Git
+Classifier: Typing :: Typed
+Requires-Python: >=3.12
+Requires-Dist: accelerate>=0.26.0
+Requires-Dist: bitsandbytes
+Requires-Dist: coloredlogs
+Requires-Dist: pandas
+Requires-Dist: torch
+Requires-Dist: tqdm
+Requires-Dist: transformers
+Provides-Extra: dev
+Requires-Dist: build; extra == 'dev'
+Requires-Dist: ipywidgets; extra == 'dev'
+Requires-Dist: myst-parser; extra == 'dev'
+Requires-Dist: nbsphinx; extra == 'dev'
+Requires-Dist: notebook; extra == 'dev'
+Requires-Dist: pandoc; extra == 'dev'
+Requires-Dist: sphinx; extra == 'dev'
+Requires-Dist: sphinx-autobuild; extra == 'dev'
+Requires-Dist: sphinx-rtd-theme; extra == 'dev'
+Requires-Dist: twine; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# SynDisco: Automated experiment creation and execution using only LLM agents
+
+![Syndisco Logo](./sphinx/syndisco_logo.svg)
+
+A lightweight, simple and specialized framework used for creating, storing, annotating and analyzing synthetic discussions between Large Language Model (LLM) user-agents in the context of online discussions.
+
+This framework is designed for academic use, mainly for simulating Social Science experiments with multiple participants. It is finetuned for heavy server-side use and multi-day computations with limited resources. It has been tested on both simulated debates and online fora.
+
+
+## Usage
+
+Have a look at the [online documentation](https://dimits-ts.github.io/syndisco/) for high-level descriptions, API documentation and tutorials.
+
+
+## Features
+
+#### Automated Experiment Generation
+
+SynDisco generates a randomized set of discussion templates. With only a handful of configurations, the researcher can run hundreds or thousands of unique experiments.
+
+#### Synthetic Group Discussion Generation
+
+SynDisco accepts an arbitrarily large number of LLM user-agent profiles and possible Original Posts (OPs). Each experiment involves a random selection of these user-agents replying to a randomly selected OP. The researcher can determine how these participants behave, whether there is a moderator present and even how the turn-taking is determined.
+
+#### Synthetic Annotation Generation with multiple annotators
+
+The researcher can create multiple LLM annotator-agent profiles. Each of these annotators will process each generated discussion at the comment-level, and annotate according to the provided instruction prompt, enabling an arbitrary selection of metrics to be used.
+
+#### Native Transformers support
+
+The framework supports most Hugging Face Transformer models out-of-the-box. Support for models managed by other libraries can be easily achieved by extending a single class. 
+
+#### Native logging and fault tolerance
+
+Since SynDisco is expected to possibly run for days at a time in remote servers, it keeps detailed logs both on-screen and on-disk. Should any experiment fail, the next one will be loaded with no intermittent delays. Results are intermittently saved to the disk, ensuring no data loss or corruption on even catastrophic errors.
+
+
+## Installation
+
+You can download the package from PIP:
+
+```bash
+pip install syndisco
+```
+
+Or build from source:
+```bash
+git clone https://github.com/dimits-ts/syndisco.git
+pip install -r requirements.txt
+pip install .
+```
+
+If you want to contribute to the project, or modify the library's code you may use:
+```bash
+git clone https://github.com/dimits-ts/syndisco.git
+pip install -r requirements.dev.txt
+pip install -e .
+```
+
+or 
+
+```bash
+git clone https://github.com/dimits-ts/syndisco.git
+pip install -r requirements.dev.txt
+pip install -e .[dev]
+```
