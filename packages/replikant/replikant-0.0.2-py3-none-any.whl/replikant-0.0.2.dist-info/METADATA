@@ -1,0 +1,144 @@
+Metadata-Version: 2.4
+Name: replikant
+Version: 0.0.2
+Summary: A flexible toolkit to enable replicable subjective evaluations
+Author-email: Sébastien Le Maguer <sebastien.lemaguer@helsinki.fi>
+Maintainer-email: Sébastien Le Maguer <sebastien.lemaguer@helsinki.fi>
+License-Expression: EUPL-1.2
+Project-URL: Homepage, https://github.com/seblemaguer/replikant
+Project-URL: Issues, https://github.com/seblemaguer/replikant/issues
+Project-URL: git, https://github.com/seblemaguer/replikant.git
+Keywords: subjective evaluation,survey,flexible,replicability,flask,jinj2
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Flask
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: cachelib>=0.7
+Requires-Dist: click>=8.1.3
+Requires-Dist: Flask>=2.1.2
+Requires-Dist: Flask-Session>=0.4
+Requires-Dist: Flask-SQLAlchemy>=2.5.1
+Requires-Dist: gevent
+Requires-Dist: greenlet>=1.1.2
+Requires-Dist: gunicorn
+Requires-Dist: importlib-metadata>=4.11.4
+Requires-Dist: itsdangerous>=2.1.2
+Requires-Dist: Jinja2>=3.1.2
+Requires-Dist: MarkupSafe>=2.1.1
+Requires-Dist: pandas>=2.2.1
+Requires-Dist: PyYAML>=6
+Requires-Dist: SQLAlchemy>=2.0.27
+Requires-Dist: Werkzeug>=2.1.2
+Requires-Dist: zipp>=3.8
+Provides-Extra: dev
+Requires-Dist: pre-commit; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: basedpyright; extra == "dev"
+Provides-Extra: test
+Requires-Dist: selenium; extra == "test"
+Dynamic: license-file
+
+# Replikant
+
+
+Replikant is a python toolkit which aims to enable researcher to develop their own subjective evaluation recipes.
+It relies on Flask, Jinja2 and SQLite, and is a refactoring of FlexEval.
+
+I am currently doing some final important cleaning part which I thought would be done by now, but requires a bit more time.
+
+
+## How to install
+
+Replikant has been tested on python 3.11.
+
+To install the current stable version, run the following command:
+
+```sh
+pip install replikant
+```
+
+To install the current unstable version, run the following command:
+
+```sh
+pip install git+https://github.com/seblemaguer/replikant.git
+```
+
+## Developping and running a recipe
+
+### Defining an recipe
+
+The easiest is to start with one of the available recipes and adapt it to your needs.
+
+Here is a list of already available recipes of published studies:
+  - https://github.com/sigmedia/bc_2013_extension/tree/master/evaluation/2013-EH2_EXT (MOS - naturalness, similarity; Intelligibility)
+  - https://github.com/sigmedia/bc_2013_extension/tree/master/evaluation/mushra (MUSHRA test)
+  - https://github.com/sigmedia/bc_2013_extension/tree/master/evaluation/ranked-choice-voting (Ranked Choice Voting)
+
+
+
+### Launching a recipe
+
+Simply run :
+
+```sh
+replikant <path_configuration_recipe.yaml>
+```
+
+By default, the evaluation will be available at: http://127.0.0.1:8080.
+
+The overall behaviour of replikant can be controlled from the command call. Here are the options:
+```
+usage: replikant [-h] [-d] [-i IP] [-p PORT] [-P] [-t] [-u URL] [-l LOG_FILE] [-v] RECIPE_CONFIGURATION
+
+Replikant
+
+positional arguments:
+  RECIPE_CONFIGURATION  Recipe's configuration file
+
+options:
+  -h, --help            show this help message and exit
+  -d, --debug           Start the server in debugging mode
+  -i IP, --ip IP        IP's server
+  -p PORT, --port PORT  port
+  -P, --production      Start the server in production mode
+  -t, --threaded        Enable threads.
+  -u URL, --url URL     URL of the server (needed for flask redirections!) if different from http://<ip>:<port>/
+  -l LOG_FILE, --log_file LOG_FILE
+                        Logger file
+  -v, --verbosity       increase output verbosity
+```
+
+## Contributing
+
+
+If you want to participate to the development, you can install the necessary packages using:
+
+```sh
+pip install -e .[dev]
+```
+
+You then need to activate the pre-commit git hooks:
+
+```sh
+pre-commit install
+```
+
+## Citing
+
+```bibtex
+@inproceedings{lemaguer25_interspeech,
+  title     = {Enabling the replicability of speech synthesis perceptual evaluations},
+  author    = {Sébastien {Le Maguer} and Gwénolé Lecorvé and Damien Lolive and Naomi Harte and Juraj Šimko},
+  year      = {2025},
+  booktitle = {Interspeech 2025},
+  pages     = {2545--2549},
+  doi       = {10.21437/Interspeech.2025-401},
+  issn      = {2958-1796},
+}
+```
