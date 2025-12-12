@@ -1,0 +1,71 @@
+# Termiredy
+
+> A terminal tool that notifies you when your task is done.
+
+Ever started a long-running command like a build, a data processing script, or a large file download and found yourself constantly checking the terminal to see if it's done? Termiredy is a simple wrapper for your commands that lets you know with a desktop notification the moment your task is complete.
+
+It times your command and tells you how long it took right before sending the notification.
+
+## Features
+
+-   Wrap any command-line task.
+-   Measures and displays the total execution time.
+-   Sends a native desktop notification upon completion.
+-   Supports macOS and Linux (with `notify-send`).
+-   Gracefully falls back to a console message on other operating systems.
+
+## Installation
+
+1.  Clone this repository:
+
+    ```sh
+    git clone https://github.com/bryansapo/Termiredy.git
+    cd Termiredy
+    ```
+
+2.  **For Linux users:** You need to have `notify-send` installed. You can typically install it with your package manager.
+
+    On Debian/Ubuntu:
+
+    ```sh
+    sudo apt-get install libnotify-bin
+    ```
+
+## Usage
+
+Using Termiredy is straightforward. Just prefix your usual command with `termiredy`.
+
+### Syntax
+
+```sh
+termiredy [your_command]
+```
+
+### Examples
+
+1.  **Running a Python script:**
+
+    Let's say you have a script `work.py` that takes a few seconds to run.
+
+    ```sh
+    termiredy python work.py
+    ```
+
+    Once the script finishes, you will see the total execution time in your terminal and receive a desktop notification.
+
+2.  **Running any shell command:**
+
+    You can use it with any command, like `sleep`.
+
+    ```sh
+    termiredy sleep 5
+    ```
+
+    After 5 seconds, you'll be notified.
+
+### TODOs
+
+1. **Windows Notification**
+   The current version of Termiredy only support MacOS and Linux with notify-send.
+2. **Email, third parties notification**
+   Use Slack, Discord or other tools to notify user when the command/program is done.
