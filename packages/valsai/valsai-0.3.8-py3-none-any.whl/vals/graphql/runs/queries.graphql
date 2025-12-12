@@ -1,0 +1,123 @@
+#import TestFragment from "../fragments/test.graphql"
+#import RunFragment from "../fragments/run.graphql"
+#import { ResultJsonElementTypeFields, MetadataOutputTypeFields } from "../fragments/shared.graphql"
+
+query GetRunStatus($runId: String!) {
+  run(runId: $runId) {
+    status
+  }
+}
+
+query PullRun($runId: String!) {
+  run(runId: $runId) {
+    ...RunFragment
+  }
+}
+
+query PullTestResultsWithCount(
+  $runId: String!
+  $offset: Int
+  $limit: Int
+  $tags: [String!]
+  $operators: [String!]
+  $search: String
+) {
+  testResultsWithCount(
+    runId: $runId
+    filterOptions: {
+      offset: $offset
+      limit: $limit
+      tags: $tags
+      operators: $operators
+      search: $search
+    }
+  ) {
+    testResults {
+      id
+      llmOutput
+      resultJson {
+        ...ResultJsonElementTypeFields
+      }
+      qaPair {
+        context
+        outputContext
+        errorMessage
+      }
+      test {
+        ...TestFragment
+      }
+      metadata {
+        ...MetadataOutputTypeFields
+      }
+      passPercentage
+      passPercentageWithWeight
+    }
+    count
+  }
+}
+
+query ListRuns(
+  $archived: Boolean
+  $suiteId: String
+  $projectId: String!
+  $limit: Int
+  $offset: Int
+  $search: String
+  $modelUnderTest: [String!]
+  $status: [RunStatus!]
+) {
+  runsWithCount(
+    filterOptions: {
+      archived: $archived
+      suiteId: $suiteId
+      projectId: $projectId
+      limit: $limit
+      offset: $offset
+      sortBy: STARTED_AT
+      search: $search
+      modelsUnderTest: $modelUnderTest
+      status: $status
+    }
+  ) {
+    runResults {
+      runId
+      passRate {
+        value
+        error
+      }
+      successRate {
+        value
+        error
+      }
+      name
+      status
+      textSummary
+      timestamp
+      completedAt
+      archived
+      parameters {
+        evalModel
+        maximumThreads
+        runConfidenceEvaluation
+        heavyweightFactor
+        createTextSummary
+        modelUnderTest
+        temperature
+        maxOutputTokens
+        systemPrompt
+      }
+      testSuite {
+        title
+      }
+    }
+  }
+}
+
+query UnfinishedTests($runId: String!) {
+  unfinishedTests(runId: $runId) {
+    unfinishedTests {
+      ...TestFragment
+    }
+    testSuiteSize
+  }
+}
