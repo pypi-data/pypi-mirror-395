@@ -1,0 +1,38 @@
+name: Unit Tests
+
+on: [pull_request, push]
+
+jobs:
+  unit-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - {name: Linux, python: '3.14', os: ubuntu-latest}
+        - {name: Windows, python: '3.14', os: windows-latest}
+        - {name: Mac, python: '3.14', os: macos-latest}
+        - {name: '3.13', python: '3.13', os: ubuntu-latest}
+        - {name: '3.12', python: '3.12', os: ubuntu-latest}
+
+    steps:
+    - name: Checkout repository under test
+      uses: actions/checkout@v4
+
+    - name: Install uv and set the python version
+      uses: astral-sh/setup-uv@v7
+      with:
+        python-version: ${{ matrix.python }}
+        enable-cache: true
+
+    - name: Python Versions
+      run: |
+        uv --version
+        uv run python --version
+
+    - name: Install the project
+      run: uv sync --locked --all-extras --dev
+
+    - name: Run tests
+      run: uv run pytest
