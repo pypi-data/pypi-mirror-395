@@ -1,0 +1,112 @@
+#!/bin/bash
+#
+# this is the script run by the Jenkins server to run the build tests.  Be
+# sure to always run it in its dir, i.e. ./jenkins-build, otherwise it might
+# remove things that you don't want it to.
+#
+# runs here:
+# https://jenkins.debian.net/job/reproducible_fdroid_build_apps
+
+
+if [ `dirname $0` != "." ]; then
+    echo "only run this script like ./`basename $0`"
+    exit
+fi
+
+# jenkins.debian.net slaves do not export WORKSPACE
+if [ -z $WORKSPACE ]; then
+    export WORKSPACE=`pwd`
+fi
+
+if [ -z $LC_ALL ] || [ $LC_ALL == "C.UTF-8" ] || [[ $LC_ALL != *.UTF-8 ]]; then
+    for var in `set | grep -Eo '^(LANG|LC_[A-Z]+)' | sort -u`; do
+        unset $var
+    done
+    export LC_ALL=en_US.UTF-8
+    echo "Forced locale to ${LC_ALL}:"
+    set | grep -E '^(LANG|LC_[A-Z]+)'
+fi
+
+set -e
+set -x
+
+# report info about virtualization
+(dmesg | grep -i -e hypervisor -e qemu -e kvm) || true
+(lspci | grep -i -e virtio -e virtualbox -e qemu -e kvm) || true
+lsmod
+if systemd-detect-virt -q ; then
+        echo "Virtualization is used:" `systemd-detect-virt`
+else
+        echo "No virtualization is used."
+fi
+echo 'maximum allowed number of open file descriptors: ' `ulimit -n`
+ls -lR ~/.vagrant.d/ || echo no access
+cat /etc/issue
+
+/sbin/ifconfig || true
+hostname || true
+
+# point to the Vagrant/VirtualBox configs created by reproducible_setup_fdroid_build_environment.sh
+# these variables are actually set in fdroidserver/jenkins-build-makebuildserver
+export SETUP_WORKSPACE=$(dirname $WORKSPACE)/reproducible_setup_fdroid_build_environment
+export XDG_CONFIG_HOME=$SETUP_WORKSPACE
+export VBOX_USER_HOME=$SETUP_WORKSPACE/VirtualBox
+export VAGRANT_HOME=$SETUP_WORKSPACE/vagrant.d
+
+# make sure we have the right buildserver paths and its ready for use
+vagrant global-status \
+    | grep -F -e reproducible_setup_fdroid_build_environment -o -e fdroiddata/builder \
+    || (echo ERROR no buildserver VM found, exiting; exit 1)
+
+# the way we handle jenkins slaves doesn't copy the workspace to the slaves
+# so we need to "manually" clone the git repo here…
+cd $WORKSPACE
+
+# set up Android SDK to use the Debian packages
+export ANDROID_HOME=/usr/lib/android-sdk
+
+# now build the whole archive
+cd $WORKSPACE
+
+# this can be handled in the jenkins job, or here:
+if [ -e fdroiddata ]; then
+    cd fdroiddata
+    while ! git fetch origin --tags --prune; do sleep 10; done
+    git checkout master
+    git reset --hard origin/master
+    # keep all the cloned source repos
+    git clean -fdx --exclude build --exclude repo --exclude unsigned
+else
+    git clone https://gitlab.com/fdroid/fdroiddata.git fdroiddata
+    cd fdroiddata
+fi
+
+echo "build_server_always: true" > config.yml
+echo "deploy_process_logs: true" >> config.yml
+
+printf '\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\nbuild all with reproducible signatures\n'
+for f in metadata/*/signatures/*; do
+    appid=$(basename $(dirname $(dirname $f)))
+    versionCode=$(basename $f)
+    rm -f repo/${appid}_${versionCode}*.* archive/${appid}_${versionCode}*.* unsigned/${appid}_${versionCode}*.*
+    $WORKSPACE/fdroid build --verbose --latest --no-tarball ${appid}:$versionCode
+done
+
+printf '\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\nbuild all with Binaries:\n'
+for appid in `grep '^Binaries: ' metadata/*.yml --files-with-match | sed 's,^metadata/\(.*\)\.yml$,\1,'`; do
+    rm -f repo/${appid}_*.* archive/${appid}_*.* unsigned/${appid}_*.*
+    $WORKSPACE/fdroid build --verbose --latest --no-tarball ${appid}
+done
+
+# force global timeout to 6 hours
+sed -Ei 's,^(\s+endtime\s*=\s*time\.time\(\))\s*.*,\1 + 6 * 60 * 60  # 6 hours,' \
+    $WORKSPACE/fdroidserver/build.py
+
+printf '\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\nbuild all\n'
+$WORKSPACE/fdroid build --verbose --latest --no-tarball --all
+
+vagrant global-status
+if [ -d builder ]; then
+    cd builder
+    vagrant status
+fi

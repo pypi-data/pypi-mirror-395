@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+# runs here:
+# https://jenkins.debian.net/job/reproducible_setup_fdroid_build_environment
+
+if [ `dirname $0` != "." ]; then
+    echo "only run this script like ./`basename $0`"
+    exit
+fi
+
+if [ -z $WORKSPACE ]; then
+    WORKSPACE=`pwd`
+fi
+
+if [ -z $LC_ALL ] || [ $LC_ALL == "C.UTF-8" ] || [[ $LC_ALL != *.UTF-8 ]]; then
+    for var in `set | grep -Eo '^(LANG|LC_[A-Z]+)' | sort -u`; do
+        unset $var
+    done
+    export LC_ALL=en_US.UTF-8
+    echo "Forced locale to ${LC_ALL}:"
+    set | grep -E '^(LANG|LC_[A-Z]+)'
+fi
+
+# make sure that no VirtualBox processes are left running
+cleanup_all() {
+    set +e
+    echo "$(date -u) - cleanup in progress..."
+    ps auxww | grep -e VBox -e qemu
+    ls -hl /var/lib/libvirt/images
+    cd $WORKSPACE/buildserver
+    vagrant halt
+    sleep 5
+    killall VBoxHeadless
+    sleep 5
+    killall -9 VBoxHeadless
+    echo "$(date -u) - cleanup done."
+}
+trap cleanup_all INT TERM EXIT
+
+set -e
+set -x
+
+test -e ~/.cache/fdroidserver || mkdir -p ~/.cache/fdroidserver
+
+# redirect homes to be in the git repo, so they'll get cleaned and reset
+export XDG_CONFIG_HOME=$WORKSPACE
+export VBOX_USER_HOME=$WORKSPACE/VirtualBox
+mkdir $VBOX_USER_HOME
+if which VBoxManage; then
+    VBoxManage setproperty machinefolder $WORKSPACE/virtualbox.d
+    VBoxManage setproperty logginglevel debug
+fi
+export VAGRANT_HOME=$WORKSPACE/vagrant.d
+mkdir $VAGRANT_HOME
+
+rm -rf "$WORKSPACE"/../*/.testfiles
+
+memtotal=$(grep ^MemTotal: /proc/meminfo | awk '{print $2}')
+if [ $memtotal -gt 9437184 ]; then
+    memory=8192
+else
+    memory=$(((memtotal / 1024) - 1024))
+fi
+if [ `nproc` -le 6 ]; then
+    cpus=$((`nproc` - 1))
+else
+    cpus=6
+fi
+cat <<EOF > $WORKSPACE/buildserver/Vagrantfile.yaml
+debian_mirror: https://deb.debian.org/debian/
+boot_timeout: 1200
+memory: $memory
+cpus: $cpus
+EOF
+
+cd $WORKSPACE
+./makebuildserver -vv --clean
+
+if [ -z "`vagrant box list | egrep '^buildserver\s+\((libvirt|virtualbox), [0-9]+\)$'`" ]; then
+    vagrant box list
+    echo "ERROR: buildserver box does not exist!"
+    exit 1
+fi
+
+# this can be handled in the jenkins job, or here:
+if [ -e fdroiddata ]; then
+    cd fdroiddata
+    while ! git fetch origin --tags --prune; do sleep 10; done
+    git remote update -p
+    git checkout master
+    git reset --hard origin/master
+    git clean -fdx
+    cd ..
+else
+    git clone --depth 1 https://gitlab.com/fdroid/fdroiddata.git fdroiddata
+fi
+
+cd fdroiddata
+echo "build_server_always: true" > config.yml
+
+if [ -z $ANDROID_HOME ]; then
+    if [ -e ~/.android/bashrc ]; then
+        . ~/.android/bashrc
+    else
+        echo "ANDROID_HOME must be set!"
+        exit 1
+    fi
+fi
+
+# if it can't build fdroid, then its really broken
+../fdroid build --verbose --stop --latest org.fdroid.fdroid
+# Gradle, JNI, preassemble
+../fdroid build --verbose --stop --skip-scan org.adaway:55
+# building old versions should still work
+../fdroid build --verbose --stop --skip-scan org.fdroid.fdroid:102350

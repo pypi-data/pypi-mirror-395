@@ -1,0 +1,133 @@
+# We ignore the following PEP8 warnings
+# * E123: closing bracket does not match indentation of opening bracket's line
+#   - Broken if multiple indentation levels start on a single line
+# * E203: whitespace before ':'
+#   - E203 is not PEP 8 compliant and conflict with black
+# * E402: module level import not at top of file
+#   - The tests use a little hack in order to cleanly import the
+#     fdroidserver package locally like a regular package.  pep8 doesn't
+#     see that, so this makes pep8 skip E402 on the test files that need
+#     that hack.
+# * E501: line too long (82 > 79 characters)
+#   - Recommended for readability but not enforced
+#   - Some lines are awkward to wrap around a char limit
+# * W503: line break before binary operator
+#   - Quite pedantic
+
+[tool.autopep8]
+ignore = "E123,E203,E402,E501,W503"
+
+[tool.black]
+skip-string-normalization = true
+target-version = ["py38"]
+include = '(^fdroid|\.pyi?)$'
+# These files will never be included in black runs.  To run black on
+# one of thes files, remove it from this list.
+force-exclude = '''(
+  \.direnv|\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.svn|\.tox|\.venv|venv|_build|buck-out|build|dist|__pypackages__
+  | docs/source/conf\.py
+  | examples/fdroid_export_keystore_to_nitrokey\.py
+  | examples/fdroid_exportkeystore\.py
+  | examples/fdroid_fetchsrclibs\.py
+  | examples/fdroid_nitrokeyimport\.py
+  | fdroidserver/__init__\.py
+  | fdroidserver/__main__\.py
+  | fdroidserver/apksigcopier\.py
+  | fdroidserver/looseversion\.py
+  | fdroidserver/build\.py
+  | fdroidserver/checkupdates\.py
+  | fdroidserver/common\.py
+  | fdroidserver/index\.py
+  | fdroidserver/metadata\.py
+  | fdroidserver/update\.py
+  | fdroidserver/vmtools\.py
+  | tests/config\.py
+  | tests/extra/manual-vmtools-test\.py
+  | tests/gradle-release-checksums\.py
+  | tests/openssl-version-check-test\.py
+  | tests/valid-package-names/test\.py
+  | tests/test_common\.py
+  | tests/test_update\.py
+)$'''
+
+
+[tool.mypy]
+python_version = "3.9"
+
+files = "fdroidserver"
+
+# exclude vendored files
+exclude = "fdroidserver/(apksigcopier|looseversion).py"
+
+# this is de-facto the linter setting for this file
+warn_unused_configs = true
+
+# TODO: we should either upgrade the used packages to a version which includes type hints OR install/write stub packages for these libraries.
+# Further details here: https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-type-hints-for-third-party-library
+ignore_missing_imports = true
+
+# ignore the [no-redef] errors, as they collide with the bandit "# nosec" exclusion (common.py)
+# unfortunately both tools expect their ignore flag as a comment in the same line
+# [misc] is ignored for the "incompatible import"
+# [arg-type] is ignored because when there are missing envs, everything will crash, not just the types
+disable_error_code = "no-redef, misc, arg-type"
+
+
+[tool.pylint.main]
+# Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
+# number of processors available to use, and will cap the count on Windows to
+# avoid hangs.
+jobs = 0
+
+# Minimum Python version to use for version dependent checks. Will default to the
+# version used to run pylint.
+py-version = "3.9"
+
+# Files or directories to be skipped. They should be base names, not paths.
+ignore = ["apksigcopier.py", "looseversion.py"]
+
+[tool.pylint."messages control"]
+# Only show warnings with the listed confidence levels. Leave empty to show all.
+# Valid levels: HIGH, CONTROL_FLOW, INFERENCE, INFERENCE_FAILURE, UNDEFINED.
+confidence = ["HIGH", "INFERENCE"]
+
+# Disable the message, report, category or checker with the given id(s). You can
+# either give multiple identifiers separated by comma (,) or put this option
+# multiple times (only on the command line, not in the configuration file where
+# it should appear only once). You can also use "--disable=all" to disable
+# everything first and then re-enable specific checks. For example, if you want
+# to run only the similarities checker, you can use "--disable=all
+# --enable=similarities". If you want to run only the classes checker, but have
+# no Warning level messages displayed, use "--disable=all --enable=classes
+# --disable=W".
+
+# TODO many of these could be fixed if someone wants to spend the time
+disable = [
+  "broad-exception-caught",
+  "broad-exception-raised",
+  "invalid-name",
+  "missing-class-docstring",
+  "missing-function-docstring",
+  "missing-module-docstring",
+  "no-else-continue",
+  "no-else-raise",
+  "no-else-return",
+  "subprocess-run-check",
+  "use-dict-literal",
+]
+
+
+[tool.pylint.miscellaneous]
+# List of note tags to take in consideration, separated by a comma.
+notes = ["FIXME", "XXX", "TODO"]
+
+[tool.pylint.refactoring]
+# Maximum number of nested blocks for function / method body
+max-nested-blocks = 5
+
+[tool.pylint.format]
+# Maximum number of characters on a single line.
+max-line-length = 88
+
+[tool.ruff.format]
+quote-style = "preserve"

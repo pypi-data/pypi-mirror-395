@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -e # quit script on error
+
+echo_header() {
+    { echo -e "==============================================================================\n$1"; } 2>/dev/null
+}
+
+#------------------------------------------------------------------------------#
+
+if [ ! -d tests ]; then
+    cd ..
+fi
+
+set -x # show each command as it is executed
+
+#------------------------------------------------------------------------------#
+echo_header "run commit hooks"
+
+test -x ./hooks/pre-commit && ./hooks/pre-commit
+
+#------------------------------------------------------------------------------#
+echo_header "run unit tests"
+
+python3 -m unittest -v
+
+echo SUCCESS

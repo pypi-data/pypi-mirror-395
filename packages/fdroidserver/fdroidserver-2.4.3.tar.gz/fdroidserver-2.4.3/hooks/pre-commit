@@ -1,0 +1,139 @@
+#!/bin/bash
+#
+# Simple pre-commit hook to check that there are no errors in the fdroidserver
+# source files.
+
+# Redirect output to stderr.
+exec 1>&2
+
+files=`git diff-index --cached HEAD 2>&1 | sed 's/^:.*     //' | uniq | cut -b100-500`
+if [ -z "$files" ]; then
+    PY_FILES="fdroid makebuildserver setup.py fdroidserver/*.py examples/*.py tests/*-release-checksums.py"
+    PY_TEST_FILES="tests/test_*.py"
+    SH_FILES="hooks/pre-commit"
+    BASH_FILES="gradlew-fdroid jenkins-build-all jenkins-setup-build-environment jenkins-test completion/bash-completion buildserver/provision-*"
+    RB_FILES="buildserver/Vagrantfile"
+    YML_FILES=".*.yml .yamllint */*.yml */*.yaml"
+else
+    # if actually committing right now, then only run on the files
+    # that are going to be committed at this moment
+    PY_FILES=
+    PY_TEST_FILES=
+    SH_FILES=
+    BASH_FILES=
+    RB_FILES=
+    YML_FILES=
+
+    for f in $files; do
+        test -e $f || continue
+        case $f in
+            test_*.py)
+                PY_TEST_FILES+=" $f"
+                ;;
+            *.py)
+                PY_FILES+=" $f"
+                ;;
+            *.rb)
+                RB_FILES+=" $f"
+                ;;
+            *.yml|*.yaml|.yamllint)
+                YML_FILES+=" $f"
+                ;;
+            *)
+                if head -1 $f | grep '^#!/bin/sh' > /dev/null 2>&1; then
+                    SH_FILES+=" $f"
+                elif head -1 $f | grep '^#!/bin/bash' > /dev/null 2>&1; then
+                    BASH_FILES+=" $f"
+                elif head -1 $f | grep '^#!.*python' > /dev/null 2>&1; then
+                    PY_FILES+=" $f"
+                fi
+                ;;
+        esac
+    done
+fi
+
+err() {
+	echo >&2 ERROR: "$@"
+	exit 1
+}
+
+warn() {
+	echo >&2 WARNING: "$@"
+}
+
+cmd_exists() {
+	command -v $1 1>/dev/null
+}
+
+find_command() {
+	for name in "$@"; do
+		for suff in "3" "-3" "-python3" ""; do
+			cmd=${name}${suff}
+			if cmd_exists $cmd; then
+				echo $cmd
+				return 0
+			fi
+		done
+	done
+	warn "$1 is not installed, using dummy placeholder!"
+	echo :
+}
+
+DASH=$(find_command dash)
+PYDOCSTYLE=$(find_command pydocstyle)
+PYFLAKES=$(find_command pyflakes)
+PYCODESTYLE=$(find_command pycodestyle pep8)
+RUBY=$(find_command ruby)
+YAMLLINT=$(find_command yamllint)
+
+if [ "$PY_FILES $PY_TEST_FILES" != " " ]; then
+    if ! $PYFLAKES $PY_FILES $PY_TEST_FILES; then
+	err "pyflakes tests failed!"
+    fi
+    # ignore vendored files
+    if ! $PYDOCSTYLE --match='(?!apksigcopier|looseversion|setup|test_).*\.py' $PY_FILES $PY_TEST_FILES; then
+	err "pydocstyle tests failed!"
+    fi
+fi
+
+if [ "$PY_FILES" != "" ]; then
+    if ! $PYCODESTYLE $PY_FILES; then
+	err "pep8 tests failed!"
+    fi
+fi
+
+if [ "$PY_TEST_FILES" != "" ]; then
+    if ! $PYCODESTYLE $PY_TEST_FILES; then
+	err "pep8 tests failed!"
+    fi
+fi
+
+for f in $SH_FILES; do
+	if ! $DASH -n $f; then
+		err "dash tests failed!"
+	fi
+done
+
+for f in $BASH_FILES; do
+	if ! bash -n $f; then
+		err "bash tests failed!"
+	fi
+done
+
+for f in $RB_FILES; do
+	if ! $RUBY -c $f 1>/dev/null; then
+		err "ruby tests failed!"
+	fi
+done
+
+for f in $YML_FILES; do
+	if ! $YAMLLINT $f; then
+		err ".yml tests failed on $f!"
+	fi
+done
+
+if grep -C 3 'shell=True' fdroidserver/[a-ce-z]*.py; then
+    err "shell=True is too dangerous, there are unfiltered user inputs!"
+fi
+
+exit 0

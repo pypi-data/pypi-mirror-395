@@ -1,0 +1,336 @@
+# fdroid(1) completion                                   -*- shell-script -*-
+#
+# bash-completion - part of the FDroid server tools
+#
+# Copyright (C) 2013-2017 Hans-Christoph Steiner <hans@eds.org>
+# Copyright (C) 2013, 2014 Daniel Martí <mvdan@mvdan.cc>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+__fdroid_init() {
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	(( $# >= 1 )) && __complete_${1}
+}
+
+__get_appid() {
+	files=( metadata/*.yml )
+	files=( ${files[@]#metadata/} )
+	files=${files[@]%.yml}
+	echo "$files"
+}
+
+__package() {
+	files="$(__get_appid)"
+	COMPREPLY=( $( compgen -W "$files" -- $cur ) )
+}
+
+__apk_package() {
+	files=( ${1}/*.apk )
+	[ -f "${files[0]}" ] || return
+
+	files=( ${files[@]#*/} )
+	files=${files[@]%_*}
+	COMPREPLY=( $( compgen -W "$files" -- $cur ) )
+}
+
+__apk_vercode() {
+	local p=${cur:0:-1}
+
+	files=( ${1}/${p}_*.apk )
+	[ -f "${files[0]}" ] || return
+
+	files=( ${files[@]#*_} )
+	files=${files[@]%.apk}
+	COMPREPLY=( $( compgen -P "${p}:" -W "$files" -- $cur ) )
+}
+
+__vercode() {
+	if [ $prev = ":" ]; then
+	    appid="${COMP_WORDS[COMP_CWORD-2]}"
+	elif [ $cur = ":" ]; then
+	    appid=$prev
+	    cur=""
+	fi
+	versionCodes=`sed -En 's,^ +versionCode: +([0-9]+) *$,\1,p' metadata/${appid}.yml`
+	COMPREPLY=( $( compgen -W "$versionCodes" -- $cur ) )
+}
+
+__complete_options() {
+	case "${cur}" in
+		--*)
+			COMPREPLY=( $( compgen -W "--help --version ${lopts}" -- $cur ) )
+			return 0;;
+		*)
+			COMPREPLY=( $( compgen -W "-h ${opts} --help --version ${lopts}" -- $cur ) )
+			return 0;;
+	esac
+}
+
+__complete_build() {
+	opts="-v -q -l -s -t -f -a"
+
+	lopts="--verbose --quiet --latest --stop --test --server --skip-scan --scan-binary --no-tarball --force --all --no-refresh"
+	case "${prev}" in
+		:)
+			__vercode
+			return 0;;
+	esac
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		:)
+			__vercode
+			return 0;;
+		*)
+			__package
+			return 0;;
+	esac
+}
+
+__complete_gpgsign() {
+	opts="-v -q"
+	lopts="--verbose --quiet"
+	__complete_options
+}
+
+__complete_install() {
+	opts="-v -q -a -p -n -y"
+	lopts="--verbose --quiet --all --color --no-color --privacy-mode --no-privacy-mode --no --yes"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		*:)
+			__apk_vercode repo
+			return 0;;
+		*)
+			__apk_package repo
+			return 0;;
+	esac
+}
+
+__complete_update() {
+	opts="-c -v -q -i -I -e"
+	lopts="--create-metadata --verbose --quiet
+ --icons --pretty --clean --delete-unknown
+ --nosign --rename-apks --use-date-from-apk"
+	case "${prev}" in
+		-e|--editor)
+			_filedir
+			return 0;;
+	esac
+	__complete_options
+}
+
+__complete_publish() {
+	opts="-v -q"
+	lopts="--verbose --quiet"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		*:)
+			__apk_vercode unsigned
+			return 0;;
+		*)
+			__apk_package unsigned
+			return 0;;
+	esac
+}
+
+__complete_checkupdates() {
+	opts="-v -q"
+	lopts="--verbose --quiet --auto --autoonly --commit --allow-dirty"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		*)
+			__package
+			return 0;;
+	esac
+}
+
+__complete_import() {
+	opts="-c -h -l -q -s -u -v -W"
+	lopts="--categories --license --quiet --rev --subdir --url"
+	case "${prev}" in
+		-c|-l|-s|-u|--categories|--license|--quiet|--rev|--subdir|--url)
+		return 0;;
+		-W)
+		COMPREPLY=( $( compgen -W "error warn ignore" -- $cur ) )
+		return 0;;
+	esac
+	__complete_options
+}
+
+__complete_readmeta() {
+	opts="-v -q"
+	lopts="--verbose --quiet"
+	__complete_options
+}
+
+__complete_rewritemeta() {
+	opts="-v -q -l"
+	lopts="--verbose --quiet --list"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		*)
+			__package
+			return 0;;
+	esac
+}
+
+__complete_lint() {
+	opts="-v -q -f"
+	lopts="--verbose --quiet --force-yamllint --format"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		*)
+			__package
+			return 0;;
+	esac
+}
+
+__complete_scanner() {
+	opts="-v -q"
+	lopts="--verbose --quiet"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		*:)
+			__vercode
+			return 0;;
+		*)
+			__package
+			return 0;;
+	esac
+}
+
+__complete_verify() {
+	opts="-v -q -p"
+	lopts="--verbose --quiet"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+		*:)
+			__vercode
+			return 0;;
+		*)
+			__package
+			return 0;;
+	esac
+}
+
+__complete_btlog() {
+	opts="-u"
+	lopts="--git-remote --git-repo --url"
+	__complete_options
+}
+
+__complete_mirror() {
+	opts="-v"
+	lopts="--all --archive --build-logs --color --no-color --pgp-signatures --src-tarballs --output-dir"
+	__complete_options
+}
+
+__complete_nightly() {
+	opts="-v -q"
+	lopts="--show-secret-var --archive-older"
+	__complete_options
+}
+
+__complete_deploy() {
+	opts="-i -v -q"
+	lopts="--identity-file --local-copy-dir --sync-from-local-copy-dir
+ --verbose --quiet --no-checksum --no-keep-git-mirror-archive"
+	__complete_options
+}
+
+__complete_signatures() {
+	opts="-v -q"
+	lopts="--verbose --color --no-color --no-check-https"
+	case "${cur}" in
+		-*)
+			__complete_options
+			return 0;;
+	esac
+        _filedir 'apk'
+        return 0
+}
+
+__complete_signindex() {
+	opts="-v -q"
+	lopts="--verbose"
+	__complete_options
+}
+
+__complete_init() {
+	opts="-v -q -d"
+	lopts="--verbose --quiet --distinguished-name --keystore
+ --repo-keyalias --android-home --no-prompt --color --no-color"
+	__complete_options
+}
+
+__cmds=" \
+btlog \
+build \
+checkupdates \
+deploy \
+gpgsign \
+import \
+init \
+install \
+lint \
+mirror \
+nightly \
+publish \
+readmeta \
+rewritemeta \
+scanner \
+signatures \
+signindex \
+update \
+verify \
+"
+
+for c in $__cmds; do
+	eval "_fdroid_${c} () {
+		local cur prev opts lopts
+		__fdroid_init ${c}
+	}"
+done
+
+_fdroid() {
+	local cmd
+	cmd=${COMP_WORDS[1]}
+
+	[[ $__cmds == *\ $cmd\ * ]] && _fdroid_${cmd} || {
+		(($COMP_CWORD == 1)) && COMPREPLY=( $( compgen -W "${__cmds}" -- $cmd ) )
+	}
+}
+
+complete -F _fdroid fdroid
+
+return 0
