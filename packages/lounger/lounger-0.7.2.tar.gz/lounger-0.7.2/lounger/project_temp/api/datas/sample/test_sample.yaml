@@ -1,0 +1,27 @@
+- teststeps:
+    - name: Getting a resource
+      request:
+        method: GET
+        url: /posts/1
+      validate:
+        equal:
+          - [ "status_code", 200 ]
+        contains:
+          - [ "body.title", "sunt aut facere repellat" ]
+- teststeps:
+    - name: Creating a resource
+      request:
+        method: POST
+        url: /posts
+        headers:
+          Content-Type: application/json; charset=UTF-8
+        json:
+          title: 'foo'
+          body: 'bar'
+          userId: 1
+      validate:
+        equal:
+          - [ "status_code", 201 ]
+          - [ "body.userId", 1 ]
+          - [ "body.title", "foo" ]
+          - [ "body.body", "bar" ]
