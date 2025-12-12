@@ -1,0 +1,94 @@
+|DOI|_ |PyPI|_ |release|_ |pipeline|_
+
+.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.7738362.svg
+.. _DOI: https://doi.org/10.5281/zenodo.7738362
+
+.. |PyPI| image:: https://img.shields.io/pypi/v/emantis
+.. _PyPI: https://pypi.org/project/emantis/
+
+.. |release| image:: https://gitlab.obspm.fr/e-mantis/e-mantis/-/badges/release.svg
+.. _release: https://gitlab.obspm.fr/e-mantis/e-mantis/-/releases
+
+.. |pipeline| image:: https://gitlab.obspm.fr/e-mantis/e-mantis/badges/main/pipeline.svg
+.. _pipeline: https://gitlab.obspm.fr/e-mantis/e-mantis/-/commits/main
+
+e-MANTIS: Emulator for Multiple observable ANalysis in extended cosmological TheorIeS
+=====================================================================================
+
+.. contents:: Table of Contents
+   :local:
+
+Description
+-----------
+
+e-MANTIS is a python package containing emulators providing theoretical predictions for the nonlinear large-scale structure formation in the context of alternative dark energy and gravity theories.
+It uses Gaussian processes to perform a fast and accurate interpolation between the outputs of high resolution cosmological :math:`N`-body simulations.
+The emulator supports multiple cosmological models and observables.
+It is divided in multiple modules, each one focusing on a particular type of observable.
+Currently, e-MANTIS provides emulators for the following quantities:
+
+* Matter power spectrum boost in f(R) gravity, described in: `The e-MANTIS emulator: fast predictions of the nonlinear matter power spectrum in f(R)CDM cosmology <https://arxiv.org/abs/2303.08899>`_.
+
+* Halo mass function in f(R)CDM and wCDM cosmologies, described in: `The e-MANTIS emulator: fast and accurate predictions of the halo mass function in f(R)CDM and wCDM cosmologies <https://arxiv.org/pdf/2410.05226>`_.
+
+Please cite the corresponding papers if you use e-MANTIS in your work.
+
+This project is under constant development.
+More observables and cosmological models will be added in the future. Stay tuned!
+
+Installation
+------------
+
+You can install the python package from `PyPI <https://pypi.org/project/emantis/>`_ via pip::
+
+  pip install emantis
+
+Or you can directly clone our public `repository <https://gitlab.obspm.fr/e-mantis/e-mantis>`_ and install it from source::
+
+  git clone https://gitlab.obspm.fr/e-mantis/e-mantis.git
+  cd e-mantis
+  pip install [-e] .
+
+It requires a python version >= 3.10.
+
+Post-installation
+-----------------
+
+The emulators shipped with e-MANTIS need to be trained before they can provide predictions.
+This will be done automatically and on-the-fly the first time you use each emulator.
+
+Alternatively, we provide a CLI utility to train all emulators at once::
+
+  emantis-train
+
+This should not take more than a couple of minutes.
+
+The trained emulators are saved to disk, using the pickle protocol, ready for future usage.
+Major changes in the versions of python, e-MANTIS, or some of its main dependencies, such as numpy, scipy, or scikit-learn, might break the compatibility with previously trained emulators.
+In such case, the emulators will be retrained automatically on-the-fly.
+You can also retrain them manually using the CLI utility.
+
+Documentation and usage
+-----------------------
+
+The up-to-date documentation for this project (with code examples and a detailed API) is available `here <https://e-mantis.pages.obspm.fr/e-mantis>`_.
+
+Licence
+-------
+
+Copyright (C) 2023 Iñigo Sáez-Casares
+
+inigo.saez-casares@obspm.fr
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see https://www.gnu.org/licenses/.
