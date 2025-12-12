@@ -1,0 +1,278 @@
+# @bizstats/db-manager
+
+Production-ready PostgreSQL database management with async support, connection pooling, and migration utilities.
+
+## Features
+
+- **Async SQLAlchemy 2.0+** - Modern async ORM support
+- **asyncpg Connection Pool** - High-performance PostgreSQL connections
+- **Kubernetes Ready** - Automatic service discovery
+- **FastAPI Integration** - Built-in dependency injection
+- **Celery Support** - Async database operations in Celery tasks
+- **Health Checks** - Comprehensive monitoring
+- **Migration Utilities** - Alembic integration
+
+## Installation
+
+```bash
+pip install bizstats-db-manager
+
+# With Celery support
+pip install bizstats-db-manager[celery]
+
+# Development dependencies
+pip install bizstats-db-manager[dev]
+```
+
+## Quick Start
+
+### Basic Usage
+
+```python
+from bizstats_db_manager import DatabaseManager, Base
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String
+
+# Define your models
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+
+# Initialize the database
+db = DatabaseManager()
+await db.initialize("postgresql://user:pass@localhost/mydb")
+
+# Use sessions
+async with db.get_session() as session:
+    user = User(name="John", email="john@example.com")
+    session.add(user)
+    # Auto-commits on exit
+
+# Raw queries for performance
+async with db.get_connection() as conn:
+    rows = await conn.fetch("SELECT * FROM users WHERE id = $1", user_id)
+```
+
+### FastAPI Integration
+
+```python
+from fastapi import FastAPI, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from bizstats_db_manager import DatabaseManager
+
+app = FastAPI()
+db = DatabaseManager()
+
+@app.on_event("startup")
+async def startup():
+    await db.initialize()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await db.close()
+
+@app.get("/users")
+async def get_users(session: AsyncSession = Depends(db.get_session_dependency())):
+    result = await session.execute(select(User))
+    return result.scalars().all()
+```
+
+### With BaseModel
+
+Use `BaseModel` for automatic UUID primary key and timestamps:
+
+```python
+from bizstats_db_manager import BaseModel
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String
+
+class User(BaseModel):
+    __tablename__ = "users"
+
+    # id, created_at, updated_at are automatic
+    name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255))
+
+# Model methods
+user.to_dict()  # Convert to dictionary
+user.update_from_dict({"name": "New Name"})  # Update from dict
+```
+
+### Service Pattern
+
+```python
+from bizstats_db_manager import BaseService, ServiceResult
+from sqlalchemy import select
+
+class UserService(BaseService):
+    async def get_user(self, user_id: uuid.UUID) -> ServiceResult[User]:
+        try:
+            user = await self._execute_query(
+                select(User).where(User.id == user_id)
+            )
+            if not user:
+                return ServiceResult.error("User not found", "NOT_FOUND")
+            return ServiceResult.ok(user)
+        except Exception as e:
+            self._log_error("get_user", e)
+            return ServiceResult.error(str(e), "DB_ERROR")
+
+# Usage
+service = UserService(session)
+result = await service.get_user(user_id)
+if result.success:
+    print(result.data)
+```
+
+### Celery Tasks
+
+```python
+from bizstats_db_manager import run_async, get_async_db_session
+from celery import Celery
+
+app = Celery("tasks")
+
+@app.task
+def sync_users():
+    async def _sync():
+        async for db in get_async_db_session():
+            result = await db.execute(select(User))
+            return result.scalars().all()
+
+    return run_async(_sync())
+```
+
+### Health Checks
+
+```python
+from bizstats_db_manager import HealthCheck
+
+health = await HealthCheck.check(db)
+print(health.to_dict())
+# {
+#     "status": "healthy",
+#     "connected": true,
+#     "latency_ms": 2.5,
+#     "database": {
+#         "name": "mydb",
+#         "version": "PostgreSQL 15.0",
+#         "size_bytes": 1024000
+#     },
+#     "pool": {
+#         "size": 10,
+#         "idle_connections": 5
+#     }
+# }
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Direct URL (highest priority)
+DATABASE_URL=postgresql://user:pass@host:5432/db
+
+# Kubernetes service discovery
+POSTGRES_SERVICE_SERVICE_HOST=postgres-service
+POSTGRES_SERVICE_SERVICE_PORT=5432
+
+# Docker Compose
+POSTGRES_SERVICE_HOST=postgres
+POSTGRES_SERVICE_PORT=5432
+
+# Custom
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=password
+POSTGRES_DB=mydb
+
+# Timeouts
+DB_QUERY_TIMEOUT=30
+DB_COMMAND_TIMEOUT=60
+DB_POOL_TIMEOUT=30
+
+# Pool settings
+DB_POOL_MIN_SIZE=5
+DB_POOL_MAX_SIZE=20
+DB_POOL_MAX_OVERFLOW=20
+DB_POOL_RECYCLE=1800
+DB_POOL_PRE_PING=true
+
+# Debug
+DEBUG_SQL=false
+DB_APPLICATION_NAME=myapp
+```
+
+### Programmatic Configuration
+
+```python
+from bizstats_db_manager import DatabaseConfig, DatabaseManager
+
+config = DatabaseConfig(
+    host="localhost",
+    port=5432,
+    user="postgres",
+    password="password",
+    database="mydb",
+)
+
+db = DatabaseManager()
+await db.initialize(config)
+```
+
+## API Reference
+
+### DatabaseManager
+
+| Method | Description |
+|--------|-------------|
+| `initialize(config)` | Initialize database connections |
+| `close()` | Close all connections |
+| `get_session()` | Context manager for SQLAlchemy session |
+| `get_connection()` | Context manager for raw asyncpg connection |
+| `get_session_dependency()` | FastAPI dependency for sessions |
+| `execute_raw(query, *args)` | Execute raw SQL, return all rows |
+| `execute_raw_one(query, *args)` | Execute raw SQL, return one row |
+| `execute_raw_val(query, *args)` | Execute raw SQL, return single value |
+
+### Base Classes
+
+| Class | Description |
+|-------|-------------|
+| `Base` | SQLAlchemy declarative base with naming conventions |
+| `BaseModel` | Abstract model with UUID id and timestamps |
+| `TimestampMixin` | Adds created_at/updated_at |
+| `UUIDPrimaryKeyMixin` | Adds UUID primary key |
+| `SoftDeleteMixin` | Adds soft delete support |
+
+### Service Patterns
+
+| Class | Description |
+|-------|-------------|
+| `BaseService` | Abstract base for database services |
+| `SingletonService` | Base for singleton services |
+| `ServiceResult` | Standard result wrapper |
+| `PaginatedResult` | Paginated list result |
+| `PaginationParams` | Pagination parameters |
+
+## Testing
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev,test]"
+
+# Run tests
+pytest
+
+# With coverage
+pytest --cov=src --cov-report=html
+```
+
+## License
+
+MIT License - Absolut-e Data Com Inc.
