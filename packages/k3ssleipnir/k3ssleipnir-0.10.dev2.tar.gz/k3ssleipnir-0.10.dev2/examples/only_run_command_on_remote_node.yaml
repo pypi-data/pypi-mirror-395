@@ -1,0 +1,68 @@
+---
+apiVersion: v1
+kind: Server
+metadata:
+  name: control1
+spec:
+  address: 10.0.0.1
+  credentials:
+    credentialsType: private-key
+    value: /home/user/.ssh/lab
+    username: k3s
+---
+apiVersion: v1
+kind: Server
+metadata:
+  name: control2
+spec:
+  address: 10.0.0.2
+  credentials:
+    credentialsType: password
+    value: default_server_password
+    username: k3s
+---
+apiVersion: v1
+kind: K3sCluster
+metadata:
+  name: cluster1
+spec:
+  tasks:
+    - postProvisionScripts
+  servers:
+    - serverName: control1
+    - serverName: control2
+  postProvisionScripts:
+    - order: 10
+      scriptRuntime:
+        image: docker.io/bitnami/kubectl:latest
+        containerCommand: podman
+      postRunSleepSeconds: 60
+      targets:
+        - control1
+        - control2
+      script: |
+        /opt/patch_and_reboot.sh
+    - order: 20
+      scriptRuntime:
+        image: docker.io/bitnami/kubectl:latest
+        containerCommand: podman
+      postRunSleepSeconds: 0
+      targets:
+        - control1
+        - control2
+      script: |
+        /opt/do-all-of-the-other-stuff.sh
+---
+apiVersion: v1
+kind: AwsProfile
+metadata:
+  name: my-aws-profile
+spec:
+  defaultRegion: eu-central-1
+---
+apiVersion: v1
+kind: AwsSecret
+metadata:
+  name: default_server_password
+spec:
+  awsProfile: my-aws-profile
