@@ -1,0 +1,139 @@
+<!--
+SPDX-FileCopyrightText: 2022 German Aerospace Center (DLR)
+
+SPDX-License-Identifier: MIT
+-->
+
+# patme
+
+Utilities for basic software engineering, geometry, mechanics support and infrastructure handling.
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15591827.svg)](https://doi.org/10.5281/zenodo.15591827) 
+[![pipeline status](https://gitlab.dlr.de/sy-stm/software/patme/badges/master/pipeline.svg)](https://gitlab.dlr.de/sy-stm/software/patme/-/commits/master)
+[![coverage report](https://gitlab.dlr.de/sy-stm/software/patme/badges/master/coverage.svg)](https://ggitlab.dlr.de/sy-stm/software/patme/-/commits/master)
+[![Latest Release](https://gitlab.dlr.de/sy-stm/software/patme/-/badges/release.svg)](https://gitlab.dlr.de/sy-stm/software/patme/-/releases)
+
+## Features
+The full documentation can be found [here](https://sy-stm.pages.gitlab.dlr.de/software/patme/).
+
+### Software Engineering Features
+- software builds
+- release automation
+- build documentation (sphinx)
+- logging
+
+Planned items:
+- exception hooks
+- (potentially) decorators
+- Create RCE components and push them on an RCE server
+
+### Common useful features
+Planned items:
+- Call FEM software
+- Plot samples (Matplotlib, Latex-Pgfplots)
+
+### DLR-SY specific features
+Planned items:
+- SSH interface
+- SSH based cluster interaction
+- Run several jobs (FEM, python, matlab etc.) as samples with various parallelization options
+    - parallel local
+    - parallel remote
+    - asynchronous sampling (e.g. dependend on license availability)
+
+
+software builds, documentation, cluster interaction, calling fem tools, logging, exceptions.
+
+
+
+## Installation
+
+At least you require Python 3.
+
+### Installation from source
+Get patme source from
+
+> https://gitlab.dlr.de/sy-stm/software/patme.git
+
+and add the /src folder to pythonpath in the environment variables
+
+### Installation as python package
+Install it from [the gitlab packacke registry](https://gitlab.dlr.de/sy-stm/software/patme/-/packages)
+
+You can download the latest artifact (*.whl) and install it using
+
+
+> cd patme
+> python setup.py install patme<version>.whl
+
+
+### Test the installation
+In python execute:
+
+> import patme
+
+### Developers
+
+Developers may also install the pre-commit hook.
+
+**Precommit**
+1. install the pre-commit
+   > pip install pre-commit
+2. In the patme folder
+   > pre-commit install
+
+This enables the pre-commit hooks defined in _.pre-commit-config.yaml_
+and eases your commits and successful pipline runs.
+
+
+## CI Pipeline and Jobs for Developers
+
+If you encounter any failed job on the pipeline you can run them locally for more information.
+(prerequisite: have _make_ and _poetry_ installed [e.g. conda install make poetry])
+
+See all availabe make targets used for the ci-jobs
+
+> make list
+
+Find the target with matching names and execute them locally e.g.:
+> make test
+
+If **check-formatting** fails, run the following to fix issues.
+> make formatting
+
+If **check-license-metadata** fails, run
+> make check-license-metadata
+
+identify the corresponding filename and run the following (include the filename in $filename)
+> poetry run reuse addheader --copyright="German Aerospace Center (DLR)" --license="MIT" $filename
+
+## Contributing to _patme_
+
+We welcome your contribution!
+
+If you want to provide a code change, please:
+
+* Create a fork of the GitLab project.
+* Develop the feature/patch
+* Provide a merge request.
+
+> If it is the first time that you contribute, please add yourself to the list
+> of contributors below.
+
+
+## Citing
+
+No citing required
+
+## License
+
+MIT
+
+## Change Log
+
+see [changelog](changelog.md)
+
+## Authors
+
+[Sebastian Freund](mailto:sebastian.freund@dlr.de)
+[Andreas Schuster](mailto:andreas.schuster@dlr.de)

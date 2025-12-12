@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: 2022 German Aerospace Center (DLR)
+#
+# SPDX-License-Identifier: MIT
+
+[project]
+name = "patme"
+version = "0.4.7"
+description = "Utilities for software builds, documentation, cluster interaction, calling fem tools, logging, exceptions and simple geometric and mechanical operations."
+license = "DLR 2025"
+authors = [
+    { name = "Sebastian Freund", email = "sebastian.freund@dlr.de" },
+    { name = "Andreas Schuster", email = "andreas.schuster@dlr.de" },
+]
+maintainers = [
+    {name = "Garbade, Marc", email = "<marc.garbade@dlr.de>"}]
+readme = "README.md"
+keywords = ["build", "cluster", "fem", "log", "exception"]
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "numpy<2",
+    "scipy",
+    "importlib_metadata",
+    "tomlkit",
+    "sshconf"
+]
+
+[project.urls]
+Homepage = "https://gitlab.dlr.de/fa_sw/patme"
+Changelog = "https://gitlab.dlr.de/sy-stm/software/patme/-/blob/master/changelog.md"
+Repository = "https://gitlab.dlr.de/fa_sw/patme"
+Documentation = "https://sy-stm.pages.gitlab.dlr.de/software/patme/"
+
+[tool.poetry]
+include = [{ path = "src"}]
+
+[tool.poetry.scripts]
+run-fe = "patme.femtools.fecall:run_fe_cli"
+#sample-calculator = "sample_calculator.main:cmd_main"
+
+[tool.poetry.group.opt.dependencies]
+sshconf = [{version = "*", python = "^3.7", optional=true}]
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "*"
+black = "*"
+isort = "*"
+reuse = "*"
+Sphinx = "*"
+sphinx_rtd_theme = "*"
+sphinxcontrib-bibtex = "*"
+setuptools ="*" # due to problems with pybtex which sphinxcontrib-bibtex depends on. Check "make docs" on gitlab runner before removing it
+pre-commit = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+pytest-cov = "*"
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.html]
+directory = "build/htmlcov"
+
+[tool.black]
+line-length = 120
+exclude = "docs"
+
+[tool.isort]
+line_length = 120
+skip = "docs"
+profile = 'black'
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
