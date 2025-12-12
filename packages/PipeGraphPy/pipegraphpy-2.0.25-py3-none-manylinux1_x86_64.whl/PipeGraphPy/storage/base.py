@@ -1,0 +1,2 @@
+class ParamsPoolBase(object):
+    pass
