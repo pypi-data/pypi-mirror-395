@@ -1,0 +1,80 @@
+# AI Music Remixer
+
+AI-powered intelligent music remixer with optional neural transitions.
+
+## Features
+
+- Intelligent audio remixing using Spleeter for stem separation
+- Optional PyTorch-based neural transition model for smoother transitions
+- Beat-synchronized remixing with automatic tempo detection
+- Command-line interface for easy usage
+- Safe fallback to deterministic smoothing if neural model is unavailable
+
+## Installation
+
+```bash
+pip install ai_music_remixer
+```
+
+For GPU support (optional):
+```bash
+pip install ai_music_remixer[gpu]
+```
+
+## Usage
+
+### Command Line
+
+Basic remix:
+```bash
+ai-remix input.mp3 -o output.wav
+```
+
+Beat-synchronized remix:
+```bash
+ai-remix input.mp3 --beats -o output.wav
+```
+
+With custom BPM:
+```bash
+ai-remix input.mp3 --beats --bpm 120 -o output.wav
+```
+
+### Python API
+
+```python
+from ai_music_remixer import ai_remix, ai_remix_beatsync
+
+# Basic remix
+ai_remix("input.mp3", "output.wav")
+
+# Beat-synchronized remix
+ai_remix_beatsync("input.mp3", "output.wav", beats_per_minute=120)
+```
+
+## Neural Transition Model
+
+The package includes an optional PyTorch-based neural transition model. If you place a trained checkpoint file at `models/transition_ckpt.pt`, the remixer will automatically use it for smoother transitions. Without a checkpoint, the package falls back to deterministic Gaussian smoothing.
+
+To train a model (requires PyTorch):
+```bash
+python -m ai_music_remixer.neural.train_transition
+```
+
+## Requirements
+
+- Python >= 3.8
+- pydub
+- librosa
+- soundfile
+- spleeter
+- numpy
+- scipy
+
+Optional:
+- torch (for neural transitions)
+
+## License
+
+MIT
+
