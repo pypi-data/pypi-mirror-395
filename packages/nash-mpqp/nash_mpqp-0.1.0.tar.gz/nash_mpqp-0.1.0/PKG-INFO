@@ -1,0 +1,204 @@
+Metadata-Version: 2.4
+Name: nash-mpqp
+Version: 0.1.0
+Summary: nash-mpqp - A Python package for solving parametric generalized Nash equilibrium (GNE) problems with quadratic objectives and coupled linear inequality constraints in explicit form.
+Author-email: Alberto Bemporad <alberto.bemporad@imtlucca.it>, Sophie Hall <shall@control.ee.ethz.ch>
+Project-URL: Homepage, https://github.com/bemporad/nash-mpqp
+Keywords: generalized nash equilibrium problems,game theory,multiparametric programming,model predictive control
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy
+Requires-Dist: matplotlib
+Requires-Dist: pdaqp
+Requires-Dist: daqp
+Requires-Dist: joblib
+Requires-Dist: scipy
+Requires-Dist: pypoman
+Requires-Dist: dill
+Requires-Dist: tqdm
+Dynamic: license-file
+
+# nash-mpqp
+
+Solver for parametric generalized Nash equilibrium (GNE) problems with quadratic objectives and coupled linear inequality constraints. 
+
+Each agent $i \in \{1, ..., N\}$ solves the parametric optimization problem:
+
+$$
+\begin{align}
+\min_{x_i\in\mathbb{R}^{n_i}} \quad & \frac{1}{2} x^T Q_i x + (c_i + F_i p)^T x \\
+\text{s.t.} \quad & Ax \leq b + Sp\\
+& \ell \ \leq x \ \leq u
+\end{align}
+$$
+
+Where:
+- $x = [x_1; x_2; \ldots; x_N] \in [\ell_b, u_b]$ is the stacked decision vector of dimension $n=n_1+n_2+\ldots+n_N$;
+- $p \in [p_{\min}, p_{\max}]$ is the parameter vector
+- $Q_i \in \mathbb{R}^{n_x \times n_x}$ is the cost matrix for agent $i$
+- $F_i \in \mathbb{R}^{n_x \times n_p}$ is the parameter gain matrix
+- $A \in \mathbb{R}^{n_A \times n_x}$, $b \in \mathbb{R}^{n_A}$, $S \in \mathbb{R}^{n_A \times n_p}$ define the coupling inequality constraints
+- $\ell$ define lower bounds (if any exist) on the optimization variables
+- $u$ define upper bounds (if any exist) on the optimization variables
+
+Note that the parameters can only appear in the linear term of the objective function and the right-hand-side of the constraints, and that they can be local or shared, depending on the selected matrices $A$ and $S$. The problem is solved for a given set of parameters
+
+$$p_{\rm min} \leq p \leq p_{\rm max}$$
+
+and a given range of interest of the variables
+
+$$x_{\rm min} \leq x \leq x_{\rm max}$$
+
+In case polyhedral regions containing infinitely many GNEs are detected, it is possible to characterize variational GNE solutions, minimum norm solutions, and welfare GNE solutions.
+
+## Installation
+
+```bash
+pip install nash-mpqp
+```
+
+## API Reference
+
+### NashMPQP Constructor
+
+```python
+NashMPQP(dim, pmin, pmax, xmin, xmax, Q, c, F, A, b, S, lb, ub, split, parallel_processing, verbose)
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `dim` | `list[int]` | Number of variables for each agent $[n_1,n_2,\ldots,n_N]$|
+| `pmin` | `np.ndarray` | Lower bounds on parameters |
+| `pmax` | `np.ndarray` | Upper bounds on parameters |
+| `xmin` | `np.ndarray` | Lower bounds on variables for which the solution is computed (not constraints on $x$, see `lb`) |
+| `xmax` | `np.ndarray` | Upper bounds on parameters for which the solution is computed (not constraints on $x$, see `ub`) |
+| `Q` | `list[np.ndarray]` | List of quadratic cost matrices for each agent |
+| `c` | `list[np.ndarray]` | List of linear cost vectors for each agent |
+| `F` | `list[np.ndarray]` | List of parameter gain matrices for each agent |
+| `A` | `np.ndarray` | Inequality constraint matrix (coupling and local)  |
+| `b` | `np.ndarray` | Inequality constraint vector (coupling and local) |
+| `S` | `np.ndarray` | Inequality constraint parameter matrix (coupling and local) |
+| `lb` | `np.ndarray` or `None`| Lower bounds on x. Use entries equal to -inf for unbounded variables |
+| `lb` | `np.ndarray` or `None`| Upper bounds on x. Use entries equal to inf for unbounded variables |
+| `split` | `string` or `None` | How to deal with critical regions with infinitely many GNE solutions (see below)|
+| `parallel_processing` | `bool` | If `True`, solve mpQPs in parallel using all CPU cores |
+| `verbose` | `bool` | If `True`, print progress messages |
+
+The input argument `split` is used to decide how to handle critical regions with infinitely-many solutions:
+    
+- `split` = `"min-norm"` (default): split the critical region into subregions, each with a unique minimum-norm equilibrium solution
+    
+- `split` = `"welfare"`: split the critical region into subregions, each with a unique fair equilibrium solution where the sum of all agents' costs is minimized
+
+- `split` = `"variational"`: overlaps a (sub)region of unique variational GNE solution (if it exists) over a region of infinitely-many solutions
+
+- `split` = `"variational-split"`: split the critical region into a subregion characterized by a unique variational GNE solution (if it exists), plus a partition of the remaining set into polyhedral subregions with infinitely-many solutions
+
+- `split` = `None`: keep an entire critical region with infinitely-many solutions as a single region.
+
+## Illustrative Example: 2-Agent Generalized Game
+
+Consider the running example from the manuscript
+
+**Agent 1:**
+$$\min_{x_1 \geq 0} \frac{1}{2}x_1^2 - x_1x_2 + p_1x_1 \quad \text{s.t.} \quad -x_1 - x_2 \leq p_c$$
+
+**Agent 2:**
+$$\min_{x_2 \geq 0} x_2^2 + x_1x_2 \quad \text{s.t.} \quad -x_1 - x_2 \leq p_c$$
+
+Where $p = [p_c, p_1]^T$ are the parameters.
+
+### Problem Matrices
+
+The quadratic cost matrices are:
+
+```math
+Q_1 = \begin{bmatrix} 1 & -1 \\ -1 & 0 \end{bmatrix}, \quad 
+Q_2 = \begin{bmatrix} 0 & 1 \\ 1 & 2 \end{bmatrix}
+```
+
+The parameter gain matrices are:
+
+```math
+F_1 = \begin{bmatrix} 0 & 1 \\ 0 & 0 \end{bmatrix}, \quad 
+F_2 = \begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}
+```
+
+The constraint matrix is
+
+```math
+A =  \begin{bmatrix}
+-1 & -1 \end{bmatrix}
+```
+### Implementation
+
+```python
+import numpy as np
+from nash_mpqp import NashMPQP
+
+np.random.seed(0)
+
+N = 2  # number of agents
+dim = [1,1]  # number of variables for each agent
+npar = 2  # number of parameters
+ncon = 1  # number of constraints
+split = "min-norm"
+
+# Create problem data
+nvar = sum(dim)  # total number of variables
+Q, c, F = [[],[],[]]
+
+for i in range(N):
+    if i==0:
+        Q.append(np.array([[1.0, -1.0], [-1.0, 0.0]]))  
+        F.append(np.array([[0.0, 1.0], [0.0, 0.0]]))
+        
+    if i==1:
+        Q.append(np.array([[0.0, 1.0], [1.0, 2.0]]))
+        F.append(np.zeros([nvar, npar]))
+        
+    c.append(np.zeros(nvar))
+
+A = np.array([[-1.0, -1.0]])
+b = np.zeros(ncon)
+S = np.array([[1.0, 0.0]]) 
+
+lb = np.zeros(nvar)  # lower bounds on variables
+ub = None
+xmin = lb # lower bounds on variables, used for computing the parametric solution
+xmax = 10.*np.ones(nvar)   # upper bounds on variables, used for computing the parametric solution
+
+pmin = -10*np.ones(npar) # lower bounds on parameters
+pmax = 10*np.ones(npar) # upper bounds on parameters
+
+# Problem setup and solve
+nash_mpqp = NashMPQP(dim, pmin, pmax, xmin, xmax, Q, c, F, A, b, S, lb, ub, split=split)
+nash_mpqp.solve()
+```
+
+The above code will find the multiparametric game-theoretic solution, which is plotted below (run `example_1.py` to reproduce):
+
+<img src="example_1.png" alt="Critical Regions" style="width:50%;">
+
+## License
+
+Apache License V2.0
+
+## Citation
+
+If you use this software, please cite the following associated paper:
+
+```bibtex
+@article{HB25,
+  title={Solving Multiparametric Generalized {Nash} Equilibrium Problems and Explicit Game-Theoretic Model Predictive Control},
+  author={Sophie Hall, Alberto Bemporad},
+  journal={arXiv},
+  year={2025}
+}
+```
