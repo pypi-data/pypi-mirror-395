@@ -1,0 +1,89 @@
+{% extends "core_main_app/_render/admin/theme/tools/box.html" %}
+
+{% block box_title %}PID configuration settings{% endblock %}
+
+{% block box_tools %}
+{% endblock %}
+
+{% block box_body %}
+<table class="table table-bordered table-striped">
+    <tr>
+        <th>Configuration key</th>
+        <th>Configuration value</th>
+    </tr>
+    <tr>
+        <td>Sample PID</td>
+        <td>{{ data.pid_settings.sample_url }}</td>
+    </tr>
+    <tr>
+        <td>Set PID automatically</td>
+        <td>
+            <div id="auto-set-pid-error" class="alert alert-error" style="display: none"></div>
+            <div id="auto-set-pid-control"
+                 class="{% if BOOTSTRAP_VERSION|first == "4" %}custom-control custom-switch
+                        {% elif BOOTSTRAP_VERSION|first == "5"  %}form-check form-switch
+                        {% endif %}">
+                <input type="checkbox"
+                       role="switch"
+                       id="auto-set-pid-switch"
+                       class="{% if BOOTSTRAP_VERSION|first == "4" %}custom-control-input
+                            {% elif BOOTSTRAP_VERSION|first == "5"  %}form-check-input
+                            {% endif %}">
+                <label id="auto-set-pid-label"
+                       for="auto-set-pid-switch"
+                       class="{% if BOOTSTRAP_VERSION|first == "4" %}custom-control-label
+                            {% elif BOOTSTRAP_VERSION|first == "5"  %}form-check-label
+                            {% endif %}">
+                    {{ data.pid_settings.auto_set_pid }}
+                </label>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>PID Path</td>
+        <td>
+            <ul>
+                {% for key, value in data.pid_settings.path.items %}
+                    <li>
+                        {{ key }}: <code>{{ value.path }}</code>
+                        {% if key != "default" %}
+                        <a class="{% if BOOTSTRAP_VERSION|first == "4" %}ml-2
+                                  {% elif BOOTSTRAP_VERSION|first == "5"  %}ms-2
+                                  {% endif %}"
+                            href="{{ value.edit_url }}">
+                            <i class="fa fa-edit"></i> Edit
+                        </a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+            <a class="btn btn-sm btn-success"
+               href="{{ data.pid_settings.add_path_url }}"
+                target="_blank" rel="noopener noreferrer">
+                <i class="fa fa-plus-circle"></i> Add another PID path
+            </a>
+        </td>
+    </tr>
+    <tr>
+        <td>PID System</td>
+        <td>
+            {{ data.pid_settings.system_name }}
+            (<code>{{ data.pid_settings.system_type }}</code>)
+        </td>
+    </tr>
+    <tr>
+        <td>Prefixes</td>
+        <td>
+            <ul>
+                {% for prefix in data.pid_settings.prefixes %}
+                <li>{{ prefix }}</li>
+                {%endfor %}
+            </ul>
+        </td>
+    </tr>
+    <tr>
+        <td>Record name format</td>
+        <td>{{ data.pid_settings.format }}</td>
+    </tr>
+</table>
+{% endblock %}

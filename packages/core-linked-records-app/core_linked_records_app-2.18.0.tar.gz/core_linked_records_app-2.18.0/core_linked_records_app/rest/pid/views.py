@@ -1,0 +1,364 @@
+""" Ajax views accessible by users.
+"""
+
+import json
+from urllib.parse import urljoin
+
+from django.urls import reverse
+from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiResponse,
+    OpenApiExample,
+)
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core_explore_common_app.commons.exceptions import ExploreRequestError
+from core_explore_common_app.components.query import api as query_api
+from core_explore_common_app.utils.oaipmh import oaipmh as oaipmh_utils
+from core_explore_common_app.utils.protocols.oauth2 import (
+    send_post_request as oauth2_post_request,
+    send_get_request as oauth2_get_request,
+)
+from core_explore_common_app.utils.query import query as query_utils
+from core_linked_records_app import settings
+from core_linked_records_app.components.blob import api as blob_api
+from core_linked_records_app.components.data import api as data_api
+from core_linked_records_app.utils.query import execute_local_pid_query
+from core_main_app.rest.template_html_rendering.views import BaseDataHtmlRender
+
+if (
+    "core_oaipmh_harvester_app" in settings.INSTALLED_APPS
+    and "core_explore_oaipmh_app" in settings.INSTALLED_APPS
+):  # Import OAI-PMH pid views if packages are present.
+    from core_linked_records_app.utils.query import (
+        execute_oaipmh_pid_query,
+    )
+
+
+@extend_schema(
+    tags=["PID"],
+    description="Retrieve PIDs for a given data IDs",
+)
+class RetrieveDataPIDView(APIView):
+    """Retrieve PIDs for a given data IDs"""
+
+    @extend_schema(
+        summary="Retrieve PID for a data ID",
+        description="Retrieve PID for a given data ID",
+        parameters=[
+            OpenApiParameter(
+                name="data_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Data ID",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="oai_data_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="OAI Data ID",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="fede_data_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Federated Data ID",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="fede_origin",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Federated Origin",
+                required=False,
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(description="PID for the data"),
+            400: OpenApiResponse(
+                description="Validation error or missing required parameters"
+            ),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def get(self, request):
+        """get
+        Args:
+            request:
+        Returns:
+        """
+        try:
+            if "data_id" in request.GET:
+                # Local data
+                return Response(
+                    {
+                        "pid": data_api.get_pid_for_data(
+                            request.GET["data_id"], request
+                        )
+                    }
+                )
+            if (
+                "core_oaipmh_harvester_app" in settings.INSTALLED_APPS
+                and "core_explore_oaipmh_app" in settings.INSTALLED_APPS
+                and "oai_data_id" in request.GET
+            ):  # OAI-PMH data
+                from core_linked_records_app.components.oai_record import (
+                    api as oai_record_api,
+                )
+
+                return Response(
+                    {
+                        "pid": oai_record_api.get_pid_for_data(
+                            request.GET["oai_data_id"], request
+                        )
+                    }
+                )
+            if (
+                "core_federated_search_app" in settings.INSTALLED_APPS
+                and "fede_data_id" in request.GET
+                and "fede_origin" in request.GET
+            ):  # Federated data
+                from core_federated_search_app.components.instance import (
+                    api as instance_api,
+                )
+
+                fede_origin_keys = request.GET["fede_origin"].split("&")
+                instance_name = fede_origin_keys[1].split("=")[1]
+                instance = instance_api.get_by_name(instance_name)
+                reverse_url = reverse("core_linked_records_retrieve_data_pid")
+                url_get_data = (
+                    f'{reverse_url}?data_id={request.GET["fede_data_id"]}'
+                )
+                data_response = oauth2_get_request(
+                    urljoin(instance.endpoint, url_get_data),
+                    instance.access_token,
+                )
+                return Response(json.loads(data_response.text))
+            return Response(
+                {
+                    "message": "Impossible to retrieve PID for data with the given parameters"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as exc:
+            return Response(
+                {
+                    "message": f"An unexpected exception occurred while retrieving data PID: {str(exc)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+@extend_schema(
+    tags=["PID"],
+    description="Retrieve PIDs for a given blob ID",
+)
+class RetrieveBlobPIDView(APIView):
+    """Retrieve PIDs for a given blob ID"""
+
+    @extend_schema(
+        summary="Retrieve PID for a blob ID",
+        description="Retrieve PID for a given blob ID",
+        parameters=[
+            OpenApiParameter(
+                name="blob_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Blob ID",
+                required=True,
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(description="PID for the blob"),
+            400: OpenApiResponse(description="Missing parameter 'blob_id'"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def get(self, request):
+        """get PIDs
+        Args:
+            request:
+        Returns:
+        """
+        if "blob_id" in request.GET:
+            try:
+                blob_pid = blob_api.get_pid_for_blob(
+                    request.GET["blob_id"], request.user
+                )
+                sub_url = reverse(
+                    "core_linked_records_provider_record",
+                    kwargs={
+                        "provider": settings.ID_PROVIDER_SYSTEM_NAME,
+                        "record": "",
+                    },
+                )
+                return Response(
+                    {
+                        "pid": f"{settings.SERVER_URI}{sub_url}{blob_pid.record_name}"
+                    }
+                )
+            except Exception as exc:
+                return Response(
+                    {
+                        "message": f"An unexpected exception occurred while retrieving blob PID: {str(exc)}"
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        else:
+            return Response(
+                {"message": "Missing parameter 'blob_id'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+@extend_schema(
+    tags=["PID"],
+    description="Retrieve PIDs for a given list of data IDs",
+)
+class RetrieveListPIDView(APIView):
+    """Retrieve PIDs for a given list of data IDs"""
+
+    @extend_schema(
+        summary="Retrieve PIDs for a list of data IDs",
+        description="Retrieve PIDs for a given list of data IDs",
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: OpenApiResponse(description="PIDs for the data"),
+            400: OpenApiResponse(
+                description="Validation error or unknown authentication type"
+            ),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+        examples=[
+            OpenApiExample(
+                "Example request",
+                summary="Example request body",
+                description="Example request body for retrieving PIDs",
+                value={
+                    "query_id": "query_id",
+                    "data_source_index": 0,
+                },
+            ),
+        ],
+    )
+    def post(self, request):
+        """Retrieve PIDs
+        Args:
+            request:
+        Returns:
+        """
+        try:
+            query = query_api.get_by_id(
+                request.data.get("query_id", None),
+                request.user,
+            )
+            data_source = query.data_sources[
+                int(request.data.get("data_source_index", 0))
+            ]
+            # Build serialized query to send to data source
+            json_query = {
+                "query": query.content,
+                "templates": json.dumps(
+                    [
+                        {"id": template.id, "hash": template.hash}
+                        for template in query.templates.all()
+                    ]
+                ),
+                "options": json.dumps(data_source["query_options"]),
+                "order_by_field": data_source["order_by_field"],
+            }
+            if data_source["authentication"]["auth_type"] == "session":
+                # Local and OAI-PMH data sources
+                if query_utils.is_local_data_source(data_source):
+                    json_response = execute_local_pid_query(
+                        json_query, request
+                    )
+                elif oaipmh_utils.is_oai_data_source(data_source):
+                    json_response = execute_oaipmh_pid_query(
+                        json_query, request
+                    )
+                else:
+                    raise ExploreRequestError("Unknown data source type.")
+            elif data_source["authentication"]["auth_type"] == "oauth2":
+                # Federated data sources
+                response = oauth2_post_request(
+                    data_source["capabilities"]["query_pid"],
+                    json_query,
+                    data_source["authentication"]["params"]["access_token"],
+                    session_time_zone=timezone.get_current_timezone(),
+                )
+                if response.status_code == status.HTTP_200_OK:
+                    json_response = response.json()
+                else:
+                    return Response(
+                        {
+                            "error": f"Data source returned HTTP {response.status_code}."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                return Response(
+                    {"error": "Unknown authentication type."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return Response(
+                {"pids": [pid for pid in json_response if pid is not None]},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as exception:
+            return Response(
+                {"error": str(exception)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+@extend_schema(
+    tags=["PID"],
+    description="DataHtmlRenderByPID",
+)
+class DataHtmlRenderByPID(BaseDataHtmlRender):
+    """DataHtmlRenderByPID"""
+
+    def get_object(self, pid, request):
+        """get data object by PID."""
+        return data_api.get_data_by_pid(pid, request)
+
+    @extend_schema(
+        summary="Get HTML rendering for a data PID",
+        description="Get HTML rendering for a data PID",
+        parameters=[
+            OpenApiParameter(
+                name="pid",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Data PID",
+                required=True,
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(description="HTML rendering"),
+            400: OpenApiResponse(description="Missing parameter 'pid'"),
+        },
+    )
+    def get(self, request):
+        """Get `TemplateHtmlRendering` object from db
+        Args:
+            request: HTTP request
+            pk: data pid
+        Returns:
+            Html string
+        """
+        if "pid" not in request.GET:
+            return Response(
+                {"message": "Missing parameter 'pid'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Get rendering content
+        return self.get_rendering_content(request, request.GET["pid"])
