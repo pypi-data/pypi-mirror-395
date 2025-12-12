@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package rikennative;
+
+// Task type enumeration
+enum TaskType {
+  TASK_TYPE_UNSPECIFIED = 0;
+  TASK_TYPE_SAMPLER = 1;
+  TASK_TYPE_ESTIMATOR = 2;
+}
+
+// The compute service definition for Fire Opal integration
+service ComputeService {
+  // Fire Opal circuit preprocessing
+  rpc PreprocessCircuits(PreprocessingRequest) returns (PreprocessingResponse);
+
+  // Fire Opal result postprocessing
+  rpc PostprocessResults(PostprocessingRequest) returns (PostprocessingResponse);
+
+  // Health check
+  rpc HealthCheck(HealthRequest) returns (HealthResponse);
+}
+
+// Fire Opal preprocessing request
+message PreprocessingRequest {
+  string task_id = 1;                // Optional - if not provided, will be generated server-side.
+  string backend_configuration = 2;  // JSON-encoded BackendConfiguration
+  string backend_properties = 3;     // JSON-encoded BackendProperties
+  string pubs = 4;                   // JSON-encoded SamplerPubLike or EstimatorPubLike objects
+  string run_options = 5;            // JSON-encoded run options (optional)
+  TaskType task_type = 6;            // Specify whether this is Sampler or Estimator
+}
+
+// Fire Opal preprocessing response
+message PreprocessingResponse {
+  string task_id = 1;
+  bool success = 2;
+  string pubs = 3;                   // JSON-encoded SamplerPub objects
+  string error_message = 4;
+  TaskType task_type = 5;            // Echo back the task type
+}
+
+// Fire Opal postprocessing request
+message PostprocessingRequest {
+  string task_id = 1;
+  string pub_results = 2;            // JSON-encoded PubResult objects from execution
+  string pubs_original = 3;          // JSON-encoded original SamplerPub/EstimatorPub objects
+  string pubs_submitted = 4;         // JSON-encoded SamplerPub objects from preprocessing
+  TaskType task_type = 5;            // Specify task type for postprocessing
+}
+
+// Fire Opal postprocessing response
+message PostprocessingResponse {
+  string task_id = 1;
+  bool success = 2;
+  string results = 3;                // JSON-encoded processed PubResult objects
+  string error_message = 4;
+  TaskType task_type = 5;            // Echo back the task type
+}
+
+// Health check messages
+message HealthRequest {
+  string service = 1;
+}
+
+message HealthResponse {
+  string status = 1;
+  int32 active_workers = 2;
+  int32 queue_size = 3;
+  float uptime_seconds = 4;
+}
