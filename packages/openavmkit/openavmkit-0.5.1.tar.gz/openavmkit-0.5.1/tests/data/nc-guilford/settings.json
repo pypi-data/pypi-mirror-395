@@ -1,0 +1,179 @@
+{
+	"locality": {
+		"name": "Guilford county",
+		"county": "Guilford",
+		"state": "NC",
+		"slug": "nc-guilford"
+	},
+	"data": {
+		"load": {
+			"all_data": {
+				"filename": "universe_clean.parquet",
+				"dtypes": {}
+			}
+		},
+		"merge": {
+			"all_entry": {"how": "left", "on": "key"}
+		},
+		"clean": {}
+	},
+	"modeling": {
+		"metadata": {
+			"valuation_date": "2025-01-01",
+			"use_sales_from": 2020,
+			"test_sales_from": 2024,
+			"modeler": "Center for Land Economics",
+			"modeler_nick": "CLE"
+		},
+		"instructions": {
+			"__run": ["mra", "median", "naive_sqft", "local_naive_sqft", "local_smart_sqft"],
+			"run": [
+				"assessor", "mra", "gwr", "lightgbm", "catboost", "xgboost", "local_naive_sqft", "local_smart_sqft"
+			],
+			"time_adjustment": {
+				"period": "Q"
+			},
+			"ensemble": [],
+			"allocation": []
+		},
+		"models": {
+			"default": {
+				"dep_vars": [
+					"bldg_area_finished_sqft",
+					"land_area_sqft",
+					"bldg_quality_num",
+					"bldg_condition_num",
+					"bldg_age_years",
+					"dist_to_cbd",
+					"rectangularity_num",
+					"slope_mean",
+					"elevation_mean",
+					"dist_to_universities",
+					"dist_to_colleges",
+					"dist_to_greenspace",
+					"dist_to_airport",
+					"sale_age_days"
+				]
+			},
+			"gwr": {
+				"dep_vars": [
+					"bldg_area_finished_sqft",
+					"bldg_age_years",
+					"land_area_sqft",
+					"rectangularity_num",
+					"dist_to_cbd",
+					"elevation_mean"
+				]
+			}
+		},
+		"modeling_groups": {
+			"residential_sf": {
+				"name": "Residential single-family"
+			},
+			"th": {
+				"name": "Residential townhouse"
+			},
+			"mf": {
+				"name": "Residential multi-family"
+			},
+			"condo": {
+				"name": "Residential condominiums"
+			},
+			"apt": {
+				"name": "Apartments"
+			},
+			"mh": {
+				"name": "Manufactured/mobile home"
+			},
+			"com": {
+				"name": "Commercial"
+			},
+			"ind": {
+				"name": "Industrial"
+			},
+			"ag": {
+				"name": "Agricultural"
+			}
+		}
+	},
+	"analysis": {
+		"ratio_study": {
+			"look_back_years": 1,
+			"breakdowns": [
+				{"by": "sale_price", "quantiles": 10},
+				{"by": "bldg_area_finished_sqft", "quantiles": 10},
+				{"by": "bldg_age_years", "slice_size": 10},
+				{"by": "land_area_sqft", "quantiles":  10},
+				{"by": "bldg_quality_txt"},
+				{"by": "bldg_condition_num", "quantiles": 5},
+				{"by": "<loc_neighborhood>"},
+				{"by": "<loc_market_area>"},
+				{"by": "<loc_region>"}
+			]
+		}
+	},
+	"field_classification": {
+		"important": {
+			"fields": {
+				"impr_category": "bldg_style",
+				"land_category": "land_class",
+				"loc_neighborhood": "neighborhood",
+				"loc_market_area": "census_tract",
+				"loc_region": "census_block_group"
+			},
+			"locations": [
+				"neighborhood",
+				"census_tract",
+				"census_block_group",
+				"city",
+				"school_district"
+			]
+		},
+		"land": {
+			"numeric": [
+				"noise_max",
+				"noise_mean",
+				"distance_to_cbd",
+				"distance_to_airport",
+				"distance_to_colleges",
+				"distance_to_greenspace",
+				"distance_to_universities"
+			],
+			"categorical": [
+				"census_block_group",
+				"land_class",
+				"zoning_class",
+				"zoning_desc",
+				"zoning_class_desc",
+				"zoning_category"
+			]
+		},
+		"impr": {
+			"numeric": [
+				"building_fixtures",
+				"building_year_remodeled",
+				"area_footprint_sqft",
+				"total_replacement_value",
+				"total_depreciated_value",
+				"outbuilding_value",
+				"total_depreciation",
+				"percent_depreciation",
+				"building_additions"
+			],
+			"categorical": [
+				"building_class",
+				"building_plumbing",
+				"building_heating",
+				"building_desc"
+			]
+		},
+		"other": {
+			"categorical": [
+				"property_owner"
+			]
+		}
+	},
+	"data_dictionary": {
+
+	}
+}
