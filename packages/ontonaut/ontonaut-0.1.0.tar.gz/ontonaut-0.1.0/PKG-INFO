@@ -1,0 +1,340 @@
+Metadata-Version: 2.4
+Name: ontonaut
+Version: 0.1.0
+Summary: Customizable code editor widget for marimo with pluggable execution backends
+Project-URL: Homepage, https://github.com/yourusername/ontonaut
+Project-URL: Documentation, https://github.com/yourusername/ontonaut#readme
+Project-URL: Repository, https://github.com/yourusername/ontonaut
+Project-URL: Issues, https://github.com/yourusername/ontonaut/issues
+Author-email: Ashley Cottrell <your.email@example.com>
+License: MIT
+License-File: LICENSE
+Keywords: anywidget,code-editor,jupyter,marimo,notebook,widget
+Classifier: Development Status :: 3 - Alpha
+Classifier: Framework :: Jupyter
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Interpreters
+Requires-Python: >=3.9
+Requires-Dist: anywidget>=0.9.0
+Requires-Dist: marimo>=0.1.0
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: all
+Requires-Dist: anthropic>=0.18.0; extra == 'all'
+Requires-Dist: openai>=1.0.0; extra == 'all'
+Provides-Extra: anthropic
+Requires-Dist: anthropic>=0.18.0; extra == 'anthropic'
+Provides-Extra: dev
+Requires-Dist: black>=24.0.0; extra == 'dev'
+Requires-Dist: mypy>=1.8.0; extra == 'dev'
+Requires-Dist: pre-commit>=3.6.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest>=8.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Provides-Extra: openai
+Requires-Dist: openai>=1.0.0; extra == 'openai'
+Description-Content-Type: text/markdown
+
+# Ontonaut 🚀
+
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+> **Interactive widgets for [marimo](https://marimo.io) with pluggable backends**
+
+Ontonaut provides beautiful, marimo-compatible widgets for code execution and AI chat with customizable backends. Build domain-specific languages, create custom interpreters, or integrate AI assistants - all within your marimo notebooks!
+
+## ✨ Features
+
+### CodeEditor Widget
+- 🎨 **Clean, marimo-style UI** - Seamless integration with marimo's aesthetic
+- 🔌 **Pluggable executors** - Python, JSON, Calculator, Regex, or your own
+- 🛠️ **Custom languages** - Create DSLs and custom interpreters
+- ⌨️ **Keyboard shortcuts** - Cmd/Ctrl+Enter to run
+- 🌓 **Light & dark themes** - Follows your marimo theme
+
+### ChatBot Widget
+- 💬 **Streaming responses** - Real-time, token-by-token output
+- 📑 **Automatic tabs** - Each question creates a new history tab
+- 💻 **Code formatting** - Markdown code blocks render beautifully
+- 🤖 **Multiple handlers** - OpenAI, Anthropic, MCP, or custom
+- 🎯 **Type-safe** - Full type hints throughout
+
+## 📦 Installation
+
+```bash
+pip install ontonaut
+```
+
+## 🚀 Quick Start
+
+### CodeEditor
+
+```python
+import marimo as mo
+from ontonaut import CodeEditor, PythonExecutor
+
+editor = CodeEditor(
+    executor=PythonExecutor(),
+    code="x = 10\nresult = x * 2",
+    theme="dark"
+)
+editor
+```
+
+### ChatBot
+
+```python
+from ontonaut import ChatBot, EchoHandler
+
+chatbot = ChatBot(
+    handler=EchoHandler(),
+    placeholder="Ask me anything...",
+    theme="dark"
+)
+chatbot
+```
+
+## 📚 Documentation
+
+### 📖 User Guides
+Comprehensive guides for using Ontonaut:
+
+- **[Quick Start](./book/markdown/quick-start.md)** - Get up and running in 5 minutes
+- **[CodeEditor Guide](./book/markdown/code-editor.md)** - Complete CodeEditor documentation
+- **[ChatBot Guide](./book/markdown/chatbot.md)** - Complete ChatBot documentation
+- **[Executors Reference](./book/markdown/executors.md)** - Built-in executors
+- **[Handlers Reference](./book/markdown/handlers.md)** - Built-in chat handlers
+- **[Custom Executors](./book/markdown/custom-executors.md)** - Build your own
+- **[Custom Handlers](./book/markdown/custom-handlers.md)** - Build your own
+
+### 📓 Interactive Notebooks
+Runnable marimo notebooks with examples:
+
+- **[Getting Started](./book/marimo/01-getting-started.py)** - Basic usage
+- **[ChatBot Guide](./book/marimo/02-chatbot-guide.py)** - Complete chat examples
+- **[OpenAI Integration](./book/marimo/03-openai-integration.py)** - AI integration
+
+Run them:
+```bash
+marimo edit book/marimo/01-getting-started.py
+```
+
+### 🏗️ Architecture Docs
+For developers and AI assistants:
+
+- **[Architecture Overview](./docs/architecture.md)** - System design
+- **[Widget System](./docs/README.md)** - anywidget patterns
+- **[Development Guide](./docs/README.md)** - Contributing
+
+## 💡 Examples
+
+### Custom DSL
+
+```python
+from ontonaut import CodeEditor
+
+def greeting_dsl(code: str) -> str:
+    """Simple greeting DSL."""
+    lines = code.strip().split("\n")
+    results = []
+
+    for line in lines:
+        parts = line.split()
+        if len(parts) == 2:
+            command, name = parts
+            if command == "greet":
+                results.append(f"Hello, {name}!")
+            elif command == "farewell":
+                results.append(f"Goodbye, {name}!")
+
+    return "\n".join(results)
+
+editor = CodeEditor(
+    executor=greeting_dsl,
+    code="greet Alice\nfarewell Bob",
+    language="dsl"
+)
+```
+
+### OpenAI Chat
+
+```python
+from ontonaut import ChatBot, OpenAIHandler
+import os
+
+chatbot = ChatBot(
+    handler=OpenAIHandler(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        model="gpt-4",
+        system_prompt="You are a helpful assistant.",
+        temperature=0.7
+    ),
+    theme="dark"
+)
+```
+
+### Custom Streaming Handler
+
+```python
+def my_handler(message: str):
+    """Custom streaming handler."""
+    import time
+
+    # Generate code example
+    if "code" in message.lower():
+        yield "Here's a Python example:\n\n"
+        yield "```python\n"
+        yield "def greet(name):\n"
+        yield "    return f'Hello {name}!'\n"
+        yield "```"
+    else:
+        words = f"You said: {message}".split()
+        for word in words:
+            yield word + " "
+            time.sleep(0.05)
+
+chatbot = ChatBot(handler=my_handler)
+```
+
+## 🎨 Built-in Components
+
+### Executors
+- **PythonExecutor** - Execute Python code
+- **JSONExecutor** - Format and validate JSON
+- **CalculatorExecutor** - Evaluate math expressions
+- **RegexExecutor** - Test regular expressions
+
+### Handlers
+- **EchoHandler** - Echo back messages (testing)
+- **OpenAIHandler** - Stream from OpenAI GPT models
+- **AnthropicHandler** - Stream from Anthropic Claude
+- **MCPHandler** - Model Context Protocol integration
+- **CustomHandler** - Wrap any function
+
+## ⌨️ Keyboard Shortcuts
+
+- `Cmd/Ctrl + Enter` - Execute/Send
+- `Tab` - Insert 4 spaces
+
+## 🏗️ Development
+
+### Setup
+
+```bash
+git clone https://github.com/yourusername/ontonaut.git
+cd ontonaut
+make setup
+```
+
+### Commands
+
+```bash
+make test     # Run tests with coverage
+make lint     # Run linters (black, ruff, mypy)
+make format   # Format code
+make build    # Build package
+make clean    # Clean artifacts
+```
+
+### Project Structure
+
+```
+ontonaut/
+├── src/ontonaut/          # Python package
+│   ├── editor.py          # CodeEditor widget
+│   ├── chatbot.py         # ChatBot widget
+│   ├── executors.py       # Code execution backends
+│   ├── handlers.py        # Chat handlers
+│   └── static/            # Frontend assets
+├── tests/                 # Test suite
+├── examples/              # Example notebooks
+├── book/
+│   ├── markdown/          # User documentation
+│   └── marimo/            # Interactive notebooks
+├── docs/                  # Architecture documentation
+└── scripts/               # Development scripts
+```
+
+## 🧪 Testing
+
+```bash
+make test
+```
+
+Coverage: **85%+** across all components
+
+## 📝 Use Cases
+
+- **AI Chat Interfaces** - Streaming AI assistants in notebooks
+- **DSL Prototyping** - Test domain-specific language ideas
+- **Custom Interpreters** - Specialized code execution
+- **Educational Tools** - Interactive coding tutorials
+- **Data Transformation** - Custom data processing
+- **Template Languages** - Specialized templating
+- **Company Integrations** - Wrap internal AI APIs
+
+## 🎯 Roadmap
+
+### CodeEditor
+- [ ] Syntax highlighting
+- [ ] Code completion
+- [ ] Multi-file support
+- [ ] Debugger integration
+
+### ChatBot
+- [ ] Syntax highlighting for code blocks
+- [ ] Copy-to-clipboard
+- [ ] Tab persistence
+- [ ] Export conversations
+- [ ] Async handler support
+
+## 🤝 Contributing
+
+Contributions welcome! See [docs/README.md](./docs/README.md) for architecture and development guidelines.
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Run tests (`make test`) and linting (`make lint`)
+4. Commit changes
+5. Push to branch
+6. Open Pull Request
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Anywidget](https://anywidget.dev/)
+- Designed for [marimo](https://marimo.io)
+- Inspired by the need for flexible, customizable widgets
+- Thanks to the open source community
+
+## 📚 Learn More
+
+- **[User Documentation](./book/markdown/)** - Complete guides
+- **[Interactive Notebooks](./book/marimo/)** - Runnable examples
+- **[Architecture Docs](./docs/)** - For developers
+- **[Marimo Documentation](https://docs.marimo.io/)**
+- **[Anywidget Documentation](https://anywidget.dev/)**
+
+## 🔗 Links
+
+- **Homepage**: https://github.com/yourusername/ontonaut
+- **Issues**: https://github.com/yourusername/ontonaut/issues
+- **PyPI**: https://pypi.org/project/ontonaut/
+
+---
+
+**Made with ❤️ for the marimo and Python communities**
+
+*Start building your custom widgets today!* 🚀
