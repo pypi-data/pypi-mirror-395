@@ -1,0 +1,220 @@
+Metadata-Version: 2.4
+Name: mcpcn-image-batch-converter
+Version: 1.0.0
+Summary: MCP Server for Batch Image Format Conversion
+Author: MCP Developer
+License: MIT
+License-File: LICENSE
+Keywords: batch-processing,image-conversion,image-format,mcp
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Multimedia :: Graphics :: Graphics Conversion
+Requires-Python: >=3.10
+Requires-Dist: mcp>=0.1.0
+Requires-Dist: pillow-heif>=0.15.0
+Requires-Dist: pillow>=10.0.0
+Requires-Dist: pymupdf>=1.24.0
+Description-Content-Type: text/markdown
+
+# 图片批量格式转换 MCP
+
+一个专门用于批量图片格式转换的模型上下文协议（MCP）服务器。
+
+## 功能特性
+
+- **批量图片转换**：一次性转换多个图片文件到指定格式
+- **支持多种格式**：JPEG、PNG、BMP、TIFF、ICO、WEBP、HEIC/HEIF、AVIF
+- **SVG 支持**：可将 SVG 矢量图转换为位图格式（使用 PyMuPDF，无需系统依赖）
+- **智能文件管理**：
+  - 自动创建输出文件夹
+  - 智能文件命名（避免重复）
+  - 跳过已经是目标格式的文件
+- **ICO 优化**：为 ICO 格式自动生成多分辨率图标
+- **质量控制**：支持自定义输出质量和优化选项
+
+## 安装
+
+### 使用 uv（推荐）
+
+```bash
+cd /Users/fjc/Desktop/项目/skills/图片/图片-格式转换
+uv pip install -e .
+```
+
+### 使用 pip
+
+```bash
+cd /Users/fjc/Desktop/项目/skills/图片/图片-格式转换
+pip install -e .
+```
+
+## 配置
+
+在 MCP 客户端配置文件中添加以下内容：
+
+```json
+{
+  "mcpServers": {
+    "图片批量格式转换": {
+      "command": "python",
+      "args": [
+        "-m",
+        "image_batch_converter"
+      ],
+      "cwd": "/Users/fjc/Desktop/项目/skills/图片/图片-格式转换",
+      "env": {}
+    }
+  }
+}
+```
+
+或使用 uvx（如果已发布到 PyPI）：
+
+```json
+{
+  "mcpServers": {
+    "图片批量格式转换": {
+      "command": "uvx",
+      "args": ["image-batch-converter"],
+      "env": {}
+    }
+  }
+}
+```
+
+## 可用工具
+
+### batch_convert_images
+
+批量转换图片文件列表为指定格式。
+
+**参数：**
+
+- `input_files` (list, 必需) - 图片文件路径列表
+- `target_format` (str, 必需) - 目标格式：`jpeg`, `png`, `webp`, `heic`, `avif`, `bmp`, `tiff`, `ico`
+- `ico_sizes` (list, 可选) - ICO 图标尺寸列表，例如 `[16, 32, 48, 64, 128, 256]`。默认使用智能尺寸选择
+- `dpi` (int, 可选) - SVG 转换时的 DPI，默认 300
+- `svg_backend` (str, 可选) - SVG 渲染后端，默认 `'auto'`（使用 PyMuPDF）
+- `quality` (int, 可选) - 输出质量 (1-100)，仅用于 JPEG/WEBP/HEIF/AVIF，默认使用格式默认值
+- `optimize` (bool, 可选) - 是否优化文件大小，默认 `True`
+
+**返回：**
+
+成功时返回转换结果摘要，包括：
+- 成功转换的文件数量
+- 输出文件夹路径
+- 跳过的文件（如果有）
+- 警告信息（如果有）
+
+失败时返回详细错误信息，包括：
+- 转换成功的文件列表
+- 转换失败的文件列表
+- 错误详情
+
+## 支持的格式
+
+### 输入格式
+
+- JPEG (.jpg, .jpeg)
+- PNG (.png)
+- BMP (.bmp)
+- TIFF (.tif, .tiff)
+- ICO (.ico)
+- WEBP (.webp)
+- HEIC/HEIF (.heic, .heif)
+- AVIF (.avif)
+- SVG (.svg) - 仅作为输入格式
+
+### 输出格式
+
+- JPEG (.jpg)
+- PNG (.png)
+- BMP (.bmp)
+- TIFF (.tif)
+- ICO (.ico)
+- WEBP (.webp)
+- HEIC/HEIF (.heic)
+- AVIF (.avif)
+
+## 使用示例
+
+### 示例 1：批量转换 PNG 为 JPEG
+
+```
+将以下文件转换为 JPEG 格式：
+- /path/to/image1.png
+- /path/to/image2.png
+- /path/to/image3.png
+```
+
+MCP 将：
+1. 在第一个文件所在目录创建 "Converted Images" 文件夹
+2. 转换所有 PNG 文件为 JPEG
+3. 返回转换结果摘要
+
+### 示例 2：转换为高质量 WEBP
+
+```
+将以下文件转换为 WEBP 格式，质量设为 95：
+- /path/to/photo1.jpg
+- /path/to/photo2.jpg
+参数：quality=95
+```
+
+### 示例 3：SVG 转 PNG（高分辨率）
+
+```
+将以下 SVG 文件转换为 PNG，DPI 设为 600：
+- /path/to/logo.svg
+- /path/to/icon.svg
+参数：dpi=600
+```
+
+### 示例 4：创建多尺寸 ICO 图标
+
+```
+将图片转换为 ICO 格式，包含多个尺寸：
+- /path/to/icon.png
+参数：ico_sizes=[16, 32, 48, 64, 128, 256]
+```
+
+## 工作原理
+
+1. **验证输入**：检查所有文件是否存在且可访问
+2. **格式检测**：自动检测输入文件格式
+3. **跳过重复**：如果文件已经是目标格式，自动跳过
+4. **创建输出文件夹**：在第一个文件所在目录创建 "Converted Images" 文件夹（如果已存在则添加数字后缀）
+5. **批量转换**：逐个转换图片，并处理以下特殊情况：
+   - JPEG：自动移除透明通道
+   - ICO：生成多分辨率图标
+   - SVG：使用 PyMuPDF 渲染为位图
+6. **错误处理**：记录失败的文件，但继续处理其他文件
+7. **返回结果**：提供详细的转换结果摘要
+
+## 系统要求
+
+- Python 3.10+
+- Pillow (PIL) - 核心图片处理库
+- pillow-heif - HEIC/HEIF/AVIF 支持
+- PyMuPDF - SVG 转换和 PDF 支持
+- mcp - Model Context Protocol SDK
+
+## 许可证
+
+MIT License
+
+## 更新日志
+
+### 版本 1.0.0
+
+- 初始版本
+- 从 image-format-converter-mcp 提取批量转换功能
+- 支持 9 种输出格式
+- 支持 SVG 输入格式
+- 智能文件管理和错误处理
