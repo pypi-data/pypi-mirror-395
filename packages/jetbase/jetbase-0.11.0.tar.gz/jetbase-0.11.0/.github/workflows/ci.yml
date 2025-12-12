@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - "jetbase/**" # only run when code inside my_package changes
+      - ".github/workflows/ci-pr.yml" # rerun if this workflow changes
+      - "pyproject.toml" # rerun if deps/config change
+      - "uv.lock" # rerun if lockfile changes
+  workflow_dispatch: {}
+jobs:
+  lint-type-format-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Pyrefly type checker
+        run: uv run pyrefly check
+
+      - name: Ruff linter
+        run: uv run ruff check jetbase tests
+
+      - name: Ruff formatter
+        run: uv run ruff format jetbase tests --check
+
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run unit tests
+        run: uv run pytest tests/core/ -v
+
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run jetbase rollback with no migrations table created
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase rollback
+
+      - name: Run jetbase latest with no migrations table created
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase latest
+
+      - name: Run jetbase history with no migrations table created
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase history
+
+      - name: Run jetbase upgrade with --dry-run param
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase upgrade --dry-run
+
+      - name: Run upgrade dry-run test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "dry_run" test_upgrade.py
+
+      - name: Run jetbase upgrade with --count param
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase upgrade --count 2
+
+      - name: Run upgrade count test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "count" test_upgrade.py
+
+      - name: Run jetbase upgrade with --to-version param
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase upgrade --to-version 5
+
+      - name: Run upgrade to-version test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "to_version" test_upgrade.py
+
+      - name: Run jetbase upgrade
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase upgrade
+
+      - name: Run upgrade basic test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "basic" test_upgrade.py
+
+      - name: Run jetbase rollback with --dry-run param
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase rollback --dry-run
+
+      - name: Run rollback dry-run test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "dry_run" test_rollback.py
+
+      - name: Run jetbase rollback with --count param
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase rollback -c 2
+
+      - name: Run rollback count test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "count" test_rollback.py
+
+      - name: Run jetbase rollback
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase rollback
+
+      - name: Run rollback basic test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "basic" test_rollback.py
+
+      - name: Run jetbase rollback with --to param
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase rollback --to-version 2
+
+      - name: Run rollback to_version integration test
+        working-directory: tests/test_integration
+        run: uv run pytest -m "to_version" test_rollback.py
+
+      - name: Run jetbase latest
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase latest
+
+      - name: Run jetbase history
+        working-directory: tests/test_integration/jetbase
+        run: uv run jetbase history
