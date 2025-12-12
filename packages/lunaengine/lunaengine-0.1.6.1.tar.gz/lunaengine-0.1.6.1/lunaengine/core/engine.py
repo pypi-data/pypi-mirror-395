@@ -1,0 +1,718 @@
+"""
+LunaEngine Main Engine - Core Game Loop and Management System
+
+LOCATION: lunaengine/core/engine.py
+
+DESCRIPTION:
+The central engine class that orchestrates the entire game lifecycle. Manages
+scene transitions, rendering pipeline, event handling, performance monitoring,
+and UI system integration. This is the primary interface for game developers.
+
+KEY RESPONSIBILITIES:
+- Game loop execution with fixed timestep
+- Scene management and lifecycle control
+- Event distribution to scenes and UI elements
+- Performance monitoring and optimization
+- Theme management across the entire application
+- Resource initialization and cleanup
+
+LIBRARIES USED:
+- pygame: Window management, event handling, timing, and surface operations
+- numpy: Mathematical operations for game calculations
+- threading: Background task management (if needed)
+- typing: Type hints for better code documentation
+
+DEPENDENCIES:
+- ..backend.pygame_backend: Default rendering backend
+- ..ui.elements: UI component system
+- ..utils.performance: Performance monitoring utilities
+- .scene: Scene management base class
+"""
+
+import pygame, threading
+import numpy as np
+from typing import Dict, List, Callable, Optional, Type, TYPE_CHECKING
+from ..ui import *
+from .scene import Scene
+from ..utils import PerformanceMonitor, GarbageCollector
+from ..backend import PygameRenderer, EVENTS
+from dataclasses import dataclass
+
+if TYPE_CHECKING:
+    from . import Renderer
+    
+@dataclass
+class mbttons_pressed(dict):
+    left:bool = False
+    middle:bool = False
+    right:bool = False
+    extra_button_1:bool = False
+    extra_button_2:bool = False
+
+@dataclass
+class InputState:
+    """
+    Tracks input state with proper click detection
+    """
+    mouse_pos: tuple = (0, 0)
+    mouse_buttons_pressed: mbttons_pressed = None
+    mouse_just_pressed: bool = False
+    mouse_just_released: bool = False
+    mouse_wheel: float = 0
+    consumed_events: set = None
+    
+    def __post_init__(self):
+        if self.mouse_buttons_pressed is None:
+            self.mouse_buttons_pressed = mbttons_pressed()
+            
+        if self.consumed_events is None:
+            self.consumed_events = set()
+    
+    def update(self, mouse_pos: tuple, mouse_pressed:tuple, mouse_wheel: float = 0):
+        """Update input state with proper click detection"""
+        
+        self.mouse_buttons_pressed.left = mouse_pressed[0]
+        self.mouse_buttons_pressed.middle = mouse_pressed[1]
+        self.mouse_buttons_pressed.right = mouse_pressed[2]
+        self.mouse_buttons_pressed.extra_button_1 = mouse_pressed[3]
+        self.mouse_buttons_pressed.extra_button_2 = mouse_pressed[4]
+        self.mouse_pos = mouse_pos
+        
+        if mouse_wheel != 0:
+            self.mouse_wheel += mouse_wheel
+            
+        if self.mouse_wheel != 0:
+            self.mouse_wheel *= 0.6
+        
+    def consume_event(self, element_id):
+        """Mark an event as consumed by a specific element"""
+        self.consumed_events.add(element_id)
+    
+    def is_event_consumed(self, element_id):
+        """Check if event was already consumed"""
+        return element_id in self.consumed_events
+    
+    def clear_consumed(self):
+        """Clear consumed events for new frame"""
+        self.consumed_events.clear()
+
+class LunaEngine:
+    """
+    Main game engine class for LunaEngine.
+    
+    This class manages the entire game lifecycle including initialization,
+    scene management, event handling, rendering, and shutdown.
+    
+    Attributes:
+        title (str): Window title
+        width (int): Window width
+        height (int): Window height
+        fullscreen (bool): Whether to start in fullscreen mode
+        running (bool): Whether the engine is running
+        clock (pygame.time.Clock): Game clock for FPS control
+        scenes (Dict[str, Scene]): Registered scenes
+        current_scene (Scene): Currently active scene
+    """
+    def __init__(self, title: str = "LunaEngine Game", width: int = 800, height: int = 600, use_opengl: bool = True, fullscreen: bool = False):
+        """
+        Initialize the LunaEngine.
+        
+        Args:
+            title (str): The title of the game window (default: "LunaEngine Game")
+            width (int): The width of the game window (default: 800)
+            height (int): The height of the game window (default: 600)
+            use_opengl (bool): Use OpenGL for rendering (default: True)
+            fullscreen (bool): Start in fullscreen mode (default: False)
+        """
+        self.title = title
+        self.width = width
+        self.height = height
+        self.fullscreen = fullscreen
+        self.monitor_size:pygame.display._VidInfo = None
+        self.running = False
+        self.clock = pygame.time.Clock()
+        self.fps = 60
+        self.scenes: Dict[str, Scene] = {}
+        self.current_scene: Optional[Scene] = None
+        self.previous_scene_name: Optional[str] = None
+        self._event_handlers = {}
+        self.input_state = InputState()
+        
+        # Performance monitoring
+        self.performance_monitor = PerformanceMonitor()
+        self.garbage_collector = GarbageCollector()
+        
+        # Choose rendering backend
+        
+        self.use_opengl = use_opengl
+        self.renderer: Renderer = None
+        
+        self.screen = None
+        
+        # Automatically initialize
+        self.initialize()
+        
+    def initialize(self):
+        """Initialize the engine and create the game window."""
+        pygame.init()
+        
+        self.monitor_size:pygame.display._VidInfo = pygame.display.Info()
+        
+        # Initialize font system early
+        FontManager.initialize()
+        
+        print(f"Initializing engine with OpenGL: {self.use_opengl}")
+        
+        # Create the display based on renderer type
+        if self.use_opengl:
+            # Set OpenGL attributes BEFORE creating display
+            pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
+            pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
+            pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
+            
+            try:
+                code = pygame.OPENGL | pygame.DOUBLEBUF
+                if self.fullscreen:
+                    self.width, self.height = self.monitor_size.current_w, self.monitor_size.current_h
+                    code |= pygame.FULLSCREEN | pygame.SCALED
+                    print(f"Setting fullscreen mode: {self.width}x{self.height}")
+                self.screen = pygame.display.set_mode(size=(self.width, self.height), flags=code)
+            except Exception as e:
+                print(f"Failed to create OpenGL display: {e}")
+                print("Falling back to Pygame rendering")
+                self.use_opengl = False
+                self.screen = pygame.display.set_mode(size=(self.width, self.height))
+        else:
+            self.screen = pygame.display.set_mode(size=(self.width, self.height), flags=(pygame.FULLSCREEN if self.fullscreen else 0))
+        
+        pygame.display.set_caption(self.title)
+        
+        # Create renderers
+        if self.use_opengl:
+            from ..backend.opengl import OpenGLRenderer
+            self.renderer: Renderer = OpenGLRenderer(self.width, self.height)
+        else:
+            self.renderer:Renderer = PygameRenderer(self.width, self.height)
+        
+        self.update_camera_renderer()
+        
+        # Initialize both renderers
+        renderer_success = self.renderer.initialize()
+        
+        
+        self.running = True
+        print("Engine initialization complete")
+        
+    def update_camera_renderer(self):
+        for scene in self.scenes.values():
+            if hasattr(scene, 'camera'):
+                scene.camera.renderer = self.renderer
+        
+    def add_scene(self, name: str, scene_class: Type[Scene], *args, **kwargs):
+        """
+        Add a scene to the engine by class (the engine will instantiate it).
+        
+        Args:
+            name (str): The name of the scene
+            scene_class (Type[Scene]): The scene class to instantiate
+            *args: Arguments to pass to scene constructor
+            **kwargs: Keyword arguments to pass to scene constructor
+        """
+        if callable(scene_class): scene_instance = scene_class(self, *args, **kwargs)
+        else: scene_instance = scene_class
+        self.scenes[name] = scene_instance
+        
+    def set_scene(self, name: str):
+        """
+        Set the current active scene.
+        
+        Calls on_exit on the current scene and on_enter on the new scene.
+        
+        Args:
+            name (str): The name of the scene to set as current
+        """
+        if name in self.scenes:
+            # Call on_exit for current scene
+            if self.current_scene:
+                self.current_scene.on_exit(name)
+                
+            # Store previous scene name
+            previous_name = None
+            for scene_name, scene_obj in self.scenes.items():
+                if scene_obj == self.current_scene:
+                    previous_name = scene_name
+                    break
+            self.previous_scene_name = previous_name
+            
+            # Set new scene and call on_enter
+            self.current_scene = self.scenes[name]
+            self.current_scene.on_enter(self.previous_scene_name)
+    
+    
+    
+    def on_event(self, event_type: int):
+        """
+        Decorator to register event handlers
+        
+        Args:
+            event_type (int): The Pygame event type to listen for
+        Returns:
+            Callable: The decorator function
+        """
+        def decorator(func):
+            """
+            Decorator to register the event handler
+            Args:
+                func (Callable): The event handler function
+            Returns:
+                Callable: The original function
+            """
+            if event_type not in self._event_handlers:
+                self._event_handlers[event_type] = []
+            self._event_handlers[event_type].append(func)
+            return func
+        return decorator
+    
+    def get_all_themes(self) -> Dict[str, any]:
+        """
+        Get all available themes including user custom ones
+        
+        Returns:
+            Dict[str, any]: Dictionary with theme names as keys and theme objects as values
+        """
+        from ..ui.themes import ThemeManager, ThemeType
+        
+        all_themes = {}
+        
+        # Get all built-in themes from ThemeType enum
+        for theme_enum in ThemeType:
+            theme = ThemeManager.get_theme(theme_enum)
+            all_themes[theme_enum.value] = {
+                'enum': theme_enum,
+                'theme': theme,
+                'type': 'builtin'
+            }
+        
+        # Get user custom themes (these would be stored in ThemeManager._themes)
+        # Note: This assumes custom themes are also stored in ThemeManager._themes
+        # with their own ThemeType values or custom keys
+        for theme_key, theme_value in ThemeManager._themes.items():
+            if theme_key not in all_themes:
+                # This is a custom theme not in the built-in enum
+                theme_name = theme_key.value if hasattr(theme_key, 'value') else str(theme_key)
+                all_themes[theme_name] = {
+                    'enum': theme_key,
+                    'theme': theme_value,
+                    'type': 'custom'
+                }
+        
+        return all_themes
+
+    def get_theme_names(self) -> List[str]:
+        """
+        Get list of all available theme names
+        
+        Returns:
+            List[str]: List of theme names
+        """
+        themes = self.get_all_themes()
+        return list(themes.keys())
+
+    def set_global_theme(self, theme: str) -> bool:
+        """
+        Set the global theme for the entire engine and update all UI elements
+        
+        Args:
+            theme_name (str): Name of the theme to set
+            
+        Returns:
+            bool: True if theme was set successfully, False otherwise
+        """
+        from ..ui.themes import ThemeManager, ThemeType
+        
+        if type(theme) is ThemeType: theme_name = theme.value
+        else: theme_name = theme
+        
+        themes = self.get_theme_names()
+        if theme_name in themes:
+            theme_data = ThemeManager.get_theme_type_by_name(theme_name)
+            ThemeManager.set_current_theme(theme_data)
+            
+            # Update all UI elements in current scene
+            self._update_all_ui_themes(theme_data)
+            
+            return True
+        
+        return False
+
+    def _update_all_ui_themes(self, theme_enum):
+        """
+        Update all UI elements in the current scene to use the new theme
+        
+        Args:
+            theme_enum: The theme enum to apply
+        """
+        if self.current_scene and hasattr(self.current_scene, 'ui_elements'):
+            for ui_element in self.current_scene.ui_elements:
+                if hasattr(ui_element, 'update_theme'):
+                    ui_element.update_theme(theme_enum)
+        
+        # Also update any scene-specific UI that might not be in ui_elements list
+        if self.current_scene:
+            # Look for UI elements as attributes of the scene
+            for attr_name in dir(self.current_scene):
+                attr = getattr(self.current_scene, attr_name)
+                if hasattr(attr, 'update_theme'):
+                    attr.update_theme(theme_enum)
+    
+    
+    def get_fps_stats(self) -> dict:
+        """
+        Get comprehensive FPS statistics (optimized)
+        
+        Returns:
+            dict: A dictionary containing FPS statistics
+        """
+        return self.performance_monitor.get_stats()
+    
+    def get_hardware_info(self) -> dict:
+        """Get hardware information"""
+        return self.performance_monitor.get_hardware_info()
+
+    def run(self):
+        """Main game loop - CORRECTED"""
+        if self.renderer is None:
+            self.initialize()
+        
+        while self.running:
+            # Update performance monitoring
+            self.performance_monitor.update_frame()
+            
+            dt = self.clock.tick(self.fps) / 1000.0
+            
+            self.input_state.clear_consumed()
+            
+            self.update_mouse()
+            UITooltipManager.update(self, dt)
+            
+            # Handle events
+            for event in pygame.event.get():
+                if event.type == EVENTS.QUIT:
+                    self.running = False
+                
+                # Process both KEYDOWN and KEYUP for better text input
+                elif event.type in [EVENTS.KEYDOWN, EVENTS.KEYUP]:
+                    self._handle_keyboard_event(event)
+                
+                # Handle mouse wheel scrolling
+                elif event.type == EVENTS.MOUSEWHEEL:
+                    self._handle_mouse_scroll(event)
+                
+                # Call registered event handlers
+                if event.type in self._event_handlers:
+                    for handler in self._event_handlers[event.type]:
+                        handler(event)
+            
+            # Update current scene
+            if self.current_scene:
+                self.current_scene.update(dt)
+            
+            # Update UI elements
+            self._update_ui_elements(dt)
+            
+            # CORRECTED: Unified rendering pipeline
+            if self.use_opengl:
+                # OPENGL MODE - Hybrid rendering
+                self._render_opengl_mode()
+            else:
+                # PYGAME MODE - Traditional rendering
+                self._render_pygame_mode()
+            
+            # Periodic garbage collection
+            self.garbage_collector.cleanup()
+        
+        self.shutdown()
+        
+    def update_mouse(self):
+        """Update mouse position and button state with proper click detection"""
+        mouse_pos = pygame.mouse.get_pos()
+        m_pressed = pygame.mouse.get_pressed(num_buttons=5)
+        
+        # Update input state with proper click detection
+        self.input_state.update(mouse_pos, m_pressed)
+            
+    def visibility_change(self, element: UIElement, visible: bool):
+        if type(element) in [list, tuple]:
+            [self.visibility_change(e, visible) for e in element]
+        else:
+            element.visible = visible
+            
+    @property
+    def mouse_pos(self) -> tuple:
+        return self.input_state.mouse_pos
+    
+    @property
+    def mouse_pressed(self) -> list:
+        return [self.input_state.mouse_buttons_pressed.values() for i in range(5)]
+    
+    @property
+    def mouse_wheel(self) -> float:
+        return self.input_state.mouse_wheel
+
+    def _render_opengl_mode(self):
+        """Rendering pipeline for OpenGL mode"""
+        try:
+            # 1. Start OpenGL frame
+            self.renderer.begin_frame()
+            
+            # 2. Render main scene objects
+            if self.current_scene:
+                self.current_scene.render(self.renderer)
+            
+            # 3. Render particles using OpenGL
+            self.render_scene()
+            
+            # 4. Render UI elements using OpenGL
+            self._render_ui_elements_opengl()
+            
+            # 5. Finalize OpenGL frame
+            self.renderer.end_frame()
+            
+        except Exception as e:
+            print(f"OpenGL rendering error: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _render_ui_elements_opengl(self):
+        """Render UI elements using OpenGL renderer - SKIP elements with ScrollingFrame parent"""
+        if not self.current_scene or not hasattr(self.current_scene, 'ui_elements'):
+            return
+        
+        # Sort elements for optimal rendering order, skipping ScrollingFrame children
+        regular_elements = []
+        closed_dropdowns = []
+        open_dropdowns = []
+        
+        for ui_element in self.current_scene.ui_elements:
+            # Skip elements that have ScrollingFrame as parent
+            if hasattr(ui_element, 'parent') and ui_element.parent and isinstance(ui_element.parent, ScrollingFrame):
+                continue
+                
+            if isinstance(ui_element, Dropdown):
+                if ui_element.expanded:
+                    open_dropdowns.append(ui_element)
+                else:
+                    closed_dropdowns.append(ui_element)
+            else:
+                regular_elements.append(ui_element)
+        
+        # Render in correct z-order
+        
+        for ui_element in sorted(regular_elements + closed_dropdowns + UITooltipManager.get_tooltip_to_render(engine=self), key=lambda e: e.z_index):
+            ui_element.render(self.renderer)
+        
+        for dropdown in open_dropdowns:
+            dropdown.render(self.renderer)
+
+    def _render_pygame_mode(self):
+        """Rendering pipeline for Pygame mode - SIMPLIFIED"""
+        try:
+            # 1. Clear screen
+            self.screen.fill((30, 30, 50))
+            
+            # 2. Set the screen as render target
+            if hasattr(self.renderer, 'set_surface'):
+                self.renderer.set_surface(self.screen)
+            self.renderer.begin_frame()
+            
+            # 3. Render main scene
+            if self.current_scene:
+                self.current_scene.render(self.renderer)
+            
+            # 3. Render particles using Pygame
+            self.render_scene()
+            
+            # 4. Render UI elements
+            self._render_ui_elements(self.renderer)
+            
+            # 5. Finalize Pygame frame
+            pygame.display.flip()
+            
+        except Exception as e:
+            print(f"Pygame rendering error: {e}")
+
+    def _render_ui_elements(self, renderer):
+        """Render UI elements - SKIP elements with ScrollingFrame parent"""
+        if not self.current_scene or not hasattr(self.current_scene, 'ui_elements'):
+            return
+        
+        # Filter out elements that have ScrollingFrame as parent
+        root_elements = []
+        regular_elements = []
+        closed_dropdowns = []
+        open_dropdowns = []
+        
+        for ui_element in self.current_scene.ui_elements:
+            # Skip elements that have ScrollingFrame as parent (they will be rendered by their parent)
+            if hasattr(ui_element, 'parent') and ui_element.parent and isinstance(ui_element.parent, ScrollingFrame):
+                continue
+                
+            if isinstance(ui_element, Dropdown):
+                if ui_element.expanded:
+                    open_dropdowns.append(ui_element)
+                else:
+                    closed_dropdowns.append(ui_element)
+            else:
+                regular_elements.append(ui_element)
+        
+        # Render in correct z-order
+        for ui_element in regular_elements + closed_dropdowns:
+            ui_element.render(renderer)
+        
+        for dropdown in open_dropdowns:
+            dropdown.render(renderer)
+
+    def _render_ui_direct(self):
+        """Render UI directly to screen in Pygame mode"""
+        # Set UI renderer to use main screen
+        self.ui_renderer.set_surface(self.screen)
+        self.ui_renderer.begin_frame()
+        
+        # Render UI elements
+        self._render_ui_elements(self.ui_renderer)
+
+    def render_scene(self):
+        if self.use_opengl:
+            # Particles
+            self._render_particles_opengl()
+        else:
+            # Particles
+            self.current_scene.particle_system.render(self.renderer.get_surface(), self.current_scene.camera)
+            
+    def _render_particles_opengl(self):
+        """Render particles using OpenGL - FIXED"""
+        if (self.current_scene and 
+            hasattr(self.current_scene, 'particle_system') and
+            hasattr(self.renderer, 'render_particles')):
+            particle_data = self.current_scene.particle_system.get_render_data()
+            if particle_data['active_count'] > 0:
+                self.renderer.render_particles(particle_data, camera=self.current_scene.camera)
+            try:
+                pass
+            except Exception as e:
+                print(f"OpenGL particle rendering error: {e}")
+
+    def _handle_mouse_scroll(self, event):
+        """Handle mouse wheel scrolling for UI elements - OPTIMIZED"""
+        if not self.current_scene or not hasattr(self.current_scene, 'ui_elements'):
+            return
+            
+        self.input_state.mouse_wheel += event.y
+        
+        for ui_element in self.current_scene.ui_elements:
+            if not hasattr(ui_element, 'handle_scroll'):
+                continue
+                
+            actual_x, actual_y = ui_element.get_actual_position()
+            
+            # For expanded dropdowns, check expanded area
+            if hasattr(ui_element, 'expanded') and ui_element.expanded:
+                expanded_height = (ui_element.height + 
+                                 ui_element.max_visible_options * ui_element._option_height)
+                mouse_over = (
+                    actual_x <= self.mouse_pos[0] <= actual_x + ui_element.width and 
+                    actual_y <= self.mouse_pos[1] <= actual_y + expanded_height
+                )
+            else:
+                # Normal behavior for other elements
+                mouse_over = (
+                    actual_x <= self.mouse_pos[0] <= actual_x + ui_element.width and 
+                    actual_y <= self.mouse_pos[1] <= actual_y + ui_element.height
+                )
+            
+            if mouse_over:
+                ui_element.handle_scroll(event.y)
+                break  # Only handle scroll for one element at a time
+    
+    def _handle_keyboard_event(self, event):
+        """Handle keyboard events for focused UI elements - OPTIMIZED"""
+        if not self.current_scene or not hasattr(self.current_scene, 'ui_elements'):
+            return
+            
+        # FIX: Process all focused elements, not just one
+        for ui_element in self.current_scene.ui_elements:
+            if (hasattr(ui_element, 'focused') and ui_element.focused and 
+                hasattr(ui_element, 'handle_key_input')):
+                ui_element.handle_key_input(event)
+                # Remove the 'break' to allow multiple elements to receive events if needed
+                break  # Only one element can be focused at a time
+
+    def _update_ui_elements(self, dt):
+        """
+        Update UI elements with improved input handling and event consumption
+        
+        Args:
+            dt (float): Delta time in seconds
+        """
+        if not self.current_scene or not hasattr(self.current_scene, 'ui_elements'):
+            return
+        
+        # Find expanded dropdowns first
+        expanded_dropdowns = []
+        other_elements = []
+        
+        for ui_element in self.current_scene.ui_elements:
+            if isinstance(ui_element, Dropdown) and ui_element.expanded:
+                expanded_dropdowns.append(ui_element)
+            else:
+                other_elements.append(ui_element)
+        
+        # If there are expanded dropdowns, they get priority
+        if expanded_dropdowns:
+            # Only process the topmost expanded dropdown and its children
+            top_dropdown = expanded_dropdowns[-1]  # Last one is topmost
+            self._process_ui_element_tree(top_dropdown, dt)
+            
+            # Other elements are disabled for interaction when dropdown is open
+            for element in other_elements:
+                if hasattr(element, '_update_with_mouse'):
+                    element._update_with_mouse(
+                        self.input_state.mouse_pos, 
+                        False,  # Force not pressed when dropdown is open
+                        dt,
+                    )
+        else:
+            # Normal processing - no expanded dropdowns
+            for ui_element in self.current_scene.ui_elements:
+                if hasattr(ui_element, '_update_with_mouse'):
+                    ui_element._update_with_mouse(
+                        self.input_state.mouse_pos,
+                        self.input_state.mouse_buttons_pressed.left,
+                        dt
+                    )
+
+    def _process_ui_element_tree(self, root_element, dt):
+        """
+        Process a UI element and all its children with proper event consumption
+        
+        Args:
+            root_element (UIElement): The root element to process
+            dt (float): Delta time in seconds
+        """
+        # Process the element itself
+        if hasattr(root_element, '_update_with_mouse'):
+            root_element._update_with_mouse(
+                self.input_state.mouse_pos,
+                self.input_state.mouse_buttons_pressed.left,
+                dt
+            )
+        
+        # Process all children recursively
+        for child in getattr(root_element, 'children', []):
+            self._process_ui_element_tree(child, dt)
+    
+    def shutdown(self):
+        """Cleanup resources"""
+        # Force final garbage collection
+        self.garbage_collector.cleanup(force=True)
+        pygame.quit()
