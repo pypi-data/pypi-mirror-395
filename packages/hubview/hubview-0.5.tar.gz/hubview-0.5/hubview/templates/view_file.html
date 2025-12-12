@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script>
+  // current directory page
+  window.CURRENT_PATH = "{{ rel_path|e }}";       // e.g. "src/utils"
+  window.CURRENT_IS_FILE = false;
+</script>
+
+
+<nav class="breadcrumbs">
+  {% for name, link in breadcrumbs %}
+    <a href="{{ link }}">{{ name }}</a>
+    {% if not loop.last %}<span class="sep">/</span>{% endif %}
+  {% endfor %}
+</nav>
+
+<section class="panel">
+  <header class="panel-h">
+    <h2>File: <code>{{ rel_path }}</code></h2>
+    <div class="panel-actions">
+      <a class="btn" href="{{ url_for('browse', path='/'.join(rel_path.split('/')[:-1])) }}">Up</a>
+      <a class="btn" href="{{ raw_url }}" target="_blank" rel="noreferrer">Open raw</a>
+      <a class="btn" href="{{ raw_url }}" download>Download</a>
+    </div>
+  </header>
+
+  <div class="viewer">
+    {% if kind == 'markdown' %}
+      <article class="markdown-body">
+        {{ html }}
+      </article>
+
+    {% elif kind == 'image' %}
+      <div class="media-center">
+        <img src="{{ src }}" alt="{{ rel_path }}">
+      </div>
+
+    {% elif kind == 'pdf' %}
+      <div class="media-center">
+        <iframe class="pdf-frame" src="{{ src }}" title="PDF: {{ rel_path }}"></iframe>
+      </div>
+
+    {% elif kind == 'video' %}
+      <div class="media-center">
+        <video controls src="{{ src }}" style="max-width: 100%;"></video>
+      </div>
+
+    {% elif kind == 'audio' %}
+      <div class="media-center">
+        <audio controls src="{{ src }}"></audio>
+      </div>
+
+    {% elif kind == 'text' %}
+      {% if too_big %}
+        <p class="muted">File is large ({{ size|filesizeformat(True) }}). Use <em>Open raw</em> or <em>Download</em> to view it.</p>
+      {% else %}
+      <pre class="code-block"><code class="language-{{ language }}">{{ content }}</code></pre>
+      {% endif %}
+
+    {% elif kind == 'binary' %}
+      <p>This file type is not previewable. Use <em>Open raw</em> or <em>Download</em>.</p>
+
+        {% elif kind == 'csv' %}
+      <div class="table-wrap">
+        {{ html|safe }}
+      </div>
+
+    {% elif kind == 'excel' %}
+      <div class="table-wrap">
+        {{ html|safe }}
+      </div>
+
+      
+
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}
