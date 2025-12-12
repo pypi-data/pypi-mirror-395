@@ -1,0 +1,72 @@
+leonardo:
+  url: login.leonardo.cineca.it
+  warehouse: "/leonardo/prod/opt/tools/chappyner/0.3/"
+  description: |
+    Leonardo is the current Tier-0 system at Cineca. Please take a look to https://www.hpc.cineca.it/systems/hardware/leonardo/ for details.
+  engine: nosocket
+  startup_script: |
+    #!/usr/bin/env bash
+    # Stop execution if smallstep binary is not present in $PATH
+    test_smallstep_binary=$(which step)
+    if [ -z "$test_smallstep_binary" ]; then
+       echo "Error: no Smallstep binary found (step command) in your \$PATH variable" >&2
+       exit 127
+    fi
+    # Retrieve smallstep certificate if not already present
+    test_smallstep_certificate=$(step ssh list --raw {{ user }}@cineca.it | step ssh inspect | grep "Valid")
+    if [ -z "$test_smallstep_certificate" ]; then
+      echo "Running smallstep client to allow ssh connection toward Cineca clusters..."
+      step ssh login '{{ user }}@cineca.it' --provisioner cineca-hpc
+    fi
+    # Set ssh known hosts properly for leonardo login nodes
+    ssh-keygen -f ~/.ssh/known_hosts -R login.leonardo.cineca.it # remove previous values for leonardo
+    for address in login01-ext.leonardo.cineca.it \
+                   login02-ext.leonardo.cineca.it \
+                   login05-ext.leonardo.cineca.it \
+                   login07-ext.leonardo.cineca.it; do
+        ssh-keygen -f ~/.ssh/known_hosts -R $address
+    done
+    for keyal in rsa ecdsa ed25519 dsa; do
+        for address in login01-ext.leonardo.cineca.it \
+                       login02-ext.leonardo.cineca.it \
+                       login05-ext.leonardo.cineca.it \
+                       login07-ext.leonardo.cineca.it; do
+            ssh-keyscan -t ${keyal} ${address} | sed "s/${address}/login*.leonardo.cineca.it/g" >> ~/.ssh/known_hosts;
+        done
+    done
+
+
+g100:
+  url: login.g100.cineca.it
+  warehouse: "/cineca/prod/opt/tools/chappyner/0.3/"
+  description: |
+    Galileo 100 is the current Tier-1 system at Cineca. Please take a look to https://www.hpc.cineca.it/systems/hardware/galileo100/ for details.
+  engine: nosocket
+  startup_script: |
+    #!/usr/bin/env bash
+    # Stop execution if smallstep binary is not present in $PATH
+    test_smallstep_binary=$(which step)
+    if [ -z "$test_smallstep_binary" ]; then
+       echo "Error: no Smallstep binary found (step command) in your \$PATH variable" >&2
+       exit 127
+    fi
+    # Retrieve smallstep certificate if not already present
+    test_smallstep_certificate=$(step ssh list --raw {{ user }}@cineca.it | step ssh inspect | grep "Valid")
+    if [ -z "$test_smallstep_certificate" ]; then
+      echo "Running smallstep client to allow ssh connection toward Cineca clusters..."
+      step ssh login '{{ user }}@cineca.it' --provisioner cineca-hpc
+    fi
+    # Set ssh known hosts properly for g100 login nodes
+    ssh-keygen -f ~/.ssh/known_hosts -R login.g100.cineca.it # remove previous values for g100
+    for address in login01-ext.g100.cineca.it \
+                   login02-ext.g100.cineca.it \
+                   login03-ext.g100.cineca.it; do
+        ssh-keygen -f ~/.ssh/known_hosts -R $address
+    done
+    for keyal in rsa ecdsa ed25519 dsa; do
+        for address in login01-ext.g100.cineca.it \
+                       login02-ext.g100.cineca.it \
+                       login03-ext.g100.cineca.it; do
+            ssh-keyscan -t ${keyal} ${address} | sed "s/${address}/login*.g100.cineca.it/g" >> ~/.ssh/known_hosts;
+        done
+    done
