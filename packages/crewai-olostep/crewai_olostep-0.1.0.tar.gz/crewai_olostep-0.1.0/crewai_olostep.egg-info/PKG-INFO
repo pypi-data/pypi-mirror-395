@@ -1,0 +1,90 @@
+Metadata-Version: 2.4
+Name: crewai-olostep
+Version: 0.1.0
+Summary: CrewAI tools for web scraping and research using Olostep API
+Author-email: Olostep <info@olostep.com>
+License: MIT
+Project-URL: Homepage, https://olostep.com
+Project-URL: Documentation, https://docs.olostep.com/integrations/crewai
+Project-URL: Repository, https://github.com/olostep/olostep-tools
+Project-URL: Issues, https://github.com/olostep/olostep-tools/issues
+Keywords: crewai,olostep,web-scraping,ai-agents,multi-agent,automation,research
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet :: WWW/HTTP :: Indexing/Search
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: crewai>=0.70.0
+Requires-Dist: olostep>=0.9.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: requests>=2.28.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
+# CrewAI Olostep Integration
+
+**Give your CrewAI agents the power to scrape, search, and research the web.**
+
+This package provides ready-to-use CrewAI tools that integrate with the [Olostep API](https://olostep.com).
+
+## Installation
+
+```bash
+pip install crewai-olostep
+```
+
+Or install from source:
+```bash
+cd olostep-tools/integrations/crewai/crewai-olostep
+pip install -e .
+```
+
+## Quick Start
+
+```bash
+export OLOSTEP_API_KEY="your_api_key_here"
+```
+
+```python
+from crewai import Agent, Task, Crew
+from crewai_olostep import olostep_scrape_tool, olostep_answer_tool
+
+researcher = Agent(
+    role="Web Researcher",
+    goal="Find accurate information from the web",
+    tools=[olostep_scrape_tool, olostep_answer_tool],
+)
+
+task = Task(
+    description="Research Stripe's pricing",
+    expected_output="Summary of Stripe's pricing tiers",
+    agent=researcher
+)
+
+crew = Crew(agents=[researcher], tasks=[task])
+result = crew.kickoff()
+```
+
+## Available Tools
+
+| Tool | Purpose |
+|------|---------|
+| `olostep_scrape_tool` | Scrape single pages (markdown/HTML/text) |
+| `olostep_batch_tool` | Process up to 10K URLs in parallel |
+| `olostep_crawl_tool` | Crawl entire websites by following links |
+| `olostep_sitemap_tool` | Extract all URLs from a website |
+| `olostep_answer_tool` | AI-powered web search with structured output |
+
+## Documentation
+
+See full documentation at [docs.olostep.com/integrations/crewai](https://docs.olostep.com/integrations/crewai)
+
