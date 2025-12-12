@@ -1,0 +1,77 @@
+[project]
+name = "personal_knowledge_library"
+version = "4.0.3"
+description = "Library to access Wacom's Personal Knowledge graph."
+authors = [{ name = "Markus Weber", email = "markus.weber@wacom.com" }]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/Wacom-Developer/personal-knowledge-library"
+keywords = ["semantic-knowledge", "knowledge-graph"]
+requires-python = ">=3.10,<4.0"
+
+dependencies = [
+    "aiohttp[speedups]",
+    "requests>=2.32.0",
+    "python-dateutil>=2.8.2",
+    "PyJWT==2.10.1",
+    "tqdm>=4.65.0",
+    "ndjson>=0.3.1",
+    "rdflib>=7.1.0",
+    "orjson>=3.10.0",
+    "certifi",
+    "cachetools>=5.3.0",
+    "loguru==0.7.3"
+]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+    "pytest-asyncio",
+    "pytest-env",
+    "Faker==18.9.0",
+    "flake8>=6.0.0",        # Linting
+    "pylint>=2.17.0",       # Code analysis
+    "mypy>=1.8.0",          # Type checking
+    "black>=24.2.0",        # Formatting
+    "tox>=4.0.0",
+    "pdoc3"
+]
+
+[tool.poetry]
+packages = [
+    { include = "knowledge" }
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# Configuration for code checkers
+[tool.flake8]
+max-line-length = 120
+extend-ignore = "E203"  # Avoid conflicts with Black (whitespace before colon)
+
+[tool.pylint]
+max-line-length = 120
+disable = ["C0114", " R0801", "R0917"]  # Example: disable missing module docstring (customize as needed)
+
+[tool.mypy]
+python_version = "3.11"
+strict = true  # Enforces strict type checking; adjust if too restrictive
+ignore_missing_imports = true  # Useful for third-party libs without type hints
+disable_error_codes = ["no-untyped-def"]  # Ignores untyped function definitions
+
+[tool.black]
+line-length = 120
+target-version = ["py310", "py311", "py312", "py313"]
