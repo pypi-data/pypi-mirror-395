@@ -1,0 +1,290 @@
+{% extends 'generic/object.html' %}
+{% load helpers %}
+{% load tz %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">Outage Details</h5>
+            <div class="card-body">
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <th scope="row">Event ID</th>
+                        <td>{{ object.name }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Provider</th>
+                        <td>{{ object.provider|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Status</th>
+                        <td>{% badge object.get_status_display bg_color=object.get_status_color %}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Summary</th>
+                        <td>{{ object.summary }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Start</th>
+                        <td>
+                            {{ object.start|date:"N j, Y, g:i a e" }}
+                            {% if object.has_timezone_difference %}
+                                {% localtime off %}
+                                    <br><small class="text-muted">({{ object.get_start_in_original_tz|date:"N j, Y, g:i a e" }})</small>
+                                {% endlocaltime %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Reported At</th>
+                        <td>
+                            {{ object.reported_at|date:"N j, Y, g:i a e" }}
+                            {% if object.has_timezone_difference %}
+                                {% localtime off %}
+                                    <br><small class="text-muted">({{ object.get_reported_at_in_original_tz|date:"N j, Y, g:i a e" }})</small>
+                                {% endlocaltime %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">End</th>
+                        <td>
+                            {% if object.end %}
+                                {{ object.end|date:"N j, Y, g:i a e" }}
+                                {% if object.has_timezone_difference %}
+                                    {% localtime off %}
+                                        <br><small class="text-muted">({{ object.get_end_in_original_tz|date:"N j, Y, g:i a e" }})</small>
+                                    {% endlocaltime %}
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Not yet resolved</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Estimated Time to Repair</th>
+                        <td>
+                            {% if object.estimated_time_to_repair %}
+                                {{ object.estimated_time_to_repair|date:"N j, Y, g:i a e" }}
+                                {% if object.has_timezone_difference %}
+                                    {% localtime off %}
+                                        <br><small class="text-muted">({{ object.get_estimated_time_to_repair_in_original_tz|date:"N j, Y, g:i a e" }})</small>
+                                    {% endlocaltime %}
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">No estimate provided</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if object.original_timezone %}
+                    <tr>
+                        <th scope="row">Original Timezone</th>
+                        <td>{{ object.original_timezone }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th scope="row">Internal Ticket</th>
+                        <td>{{ object.internal_ticket|placeholder }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Acknowledged</th>
+                        <td>{% checkmark object.acknowledged %}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        {% include 'inc/panels/custom_fields.html' %}
+    </div>
+    <div class="col col-md-6">
+        {% include 'inc/panels/tags.html' %}
+        {% include 'inc/panels/comments.html' %}
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col col-md-12">
+      <div class="card">
+        <h5 class="card-header">Outage Impact</h5>
+            {% if impacts %}
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Target Type</th>
+                        <th>Target Object</th>
+                        <th>Impact</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                    {% for impact in impacts %}
+                    <tr>
+                        <td>{{ impact.target_content_type }}</td>
+                        <td>
+                            {% if impact.target %}
+                                {{ impact.target|linkify }}
+                            {% else %}
+                                <span class="text-muted">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td>{% badge impact.get_impact_display bg_color=impact.get_impact_color %}</td>
+                        <td class="text-end noprint">
+                            {% if object.status != 'RESOLVED' %}
+                              <a href="{% url 'plugins:notices:impact_edit' pk=impact.pk %}?return_url={% url 'plugins:notices:outage' pk=object.pk %}" class="btn btn-warning btn-sm lh-1" title="Edit Impact">
+                                <i class="mdi mdi-pencil" aria-hidden="true"></i>
+                              </a>
+                              <a href="{% url 'plugins:notices:impact_delete' pk=impact.pk %}?return_url={% url 'plugins:notices:outage' pk=object.pk %}" class="btn btn-danger btn-sm lh-1" title="Delete Impact">
+                                <i class="mdi mdi-trash-can-outline" aria-hidden="true"></i>
+                              </a>
+                            {% endif %}
+                          </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+            <div class="card-body">
+                <div class="text-muted">
+                    None
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% if object.status != 'RESOLVED' %}
+        <div class="card-footer text-end noprint">
+            <a href="{% url 'plugins:notices:impact_add' %}?event_content_type={{ object|content_type_id }}&event_object_id={{ object.pk }}&return_url={% url 'plugins:notices:outage' pk=object.pk %}" class="btn btn-primary btn-sm">
+              <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Associate an Impact
+            </a>
+          </div>
+        {% else %}
+        <div class="card-footer text-end noprint">
+            This outage is resolved, the impact can no longer be modified.
+          </div>
+        {% endif %}
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col col-md-12">
+      <div class="card">
+        <h5 class="card-header">Received Outage Notifications</h5>
+            {% if notifications %}
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>From</th>
+                        <th>Date Received</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                    {% for email in notifications %}
+                    <tr>
+                        <td>{{email.subject}}</td>
+                        <td>{{email.email_from}}</td>
+                        <td>{{email.email_received}}</td>
+                        <td class="text-end noprint">
+                            <a href="{% url 'plugins:notices:eventnotification' pk=email.pk %}" class="btn btn-primary btn-sm lh-1" title="View Notification" target="_blank">
+                                <i class="mdi mdi-book" aria-hidden="true"></i>
+                              </a>
+                              <a href="{% url 'plugins:notices:eventnotification_delete' pk=email.pk %}?return_url={% url 'plugins:notices:outage' pk=object.pk %}" class="btn btn-danger btn-sm lh-1" title="Delete Notification">
+                                <i class="mdi mdi-trash-can-outline" aria-hidden="true"></i>
+                              </a>
+                          </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+            <div class="card-body">
+                <div class="text-muted">
+                    No outage notifications have been received for this outage event
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% if object.status != 'RESOLVED' %}
+        <div class="card-footer text-end noprint">
+            <a href="{% url 'plugins:notices:eventnotification_add' %}?event_content_type={{ object|content_type_id }}&event_object_id={{ object.pk }}&return_url={% url 'plugins:notices:outage' pk=object.pk %}" class="btn btn-primary btn-sm">
+              <i class="mdi mdi-plus-thick" aria-hidden="true"></i> Add an Outage Notification
+            </a>
+          </div>
+        {% else %}
+        <div class="card-footer text-end noprint">
+            This outage is resolved, notifications can no longer be modified.
+          </div>
+        {% endif %}
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col col-md-12">
+      <div class="card">
+        <h5 class="card-header">Event Timeline</h5>
+        <div class="card-body">
+          {% if timeline %}
+            <ul class="timeline">
+              {% for item in timeline %}
+                <li class="timeline-event">
+                  <div class="timeline-event-icon bg-{{ item.color }}-lt">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      {% if item.icon == 'check-circle' %}
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path>
+                        <path d="M9 12l2 2l4 -4"></path>
+                      {% elif item.icon == 'alert-triangle' %}
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M12 9v4"></path>
+                        <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"></path>
+                        <path d="M12 16h.01"></path>
+                      {% elif item.icon == 'mail' %}
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z"></path>
+                        <path d="M3 7l9 6l9 -6"></path>
+                      {% elif item.icon == 'check' %}
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M5 12l5 5l10 -10"></path>
+                      {% elif item.icon == 'clock' %}
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path>
+                        <path d="M12 7v5l3 3"></path>
+                      {% else %}
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path>
+                      {% endif %}
+                    </svg>
+                  </div>
+                  <div class="card timeline-event-card">
+                    <div class="card-body">
+                      <div class="row">
+                        <div class="col">
+                          <h4 class="mb-1">{{ item.title }}</h4>
+                          <div class="text-secondary mb-2">by {{ item.user_name }}</div>
+                        </div>
+                        <div class="col-auto">
+                          <div class="text-secondary">{{ item.time }}</div>
+                        </div>
+                      </div>
+                      {% if item.changes %}
+                        <div class="text-secondary">
+                          {% for change in item.changes %}
+                            <div>
+                              <strong>{{ change.display_name }}:</strong>
+                              {{ change.old_value }} → {{ change.new_value }}
+                            </div>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="text-muted">
+              No changes recorded
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock content %}
