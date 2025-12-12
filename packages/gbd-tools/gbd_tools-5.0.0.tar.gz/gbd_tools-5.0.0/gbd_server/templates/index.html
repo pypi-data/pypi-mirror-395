@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>Global Benchmark Database</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}" />
+    <!--<script src="{{ url_for('static', filename='jquery-3.6.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='sorttable.js') }}"></script>
+    <script src="{{ url_for('static', filename='w3.js') }}"></script>-->
+</head>
+
+<body>
+<div class="main">
+    <header>
+        <img center src="{{ url_for('static', filename='img/gbd_logo_small.png') }}" alt="GBD-Logo">
+        <div class="form">
+            <form method="post" id="contextform">
+            <fieldset style="float:left">
+                <legend>Select a context</legend>
+                <input type="hidden" id="selected_db" name="selected_db" value="">
+                <input type="hidden" id="query" name="query" value="">
+                {% for c in contexts %}
+                <button type="submit" id="context" name="context" value="{{ c }}" formaction="{{ url_for('quick_search') }}" title="Select problem domain">
+                    {% if c == context %}
+                    <span style="color:var(--link-color-1)">{{ c }}</span>
+                    {% else %}
+                    {{ c }}
+                    {% endif %}
+                </button>
+                {% endfor %}
+            </fieldset>
+            </form>
+            <form method="post" id="dbform">
+            <fieldset>
+                <legend>Select a context-specific database</legend>
+                <input type="hidden" id="context" name="context" value="{{ context }}">
+                <input type="hidden" id="query" name="query" value="{{ query }}">
+                {% for dbname in databases %}
+                <button type="submit" id="selected_db" name="selected_db" value="{{ dbname }}" formaction="{{ url_for('quick_search') }}" title="Select database to display">
+                    {% if dbname == selected %}
+                    <span style="color:var(--link-color-1)">{{ dbname }}</span>
+                    {% else %}
+                    {{ dbname }}
+                    {% endif %}
+                </button>
+                {% endfor %}
+            </fieldset>
+            </form>
+            <br />
+            <form method="post" id="mainform">
+                <fieldset>
+                    <legend>Query for Instances</legend>
+                    <input type="hidden" id="context" name="context" value="{{ context }}">
+                    <input type="hidden" id="selected_db" name="selected_db" value="{{ selected }}">
+                    <input type="text" id="query" name="query" class="query" placeholder="Query for Instances" value="{{ query }}">
+                    <button type="submit" class="submit" formaction="{{ url_for('quick_search') }}" form="mainform" id="queryaction" value="show" title="Query for instances and selected features">Show</button>
+                </fieldset>
+                <br />
+                <div class="info">
+                    {% if error is not none %}
+                    <span style="color:var(--link-color-1)">{{ error }}</span>
+                    {% endif %} 
+                </div>
+            </form>
+        </div>
+        <div class="help">
+            <fieldset>
+                <legend>Quickstart</legend>
+                <ul>
+                    <li><b>Query for Instances:</b>
+                        Simple queries are constraints of the form "feature operator value", e.g., <a href="{{ url_for('quick_search', track='main_2024', context='cnf') }}">track=main_2024</a>. More complex queries can be formulated as specified in <a href="https://doi.org/10.4230/LIPIcs.SAT.2024.18">our SAT 2024 paper</a>.
+                    </li>
+                    <li><b>Download Instances:</b>
+                        The file <a href="{{ url_for('get_url_file', query=query, context=context) }}">{{ query_name }}.uri</a> contains the download links for the selected instances. Use it to download the instances, e.g., with wget like this<br /> <span style="font-family: monospace;">wget --content-disposition -i {{ query_name }}.uri</span>.
+                    </li>
+                    <li><b>Download the selected database:</b>
+                        <a href="{{ url_for('get_database_file', database=selected) }}" title="Download Database">{{ selected }}</a>
+                    </li>
+                </ul>
+            </fieldset>
+        </div>
+    </header>
+    
+    <div class="content">
+        <table>
+            <tr>
+                <th>hash</th>
+                {% for feature in features %}
+                <th>{{ feature }}</th>
+                {% endfor %}
+            </tr>
+            
+            {% for row in result %}
+            <tr>
+                {% for item in row %}
+                    {% if loop.index == 1 %}
+                        <td><a href="{{ url_for('get_file', hashvalue=item, context=context) }}">{{ item }}</a></td>
+                    {% elif item is link_field %}
+                        <td><a href="{{ item }}">{{ item }}</a></td>
+                    {% elif item is int_field %}
+                        <td style="text-align: right;">{{ item }}</td>
+                    {% elif item is num_field %}
+                        <td style="text-align: right;">{{ '%0.2f'| format(item|float) }}</td>
+                    {% else %}
+                        <td>{{ item }}</td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <footer>
+        <div style="display: inline-block; vertical-align: center">
+            
+            {% if pages > 0 %}
+                Found {{ total }} Instances. Select page: 
+                {% for i in range(0, pages) %}
+                    {% if i < 2 or i > pages - 3 or (i > page - 3 and i < page + 3) %}
+                        {% if i == page %}
+                        <button type="submit" formaction="/" form="mainform" name="page" value="{{ i }}" style="color:var(--link-color-1);">{{ i + 1 }}</button>
+                        {% else %}
+                        <button type="submit" formaction="/" form="mainform" name="page" value="{{ i }}">{{ i + 1 }}</button>
+                        {% endif %}
+                    {% elif i == 3 or i == pages - 3 %}
+                        ...
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                Found {{ total }} instances.
+            {% endif %}
+        </div>
+        <div style="float: right;">
+            If you find this useful, please cite <a href="https://doi.org/10.4230/LIPIcs.SAT.2024.18">Global Benchmark Database (Iser &amp; Jabs, SAT 2024)</a>
+        </div>
+    </footer>
+</div>
+</body>
+</html>
