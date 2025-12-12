@@ -1,0 +1,19 @@
+services:
+  # Main http client service, using httpx
+  - name: "http_client"
+    type: [!cfg "type", "httpx.AsyncClient"]
+    defaults:
+      transport: !ref "http_client.proxy_transport"
+    arguments: [!cfg "arguments", {}]
+
+  # Proxy filter, decorating the regular http transport
+  - name: "http_client.proxy_transport"
+    type: [!cfg "proxy_transport.type", "harp_apps.http_client.transports.AsyncFilterableTransport"]
+    defaults:
+      - transport: !ref "http_client.transport"
+    arguments: [!cfg "proxy_transport.arguments", {}]
+
+  # Default httpx transport implementation, handling the actual http requests
+  - name: "http_client.transport"
+    type: [!cfg "transport.type", "httpx.AsyncHTTPTransport"]
+    arguments: [!cfg "transport.arguments", {}]
