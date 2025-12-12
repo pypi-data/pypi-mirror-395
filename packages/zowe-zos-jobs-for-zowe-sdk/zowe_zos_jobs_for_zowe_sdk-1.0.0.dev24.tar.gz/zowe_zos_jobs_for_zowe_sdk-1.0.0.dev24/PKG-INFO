@@ -1,0 +1,79 @@
+Metadata-Version: 2.4
+Name: zowe_zos_jobs_for_zowe_sdk
+Version: 1.0.0.dev24
+Summary: Zowe Python SDK - z/OS Jobs package
+Home-page: https://github.com/zowe/zowe-client-python-sdk
+Author: Zowe
+Author-email: zowe.robot@gmail.com
+License: EPL-2.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: License :: OSI Approved :: Eclipse Public License 2.0 (EPL-2.0)
+Description-Content-Type: text/markdown
+Requires-Dist: zowe.core_for_zowe_sdk~=1.0.0-dev24
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: requires-dist
+Dynamic: summary
+
+z/OS Jobs Package
+=================
+
+Contains APIs to interact with jobs on z/OS (using z/OSMF jobs REST endpoints).
+
+Examples
+------------
+
+<strong>Cancel a job</strong>  
+
+```
+from zowe.core_for_zowe_sdk import ProfileManager
+from zowe.zos_jobs_for_zowe_sdk import Jobs
+
+profile = ProfileManager().load(profile_name="zosmf")
+jobs_info = Jobs(profile)
+
+print(jobs_info.cancel_job("JOBNAME", "JOBID"))
+```
+
+<strong>Delete a job</strong>  
+
+```
+from zowe.core_for_zowe_sdk import ProfileManager
+from zowe.zos_jobs_for_zowe_sdk import Jobs
+
+profile = ProfileManager().load(profile_name="zosmf")
+
+with Jobs(profile) as jobs_info:
+    print(jobs_info.delete_job("JOBNAME", "JOBID"))
+```
+
+<strong>Get jobs by owner</strong>   
+
+```
+from zowe.core_for_zowe_sdk import ProfileManager
+from zowe.zos_jobs_for_zowe_sdk import Jobs
+
+profile = ProfileManager().load(profile_name="zosmf")
+
+with Jobs(profile) as jobs_info:
+    job_owner = "USERNAME"
+    print(jobs_info.list_jobs(job_owner))
+```
+
+<strong>Submit a job from mainframe</strong>  
+
+```
+from zowe.core_for_zowe_sdk import ProfileManager
+from zowe.zos_jobs_for_zowe_sdk import Jobs
+
+profile = ProfileManager().load(profile_name="zosmf")
+
+with Jobs(profile) as jobs_info:
+    print(jobs_info.submit_from_mainframe(jcl_path="ZOWEUSER.PUBLIC.MY.DATASET.JCL(MEMBER)"))
+```
