@@ -1,0 +1,243 @@
+# Core _netlab_ attributes: global, link, interface, node, VLAN, VRF...
+#
+# yaml-language-server: $schema=https://json.schemastore.org/yamllint.json
+---
+global:                     # Common global attributes
+  addressing:               # We can do at least some baseline validation ;)
+    type: dict
+    _keytype: id
+  defaults:
+  groups:
+  links:
+  module:
+  name:
+    type: id
+    _help: |
+      Topology name should be no longer than 16 characters. It should start with a letter
+      and contain letters, underscores or numbers. netlab derives it from the directory name
+      when it's not specified in the lab topology file.
+  nodes:
+  plugin:
+    type: list
+    _subtype: str
+  prefix:
+    type: dict
+    _keytype: id
+    _subtype: _prefix
+  provider: id
+  tools:
+    type: dict
+    _subtype:
+      type: dict
+      create_empty: True
+  validate:
+    type: dict
+    _keytype: id
+    _subtype: _v_entry
+  version:
+
+internal:                   # Internal attributes, not validated
+  input:
+  pools: dict
+  Provider:
+  Plugin:
+  message: str
+
+global_extra_ns: [ providers, outputs ]
+
+can_be_false: [ link, interface, loopback ]
+
+link:                       # Global link attributes
+  bandwidth: int
+  bridge: id
+  disable: bool
+  shutdown: bool            # Shut down then interface during the initial configuration
+  name: str
+  prefix:
+    type: dict
+    _keys:
+      ipv4: { type: ipv4, use: subnet_prefix }
+      ipv6: { type: ipv6, use: subnet_prefix }
+      allocation: { type: str, valid_values: [ p2p, sequential, id_based ] }
+      _name: str
+    _alt_types: [ bool_false, prefix_str, named_pfx ]
+  ra:
+    disable: bool
+    slaac: bool
+    dhcp: { type: str, valid_values: [ all, other ] }
+    onlink: bool
+  role: id
+  pool: id
+  tc:
+    delay: time
+    jitter: time
+    loss: { type: float, min_value: 0, max_value: 100 }
+    corrupt: { type: float, min_value: 0, max_value: 100 }
+    duplicate: { type: float, min_value: 0, max_value: 100 }
+    reorder: { type: float, min_value: 0, max_value: 100 }
+    rate: { type: int, min_value: 1 }
+  type: { type: str, valid_values: [ lan, p2p, stub, loopback, tunnel, vlan_member ] }
+  unnumbered: bool
+  interfaces:
+  mtu: { type: int, min_value: 64, max_value: 9216 }
+  vlan_name: id
+
+link_internal:              # Internal link attributes
+  linkindex: int
+  parentindex: int
+link_no_propagate: [ prefix, interfaces, gateway ]
+# Do not propagate VLAN attributes to node interfaces -- see #575
+# Also: do not propagate DHCP attributes from links to interfaces
+link_module_no_propagate: [ vlan, dhcp ]
+
+interface:                  # Interface (node-to-link attachment) attributes
+  node: node_id
+  ipv4: { type: ipv4, use: interface }
+  ipv6: { type: ipv6, use: interface }
+  ifindex: int
+  ifname: str
+
+node_extra_ns: [ providers, tools, outputs ]
+
+node:
+  name: str                                         # Validity of node name is checked in the nodes module
+  interfaces: list
+  module:
+    type: list
+    _subtype: id
+  device: device
+  box: str
+  id: { type: int, min_value: 1, max_value: MAX_NODE_ID }
+  config:
+    type: dict
+    _subtype:
+      type: error
+      _err_msg: Enable "files" plugin to use the inline node/group configuration template(s)
+    _alt_types: [ list ]
+  group: list
+  role: { type: str, valid_values: [ router, host, bridge, gateway ] }
+  mgmt:
+    ipv4: { type: ipv4, use: interface }
+    ipv6: { type: ipv6, use: interface }
+    mac: str
+    ifname: str
+  mtu: { type: int, min_value: 64, max_value: 9216 }
+  loopback:
+    type: dict
+    _alt_types: [ bool ]
+  provider: id
+  cpu:
+  memory: int
+  unmanaged: bool
+
+loopback:
+  ipv4: { type: ipv4, use: host_prefix, _alt_types: [ bool ] }
+  ipv6: { type: ipv6, use: host_prefix, _alt_types: [ bool ] }
+  pool: addr_pool
+
+pool:                       # Address pool definition
+  ipv4: { type: ipv4, use: subnet_prefix }
+  ipv6: { type: ipv6, use: subnet_prefix }
+  start: { type: int, min_value: 0 }
+  prefix: { type: int, min_value: 1, max_value: 32 }
+  prefix6: { type: int, min_value: 1, max_value: 128 }
+  allocation: { type: str, valid_values: [ p2p, sequential, id_based ] }
+  mac: mac
+  unnumbered: bool
+pool_no_copy: [ start, prefix, prefix6, mac ]
+
+prefix:                     # Link prefix (called by link module directly)
+  ipv4: { type: ipv4, use: subnet_prefix }
+  ipv6: { type: ipv6, use: subnet_prefix }
+  allocation: { type: str, valid_values: [ p2p, sequential, id_based ] }
+
+node_group:
+  _description: Node groups
+  _namespace: [ node ]
+  members:
+    type: list
+    _subtype: { type: id, max_length: MAX_NODE_ID_LENGTH }
+  vars: dict
+  config: list
+  node_data:
+    type: dict
+    true_value: {}
+  device: device
+  module: list
+
+vlan_group:
+  _description: VLAN groups
+  _namespace: [ vlan, link ]
+  type: str
+  members:
+    type: list
+    _subtype: id
+
+vrf_group:
+  _description: VRF groups
+  _namespace: [ vrf ]
+  type: str
+  members:
+    type: list
+    _subtype: id
+
+_prefix:                    # Generic named prefix entry
+  ipv4: { type: ipv4, use: prefix }
+  ipv6: { type: ipv6, use: prefix }
+  allocation: { type: str, valid_values: [ p2p, sequential, id_based ] }
+  pool:
+    type: str
+    _valid_with: [ allocation ]
+
+_v_entry:                   # Validation entry
+  _description: Single network validation test (an entry in the validate dictionary)
+  description: str
+  fail: str
+  pass: str
+  wait: { type: int, _alt_types: [ id ] }          # Wait time could be an integer or a reference to a constant
+  wait_msg: str
+  nodes:
+    type: list
+    _subtype: node_id
+  devices:
+    type: list
+    _subtype: device
+  exec: _v_option
+  show: _v_option
+  config:
+    template: str
+    variable: dict
+    inline:
+      type: error
+      _err_msg: Enable "files" plugin to use the "inline" configuration template
+    _alt_types: [ str ]
+  valid: _v_option
+  suzieq:
+    _alt_types: [ str ]
+    show: str
+    expect: { type: str, valid_values: [ empty ] }
+    valid: { type: str, valid_values: [ all, any ]}
+  plugin: str
+  stop_on_error: bool
+  level: { type: str, valid_values: [ warning ] }
+_v_option:
+  _description: |
+    A "show", "exec" or "valid" parameter in a network validation test. It's a
+    dictionary of device types with each value being a command to execute or
+    expression to evaluate.
+  type: dict
+  _alt_types: [ str ]
+  _keytype: device
+
+_r_import:
+  _description: |
+    Routing protocol import specification. Each entry specifies a protocol to
+    import. Values might contain routing policies
+  type: dict
+  _keytype: r_proto
+  _list_to_dict: True
+  _subtype:
+    _alt_types: [ NoneType, bool ]
+    policy:
+      type: id
+      _requires: [ routing ]

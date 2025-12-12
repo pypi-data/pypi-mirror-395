@@ -1,0 +1,52 @@
+{# description: BGP autonomous systems (needs Ansible) #}
+{% import 'bgp-prefix.include.j2' as bcode %}
+{#
+   First, figure out if we need RR column
+#}
+{% set cols = namespace(rr=false) %}
+{{- bcode.asn_columns(nodes,cols) -}}
+{% set col_count = 4 if cols.rr else 3 %}
+{#
+   Now we're ready for the ASN report
+#}
+{% set bnodes = nodes.values()|selectattr('bgp','defined')|selectattr('bgp.as','defined') %}
+{% for asn,ndl in bnodes|groupby('bgp.as') if asn %}
+{%   if loop.first %}
+<h2>BGP AS Numbers</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Node/ASN</th>
+      <th>Router ID</th>
+{%     if cols.rr %}
+      <th>BGP RR</th>
+{%     endif %}
+      <th>Advertised prefixes</th>
+    </tr>
+  <thead>
+  <tbody>
+{%   endif %}
+    <tr>
+      <td colspan="{{ col_count }}"><strong>AS{{ asn }}</strong></td>
+    </tr>
+{%   for ndata in ndl %}
+{#
+    Collect prefixes advertised by the router
+#}
+{%     set pfx = [] %}{{ bcode.build_pfx_list(ndata,pfx) -}}
+    <tr>
+      <td>{{ ndata.name }}</td>
+      <td class='center'>{{ ndata.bgp.router_id|default('') }}</td>
+{%     if cols.rr %}
+      <td class='center'>{{ '✅' if ndata.bgp.rr|default('') else '' }}</td>
+{%     endif %}
+      <td class='right'>{{ pfx|join('<br>') }}</td>
+    </tr>
+{%   endfor %}
+{%   if loop.last %}
+  </tbody>
+</table>
+{%   endif %}
+{% else %}
+<p>BGP ASN report is empty: no BGP routers in this lab topology</p>
+{% endfor %}

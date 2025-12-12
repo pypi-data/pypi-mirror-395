@@ -1,0 +1,91 @@
+{% from "templates/ospf/srlinux.macro.j2" import ospf_config with context %}
+{% from "templates/bgp/srlinux.macro.j2" import bgp_config with context %}
+{% from "templates/isis/srlinux.macro.j2" import config as isis_config with context %}
+
+updates:
+{% for vname,vdata in vrfs.items() %}
+
+- path: /network-instance[name={{vname}}]
+  value:
+   type: ip-vrf
+
+{% if 'ospf' in vdata %}
+{%  for af in ['ipv4','ipv6'] %}
+{%   if af in vdata.af and vdata.af[af] %}
+{%     set ospf_pid = ospf.process|default(0) + (1 if af=='ipv6' else 0) %}
+{{ ospf_config(ospf_pid,af,vname,vdata.ospf,vdata.ospf.interfaces,'evpn' in module) }}
+{%   endif %}
+{%  endfor %}
+{% endif %}
+{% if 'isis' in vdata %}
+{{   isis_config(vdata.isis,vdata.isis.interfaces,vname) }}
+{% endif %}
+{# Create an AS path set for this VRF, if vrf.as is set #}
+{% if vdata.as is defined %}
+- path: /routing-policy/as-path-set[name={{vname}}]
+  value:
+   expression: "{{ vdata.as }}"
+{% endif %}
+
+{# Creata a community set with a single member for each imported community #}
+{% if vdata.import|default([]) %}
+{%  for c in vdata.import %}
+- path: /routing-policy/community-set[name=C{{ c|replace(':','_') }}]
+  value:
+   member:
+   - "target:{{ c }}" # Single member, else matching is AND
+{% endfor -%}
+{% endif %}
+
+{# Create a single community set for all exported communities, to be added upon import #}
+{% if vdata.export|default([]) %}
+- path: /routing-policy/community-set[name={{vname}}_export]
+  value:
+   member:
+{%  for c in vdata.export %}
+   - "target:{{ c }}"
+{%  endfor %}
+{% endif %}
+
+{% if 'bgp' in vdata and 'af' in vdata %}
+{{ bgp_config(vname,bgp.as,vdata.bgp.router_id|default(bgp.router_id),vdata.bgp,vdata) }}
+{% endif %}
+
+- path: /network-instance[name={{vname}}]/protocols/bgp-vpn
+  value:
+   bgp-instance:
+   - id: 1
+     route-distinguisher:
+      rd: "{{ vdata.rd }}"
+
+{% if vdata.export|default([]) and vdata.import|default([]) %}
+- path: /network-instance[name={{vname}}]/inter-instance-policies
+  value:
+   apply-policy:
+    export-policy: "{{ vname }}_vpn_export"
+    import-policy: "{{ vname }}_vpn_import"
+
+- path: /routing-policy/policy[name={{ vname }}_vpn_export]
+  value:
+   default-action:
+    policy-result: "accept"
+    bgp:
+     communities:
+      add: "{{vname}}_export"
+
+- path: /routing-policy/policy[name={{ vname }}_vpn_import]
+  value:
+   default-action:
+    policy-result: "reject"
+   statement:
+{%  for c in vdata.import %}
+   - name: {{ 10 + loop.index }}
+     match:
+      bgp:
+       community-set: "C{{ c|replace(':','_') }}"
+     action:
+      policy-result: "accept"
+{%  endfor %}
+
+{% endif %}
+{% endfor %}

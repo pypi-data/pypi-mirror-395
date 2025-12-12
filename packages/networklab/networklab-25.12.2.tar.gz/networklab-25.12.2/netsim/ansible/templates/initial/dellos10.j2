@@ -1,0 +1,86 @@
+hostname {{ inventory_hostname.replace("_","-") }}
+!
+lldp enable
+!
+{% if vrfs is defined %}
+{% include 'dellos10.vrf.j2' %}
+{% endif %}
+!
+{% for k,v in hostvars.items() if k != inventory_hostname and v.af.ipv4|default(False) and v.loopback.ipv4 is defined %}
+ip host {{ k|replace('_','') }} {{ v.loopback.ipv4.split('/')[0] }}
+{% endfor %}
+!
+{% if mtu is defined %}
+!
+{# Dell wanted the MTU to be supplied as IP MTU + 32 #}
+default mtu {{ mtu + 32 }}
+{% endif %}
+!
+interface {{ mgmt.ifname|default('mgmt1/1/1') }}
+ no lldp transmit
+ no lldp receive
+!
+{% for l in netlab_interfaces %}
+interface {{ l.ifname }}
+{%   if l.shutdown|default(False) %}
+ shutdown
+{%   else %}
+ no shutdown
+{%   endif %}
+{%   if l.virtual_interface is not defined or (l.type=='lag' and ('ipv4' in l or 'ipv6' in l)) %}
+ no switchport
+{%   endif %}
+{% if l.vrf is defined %}
+ ip vrf forwarding {{ l.vrf }}
+{% endif %}
+{% if l.mtu is defined %}
+ mtu {{ l.mtu + 32 }}
+{% endif %}
+{% if l.name is defined %}
+{# Dell OS10 10.5.6.4 has a bug that causes issues with commas in descriptions #}
+ description "{{ l.name | replace(",", "\\\\,") }}{{ " ["+l.role+"]" if l.role is defined else "" }}"
+{% elif l.type|default("") == "stub" %}
+ description "Stub interface"
+{% endif %}
+{#
+    Set interface IPv4 addresses
+#}
+{% if 'ipv4' in l %}
+{%   if l.ipv4|ipv4 %}
+ ip address {{ l.ipv4 }}
+{%     if l.virtual_interface is not defined %}
+ ip unreachables
+{%     endif %}
+{%   else %}
+! Invalid IPv4 address {{ l.ipv4 }}
+{%   endif %}
+{% endif %}
+{#
+    Set interface IPv6 addresses
+#}
+{% if 'ipv6' in l %}
+{# do not set nd on loopback interfaces #}
+{%   if l.type|default('') != 'loopback' %}
+ ipv6 nd max-ra-interval 4
+ ipv6 nd min-ra-interval 3
+ ipv6 nd send-ra
+{%     if l.mtu is defined %}
+ ipv6 nd mtu {{ l.mtu }}
+{%     endif %}
+{%   endif %}
+{%   if l.ipv6 == True %}
+ ipv6 enable
+{%   elif l.ipv6|ipv6 %}
+ ipv6 address {{ l.ipv6 }}
+{%   else %}
+! Invalid IPv6 address {{ l.ipv6 }}
+{%   endif %}
+{%   if l.virtual_interface is not defined %}
+ ipv6 unreachables
+{%   endif %}
+{% elif 'lag' not in l or 'ipv4' in l %}
+{# Don't configure IP related settings for discovery interfaces, L2-only port-channels or lag member links #}
+ no ipv6 enable
+{% endif %}
+!
+{% endfor %}

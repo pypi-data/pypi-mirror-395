@@ -1,0 +1,84 @@
+{% macro decl_interface(i) %}
+      {{ i.ifname }}:
+        type: {{ 'svi' if i.type=='svi' else 'sub' if i.type=='vlan_member' else 'bond' if i.type=='lag' else 'swp' }}
+        link:
+{%  if i.mtu is defined %}
+          mtu: {{ i.mtu }}
+{%  endif %}
+          state:
+            {{ 'down' if i.lag._parentindex is defined or i.shutdown|default(False) else 'up' }} : {}
+{%  if i.name is defined %}
+        description: "{{ i.name }}{{ " ["+i.role+"]" if i.role is defined else "" }}"
+{%  elif i.type|default("") == "stub" %}
+        description: Stub interface
+{%  endif %}
+        ip:
+{%  if i.ipv4 is defined or (i.ipv6 is string and i.ipv6|ipv6) %}
+          address:
+{%    if i.ipv4 is defined %}
+            {{ (loopback if i.ipv4 == True else i).ipv4 }}: {}
+{%    endif %}
+{%    if i.ipv6 is string and i.ipv6|ipv6 %}
+            {{ i.ipv6 }}: {}
+{%    endif %}
+{%  endif %}
+          ipv6:
+{%  if i.ipv6 is defined %}
+            forward: on
+{%    if 'ipv6' not in i.dhcp.client|default({}) %}
+          neighbor-discovery:
+            enable: on
+            router-advertisement:
+              enable: on
+              interval: 5000
+{%    endif %}
+{%  else %}
+            enable: off
+{%  endif %}
+{% endmacro %}
+
+- set:
+    system:
+      hostname: {{ inventory_hostname.replace("_","-") }}
+{% if mtu is defined %}
+{# Overrides Cumulus platform default of 9216 #}
+      config:
+        snippet:
+          system-mtu:
+            file: /etc/network/ifupdown2/policy.d/mtu.json
+            content: |
+              { "address": { "defaults": { "mtu": "{{ mtu }}" } } }
+{% endif %}
+
+    interface:
+      eth0:
+        ip:
+          vrf: mgmt
+          address:
+            dhcp: {}
+        type: eth
+{# Avoid creating L2-only sub interfaces #}
+{% for l in interfaces|default([]) if l.type not in ['loopback','vlan_member']
+                                  or (l.type=='vlan_member' and ('ipv4' in l or 'ipv6' in l)) %}
+{{   decl_interface(l) }}
+{% endfor %}
+
+{% for lb in netlab_interfaces if lb.type=='loopback' and lb.vrf is not defined %}
+- set:
+    interface:
+      lo:
+        type: loopback
+        ip:
+          address:
+{%   if 'ipv4' in lb %}
+            {{ lb.ipv4 }}: {}
+{%   else %}
+            127.0.0.1/8: {}
+{%   endif %}
+{%   if 'ipv6' in lb %}
+            {{ lb.ipv6 }}: {}
+{%   else %}
+          ipv6:
+            enable: off
+{%   endif %}
+{% endfor %}

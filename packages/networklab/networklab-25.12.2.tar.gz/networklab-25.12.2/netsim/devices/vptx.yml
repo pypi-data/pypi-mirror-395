@@ -1,0 +1,41 @@
+---
+description: Juniper vPTX
+parent: junos
+interface_name: et-0/0/{ifindex}
+mgmt_if: "re0:mgmt-0"
+group_vars:
+  netlab_device_type: vptx
+
+features:
+  gateway:
+    protocol: [ vrrp ]
+  lag:
+    passive: True
+  vlan:
+    model: l3-switch
+    svi_interface_name: irb.{vlan}
+    subif_name: "{ifname}.{vlan.access_id}"
+    native_routed: true
+
+libvirt:
+  image: juniper/vptx
+  build: https://netlab.tools/labs/vptx/
+  pre_install: vptx
+  create_template: vptx.xml.j2
+
+clab:
+  image: vrnetlab/juniper_vjunosevolved:25.2R1.8-EVO
+  build: https://containerlab.dev/manual/kinds/vr-vjunosevolved/
+  mtu: 1500
+  node:
+    kind: juniper_vjunosevolved
+  interface:
+    name: eth{ifindex+1}
+  group_vars:
+    ansible_user: admin
+    ansible_ssh_pass: admin@123
+    netlab_check_retries: 40
+    netlab_check_delay: 10
+    netlab_ready: [ ssh ]
+
+graphite.icon: switch

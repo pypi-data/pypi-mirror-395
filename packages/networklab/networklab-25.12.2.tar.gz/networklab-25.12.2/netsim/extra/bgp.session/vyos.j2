@@ -1,0 +1,90 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+fi
+
+# Configuration items start here
+
+configure
+
+# Catch all config stuff on the same loop (and avoid multiple loopings)
+
+# main routing table
+{% for n in bgp.neighbors %}
+{%   for af in ['ipv4','ipv6'] if n[af] is defined %}
+{%     set peer = n[af] if n[af] is string else n.local_if|default('?') %}
+
+# AllowAS-IN
+{%     if n.allowas_in is defined %}
+set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast allowas-in number {{ n.allowas_in }}
+{%       if n.evpn|default(False) and n.type == 'ebgp' %}
+set protocols bgp neighbor {{ peer }} address-family l2vpn-evpn allowas-in number {{ n.allowas_in }}
+{%       endif %}
+{%     endif %}
+
+# AS-Override
+{%     if n.as_override is defined %}
+set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast as-override
+{%     endif %}
+
+# Default Originate
+{%     if n.default_originate is defined %}
+set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast default-originate
+{%     endif %}
+
+# Password
+{%     if n.password is defined %}
+set protocols bgp neighbor {{ peer }} password {{ n.password }}
+{%     endif %}
+
+# Remote Private AS
+{%     if n.remove_private_as is defined %}
+set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast remove-private-as
+{%     endif %}
+
+{%   endfor %}
+{% endfor %}
+
+# Specific VRFs
+{% for vname,vdata in (vrfs|default({})).items() if vdata.bgp is defined %}
+{%   for n in vdata.bgp.neighbors|default([]) %}
+{%     for af in ['ipv4','ipv6'] if n[af] is defined %}
+{%       set peer = n[af] if n[af] is string else n.local_if|default('?') %}
+
+# AllowAS-IN
+{%       if n.allowas_in is defined %}
+set vrf name {{ vname }} protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast allowas-in number {{ n.allowas_in }}
+{%       endif %}
+
+# AS-Override
+{%       if n.as_override is defined %}
+set vrf name {{ vname }} protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast as-override
+{%       endif %}
+
+# Default Originate
+{%       if n.default_originate is defined %}
+set vrf name {{ vname }} protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast default-originate
+{%       endif %}
+
+# Password
+{%       if n.password is defined %}
+set vrf name {{ vname }} protocols bgp neighbor {{ peer }} password {{ n.password }}
+{%       endif %}
+
+# Remote Private AS
+{%       if n.remove_private_as is defined %}
+set vrf name {{ vname }} protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast remove-private-as
+{%       endif %}
+
+{%     endfor %}
+{%   endfor %}
+{% endfor %}
+
+# Commit, save and exit from subshell
+
+commit
+save
+exit
+

@@ -1,0 +1,62 @@
+# LAG default settings and attributes
+#
+---
+no_propagate: [ start_lag_id ]
+start_lag_id: 1                 # Start naming bonding interfaces using this lag.ifindex
+
+lacp: "fast"                    # Link Aggregation Control Protocol, standby signalling through link down not working
+lacp_mode: "active"             # At least 1 side must be active
+
+attributes:
+  global:
+    lacp: { type: str, valid_values: [ "off", "slow", "fast" ] }
+    lacp_mode: { type: str, valid_values: [ "passive", "active" ] }
+
+    # All Linux bonding modes that require lag configuration on the switch side, @deprecated
+    mode: { type: str, valid_values: [ "802.3ad", "balance-xor" ] }
+  node:
+    lacp:
+    lacp_mode:
+    mlag:
+      mac: mac                  # MAC to use for MLAG peering, auto-derived if not set
+    mode:                       # @deprecated
+  link:                         # Most should be consistent across both interfaces on the link
+    lacp: { copy: global }
+    lacp_mode: { copy: global }
+    #
+    # Optional, to control naming of the bonding interface
+    ifindex: { type: int, min_value: 0, max_value: 10000 }
+    members:
+    mode: { copy: global }      # @deprecated
+    mlag:
+      peergroup:                # Optional, for MLAG interconnect links to peers
+        type: int
+        min_value: 1
+        _alt_types: [ bool ]
+      mac: mac
+  interface:
+    lacp_system_id:
+      type: mac
+      _alt_types: [ int ]
+  intf_to_neighbor: False    # By default, do not include lag attributes in neighbors
+
+  # Copy only these L2 attributes into LAG physical link members
+  lag_l2_linkattr:
+    mtu:
+    bandwidth:
+    lacp_system_id:
+
+  # Keep only these attributes on member links
+  lag_member_linkattr:
+    mtu:
+    bandwidth:
+    _linkname:
+    interfaces:
+    # prefix:
+
+  # Don't copy these attributes to lag interfaces
+  lag_no_propagate:
+    interfaces:
+    _linkname:
+    name:
+    ifindex:

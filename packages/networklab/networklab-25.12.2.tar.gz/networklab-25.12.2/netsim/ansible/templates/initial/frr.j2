@@ -1,0 +1,213 @@
+{% from "initial/linux/create-bond.j2" import create_bond_dev %}
+#!/bin/bash
+#
+set -e
+set -x
+#
+# Create bash profile script
+#
+cat <<SCRIPT >/root/.bash_profile
+#!/bin/bash
+#
+export PS1="\h(bash)# "
+echo
+echo "Use vtysh to connect to FRR daemon"
+echo
+SCRIPT
+#
+# This is an artifact of unknown provenance that should be removed in a year or two (= 2026/2027)
+#
+# FRR controls these parameters with 'ip forwarding' and 'ipv6 forwarding' commands
+#
+sysctl -w net.ipv4.ip_forward={{ '1' if 'ipv4' in af and role == 'router' else '0' }}
+sysctl -w net.ipv6.conf.all.forwarding={{ '1' if 'ipv6' in af and role == 'router' else '0' }}
+#
+{% if clab is not defined %}
+cat <<SCRIPT >.bash_profile
+#!/bin/bash
+#
+export PS1="\h(bash)$ "
+export PATH=$PATH:/usr/sbin
+echo 
+echo "Use sudo vtysh to connect to FRR daemon"
+echo
+SCRIPT
+{% include 'linux/hosts.j2' +%}
+#
+# Configure system defaults on Ubuntu
+#
+hostnamectl set-hostname {{ inventory_hostname.replace('_','-') }}
+{% include 'linux/packages.j2' %}
+#
+# Install FRR on a Ubuntu VM if needed
+#
+if which /usr/lib/frr/frrinit.sh; then
+  echo "FRR already installed, skipping installation"
+else
+  curl -s https://deb.frrouting.org/frr/keys.asc >/etc/apt/trusted.gpg.d/frr.asc
+  FRRVER="frr-stable"
+  echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) $FRRVER > /etc/apt/sources.list.d/frr.list
+  apt-get update -qq && apt-get install -qq frr frr-pythontools bridge-utils ethtool
+fi
+{% else %}
+{%   if netlab_mgmt_vrf|default(False) and clab['network-mode']|default('')!='none' %}
+#
+# Get the current next hop for the default route
+#
+def_nh=$(ip route list default|awk '{ print $3 }')
+#
+# Create the management VRF and add eth0 to it
+#
+if [ ! -e /sys/devices/virtual/net/mgmt ]; then
+  ip link add mgmt type vrf table 42
+fi
+ip link set mgmt up
+sysctl -qw net.ipv6.conf.eth0.keep_addr_on_down=1
+ip link set eth0 master mgmt
+#
+# Reinstall the default route if we had it before
+#
+if [[ -n "$def_nh" ]]; then
+  ip route add 0.0.0.0/0 vrf mgmt via $def_nh
+fi
+{%   endif %}
+{% endif %}
+#
+# Enable FRR modules (if not using containerlab bind-mounted /etc/frr/daemons)
+#
+{% if clab is not defined or clab.binds|default({})=={} %}
+{%   include 'frr/daemons.j2' +%}
+/usr/lib/frr/frrinit.sh restart
+{% endif %}
+
+# Set system defaults
+#
+# Send ARP requests from a sane source IP address
+#
+sysctl -w net.ipv4.conf.all.arp_announce=2
+
+#
+# Create loopbacks, stub and lag/bond devices
+#
+{% for i in netlab_interfaces if i.type in ['loopback','stub','lag','bond'] %}
+if [ ! -e /sys/class/net/{{ i.ifname }} ]; then
+  if [ ! -e /sys/devices/virtual/net/{{ i.ifname }} ]; then
+{%   if i.type in ['lag','bond'] %}
+{{     create_bond_dev(i,node_provider) }}
+{%   else %}
+    ip link add {{ i.ifname }} type dummy
+{%   endif %}
+    ip link set dev {{ i.ifname }} {{ "down" if i.shutdown|default(False) else "up" }}
+  fi
+fi
+{% endfor %}
+
+# Disable IPv6 (for IPv4-only interfaces) or SLAAC (if the device is a router)
+#
+{% for i in interfaces if i.type in ['lan','p2p','stub','lag','bond'] %}
+ip link set {{ i.ifname }} down
+{%   if i.ipv6 is not defined %}
+sysctl -qw net.ipv6.conf.{{ i.ifname }}.disable_ipv6=1
+{%   else %}
+{%     set ra_flag = '0' if role == 'router' else '1' %}
+sysctl -qw net.ipv6.conf.{{ i.ifname }}.autoconf={{ ra_flag }}
+sysctl -qw net.ipv6.conf.{{ i.ifname }}.accept_ra={{ ra_flag }}
+{%   endif %}
+{%   if i.mtu is defined %}
+ip link set dev {{ i.ifname }} mtu {{ i.mtu }}
+{%   endif %}
+ip link set {{ i.ifname }} {{ "down" if i.shutdown|default(False) else "up" }}
+{% endfor %}
+
+#
+# Add vtysh.conf file
+echo "service integrated-vtysh-config" >/etc/frr/vtysh.conf
+
+#
+# Rest of initial configuration done through VTYSH
+#
+cat >/tmp/config <<CONFIG
+hostname {{ inventory_hostname }}
+!
+log file /tmp/logging
+{% from '_debug_commands.j2' import enable_debugging %}
+{{ enable_debugging(frr.debug,prefix='debug') }}
+!
+{#
+  These commands set the corresponding net.ipv4 / net.ipv6 variables.
+  As we don't want to assume the default values, we set them explicitly
+  based on device role and configured address families.
+#}
+{% if role == 'host' %}
+no ip forwarding
+no ipv6 forwarding
+{% else %}
+{%   if 'ipv4' in af %}
+ip forwarding
+{%   endif %}
+{%   if 'ipv6' in af %}
+ipv6 forwarding
+{%   endif %}
+{% endif %}
+{% if clab is defined and netlab_mgmt_vrf|default(False) %}
+vrf mgmt
+ exit-vrf
+!
+{% endif %}
+{% set frr_defaults = netlab_frr_defaults|default('datacenter') %}
+frr defaults {{ frr_defaults }}
+!
+{% for i in netlab_interfaces %}
+interface {{ i.ifname }}
+{%   if i.shutdown|default(False) %}
+ shutdown
+{%   else %}
+ no shutdown
+{%   endif %}
+{%   if i.name is defined %}
+ description {{ i.name }}{{ " ["+i.role+"]" if i.role is defined else "" }}
+{%   elif i.type|default("") == "stub" %}
+ description Stub interface
+{%   endif %}
+{%   if i.ipv4 is defined and (i.ipv4 is string or i._parent_ipv4 is defined) %}
+ ip address {{ i.ipv4 if i.ipv4 is string else i._parent_ipv4 }}
+{%   else %}
+ ! no ip address
+{%   endif %}
+{%   if i.ipv6 is defined %}
+{%     if i.ipv6 is string and i.ipv6|ipv6 %}
+ ipv6 address {{ i.ipv6 }}
+{%     endif %}
+{%     if i.type != 'loopback' and role == 'router' %}
+{%       if i.ra.disable|default(false) is true %}
+ ipv6 nd suppress-ra
+{%       else %}
+ ipv6 nd ra-interval 5
+ no ipv6 nd suppress-ra
+{%       endif %}
+{%       if 'ra' in i and i.ipv6 is string %}
+{%         if i.ra.slaac|default(true) is false %}
+ ipv6 nd prefix {{ i.ipv6|ipaddr(0) }} no-autoconfig
+{%         endif %}
+{%         if i.ra.onlink|default(true) is false %}
+ ipv6 nd prefix {{ i.ipv6|ipaddr(0) }} off-link
+{%         endif %}
+{%       endif %}
+{%       if i.ra.dhcp|default(false) == 'all' %}
+ ipv6 nd managed-config-flag
+{%       endif %}
+{%       if i.ra.dhcp|default(false) == 'other' %}
+ ipv6 nd other-config-flag
+{%       endif %}
+{%     endif %}
+{%   endif %}
+{%   if i.bandwidth is defined %}
+ bandwidth {{ i.bandwidth  }}
+{%   endif %}
+!
+{% endfor %}
+do write
+CONFIG
+vtysh -f /tmp/config
+!
+exit 0

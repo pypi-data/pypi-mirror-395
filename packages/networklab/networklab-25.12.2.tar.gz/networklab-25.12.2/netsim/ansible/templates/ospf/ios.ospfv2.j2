@@ -1,0 +1,52 @@
+{% import "templates/routing/_default.ios.j2" as ospf_default %}
+!
+{% macro config(ospf_pid,ospf_vrf,ospf_data,intf_data,bgp={}) %}
+{% import "templates/routing/_redistribute.ios.j2" as redistribute with context %}
+{% if ospf_vrf %}
+router ospf {{ ospf_pid }} vrf {{ ospf_vrf }}
+{% else %}
+router ospf {{ ospf_pid }}
+{% endif %}
+{% if ospf_data.router_id|ipv4 %}
+ router-id {{ ospf_data.router_id }}
+{% endif %}
+{% if ospf_data.reference_bandwidth is defined %}
+ auto-cost reference-bandwidth {{ ospf_data.reference_bandwidth }}
+{% endif %}
+{% for l in intf_data if l.ospf.passive|default(False) %}
+ passive-interface {{ l.ifname }}
+{% endfor %}
+{{ ospf_default.config(ospf_data,'ipv4') }}
+{% if ospf_data.import is defined %}
+{{   redistribute.config(ospf_data,af='ipv4',t_proto='ospf',vrf=ospf_vrf) }}
+{% endif %}
+!
+{% for l in intf_data if 'ospf' in l and ('ipv4' in l or 'ipv4' in l.dhcp.client|default({})) %}
+interface {{ l.ifname }}
+! {{ l.name|default("") }}
+ ip ospf {{ ospf_pid }} area {{ l.ospf.area }}
+{%   if l.ospf.network_type is defined %}
+ ip ospf network {{ l.ospf.network_type }}
+{%   endif %}
+{%   if l.ospf.cost is defined %}
+ ip ospf cost {{ l.ospf.cost }}
+{%   endif %}
+{%   if l.ospf.bfd|default(False) %}
+ ip ospf bfd
+{%   endif %}
+{%   if l.ospf.timers.hello is defined %}
+ ip ospf hello-interval {{ l.ospf.timers.hello }}
+{%   endif %}
+{%   if l.ospf.timers.dead is defined %}
+ ip ospf dead-interval {{ l.ospf.timers.dead }}
+{%   endif %}
+{%   if l.ospf.priority is defined %}
+ ip ospf priority {{ l.ospf.priority }}
+{%   endif %}
+{%   if l.ospf.password is defined %}
+ ip ospf authentication-key {{ l.ospf.password }}
+ ip ospf authentication
+{%   endif %}
+!
+{% endfor %}
+{% endmacro %}

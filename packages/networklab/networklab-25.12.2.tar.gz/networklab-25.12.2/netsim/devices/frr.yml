@@ -1,0 +1,183 @@
+---
+description: FRR container
+interface_name: eth{ifindex}
+mgmt_if: eth0
+loopback_interface_name: lo{ifindex if ifindex else ""}
+tunnel_interface_name: "tun{ifindex}"
+lag_interface_name: "bond{lag.ifindex}"
+role: router
+routing:
+  _rm_per_af: True
+group_vars:
+  ansible_network_os: frr
+  ansible_python_interpreter: auto_silent
+  netlab_initial: always
+  netlab_linux_packages:
+    gnupg: gpg
+    curl: curl
+    iproute2: bridge
+  netlab_frr_daemons:
+    bfd: [ bfdd ]
+    bgp: [ bgpd ]
+    ospf: [ ospfd, ospf6d ]
+    ripv2: [ ripd, ripngd ]
+    isis: [ isisd ]
+    vrf: [ bgpd ]
+    gateway: [ vrrpd ]
+    mpls: [ ldpd ]
+mtu: 1500
+clab:
+  group_vars:
+    ansible_connection: docker
+    ansible_user: root
+    netlab_show_command: [ vtysh, -c, 'show $@' ]
+    netlab_mgmt_vrf: True
+  image: quay.io/frrouting/frr:10.5.0
+  kmods:
+  node:
+    kind: linux
+    config_templates:
+      daemons: /etc/frr/daemons
+      hosts: /etc/hosts:shared
+
+libvirt:
+  image: debian/bookworm64
+  group_vars:
+    ansible_connection: paramiko
+    ansible_user: vagrant
+    ansible_ssh_pass: vagrant
+    ansible_ssh_private_key_file: .vagrant/machines/{{ inventory_hostname }}/libvirt/private_key
+    netlab_show_command: [ sudo, vtysh, -c, 'show $@' ]
+
+virtualbox:
+  image: generic/ubuntu2004
+  group_vars:
+    ansible_connection: paramiko
+    ansible_user: vagrant
+    ansible_ssh_pass: vagrant
+    netlab_show_command: [ sudo, vtysh, -c, 'show $@' ]
+
+external:
+  image: none
+features:
+  initial:
+    ipv4:
+      unnumbered: true
+    ipv6:
+      lla: true
+      use_ra: true
+    ra: true
+    roles: [ host, router, bridge ]
+    generate_mac: [ svi ]
+  bfd: True
+  bgp:
+    activate_af: true
+    ipv6_lla: true
+    rfc8950: true
+    local_as: true
+    local_as_ibgp: true
+    vrf_local_as: true
+    import: [ ospf, ripv2, isis, connected, static, vrf ]
+    community:
+      standard: [ standard, large ]
+      large: [ large ]
+      extended: [ extended ]
+      2octet: [ standard ]
+    confederation: True
+  evpn:
+    irb: true
+    asymmetrical_irb: True
+    multi_rt: True
+  gateway:
+    protocol: [ vrrp, anycast ]
+  isis:
+    circuit_type: true
+    import: [ bgp, ripv2, ospf, connected, static, vrf ]
+    unnumbered:
+      ipv4: true
+      ipv6: true
+      network: true
+  lag:
+    passive: False
+  mpls:
+    ldp: true
+    vpn:
+      ipv4: true
+  ospf:
+    unnumbered: true
+    import: [ bgp, ripv2, isis, connected, static, vrf ]
+    default: true
+    password: true
+    priority: true
+    timers: true
+  ripv2:
+    ipv4: true
+    ipv6: true
+    passive: true
+    import: [ bgp, isis, ospf, connected, static, vrf ]
+  routing:
+    policy:
+      set:
+        locpref: True
+        med: True
+        weight: True
+        prepend: True
+        community:
+          standard: True
+          large: True
+          extended: True
+          append: True
+      match:
+        prefix: True
+        nexthop: True
+        aspath: True
+        community:
+          standard: True
+          large: True
+      delete:
+        community: clist
+    prefix: True
+    aspath: True
+    community:
+      standard: True
+      large: True
+    static:
+      vrf: True
+      inter_vrf: True
+      discard: True
+  sr: true
+  srv6:
+    bgp: false
+    isis: true
+    vpn: true
+  stp:
+    supported_protocols: [ stp ]  # Implementation uses a separate bridge per VLAN
+    enable_per_port: False
+  vlan:
+    mixed_trunk: true
+    model: router
+    native_routed: true
+    subif_name: '{ifname}.{vlan.access_id}'
+    svi_interface_name: vlan{vlan}
+  vrf:
+    keep_module: true
+    ospfv2: True
+    ospfv3: True
+    ripv2: True
+    ripng: True
+    bgp: True
+    isis: True
+  vxlan:
+    vtep6: true
+
+graphite.icon: router
+
+attributes:
+  global:
+    frr:
+      debug: { type: list, split_lines: True }
+      daemons: { type: list, _subtype: str }
+  node:
+    frr:
+      debug: { type: list, split_lines: True }
+      daemons: { type: list, _subtype: str }

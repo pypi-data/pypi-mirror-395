@@ -1,0 +1,55 @@
+{% import "templates/routing/_redistribute.iosxr.j2" as redistribute with context %}
+{% set KW_TYPE = {'level-1': 'level-1','level-1-2': 'level-1-2', 'level-2': 'level-2-only' } %}
+!
+{% macro config(isis,isis_net,interfaces,vrf='',ospf_pid=1) %}
+router isis {{ 'isis_'+vrf if vrf else 'Gandalf' }}
+{% if vrf %}
+ vrf-context {{ vrf }}
+{% endif +%}
+ log adjacency changes
+ lsp-gen-interval initial-wait 50 secondary-wait 100 maximum-wait 500
+{% if isis.type is defined %}
+ is-type {{ KW_TYPE[isis.type] }}
+{% endif %}
+ net {{ isis_net }}
+{% for naf in ['ipv4','ipv6'] if naf in af %}
+!
+ address-family {{ naf }} unicast
+  metric-style wide
+  spf-interval initial-wait 50 secondary-wait 100 maximum-wait 500
+{%   if naf == 'ipv6' %}
+  no single-topology
+{%   endif %}
+{% if isis.import is defined %}
+{{  redistribute.config(isis,af=naf,ospf_pid=ospf_pid,t_proto='isis')|indent(1,first=True) }}
+{% endif %}
+{% endfor %}
+!
+{% for l in interfaces|default([]) if 'isis' in l %}
+!
+ interface {{ l.ifname }}
+{%   if l.isis.passive|default(False) %}
+  passive
+{%   endif %}
+{%   if l.isis.network_type|default('') == 'point-to-point' %}
+  point-to-point
+{%   endif %}
+{%   if l.isis.type|default(False) %}
+  circuit-type {{ l.isis.type }}
+{%   endif %}
+{%   for naf in ['ipv4','ipv6'] if naf in l and naf in isis.af %}
+  address-family {{ naf }}
+{%     if l.isis.cost is defined or l.isis.metric is defined %}
+   metric {{ l.isis.metric|default(l.isis.cost) }}
+{%     endif %}
+{%   endfor %}
+{% endfor %}
+{% endmacro %}
+!
+{% if isis is defined %}
+{{ config(
+      isis=isis,
+      isis_net=isis.net,
+      interfaces=netlab_interfaces,
+      ospf_pid=ospf.process|default(1)) }}
+{% endif %}

@@ -1,0 +1,48 @@
+{#
+  Define a BGP neighbor
+#}
+{% macro neighbor(n,ip,bgp,af) %}
+
+{%   set peer = ip if ip is string else n.local_if|default('?') %}
+
+set protocols bgp neighbor {{ peer }}{{ ' interface' if peer!=n[af] else '' }} remote-as {{ n.as }}
+set protocols bgp neighbor {{ peer }} description '{{ n.name }}'
+ 
+{%   if n.type == 'ibgp' and n._source_intf.ifname is defined %}
+set protocols bgp neighbor {{ peer }} update-source {{ n._source_intf.ifname }}
+{%   endif %}
+
+{%   if n.local_as is defined %}
+set protocols bgp neighbor {{ peer }} local-as {{ n.local_as }} no-prepend replace-as
+{%   endif %}
+{%- endmacro %}
+{#
+   Address family BGP neighbor definition
+#}
+{% macro neighbor_af(n,ip,bgp,af) %}
+
+{%   set peer = ip if ip is string else n.local_if|default('?') %}
+
+set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast soft-reconfiguration inbound
+
+{%   if bgp.next_hop_self is defined and bgp.next_hop_self %}
+set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast nexthop-self
+{%   endif %}
+{%   if bgp.rr|default('') and not n.rr|default('') and n.type == 'ibgp' %}
+  set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast route-reflector-client
+{%   endif %}
+
+{# community handling -> need to configure what NOT TO SEND (set protocols bgp neighbor XXX address-family XXX disable-send-community <extended|standard>) #}
+{%   for ctype in ['standard', 'extended'] %}
+{%     if not ctype in bgp.community[n.type] %}
+set protocols bgp neighbor {{ peer }} address-family {{ af }}-unicast disable-send-community {{ ctype }}
+{%     endif %}
+{%   endfor %}
+
+{%- endmacro -%}
+{#
+   BGP network statement
+#}
+{% macro bgp_network(af,pfx) %}
+set protocols bgp address-family {{ af }}-unicast network {{ pfx|ipaddr('0') }}
+{%- endmacro %}

@@ -1,0 +1,75 @@
+---
+description: Generic Juniper device (meta device, used only as parent)
+_meta_device: True
+template: true
+loopback_interface_name: "lo0.{ifindex}"
+ifindex_offset: 0
+interface_name: ge-0/0/{ifindex}
+lag_interface_name: "ae{lag.ifindex}"
+mgmt_if: fxp0
+group_vars:
+  ansible_user: vagrant
+  ansible_ssh_pass: Vagrant
+  ansible_network_os: junos
+  ansible_connection: netconf
+  netlab_console_connection: ssh
+
+features:
+  initial:
+    ipv4:
+      unnumbered: true
+    ipv6:
+      lla: true
+  bfd: true
+  bgp:
+    activate_af: true
+    local_as: true
+    local_as_ibgp: true
+    vrf_local_as: true
+  gateway:
+    protocol: [ anycast, vrrp ]
+  isis:
+    circuit_type: true
+    unnumbered:
+      ipv4: true
+      ipv6: true
+  mpls:
+    ldp: true
+    vpn: true
+  ospf:
+    unnumbered: true
+  routing:
+    policy:
+      match:
+        prefix: True
+        aspath: True
+        community:
+          standard: True
+          large: True
+      set:
+        locpref: True
+        med: True
+        prepend: True
+        community:
+          standard: True
+          large: True
+          extended: True
+          append: True
+      delete:
+        community: True
+    static:
+      vrf: True
+      discard: True
+    prefix: True
+    aspath: True
+    community:
+      standard: True
+      large: True
+  sr: true
+  vrf:
+    ospfv2: True
+    ospfv3: True
+    bgp: True
+
+external:
+  image: none

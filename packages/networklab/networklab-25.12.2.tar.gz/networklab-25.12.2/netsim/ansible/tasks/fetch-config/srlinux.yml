@@ -1,0 +1,15 @@
+#
+# Fetch SR Linux configuration using JSON RPC
+#
+---
+- name: Backup running configuration
+  vars:
+    ansible_network_os: nokia.srlinux.srlinux
+    ansible_connection: ansible.netcommon.httpapi
+  nokia.srlinux.get:
+    paths:
+    - path: /
+      datastore: running
+  register: get_result
+
+- set_fact: ansible_net_config={{ get_result.result[0] | to_nice_json }}

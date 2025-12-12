@@ -1,0 +1,178 @@
+updates:
+{# Configure EVPN AF on BGP neighbors #}
+- path: configure/router[router-name=Base]
+  val:
+    bgp:
+      rapid-withdrawal: True
+      rapid-update:
+        evpn: True
+{#
+    OK, here's how the following Jinja2 line noise works:
+
+    * Take BGP neighbors, default to empty list just in case * Select all BGP
+      neighbors where 'evpn' attribute is defined indicating we want to run EVPN
+      AF with this neighbor (note: the only value we'll ever see is 'evpn: true')
+    * Select neighbor type (ibgp/ebgp) from neighbors with EVPN AF
+    * We might have multiple neighbors with the same type, so apply the 'unique'
+      filter to the results
+
+    And voila, we have the BGP session types on which we want to run EVPN
+
+    Note we can't use evpn.session -- it's not set for EBGP multihop neighbors
+#}
+{% set evpn_session_types = bgp.neighbors|default([])|selectattr('evpn','defined')|map(attribute='type')|unique %}
+{% if 'ebgp' in evpn_session_types %}
+      inter-as-vpn: true
+{% endif %}
+{% for type in evpn_session_types %}
+{%   if loop.first %}
+      group:
+{%   endif %}
+      - group-name: {{ 'ibgp-ipv4' if type=='ibgp' else 'ebgp' }}
+        def-recv-evpn-encap: {{ evpn.transport|default('vxlan') }}
+{%   if bgp.rr|default(0) or type == 'ebgp' %}
+        next-hop-unchanged:
+          evpn: True
+{%   endif %}
+{% endfor %}
+{#
+    Now enable the EVPN AF on individual neighbors. We can't do it for the EBGP group
+    because that enables EVPN AF on IPv4 and IPv6 EBGP sessions.
+
+    Also, note that the "do we need EVPN here" check is simpler because we don't
+    implement RFC 8950 sessions on SR-OS.
+#}
+{% for n in bgp.neighbors|default([]) if n.evpn|default(False) and n.ipv4|default(False) is string %}
+{%   if loop.first %}
+      neighbor:
+{%   endif %}
+      - ip-address: "{{ n.ipv4 }}"
+        admin-state: enable
+        family:
+          evpn: True
+{% endfor %}
+
+{% macro evpn_instance(vrf,type,vni,evi,rd,rts,is_routed=False) %}
+   bgp:
+   - bgp-instance: 1
+     # route-distinguisher: {{ rd }} # Don't configure this, use auto RD
+     route-target:
+      export: "target:{{ rts.export[0] }}"
+      import: "target:{{ rts.import[0] }}"
+   bgp-evpn:
+    evi: {{ evi }}
+{% if type=='l3' %}
+    routes:
+     ip-prefix:
+      advertise: True # Symmetric IRB using RT5 prefixes
+     mac-ip:
+      advertise: False
+{% endif %}
+{% endmacro %}
+
+{% macro evpn_vprn() %}
+{# Add it to the VPRN, enable evpn-tunnel and configure RT #}
+- path: configure/service/vprn[service-name={{ vname }}]
+  val:
+   interface:
+   - interface-name: l3vni-{{ vname }}
+     vpls:
+     - vpls-name: l3vni-{{ vname }}
+       evpn-tunnel: { }   # Applicable when there are no hosts connected to this backhaul R-VPLS, avoids requiring IP on interface
+   bgp-ipvpn:
+    mpls:
+     admin-state: enable
+     route-distinguisher: {{ vdata.bgp.router_id|default(bgp.router_id) }}:{{ vdata.vrfidx }}
+     vrf-target:
+      export-community: target:{{ vdata.export[0] }}
+      import-community: target:{{ vdata.import[0] }}
+     auto-bind-tunnel:
+      resolution: any
+      ecmp: {{ 1 if 'ixr' in clab.type else 8 }}
+{% endmacro %}
+
+{# Configure EVPN parameters for simple MAC-VRF (VLAN) services #}
+{% if vlans is defined %}
+{%   for vname,vdata in vlans.items() if vdata.evpn.evi is defined %}
+- path: configure/service/vpls[service-name=vlan{{ vdata.id }}]
+  val:
+{%     if vdata.mode|default('irb') == 'irb' %}
+    routed-vpls:
+      vxlan-ipv4-tep-ecmp: True # Enable ECMP for routed VXLAN
+{%     endif %}
+    bgp:
+    - bgp-instance: 1
+      route-distinguisher: "{{ vdata.evpn.rd }}"
+      route-target:
+        export: "target:{{ vdata.evpn.export[0] }}"
+        import: "target:{{ vdata.evpn.import[0] }}"
+    bgp-evpn:
+      evi: {{ vdata.evpn.evi }}
+      routes:
+        mac-ip:
+          advertise: True
+{%     if evpn.transport|default('vxlan') == 'mpls' %}
+    # TODO if evpn.transport == 'mpls'
+      mpls:
+      - bgp-instance: 1
+        admin-state: enable
+        ecmp: {{ 2 if 'ixr' in clab.type else 32 }}
+      # ingress-replication-bum-label: True # TODO, requires reserved label range
+        auto-bind-tunnel:
+          resolution: any
+          ecmp: {{ 2 if 'ixr' in clab.type else 32 }}
+{%     else %}
+      vxlan:
+      - vxlan-instance: 1
+        bgp-instance: 1
+        admin-state: enable
+        ecmp: {{ 1 if 'ixr' in clab.type else 8 }}
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+{# Configure EVPN parameters for IP-VRF services #}
+{% if vrfs is defined %}
+{%   for vname,vdata in vrfs.items() if vdata.evpn.transit_vni is defined %}
+- path: configure/service/vprn[service-name={{ vname }}]
+  val:
+    bgp-evpn:
+{%     if evpn.transport|default('vxlan') == 'mpls' %}
+    # TODO if evpn.transport == 'mpls'
+      mpls:
+      - bgp-instance: 1
+        admin-state: enable
+        ecmp: {{ 2 if 'ixr' in clab.type else 32 }}
+      # ingress-replication-bum-label: True # TODO, requires reserved label range
+        auto-bind-tunnel:
+          resolution: any
+          ecmp: {{ 2 if 'ixr' in clab.type else 32 }}
+{%     else %}
+      vxlan:
+      - vxlan-instance: 1
+        bgp-instance: 1
+        admin-state: enable
+        route-distinguisher: "{{ vdata.rd }}"
+        vrf-target:
+          export-community: "target:{{ vdata.export[0] }}"
+          import-community: "target:{{ vdata.import[0] }}"
+
+    vxlan:
+      instance:
+      - vxlan-instance: 1
+        vni: {{ vdata.evpn.transit_vni }}
+{%     endif %}
+{%     for proto in ['bgp','ospf','isis','ripv2'] if proto in vdata %}
+#
+- path: configure/policy-options/policy-statement[name={{ proto }}_{{ vname }}_export]
+  val:
+    entry:
+    - entry-id: 2000
+      from:
+        protocol:
+          name: [ evpn-ifl ]
+      action:
+        action-type: accept
+{%     endfor %}
+{%   endfor %}
+{% endif %}

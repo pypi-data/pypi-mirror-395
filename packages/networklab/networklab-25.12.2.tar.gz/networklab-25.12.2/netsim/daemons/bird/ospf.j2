@@ -1,0 +1,69 @@
+{% if 'router_id' in ospf %}
+router id {{ ospf.router_id }};
+{% endif %}
+{# build a list of OSPF areas #}
+{% set area_list = [ ospf.area ] %}
+{% for l in interfaces|default([]) if 'ospf' in l and 'area' in l.ospf and l.ospf.area not in area_list %}
+{%   set status = area_list.append(l.ospf.area) %}
+{% endfor %}
+{% set KW_NETWORK_TYPE = { 'broadcast': 'bcast', 'point-to-point': 'ptp','point-to-multipoint': 'ptmp', 'non-broadcast': 'nbma' } %}
+
+{% for af in ['ipv4','ipv6'] if af in ospf.af %}
+{%   set ver = 'v2' if af == 'ipv4' else 'v3' %}
+protocol ospf {{ ver }} ospf_{{ ver }} {
+{%   if ospf.import is defined %}
+  {{ af }} {
+    export filter {
+      if source ~ [ {% for p in ospf.import %}{{ netlab_import_map[p] }}{% if not loop.last %},{% endif %}{% endfor %} ] then {
+        ospf_metric2 = 20;
+        accept;
+      }
+      reject;
+   };
+  };
+{%   endif %}
+{%   for area in area_list %}
+  area {{ area }} {
+    default cost 10;
+{%     if area == ospf.area and af in loopback|default({}) %}
+{%       if af=='ipv4' %}
+    interface "lo" {
+      stub;
+    };
+{%       else %}
+    # RFC 5340, section 4.4.3.9: Loopback should be advertised as /128
+    stubnet {{ loopback.ipv6 | ipaddr('address') }}/128;
+{%       endif %}
+{%     endif %}
+{%     for l in interfaces|default([]) if af in l and 'ospf' in l and 'area' in l.ospf and l.ospf.area == area %}
+    interface "{{ l.ifname }}" {
+{%       if 'network_type' in l.ospf %}
+      type {{ KW_NETWORK_TYPE[l.ospf.network_type] }};
+{%       endif %}
+{%       if l.ospf.passive|default(False) %}
+      stub;
+{%       endif %}
+{%       if 'cost' in l.ospf %}
+      cost {{ l.ospf.cost }};
+{%       endif %}
+{%       if 'timers' in l.ospf %}
+{%         if 'hello' in l.ospf.timers %}
+      hello {{ l.ospf.timers.hello }};
+{%         endif %}
+{%         if 'dead' in l.ospf.timers %}
+      dead {{ l.ospf.timers.dead }};
+{%         endif %}
+{%       endif %}
+{%       if 'priority' in l.ospf %}
+      priority {{ l.ospf.priority }};
+{%       endif %}
+{%       if 'password' in l.ospf %}
+      authentication {{ 'simple' if af=='ipv4' else 'cryptographic' }};
+      password "{{ l.ospf.password }}";
+{%       endif %}
+    };
+{%     endfor %}
+  };
+{%   endfor %}
+}
+{% endfor %}

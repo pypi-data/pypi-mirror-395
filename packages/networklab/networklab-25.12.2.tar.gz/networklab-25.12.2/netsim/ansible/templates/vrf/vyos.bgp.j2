@@ -1,0 +1,39 @@
+{% import "templates/bgp/vyos.macro.j2" as bgpcfg %}
+
+set protocols bgp system-as {{ bgp.as }}
+
+{# set router-id on vrf as well #}
+set protocols bgp parameters router-id {{ vdata.bgp.router_id|default(bgp.router_id) }}
+
+{% for af in ['ipv4','ipv6'] if af in vdata.af|default({}) %}
+set protocols bgp address-family {{ af }}-unicast rd vpn export {{ vdata.rd }}
+set protocols bgp address-family {{ af }}-unicast route-target vpn import "{{ vdata.import|join(' ') }}"
+set protocols bgp address-family {{ af }}-unicast route-target vpn export "{{ vdata.export|join(' ') }}"
+set protocols bgp address-family {{ af }}-unicast import vpn
+set protocols bgp address-family {{ af }}-unicast export vpn
+set protocols bgp address-family {{ af }}-unicast label vpn export auto
+{% endfor %}
+
+
+{% for af in ['ipv4','ipv6'] if af in vdata.af|default({}) %}
+
+{% if vdata.bgp.import is defined %}
+{%   for s_proto,s_data in vdata.bgp.import.items() %}
+set protocols bgp address-family {{ af }}-unicast redistribute {{ s_proto }}{%
+    if s_proto == 'ospf' and af == 'ipv6' %}v3{% endif %}{%
+    if 'policy' in s_data %} route-map {{ s_data.policy }}-{{ af }}{% endif +%}
+{%   endfor %}
+{% endif %}
+
+# Define networks for VRF Loopback
+{%   for n in vdata.networks|default([]) if af in n %}
+{{     bgpcfg.bgp_network(af,n[af]) }}
+{%   endfor %}
+{% endfor %}
+
+{% for n in vdata.bgp.neighbors|default([]) %}
+{%   for af in ['ipv4','ipv6'] if n[af] is defined %}
+{{     bgpcfg.neighbor(n,n[af],bgp,af) }}
+{{     bgpcfg.neighbor_af(n,n[af],bgp,af) }}
+{%   endfor %}
+{% endfor %}

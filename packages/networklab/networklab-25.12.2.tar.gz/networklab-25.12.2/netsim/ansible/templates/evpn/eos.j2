@@ -1,0 +1,59 @@
+!
+router bgp {{ bgp.as }}
+ address-family evpn
+{% if evpn.transport|default('vxlan') == 'mpls' %}
+  neighbor default encapsulation mpls next-hop-self source-interface Loopback0
+{% endif %}
+!
+{% for n in bgp.neighbors if n.ipv4 is defined and n.evpn|default(False) %}
+{%   set peer = 'ebgp_intf_' + n.local_if if n.local_if is defined else n.ipv4 %}
+  neighbor {{ peer }} activate
+{% endfor %}
+{% if vlans is defined %}
+{%   for v in vlans.values() if v.evpn.evi is defined and v.evpn.bundle is not defined %}
+!
+ vlan {{ v.id }}
+  rd {{ v.evpn.rd }}
+{%     for irt in v.evpn.import|default([]) %}
+  route-target import {{ irt }}
+{%     endfor %}
+{%     for ert in v.evpn.export|default([]) %}
+  route-target export {{ ert }}
+{%     endfor %}
+  redistribute learned
+{%   endfor %}
+{% endif %}
+{% if vrfs is defined %}
+{%   for n,v in vrfs.items() if v.evpn.vlans is defined %}
+!
+ vlan-aware-bundle {{ n }}
+  rd {{ v.rd }}
+  route-target import {{ v.import|join(' ') }}
+  route-target export {{ v.export|join(' ') }}
+  redistribute learned
+  vlan {{ v.evpn.vlan_ids|join(',') }}
+{%   endfor %}
+{% endif %}
+{% if vrfs is defined %}
+{%   for n,v in vrfs.items() if v.af is defined %}
+!
+ vrf {{ n }}
+  rd {{ v.rd }}
+{%     for irt in v.import|default([]) %}
+  route-target import evpn {{ irt }}
+{%     endfor %}
+{%     for ert in v.export|default([]) %}
+  route-target export evpn {{ ert }}
+{%     endfor %}
+  redistribute connected
+{%   endfor %}
+{% endif %}
+{% if vrfs is defined %}
+{%   for n,v in vrfs.items() if v.evpn.transit_vni is defined %}
+{%     if loop.first %}
+!
+interface vxlan 1
+{%     endif %}
+ vxlan vrf {{ n }} vni {{ v.evpn.transit_vni }}
+{%   endfor %}
+{% endif %}

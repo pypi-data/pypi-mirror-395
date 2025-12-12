@@ -1,0 +1,13 @@
+{% for vname,vdata in vrfs.items() %}
+vrf instance {{ vname }}
+ rd {{ vdata.rd }}
+!
+{% if 'ipv4' in vdata.af|default({}) and role != 'host' %}
+ip routing vrf {{ vname }}
+!
+{% endif %}
+{% if 'ipv6' in vdata.af|default({}) and role != 'host' %}
+ipv6 unicast-routing vrf {{ vname }}
+!
+{% endif %}
+{% endfor %}

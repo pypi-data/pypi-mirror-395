@@ -1,0 +1,30 @@
+---
+description: IOSv L2 image
+parent: iol
+lag_interface_name: "Port-channel{lag.ifindex}"
+
+features:
+  initial:
+    generate_mac: [ ethernet, svi ]
+  vlan:
+    model: l3-switch
+    svi_interface_name: Vlan{vlan}
+    native_routed: True
+    mixed_trunk: False
+    subif_name: "{ifname}.{subif_index}"
+  stp:
+    supported_protocols: [ stp, rstp, mstp, pvrst ]
+    enable_per_port: True
+    port_type: True
+  lag:
+    mlag: False
+    passive: True
+clab:
+  group_vars:
+    netlab_device_type: ioll2
+  build: https://containerlab.dev/manual/kinds/cisco_iol/
+  image: vrnetlab/cisco_iol:L2-17.12.01
+  mtu: 1500
+  node:
+    kind: cisco_iol
+    type: l2

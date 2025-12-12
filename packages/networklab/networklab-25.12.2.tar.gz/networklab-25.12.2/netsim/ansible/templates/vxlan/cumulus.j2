@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# Exit immediately when any command fails
+set -e 
+#
+{%- macro create_vxlan_interface(vlan,vrf=None) %}
+#
+auto vni-{{ vlan.vni }}
+iface vni-{{ vlan.vni }}
+    bridge-access {{ vlan.id }}
+    vxlan-id {{ vlan.vni }}
+{% if vxlan.flooding|default("") == "evpn" %}
+    vxlan-learning no
+{% else %}
+    vxlan-learning yes
+{% endif %}
+    mstpctl-bpduguard yes
+    mstpctl-portbpdufilter yes
+{% endmacro -%}
+#
+# Create VXLAN interfaces with static flood lists
+#
+cat >/etc/network/interfaces.d/60-vxlan.intf <<CONFIG
+{% if vxlan.vlans is defined %}
+iface lo inet loopback
+    vxlan-local-tunnelip {{ vxlan.vtep }}
+#
+{%   for vname in vxlan.vlans if vlans[vname].vni is defined %}
+{%     set vlan = vlans[vname] %}
+{{ create_vxlan_interface(vlan,None) }}
+{%     if vlan.vtep_list is defined %}
+{%       for remote_vtep in vlan.vtep_list %}
+    vxlan-remoteip {{ remote_vtep }}
+{%       endfor %}
+{%     endif %}
+{%   endfor %}
+#
+iface bridge
+{%   for vname in vxlan.vlans if vlans[vname].vni is defined %}
+    bridge-ports vni-{{ vlans[vname].vni }}
+{%   endfor %}
+{% endif %}
+CONFIG
+ifreload -a

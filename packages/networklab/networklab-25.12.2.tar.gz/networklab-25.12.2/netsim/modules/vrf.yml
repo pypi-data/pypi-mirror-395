@@ -1,0 +1,53 @@
+# VRF default settings and attributes
+#
+---
+config_after: [ vlan, ospf, isis, bgp, mpls ]
+transform_after: [ vlan, bgp ]
+as: 65000
+attributes:
+  global:
+    as: asn
+    loopback: bool
+  node:
+    as:
+    loopback: bool
+  link: id
+  interface: id
+  # Reserved VRF names
+  reserved: [ default, system, global, base, mgmt, management, mgmt_junos ]
+
+warnings:
+  inactive: True
+_top:                               # Modification of global defaults
+  attributes:
+    vrf:                            # Define the VRF object type
+      _description: Global or node-level VRF definition
+      rd: rd
+      import: list
+      export: list
+      id: { type: int, min_value: 1 }
+      links: list
+      loopback:
+        type: dict                  # Further validation will be done in the VRF module
+        _alt_types: [ bool, prefix_str, NoneType ]
+      _namespace: [ link ]          # VRFs can include link attributes
+    global:
+      vrfs:                         # vrfs is a valid global parameter
+        type: dict                  # It's a dictionary
+        _subtype: vrf               # ... of VRF definitions
+        _keytype: id                # ... where the VRF names must be valid identifiers
+        _requires: [ vrf ]          # ... that requires VRF module
+    node:
+      vrfs:                         # Repeat the definition for node vrfs
+        type: dict
+        _subtype: vrf
+        _keytype: id
+        _requires: [ vrf ]
+
+features:
+  ospfv2: VRF-aware OSPFv2
+  ospfv3: VRF-aware OSPFv3
+  ripv2: VRF-aware RIPv2
+  ripng: VRF-aware RIPng
+  isis: VRF-aware IS-IS
+  bgp: BGP neighbors in VRF BGP instances

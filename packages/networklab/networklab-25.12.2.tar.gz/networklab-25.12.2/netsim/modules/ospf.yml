@@ -1,0 +1,97 @@
+# OSPFv2/OSPFv3 default settings and attributes
+#
+---
+area: 0.0.0.0
+transform_after: [ vlan, vrf ]
+config_after: [ vlan, dhcp, routing ]
+attributes:
+  global:
+    af:
+      _list_to_dict: True
+      _alt_types: [ NoneType ]
+      ipv4: bool
+      ipv6: bool
+    area: { type: ipv4, use: id }
+    bfd:
+      ipv4: bool
+      ipv6: bool
+      strict: bool                                                # Support RFC9355
+      strict_delay: { type: int, min_value: 0, max_value: 600 }   # optional delay in seconds
+      _alt_types: [ bool ]
+    passive: bool
+    password: str
+    process: { type: int, min_value: 1 }
+    reference_bandwidth: { type: int, min_value: 1 }
+    timers:
+      hello: { type: int, min_value: 1, max_value: 8192 }
+      dead: { type: int, min_value: 3, max_value: 8192 }
+
+  node:
+    af:
+    area:
+    bfd:
+    default:
+      _alt_types: [ bool ]
+      type: dict
+      _keys:                                                      # Use 'keys' to make 'type' a valid attribute
+        always: bool
+        policy: id
+        cost: int
+        type: { type: str, valid_values: [ e1, e2 ] }
+    digest: { type: dict }
+    import: _r_import
+    passive:
+    password: { copy: global }
+    priority: { type: int, min_value: 0, max_value: 255 }
+    process:
+    reference_bandwidth:
+    router_id: { type: ipv4, use: id }
+    timers: { copy: global }
+
+  node_copy: [ area, passive, digest, password, priority, timers ]
+
+  vrf_aware: [ area ]
+  vrf_copy: [ area, router_id, reference_bandwidth ]
+  vrf:
+    active: bool
+    af: { copy: global }
+    area: { copy: global }
+    import: _r_import
+    default: { copy: node }
+    digest: { copy: node }
+    passive: bool
+    password: { copy: global }
+    router_id: { copy: node }
+    timers: { copy: global }
+
+  link:
+    area: { copy: global }
+    bfd: bool
+    cost: { type: int, min_value: 1, max_value: 65534 }
+    digest: { copy: node }
+    network_type: { type: str, valid_values: [ point-to-point, point-to-multipoint, broadcast, non-broadcast ] }
+    passive: bool
+    password: { copy: global }
+    timers: { copy: global }
+
+  intf_to_neighbor: False
+  intf_optional: [ timers, priority, password, digest ]
+  interface:
+    priority: { copy: node }
+
+  loopback:
+    area: { copy: global }
+    cost: { copy: link }
+
+features:
+  default: Originate external default route
+  digest: MD5 authentication
+  import: Import routes from other routing protocols
+  password: Cleartext authentication
+  priority: Router priority
+  strict_bfd: Supports strict BFD mode (RFC 9355)
+  timers: Supports OSPF interface timers
+  unnumbered: Can run OSPFv2 over unnumbered IPv4 interfaces
+
+warnings:
+  inactive: True

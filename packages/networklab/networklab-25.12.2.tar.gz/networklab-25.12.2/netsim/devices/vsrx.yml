@@ -1,0 +1,49 @@
+---
+description: Juniper vSRX 3.0
+support:
+  level: best-effort
+  caveats:
+  - vSRX gets all new Junos features, but we don't test them on vSRX
+parent: junos
+group_vars:
+  netlab_device_type: vsrx
+
+features:
+  gateway:
+    protocol: [ vrrp ]
+  lag:
+    passive: True
+  vlan:
+    model: router
+    subif_name: "{ifname}.{vlan.access_id}"
+    mixed_trunk: false
+    native_routed: true
+
+virtualbox:
+  image: juniper/vsrx3
+libvirt:
+  image: juniper/vsrx3
+  build: https://netlab.tools/labs/vsrx/
+  create_iso: vsrx
+  create:
+    virt-install --connect=qemu:///system --name=vm_box --os-variant=freebsd10.0
+      --arch=x86_64 --cpu host --vcpus=2 --hvm
+      --ram=4096 --disk path=vm.qcow2,bus=ide,format=qcow2
+      --disk path=bootstrap.iso,device=cdrom,bus=ide
+      --boot hd --network=network:vagrant-libvirt,model=virtio
+      --graphics none --import
+clab:
+  image: vrnetlab/juniper_vsrx:21.3R1.9
+  build: https://containerlab.dev/manual/kinds/vr-vsrx/
+  node:
+    kind: vr-vsrx
+  interface:
+    name: eth{ifindex+1}
+  group_vars:
+    ansible_user: admin
+    ansible_ssh_pass: "admin@123"
+    netlab_check_retries: 60
+    netlab_check_delay: 10
+    netlab_ready: [ ssh ]
+
+graphite.icon: firewall
