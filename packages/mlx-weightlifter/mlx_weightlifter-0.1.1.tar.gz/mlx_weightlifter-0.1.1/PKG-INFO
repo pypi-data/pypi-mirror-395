@@ -1,0 +1,204 @@
+Metadata-Version: 2.4
+Name: mlx-weightlifter
+Version: 0.1.1
+Summary: Lift any checkpoint into MLX - PyTorch, Safetensors, GGUF
+Author: Sydney Renee
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/MLXPorts/mlx-weightlifter
+Project-URL: Repository, https://github.com/MLXPorts/mlx-weightlifter
+Project-URL: Issues, https://github.com/MLXPorts/mlx-weightlifter/issues
+Keywords: mlx,apple,silicon,weights,checkpoints,gguf,safetensors,pytorch,weightlifter
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: mlx>=0.10.0
+Provides-Extra: mlx-lm
+Requires-Dist: mlx-lm>=0.10.0; extra == "mlx-lm"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Dynamic: license-file
+
+# mlx-weightlifter
+
+<p align="center">
+  <strong>Lift any checkpoint into MLX</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/MLXPorts/mlx-weightlifter/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
+  <a href="https://github.com/ml-explore/mlx"><img src="https://img.shields.io/badge/MLX-0.10+-orange.svg" alt="MLX"></a>
+</p>
+
+---
+
+Universal weight loading library for MLX. Load checkpoints from any format directly into your `nn.Module` without framework dependencies.
+
+## Supported Formats
+
+| Format | Extensions | Features |
+|--------|-----------|----------|
+| **GGUF** | `.gguf` | Auto architecture detection, MoE expansion, built-in tokenizer |
+| **Safetensors** | `.safetensors` | HuggingFace shard support, index files |
+| **PyTorch** | `.pt`, `.bin`, `.jit` | Custom unpickler (no torch import), auto-cache to safetensors |
+
+## Installation
+
+```bash
+pip install mlx-weightlifter
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/MLXPorts/mlx-weightlifter.git
+cd mlx-weightlifter
+pip install -e .
+```
+
+## Quick Start
+
+### Load a GGUF Model
+
+```python
+from mlx_weightlifter import load_gguf_with_mlx
+
+# Auto-detects architecture (qwen3moe, qwen3, gemma3, llama)
+model, tokenizer = load_gguf_with_mlx("model.gguf")
+
+# Use it
+tokens = tokenizer.encode("Hello, world!")
+```
+
+### Load Weights into nn.Module
+
+```python
+from mlx_weightlifter import load_weights_from_safetensors
+import mlx.nn as nn
+
+class MyModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers = [nn.Linear(512, 512) for _ in range(12)]
+
+model = MyModel()
+
+# Load with automatic key mapping and dtype conversion
+load_weights_from_safetensors(
+    model,
+    "checkpoint_dir",
+    target_dtype=mx.bfloat16,
+    strip_prefix="model."
+)
+```
+
+### Load PyTorch Checkpoints (No Torch Required)
+
+```python
+from mlx_weightlifter import load_pytorch_bin
+
+# Loads .pt/.bin files without importing torch
+weights = load_pytorch_bin("pytorch_model.bin")
+
+# Auto-caches to safetensors for faster subsequent loads
+```
+
+## Features
+
+### GGUF Loading
+
+- **Architecture Detection**: Automatically identifies model architecture from metadata
+- **Weight Mapping**: Translates GGUF tensor names to mlx-lm conventions
+- **MoE Expansion**: Expands consolidated expert weights to per-expert tensors
+- **Tokenizer Extraction**: Builds BPE tokenizer directly from GGUF metadata
+
+Supported architectures:
+- `qwen3moe` - Qwen3 Mixture of Experts
+- `qwen3` - Qwen3 dense models
+- `gemma3` - Gemma 3 models
+- `llama` - LLaMA-style models
+
+### nn.Module Weight Loading
+
+```python
+from mlx_weightlifter import load_weights_from_dict, get_parameter_dict
+
+# Extract parameters as flat dict
+params = get_parameter_dict(model)
+# {'layers.0.weight': array(...), 'layers.0.bias': array(...), ...}
+
+# Load with custom key mapping
+def hf_to_local(key):
+    return key.replace("transformer.h.", "layers.")
+
+load_weights_from_dict(
+    model,
+    weights,
+    key_mapper=hf_to_local,
+    target_dtype=mx.bfloat16,
+    strict=False  # Allow partial loading
+)
+```
+
+### Config Inference
+
+```python
+from mlx_weightlifter import infer_config_from_checkpoint, infer_config_from_safetensors
+
+# Infer model dimensions from weight shapes
+config = infer_config_from_safetensors("model_dir")
+print(config)
+# {'hidden_size': 4096, 'num_layers': 32, 'num_heads': 32, ...}
+```
+
+## API Reference
+
+### Format Loaders
+
+| Function | Description |
+|----------|-------------|
+| `load_gguf_with_mlx(path)` | Load GGUF model + tokenizer |
+| `load_pytorch_bin(path)` | Load PyTorch .pt/.bin file |
+| `load_jit(path)` | Load TorchScript .jit file |
+| `load_safetensors_weights(path)` | Load single safetensors file |
+
+### nn.Module Loading
+
+| Function | Description |
+|----------|-------------|
+| `load_weights_from_safetensors(module, dir)` | Load from HF checkpoint directory |
+| `load_weights_from_dict(module, weights)` | Load from in-memory dict |
+| `get_parameter_dict(module)` | Extract flat parameter dict |
+| `set_parameter(module, path, value)` | Set single parameter by path |
+
+### Utilities
+
+| Function | Description |
+|----------|-------------|
+| `resolve_dtype(name)` | Convert dtype string to `mx.Dtype` |
+| `load_config(path)` | Load JSON config file |
+| `compute_derived_dims(config)` | Compute derived dimensions |
+
+## Requirements
+
+- Python 3.10+
+- MLX 0.10+
+- mlx-lm (optional, for GGUF model classes)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions welcome! Please open an issue or PR on GitHub.
