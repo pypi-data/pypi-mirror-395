@@ -1,0 +1,74 @@
+[build-system]
+requires = ['hatchling', "hatch-fancy-pypi-readme", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yieldplotlib"
+authors = [
+  { name = "Corey Spohn", email = "corey.a.spohn@nasa.gov" },
+  { name = "Sarah Steiger", email = "ssteiger@stsci.edu" },
+]
+description = "A Python pipeline to generate plots for exoplanet yield simulations."
+dependencies = [
+  "matplotlib",
+  "astropy",
+  "colorspacious",
+  "synphot",
+  "EXOSIMS",
+  "tqdm",
+  "yippy",
+  "pyparsing>=3.1.4",
+  "lod-unit>=1.6.0",
+  "docopt",
+  "pooch",
+  "mplcyberpunk",
+]
+license = { file = "LICENSE" }
+dynamic = ['readme', 'version']
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+[project.urls]
+Homepage = "https://github.com/HWO-Yield-Visualizations/yieldplotlib"
+Issues = "https://github.com/HWO-Yield-Visualizations/yieldplotlib/issues"
+
+[project.scripts]
+ypl_run = "yieldplotlib.ypl_cli:main"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/yieldplotlib/_version.py"
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[project.optional-dependencies]
+docs = [
+  "sphinx",
+  "myst-nb",
+  "sphinx-book-theme",
+  "sphinx-autoapi",
+  "sphinx_autodoc_typehints",
+  "matplotlib",
+  "itables",
+]
+test = ["nox", "pytest", "pytest-cov"]
+
+[tool.ruff]
+exclude = ["src/yieldplotlib/key_map.py"]
+
+[tool.ruff.lint]
+select = ["D", "E", "F", "I"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
