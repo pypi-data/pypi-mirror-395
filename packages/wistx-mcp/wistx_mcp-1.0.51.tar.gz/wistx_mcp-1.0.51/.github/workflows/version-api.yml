@@ -1,0 +1,160 @@
+name: Version API
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      skip_tag:
+        description: 'Skip creating git tag'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  version:
+    name: Bump API Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(python scripts/bump_version.py --get-current)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📋 Current version: $CURRENT_VERSION"
+
+      - name: Get current API version
+        id: current_api_version
+        run: |
+          API_VERSION=$(python scripts/bump_version.py --get-api-version 2>/dev/null || echo "")
+          if [ -z "$API_VERSION" ]; then
+            API_VERSION="${{ steps.current_version.outputs.current }}"
+          fi
+          echo "current=$API_VERSION" >> $GITHUB_OUTPUT
+          echo "📋 Current API version: $API_VERSION"
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          python scripts/bump_version.py ${{ github.event.inputs.version_type }}
+          NEW_VERSION=$(python scripts/bump_version.py --get-current)
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "🚀 New version: $NEW_VERSION"
+
+      - name: Verify version updates
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new }}"
+          PYPROJECT_VERSION=$(python scripts/bump_version.py --get-current)
+          API_VERSION=$(python scripts/bump_version.py --get-api-version 2>/dev/null || echo "")
+          
+          echo "Verifying version consistency..."
+          echo "pyproject.toml version: $PYPROJECT_VERSION"
+          echo "api/config.py version: $API_VERSION"
+          echo "Expected version: $NEW_VERSION"
+          
+          if [ "$PYPROJECT_VERSION" != "$NEW_VERSION" ]; then
+            echo "❌ Version mismatch in pyproject.toml"
+            exit 1
+          fi
+          
+          if [ -n "$API_VERSION" ] && [ "$API_VERSION" != "$NEW_VERSION" ]; then
+            echo "❌ Version mismatch in api/config.py"
+            exit 1
+          fi
+          
+          echo "✅ Version consistency verified"
+
+      - name: Create git tag
+        if: github.event.inputs.skip_tag == false
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new }}"
+          TAG="api-v${NEW_VERSION}"
+          echo "🏷️ Creating git tag: $TAG"
+          git tag -a "$TAG" -m "API Release $TAG"
+          git push origin "$TAG"
+          echo "✅ Tag created and pushed"
+
+      - name: Commit version bump
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new }}"
+          git add pyproject.toml api/config.py
+          git commit -m "chore(api): bump version to $NEW_VERSION" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }} || echo "Push failed or no changes"
+
+      - name: Create GitHub Release
+        if: github.event.inputs.skip_tag == false
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: api-v${{ steps.bump_version.outputs.new }}
+          release_name: API Release api-v${{ steps.bump_version.outputs.new }}
+          body: |
+            ## API Release api-v${{ steps.bump_version.outputs.new }}
+            
+            **Version Type:** ${{ github.event.inputs.version_type }}
+            
+            ### Changes
+            - Automated API version bump via GitHub Actions
+            - Updated `pyproject.toml` version: `${{ steps.bump_version.outputs.new }}`
+            - Updated `api/config.py` version: `${{ steps.bump_version.outputs.new }}`
+            
+            ### API Version Information
+            - **Current API Version:** `${{ steps.bump_version.outputs.new }}`
+            - **API Endpoint:** `/v1/versioning/api-versions`
+            - **Health Check:** `/health` (includes version info)
+          draft: false
+          prerelease: false
+
+      - name: Summary
+        run: |
+          echo "## 🚀 API Versioning Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version Type:** ${{ github.event.inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Previous Version:** ${{ steps.current_version.outputs.current }}" >> $GITHUB_STEP_SUMMARY
+          echo "**New Version:** ${{ steps.bump_version.outputs.new }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Updated Files" >> $GITHUB_STEP_SUMMARY
+          echo "- \`pyproject.toml\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`api/config.py\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.skip_tag }}" == "true" ]; then
+            echo "**Status:** ✅ Version bumped (tag skipped)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** ✅ Version bumped and tagged as \`api-v${{ steps.bump_version.outputs.new }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.ref_name }}" == "main" ] || [ "${{ github.ref_name }}" == "develop" ]; then
+            echo "**Deployment:** 🚀 Will be triggered automatically by \`build-deploy.yml\` workflow after this workflow completes successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Deployment:** ⚠️ Not triggered (workflow not on \`main\` or \`develop\` branch)" >> $GITHUB_STEP_SUMMARY
+          fi
+
