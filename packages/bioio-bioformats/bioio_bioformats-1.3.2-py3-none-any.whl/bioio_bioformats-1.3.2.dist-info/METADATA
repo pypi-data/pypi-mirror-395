@@ -1,0 +1,102 @@
+Metadata-Version: 2.4
+Name: bioio-bioformats
+Version: 1.3.2
+Summary: A BioIO reader for reading bioformats formatted images.
+Author-email: bioio-devs <brian.whitney@alleninstitute.org>
+License: MIT License
+Project-URL: Homepage, https://github.com/bioio-devs/bioio-bioformats
+Project-URL: Bug Tracker, https://github.com/bioio-devs/bioio-bioformats/issues
+Project-URL: Documentation, https://bioio-devs.github.io/bioio-bioformats
+Project-URL: User Support, https://github.com/bioio-devs/bioio-bioformats/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: bioio-base>=0.3.0
+Requires-Dist: dask[array]>=2021.4.1
+Requires-Dist: fsspec>=2022.8.0
+Requires-Dist: numpy>=1.21
+Requires-Dist: ome-types>=0.3.4
+Requires-Dist: resource-backed-dask-array>=0.1.0
+Requires-Dist: scyjava
+Provides-Extra: lint
+Requires-Dist: pre-commit>=2.20.0; extra == "lint"
+Provides-Extra: test
+Requires-Dist: coverage>=5.1; extra == "test"
+Requires-Dist: pytest>=5.4.3; extra == "test"
+Requires-Dist: pytest-cov>=2.9.0; extra == "test"
+Requires-Dist: pytest-raises>=0.11; extra == "test"
+Requires-Dist: types-PyYAML>=6.0.12.9; extra == "test"
+Dynamic: license-file
+
+# bioio-bioformats
+
+[![Build Status](https://github.com/bioio-devs/bioio-bioformats/actions/workflows/ci.yml/badge.svg)](https://github.com/bioio-devs/bioio-bioformats/actions)
+[![PyPI version](https://badge.fury.io/py/bioio-bioformats.svg)](https://badge.fury.io/py/bioio-bioformats)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
+
+A BioIO reader plugin for reading [many file formats like as seen here](https://docs.openmicroscopy.org/bio-formats/5.8.2/supported-formats.html) using `bioformats`
+
+---
+
+
+## Documentation
+
+[See the full documentation on our GitHub pages site](https://bioio-devs.github.io/bioio/OVERVIEW.html) - the generic use and installation instructions there will work for this package.
+
+Information about the base reader this package relies on can be found in the `bioio-base` repository [here](https://github.com/bioio-devs/bioio-base)
+
+## Installation
+
+**Stable Release:** `pip install bioio-bioformats`<br>
+**Development Head:** `pip install git+https://github.com/bioio-devs/bioio-bioformats.git`
+
+## Special Installation Instructions
+
+**This package utilizes bioformats which depends on java**
+
+To install java and maven with conda, run:
+
+`conda install -c conda-forge scyjava`
+
+You may need to deactivate/reactivate your environment after installing. If you are *still* getting a `JVMNotFoundException`, try setting `JAVA_HOME` as follows:
+
+#### Mac / Linux
+`export JAVA_HOME=$CONDA_PREFIX`
+
+#### Windows
+`set JAVA_HOME=%CONDA_PREFIX%\\Library`
+
+## Example Usage (see full documentation for more examples)
+
+Install bioio-bioformats alongside bioio:
+
+`pip install bioio bioio-bioformats`
+
+
+This example shows a simple use case for just accessing the pixel data of the image
+by explicitly passing this `Reader` into the `BioImage`. Passing the `Reader` into
+the `BioImage` instance is optional as `bioio` will automatically detect installed
+plug-ins and auto-select the most recently installed plug-in that supports the file
+passed in.
+```python
+from bioio import BioImage
+import bioio_bioformats
+
+img = BioImage("my_file.tiff", reader=bioio_bioformats.Reader)
+img.data
+```
+
+## Issues
+[_Click here to view all open issues in bioio-devs organization at once_](https://github.com/search?q=user%3Abioio-devs+is%3Aissue+is%3Aopen&type=issues&ref=advsearch) or check this repository's issue tab.
+
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information related to developing the code.
