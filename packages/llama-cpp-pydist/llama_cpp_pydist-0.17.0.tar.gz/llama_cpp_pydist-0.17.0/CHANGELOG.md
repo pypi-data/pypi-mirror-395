@@ -1,0 +1,1201 @@
+# Changelog
+
+## 2025-12-05: Update to llama.cpp b7278
+
+- b7218 (b7218) – 2025-12-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b7218
+- b7219 (b7219) – 2025-12-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b7219
+- b7220 (b7220) – 2025-12-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b7220
+- b7222 (b7222) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7222
+- b7223 (b7223) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7223
+- b7224 (b7224) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7224
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7224/llama-b7224-bin-910b-openEuler-aarch64.tar.gz)
+- b7225 (b7225) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7225
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7225/llama-b7225-bin-910b-openEuler-aarch64.tar.gz)
+- b7227 (b7227) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7227
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7227/llama-b7227-bin-910b-openEuler-aarch64.tar.gz)
+- b7229 (b7229) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7229
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7229/llama-b7229-bin-910b-openEuler-aarch64.tar.gz)
+  - Revert "rm unused fn"
+  - server: explicitly set exec path when create new instance
+  - put back TODO
+  - only call get_server_exec_path() once
+  - add fallback logic
+- b7230 (b7230) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7230
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7230/llama-b7230-bin-910b-openEuler-aarch64.tar.gz)
+- b7231 (b7231) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7231
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7231/llama-b7231-bin-910b-openEuler-aarch64.tar.gz)
+  - server: remove default "gpt-3.5-turbo" model name
+  - do not reflect back model name from request
+  - fix test
+- b7233 (b7233) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7233
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7233/llama-b7233-bin-910b-openEuler-aarch64.tar.gz)
+- b7235 (b7235) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7235
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7235/llama-b7235-bin-910b-openEuler-aarch64.tar.gz)
+- b7236 (b7236) – 2025-12-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b7236
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7236/llama-b7236-bin-910b-openEuler-aarch64.tar.gz)
+- b7237 (b7237) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7237
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7237/llama-b7237-bin-910b-openEuler-aarch64.tar.gz)
+- b7239 (b7239) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7239
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7239/llama-b7239-bin-910b-openEuler-aarch64.tar.gz)
+- b7240 (b7240) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7240
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7240/llama-b7240-bin-910b-openEuler-aarch64.tar.gz)
+  - Compute row size for the temp buffer based on the output of the first pass.
+  - Update shader addressing math to use the output row size
+  - Pass the output row size as "ncols_output", what used to be "ncols_output" is now "k"
+- b7243 (b7243) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7243
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7243/llama-b7243-bin-910b-openEuler-aarch64.tar.gz)
+  - server: add --media-path for local media files
+  - remove unused fn
+- b7245 (b7245) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7245
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7245/llama-b7245-bin-910b-openEuler-aarch64.tar.gz)
+- b7247 (b7247) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7247
+  - Faster tensors (#8)
+  - Use map for shader replacements instead of pair of strings
+  - Wasm (#9)
+  - webgpu : fix build on emscripten
+  - more debugging stuff
+  - test-backend-ops: force single thread on wasm
+  - fix single-thread case for init_tensor_uniform
+  - use jspi
+  - add pthread
+  - test: remember to set n_thread for cpu backend
+  - Add buffer label and enable dawn-specific toggles to turn off some checks
+  - Intermediate state
+  - Fast working f16/f32 vec4
+  - Working float fast mul mat
+  - Clean up naming of mul_mat to match logical model, start work on q mul_mat
+  - Setup for subgroup matrix mat mul
+  - Basic working subgroup matrix
+  - Working subgroup matrix tiling
+  - Handle weirder sg matrix sizes (but still % sg matrix size)
+  - Working start to gemv
+  - working f16 accumulation with shared memory staging
+  - Print out available subgroup matrix configurations
+  - Vectorize dst stores for sg matrix shader
+  - Gemv working scalar
+  - Minor set_rows optimization (#4)
+  - updated optimization, fixed errors
+  - non vectorized version now dispatches one thread per element
+  - Simplify
+  - Change logic for set_rows pipelines
+  - Comment on dawn toggles
+  - Working subgroup matrix code for (semi)generic sizes
+  - Remove some comments
+  - Cleanup code
+  - Update dawn version and move to portable subgroup size
+  - Try to fix new dawn release
+  - Update subgroup size comment
+  - Only check for subgroup matrix configs if they are supported
+  - Add toggles for subgroup matrix/f16 support on nvidia+vulkan
+  - Make row/col naming consistent
+  - Refactor shared memory loading
+  - Move sg matrix stores to correct file
+  - Working q4_0
+  - Formatting
+  - Work with emscripten builds
+  - Fix test-backend-ops emscripten for f16/quantized types
+  - Use emscripten memory64 to support get_memory
+  - Add build flags and try ci
+  - Remove extra whitespace
+  - Move wasm single-thread logic out of test-backend-ops for cpu backend
+  - Disable multiple threads for emscripten single-thread builds in ggml_graph_plan
+- b7248 (b7248) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7248
+  - llama-server: fix duplicate HTTP headers in multiple models mode (#17693)
+  - llama-server: address review feedback from ngxson
+  - restrict scope of header after std::move
+  - simplify header check (remove unordered_set)
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-win-hip-radeon-x64.zip)
+  - [openEuler x86 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-310p-openEuler-x86.tar.gz)
+  - [openEuler x86 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-910b-openEuler-x86.tar.gz)
+  - [openEuler aarch64 (310p)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-310p-openEuler-aarch64.tar.gz)
+  - [openEuler aarch64 (910b)](https://github.com/ggml-org/llama.cpp/releases/download/b7248/llama-b7248-bin-910b-openEuler-aarch64.tar.gz)
+- b7250 (b7250) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7250
+  - Remove the build of openeuler-cann in release
+  - Remove the relevant release files
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7250/llama-b7250-bin-win-hip-radeon-x64.zip)
+- b7251 (b7251) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7251
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7251/llama-b7251-bin-win-hip-radeon-x64.zip)
+- b7252 (b7252) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7252
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7252/llama-b7252-bin-win-hip-radeon-x64.zip)
+- b7253 (b7253) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7253
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7253/llama-b7253-bin-win-hip-radeon-x64.zip)
+- b7255 (b7255) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7255
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7255/llama-b7255-bin-win-hip-radeon-x64.zip)
+- b7256 (b7256) – 2025-12-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b7256
+  - CUDA: generalized (mma) FA, add Volta support
+  - use struct for MMA FA kernel config
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7256/llama-b7256-bin-win-hip-radeon-x64.zip)
+- b7261 (b7261) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7261
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7261/llama-b7261-bin-win-hip-radeon-x64.zip)
+- b7262 (b7262) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7262
+  - build: enable parallel builds in msbuild using MTT
+  - check LLAMA_STANDALONE
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7262/llama-b7262-bin-win-hip-radeon-x64.zip)
+- b7263 (b7263) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7263
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7263/llama-b7263-bin-win-hip-radeon-x64.zip)
+- b7264 (b7264) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7264
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7264/llama-b7264-bin-win-hip-radeon-x64.zip)
+- b7265 (b7265) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7265
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7265/llama-b7265-bin-win-hip-radeon-x64.zip)
+- b7266 (b7266) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7266
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7266/llama-b7266-bin-win-hip-radeon-x64.zip)
+- b7268 (b7268) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7268
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7268/llama-b7268-bin-win-hip-radeon-x64.zip)
+- b7270 (b7270) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7270
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7270/llama-b7270-bin-win-hip-radeon-x64.zip)
+- b7271 (b7271) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7271
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7271/llama-b7271-bin-win-hip-radeon-x64.zip)
+- b7273 (b7273) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7273
+  - server: move msg diffs tracking to HTTP thread
+  - wip
+  - tool call tests ok
+  - minor : style
+  - cont : fix
+  - move states to server_response_reader
+  - add safe-guard
+  - fix
+  - fix 2
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7273/llama-b7273-bin-win-hip-radeon-x64.zip)
+- b7274 (b7274) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7274
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7274/llama-b7274-bin-win-hip-radeon-x64.zip)
+- b7275 (b7275) – 2025-12-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b7275
+  - feat(wip): Port initial TRI impl from pervious work
+  - fix: Remove argument for constant val override
+  - feat: Move the ttype conditional to templating to avoid conditional in kernel
+  - fix: Type fixes
+  - feat: Add softplus for metal
+  - feat: Add EXPM1 for metal
+  - feat: Add FILL for metal
+  - refactor: Branchless version of tri using _ggml_vec_tri_cmp as a mask
+  - fix: Remove unused arguments
+  - refactor: Use select instead of branch for softplus non-vec
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7275/llama-b7275-bin-win-hip-radeon-x64.zip)
+- b7276 (b7276) – 2025-12-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b7276
+  - Add support for CUMSUM and TRI for CUDA.
+  - Minor optimizations.
+  - Correct warp_prefix_inclusive_sum in float2 variant to return float2
+  - Optimize TRI
+  - Whitespace
+  - Fix strides.
+  - Implement double loop
+  - Whitespace
+  - Fix HIP compilation bugs
+  - Optimizations + big case performance tests
+  - Implement using CUB with fallback to custom kernel
+  - Remove error message.
+  - Fixes from code review
+  - Comment out CPU-unsupported F16/BF16 cases to fix CI
+  - Fine, you win :P
+  - Fix last cast, use NO_DEVICE_CODE and GGML_UNUSED_VARS
+  - Vary warp-size based on physical warp size
+  - Add GGML_UNUSED_VARS in tri as well
+  - Use constexpr and call prefix_inclusive with warp_size template param
+  - Update ggml/src/ggml-cuda/cumsum.cu
+  - Apply suggestions from code review
+  - Change to tid % warp_size
+  - Fix strides; hardcode mask; add ggml_lane_mask_t
+  - Missing renames, remove unused get_warp_mask(), explicit calls to ggml_cuda_info()
+  - Too hasty...
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7276/llama-b7276-bin-win-hip-radeon-x64.zip)
+- b7278 (b7278) – 2025-12-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b7278
+  - transform release binary root dir in tar to llama-bXXXX
+  - bsdtar supports -s instead of --transform
+  - [macOS Apple Silicon (arm64)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-macos-arm64.tar.gz)
+  - [macOS Intel (x64)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-macos-x64.tar.gz)
+  - [iOS XCFramework](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-xcframework.tar.gz)
+  - [Ubuntu x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-ubuntu-x64.tar.gz)
+  - [Ubuntu x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-ubuntu-vulkan-x64.tar.gz)
+  - [Ubuntu s390x (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-ubuntu-s390x.tar.gz)
+  - [Windows x64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-win-cpu-x64.zip)
+  - [Windows arm64 (CPU)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-win-cpu-arm64.zip)
+  - [Windows x64 (CUDA)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-win-cuda-12.4-x64.zip)
+  - [Windows x64 (Vulkan)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-win-vulkan-x64.zip)
+  - [Windows x64 (SYCL)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-win-sycl-x64.zip)
+  - [Windows x64 (HIP)](https://github.com/ggml-org/llama.cpp/releases/download/b7278/llama-b7278-bin-win-hip-radeon-x64.zip)
+
+
+## 2025-12-01: Update to llama.cpp b7213
+
+- b7090 (b7090) – 2025-11-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b7090
+- b7091 (b7091) – 2025-11-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b7091
+- b7096 (b7096) – 2025-11-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b7096
+- b7097 (b7097) – 2025-11-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b7097
+- b7100 (b7100) – 2025-11-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b7100
+- b7101 (b7101) – 2025-11-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b7101
+- b7102 (b7102) – 2025-11-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b7102
+- b7103 (b7103) – 2025-11-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b7103
+- b7106 (b7106) – 2025-11-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b7106
+- b7107 (b7107) – 2025-11-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b7107
+- b7108 (b7108) – 2025-11-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b7108
+- b7109 (b7109) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7109
+- b7110 (b7110) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7110
+- b7111 (b7111) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7111
+- b7112 (b7112) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7112
+- b7113 (b7113) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7113
+- b7117 (b7117) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7117
+- b7118 (b7118) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7118
+- b7120 (b7120) – 2025-11-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b7120
+- b7122 (b7122) – 2025-11-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b7122
+- b7123 (b7123) – 2025-11-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b7123
+- b7124 (b7124) – 2025-11-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b7124
+- b7126 (b7126) – 2025-11-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b7126
+- b7127 (b7127) – 2025-11-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b7127
+- b7128 (b7128) – 2025-11-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b7128
+- b7129 (b7129) – 2025-11-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b7129
+- b7130 (b7130) – 2025-11-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b7130
+- b7132 (b7132) – 2025-11-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b7132
+- b7134 (b7134) – 2025-11-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b7134
+- b7136 (b7136) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7136
+- b7137 (b7137) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7137
+- b7138 (b7138) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7138
+- b7139 (b7139) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7139
+- b7140 (b7140) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7140
+- b7141 (b7141) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7141
+- b7142 (b7142) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7142
+- b7144 (b7144) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7144
+- b7146 (b7146) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7146
+- b7148 (b7148) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7148
+- b7149 (b7149) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7149
+- b7150 (b7150) – 2025-11-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b7150
+- b7151 (b7151) – 2025-11-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b7151
+- b7152 (b7152) – 2025-11-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b7152
+- b7154 (b7154) – 2025-11-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b7154
+- b7157 (b7157) – 2025-11-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b7157
+- b7158 (b7158) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7158
+- b7159 (b7159) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7159
+- b7160 (b7160) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7160
+- b7161 (b7161) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7161
+- b7162 (b7162) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7162
+- b7163 (b7163) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7163
+- b7164 (b7164) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7164
+- b7165 (b7165) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7165
+- b7166 (b7166) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7166
+- b7167 (b7167) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7167
+- b7168 (b7168) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7168
+- b7169 (b7169) – 2025-11-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b7169
+- b7170 (b7170) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7170
+- b7171 (b7171) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7171
+- b7172 (b7172) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7172
+- b7175 (b7175) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7175
+- b7176 (b7176) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7176
+- b7177 (b7177) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7177
+- b7178 (b7178) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7178
+- b7179 (b7179) – 2025-11-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b7179
+- b7180 (b7180) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7180
+- b7181 (b7181) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7181
+- b7182 (b7182) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7182
+- b7183 (b7183) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7183
+- b7184 (b7184) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7184
+- b7185 (b7185) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7185
+- b7186 (b7186) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7186
+- b7187 (b7187) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7187
+- b7188 (b7188) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7188
+- b7189 (b7189) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7189
+- b7190 (b7190) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7190
+- b7191 (b7191) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7191
+- b7192 (b7192) – 2025-11-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b7192
+- b7194 (b7194) – 2025-11-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b7194
+- b7195 (b7195) – 2025-11-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b7195
+- b7196 (b7196) – 2025-11-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b7196
+- b7197 (b7197) – 2025-11-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b7197
+- b7198 (b7198) – 2025-11-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b7198
+- b7199 (b7199) – 2025-11-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b7199
+- b7200 (b7200) – 2025-11-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b7200
+- b7201 (b7201) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7201
+- b7202 (b7202) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7202
+- b7203 (b7203) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7203
+- b7204 (b7204) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7204
+- b7205 (b7205) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7205
+- b7206 (b7206) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7206
+- b7207 (b7207) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7207
+- b7208 (b7208) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7208
+- b7209 (b7209) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7209
+- b7210 (b7210) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7210
+- b7211 (b7211) – 2025-11-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b7211
+- b7213 (b7213) – 2025-12-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b7213
+
+
+## 2025-11-14: Update to llama.cpp b7058
+
+- b6959 (b6959) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6959
+- b6960 (b6960) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6960
+- b6961 (b6961) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6961
+- b6962 (b6962) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6962
+- b6963 (b6963) – 2025-11-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6963
+- b6965 (b6965) – 2025-11-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6965
+- b6966 (b6966) – 2025-11-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6966
+- b6967 (b6967) – 2025-11-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6967
+- b6968 (b6968) – 2025-11-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6968
+- b6969 (b6969) – 2025-11-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6969
+- b6970 (b6970) – 2025-11-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6970
+- b6971 (b6971) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6971
+- b6972 (b6972) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6972
+- b6973 (b6973) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6973
+- b6974 (b6974) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6974
+- b6975 (b6975) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6975
+- b6976 (b6976) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6976
+- b6977 (b6977) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6977
+- b6978 (b6978) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6978
+- b6979 (b6979) – 2025-11-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6979
+- b6980 (b6980) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6980
+- b6981 (b6981) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6981
+- b6982 (b6982) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6982
+- b6983 (b6983) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6983
+- b6984 (b6984) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6984
+- b6985 (b6985) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6985
+- b6986 (b6986) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6986
+- b6987 (b6987) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6987
+- b6988 (b6988) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6988
+- b6989 (b6989) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6989
+- b6990 (b6990) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6990
+- b6992 (b6992) – 2025-11-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6992
+- b6993 (b6993) – 2025-11-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6993
+- b6994 (b6994) – 2025-11-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6994
+- b6995 (b6995) – 2025-11-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6995
+- b6996 (b6996) – 2025-11-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6996
+- b6999 (b6999) – 2025-11-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6999
+- b7002 (b7002) – 2025-11-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b7002
+- b7003 (b7003) – 2025-11-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b7003
+- b7005 (b7005) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7005
+- b7007 (b7007) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7007
+- b7008 (b7008) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7008
+- b7009 (b7009) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7009
+- b7010 (b7010) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7010
+- b7011 (b7011) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7011
+- b7012 (b7012) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7012
+- b7013 (b7013) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7013
+- b7014 (b7014) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7014
+- b7015 (b7015) – 2025-11-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b7015
+- b7016 (b7016) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7016
+- b7017 (b7017) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7017
+- b7018 (b7018) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7018
+- b7020 (b7020) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7020
+- b7021 (b7021) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7021
+- b7022 (b7022) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7022
+- b7023 (b7023) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7023
+- b7024 (b7024) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7024
+- b7025 (b7025) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7025
+- b7027 (b7027) – 2025-11-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b7027
+- b7028 (b7028) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7028
+- b7030 (b7030) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7030
+- b7031 (b7031) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7031
+- b7032 (b7032) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7032
+- b7033 (b7033) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7033
+- b7034 (b7034) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7034
+- b7035 (b7035) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7035
+- b7037 (b7037) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7037
+- b7039 (b7039) – 2025-11-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b7039
+- b7041 (b7041) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7041
+- b7042 (b7042) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7042
+- b7044 (b7044) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7044
+- b7045 (b7045) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7045
+- b7046 (b7046) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7046
+- b7047 (b7047) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7047
+- b7048 (b7048) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7048
+- b7049 (b7049) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7049
+- b7050 (b7050) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7050
+- b7051 (b7051) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7051
+- b7052 (b7052) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7052
+- b7053 (b7053) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7053
+- b7054 (b7054) – 2025-11-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b7054
+- b7057 (b7057) – 2025-11-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b7057
+- b7058 (b7058) – 2025-11-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b7058
+
+
+## 2025-11-05: Update to llama.cpp b6957
+
+- b6919 (b6919) – 2025-11-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6919
+- b6920 (b6920) – 2025-11-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6920
+- b6922 (b6922) – 2025-11-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6922
+- b6923 (b6923) – 2025-11-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6923
+- b6924 (b6924) – 2025-11-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6924
+- b6927 (b6927) – 2025-11-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6927
+- b6929 (b6929) – 2025-11-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6929
+- b6931 (b6931) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6931
+- b6932 (b6932) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6932
+- b6933 (b6933) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6933
+- b6934 (b6934) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6934
+- b6935 (b6935) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6935
+- b6936 (b6936) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6936
+- b6937 (b6937) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6937
+- b6940 (b6940) – 2025-11-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6940
+- b6941 (b6941) – 2025-11-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6941
+- b6942 (b6942) – 2025-11-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6942
+- b6943 (b6943) – 2025-11-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6943
+- b6945 (b6945) – 2025-11-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6945
+- b6947 (b6947) – 2025-11-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6947
+- b6948 (b6948) – 2025-11-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6948
+- b6949 (b6949) – 2025-11-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6949
+- b6953 (b6953) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6953
+- b6954 (b6954) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6954
+- b6955 (b6955) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6955
+- b6957 (b6957) – 2025-11-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6957
+
+
+## 2025-11-01: Update to llama.cpp b6916
+
+- b6904 (b6904) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6904
+- b6905 (b6905) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6905
+- b6906 (b6906) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6906
+- b6907 (b6907) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6907
+- b6908 (b6908) – 2025-11-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6908
+- b6909 (b6909) – 2025-11-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6909
+- b6910 (b6910) – 2025-11-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6910
+- b6912 (b6912) – 2025-11-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6912
+- b6915 (b6915) – 2025-11-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6915
+- b6916 (b6916) – 2025-11-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6916
+
+
+## 2025-10-31: Update to llama.cpp b6900
+
+- b6793 (b6793) – 2025-10-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6793
+- b6794 (b6794) – 2025-10-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6794
+- b6795 (b6795) – 2025-10-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6795
+- b6799 (b6799) – 2025-10-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b6799
+- b6800 (b6800) – 2025-10-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b6800
+- b6801 (b6801) – 2025-10-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6801
+- b6802 (b6802) – 2025-10-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6802
+- b6804 (b6804) – 2025-10-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6804
+- b6808 (b6808) – 2025-10-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6808
+- b6810 (b6810) – 2025-10-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6810
+- b6811 (b6811) – 2025-10-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6811
+- b6812 (b6812) – 2025-10-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6812
+- b6813 (b6813) – 2025-10-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6813
+- b6814 (b6814) – 2025-10-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6814
+- b6815 (b6815) – 2025-10-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6815
+- b6816 (b6816) – 2025-10-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6816
+- b6817 (b6817) – 2025-10-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6817
+- b6818 (b6818) – 2025-10-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6818
+- b6821 (b6821) – 2025-10-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6821
+- b6822 (b6822) – 2025-10-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6822
+- b6823 (b6823) – 2025-10-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6823
+- b6824 (b6824) – 2025-10-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6824
+- b6825 (b6825) – 2025-10-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6825
+- b6826 (b6826) – 2025-10-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6826
+- b6827 (b6827) – 2025-10-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6827
+- b6829 (b6829) – 2025-10-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6829
+- b6833 (b6833) – 2025-10-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b6833
+- b6834 (b6834) – 2025-10-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b6834
+- b6836 (b6836) – 2025-10-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6836
+- b6837 (b6837) – 2025-10-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6837
+- b6838 (b6838) – 2025-10-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6838
+- b6840 (b6840) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6840
+- b6841 (b6841) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6841
+- b6843 (b6843) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6843
+- b6844 (b6844) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6844
+- b6845 (b6845) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6845
+- b6846 (b6846) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6846
+- b6847 (b6847) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6847
+- b6848 (b6848) – 2025-10-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6848
+- b6849 (b6849) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6849
+- b6850 (b6850) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6850
+- b6851 (b6851) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6851
+- b6852 (b6852) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6852
+- b6853 (b6853) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6853
+- b6854 (b6854) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6854
+- b6855 (b6855) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6855
+- b6856 (b6856) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6856
+- b6857 (b6857) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6857
+- b6858 (b6858) – 2025-10-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6858
+- b6859 (b6859) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6859
+- b6860 (b6860) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6860
+- b6861 (b6861) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6861
+- b6862 (b6862) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6862
+- b6863 (b6863) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6863
+- b6864 (b6864) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6864
+- b6865 (b6865) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6865
+- b6866 (b6866) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6866
+- b6868 (b6868) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6868
+- b6869 (b6869) – 2025-10-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6869
+- b6870 (b6870) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6870
+- b6871 (b6871) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6871
+- b6872 (b6872) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6872
+- b6873 (b6873) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6873
+- b6874 (b6874) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6874
+- b6875 (b6875) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6875
+- b6876 (b6876) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6876
+- b6877 (b6877) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6877
+- b6878 (b6878) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6878
+- b6879 (b6879) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6879
+- b6880 (b6880) – 2025-10-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6880
+- b6881 (b6881) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6881
+- b6882 (b6882) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6882
+- b6883 (b6883) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6883
+- b6884 (b6884) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6884
+- b6885 (b6885) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6885
+- b6886 (b6886) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6886
+- b6887 (b6887) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6887
+- b6888 (b6888) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6888
+- b6889 (b6889) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6889
+- b6890 (b6890) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6890
+- b6891 (b6891) – 2025-10-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6891
+- b6895 (b6895) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6895
+- b6896 (b6896) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6896
+- b6897 (b6897) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6897
+- b6898 (b6898) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6898
+- b6900 (b6900) – 2025-10-31 – https://github.com/ggml-org/llama.cpp/releases/tag/b6900
+
+
+## 2025-10-18: Update to llama.cpp b6792
+
+- b6670 (b6670) – 2025-10-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6670
+- b6671 (b6671) – 2025-10-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6671
+- b6672 (b6672) – 2025-10-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6672
+- b6673 (b6673) – 2025-10-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6673
+- b6676 (b6676) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6676
+- b6678 (b6678) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6678
+- b6679 (b6679) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6679
+- b6680 (b6680) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6680
+- b6682 (b6682) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6682
+- b6683 (b6683) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6683
+- b6684 (b6684) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6684
+- b6685 (b6685) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6685
+- b6686 (b6686) – 2025-10-03 – https://github.com/ggml-org/llama.cpp/releases/tag/b6686
+- b6687 (b6687) – 2025-10-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6687
+- b6688 (b6688) – 2025-10-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6688
+- b6689 (b6689) – 2025-10-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6689
+- b6690 (b6690) – 2025-10-04 – https://github.com/ggml-org/llama.cpp/releases/tag/b6690
+- b6691 (b6691) – 2025-10-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6691
+- b6692 (b6692) – 2025-10-05 – https://github.com/ggml-org/llama.cpp/releases/tag/b6692
+- b6695 (b6695) – 2025-10-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6695
+- b6697 (b6697) – 2025-10-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6697
+- b6699 (b6699) – 2025-10-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6699
+- b6700 (b6700) – 2025-10-06 – https://github.com/ggml-org/llama.cpp/releases/tag/b6700
+- b6701 (b6701) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6701
+- b6702 (b6702) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6702
+- b6703 (b6703) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6703
+- b6704 (b6704) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6704
+- b6706 (b6706) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6706
+- b6708 (b6708) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6708
+- b6709 (b6709) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6709
+- b6710 (b6710) – 2025-10-07 – https://github.com/ggml-org/llama.cpp/releases/tag/b6710
+- b6711 (b6711) – 2025-10-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6711
+- b6713 (b6713) – 2025-10-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6713
+- b6714 (b6714) – 2025-10-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6714
+- b6715 (b6715) – 2025-10-08 – https://github.com/ggml-org/llama.cpp/releases/tag/b6715
+- b6717 (b6717) – 2025-10-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6717
+- b6718 (b6718) – 2025-10-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6718
+- b6719 (b6719) – 2025-10-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6719
+- b6721 (b6721) – 2025-10-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6721
+- b6724 (b6724) – 2025-10-09 – https://github.com/ggml-org/llama.cpp/releases/tag/b6724
+- b6726 (b6726) – 2025-10-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b6726
+- b6727 (b6727) – 2025-10-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b6727
+- b6728 (b6728) – 2025-10-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b6728
+- b6729 (b6729) – 2025-10-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b6729
+- b6730 (b6730) – 2025-10-10 – https://github.com/ggml-org/llama.cpp/releases/tag/b6730
+- b6732 (b6732) – 2025-10-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b6732
+- b6733 (b6733) – 2025-10-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b6733
+- b6735 (b6735) – 2025-10-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b6735
+- b6736 (b6736) – 2025-10-11 – https://github.com/ggml-org/llama.cpp/releases/tag/b6736
+- b6737 (b6737) – 2025-10-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b6737
+- b6738 (b6738) – 2025-10-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b6738
+- b6739 (b6739) – 2025-10-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b6739
+- b6741 (b6741) – 2025-10-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b6741
+- b6743 (b6743) – 2025-10-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b6743
+- b6745 (b6745) – 2025-10-12 – https://github.com/ggml-org/llama.cpp/releases/tag/b6745
+- b6746 (b6746) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6746
+- b6747 (b6747) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6747
+- b6748 (b6748) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6748
+- b6750 (b6750) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6750
+- b6751 (b6751) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6751
+- b6752 (b6752) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6752
+- b6753 (b6753) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6753
+- b6754 (b6754) – 2025-10-13 – https://github.com/ggml-org/llama.cpp/releases/tag/b6754
+- b6756 (b6756) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6756
+- b6757 (b6757) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6757
+- b6758 (b6758) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6758
+- b6759 (b6759) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6759
+- b6760 (b6760) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6760
+- b6761 (b6761) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6761
+- b6762 (b6762) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6762
+- b6763 (b6763) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6763
+- b6764 (b6764) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6764
+- b6765 (b6765) – 2025-10-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6765
+- b6766 (b6766) – 2025-10-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6766
+- b6767 (b6767) – 2025-10-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6767
+- b6768 (b6768) – 2025-10-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6768
+- b6769 (b6769) – 2025-10-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6769
+- b6770 (b6770) – 2025-10-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6770
+- b6773 (b6773) – 2025-10-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6773
+- b6774 (b6774) – 2025-10-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6774
+- b6776 (b6776) – 2025-10-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6776
+- b6777 (b6777) – 2025-10-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6777
+- b6778 (b6778) – 2025-10-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6778
+- b6779 (b6779) – 2025-10-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6779
+- b6780 (b6780) – 2025-10-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6780
+- b6782 (b6782) – 2025-10-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6782
+- b6783 (b6783) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6783
+- b6784 (b6784) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6784
+- b6785 (b6785) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6785
+- b6786 (b6786) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6786
+- b6788 (b6788) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6788
+- b6789 (b6789) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6789
+- b6790 (b6790) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6790
+- b6791 (b6791) – 2025-10-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6791
+- b6792 (b6792) – 2025-10-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6792
+
+
+## 2025-10-02: Update to llama.cpp b6666
+
+- b6499 (b6499) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6499
+- b6500 (b6500) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6500
+- b6501 (b6501) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6501
+- b6502 (b6502) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6502
+- b6503 (b6503) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6503
+- b6504 (b6504) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6504
+- b6505 (b6505) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6505
+- b6506 (b6506) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6506
+- b6507 (b6507) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6507
+- b6508 (b6508) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6508
+- b6509 (b6509) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6509
+- b6510 (b6510) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6510
+- b6511 (b6511) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6511
+- b6512 (b6512) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6512
+- b6513 (b6513) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6513
+- b6514 (b6514) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6514
+- b6515 (b6515) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6515
+- b6516 (b6516) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6516
+- b6517 (b6517) – 2025-09-18 – https://github.com/ggml-org/llama.cpp/releases/tag/b6517
+- b6518 (b6518) – 2025-09-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b6518
+- b6519 (b6519) – 2025-09-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b6519
+- b6521 (b6521) – 2025-09-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b6521
+- b6522 (b6522) – 2025-09-19 – https://github.com/ggml-org/llama.cpp/releases/tag/b6522
+- b6523 (b6523) – 2025-09-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6523
+- b6524 (b6524) – 2025-09-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6524
+- b6527 (b6527) – 2025-09-20 – https://github.com/ggml-org/llama.cpp/releases/tag/b6527
+- b6528 (b6528) – 2025-09-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6528
+- b6529 (b6529) – 2025-09-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6529
+- b6532 (b6532) – 2025-09-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6532
+- b6533 (b6533) – 2025-09-21 – https://github.com/ggml-org/llama.cpp/releases/tag/b6533
+- b6534 (b6534) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6534
+- b6535 (b6535) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6535
+- b6536 (b6536) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6536
+- b6541 (b6541) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6541
+- b6543 (b6543) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6543
+- b6544 (b6544) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6544
+- b6545 (b6545) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6545
+- b6548 (b6548) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6548
+- b6549 (b6549) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6549
+- b6550 (b6550) – 2025-09-22 – https://github.com/ggml-org/llama.cpp/releases/tag/b6550
+- b6556 (b6556) – 2025-09-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6556
+- b6557 (b6557) – 2025-09-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6557
+- b6558 (b6558) – 2025-09-23 – https://github.com/ggml-org/llama.cpp/releases/tag/b6558
+- b6565 (b6565) – 2025-09-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b6565
+- b6567 (b6567) – 2025-09-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b6567
+- b6568 (b6568) – 2025-09-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b6568
+- b6569 (b6569) – 2025-09-24 – https://github.com/ggml-org/llama.cpp/releases/tag/b6569
+- b6572 (b6572) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6572
+- b6574 (b6574) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6574
+- b6575 (b6575) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6575
+- b6576 (b6576) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6576
+- b6578 (b6578) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6578
+- b6580 (b6580) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6580
+- b6582 (b6582) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6582
+- b6583 (b6583) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6583
+- b6585 (b6585) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6585
+- b6586 (b6586) – 2025-09-25 – https://github.com/ggml-org/llama.cpp/releases/tag/b6586
+- b6587 (b6587) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6587
+- b6591 (b6591) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6591
+- b6593 (b6593) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6593
+- b6594 (b6594) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6594
+- b6595 (b6595) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6595
+- b6598 (b6598) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6598
+- b6601 (b6601) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6601
+- b6602 (b6602) – 2025-09-26 – https://github.com/ggml-org/llama.cpp/releases/tag/b6602
+- b6603 (b6603) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6603
+- b6604 (b6604) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6604
+- b6605 (b6605) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6605
+- b6606 (b6606) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6606
+- b6607 (b6607) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6607
+- b6608 (b6608) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6608
+- b6610 (b6610) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6610
+- b6611 (b6611) – 2025-09-27 – https://github.com/ggml-org/llama.cpp/releases/tag/b6611
+- b6612 (b6612) – 2025-09-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6612
+- b6613 (b6613) – 2025-09-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6613
+- b6615 (b6615) – 2025-09-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6615
+- b6619 (b6619) – 2025-09-28 – https://github.com/ggml-org/llama.cpp/releases/tag/b6619
+- b6621 (b6621) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6621
+- b6622 (b6622) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6622
+- b6623 (b6623) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6623
+- b6624 (b6624) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6624
+- b6627 (b6627) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6627
+- b6628 (b6628) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6628
+- b6634 (b6634) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6634
+- b6635 (b6635) – 2025-09-29 – https://github.com/ggml-org/llama.cpp/releases/tag/b6635
+- b6638 (b6638) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6638
+- b6640 (b6640) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6640
+- b6641 (b6641) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6641
+- b6642 (b6642) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6642
+- b6643 (b6643) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6643
+- b6644 (b6644) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6644
+- b6646 (b6646) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6646
+- b6647 (b6647) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6647
+- b6648 (b6648) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6648
+- b6650 (b6650) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6650
+- b6651 (b6651) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6651
+- b6653 (b6653) – 2025-09-30 – https://github.com/ggml-org/llama.cpp/releases/tag/b6653
+- b6660 (b6660) – 2025-10-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6660
+- b6661 (b6661) – 2025-10-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6661
+- b6662 (b6662) – 2025-10-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6662
+- b6663 (b6663) – 2025-10-01 – https://github.com/ggml-org/llama.cpp/releases/tag/b6663
+- b6666 (b6666) – 2025-10-02 – https://github.com/ggml-org/llama.cpp/releases/tag/b6666
+
+
+This file lists notable changes synchronized from upstream llama.cpp releases.
+Each entry corresponds to the vendor submodule update in this package.
+
+## 2025-09-17: Update to llama.cpp b6497
+
+- b6469 (b6469) – 2025-09-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6469
+- b6470 (b6470) – 2025-09-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6470
+- b6471 (b6471) – 2025-09-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6471
+- b6473 (b6473) – 2025-09-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6473
+- b6474 (b6474) – 2025-09-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6474
+- b6475 (b6475) – 2025-09-14 – https://github.com/ggml-org/llama.cpp/releases/tag/b6475
+- b6476 (b6476) – 2025-09-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6476
+- b6477 (b6477) – 2025-09-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6477
+- b6478 (b6478) – 2025-09-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6478
+- b6479 (b6479) – 2025-09-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6479
+- b6480 (b6480) – 2025-09-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6480
+- b6482 (b6482) – 2025-09-15 – https://github.com/ggml-org/llama.cpp/releases/tag/b6482
+- b6483 (b6483) – 2025-09-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6483
+- b6484 (b6484) – 2025-09-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6484
+- b6488 (b6488) – 2025-09-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6488
+- b6490 (b6490) – 2025-09-16 – https://github.com/ggml-org/llama.cpp/releases/tag/b6490
+- b6491 (b6491) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6491
+- b6492 (b6492) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6492
+- b6493 (b6493) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6493
+- b6494 (b6494) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6494
+- b6496 (b6496) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6496
+- b6497 (b6497) – 2025-09-17 – https://github.com/ggml-org/llama.cpp/releases/tag/b6497
+
