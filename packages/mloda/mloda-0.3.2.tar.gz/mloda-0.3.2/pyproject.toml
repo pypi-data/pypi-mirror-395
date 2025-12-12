@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mloda"
+version = "0.3.2"
+description = "Rethinking Data and Feature Engineering"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Tom Kaltofen", email = "info@mloda.ai" }
+]
+dependencies = [
+    "pyarrow"
+]
+
+requires-python = ">=3.8,<3.14"
+classifiers = [
+    "Programming Language :: Python :: 3"
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/mloda-ai/mloda/issues"
+"Documentation" = "https://mloda-ai.github.io/mloda/"
+"Source Code" = "https://github.com/mloda-ai/mloda"
+"PyPI" = "https://pypi.org/project/mloda/"
+"Homepage" = "https://mloda.ai"
+
+[tool.setuptools]
+packages = { find = { include = ["mloda_core*", "mloda_plugins*"] } }
+include-package-data = true
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.bandit]
+exclude_dirs = [
+    "venv",
+    ".venv",
+    "migrations",
+    "__pycache__",
+    "build",
+    "dist",
+    ".devcontainer",
+    ".tox",
+    ".vscode",
+    "attribution",
+    "*.egg-info",
+    "site-packages"
+]
+skips = [
+    "B101", # Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+    "B104"  # Possible binding to all interfaces detected.
+]
+
+[tool.ruff]
+line-length = 120
+
+[project.scripts]
+mloda = "mloda_plugins.feature_group.experimental.llm.cli:main"
