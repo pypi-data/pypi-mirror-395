@@ -1,0 +1,29 @@
+{% load unfold_list i18n %}
+{% get_current_language_bidi as LANGUAGE_BIDI %}
+
+{% if pagination_required %}
+    {% for i in page_range %}
+        <div class="{% if forloop.last %}pr-2{% else %}pr-4{% endif %}">
+            {% paginator_number cl i %}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="py-4">
+    {% if pagination_required %}
+        -
+    {% endif %}
+
+    {{ cl.result_count }}
+
+    {% if LANGUAGE_BIDI %}
+        {# In RTL languages (e.g. fa, ar), always use singular label #}
+        {{ cl.opts.verbose_name }}
+    {% else %}
+        {% if cl.result_count == 1 or cl.result_count == 0 %}
+            {{ cl.opts.verbose_name }}
+        {% else %}
+            {{ cl.opts.verbose_name_plural }}
+        {% endif %}
+    {% endif %}
+</div>
