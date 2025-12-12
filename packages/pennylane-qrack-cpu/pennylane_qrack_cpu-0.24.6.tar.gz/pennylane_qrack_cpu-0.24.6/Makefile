@@ -1,0 +1,91 @@
+PYTHON3 := $(shell which python3 2>/dev/null)
+
+PYTHON := python3
+COVERAGE := --cov=pennylane_qrack --cov-report term-missing --cov-report=html:coverage_html_report
+TESTRUNNER := -m pytest tests
+
+UNAME_S := $(shell uname -s)
+UNAME_P := $(shell uname -p)
+QRACK_PRESENT := $(wildcard qrack/.)
+
+.PHONY: help
+help:
+	@echo "Please use \`make <target>' where <target> is one of"
+	@echo "  build-deps         to build PennyLane-Qrack C++ dependencies"
+	@echo "  install            to install PennyLane-Qrack"
+	@echo "  wheel              to build the PennyLane-Qrack wheel"
+	@echo "  dist               to package the source distribution"
+	@echo "  clean              to delete all temporary, cache, and build files"
+	@echo "  clean-docs         to delete all built documentation"
+	@echo "  test               to run the test suite"
+	@echo "  coverage           to generate a coverage report"
+
+.PHONY: build-deps
+build-deps:
+ifneq ($(UNAME_S),Darwin)
+ifneq ($(OS),Windows_NT)
+ifeq ($(QRACK_PRESENT),)
+	git clone https://github.com/unitaryfund/qrack.git; cd qrack; git checkout ede724a218b56631427809d68f75e8f9e72edccc; cd ..
+endif
+	mkdir -p qrack/build
+ifeq ($(UNAME_S),Linux)
+ifeq ($(UNAME_P),x86_64)
+	cd qrack/build; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DENABLE_OPENCL=OFF -DENABLE_RDRAND=OFF -DENABLE_DEVRAND=ON -DQBCAPPOW=11 ..; make qrack; cd ../..
+else
+	cd qrack/build; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DENABLE_OPENCL=OFF -DENABLE_RDRAND=OFF -DENABLE_DEVRAND=ON -DENABLE_COMPLEX_X2=OFF -DENABLE_SSE3=OFF -DQBCAPPOW=11 ..; make qrack; cd ../..
+endif
+endif
+# ifeq ($(UNAME_S),Darwin)
+# ifeq ($(UNAME_P),x86_64)
+# 	cd qrack/build; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++ -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang -DCMAKE_LINKER=/opt/homebrew/opt/llvm/bin/ld.lld -DQBCAPPOW=11  ..;  make install; cd ../..
+# else
+#	cd qrack/build; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++ -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang -DCMAKE_LINKER=/opt/homebrew/opt/llvm/bin/ld.lld -DENABLE_OPENCL=OFF -DENABLE_RDRAND=OFF -DENABLE_COMPLEX_X2=OFF -DENABLE_SSE3=OFF -DQBCAPPOW=11 ..; make install; cd ../..
+# endif
+# endif
+endif
+	mkdir -p _qrack_include/qrack; cp -r qrack/include/* _qrack_include/qrack; cp -r qrack/build/include/* _qrack_include/qrack
+# ifeq ($(UNAME_S),Darwin)
+# 	cd pennylane_qrack; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++ -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang -DCMAKE_LINKER=/opt/homebrew/opt/llvm/bin/ld.lld ..;  make all
+# else
+	cd pennylane_qrack; cmake ..;  make all
+# endif
+endif
+
+.PHONY: install
+install:
+ifndef PYTHON3
+	@echo "To install PennyLane-Qrack you need to have Python 3 installed"
+endif
+	$(PYTHON) setup.py install
+
+.PHONY: wheel
+wheel:
+	$(PYTHON) setup.py bdist_wheel
+
+.PHONY: dist
+dist:
+	$(PYTHON) setup.py sdist
+
+.PHONY : clean
+clean:
+	rm -rf pennylane_qrack/__pycache__
+	rm -rf tests/__pycache__
+	rm -rf dist
+	rm -rf build
+	rm -rf .pytest_cache
+	rm -rf .coverage coverage_html_report/
+
+docs:
+	make -C doc html
+
+.PHONY : clean-docs
+clean-docs:
+	make -C doc clean
+
+
+test:
+	$(PYTHON) $(TESTRUNNER)
+
+coverage:
+	@echo "Generating coverage report..."
+	$(PYTHON) $(TESTRUNNER) $(COVERAGE)
