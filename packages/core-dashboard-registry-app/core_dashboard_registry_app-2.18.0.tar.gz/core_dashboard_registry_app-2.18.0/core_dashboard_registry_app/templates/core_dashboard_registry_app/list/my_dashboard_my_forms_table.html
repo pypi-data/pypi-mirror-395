@@ -1,0 +1,57 @@
+{% load dict_key_extras %}
+
+{% for data_loaded in objects %}
+<table class="table table-borderless table-card">
+    <tr objectid="{{data_loaded.form.id}}">
+        <td class="px-3 pull-left valign-top">
+            {% if come_from_admin %}
+            <a href="{% url 'core-admin:core_curate_view_form' data_loaded.form.id %}"
+               class="font-weight-bold pointer fw-bold">
+                {{ data_loaded.form.name }}
+            </a> ({{ data_loaded.role }})
+
+            {% else %}
+            <a href="{% url 'core_curate_view_form' data_loaded.form.id %}"
+               class="font-weight-bold pointer fw-bold">
+                {{ data_loaded.form.name }}
+            </a> ({{ data_loaded.role }})
+            {% endif %}
+        </td>
+    </tr>
+    <tr objectid="{{data_loaded.form.id}}">
+        <td style="vertical-align: middle; padding:10px">
+                {% if come_from_admin %}
+                    <a class="btn btn-secondary view-form-btn"
+                       href="{% url 'core-admin:core_curate_view_form' data_loaded.form.id %}">
+                        <i class="fas fa-file-alt"></i> View
+                    </a>
+                {% else %}
+                    <a class="btn btn-secondary view-form-btn"
+                       href="{% url 'core_curate_view_form' data_loaded.form.id %}">
+                        <i class="fas fa-file-alt"></i> View
+                    </a>
+                {% endif %}
+                <a class="btn btn-secondary change-owner-btn">
+                    <i class="fas fa-user-circle"></i> Change Owner
+                </a>
+                <a class="btn btn-secondary edit-form-btn" href="{% url 'core_curate_enter_data' data_loaded.form.id %}">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                {% if data_loaded.form.template.format == "XSD" %}
+                <a class="btn btn-secondary open-xml-form-btn">
+                    <i class="fas fa-code"></i> Open
+                </a>
+                {% elif data_loaded.form.template.format == "JSON" %}
+                <a class="btn btn-secondary open-json-form-btn">
+                    <i class="fas fa-code"></i> Open
+                </a>
+                {% endif %}
+                <button class="btn btn-danger delete-document-btn">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </td>
+        </tr>
+</table>
+{% empty %}
+    No {{data.document}} found.
+{%endfor%}

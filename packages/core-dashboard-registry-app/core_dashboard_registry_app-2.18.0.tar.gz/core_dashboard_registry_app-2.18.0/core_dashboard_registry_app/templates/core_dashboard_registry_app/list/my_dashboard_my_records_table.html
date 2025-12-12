@@ -1,0 +1,149 @@
+{% load dict_key_extras %}
+{% load timestamptags %}
+{% load special_plural %}
+{% load tz %}
+
+
+{% for data_loaded in objects %}
+<table class="table table-borderless table-card">
+    <tr objectid="{{data_loaded.data.id}}">
+        <td class="px-3 pull-left valign-top">
+            {% if data_loaded.can_read %}
+                <a class="view-record-btn font-weight-bold pointer fw-bold">{{ data_loaded.data.title }}</a> ({{ data_loaded.data_role }})
+            {% else %}
+                <span style="font-weight: bold;">{{ data_loaded.data.title }}</span> ({{ data_loaded.data_role }})
+            {% endif %}
+            {% if data.administration and data_loaded.forms_count > 0  %}
+                ,<text class="text-danger"> Draft{{ data_loaded.forms_count|pluralize }} </text>
+            {% elif data_loaded.form_id %}
+                ,<text class="text-danger"> Draft </text>
+            {% endif %}
+
+        </td>
+        <td class="cell-dropdown">
+            <span class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} dropdown">
+                {% if data_loaded.data_status == data_loaded.data_status_values.ACTIVE  %}
+                    <span data-status="active" class="dropbtn status-active pointer"></span>
+                {% endif %}
+                {% if data_loaded.data_status == data_loaded.data_status_values.INACTIVE  %}
+                    <span data-status="inactive" class="dropbtn status-inactive pointer"></span>
+                {% endif %}
+                {% if data_loaded.data_status == data_loaded.data_status_values.DELETED  %}
+                    <span data-status="deleted" class="dropbtn status-deleted pointer"></span>
+                {% endif %}
+              <div class="dropdown-content pointer">
+                  <a data-status="active" class="switch font-active">Active</a>
+                  <a data-status="inactive" class="switch font-inactive">Inactive</a>
+                    {% if data_loaded.data.workspace.is_public %}
+                        <a data-status="deleted" class="switch font-deleted">Deleted</a>
+                    {% endif %}
+              </div>
+            </span>
+            {% if data_loaded.data_status == data_loaded.data_status_values.ACTIVE  %}
+                <span class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} label-status font-active">Active</span>
+            {% endif %}
+            {% if data_loaded.data_status == data_loaded.data_status_values.INACTIVE  %}
+                <span class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} label-status font-inactive">Inactive</span>
+            {% endif %}
+            {% if data_loaded.data_status == data_loaded.data_status_values.DELETED  %}
+                <span class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} label-status font-deleted">Deleted</span>
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td class="px-3">
+            {% if data_loaded.data.workspace %}
+                <span style="background-color: #a5d1ed; padding:2px 10px 2px 10px;">
+                    {{ data_loaded.data.workspace.title }}
+                </span>
+            {% else %}
+                <span style="background-color: #d2d2d2; padding:2px 10px 2px 10px;">
+                    No workspace assigned
+                </span>
+            {% endif %}
+            <span style="background-color: #a5d1ed; padding:2px 10px 2px 10px; margin-left: 15px;">
+                {% with key=data_loaded.data.user_id %}
+                  {{ data_loaded.username_list|get:key }}
+                {% endwith %}
+            </span>
+        </td>
+    </tr>
+    <tr objectid="{{data_loaded.data.id}}">
+        <td class="px-3">
+            {% if data_loaded.can_change_workspace %}
+                <a class="btn btn-secondary assign-workspace-record-btn">
+                    <i class="fas fa-folder"></i> Change workspace
+                </a>
+            {% endif %}
+            {% if data_loaded.is_owner %}
+                <a class="btn btn-secondary change-owner-btn">
+                    <i class="fas fa-user-circle"></i> Change owner
+                </a>
+            {% endif %}
+
+            {% if data_loaded.can_write %}
+                <a class="btn btn-secondary edit-record-btn">
+                        <i class="fas fa-edit"></i> {% if data_loaded.form_id %} Edit draft {% else %} Create new version {% endif %}
+                    </a>
+                {% if data_loaded.data.template.format == "XSD" %}
+                    {% if data_loaded.form_id %}
+                    <a class="btn btn-secondary" href="{% url 'core_curate_app_xml_text_editor_view'%}?id={{ data_loaded.form_id }}">
+                        <i class="fas fa-code"></i> Open Draft
+                    </a>
+                    {% else %}
+                    <a class="btn btn-secondary open-xml-record-btn" href="#">
+                        <i class="fas fa-code"></i> Open
+                    </a>
+                    {% endif %}
+                {% elif data_loaded.data.template.format == "JSON" %}
+                    {% if data_loaded.form_id %}
+                    <a class="btn btn-secondary" href="{% url 'core_curate_app_json_text_editor_view'%}?id={{ data_loaded.form_id }}">
+                        <i class="fas fa-code"></i> Open Draft
+                    </a>
+                    {% else %}
+                    <a class="btn btn-secondary open-json-record-btn" href="#">
+                        <i class="fas fa-code"></i> Open
+                    </a>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+            {% if data_loaded.can_write %}
+                {% if data.administration %}
+                    {% url 'core-admin:core_dashboard_app_edit_data' data_loaded.data.id as edit_url %}
+                {% else %}
+                    {% url 'core_dashboard_app_edit_data' data_loaded.data.id as edit_url %}
+                {% endif %}
+                {% include 'core_main_app/common/buttons/edit.html' with label="Edit Title" %}
+                {% if data.administration %}
+                    {% with data_loaded.delete_url as delete_url %}
+                    {% include 'core_main_app/common/buttons/delete.html' %}
+                    {% endwith %}
+                {% endif %}
+                {% if data.administration and  data_loaded.forms_count > 0 %}
+                <a objectid="{{data_loaded.data.id}}" class="btn btn-danger delete-data-draft-list-btn" href="#">
+                    <i class="fas fa-trash"></i> Delete Draft{{ data_loaded.forms_count|pluralize }}
+                </a>
+                {% elif data_loaded.form_id %}
+                <a objectid="{{data_loaded.form_id}}" class="btn btn-danger  delete-draft-btn" href="#">
+                    <i class="fas fa-trash"></i> Delete Draft
+                </a>
+                {% endif %}
+            {% endif %}
+
+        </td>
+        <td style="padding: 10px;">
+            {% if data_loaded.can_set_public %}
+                <a class="btn btn-secondary publish-record-btn {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+                    <i class="fas fa-share-alt"></i> Publish
+                </a>
+            {% endif %}
+            <span class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}" style="font-size: 0.6em; margin: 0.7em;">
+                {% if data_loaded.can_set_public %}Updated{% else%}Published{% endif %} on: {{ data_loaded.data.last_modification_date|localtime }}
+            </span>
+        </td>
+    </tr>
+</table>
+
+{% empty %}
+    No {{data.document}} found.
+{% endfor %}
