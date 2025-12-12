@@ -1,0 +1,103 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mercury-rl"
+version = "0.1.0"
+description = "Proof of concept of SOTA algorithms in RL"
+readme = "README.md"
+requires-python = ">=3.10"
+
+authors = [
+  { name = "Marcos Galletero", email = "marcos.galletero@bbva.com" },
+  { name = "Santiago Basaldua", email = "santiago.basaldua@bbva.com" },
+]
+
+dependencies = [
+  "numpy<2.0.0",
+  "pandas",
+  "tensorflow",
+]
+
+[project.optional-dependencies]
+
+dev = [
+  "pip~=20.2.4",
+  "pytest",
+  "nbmake",
+  "coverage",
+  "requirements-parser",
+  "pyyaml",
+  "d3rlpy",
+  "gym",
+  "onnx",
+  "matplotlib",
+  "mercury-viz",
+  "minari[all]",
+  "gymnasium-robotics",
+  "minigrid",
+  "torchrl",
+  "hydra-core",
+]
+
+doc = [
+  "mkdocs",
+  "mkdocstrings[python-legacy]",
+  "mkdocs-material",
+  "mkdocs-minify-plugin==0.5.0",
+  "mkdocs-exclude",
+  "nbconvert",
+  "mkdocs-static-i18n",
+]
+
+[tool.uv.sources]
+torch = { index = "pypi" }
+
+[tool.setuptools.packages.find]
+include = ["mercury.*"]
+
+[tool.setuptools.package-data]
+"mercury.rl" = ["tutorials/*.ipynb"]
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+
+[tool.bumpversion.files]
+"mercury/version_rl.py" = {}
+"mercury/rl/__init__.py" = {}
+"README.md" = {}
+"docs/index.md" = {}
+"docs/index.es.md" = {}
+
+[tool.bumpversion.parts]
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(-(?P<release>\\w+)\\.(?P<build>\\d+))?"
+serialize = [
+    "{major}.{minor}.{patch}-{release}.{build}",
+    "{major}.{minor}.{patch}"
+]
+
+[tool.flake8]
+exclude = [
+  "build",
+  ".git",
+  ".tox",
+  "tests",
+  "venv",
+  ".venv",
+  "docs/conf.py",
+  "mercury/version_rl.py"
+]
+max-line-length = 140
+ignore = [
+  "E211", "E221", "E226", "E241", "E251", "E203",
+  "F401", "F403", "F405", "F841", "W503", "W504"
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests",
+  "mercury/rl"
+]
