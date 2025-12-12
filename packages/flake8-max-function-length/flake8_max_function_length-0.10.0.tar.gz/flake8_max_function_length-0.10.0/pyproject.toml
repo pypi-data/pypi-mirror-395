@@ -1,0 +1,81 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "flake8-max-function-length"
+keywords = [
+    "flake8",
+    "flake8 plugin",
+    "maximum function length",
+]
+authors = [{ name = "Ghazi Abbassi" }]
+license = { file = "LICENSE" }
+readme = "README.md"
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dynamic = ["version", "description"]
+requires-python = ">=3.8"
+dependencies = ["flake8"]
+
+[project.optional-dependencies]
+dev = ["pre-commit"]
+release = ["flit", "keyring", "tbump"]
+test = ["pytest", "pre-commit"]
+
+[project.urls]
+Code = "https://github.com/ghazi-git/flake8-max-function-length"
+Issues = "https://github.com/ghazi-git/flake8-max-function-length/issues"
+Changelog = "https://github.com/ghazi-git/flake8-max-function-length/releases"
+
+[project.entry-points."flake8.extension"]
+MFL = "flake8_max_function_length.plugin:Plugin"
+
+[tool.flit.module]
+name = "flake8_max_function_length"
+
+[tool.tbump]
+
+[tool.tbump.version]
+current = "0.10.0"
+regex = '''
+  (?P<major>\d+)
+  \.
+  (?P<minor>\d+)
+  \.
+  (?P<patch>\d+)
+  '''
+
+[tool.tbump.git]
+message_template = "Bump to {new_version}"
+tag_template = "v{new_version}"
+
+[[tool.tbump.file]]
+src = "flake8_max_function_length/__init__.py"
+search = '__version__ = "{current_version}"'
+
+[[tool.tbump.file]]
+src = "flake8_max_function_length/plugin.py"
+search = 'version = "{current_version}"'
+
+[[tool.tbump.file]]
+src = "README.md"
+search = 'flake8-max-function-length=={current_version}'
+
+[[tool.tbump.before_commit]]
+name = "Update the changelog"
+cmd = "python release/update_changelog.py --new-version {new_version}"
+
+[[tool.tbump.after_push]]
+name = "Publish to PyPI"
+cmd = "flit publish"
