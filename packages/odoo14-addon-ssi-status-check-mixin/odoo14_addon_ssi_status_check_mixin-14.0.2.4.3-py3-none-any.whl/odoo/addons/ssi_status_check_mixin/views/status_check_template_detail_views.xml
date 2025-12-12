@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2022 OpenSynergy Indonesia
+     Copyright 2022 PT. Simetri Sinergi Indonesia
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/lgpl-3.0-standalone.html). -->
+<odoo>
+    <record id="status_check_template_detail_view_tree" model="ir.ui.view">
+        <field name="name">status.check.template.detail.tree</field>
+        <field name="model">status.check.template_detail</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle" />
+                <field name="status_check_item_id" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="status_check_template_detail_view_form" model="ir.ui.view">
+        <field name="name">status.check.template.detail.form</field>
+        <field name="model">status.check.template_detail</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" style="width: 300px;" name="buttons">
+                    </div>
+                    <group name="group_1" colspan="4" col="2">
+                        <group name="group_1_1" colspan="1" col="2">
+                            <field
+                                name="company_id"
+                                groups="base.group_multi_company"
+                            />
+                            <field
+                                name="allowed_status_check_item_ids"
+                                widget="many2many_tags"
+                                invisible="1"
+                            />
+                            <field
+                                name="status_check_item_id"
+                                domain="[('id', 'in', allowed_status_check_item_ids)]"
+                            />
+                            <field name="sequence" />
+                        </group>
+                        <group name="group_1_2">
+                            <field name="active" widget="boolean_toggle" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="page_bypass" string="Bypass">
+                            <group name="group_bypass_1" colspan="4" col="2">
+                                <field name="bypass_method" colspan="4" />
+                                <field
+                                    name="bypass_user_ids"
+                                    colspan="4"
+                                    attrs="{
+                                         'invisible': [('bypass_method', '!=', 'use_user'), ('bypass_method', '!=', 'use_both')],
+                                         'required': ['|', ('bypass_method', '=', 'use_user'), ('bypass_method', '=', 'use_both')]}"
+                                    widget="many2many_tags"
+                                />
+                                <field
+                                    name="bypass_group_ids"
+                                    colspan="4"
+                                    attrs="{
+                                         'invisible': [('bypass_method', '!=', 'use_group'), ('bypass_method', '!=', 'use_both')],
+                                         'required': ['|', ('bypass_method', '=', 'use_group'), ('bypass_method', '=', 'use_both')]}"
+                                    widget="many2many_tags"
+                                />
+                                <field
+                                    name="python_code"
+                                    colspan="4"
+                                    widget="ace"
+                                    attrs="{'invisible': [('bypass_method', '&lt;&gt;', 'use_python')]}"
+                                />
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

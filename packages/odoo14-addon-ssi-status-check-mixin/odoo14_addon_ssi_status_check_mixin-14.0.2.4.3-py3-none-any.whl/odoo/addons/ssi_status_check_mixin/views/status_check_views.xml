@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2022 OpenSynergy Indonesia
+     Copyright 2022 PT. Simetri Sinergi Indonesia
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/lgpl-3.0-standalone.html). -->
+<odoo>
+
+<record id="status_check_tree_view" model="ir.ui.view">
+    <field name="name">status.check.view.tree</field>
+    <field name="model">status.check</field>
+    <field name="arch" type="xml">
+        <tree>
+            <field name="status_check_item_id" />
+            <field name="status_ok" />
+            <field name="allowed_bypass_user_ids" widget="many2many_tags_avatar" />
+            <field name="bypass_ok" invisible="1" />
+            <field name="date" />
+            <field name="bypass_user_id" />
+            <button
+                    name="action_bypass_status_check"
+                    title="Bypass"
+                    type="object"
+                    icon="fa-check"
+                    confirm="Bypass check. Are you sure?"
+                    attrs="{'invisible':[('status_ok','=',True)]}"
+                />
+            <button
+                    name="action_reverse_bypass_status_check"
+                    title="Reverse Bypass"
+                    type="object"
+                    icon="fa-times"
+                    confirm="Reverse bypass. Are you sure?"
+                    attrs="{'invisible':[('bypass_user_id','=', False)]}"
+                />
+        </tree>
+    </field>
+</record>
+
+<record id="status_check_form_view" model="ir.ui.view">
+    <field name="name">status.check - form</field>
+    <field name="model">status.check</field>
+    <field name="arch" type="xml">
+        <form>
+            <group name="group_1" colspan="4" col="2">
+                <field name="status_check_item_id" />
+                <field name="status_ok" />
+                <field name="resolution_instruction" />
+            </group>
+        </form>
+    </field>
+</record>
+
+</odoo>

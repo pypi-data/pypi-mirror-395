@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2022 OpenSynergy Indonesia
+     Copyright 2022 PT. Simetri Sinergi Indonesia
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/lgpl-3.0-standalone.html). -->
+<odoo>
+    <record id="status_check_item_search_view" model="ir.ui.view">
+        <field name="name">status.check.item.view.search</field>
+        <field name="model">status.check.item</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="model_id" />
+                <group name="group1">
+                    <filter
+                        name="dom_python"
+                        string="Python Based Computation"
+                        domain="[('status_check_method','=','use_python')]"
+                    />
+                </group>
+                <group name="group2">
+                    <filter
+                        name="grp_model"
+                        string="Model"
+                        context="{'group_by':'model_id'}"
+                    />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="status_check_item_tree_view" model="ir.ui.view">
+        <field name="name">status.check.item.view.tree</field>
+        <field name="model">status.check.item</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="code" />
+                <field name="name" />
+                <field name="model_id" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="status_check_item_form_view" model="ir.ui.view">
+        <field name="name">status.check.item.view.form</field>
+        <field name="model">status.check.item</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" style="width: 300px;" name="buttons">
+                    </div>
+                    <group name="group_1" colspan="4" col="2">
+                        <group name="group_1_1" colspan="1" col="2">
+                            <field name="code" />
+                            <field name="name" />
+                            <field name="active" widget="boolean_toggle" />
+                        </group>
+                        <group name="group_1_2">
+                            <field name="model_id" />
+                            <field name="model" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="page_description" string="Description">
+                            <field name="description" colspan="4" />
+                        </page>
+                        <page name="page_computation" string="Computation">
+                            <group name="group_computation_1" colspan="4" col="2">
+                                <field name="status_check_method" colspan="4" />
+                                <field
+                                    name="python_code"
+                                    colspan="4"
+                                    widget="ace"
+                                    attrs="{'invisible': [('status_check_method', '&lt;&gt;', 'use_python')]}"
+                                />
+                            </group>
+                        </page>
+                        <page name="instruction" string="Resolution Instructions">
+                            <field name="resolution_instruction" />
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="status_check_item_action" model="ir.actions.act_window">
+        <field name="name">Status Check Items</field>
+        <field name="res_model">status.check.item</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem
+        id="status_check_item_menu"
+        name="Items"
+        parent="menu_status_check"
+        action="status_check_item_action"
+        sequence="10"
+    />
+
+</odoo>
