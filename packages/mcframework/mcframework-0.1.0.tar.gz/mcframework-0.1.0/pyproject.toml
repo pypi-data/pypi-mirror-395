@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "mcframework"
+version = "0.1.0"
+description = "Lightweight, parallel, and reproducible Monte Carlo simulation framework"
+readme = "README.md"
+authors = [{ name = "Milan Fusco" }]
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+dependencies = [
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "scipy>=1.10",
+]
+[project.urls]
+Homepage = "https://github.com/milanfusco/mcFramework/"
+Docs = "https://milanfusco.github.io/mcFramework/"
+
+[project.optional-dependencies]
+dev = [
+    "pylint>=3.2",
+    "pylint-exit>=1.2",
+    "ruff>=0.6",
+]
+docs = [
+    "sphinx>=7.2",
+    "pydata-sphinx-theme>=0.15",
+    "myst-parser>=2.0", # Markdown support
+    "sphinx-autodoc-typehints>=2.0",
+    "sphinx-copybutton>=0.5",
+    "sphinx-design>=0.6",
+    "sphinxcontrib-mermaid>=0.9", # Mermaid diagram support
+    "numpydoc>=1.6", # NumPy/SciPy-style docstrings
+    "sphinx-gallery>=0.16", # optional: gallery of examples (plots!)
+    "matplotlib>=3.7", # if we use sphinx-gallery with plots
+]
+test = [
+    "pytest>=7.2",
+    "pytest-cov>=4.0",
+    "coverage>=7.2",
+]
+gui = [
+    "PySide6>=6.5",
+    "yfinance>=0.2",
+]
+
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=src/mcframework --cov-report=term-missing --cov-report=xml"
+testpaths = [
+    "tests",
+]
+
+[tool.pylint.main]
+# Make src importable when running from project root
+init-hook = 'import sys, os; sys.path.insert(0, os.path.abspath("src"))'
+py-version = "3.12"
+jobs = 1                           # avoid parallel workers (simpler, fewer stacktraces)
+load-plugins = [
+    "pylint.extensions.docparams"    # nice docstring checks; optional
+]
+ignore-paths = [
+    "\\.venv/.*",
+    "docs/_build/.*",
+]
+
+[tool.pylint.messages_control]
+# Keep this conservative
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",      # dataclasses/protocols often have few methods
+    "duplicate-code",              # logger setup is intentionally duplicated
+    "fixme",                       # TODO comments are acceptable
+    "no-name-in-module",           # False positive for scipy.special.erfinv
+]
+
+[tool.pylint.format]
+max-line-length = 110
+
+[tool.pylint.design]
+max-args = 15
+max-locals = 35
+max-attributes = 15
+max-positional-arguments = 15
+
+[tool.pylint."pylint.design"]
+max-module-lines = 2000
+
+[tool.pylint.basic]
+# Standard loop vars + finance/math notation
+good-names = ["i", "j", "k", "x", "y", "n", "df", "ps", "B", "K", "T", "S", "Z", "X", "r", "q"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]     # pycodestyle/pyflakes/imports
