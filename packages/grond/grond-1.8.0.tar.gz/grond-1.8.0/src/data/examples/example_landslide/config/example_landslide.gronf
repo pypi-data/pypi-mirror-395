@@ -1,0 +1,99 @@
+%YAML 1.1
+# Example: Single force inversion from landslide observations.
+--- !grond.Config
+path_prefix: ../
+rundir_template: runs/${problem_name}.grun
+dataset_config: !grond.DatasetConfig
+  stations_stationxml_paths: ['data/events/${event_name}/waveforms/stations.geofon.xml', 'data/events/${event_name}/waveforms/stations.iris.xml']
+  events_path: data/events/${event_name}/event.txt
+  waveform_paths: ['data/events/${event_name}/waveforms/raw']
+  responses_stationxml_paths: ['data/events/${event_name}/waveforms/stations.geofon.xml', 'data/events/${event_name}/waveforms/stations.iris.xml']
+  extend_incomplete: false
+  picks_paths: []
+  blacklist_paths: []
+  blacklist: []
+  whitelist_paths: []
+target_groups:
+- !grond.WaveformTargetGroup
+  normalisation_family: td
+  path: td.rayleigh
+  weight: 1.0
+  interpolation: nearest_neighbor
+  store_id: crust2_pa_sf
+  distance_min: 1000.0
+  distance_max: 200000.0
+  exclude: []
+  channels: [Z, R]
+  misfit_config: !grond.WaveformMisfitConfig
+    quantity: displacement
+    fmin: 0.05
+    fmax: 0.2
+    ffactor: 1.5
+    tmin: '{stored:any_P}-60'
+    tmax: '{stored:any_P}+60'
+    domain: time_domain
+    norm_exponent: 1
+    tautoshift_max: 4.0
+    autoshift_penalty_max: 0.05
+- !grond.WaveformTargetGroup
+  normalisation_family: td
+  path: td.love
+  weight: 1.0
+  interpolation: nearest_neighbor
+  store_id: crust2_pa_sf
+  distance_min: 1000.0
+  distance_max: 200000.0
+  exclude: []
+  channels: [T]
+  misfit_config: !grond.WaveformMisfitConfig
+    quantity: displacement
+    fmin: 0.05
+    fmax: 0.2
+    ffactor: 1.5
+    tmin: '{stored:any_P}-60'
+    tmax: '{stored:any_P}+60'
+    domain: time_domain
+    norm_exponent: 1
+    tautoshift_max: 4.0
+    autoshift_penalty_max: 0.05
+problem_config: !grond.SFProblemConfig
+  name_template: sf_${event_name}_0.05_0.2
+  norm_exponent: 1
+  ranges:
+    depth: 100 .. 100
+    duration: 1 .. 1
+    east_shift: -10000 .. 10000
+    north_shift: -10000 .. 10000
+    fd: -9e+10 .. 9e+10
+    fe: -9e+10 .. 9e+10
+    fn: -9e+10 .. 9e+10
+    time: 15 .. 35 | add
+  distance_min: 0.0
+  stf_type: HalfSinusoidSTF
+  nthreads: 1
+analyser_configs:
+- !grond.TargetBalancingAnalyserConfig
+  niterations: 1000
+  use_reference_magnitude: false
+optimiser_config: !grond.HighScoreOptimiserConfig
+  sampler_phases:
+  - !grond.UniformSamplerPhase
+    niterations: 1000
+    ntries_preconstrain_limit: 1000
+  - !grond.DirectedSamplerPhase
+    niterations: 5000
+    ntries_preconstrain_limit: 1000
+    scatter_scale_begin: 2.0
+    scatter_scale_end: 0.7
+    starting_point: excentricity_compensated
+    sampler_distribution: normal
+    standard_deviation_estimator: median_density_single_chain
+    ntries_sample_limit: 1000
+  chain_length_factor: 8.0
+  nbootstrap: 100
+engine_config: !grond.EngineConfig
+  gf_stores_from_pyrocko_config: false
+  gf_store_superdirs: [gf_stores]
+  gf_store_dirs: []
+event_names: []
+event_names_exclude: []
