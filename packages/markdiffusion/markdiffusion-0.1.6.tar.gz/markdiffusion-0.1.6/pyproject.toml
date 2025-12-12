@@ -1,0 +1,237 @@
+# ============================================================================
+# MarkDiffusion - Generative Watermarking Toolkit for Latent Diffusion Models
+# ============================================================================
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ============================================================================
+# Project Metadata
+# ============================================================================
+
+[project]
+name = "markdiffusion"
+dynamic = ["version"]
+description = "An Open-Source Toolkit for Generative Watermarking of Latent Diffusion Models"
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+
+authors = [
+    {name = "Leyi Pan", email = "panly24@mails.tsinghua.edu.cn"},
+    {name = "Sheng Guan", email = "guansheng2022@bupt.edu.cn"},
+    {name = "Zheyu Fu", email = "fuzheyu23@mails.tsinghua.edu.cn"},
+    {name = "Luyang Si", email = "sily23@mails.tsinghua.edu.cn"},
+    {name = "Huan Wang", email = "huan-wan23@mails.tsinghua.edu.cn"},
+    {name = "Zian Wang", email = "authurwzaa@gmail.com"},
+    {name = "Hanqian Li", email = "hli994@connect.hkust-gz.edu.cn"},
+    {name = "Xuming Hu", email = "xuminghu97@gmail.com"},
+    {name = "Irwin King", email = "king@cuhk.edu.cn"},
+    {name = "Philip S.Yu", email = "psyu@uic.edu"},
+    {name = "Aiwei Liu", email = "liuaiwei20@gmail.com"},
+    {name = "Lijie Wen", email = "wenlj@tsinghua.edu.cn"},
+]
+
+maintainers = [
+    {name = "Leyi Pan", email = "panly24@mails.tsinghua.edu.cn"},
+    {name = "Sheng Guan", email = "codelformat@gmail.com"},
+]
+
+keywords = [
+    "watermark",
+    "diffusion",
+    "generative-ai",
+    "stable-diffusion",
+    "video-generation",
+    "trustworthy-ai",
+    "ai-safety",
+    "deep-learning",
+    "pytorch",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Security",
+]
+
+
+
+dependencies = [
+    "numpy>=1.20",
+    "Pillow>=8.0",
+    "opencv-python>=4.10",
+    "requests>=2.26",
+    "tqdm>=4.60",
+    "scipy>=1.7",
+    "matplotlib>=3.4",
+    "diffusers>=0.25",
+    "transformers>=4.30",
+    "accelerate>=0.20",
+    "huggingface_hub>=0.16",
+    "ujson>=5.10.0",
+    "datasets>=2.0",
+    "sentence-transformers>=5.0.0",
+    "joblib>=1.5.1",
+    "pandas>=1.4",
+    "pycryptodome>=3.23",
+]
+
+[project.urls]
+Homepage = "https://generative-watermark.github.io/"
+Documentation = "https://github.com/THU-BPM/markdiffusion#readme"
+Repository = "https://github.com/THU-BPM/markdiffusion"
+Issues = "https://github.com/THU-BPM/markdiffusion/issues"
+Changelog = "https://github.com/THU-BPM/markdiffusion/releases"
+
+# ============================================================================
+# Optional Dependencies
+# ============================================================================
+
+[project.optional-dependencies]
+# Optional dependencies that cannot be installed via conda
+optional = [
+    "ldpc>=2.3.8",
+    "lpips>=0.1.4",
+    "piq>=0.7",
+    "pyiqa>=0.1.7",
+    "timm>=0.9",
+    "easydict>=1.9",
+    "galois>=0.4.7",
+    "Levenshtein>=0.27.1",
+]
+
+# Testing dependencies
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+# Development tools
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "isort>=5.12",
+    "flake8>=6.0",
+    "mypy>=1.0",
+    "pre-commit>=3.0",
+]
+
+# Documentation
+docs = [
+    "sphinx>=6.0",
+    "sphinx-rtd-theme>=1.2",
+    "myst-parser>=1.0",
+]
+
+# ============================================================================
+# Entry Points (CLI commands)
+# ============================================================================
+
+[project.scripts]
+# markdiffusion = "markdiffusion.cli:main"  # Uncomment when CLI is implemented
+
+# ============================================================================
+# Setuptools Configuration
+# ============================================================================
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "markdiffusion",
+    "markdiffusion.*",
+]
+exclude = [
+    "tests*",
+    "examples*",
+    "backup*",
+    "VBench*",
+    "dino*",
+    "img*",
+    "output*",
+]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.json", "*.txt", "*.parquet", "*.arrow"]
+
+# ============================================================================
+# Tool Configurations
+# ============================================================================
+
+[tool.black]
+line-length = 120
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | VBench
+    | backup
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = [".git", "VBench", "backup", ".venv"]
+known_first_party = ["markdiffusion"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["VBench", "backup", "test"]
+
+[tool.pytest.ini_options]
+testpaths = ["markdiffusion/test"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.coverage.run]
+source = ["markdiffusion"]
+omit = ["*/test/*", "*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+# ============================================================================
+# Dynamic Version Configuration
+# ============================================================================
+
+[tool.setuptools.dynamic]
+version = {attr = "markdiffusion.__version__"}
