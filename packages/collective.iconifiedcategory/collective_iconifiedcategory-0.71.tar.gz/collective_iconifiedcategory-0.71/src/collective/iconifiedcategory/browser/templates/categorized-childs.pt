@@ -1,0 +1,28 @@
+<div class="categorized-elements"
+     tal:define="cat_infos view/categories_infos;
+                 context_id python: context.getId();
+                 context_uid context/UID|context_id;
+                 context_url python: context.absolute_url();
+                 filters_json python: view._filters_json();"
+     tal:condition="cat_infos">
+  <tal:block repeat="element cat_infos">
+    <a href="" class="tooltipster-childs-infos deactivated"
+       onclick="javascript:event.preventDefault();"
+       tal:attributes="href string:#${element/id}_${context_uid|context_id};
+                       title string:${element/title};
+                       data-category_uid string:${element/uid};
+                       data-base_url string:${context_url};
+                       data-filters:json string:${filters_json};">
+      <span tal:content="string:${element/counts}"></span>
+      <img width="16px"
+           height="16px"
+           tal:attributes="src string:${view/portal_url}/${element/icon};
+                           alt string:${element/title};
+                           title string:${element/title}" />
+    </a>
+  </tal:block>
+  <div style="clear: both;"></div>
+</div>
+<tal:nothing condition="python: not view.has_elements_to_show() and view.show_nothing">
+<span class="discreet" i18n:domain="collective.iconifiedcategory" i18n:translate="">Nothing.</span>
+</tal:nothing>

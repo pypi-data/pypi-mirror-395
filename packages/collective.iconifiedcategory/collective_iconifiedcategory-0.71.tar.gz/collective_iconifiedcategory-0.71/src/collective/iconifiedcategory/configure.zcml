@@ -1,0 +1,95 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    i18n_domain="collective.iconifiedcategory">
+
+  <i18n:registerTranslations directory="locales" />
+
+  <include package="Products.CMFCore" />
+  <include package="plone.app.dexterity" />
+  <include package="plone.app.contenttypes" />
+  <include package="collective.documentviewer" />
+  <include package="collective.fontawesome" />
+  <include package="collective.js.tooltipster" />
+  <include package="collective.z3cform.select2" />
+  <include package="z3c.json" />
+
+  <include package=".browser" />
+  <include package=".content" />
+  <include package=".behaviors" />
+  <include package=".widget" />
+
+  <include file="adapter.zcml" />
+  <include file="upgrades.zcml" />
+
+  <genericsetup:registerProfile
+      name="default"
+      title="collective.iconifiedcategory"
+      directory="profiles/default"
+      description="Installs the collective.iconifiedcategory add-on."
+      provides="Products.GenericSetup.interfaces.EXTENSION" />
+
+  <genericsetup:importStep
+      name="collective.iconifiedcategory:default-postInstall"
+      title="collective.iconifiedcategory post_install import step"
+      description="Post install import step from collective.iconifiedcategory"
+      handler=".setuphandlers.post_install">
+      <depends name="typeinfo" />
+  </genericsetup:importStep>
+
+  <genericsetup:registerProfile
+      name="testing"
+      title="collective.iconifiedcategory (testing)"
+      directory="profiles/testing"
+      description="Installs the collective.iconifiedcategory testing profile."
+      provides="Products.GenericSetup.interfaces.EXTENSION" />
+
+  <genericsetup:importStep
+      name="collective.iconifiedcategory:testing-postInstall"
+      title="collective.iconifiedcategory testing post_install import step"
+      description="Post install import step from collective.iconifiedcategory"
+      handler=".setuphandlers.post_test_install">
+  </genericsetup:importStep>
+
+  <utility
+    provides="zope.schema.interfaces.IVocabularyFactory"
+    name="collective.iconifiedcategory.categories"
+    factory=".vocabularies.CategoryVocabulary" />
+
+  <utility
+    provides="zope.schema.interfaces.IVocabularyFactory"
+    name="collective.iconifiedcategory.every_categories"
+    factory=".vocabularies.EveryCategoryVocabulary" />
+
+  <utility
+    provides="zope.schema.interfaces.IVocabularyFactory"
+    name="collective.iconifiedcategory.every_category_uids"
+    factory=".vocabularies.EveryCategoryUIDVocabulary" />
+
+  <utility
+    provides="zope.schema.interfaces.IVocabularyFactory"
+    name="collective.iconifiedcategory.category_titles"
+    factory=".vocabularies.CategoryTitleVocabulary" />
+
+  <utility
+    provides="zope.schema.interfaces.IVocabularyFactory"
+    name="collective.iconifiedcategory.every_category_titles"
+    factory=".vocabularies.EveryCategoryTitleVocabulary" />
+
+  <utility
+    provides="zope.schema.interfaces.IVocabularyFactory"
+    name="collective.iconifiedcategory.show_preview_vocabulary"
+    factory=".vocabularies.ShowPreviewVocabulary" />
+
+  <!-- indexes -->
+  <adapter
+    name="enabled"
+    factory=".indexes.enabled" />
+
+  <adapter
+    name="content_category_uid"
+    factory=".indexes.content_category_uid" />
+
+</configure>
