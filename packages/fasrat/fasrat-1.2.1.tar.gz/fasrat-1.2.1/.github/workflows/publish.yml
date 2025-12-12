@@ -1,0 +1,72 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v0.1.0, v1.0.0, etc.
+
+jobs:
+  test:
+    name: Test on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+    
+    - name: Install dependencies
+      run: |
+        uv sync --all-groups
+    
+    - name: Run tests
+      run: |
+        uv run pytest -v
+    
+    - name: Test package installation
+      run: |
+        uv run fasrat --help
+
+  build-and-publish:
+    name: Build and publish package to PyPI
+    needs: test  # Only publish if tests pass
+    runs-on: ubuntu-latest
+    environment: pypi  # Use the GitHub environment for additional protection
+    permissions:
+      id-token: write  # Required for trusted publishing
+      contents: read
+    
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+    
+    - name: Build package
+      run: uv build
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        print-hash: true
+
