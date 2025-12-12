@@ -1,0 +1,120 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers %}
+{% load static %}
+{% load i18n %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'nbxsync/css/password_field.css' %}">
+{% endblock %}
+{% block form %}
+    <div class="field-group my-5">
+        <div class="row">
+            <h2 class="col-9 offset-3">Generic Configuration</h2>
+        </div>
+        {% render_field form.zabbixserver %}
+        {% render_field form.type %}
+        {% render_field form.useip %}
+        {% render_field form.interface_type %}
+        <div class="field-group" id="ip-address-wrapper">{% render_field form.ip %}</div>
+        <div class="field-group" id="dns-wrapper">{% render_field form.dns %}</div>
+        {% comment %} Port label and checkbox magic {% endcomment %}
+        <div class="row mb-3" id="port-wrapper">
+            <label class="col-sm-3 col-form-label text-lg-end"
+                   for="{{ form.port.id_for_label }}">{{ form.port.label }}</label>
+            <div class="col-md-7">{{ form.port }}</div>
+            <div class="col-md-2 d-flex align-items-center">
+                <div class="form-check mb-0">
+                    <input type="checkbox"
+                           name="use_defaultport"
+                           id="id_use_defaultport"
+                           class="form-check-input me-2">
+                    <label for="id_use_defaultport" class="form-check-label mb-0">Use default</label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="ipmi-wrapper" class="field-group my-5">
+        <div class="field-group my-5">
+            <div class="row">
+                <h2 class="col-9 offset-3">IPMI configuration</h2>
+            </div>
+            {% render_field form.ipmi_authtype %}
+            {% render_field form.ipmi_privilege %}
+            {% render_field form.ipmi_username %}
+            <div class="field-group" id="ipmipassword-wrapper">
+                <div class="relative-container">
+                    {% render_field form.ipmi_password %}
+                    <button type="button" id="toggle-ipmipassword" class="toggle-password-btn">
+                        <i class="mdi mdi-eye" id="toggle-icon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="agent-wrapper" class="field-group my-5">
+        <div class="field-group my-5">
+            <div class="row">
+                <h2 class="col-9 offset-3">Encryption configuration</h2>
+            </div>
+            {% render_field form.tls_connect %}
+            {% render_field form.tls_accept %}
+            <div class="field-group" id="tlspsk-wrapper">
+                {% render_field form.tls_psk_identity %}
+                <div class="relative-container">
+                    {% render_field form.tls_psk %}
+                    <button type="button" id="toggle-psk" class="toggle-password-btn">
+                        <i class="mdi mdi-eye" id="toggle-icon"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-group" id="tlscert-wrapper">
+                {% render_field form.tls_issuer %}
+                {% render_field form.tls_subject %}
+            </div>
+        </div>
+    </div>
+    <div id="snmp-version-wrapper" class="field-group my-5">
+        <div class="field-group">
+            {% render_field form.snmp_version %}
+            {% render_field form.snmp_usebulk %}
+        </div>
+    </div>
+    <div id="snmpv2-wrapper" class="field-group my-5">
+        <div class="field-group my-5">
+            <div class="row">
+                <h2 class="col-9 offset-3">SNMPv1/2 Configuration</h2>
+            </div>
+        </div>
+        {% render_field form.snmp_community %}
+    </div>
+    <div id="snmpv3-wrapper" class="field-group my-5">
+        <div class="field-group my-5">
+            <div class="row">
+                <h2 class="col-9 offset-3">SNMPv3 Configuration</h2>
+            </div>
+        </div>
+        {% render_field form.snmpv3_context_name %}
+        {% render_field form.snmpv3_security_name %}
+        {% render_field form.snmpv3_security_level %}
+        <div id="snmpv3-auth-wrapper">
+            {% render_field form.snmpv3_authentication_passphrase %}
+            {% render_field form.snmpv3_authentication_protocol %}
+        </div>
+        <div id="snmpv3-priv-wrapper">
+            {% render_field form.snmpv3_privacy_passphrase %}
+            {% render_field form.snmpv3_privacy_protocol %}
+        </div>
+    </div>
+    <div class="field-group my-5">
+        <div class="row mb-2">
+            {% trans "Assignment" as assignment_label %}
+            {% for fieldset in form.fieldsets %}
+                {% if fieldset.name == assignment_label %}
+                    {% render_fieldset form fieldset %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+{% block javascript %}
+    <script src="{% static 'nbxsync/js/zabbixhostinterface-form.js' %}" defer></script>
+{% endblock %}

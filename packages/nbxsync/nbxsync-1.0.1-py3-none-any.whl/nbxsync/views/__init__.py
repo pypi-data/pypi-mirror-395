@@ -1,0 +1,26 @@
+from .jobs import *
+from .tabs import *
+
+from .hostinfo import *
+
+from .zabbixconfigurationgroup import *
+
+from .zabbixmacro import *
+from .zabbixmacroassignment import *
+from .zabbixserver import *
+from .zabbixserverassignment import *
+from .zabbixtag import *
+from .zabbixtagassignment import *
+from .zabbixtemplate import *
+from .zabbixtemplateassignment import *
+from .zabbixhostinterface import *
+from .zabbixproxygroup import *
+from .zabbixproxy import *
+from .zabbixhostgroup import *
+from .zabbixhostgroupassignment import *
+from .zabbixhostinventory import *
+from .zabbixmaintenance import *
+from .zabbixmaintenanceperiod import *
+from .zabbixmaintenanceobjectassignment import *
+from .zabbixmaintenancetagassignment import *
+from .zabbixconfigurationgroupassignment import *
