@@ -1,0 +1,131 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+    "oldest-supported-numpy; python_version<='3.11'",
+    "numpy>=2.0,<3; python_version>'3.11'",
+]
+
+[project]
+name = "pyrocko"
+version = "2025.12.04"
+authors = [
+    {name = "The Pyrocko Developers", email = "info@pyrocko.org"},
+]
+maintainers = [
+    {name = "Sebastian Heimann", email = "sebastian.heimann@uni-potsdam.de"}
+]
+description = "A versatile seismology toolkit for Python."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = 'GPL-3.0-or-later'}
+keywords = [
+    "seismology", "waveform analysis", "earthquake modelling", "geophysics",
+    "geophysical inversion"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    "numpy>=1.25,<3; python_version>'3.11'",
+    "numpy>=1.16,<2; python_version<='3.11'",
+    "scipy>=1.0",
+    "pyyaml",
+    "matplotlib",
+    "requests",
+]
+
+[project.optional-dependencies]
+gui = [
+    "PyQt5",
+    "vtk",
+]
+
+[project.urls]
+homepage = "https://pyrocko.org"
+documentation = "https://pyrocko.org/docs"
+repository = "https://git.pyrocko.org/pyrocko/pyrocko"
+changelog = "https://git.pyrocko.org/pyrocko/pyrocko/src/branch/master/CHANGELOG.md"
+
+[project.entry-points.console_scripts]
+pyrocko = "pyrocko.apps.pyrocko:main"
+fomosto = "pyrocko.apps.fomosto:main"
+cake = "pyrocko.apps.cake:main"
+automap = "pyrocko.apps.automap:main"
+hamster = "pyrocko.apps.hamster:main"
+jackseis = "pyrocko.apps.jackseis:main"
+colosseo = "pyrocko.apps.colosseo:main"
+squirrel = "pyrocko.apps.squirrel:main"
+
+[project.entry-points.gui_scripts]
+snuffler = "pyrocko.apps.snuffler:main"
+sparrow = "pyrocko.apps.sparrow:main"
+drum = "pyrocko.apps.drum:main"
+
+# 2023-06-07: "Support for `[tool.setuptools]` in `pyproject.toml` is still
+# *beta*", # therfore package-data is handled in setup.py atm.
+# [tool.setuptools.package-data]
+# "pyrocko" = [
+#     'data/*.png',
+#     'data/*.html',
+#     'data/earthmodels/*.nd',
+#     'data/colortables/*.cpt',
+#     'data/tectonics/*.txt',
+#     'data/fomosto_report/gfreport.*',
+#     'gui/snuffler/snufflings/map/*.kml',
+#     'gui/snuffler/snufflings/map/*.html',
+#     'gui/snuffler/snufflings/map/*.js',
+# ]
+# '*' = [
+#     'README.md'
+# ]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--tb=short"
+testpaths = [
+    "test/base",
+    "test/gf",
+    "test/gui",
+    "test/examples",
+]
+
+[tool.ruff]
+line-length = 79
+select = ["E", "F", "Q"]  # "B"
+
+[tool.ruff.flake8-quotes]
+docstring-quotes = "single"
+inline-quotes = "single"
+multiline-quotes = "single"
+
+[tool.coverage.report]
+exclude_lines = [
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "raise ValueError",
+    "raise",
+    "if __name__ == .__main__.:",
+    "logger.error",
+    "if pyrocko.grumpy:",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/",
+    "/usr/lib/*/pyrocko/",
+    "/usr/local/lib/*/pyrocko/",
+]
