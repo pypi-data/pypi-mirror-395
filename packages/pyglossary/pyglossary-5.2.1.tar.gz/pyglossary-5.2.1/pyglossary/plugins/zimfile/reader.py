@@ -1,0 +1,190 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import annotations
+
+import os
+from typing import TYPE_CHECKING
+from xml.sax.saxutils import quoteattr
+
+from pyglossary.core import cacheDir, exc_note, log, pip
+
+if TYPE_CHECKING:
+	from collections.abc import Iterator
+
+	from libzim.reader import Archive  # type: ignore
+
+	from pyglossary.glossary_types import EntryType, ReaderGlossaryType
+
+
+__all__ = ["Reader"]
+
+
+class Reader:
+	_text_unicode_errors = "replace"
+	_html_unicode_errors = "replace"
+	useByteProgress = False
+	depends = {
+		"libzim": "libzim>=1.0",
+	}
+
+	resourceMimeTypes = {
+		"image/png",
+		"image/jpeg",
+		"image/gif",
+		"image/svg+xml",
+		"image/webp",
+		"image/x-icon",
+		"text/css",
+		"text/javascript",
+		"application/javascript",
+		"application/json",
+		"application/octet-stream",
+		"application/octet-stream+xapian",
+		"application/x-chrome-extension",
+		"application/warc-headers",
+		"application/font-woff",
+	}
+
+	def __init__(self, glos: ReaderGlossaryType) -> None:
+		self._glos = glos
+		self._filename = ""
+		self._zimfile: Archive | None = None
+
+	def open(self, filename: str) -> None:
+		try:
+			from libzim.reader import Archive
+		except ModuleNotFoundError as e:
+			exc_note(e, f"Run `{pip} install libzim` to install")
+			raise
+
+		self._filename = filename
+		self._zimfile = Archive(filename)
+
+	def close(self) -> None:
+		self._filename = ""
+		self._zimfile = None
+
+	def __len__(self) -> int:
+		if self._zimfile is None:
+			log.error("len(reader) called before reader.open()")
+			return 0
+		return self._zimfile.entry_count
+
+	def __iter__(self) -> Iterator[EntryType | None]:  # noqa: PLR0912
+		glos = self._glos
+		zimfile = self._zimfile
+		if zimfile is None:
+			return
+		emptyContentCount = 0
+		invalidMimeTypeCount = 0
+		undefinedMimeTypeCount = 0
+		entryCount = zimfile.entry_count
+
+		redirectCount = 0
+
+		windows = os.sep == "\\"
+
+		try:
+			f_namemax = os.statvfs(cacheDir).f_namemax  # type: ignore
+		except AttributeError:
+			log.warning("Unsupported operating system (no os.statvfs)")
+			# Windows: CreateFileA has a limit of 260 characters.
+			# CreateFileW supports names up to about 32760 characters (64kB).
+			f_namemax = 200
+
+		fileNameTooLong: list[str] = []
+
+		text_unicode_errors = self._text_unicode_errors
+		html_unicode_errors = self._html_unicode_errors
+
+		for entryIndex in range(entryCount):
+			zEntry = zimfile._get_entry_by_id(entryIndex)
+			term = zEntry.title
+
+			if zEntry.is_redirect:
+				redirectCount += 1
+				targetWord = zEntry.get_redirect_entry().title
+				hrefQuoted = quoteattr("bword://" + targetWord)
+				yield glos.newEntry(
+					term,
+					f"Redirect: <a href={hrefQuoted}>{targetWord}</a>",
+					defiFormat="h",
+				)
+				continue
+
+			zItem = zEntry.get_item()
+			b_content = zItem.content.tobytes()
+
+			if not b_content:
+				emptyContentCount += 1
+				yield None
+				# TODO: test with more zim files
+				# Looks like: zItem.path == zEntry.path == "-" + word
+				# print(f"b_content empty, {word=}, {zEntry.path=}, {zItem.path=}")
+				# if zEntry.path == "-" + word:
+				# 	yield None
+				# else:
+				# 	defi = f"Path: {zEntry.path}"
+				# 	yield glos.newEntry(word, defi, defiFormat="m")
+				continue
+
+			try:
+				mimetype = zItem.mimetype
+			except RuntimeError:
+				invalidMimeTypeCount += 1
+				mimetype = ""
+				yield glos.newDataEntry(term, b_content)
+
+			if mimetype == "undefined":
+				undefinedMimeTypeCount += 1
+				continue
+
+			mimetype = mimetype.split(";")[0]
+
+			if mimetype.startswith("text/html"):
+				# can be "text/html;raw=true"
+				defi = b_content.decode("utf-8", errors=html_unicode_errors)
+				defi = defi.replace(' src="../I/', ' src="./')
+				yield glos.newEntry(term, defi, defiFormat="h")
+				continue
+
+			if mimetype == "text/plain":
+				yield glos.newEntry(
+					term,
+					b_content.decode("utf-8", errors=text_unicode_errors),
+					defiFormat="m",
+				)
+				continue
+
+			if mimetype not in self.resourceMimeTypes:
+				log.warning(f"Unrecognized {mimetype=}")
+
+			if len(term) > f_namemax:
+				fileNameTooLong.append(term)
+				continue
+
+			if "|" in term:
+				log.warning(f"resource title: {term}")
+				if windows:
+					continue
+
+			try:
+				entry = glos.newDataEntry(term, b_content)
+			except Exception as e:
+				log.error(f"error creating file: {e}")
+				continue
+			yield entry
+
+		log.info(f"ZIM Entry Count: {entryCount}")
+
+		if fileNameTooLong:
+			log.warning(f"Files with name too long: {len(fileNameTooLong)}")
+
+		if emptyContentCount > 0:
+			log.info(f"Empty Content Count: {emptyContentCount}")
+		if invalidMimeTypeCount > 0:
+			log.info(f"Invalid MIME-Type Count: {invalidMimeTypeCount}")
+		if undefinedMimeTypeCount > 0:
+			log.info(f"MIME-Type 'undefined' Count: {invalidMimeTypeCount}")
+		if redirectCount > 0:
+			log.info(f"Redirect Count: {redirectCount}")
