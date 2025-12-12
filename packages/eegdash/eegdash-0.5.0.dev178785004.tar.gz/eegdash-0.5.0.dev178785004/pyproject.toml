@@ -1,0 +1,144 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+name = "eegdash"
+authors = [
+  { name = "Young Truong",    email = "dt.young112@gmail.com" },
+  { name = "Arnaud Delorme",  email = "adelorme@ucsd.edu" },
+  { name = "Aviv Dotan",  email = "avivdot@bgu.post.ac.il" },
+  { name = "Oren Shriki",  email = "shrikio@bgu.ac.il" },
+  { name = "Bruno Aristimunha", email = "b.aristimunha@gmail.com"}
+]
+description     = "EEG data for machine learning"
+readme          = "README.md"
+license         = "BSD-3-Clause"
+requires-python = ">=3.10"
+
+classifiers = [
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Development Status :: 3 - Alpha",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "braindecode>=1.0",
+  "mne_bids>=0.17.0",
+  "numba",
+  "pymongo",
+  "s3fs",
+  "tqdm",
+  "pymatreader",
+  "eeglabio",
+  "tabulate",
+  "rich",
+  "pyarrow",
+  "pandas>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/sccn/EEG-Dash-Data"
+Issues   = "https://github.com/sccn/EEG-Dash-Data/issues"
+
+
+[project.optional-dependencies]
+tests = [
+    'pytest',
+    'pytest-cov',
+    'pytest-sugar',
+    'codecov',
+    'pytest_cases',
+    'pytest-benchmark',
+]
+dev = [
+  "pre-commit",
+  "ipykernel",
+  "lightning>=2.0",
+  "torchmetrics>=0.7",
+  "scikit-learn",
+  "tensorboard"
+]
+
+docs = [
+  "sphinx",
+  "sphinx_design",
+  "sphinx_gallery",
+  "sphinx_rtd_theme",
+  "pydata-sphinx-theme",
+  "sphinx-autobuild",
+  "sphinx-copybutton",
+  "sphinx-sitemap",
+  "numpydoc",
+  "memory_profiler",
+  "ipython",
+  "lightgbm",
+  "plotly",
+  "nbformat",
+  "graphviz",
+  "neato",
+  "moabb", # remove when all the moabb datasets are digested
+]
+
+digestion = [
+  "pybids",
+  "gql[requests]",
+  "requests_toolbelt",
+  "beautifulsoup4",
+]
+
+all = [
+  "eegdash[docs]",
+  "eegdash[dev]",
+  "eegdash[tests]",
+  "eegdash[digestion]",
+]
+
+[tool.setuptools]
+py-modules = []
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "eegdash.__version__"}
+
+[tool.setuptools.packages.find]
+where      = ["."]
+include    = ["eegdash*"]
+exclude    = []
+namespaces = false
+
+[tool.setuptools.package-data]
+eegdash = ["dataset_summary.csv"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+ignore-init-module-imports = true
+select = ["E", "W", "F", "D", "I", "NPY201"]
+ignore = ["E402", "E501", "D100", "D101", "D102", "D103", "D104", "D105", "D107", "D205", "D400", "D415", "D417", "F403", "D401", "E741", "E722", "D419"]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/*" = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["eegdash", "braindecode"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[pytest]
+testpaths        = ["tests"]
+python_files     = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
