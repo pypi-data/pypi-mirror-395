@@ -1,0 +1,76 @@
+name: TileDB-ML CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    env:
+      run_coverage: ${{ github.ref == 'refs/heads/master' }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }} # :ml-deps=[${{ matrix.ml-deps }}]
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip setuptools wheel
+        pip install pytest-mock pytest-cov
+        pip install -e .[full]
+
+    - name: Run pre-commit hooks
+      run: |
+        pip install pre-commit
+        pre-commit run -a
+
+    - name: Run notebook examples
+      run: |
+        pip install pytest-xdist nbmake matplotlib idx2numpy "numpy<2"
+        rm -rf examples/data/openml
+        pytest --disable-warnings --nbmake examples/{models,readers}
+        # Run tiledb-cloud in parallel
+        if [[ "${{ secrets.TILEDB_API_TOKEN }}" != "" ]]; then
+          TILEDB_API_TOKEN="${{ secrets.TILEDB_API_TOKEN }}" pytest --disable-warnings --nbmake -n3 examples/cloud
+        fi
+
+    - name: Run tests
+      if: ${{ !fromJSON(env.run_coverage) }}
+      run:
+        pytest --disable-warnings tests/
+
+    - name: Run test coverage statistics
+      id: stats
+      if: ${{ fromJSON(env.run_coverage) }}
+      run: |
+        pytest --disable-warnings --cov-report=term-missing --cov=tiledb tests/ > coverage.txt
+        cat coverage.txt
+        TEST_COVERAGE="$(grep '^TOTAL' coverage.txt | awk -v N=4 '{print $N}')"
+        echo "::set-output name=COVERAGE::$TEST_COVERAGE"
+
+    - name: Create Test Coverage Badge
+      if: ${{ fromJSON(env.run_coverage) }}
+      uses: schneegans/dynamic-badges-action@v1.1.0
+      with:
+        auth: ${{ secrets.COVERAGE_SECRET }}
+        gistID: 2506f6c9d3375e2d636cf594340d11bf
+        filename: gistfile.json
+        label: Test Coverage
+        message: ${{ steps.stats.outputs.COVERAGE }}
+        color: green
+        namedLogo: pytest
