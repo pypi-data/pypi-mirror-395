@@ -1,0 +1,512 @@
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+"""
+Base PXE Interface Methods
+"""
+
+from oslo_config import cfg
+from oslo_log import log as logging
+
+from ironic.common import boot_devices
+from ironic.common import dhcp_factory
+from ironic.common import exception
+from ironic.common.i18n import _
+from ironic.common import metrics_utils
+from ironic.common import pxe_utils
+from ironic.common import states
+from ironic.conductor import periodics
+from ironic.conductor import utils as manager_utils
+from ironic.drivers.modules import boot_mode_utils
+from ironic.drivers.modules import deploy_utils
+from ironic.drivers import utils as driver_utils
+
+
+CONF = cfg.CONF
+
+LOG = logging.getLogger(__name__)
+
+METRICS = metrics_utils.get_metrics_logger(__name__)
+
+REQUIRED_PROPERTIES = {
+    'deploy_kernel': _("UUID (from Glance) of the deployment kernel. "
+                       "Required."),
+    'deploy_ramdisk': _("UUID (from Glance) of the ramdisk that is "
+                        "mounted at boot time. Required."),
+}
+RESCUE_PROPERTIES = {
+    'rescue_kernel': _('UUID (from Glance) of the rescue kernel. This value '
+                       'is required for rescue mode.'),
+    'rescue_ramdisk': _('UUID (from Glance) of the rescue ramdisk with agent '
+                        'that is used at node rescue time. This value is '
+                        'required for rescue mode.'),
+}
+OPTIONAL_PROPERTIES = {
+    'kernel_append_params': driver_utils.KERNEL_APPEND_PARAMS_DESCRIPTION %
+    {'option_group': 'pxe'},
+}
+COMMON_PROPERTIES = REQUIRED_PROPERTIES.copy()
+COMMON_PROPERTIES.update(driver_utils.OPTIONAL_PROPERTIES)
+COMMON_PROPERTIES.update(RESCUE_PROPERTIES)
+COMMON_PROPERTIES.update(OPTIONAL_PROPERTIES)
+
+
+class PXEBaseMixin(object):
+
+    ipxe_enabled = False
+
+    http_boot_enabled = False
+
+    def get_properties(self):
+        """Return the properties of the interface.
+
+        :returns: dictionary of <property name>:<property description> entries.
+        """
+        return COMMON_PROPERTIES
+
+    def _use_http_folder(self):
+        if self.ipxe_enabled:
+            return True
+        if self.http_boot_enabled:
+            return True
+        return False
+
+    @METRICS.timer('PXEBaseMixin.clean_up_ramdisk')
+    def clean_up_ramdisk(self, task):
+        """Cleans up the boot of ironic ramdisk.
+
+        This method cleans up the PXE environment that was setup for booting
+        the deploy or rescue ramdisk. It unlinks the deploy/rescue
+        kernel/ramdisk in the node's directory in tftproot and removes it's PXE
+        config.
+
+        :param task: a task from TaskManager.
+        :param mode: Label indicating a deploy or rescue operation
+            was carried out on the node. Supported values are 'deploy' and
+            'rescue'. Defaults to 'deploy', indicating deploy operation was
+            carried out.
+        :returns: None
+        """
+        node = task.node
+        mode = deploy_utils.rescue_or_deploy_mode(node)
+        try:
+            images_info = pxe_utils.get_image_info(
+                node, mode=mode, ipxe_enabled=self._use_http_folder())
+        except exception.MissingParameterValue as e:
+            LOG.warning('Could not get %(mode)s image info '
+                        'to clean up images for node %(node)s: %(err)s',
+                        {'mode': mode, 'node': node.uuid, 'err': e})
+        else:
+            pxe_utils.clean_up_pxe_env(
+                task, images_info, ipxe_enabled=self._use_http_folder())
+
+    @METRICS.timer('PXEBaseMixin.clean_up_instance')
+    def clean_up_instance(self, task):
+        """Cleans up the boot of instance.
+
+        This method cleans up the environment that was setup for booting
+        the instance. It unlinks the instance kernel/ramdisk in node's
+        directory in tftproot and removes the PXE config.
+
+        :param task: a task from TaskManager.
+        :returns: None
+        """
+        node = task.node
+
+        try:
+            images_info = pxe_utils.get_instance_image_info(
+                task, ipxe_enabled=self._use_http_folder())
+        except exception.MissingParameterValue as e:
+            LOG.warning('Could not get instance image info '
+                        'to clean up images for node %(node)s: %(err)s',
+                        {'node': node.uuid, 'err': e})
+        else:
+            pxe_utils.clean_up_pxe_env(task, images_info,
+                                       ipxe_enabled=self._use_http_folder())
+
+        boot_mode_utils.deconfigure_secure_boot_if_needed(task)
+
+    @METRICS.timer('PXEBaseMixin.prepare_ramdisk')
+    def prepare_ramdisk(self, task, ramdisk_params):
+        """Prepares the boot of Ironic ramdisk using PXE.
+
+        This method prepares the boot of the deploy or rescue kernel/ramdisk
+        after reading relevant information from the node's driver_info and
+        instance_info.
+
+        :param task: a task from TaskManager.
+        :param ramdisk_params: the parameters to be passed to the ramdisk.
+            pxe driver passes these parameters as kernel command-line
+            arguments.
+        :returns: None
+        :raises: MissingParameterValue, if some information is missing in
+            node's driver_info or instance_info.
+        :raises: InvalidParameterValue, if some information provided is
+            invalid.
+        :raises: IronicException, if some power or set boot boot device
+            operation failed on the node.
+        """
+        node = task.node
+        # Label indicating a deploy or rescue operation being carried out on
+        # the node, 'deploy' or 'rescue'. Unless the node is in a rescue like
+        # state, the mode is set to 'deploy', indicating deploy operation is
+        # being carried out.
+        mode = deploy_utils.rescue_or_deploy_mode(node)
+
+        if self.ipxe_enabled:
+            # NOTE(mjturek): At this point, the ipxe boot script should
+            # already exist as it is created at startup time. However, we
+            # call the boot script create method here to assert its
+            # existence and handle the unlikely case that it wasn't created
+            # or was deleted.
+            pxe_utils.create_ipxe_boot_script()
+
+        # Generate options for both IPv4 and IPv6, and they can be
+        # filtered down later based upon the port options.
+        # TODO(TheJulia): This should be re-tooled during the Victoria
+        # development cycle so that we call a single method and return
+        # combined options. The method we currently call is relied upon
+        # by two eternal projects, to changing the behavior is not ideal.
+        dhcp_opts = pxe_utils.dhcp_options_for_instance(
+            task, ipxe_enabled=self.ipxe_enabled, ip_version=4,
+            http_boot_enabled=self.http_boot_enabled)
+        dhcp_opts += pxe_utils.dhcp_options_for_instance(
+            task, ipxe_enabled=self.ipxe_enabled, ip_version=6,
+            http_boot_enabled=self.http_boot_enabled)
+        provider = dhcp_factory.DHCPFactory()
+        provider.update_dhcp(task, dhcp_opts)
+        # TODO(TheJulia): We need to change the parameter name for
+        # ipxe_enabled in pxe_utils at some point since here it is
+        # an indicator of where to put the files on the filesystem.
+        pxe_info = pxe_utils.get_image_info(
+            node, mode=mode,
+            ipxe_enabled=self._use_http_folder())
+
+        # NODE: Try to validate and fetch instance images only
+        # if we are in DEPLOYING state.
+        if node.provision_state == states.DEPLOYING:
+            pxe_info.update(
+                pxe_utils.get_instance_image_info(
+                    task, ipxe_enabled=self.ipxe_enabled))
+
+        boot_mode_utils.sync_boot_mode(task)
+
+        pxe_options = pxe_utils.build_pxe_config_options(
+            task, pxe_info, ipxe_enabled=self.ipxe_enabled,
+            ramdisk_params=ramdisk_params)
+        # TODO(dtantsur): backwards compatibility hack, remove in the V release
+        if ramdisk_params.get("ipa-api-url"):
+            pxe_options["ipa-api-url"] = ramdisk_params["ipa-api-url"]
+
+        if self.ipxe_enabled:
+            pxe_config_template = deploy_utils.get_ipxe_config_template(node)
+        else:
+            pxe_config_template = deploy_utils.get_pxe_config_template(node)
+
+        pxe_utils.create_pxe_config(task, pxe_options,
+                                    pxe_config_template,
+                                    ipxe_enabled=self.ipxe_enabled)
+        self._node_set_boot_device_for_network_boot(task)
+
+        if self.ipxe_enabled and CONF.pxe.ipxe_use_swift:
+            kernel_label = '%s_kernel' % mode
+            ramdisk_label = '%s_ramdisk' % mode
+            pxe_info.pop(kernel_label, None)
+            pxe_info.pop(ramdisk_label, None)
+
+        if pxe_info:
+            pxe_utils.cache_ramdisk_kernel(
+                task, pxe_info,
+                ipxe_enabled=self._use_http_folder())
+
+        LOG.debug('Ramdisk (i)PXE boot for node %(node)s has been prepared '
+                  'with kernel params %(params)s',
+                  {'node': node.uuid, 'params': pxe_options})
+
+    def _node_set_boot_device_for_network_boot(self, task, persistent=False):
+        """Helper to handle httpboot aware network booting.
+
+        Basic challenge: IPMI doesn't have a field reserved for "httpboot" as
+        httpboot pre-dates IPMI. It is also entirely possible that all logic
+        to support httpboot is coming from OPROM code on network cards, so to
+        sort of handle this, and the nature of PXE being perceived as
+        "network boot", if we are http boot enabled, we attempt to explicitly
+        request as such, but if the driver errors, then we fall back to PXE.
+
+        :params task: a TaskManager object.
+        :params persistent: Default False, if the network boot request is
+                            persistent.
+        """
+        if self.http_boot_enabled:
+            try:
+                manager_utils.node_set_boot_device(task,
+                                                   boot_devices.UEFIHTTP,
+                                                   persistent=persistent)
+            except exception.InvalidParameterValue:
+                LOG.warning('Attempted to set HTTPBOOT for node %s, but it is '
+                            'not supported by the driver. Falling back to '
+                            'PXE to trigger network boot.', task.node.uuid)
+                manager_utils.node_set_boot_device(task, boot_devices.PXE,
+                                                   persistent=persistent)
+        else:
+            manager_utils.node_set_boot_device(task, boot_devices.PXE,
+                                               persistent=persistent)
+
+    @METRICS.timer('PXEBaseMixin.prepare_instance')
+    def prepare_instance(self, task):
+        """Prepares the boot of instance.
+
+        This method prepares the boot of the instance after reading
+        relevant information from the node's instance_info. In case of netboot,
+        it updates the dhcp entries and switches the PXE config. In case of
+        localboot, it cleans up the PXE config.
+
+        :param task: a task from TaskManager.
+        :returns: None
+        """
+        boot_mode_utils.sync_boot_mode(task)
+        node = task.node
+        boot_device = None
+        boot_option = deploy_utils.get_boot_option(node)
+        if boot_option != "kickstart":
+            boot_mode_utils.configure_secure_boot_if_needed(task)
+
+        instance_image_info = {}
+        if boot_option == "ramdisk" or boot_option == "kickstart":
+            instance_image_info = pxe_utils.get_instance_image_info(
+                task, ipxe_enabled=self.ipxe_enabled)
+            pxe_utils.cache_ramdisk_kernel(
+                task, instance_image_info,
+                ipxe_enabled=self._use_http_folder())
+            if 'ks_template' in instance_image_info:
+                ks_cfg = pxe_utils.validate_kickstart_template(
+                    instance_image_info['ks_template'][1]
+                )
+                pxe_utils.validate_kickstart_file(ks_cfg)
+
+        if (deploy_utils.is_iscsi_boot(task) or boot_option == "ramdisk"
+                or boot_option == "kickstart"):
+            pxe_utils.prepare_instance_pxe_config(
+                task, instance_image_info,
+                iscsi_boot=deploy_utils.is_iscsi_boot(task),
+                ramdisk_boot=(boot_option == "ramdisk"),
+                anaconda_boot=(boot_option == "kickstart"),
+                ipxe_enabled=self.ipxe_enabled,
+                http_boot_enabled=self.http_boot_enabled)
+            pxe_utils.prepare_instance_kickstart_config(
+                task, instance_image_info,
+                anaconda_boot=(boot_option == "kickstart"))
+            boot_device = boot_devices.PXE
+
+        else:
+            # NOTE(dtantsur): create a PXE configuration as a safety net for
+            # hardware uncapable of persistent boot. If on a reboot it will try
+            # to boot from PXE, this configuration will return it back.
+            if CONF.pxe.enable_netboot_fallback:
+                pxe_utils.build_service_pxe_config(
+                    task, instance_image_info,
+                    task.node.driver_internal_info.get('root_uuid_or_disk_id'),
+                    ipxe_enabled=self.ipxe_enabled,
+                    # PXE config for whole disk images is identical to what
+                    # we need to boot from local disk, so use True even
+                    # for partition images.
+                    is_whole_disk_image=True)
+            else:
+                # Clean up the deployment configuration
+                pxe_utils.clean_up_pxe_config(
+                    task, ipxe_enabled=self.ipxe_enabled)
+            boot_device = boot_devices.DISK
+
+        # NOTE(pas-ha) do not re-set boot device on ACTIVE nodes
+        # during takeover
+        if boot_device and (task.node.provision_state not in
+                            (states.ACTIVE, states.ADOPTING)):
+            if boot_device == boot_devices.PXE:
+                # Implying network booting, we need to handle the case
+                # it might be HTTPBoot instead of PXEBoot.
+                self._node_set_boot_device_for_network_boot(task,
+                                                            persistent=True)
+            else:
+                vendor = task.node.properties.get('vendor', None)
+                boot_mode = boot_mode_utils.get_boot_mode(task.node)
+                if (task.node.provision_state == states.DEPLOYING
+                        and vendor and vendor.lower() == 'lenovo'
+                        and boot_mode == 'uefi'
+                        and boot_device == boot_devices.DISK):
+                    # Lenovo hardware is modeled on a "just update"
+                    # UEFI nvram model of use, and if multiple actions
+                    # get requested, you can end up in cases where NVRAM
+                    # changes are deleted as the host "restores" to the
+                    # backup. For more information see
+                    # https://bugs.launchpad.net/ironic/+bug/2053064
+                    return
+                manager_utils.node_set_boot_device(task, boot_device,
+                                                   persistent=True)
+
+    def _validate_common(self, task):
+        node = task.node
+
+        if not driver_utils.get_node_mac_addresses(task):
+            raise exception.MissingParameterValue(
+                _("Node %s does not have any port associated with it")
+                % node.uuid)
+
+        if self.ipxe_enabled:
+            if not CONF.deploy.http_url or not CONF.deploy.http_root:
+                raise exception.MissingParameterValue(_(
+                    "iPXE boot is enabled but no HTTP URL or HTTP "
+                    "root was specified"))
+
+        # NOTE(zer0c00l): When 'kickstart' boot option is used we need to store
+        # kickstart and squashfs files in http_root directory. These files
+        # will be eventually requested by anaconda installer during deployment
+        # over http(s).
+        if deploy_utils.get_boot_option(node) == 'kickstart':
+            if not CONF.deploy.http_url or not CONF.deploy.http_root:
+                raise exception.MissingParameterValue(_(
+                    "'kickstart' boot option is set on the node but no HTTP "
+                    "URL or HTTP root was specified"))
+
+            if not CONF.anaconda.default_ks_template:
+                raise exception.MissingParameterValue(_(
+                    "'kickstart' boot option is set on the node but no "
+                    "default kickstart template is specified"))
+
+        deploy_utils.validate_capabilities(node)
+
+        # Check if we have invalid parameters being passed which will not work
+        # for ramdisk configurations.
+        if (node.instance_info.get('image_source')
+            and node.instance_info.get('boot_iso')):
+            raise exception.InvalidParameterValue(_(
+                "An 'image_source' and 'boot_iso' parameter may not be "
+                "specified at the same time"))
+
+        pxe_utils.parse_driver_info(node)
+
+    @METRICS.timer('PXEBaseMixin.validate')
+    def validate(self, task):
+        """Validate the PXE-specific info for booting deploy/instance images.
+
+        This method validates the PXE-specific info for booting the
+        ramdisk and instance on the node.  If invalid, raises an
+        exception; otherwise returns None.
+
+        :param task: a task from TaskManager.
+        :returns: None
+        :raises: InvalidParameterValue, if some parameters are invalid.
+        :raises: MissingParameterValue, if some required parameters are
+            missing.
+        """
+        self._validate_common(task)
+        node = task.node
+
+        # NOTE(TheJulia): If we're not writing an image, we can skip
+        # the remainder of this method.
+        # NOTE(dtantsur): if we're are writing an image with local boot
+        # the boot interface does not care about image parameters and
+        # must not validate them.
+        boot_option = deploy_utils.get_boot_option(node)
+        if (not task.driver.storage.should_write_image(task)
+                or boot_option == 'local'):
+            return
+
+        d_info = deploy_utils.get_image_instance_info(node)
+        deploy_utils.validate_image_properties(task, d_info)
+
+    @METRICS.timer('PXEBaseMixin.validate_rescue')
+    def validate_rescue(self, task):
+        """Validate that the node has required properties for rescue.
+
+        :param task: a TaskManager instance with the node being checked
+        :raises: MissingParameterValue if node is missing one or more required
+            parameters
+        """
+        pxe_utils.parse_driver_info(task.node, mode='rescue')
+
+    @METRICS.timer('PXEBaseMixin.validate_inspection')
+    def validate_inspection(self, task):
+        """Validate that the node has required properties for inspection.
+
+        :param task: A TaskManager instance with the node being checked
+        :raises: UnsupportedDriverExtension
+        """
+        try:
+            self._validate_common(task)
+        except exception.MissingParameterValue as exc:
+            # Fall back to non-managed in-band inspection
+            raise exception.UnsupportedDriverExtension(
+                _("Insufficient information provided for managed "
+                  "inspection: %s") % exc)
+
+    _RETRY_ALLOWED_STATES = {states.DEPLOYWAIT, states.CLEANWAIT,
+                             states.RESCUEWAIT}
+
+    @METRICS.timer('PXEBaseMixin._check_boot_timeouts')
+    @periodics.node_periodic(
+        purpose='checking PXE boot status',
+        spacing=CONF.pxe.boot_retry_check_interval,
+        enabled=bool(CONF.pxe.boot_retry_timeout),
+        filters={'provision_state_in': _RETRY_ALLOWED_STATES,
+                 'reserved': False,
+                 'maintenance': False,
+                 'provisioned_before': CONF.pxe.boot_retry_timeout},
+    )
+    def _check_boot_timeouts(self, task, manager, context):
+        """Periodically checks whether boot has timed out and retry it.
+
+        :param task: a task instance.
+        :param manager: conductor manager.
+        :param context: request context.
+        """
+        self._check_boot_status(task)
+
+    def _check_boot_status(self, task):
+        if not _should_retry_boot(task.node):
+            return
+
+        task.upgrade_lock(purpose='retrying PXE boot')
+
+        # Retry critical checks after acquiring the exclusive lock.
+        if (task.node.maintenance or task.node.provision_state
+                not in self._RETRY_ALLOWED_STATES
+                or not _should_retry_boot(task.node)):
+            return
+
+        LOG.info('Booting the ramdisk on node %(node)s is taking more than '
+                 '%(timeout)d seconds, retrying boot',
+                 {'node': task.node.uuid,
+                  'timeout': CONF.pxe.boot_retry_timeout})
+
+        manager_utils.node_power_action(task, states.POWER_OFF)
+        self._node_set_boot_device_for_network_boot(task)
+        manager_utils.node_power_action(task, states.POWER_ON)
+
+
+def _should_retry_boot(node):
+    # NOTE(dtantsur): this assumes IPA, do we need to make it generic?
+    for field in ('agent_last_heartbeat', 'last_power_state_change'):
+        if node.driver_internal_info.get('agent_secret_token', False):
+            LOG.debug('Not retrying PXE boot for node %(node)s; an agent '
+                      'token has been identified, meaning the agent '
+                      'has started.',
+                      {'node': node.uuid})
+            return False
+        if manager_utils.value_within_timeout(
+                node.driver_internal_info.get(field),
+                CONF.pxe.boot_retry_timeout):
+            # Alive and heartbeating, probably busy with something long
+            LOG.debug('Not retrying PXE boot for node %(node)s; its '
+                      '%(event)s happened less than %(timeout)d seconds ago',
+                      {'node': node.uuid, 'event': field,
+                       'timeout': CONF.pxe.boot_retry_timeout})
+            return False
+    return True

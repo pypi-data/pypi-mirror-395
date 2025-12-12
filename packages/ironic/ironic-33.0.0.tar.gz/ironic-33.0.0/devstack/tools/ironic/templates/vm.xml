@@ -1,0 +1,74 @@
+<domain type='{{ engine }}'>
+  <name>{{ name }}</name>
+  <memory unit='KiB'>{{ memory }}</memory>
+  <vcpu>{{ cpus }}</vcpu>
+  <os>
+    <type arch='{{ arch }}' machine='{{ machine_type }}'>hvm</type>
+    {% if bootdev == 'network' and not uefi_loader %}
+    <boot dev='{{ bootdev }}'/>
+    {% endif %}
+    {% if uefi_loader %}
+        <loader readonly='yes' type='pflash'>{{ uefi_loader }}</loader>
+        {% if uefi_nvram %}
+            <nvram template='{{ uefi_nvram }}'>{{ uefi_nvram }}-{{ name }}</nvram>
+        {% endif %}
+    {% endif %}
+    <bootmenu enable='no'/>
+    {% if arch != 'aarch64' %}
+    <bios useserial='yes'/>
+    {% endif %}
+  </os>
+  {% if engine == 'kvm' or arch == 'aarch64' %}
+    {% if engine == 'kvm' %}
+    <cpu mode='host-passthrough'/>
+    {% endif %}
+    {% if arch == 'aarch64' %}
+    <cpu mode='custom' match='exact' check='none'>
+      <model fallback='allow'>cortex-a53</model>
+    </cpu>
+    {% endif %}
+  {% else %}
+  <cpu mode='host-model'/>
+  {% endif %}
+  <features>
+    <acpi/>
+    <apic/>
+    <pae/>
+  </features>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>destroy</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>{{ emulator }}</emulator>
+    {% for (imagefile, letter) in images %}
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='{{ disk_format }}' cache='unsafe'/>
+      <source file='{{ imagefile }}'/>
+      <target dev='vd{{ letter }}'/>
+      <blockio logical_block_size="{{ block_size }}" physical_block_size="{{ block_size }}" discard_granularity="{{ block_size }}"/>
+    </disk>
+    {% endfor %}
+    {% for n in range(1, interface_count+1) %}
+    {% if net_simulator == 'ovs' %}
+    <interface type='ethernet'>
+    {% else %}
+    <interface type='direct'>
+    {% endif %}
+      {% if n == 1 and mac %}
+      <mac address='{{ mac }}'/>
+      {% endif %}
+      {% if net_simulator == 'ovs' %}
+      <target dev='{{ "ovs-" + name + "i" + n|string }}'/>
+      {% else %}
+      <source dev='{{ "tap-" + name + "i" + n|string }}'/>
+      {% endif %}
+      <model type='{{ nicdriver }}' />
+      {% if uefi_loader and bootdev == 'network' %}
+      <boot order='{{ n|string }}'/>
+      {% endif %}
+    </interface>
+    {% endfor %}
+    {{ console }}
+  </devices>
+</domain>

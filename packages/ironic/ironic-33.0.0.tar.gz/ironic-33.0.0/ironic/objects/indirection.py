@@ -1,0 +1,37 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+from oslo_versionedobjects import base as object_base
+
+from ironic.conductor import rpcapi as conductor_api
+
+
+# NOTE(TheJulia): The whole purpose of the indirection API is to disjoint
+# the interactions to the conductor through a class based upon the
+# VersionedObjectIndirectionAPI class provided by oslo.versionedobjects.
+class IronicObjectIndirectionAPI(object_base.VersionedObjectIndirectionAPI):
+    def __init__(self):
+        super(IronicObjectIndirectionAPI, self).__init__()
+        self._conductor = conductor_api.ConductorAPI()
+
+    def object_action(self, context, objinst, objmethod, args, kwargs):
+        return self._conductor.object_action(context, objinst, objmethod,
+                                             args, kwargs)
+
+    def object_class_action_versions(self, context, objname, objmethod,
+                                     object_versions, args, kwargs):
+        return self._conductor.object_class_action_versions(
+            context, objname, objmethod, object_versions, args, kwargs)
+
+    def object_backport_versions(self, context, objinst, object_versions):
+        return self._conductor.object_backport_versions(context, objinst,
+                                                        object_versions)
