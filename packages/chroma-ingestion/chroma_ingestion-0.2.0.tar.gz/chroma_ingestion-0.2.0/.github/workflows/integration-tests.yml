@@ -1,0 +1,231 @@
+name: CI/CD (Extended)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run nightly tests
+    - cron: '0 2 * * *'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint (ruff)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Run ruff
+        run: ruff check src/ tests/
+
+  type-check:
+    runs-on: ubuntu-latest
+    name: Type Check (mypy)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy
+          pip install -e .
+
+      - name: Run mypy
+        run: mypy src/chroma_ingestion
+
+  test-unit:
+    runs-on: ubuntu-latest
+    name: Unit Tests (Python 3.11)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run unit tests
+        run: pytest tests/unit -v --cov=chroma_ingestion --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests-3.11
+          name: codecov-umbrella
+
+  test-multiversion:
+    runs-on: ubuntu-latest
+    name: Multi-Version Tests
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-asyncio
+
+      - name: Run tests for Python ${{ matrix.python-version }}
+        run: pytest tests/ -v --tb=short
+
+  test-integration:
+    runs-on: ubuntu-latest
+    name: Integration Tests (with Chroma)
+    services:
+      chroma:
+        image: ghcr.io/chroma-core/chroma:latest
+        ports:
+          - 8000:8000
+        options: >-
+          --health-cmd "curl -f http://localhost:8000/api/v1/heartbeat"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 10s
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Wait for Chroma to be ready
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:8000/api/v1/heartbeat; do sleep 1; done'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run integration tests
+        run: |
+          CHROMA_HOST=localhost CHROMA_PORT=8000 pytest tests/integration -v --tb=short
+        env:
+          CHROMA_HOST: localhost
+          CHROMA_PORT: 8000
+
+  build-package:
+    runs-on: ubuntu-latest
+    name: Build Package
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build distribution
+        run: python -m build
+
+      - name: Check distribution
+        run: |
+          twine check dist/*
+          ls -lh dist/
+
+      - name: Test installation in clean environment
+        run: |
+          python -m venv test_env
+          . test_env/bin/activate
+          pip install --upgrade pip
+          pip install dist/chroma_ingestion-*.whl
+          python -c "from chroma_ingestion import CodeIngester, CodeRetriever, get_chroma_client; print('✅ All exports available')"
+          chroma-ingest --help
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: distribution
+          path: dist/
+
+  test-docs-build:
+    runs-on: ubuntu-latest
+    name: Documentation Build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs mkdocs-material
+
+      - name: Build documentation
+        run: mkdocs build -f mkdocs.yml --strict
+
+  all-checks:
+    runs-on: ubuntu-latest
+    name: All Checks Summary
+    needs: [lint, type-check, test-unit, test-multiversion, test-integration, build-package]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [[ "${{ needs.lint.result }}" != "success" ]]; then
+            echo "❌ Lint checks failed"
+            exit 1
+          fi
+          if [[ "${{ needs.type-check.result }}" != "success" ]]; then
+            echo "❌ Type checks failed"
+            exit 1
+          fi
+          if [[ "${{ needs.test-unit.result }}" != "success" ]]; then
+            echo "❌ Unit tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.test-multiversion.result }}" != "success" ]]; then
+            echo "❌ Multi-version tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.test-integration.result }}" != "success" ]]; then
+            echo "❌ Integration tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.build-package.result }}" != "success" ]]; then
+            echo "❌ Package build failed"
+            exit 1
+          fi
+          echo "✅ All checks passed!"

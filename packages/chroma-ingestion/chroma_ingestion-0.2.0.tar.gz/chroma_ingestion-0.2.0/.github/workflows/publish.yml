@@ -1,0 +1,70 @@
+name: Publish to PyPI
+
+on:
+  # Trigger on release tags (e.g., v0.2.0)
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build and publish to PyPI
+    permissions:
+      id-token: write  # Enable OIDC token generation for trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Verify tag version matches package version
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PACKAGE_VERSION=$(grep '^version = ' pyproject.toml | head -1 | grep -oP 'version\s*=\s*"\K[^"]+')
+
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "❌ Tag version ($TAG_VERSION) does not match package version ($PACKAGE_VERSION)"
+            exit 1
+          fi
+
+          echo "✅ Version check passed: $TAG_VERSION"
+
+      - name: Build distribution
+        run: python -m build
+
+      - name: Check distribution
+        run: |
+          twine check dist/*
+          ls -lh dist/
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Verify package on PyPI
+        run: |
+          sleep 10  # Wait for PyPI to process the upload
+          pip install chroma-ingestion
+          python -c "from chroma_ingestion import CodeIngester, CodeRetriever, get_chroma_client; print('✅ All exports available')"
+
+      - name: Test CLI
+        run: |
+          chroma-ingest --help
+          echo "✅ CLI entry point working"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
