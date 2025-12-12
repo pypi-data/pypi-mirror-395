@@ -1,0 +1,147 @@
+Downward Lab tutorial
+=====================
+
+.. highlight:: bash
+
+This tutorial shows you how to install Downward Lab and how to create a
+simple experiment for Fast Downward that compares two heuristics, the
+causal graph (CG) heuristic and the FF heuristic. There are many ways for
+setting up your experiments. This tutorial gives you an opinionated
+alternative that has proven to work well in practice.
+
+.. note::
+
+    During `ICAPS 2020 <https://icaps20.icaps-conference.org/>`_, we gave
+    an online `Downward Lab presentation
+    <https://icaps20subpages.icaps-conference.org/tutorials/evaluating-planners-with-downward-lab/>`_
+    (version 6.2). The second half of the presentation covers this
+    tutorial and you can find the recording `here
+    <https://www.youtube.com/watch?v=39tIUsxbh9w>`_.
+
+
+Installation
+------------
+
+To run Fast Downward experiments, you'll need a **Fast Downward** repository,
+planning **benchmarks** and a plan **validator**. ::
+
+    # Install required packages.
+    sudo apt install bison cmake flex g++ git make python3 python3-venv
+
+    # Create directory for holding binaries and scripts.
+    mkdir --parents ~/bin
+
+    # Make directory for all projects related to Fast Downward.
+    mkdir downward-projects
+    cd downward-projects
+
+    # Install the plan validator VAL.
+    git clone https://github.com/KCL-Planning/VAL.git
+    cd VAL
+    # Newer VAL versions need time stamps, so we use an old version
+    # (https://github.com/KCL-Planning/VAL/issues/46).
+    git checkout a556539
+    make clean  # Remove old binaries.
+    sed -i 's/-Werror //g' Makefile  # Ignore warnings.
+    make
+    cp validate ~/bin/  # Add binary to a directory on your ``$PATH``.
+    # Return to projects directory.
+    cd ../
+
+    # Download planning tasks.
+    git clone https://github.com/aibasel/downward-benchmarks.git benchmarks
+
+    # Clone Fast Downward and let it solve an example task.
+    git clone https://github.com/aibasel/downward.git
+    cd downward
+    ./build.py
+    ./fast-downward.py ../benchmarks/grid/prob01.pddl --search "astar(lmcut())"
+
+If Fast Downward doesn't compile, see
+http://www.fast-downward.org/ObtainingAndRunningFastDownward and
+http://www.fast-downward.org/LPBuildInstructions. We now create a new
+directory for our CG-vs-FF project. By putting it into the Fast Downward
+repo under ``experiments/``, it's easy to share both the code and
+experiment scripts with your collaborators. ::
+
+    # Create new branch.
+    git checkout -b cg-vs-ff main
+    # Create a new directory for your experiments in Fast Downward repo.
+    cd experiments
+    mkdir cg-vs-ff
+    cd cg-vs-ff
+
+Add to your ``~/.bashrc`` file and reload it with ``source ~/.bashrc``::
+
+    # Make executables in ~/bin directory available globally.
+    export PATH="${PATH}:${HOME}/bin"
+    # Some example experiments need these two environment variables.
+    export DOWNWARD_BENCHMARKS=/path/to/downward-projects/benchmarks  # Adapt path
+    export DOWNWARD_REPO=/path/to/downward-projects/downward  # Adapt path
+
+.. highlight:: bash
+.. include:: ../INSTALL.rst
+
+
+Run tutorial experiment
+-----------------------
+
+The files below are two experiment scripts, a ``project.py`` module that bundles
+common functionality for all experiments related to the project, a parser
+module, and a script for collecting results and making reports. You can use the
+files as a basis for your own experiments. They are available in the `Lab repo
+<https://github.com/aibasel/lab/tree/main/examples/downward>`_. Copy the files
+into ``experiments/my-exp-dir``.
+
+.. highlight:: bash
+
+Make sure the experiment script is executable. Then you can see the available
+steps with ::
+
+    uv run 2020-09-11-A-cg-vs-ff.py
+
+Run all steps with ::
+
+    uv run 2020-09-11-A-cg-vs-ff.py --all
+
+Run individual steps with ::
+
+    uv run 2020-09-11-A-cg-vs-ff.py build
+    uv run 2020-09-11-A-cg-vs-ff.py 2
+    uv run 2020-09-11-A-cg-vs-ff.py 3 6 7
+
+The ``2020-09-11-A-cg-vs-ff.py`` script uses the
+:class:`downward.experiment.FastDownwardExperiment` class, which reduces the
+amount of code you need to write, but assumes a rigid structure of the
+experiment: it only allows you to run each added algorithm on each added task,
+and individual runs cannot be customized. If you need more flexibility, you can
+employ the :class:`lab.experiment.Experiment` class instead and fill it by using
+:class:`FastDownwardAlgorithm <downward.experiment.FastDownwardAlgorithm>`,
+:class:`FastDownwardRun <downward.experiment.FastDownwardRun>`,
+:class:`CachedFastDownwardRevision
+<downward.cached_revision.CachedFastDownwardRevision>`, and :class:`Task
+<downward.suites.Task>` objects. The ``2020-09-11-A-cg-vs-ff.py`` script shows
+an example. See the `Downward Lab API <downward.experiment.html>`_ for a
+reference on all Downward Lab classes.
+
+.. highlight:: python
+
+.. literalinclude:: ../examples/downward/2020-09-11-A-cg-vs-ff.py
+   :caption:
+
+.. literalinclude:: ../examples/downward/2020-09-11-B-bounded-cost.py
+   :caption:
+
+.. literalinclude:: ../examples/downward/project.py
+   :caption:
+
+.. literalinclude:: ../examples/downward/custom_parser.py
+   :caption:
+
+.. literalinclude:: ../examples/downward/01-evaluation.py
+   :caption:
+
+The `Downward Lab API <downward.experiment.html>`_ shows you how to adjust
+this example to your needs. You may also find the `other example
+experiments <https://github.com/aibasel/lab/tree/main/examples/>`_
+useful.
