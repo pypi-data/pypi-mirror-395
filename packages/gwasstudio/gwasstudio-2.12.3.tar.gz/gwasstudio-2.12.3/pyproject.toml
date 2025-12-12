@@ -1,0 +1,128 @@
+[project]
+name = "gwasstudio"
+version = "2.12.3"
+description = ""
+authors = [
+    { name = "Gianmauro Cuccuru", email = "gianmauro.cuccuru@fht.org" },
+    { name = "Bruno Ariano", email = "bruno.ariano@fht.org" },
+]
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "bokeh (>=3.7.3,<4.0.0)",
+    "boto3 (>=1.37.11,<2.0.0)",
+    "botocore (>=1.37.11,<2.0.0)",
+    "click (>=8.1.8,<9.0.0)",
+    "cloup (>=3.0.5,<4.0.0)",
+    "dask (>=2024.12.1,<2025.0.0)",
+    "dask-gateway (>=2024.1.0,<2025.0.0)",
+    "dask-jobqueue (>=0.9.0,<0.10.0)",
+    "hvac (>=2.3.0,<3.0.0)",
+    "loguru (>=0.7.3,<0.8.0)",
+    "mongoengine (>=0.29.1,<0.30.0)",
+    "numpy (>=2.2.1,<2.3.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "platformdirs (>=4.3.8,<5.0.0)",
+    "polars (>=1.19.0,<2.0.0)",
+    "pyarrow (>=18.1.0,<19.0.0)",
+    "ruamel-yaml (>=0.18.10,<0.19.0)",
+    "scipy (>=1.15.3,<2.0.0)",
+    "tiledb (>=0.33.2,<0.34.0)",
+]
+
+[project.optional-dependencies]
+plot = [
+    "plotly (==6.1.0)",
+    "dash-bio (>=1.0.1,<2.0.0)",
+]
+
+[project.scripts]
+gwasstudio = "gwasstudio.main:main"
+
+[build-system]
+requires = [
+    "poetry-core>=2.0.0,<3.0.0",
+]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.0.1"
+mongomock = "^4.3.0"
+setuptools = "^75.8.0"
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+pytest-randomly = "^3.16.0"
+pandas-stubs = "^2.3.0.250703"
+git-cliff = "^2.10.1"
+deptry = "^0.23.1"
+ruff = "^0.14.0"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = "^9.6.20"
+mkdocs-git-revision-date-plugin = "^0.3.2"
+tomli = "^2.3.0"
+tomli-w = "^1.2.0"
+
+[tool.ruff]
+line-length = 120
+
+[tool.deptry]
+extend_exclude = [
+    "scripts",
+]
+
+[tool.deptry.per_rule_ignores]
+DEP003 = [
+    "gwasstudio",
+]
+DEP004 = [
+    "mongomock",
+    "tomli",
+    "tomli_w",
+]
+DEP002 = [
+    "pyarrow",
+    "bokeh",
+]
+
+[tool.git-cliff.changelog]
+header = "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n[Git history](https://github.com/ht-diva/gwasstudio/commits/main/)\n"
+body = "{% if version %}## [{{ version | trim_start_matches(pat=\"v\") }}] - {{ timestamp | date(format=\"%Y-%m-%d\") }}\n{% else %}## [unreleased]\n{% endif %}{% for group, commits in commits | filter(attribute=\"merge_commit\", value=false) | unique(attribute=\"message\")| group_by(attribute=\"group\") %}\n    ### {{ group | striptags | trim | upper_first }}\n    {% for commit in commits %}\n        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}{% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first }}{% endfor %}\n{% endfor %}\n\n"
+trim = true
+render_always = true
+postprocessors = [
+    { pattern = "\\((\\w+\\s)?#([0-9]+)\\)", replace = "([#${2}](<REPO>/issues/${2}))" },
+    { pattern = ".*", replace_command = "typos --write-changes -" },
+]
+
+[tool.git-cliff.git]
+conventional_commits = true
+filter_unconventional = false
+require_conventional = false
+split_commits = false
+commit_preprocessors = []
+protect_breaking_commits = false
+commit_parsers = [
+    { message = "^feat", group = "<!-- 0 -->🚀 Features" },
+    { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
+    { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
+    { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
+    { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
+    { message = "^style", group = "<!-- 5 -->🎨 Styling" },
+    { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+    { message = "^chore\\(release\\): prepare for", skip = true },
+    { message = "^chore\\(deps.*\\)", skip = true },
+    { message = "^chore\\(pr\\)", skip = true },
+    { message = "^chore\\(pull\\)", skip = true },
+    { message = "^chore|^ci", group = "<!-- 7 -->⚙️ Miscellaneous Tasks" },
+    { body = ".*security", group = "<!-- 8 -->🛡️ Security" },
+    { message = "^revert", group = "<!-- 9 -->◀️ Revert" },
+    { message = ".*", group = "<!-- 10 -->💼 Other" },
+]
+filter_commits = false
+link_parsers = []
+use_branch_tags = false
+topo_order = false
+topo_order_commits = true
+sort_commits = "oldest"
+recurse_submodules = false
