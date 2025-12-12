@@ -1,0 +1,49 @@
+<a href="{{ url('') }}" class="mx-2">
+    <img src="{{ brand.logo }}" alt="Logo" id="logo">
+</a>
+
+<form hx-get="{{ url('htmx/path-list/') }}"
+      hx-target="#path-list"
+      hx-trigger="change"
+      hx-include="#query-search"
+      hx-indicator="#path-list-wrapper .htmx-indicator"
+      hx-on:htmx:before-request="clearContent('#path-list');"
+      style="width: max-content"
+>
+
+    Roots:
+
+    {% if user %}
+        {% with name="@personal", upload=True %}
+            {% set title="This special root contains the results of calculations done by the user" %}
+            {% include 'includes/root.html' %}
+        {% endwith %}
+
+        {% with name="@shared", upload=True %}
+            {% include 'includes/root.html' %}
+        {% endwith %}
+
+    {% endif %}
+
+    {% with name="@public", upload=user  %}
+        {% include 'includes/root.html' %}
+    {% endwith %}
+
+</form>
+
+<script>
+function dropHandler(ev) {
+    ev.preventDefault();
+    const input = ev.target.closest('div').querySelector('input');
+    input.files = ev.dataTransfer.files;
+    input.dispatchEvent(new Event('change'));
+}
+function dragoverHandler(ev) {
+    ev.preventDefault();
+    ev.target.closest('div').classList.add('active');
+}
+function dragleaveHandler(ev) {
+    ev.preventDefault();
+    ev.target.closest('div').classList.remove('active');
+}
+</script>
