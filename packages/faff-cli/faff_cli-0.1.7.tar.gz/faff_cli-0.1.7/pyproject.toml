@@ -1,0 +1,55 @@
+# pyproject.toml (modern Python packaging using Poetry-style setup)
+[project]
+name = "faff-cli"
+version = "0.1.7"
+description = "A local-first time tracking CLI with decentralized protocol aspirations."
+authors = [{name="Thomas Lant", email="thomas@lant.uk"}]
+license = { text = "AGPL-3.0-or-later" }
+requires-python = ">=3.11"
+dependencies = [
+    "faff-core>=0.1.15",
+    "typer[all]",
+    "rich",
+    "python-slugify",
+    "titlecase",
+    "prompt-toolkit",
+    "pfzy",
+    "dateparser",
+    "humanize",
+    "toml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.10",
+    "mypy>=1.0",
+    "types-toml",
+]
+
+[project.scripts]
+faff = "faff_cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=faff_cli",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyright]
+reportMissingTypeStubs = false
