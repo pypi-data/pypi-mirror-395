@@ -1,0 +1,33 @@
+{
+  "name": "configuration_precedence",
+  "description": "Validates the precedence order: CLI args > Secrets > Env vars > Config",
+  "config": {
+    "app": {
+      "name": "precedence-test",
+      "environment": "development"
+    },
+    "database": {
+      "host": "file-host",
+      "port": 5432,
+      "name": "test_db"
+    }
+  },
+  "environment": {
+    "APP_DATABASE__HOST": "env-host",
+    "APP_DATABASE__PORT": "3307"
+  },
+  "cli_args": [
+    "--database.port=3308"
+  ],
+  "options": {
+    "apply_env": true,
+    "resolve_secrets": false
+  },
+  "expected": {
+    "app.name": "precedence-test",
+    "app.environment": "development",
+    "database.host": "env-host",
+    "database.port": 3308,
+    "database.name": "test_db"
+  }
+}
