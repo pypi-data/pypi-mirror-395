@@ -1,0 +1,43 @@
+<h5>Datasets:</h5>
+
+{# Used in root_list.html #}
+<input type="hidden" id="query-search" name="search" value="{{ search_text }}">
+
+<!-- Filter box -->
+<input class="form-control me-2" name="search" type="search"
+       placeholder="Filter" aria-label="Filter" value="{{ search_text }}"
+       hx-get="{{ search_url }}" hx-target="#path-list" hx-trigger="input changed delay:1s"
+       hx-ext="morph" hx-swap="morph:innerHTML"
+       hx-on:htmx:after-request="activate('#path-list a')"
+       >
+
+<!-- Datasets list -->
+<div class="h-75 overflow-scroll mt-1" id="dataset-list">
+    {% for dataset in datasets %}
+    <div class="input-group">
+        {% if user %}
+            <input class="form-control flex-shrink-1" type="text" name="names" value="{{dataset.name}}">
+            <input class="form-control" type="hidden" name="paths" value="{{dataset.path}}">
+            {# <span class="input-group-text flex-shrink-1">=</span> #}
+        {% endif %}
+        <a href="{{dataset.url}}"
+           class="input-group-text text-decoration-none"
+           style="width: 70%"
+           title="{{dataset.path}}"
+
+           data-url="{{ url('htmx/path-info/') }}"
+           data-path="{{ dataset.path }}"
+           onclick="loadDataset(event)"
+           >
+            {{dataset.label}}
+        </a>
+        <span class="input-group-text" style="width: 20%">
+            {{ dataset.size|filesizeformat }}
+        </span>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+activate('#path-list a')
+</script>

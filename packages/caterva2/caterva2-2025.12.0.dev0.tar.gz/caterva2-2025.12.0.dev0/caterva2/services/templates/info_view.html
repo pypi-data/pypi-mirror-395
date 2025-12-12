@@ -1,0 +1,150 @@
+<form class="mb-2" hx-target="#info-view" hx-indicator="#id_data_indicator">
+
+    shape = {{ shape }}
+
+    <div class="d-flex gap-1 mb-2">
+        {% for input in inputs %}
+        <div class="input-group d-inline-flex w-auto">
+            <span class="input-group-text">dim {{ loop.index0 }}</span>
+            <input type="number" class="form-control" placeholder="" size="4"
+                   name="index" value="{{ input.start }}"
+                   {% if input.size < input.size_max %}
+                   hx-post="{{ view_url }}"
+                   min="0" max="{{ input.start_max }}" step="{{ input.size }}"
+                   {% else %}
+                   readonly
+                   {% endif %}
+            >
+            {% if input.with_size %}
+            <input type="number" class="form-control" placeholder="" size="4"
+                   name="sizes" value="{{ input.size }}"
+                   hx-post="{{ view_url }}"
+                   min="1" max="{{ input.size_max }}">
+            {% else %}
+            <input type="hidden" name="sizes" value="1">
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% if cols %}
+        <div class="dropdown" id="id_fields">
+            <button type="button" class="btn btn-light dropdown-toggle"
+                    data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside"
+                    hx-post="{{ view_url }}" hx-trigger="hidden.bs.dropdown"
+                    >
+                Fields
+            </button>
+            <div class="dropdown-menu p-2">
+                {% for col in cols %}
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox"
+                           name="fields"
+                           value="{{ col }}"
+                           id="id_{{ col }}"
+                           {% if col in fields %}checked{% endif %}>
+                    <label class="form-check-label" for="id_{{ col }}">{{ col }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="input-group w-auto">
+            <label class="input-group-text" for="id_sortby">Sort by</label>
+            <select class="form-select" name="sortby" id="id_sortby" hx-post="{{ view_url }}">
+                <option value=""></option>
+                {% for col in cols %}
+                <option value="{{ col }}" {% if col == sortby %}selected{% endif %}>{{ col }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        {% with id="id_data_indicator" %}
+            {% include 'includes/loading.html' %}
+        {% endwith %}
+    </div>
+
+    {% if cols %}
+    <div class="input-group me-2">
+        <input type="text" class="form-control" placeholder="Filter" name="filter" value="{{ filter }}"
+               hx-post="{{ view_url }}">
+        <span class="input-group-text" role="button" data-bs-toggle="offcanvas"
+              data-bs-target="#offcanvasFilterHelp" aria-controls="offcanvasFilterHelp">
+            <i class="fa-regular fa-question"></i>
+        </span>
+    </div>
+    {% endif %}
+</form>
+
+<table class="table table-sm">
+    <tbody>
+    <tr>
+    {% if tags|length != 0 %}
+        <th></th>
+    {% endif %}
+    {% if rows[0] is not iterable %}
+        {% for value in rows %}
+            <th>{{ value }}</th>
+        {% endfor %}
+        </tr>
+        <tr>
+        {% for i in range(1, rows|length) %}
+            <td>{{ value }}</td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        {% for value in rows[0] %}
+        <th>{{ value }}</th>
+        {% endfor %}
+        </tr>
+
+        {% for i in range(1, rows|length) %}
+            <tr>
+            {% if tags|length != 0 %}
+                <th>{{ tags[i-1] }}</th>
+            {% endif %}
+            {% for value in rows[i] %}
+                <td>{{ value }}</td>
+            {% endfor %}
+            </tr>
+        {% endfor %}
+    {% endif %}
+    </tbody>
+</table>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasFilterHelp" aria-labelledby="offcanvasFilterHelpLabel" style="width: 600px">
+  <div class="offcanvas-header">
+    <h4 class="offcanvas-title" id="offcanvasFilterHelpLabel">Filter Help</h4>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+      <p>The content filter must be a boolean expression.</p>
+      <p>Examples:</p>
+      <ul>
+          <li>
+              <code>f1 &lt; 5</code>
+              <p>This selects elements where the field <strong>f1</strong> is less than 5.</p>
+          </li>
+          <li>
+              <code>f3</code>
+              <p>This selects elements where the field <strong>f3</strong> is true. Only for boolean fields.</p>
+          </li>
+          <li>
+              <code>f1 &lt; f3</code>
+              <p>This selects elements where the field <strong>f1</strong> is less than the field <strong>f3</strong>.</p>
+          </li>
+          <li>
+              <code>(f1 < 5) & (f2 > 3)</code>
+              <p>This selects elements where the field <strong>f1</strong> is less than 5 and the field <strong>f2</strong>
+                  is greater than 3. Note the parentheses around each condition.
+              </p>
+          </li>
+          <li>
+              <code>(f1 &lt; 5) | ((sin(f2) - log(f4)) &gt; 3) & (~f3)</code>
+              <p>This selects elements where the field <strong>f1</strong> is less than 5 or the result of the
+                  expression <strong>sin(f2) - log(f4)</strong> is greater than 3 and the field <strong>f3</strong> is
+                  false. Note the parentheses around each condition and the use of the
+                  negation operator <strong>~</strong>.
+              </p>
+          </li>
+
+      </ul>
+  </div>
+</div>
