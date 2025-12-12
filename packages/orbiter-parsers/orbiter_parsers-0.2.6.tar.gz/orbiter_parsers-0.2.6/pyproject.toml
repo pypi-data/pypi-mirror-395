@@ -1,0 +1,105 @@
+[project]
+name = "orbiter-parsers"
+description = "Parsers and FileTypes for various origin export formats that Astronomer's Orbiter tool may encounter."
+authors = [
+    { name = "Fritz Davenport", email = "fritz@astronomer.io" },
+    { name = "Astronomer", email = "humans@astronomer.io" },
+]
+requires-python = ">=3.10"
+dependencies = [
+    "astronomer-orbiter",
+
+    # For parsing
+    "lark",
+#    "antlr4-python3-runtime>=4.13.2",
+
+    # for parsing JIL - fork
+    # original @ https://github.com/mscribellito/jilutil
+    "jilutil",
+
+    # for parsing python
+    "ast2json",
+
+    # for older versions of python
+    "typing_extensions"
+]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = { attr = "orbiter_parsers.__version__" }
+
+[project.urls]
+Homepage = "https://astronomer.io"
+Source = "https://github.com/astronomer/orbiter-parsers"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+exclude = [
+    "*venv", "*venv.*",
+    "*tests.*", "*tests",
+    "*build", "*build.*",
+    "*dist", "*dist.*"
+]
+
+[tool.setuptools.package-data]
+"*" = ["*.cfgr"]
+
+[project.optional-dependencies]
+dev = [
+    # build
+#    "antlr4-tools>=0.2.2",
+
+    # package
+    "build",
+    "twine>=4.0.2",
+
+    # test
+    "pytest>=8.3.5",
+    "pytest-xdist>=3.8.0",  # for speedup of parallel tests
+    "pytest-cov>=4.1",
+    "pytest-sugar>=1.0.0",
+
+    # lint
+    "black>=23.12.0",
+    "ruff>=0.1.0",
+    "pylint>=3.0.0",
+    "isort>=5.13.0",
+
+    # pre-commit
+    "pre-commit>=3.6.0; python_version >= '3.9'",
+    "detect-secrets>=1.4.0",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = []
+
+[tool.black]
+# https://github.com/psf/black
+color = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+norecursedirs = [
+    "venv", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"
+]
+testpaths = ["orbiter_parsers", "tests"]
+
+doctest_optionflags = ["ELLIPSIS", "NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
+addopts = [
+    "-s",
+    "--continue-on-collection-errors",
+    "--ignore=tests/control_m/novelis/cmd_per_job.py",
+    "--strict-markers",
+    "--tb=short",
+    "--disable-warnings",
+    "--no-header",
+    "--doctest-modules",
+    "--doctest-continue-on-failure",
+]

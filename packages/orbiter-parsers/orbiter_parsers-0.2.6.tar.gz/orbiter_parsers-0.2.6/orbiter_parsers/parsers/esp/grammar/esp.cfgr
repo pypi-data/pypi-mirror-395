@@ -1,0 +1,123 @@
+# https://lark-parser.readthedocs.io/en/latest/_static/lark_cheatsheet.pdf
+# https://lark-parser.readthedocs.io/en/latest/grammar.html
+# https://www.lark-parser.org/ide/
+# https://techdocs.broadcom.com/us/en/ca-mainframe-software/automation/ca-workload-automation-esp-edition/12-0/using/job-and-workload-functions.html#concept.dita_38a1ec1957032148867a55afeff459d5b506805b_IncludeSymbolicVariables
+
+# consume instructions until EOF
+start: line+
+
+?line: job                                                                  # a job - e.g. JOB ... ENDJOB
+    | stmt                                                                  # a statement - e.g. NOTIFY ABEND FAILURE ROUTE(1) DESC(2)
+    | if_stmt
+    | var                                                                   # a variable - e.g. SOME_VAR = 'SOME_VAL'
+    | line_end
+                                                                            # not sure what's up with the numbers at the end sometimes
+?line_end: ";" | (COMMENT* _LINE_END_NUMBER* NEWLINE)                       # each line might end w/ a comment, a number, and a newline - e.g. /* foo */ 00012345\n
+_LINE_END_NUMBER: NUMBER
+?line_continuation: "+" COMMENT* _LINE_END_NUMBER* NEWLINE
+
+# ------ Statements / Job ------
+stmt: NAME quoted_string                                                    # e.g. JCLLIB 'SOME_VAL'
+    | NAME paren_unquoted NAME? "="? NAME?
+    | NAME (string | prop | quoted_string | line_continuation)+
+    | ENV_VAR var
+
+# TODO - IF ... THEN ... [ELSE ...]
+# TODO - IF ... THEN DO ... ENDDO
+# TODO - https://techdocs.broadcom.com/us/en/ca-mainframe-software/automation/ca-workload-automation-esp-edition/12-0/using/use-procedures/use-advanced-features-of-procedures.html
+# eq_left: /[^\s=]/
+# eq_right: /[^\s]/
+# eq: eq_left "=" eq_right
+
+?math_inner: REFERENCE | NAME | NUMBER | "/" | "+" | "-" | "*" | "="
+math: math_inner+
+
+do_stmt: "DO" line+ "ENDDO"
+?if_contents: (REFERENCE | NAME | quoted_string)
+if_: "IF" if_contents+
+then: "THEN" (var | do_stmt | stmt )
+else_: ("ELSE" (var | do_stmt | stmt))
+if_stmt: if_ then? line_end? \
+         else_? \
+         (line_end "ENDIF")?
+
+
+?job: jobname (REFERENCE | NAME | ".")+ prop* line_end+ \
+        ((if_stmt | stmt) line_end)+ \
+      "ENDJOB"
+?prop: (NAME quoted_string) -> stmt
+    | (NAME paren_quoted) -> stmt
+    | (NAME paren_unquoted) -> stmt
+    | NAME
+
+?jobname: JOB
+       | FILEWATCHER
+       | APPLEND
+       | SOMEJOB
+
+APPLEND: "APPLEND"
+JOB: "JOB"
+SOMEJOB: /[\w_.]+/ "JOB"
+FILEWATCHER: "FILE_WATCHER"
+ENV_VAR: "ENVAR"
+
+# ------ Variable ------
+var: NAME "=" (double_quoted_string | prop | REFERENCE | NUMBER)
+
+# ------ Comments ------
+COMMENT: "/*" /[^\n\r]*/ "*/"?                                           # e.g. /******/ or /* ---- */ or /* foo or /* foo */
+
+# ------ Strings ------
+?string: (REFERENCE | STRING)
+
+?single_quoted_string: _S_QUOTE (REFERENCE | STR_IN_SINGLE_QUOTE)+ _S_QUOTE
+?double_quoted_string: _DB_QUOTE (REFERENCE | STR_IN_DOUBLE_QUOTE)+ _DB_QUOTE
+
+?quoted_string: (single_quoted_string | double_quoted_string | ESCAPED_STRING)
+?paren_quoted: _L_PAREN (quoted_string ","?)+ _R_PAREN
+
+?unquoted_inner: NAME
+               | line_continuation
+               | line_end
+               | REFERENCE                                              # e.g. RELEASE (%AIXJOB..HIV2PRSL)
+               | COLON                                                  # e.g. RC(1:999)
+               | NUMBER                                                 # e.g. ROUTE(1) DESC(2)
+
+?paren_unquoted: _L_PAREN (unquoted_inner+ ","? )+ _R_PAREN
+
+STR_IN_DOUBLE_QUOTE: /[^%\"]+/                                          # anything not % or "
+STR_IN_SINGLE_QUOTE: /[^%\']+/                                          # anything not % or '
+REFERENCE: /%[\w\d_]+/                                                  # ^ e.g. %APPJOB..SCHED
+STRING: /[\d\w\-_\.\|{}!@\$\^&\*\+\:\/#]+/                              # any digits, letters, -, _, ., |, {}, !, @, $, ^, &, *, +, :, /, #
+NAME: ("_"|"."|"@"|LETTER) ("_"|"."|"@"|LETTER|DIGIT)*
+
+# ------ Chars ------
+COLON: ":"
+
+# we don't need transformer fns for them in EspToDict
+# because _TERMINAL (prefixed with _) is ignored
+_S_QUOTE: "'"
+_DB_QUOTE: "\""
+_L_PAREN: "(" " "*
+_R_PAREN: " "* ")"
+
+# ------ Section ------
+# e.g. "PROCEDURE_SECTION: ..." or "JOB_SECTION: ..."
+# I cannot find these mentioned ANYWHERE.
+# Not docs, not google. Is this just invalid code that gets ignored?
+#   section: NAME ":"
+# this'll just get devoured by stmt, so commented out
+
+# Import commmon grammar rules
+%import common.ESCAPED_STRING -> ESCAPED_STRING
+%import common.LETTER       -> LETTER
+%import common.DIGIT        -> DIGIT
+%import common.WORD         -> WORD
+%import common.NUMBER       -> NUMBER
+%import common.WS           -> WS
+%import common.WS_INLINE    -> WS_INLINE
+%import common.NEWLINE      -> NEWLINE
+
+# Ignore whitespace within lines
+# (we need newlines to know if we are in the middle of something or not)
+%ignore WS_INLINE

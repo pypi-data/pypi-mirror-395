@@ -1,0 +1,127 @@
+# https://lark-parser.readthedocs.io/en/latest/_static/lark_cheatsheet.pdf
+# https://lark-parser.readthedocs.io/en/latest/grammar.html
+# https://www.lark-parser.org/ide/
+# https://techdocs.broadcom.com/us/en/ca-enterprise-software/intelligent-automation/autosys-workload-automation/12-0/reference/ae-job-information-language.html
+# https://techdocs.broadcom.com/us/en/ca-enterprise-software/intelligent-automation/autosys-workload-automation/12-0-01/scheduling/ae-scheduling/manage-jil/jil-syntax-rules.html
+
+start: (NEWLINE | sub_command)*
+
+
+# --------- SUBCOMMAND -----------
+# A sub_command is like 'insert_job: foo'
+# we give sub_command a 999 priority to indicate that
+# it should always try to match that over more attribute statements
+sub_command.999: sub_command_def (NEWLINE | attribute_statement | date_statement)*
+sub_command_def: SUB_COMMAND_KEY _COLON OBJECT_NAME+
+
+# https://techdocs.broadcom.com/us/en/ca-enterprise-software/intelligent-automation/autosys-workload-automation/12-0-01/scheduling/ae-scheduling/manage-jil/jil-subcommands.html
+SUB_COMMAND_KEY: "insert_job"
+    | "delete_box"
+    | "delete_job"
+    | "insert_job"
+    | "override_job"
+    | "update_job"
+    | "delete_machine"
+    | "insert_machine"
+    | "update_machine"
+    | "delete_monbro"
+    | "insert_monbro"
+    | "update_monbro"
+    | "delete_job_type"
+    | "insert_job_type"
+    | "update_job_type"
+    | "rename_job"
+    | "insert_blob"
+    | "insert_glob"
+    | "delete_blob"
+    | "delete_glob"
+    | "delete_xinst"
+    | "insert_xinst"
+    | "update_xinst"
+    | "delete_resource"
+    | "insert_resource"
+    | "update_resource"
+    | "delete_connectionprofile"
+    | "insert_connectionprofile"
+    | "update_connectionprofile"
+    | "calendar"
+    | "cycle"
+    | "extended_calendar"
+
+# Object names can only contain the following characters:
+# a-z, A-Z, 0-9, period (.), underscore (_), hyphen (-), and pound (#).
+OBJECT_NAME: _OBJECT_NAME_CHAR+
+_OBJECT_NAME_CHAR: /[\w\d\._\-#]+/
+
+# --------- ATTRIBUTE -----------
+attribute_statement: attribute_statement_def attribute_statement_value
+attribute_statement_def.99: NAME _COLON
+attribute_statement_value: (auto_blob | string+)?
+
+string: quoted_string_ending_slash | quoted_string | unquoted_string
+
+quoted_string_ending_slash: /"[\w:.\/\\]+?"/
+
+quoted_string: _DQUOTE QUOTED_INNER? _DQUOTE
+QUOTED_INNER: (_ESCAPED_DQUOTE | _ANY_CHAR_XCOLON_XDQUOTE_XESCAPE | COLON | _BACK | _FWD | SPACE)+
+
+unquoted_string: VALUE | SPACE | C_COMMENT
+# value settings can include any of the following characters:
+# Uppercase and lowercase letters (A-Z, a-z),  Numbers (0-9), Hyphens (-)
+# Underscores (_), Pound signs (#),  The at character (@)
+# Colons (:), if the colon is escaped with quotation marks (" ") or a preceding backslash (\)
+# !NOTE - official docs ^^^ are incorrect, more chars are valid
+VALUE: (_ESCAPED_DQUOTE | _ANY_CHAR_XCOLON_XDQUOTE_XESCAPE | _ESCAPED_COLON | _ESCAPED_FWD | _BACK)+
+
+auto_blob.999: /<auto_blobt>(.+?)<\/auto_blobt>/s                   #*# IDE Highlighting got weird.
+
+date_statement: date time?
+date: /\d{2}\/\d{2}\/\d{4}/ -> date
+time: /\d{2}:\d{2}(:\d{2})?/         -> time
+
+# --------- CHARS -----------
+_COLON: ":"
+COLON: ":"
+_ESCAPED_COLON.99: "\:"
+_ESCAPED_DQUOTE.99: /[\\]["]/                                       #"
+_ESCAPED_FWD.99: /[\\][\/]/
+_ESCAPE: /[\\]/
+_BACK:   /[\\]/
+_FWD:    /[\/]/
+_DQUOTE.99: "\""
+_OBRACK: "<"
+_CBRACK: ">"
+_LPAREN: "("
+_RPAREN: ")"
+
+#_SPACE: /[ \t\u00A0]/
+SPACE:  /[ \t\u00A0]/
+
+_ANY_CHAR_XCOLON_XDQUOTE_XESCAPE: LETTER | DIGIT | _SYMBOLS_XCOLON_XDQUOTE_XESCAPE
+_SYMBOLS_XCOLON_XDQUOTE_XESCAPE: _SYMBOLS_XCOLON_XDQUOTE_XESCAPE_XPAREN | _LPAREN | _RPAREN
+
+# _ANY_CHAR_XCOLON_XDQUOTE_XESCAPE_XPAREN: LETTER | DIGIT | _SYMBOLS_XCOLON_XDQUOTE_XESCAPE_XPAREN
+_SYMBOLS_XCOLON_XDQUOTE_XESCAPE_XPAREN: _SYMBOLS_XCOLON_XDQUOTE_XESCAPE_XPAREN_XBRACKET | _OBRACK | _CBRACK
+_SYMBOLS_XCOLON_XDQUOTE_XESCAPE_XPAREN_XBRACKET: /[-@!$%^&*_+|~=`{}\[\];?,.\/#']/
+
+# Import commmon grammar rules
+%import common.LETTER         -> LETTER
+%import common.DIGIT          -> DIGIT
+%import common.CNAME          -> NAME
+
+# --------- IGNORE -----------
+# Ignore whitespace within lines
+# (we need newlines to know if we are in the middle of something or not)
+%import common.WS_INLINE      -> WS_INLINE
+%ignore WS_INLINE
+
+%ignore SPACE
+
+%import common.NEWLINE        -> NEWLINE
+# %ignore NEWLINE
+
+# Ignore comments
+%import common.SH_COMMENT     -> SH_COMMENT
+%import common.C_COMMENT      -> C_COMMENT
+%ignore SH_COMMENT
+%ignore C_COMMENT
