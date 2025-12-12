@@ -1,0 +1,85 @@
+[project]
+name = "netmagus"
+version = "1.0.0"
+description = "Python module for JSON data exchange with the Intelligent Visibility NetMagus system."
+authors = [
+    {name = "Richard Collins", email = "rcollins@intelligentvisibility.com"}
+]
+license = {text = "LGPL-3.0"}
+readme = "README.rst"
+requires-python = ">=3.10"
+keywords = ["netmagus", "network", "automation", "netops"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking"
+]
+dependencies = [
+    "autobahn>=20.4.3,<22.0.0",
+    "autobahn-sync==0.3.2",
+    "numpy>=1.21.6",
+]
+
+[project.urls]
+Homepage = "https://www.intelligentvisibility.com/netmagus/"
+Repository = "https://github.com/intelligentvisibility/netmagus_python"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.1",
+    "pytest-cov>=2.8.1",
+    "coverage>=4.5",
+    "ruff>=0.8.0",
+    "pre-commit>=3.5.0",
+]
+docs = [
+    "sphinx>=2.2.0",
+    "sphinx-rtd-theme>=0.4.3",
+]
+# Note: crossbar integration tests only work on Python <=3.11
+# Unit tests work on all supported Python versions (3.10+)
+test = [
+    "crossbar>=20.4.2",  # Python <=3.11 only
+    "msgpack>=1.0.0",
+    "six>=1.16.0",
+    "tox>=3.0",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "N802",  # function name should be lowercase (API compatibility)
+    "N803",  # argument name should be lowercase (API compatibility)
+    "N818",  # exception name should end with Error (API compatibility)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/conf.py" = ["E402"]  # module imports not at top (required for sphinx)
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

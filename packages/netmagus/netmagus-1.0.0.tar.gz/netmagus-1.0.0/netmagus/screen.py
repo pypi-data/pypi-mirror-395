@@ -1,0 +1,304 @@
+"""
+NetMagus Python Library
+Copyright (C) 2016 Intelligent Visibility, Inc.
+Richard Collins <richardc@intelligentvisibility.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+import abc
+import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import netmagus.form
+    import netmagus.session
+
+logger = logging.getLogger(__name__)
+
+
+class CancelButtonPressed(Exception):
+    """
+    Exception raised by a ScreenBase when the user presses the Cancel button in the UI
+    """
+
+    pass
+
+
+class BackButtonPressed(Exception):
+    """
+    Exception raised by a ScreenBase when the user presses the Cancel button
+    """
+
+    pass
+
+
+class ScreenBase(abc.ABC):
+    """
+    Screen class represents a typical usage pattern for NetMagus form wizards.
+
+    A Form is presented for user input, user data is entered, then data is
+    validated.  If the data is invalid, show a pop-up HTML dialog and allow
+    user to correct the entry.  Continue to loop until valid data is provided.
+    If valid data received then transform response to correct data types, or
+    store the input, or do additional workneeded for business logic and return.
+
+    A "next" button with provided name is displayed to execute data validation
+    process.
+
+    A "cancel" button is displayed to allow the user to exit on this screen.
+
+    Optionally present the user an additional "back" button to jump back to a
+    previous Screen in the formula.
+
+    This is an abstract base class and requires sublass implementations to obey
+    the contract for the defined abstractmethods.  Subclasses may over-ride or
+    call super() upon the concrete methods (such as __init__ and process_button)
+    as desired.
+
+    Example usage:
+
+    Note: self.session is set when NetMagusSession.display_screen() is
+    called to render a ScreenBase instance in the UI ::
+
+        class MinScreen(ScreenBase):
+
+            def generate_form(self):
+                inputfield1 = form.TextInput(label='field1')
+                return self.form = form.Form(name='Form1',
+                                      description='Some Description',
+                                      form=[inputfield1])
+
+            def handle_back_button(self):
+                # perform any clean up here
+                pass
+
+            def handle_cancel_button(self):
+                # perform any clean up here
+                pass
+
+            def process_user_input(self):
+                # perform any input transformation or work here
+                pass
+
+            def validate_user_input(self):
+                # perform data validation here
+                return True
+
+            def return_error_message(self):
+                # perform any work and then send error to the user when
+                # data is invalid
+                rpc.rpc_send(rpc.Html(title='Error', data='Data'))
+
+            def return_screen_result(self):
+                # perform any work and store the screen results if any
+                self.session.session_data['data1'] = self.user_input['field1']
+
+    """
+
+    def __init__(
+        self,
+        session: "netmagus.session.NetMagusSession | None" = None,
+        clear_html_popup: bool = True,
+        next_screen: "ScreenBase | None" = None,
+        back_screen: "ScreenBase | None" = None,
+    ) -> None:
+        """
+
+        :param session: the NetMagusSession using this form
+        :type session: netmagus.session.NetMagusSession
+        """
+        # the NetMagusSession that is using this screen
+        self.session = session
+        # the wellFormatedInput returned from the form
+        self.user_input = None
+        # flag to indicate that user input passed validation
+        self.input_valid = False
+        # used to track which button was pressed on the screen
+        self.button_pressed = None
+        # pointer to the next netmagus.screen.ScreenBase() instance to show
+        self.next_screen = next_screen
+        # pointer to the netmagus.screen.ScreenBase() object if back is pressed
+        self.back_screen = back_screen
+        # flag to control if this screen should clear the HTML pop-up area after
+        # data validation passes
+        self.clear_html_popup = clear_html_popup
+
+    @property
+    def form(self) -> "netmagus.form.Form":
+        """
+        property to return the form generated by the user-provided
+        self.generate_form() method
+        """
+        return self._render_form()
+
+    def _render_form(self) -> "netmagus.form.Form":
+        """
+        Calls the user's generate_form method and then does any desired clean
+        up of the form attributes:
+
+        * Auto-disables the back button if no back_screen is set
+
+        """
+        user_form = self.generate_form()
+        if not self.back_screen:
+            user_form.disableBackButton = True
+        for i, f in enumerate(
+            user_form.form
+        ):  # update form component indexes as order presented in the list
+            f.index = i
+        return user_form
+
+    def _process_user_input(self) -> None:
+        """
+        Used to track internally if the user overridden data validation
+        function has passed and trigger formula to continue, reprompt for
+        valid input, or error out
+
+        """
+        if self.validate_user_input():
+            logger.debug("User input passed data validation")
+            self.input_valid = True
+            self.process_user_input()
+        else:
+            logger.debug("User input FAILED data validation")
+            self.input_valid = False
+            self.return_error_message()
+
+    def process_button(self) -> None:
+        """
+        Provides default logic to handle the button pressed by the user
+        on this screen.
+
+        - if button pressed was "cancel" execute formula clean-up logic and
+            raise an exception to be handled by the caller
+        - if button pressed was "back" go to previous screen
+        - if button pressed was "next" validate and return data
+
+        This may be over-ridden to provide custom handling as needed.
+
+        """
+        logger.debug(f"UI button pressed: {self.button_pressed}")
+        if self.button_pressed == "cancel":
+            raise CancelButtonPressed
+        elif self.button_pressed == "back":
+            raise BackButtonPressed
+        elif self.button_pressed == "tryagain":
+            raise BackButtonPressed
+        elif self.button_pressed.lower() == "next":
+            self._process_user_input()
+        else:
+            raise NotImplementedError(
+                f"Handler for button {self.button_pressed} not defined"
+            )
+
+    @abc.abstractmethod
+    def validate_user_input(self) -> bool:
+        """
+        This method should be over-ridden by sublass with screen-specific
+        logic to validate the value in :attr:`self.user_input`
+
+        This method should simply indicate if the data entered by the user is
+        adequate to proceed to call process_user_input and then proceed to
+        display the next screen referenced in :attr:`self.next_screen`
+
+        :return: True/False if data is Valid/Invalid
+        :rtype: bool
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def process_user_input(self) -> None:
+        """
+        Overide this method when subclassing to process any user input,
+        store the results for access by other screens if necessary, and set
+        any variable Screen.next_screen values to steer formula execution.
+
+        Persistent data for a set of Screens may be stored in
+        :attr:`netmagus.session.NetMagusSession.session_data`
+        (which is accessible to all Screen objects in the same session).  Or
+        you may opt to store it in a global or other
+        namespace object usable by all Screens.
+
+        This is used primarily in cases where formula may allow users to go
+        back to previous screens or fork in different decision trees.  Screens
+        at the end of a decision tree of screens may need to access prior screen
+        data to perform operations upon the data from all or a subset of screens
+
+        ex - read from self.user_input['IP Address'] and then generate an
+        access-list entry in proper format and do
+        self.session_data='deny ip host 1.2.3.4 any' so that other screens can
+        retrieve that ACL entry to be used in some other step of a process.
+
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def return_error_message(self) -> None:
+        """
+        Overide this method when sublcassing to send any desired HTML
+        messages to the UI when user input data validation fails
+
+        :attr:`self.session.rpc_html` instances can be sent via the
+        :meth:`self.session.rpc_send` method to appear in the HTML pop-up area
+        of the UI
+
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def handle_cancel_button(self) -> None:
+        """
+        Overide this method when sublcassing to take the desired actions when a
+        user hits the cancel button during a formula execution step.
+
+        This method should perform any required clean-up work and/or update any
+        other forms that are displayed upon cancellation.
+
+        After this is called by
+        :meth:`netmagus.session.NetMagusSession.display_screen` a
+        :exc:`netmagus.screen.CancelButtonPressed` exception will be raised to
+        allow the caller to display an appropriate :class:`netmagus.form.Form`
+        when the formula exits.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def handle_back_button(self) -> None:
+        """
+        Overide this method when subclassing to take desired action when a user
+        presses the back button in a formula execution step.
+
+        Use this method to perform any necessary clean-up work when going back
+        to a previous screen.
+
+        After this method is called by
+        :meth:`netmagus.session.NetMagusSession.display_screen`, it will then
+        auto-display the screen referenced in :attr:`self.back_screen`
+
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def generate_form(self) -> "netmagus.form.Form":
+        """
+        Overide this method when sublcassing to generate the desired NetMagus
+        form to be seen in the UI.
+
+        :return: the desired form with relevant form controls for user
+            interaction
+        :rtype: netmagus.form.Form
+
+        """
+        raise NotImplementedError
