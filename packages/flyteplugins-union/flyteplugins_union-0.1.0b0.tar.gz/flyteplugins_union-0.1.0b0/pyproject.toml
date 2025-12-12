@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flyteplugins-union"
+dynamic = ["version"]
+authors = [{ name = "unionai", email = "info@union.ai" }]
+description = "Union SDK - Proprietary extensions for Flyte"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "flyte>=2.0.0b26,<2.0.0b45",
+    "flyteidl2>=2.0.0a15",
+    "rich-click>=1.8.0",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development",
+]
+
+[dependency-groups]
+dev = [
+    "grpcio-tools>=1.71.0",
+    "build>=1.2.2.post1",
+    "mock>=5.2.0",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "pytest-benchmark>=5.1.0",
+    "ruff>=0.11.0",
+    "setuptools-scm>=8.2.0",
+    "mypy>=1.16.0",
+]
+
+[tool.setuptools_scm]
+
+[project.urls]
+Homepage = "https://www.union.ai/"
+Documentation = "https://docs.union.ai/"
+
+[project.entry-points."flyte.plugins.cli.commands"]
+# CLI plugins for Union commands
+"create.api-key" = "flyteplugins.union.cli.api_key:create_api_key"
+"delete.api-key" = "flyteplugins.union.cli.api_key:delete_api_key"
+"get.api-key" = "flyteplugins.union.cli.api_key:get_api_key"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["union*"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = [
+    "src/flyteplugins/union/internal",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "PLW",
+    "YTT",
+    "ASYNC",
+    "C4",
+    "T10",
+    "EXE",
+    "ISC",
+    "LOG",
+    "PIE",
+    "Q",
+    "RSE",
+    "FLY",
+    "PGH",
+    "PLC",
+    "PLE",
+    "PLW",
+    "FURB",
+    "RUF",
+]
