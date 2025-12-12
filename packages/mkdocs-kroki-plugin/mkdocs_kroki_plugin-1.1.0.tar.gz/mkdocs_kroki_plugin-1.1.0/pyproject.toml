@@ -1,0 +1,117 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mkdocs-kroki-plugin"
+dynamic = ["version"]
+description = "MkDocs plugin for Kroki-Diagrams"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Timo Reymann", email = "mail@timo-reymann.de" },
+    { name = "Antonia Siegert", email = "oniboni@mailbox.org" },
+    { name = "Benjamin Bittner", email = "benjamin.bittner@avateam.com" },
+]
+keywords = [
+    "diagram",
+    "kroki",
+    "markdown",
+    "mkdocs",
+    "python",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Framework :: MkDocs",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation"
+]
+dependencies = [
+    "mkdocs>=1.5.0",
+    "httpx>=0.24.0",
+    "result>=0.17.0",
+    "defusedxml>=0.7.1"
+]
+
+[project.entry-points."mkdocs.plugins"]
+kroki = "kroki.plugin:KrokiPlugin"
+
+[project.urls]
+Documentation = "https://github.com/AVATEAM-IT-SYSTEMHAUS/mkdocs-kroki-plugin#readme"
+Issues = "https://github.com/AVATEAM-IT-SYSTEMHAUS/mkdocs-kroki-plugin/issues"
+Source = "https://github.com/AVATEAM-IT-SYSTEMHAUS/mkdocs-kroki-plugin"
+
+[tool.hatch.version]
+path = "kroki/__init__.py"
+pattern = "__version__ = ['\"](?P<version>[^'\"]+)['\"]"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/kroki",
+]
+[tool.hatch.build.targets.wheel]
+include = [
+    "/kroki",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "taskipy>=1.14.1",
+    "mkdocs-techdocs-core",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock",
+    "beautifulsoup4",
+    "mkdocs-material",
+    "click",
+    "ruff",
+]
+types = [
+    "mypy",
+    "types-PyYAML",
+    "types-beautifulsoup4",
+    "types-babel",
+]
+
+[tool.uv]
+default-groups = ["dev", "test", "types"]
+
+[tool.mypy]
+disable_error_code = "import-untyped"
+
+[tool.coverage.run]
+omit = [
+    "tests/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.taskipy.tasks]
+"playground:mkdocs" = "cd ./playground && mkdocs serve"
+"playground:techdocs" = "docker build . -f Dockerfile.techdocs-dev -t kroki:techdocs-dev && cd ./playground && docker run -w /playground -v  \"$PWD:/playground\" --entrypoint /bin/sh --rm -p 3000:3000 -it kroki:techdocs-dev -c 'techdocs-cli serve --no-docker --verbose'"
