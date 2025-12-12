@@ -1,0 +1,284 @@
+# bbwebservice
+
+`bbwebservice` is a lightweight Python library for building small webservers. It keeps the original simplicity but now ships with multi-endpoint support, chunked request handling, scoped routing and an isolated multi-process / multi-thread worker pool. The main accept loop pushes sockets into a bounded queue while worker processes host thread pools that enforce watchdogs and keep Keep-Alive sessions responsive.
+
+## Quick Start
+
+Spin up a minimal HTTPS-ready server in just a few lines:
+
+```python
+from bbwebservice.webserver import register, MIME_TYPE
+from bbwebservice import core
+
+@register(route='::/hello', type=MIME_TYPE.TEXT)
+def hello():
+    return 'Hello from bbwebservice!'
+
+if __name__ == '__main__':
+    core.start()
+```
+
+Place this script next to a `config/config.json` (auto-created on first run) and
+visit `http://localhost:5000/hello`. Enable TLS by pointing the config to a
+certificate/key pair—no application changes needed. TLS contexts are prepared once per worker and reused (including SNI entries), so handshakes stay fast and certificate hot reloads propagate automatically.
+
+## Runtime model
+
+- **Main process** accepts sockets, adds them to a connection queue (`connection_queue_size`) and enforces `connection_queue_timeout` before returning 503. It never blocks on worker backpressure, so SYN floods get absorbed in the queue instead of by the kernel.
+- **Worker processes** (`worker_processes`) spin up thread pools (`max_threads_per_process`) and draw sockets from the queue. Each thread handles one client at a time but can process multiple sequential requests over a Keep-Alive connection.
+- **Backpressure and limits**: `max_threads` caps total active requests per server, while the queue makes short bursts resilient. Watchdogs enforce `handler_timeout` and send 504 responses if a handler stalls, without crashing the worker.
+- **Streaming**: helpers such as `PartialContent` sanitize file paths, clamp byte ranges, and stream data in bounded chunks, preventing traversal bugs or memory blow-ups.
+
+## Installation
+
+```bash
+pip install bbwebservice
+```
+
+## Usage
+
+- import helpers:
+
+```python
+from bbwebservice.webserver import *
+from bbwebservice import core
+```
+
+### 1. Register pages for HTTP `GET`
+   - `@register(route=..., type=...)` registers a handler for a GET route.
+   - `route` accepts either a plain string or the selector syntax `ip:port::domain:/path`. Examples:
+     * `'::/status'` – matches every endpoint
+     * `'127.0.0.1::/debug'` – IPv4 127.0.0.1 on any port and any domain
+     * `':::example.com:/info'` – any IP/port, only domain `example.com`
+     * `UrlTemplate('[::1]:8000::/v1/{slug:str}')` – IPv6 with typed placeholders
+   - `type` specifies the MIME type of the response.
+
+```python
+@register(route='::/hello', type=MIME_TYPE.TEXT)
+def hello():
+    return 'Hello World'
+```
+
+### 2. Register pages for HTTP `POST`
+   - `@post_handler` works like `@register` but the decorated function must accept an `args` parameter.
+
+```python
+@post_handler(route='::/login', type=MIME_TYPE.JSON)
+def login(args):
+    payload = args[STORE_VARS.POST].decode('utf-8')
+    return {'status': 'ok', 'raw': payload}
+```
+
+### 3. Register handlers for other HTTP verbs
+   - Additional decorators mirror `@post_handler`:
+     * `@put_handler(...)`
+     * `@patch_handler(...)`
+     * `@delete_handler(...)`
+     * `@options_handler(...)`
+   - They share the same selector syntax and MIME type handling. `OPTIONS` handlers may omit the `args` parameter if you only need static responses; `HEAD` automatically reuses the corresponding `GET` handler and suppresses the body.
+
+```python
+@put_handler(route='::/items/{slug:str}', type=MIME_TYPE.JSON)
+def update_item(args):
+    data = json.loads(args[STORE_VARS.POST].decode('utf-8'))
+    return {'slug': args[STORE_VARS.TEMPLATE_VARS]['slug'], 'data': data}
+
+@options_handler(route='::/items/*', type=MIME_TYPE.TEXT)
+def describe_items():
+    return 'Allowed: GET, POST, PUT, DELETE, PATCH'
+```
+
+### 4. Redirects
+   - Return a `Redirect` object to send 303/307 style responses.
+
+```python
+@register(route='::/old', type=MIME_TYPE.HTML)
+def legacy():
+    return Redirect('/new')
+```
+
+### 5. Partial content / streaming
+   - Use `PartialContent` for ranged responses (video, downloads, etc.). Paths are normalized to stay within your content directory and byte ranges are clamped/streamed to prevent traversal or memory issues.
+
+```python
+@register(route='::/video', type=MIME_TYPE.MP4)
+def video(_):
+    return PartialContent('/content/movie.mp4', default_size=80_000)
+```
+
+### 6. Error handler
+   - `@error_handler(error_code=..., type=...)` provides fallback pages.
+
+```python
+@error_handler(error_code=404, type=MIME_TYPE.HTML)
+def not_found():
+    return load_file('/content/404.html')
+```
+
+### 7. Handler arguments
+   - Handlers that accept args can read or modify cookies, headers, query strings, etc.
+
+```python
+@register(route='::/inspect', type=MIME_TYPE.JSON)
+def inspect(args):
+    args['response'].header.add_header_line(
+        Header_Line(Response_Header_Tag.SERVER, 'bbwebservice')
+    )
+    return args
+```
+
+### 8. Start the server
+   - Use `core.start()` to launch all configured listeners.
+
+```python
+@register(route='::/index', type=MIME_TYPE.HTML)
+def index():
+    return load_file('/content/index.html')
+
+core.start()
+```
+
+### 9. URL templates
+   - Dynamic routes use `UrlTemplate` with typed placeholders.
+
+| Supported Types | Example             |
+|-----------------|--------------------|
+| `str`           | `{name:str}`       |
+| `int`           | `{id:int}`         |
+| `float`         | `{value:float}`    |
+| `bool`          | `{flag:bool}`      |
+| `path`          | `{path:path}`      |
+
+Notes:
+- Placeholders must be separated by literal characters inside a segment (e.g., `file-{id:int}.json` works, but `{a:int}{b:int}` is rejected because it is ambiguous). 
+- `{path:path}` can appear at most once per template, must represent an entire segment, and must be the final segment so it can safely capture the remainder of the path.
+
+```python
+@register(route=UrlTemplate('::/user/{name:str}/{age:int}'), type=MIME_TYPE.JSON)
+def user(args):
+    return args[STORE_VARS.TEMPLATE_VARS]
+```
+
+### 10. Selector hierarchy
+   - The most specific selector wins automatically (IP > port > domain > global). Register routes knowing that concrete bindings take precedence over generic ones.
+
+### 11. Response helpers
+   - In addition to returning bytes/strings, you can respond with:
+     * `Dynamic(content, mime_type)` – content with a custom MIME type
+     * `PartialContent` / `Redirect`
+     * `Response(...)` – convenience for setting status, headers, body in one object
+
+### 12. Background tasks
+   - `server_task(func, interval)` schedules functions (receives global state if `data` parameter present). Tasks shut down gracefully with the server.
+
+### 13. CORS
+   - Enable or disable at runtime:
+
+```python
+webserver.enable_cors(
+    allow_origin="*",
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+    expose_headers=["X-Total-Count"],
+    allow_credentials=False,
+    max_age=600,
+)
+```
+
+`disable_cors()` and `get_cors_settings()` are provided as well. OPTIONS requests are answered automatically when CORS is active.
+
+### 14. Worker processes and backpressure
+   - The main process accepts sockets and hands them to a pool of worker **processes** (size controlled by `worker_processes`, defaulting to your CPU count). Each worker can serve multiple requests sequentially and enforces `handler_timeout` locally; if a handler overruns, the worker sends a 504 response and is recycled.
+   - Per-listener `max_threads` plus the global `max_threads` still provide backpressure: they cap how many sockets may be in flight concurrently. When the pool is saturated, new connections get `503 Service Unavailable`, preventing unbounded queuing.
+
+### 15. Request parsing
+   - Headers are read incrementally up to `max_header_size`, bodies honour `Content-Length` or `Transfer-Encoding: chunked` (trailers are skipped). Chunked data is decoded into the `args[STORE_VARS.POST]` buffer. Oversized requests trigger 413/431 responses, and `max_url_length` rejects pathological request targets before they reach your handlers.
+
+### 16. Logging
+   - Logging honours scopes (`ip:port::domain`) and only formats messages when a sink is active.
+
+```python
+set_logging(LOGGING_OPTIONS.INFO, True)
+log_to_file('/logs/server.log', [LOGGING_OPTIONS.ERROR, LOGGING_OPTIONS.INFO])
+set_logging_callback(lambda msg, ts, lvl: print('[callback]', lvl, msg))
+```
+
+There is also `webserver.response()` for building structured responses and `log()` for manual logging with scopes.
+
+## Server Configuration
+
+`config/config.json` controls listeners and limits:
+
+```json
+{
+  "max_threads": 100,
+  "max_threads_per_process": 16,
+  "max_header_size": 16384,
+  "max_body_size": 10485760,
+  "keep_alive_timeout": 15,
+  "keep_alive_max_requests": 100,
+  "header_timeout": 10,
+  "body_min_rate_bytes_per_sec": 1024,
+  "handler_timeout": 30,
+  "connection_queue_timeout": 2,
+  "ssl_handshake_timeout": 5,
+  "max_url_length": 2048,
+  "worker_processes": 4,
+  "worker_timeout_threshold": 0,
+  "server": [
+    {
+      "ip": "default",
+      "port": 5000,
+      "queue_size": 32,
+      "max_threads": 25,
+      "max_threads_per_process": 16,
+      "SSL": false,
+      "host": "",
+      "cert_path": "",
+      "key_path": "",
+      "https-redirect": false,
+      "https-redirect-escape-paths": [],
+      "update-cert-state": false
+    }
+  ]
+}
+```
+
+* `ip`: `default` resolves at runtime, otherwise explicit IPv4/IPv6 (use `[::1]` style).
+* Multiple entries in `server` bind additional sockets.
+* `SSL` with `host` as list enables SNI (each entry supplies `host`, `cert_path`, `key_path`). Failed certificates are logged with full paths.
+* `https-redirect` forces 301 to HTTPS except for paths listed in `https-redirect-escape-paths` (supports wildcard suffix `*`).
+* `update-cert-state` watches certificate files and reloads them automatically.
+* `keep_alive_timeout`/`keep_alive_max_requests` control idle keep-alive budgeting.
+* `max_threads_per_process` defines how many threads each worker process spawns (total parallel capacity is roughly `worker_processes * max_threads_per_process`).
+* `header_timeout` caps how long headers may stream in (protects against Slowloris).
+* `body_min_rate_bytes_per_sec` enforces a minimum upload rate and returns 408 if the client stalls.
+* `handler_timeout` wraps user handlers and turns overruns into 504 Gateway Timeout responses (the offending thread closes the socket; workers recycle themselves only when too many timeouts occur).
+* `connection_queue_timeout` limits how long an accepted socket may wait in the internal dispatcher queue before we proactively respond with HTTP 503 (set to `0` to wait indefinitely).
+* `ssl_handshake_timeout` closes TLS clients that never finish the handshake.
+* `max_url_length` drops requests with excessively long targets before routing begins.
+* `worker_processes` sets how many handler processes run in parallel (default: CPU count). Together with `max_threads_per_process` it determines the theoretical maximum concurrency, while `max_threads` lets you set a hard per-server cap below that maximum.
+* `worker_timeout_threshold` controls how many handler watchdog timeouts a worker tolerates before draining/restarting. Values `< 1` are treated as a ratio of `max_threads_per_process` (default `0.5`, i.e., 50% of the thread pool); values `>= 1` are treated as absolute counts.
+  All of these timeout values may also be specified on each individual `server` entry to override the global defaults for just that listener.
+
+Recommended ports: 5000 (local), 80 (HTTP), 443/8443 (HTTPS).
+
+## Logging recap
+
+```python
+set_logging(LOGGING_OPTIONS.DEBUG, True)
+set_logging(LOGGING_OPTIONS.TIME, True)
+set_logging(LOGGING_OPTIONS.TIMEOUT, True)
+log_to_file()
+```
+
+Use `set_logging(scope='127.0.0.1:5000::example.com', ...)` to target specific endpoints.
+
+## Metrics
+
+Timeout events are tallied per category (`header`, `body`, `handler`) and exposed through the built-in endpoint `/_bbws/metrics/timeouts`. Each request returns JSON such as `{"timeouts.header": 1, "timeouts.body": 0, "timeouts.handler": 2}` so monitoring systems can alert on abusive clients or stuck handlers. Use `webserver.expose_timeout_metrics('::/custom/path')` if you need to relocate the endpoint.
+
+
+## License
+
+MIT License © Lukas Walker (see `LICENSE` for details).
