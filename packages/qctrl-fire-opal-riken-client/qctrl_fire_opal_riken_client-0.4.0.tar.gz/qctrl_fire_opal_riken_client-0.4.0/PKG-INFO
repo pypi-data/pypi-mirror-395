@@ -1,0 +1,81 @@
+Metadata-Version: 2.3
+Name: qctrl-fire-opal-riken-client
+Version: 0.4.0
+Summary: Fire Opal RIKEN client
+License: https://q-ctrl.com/terms
+Keywords: black opal,boulder opal,fire opal,ironstone opal,nisq,open controls,q control,q ctrl,q-control,q-ctrl,qcontrol,qctrl,quantum,quantum algorithms,quantum circuits,quantum coding,quantum coding software,quantum computing,quantum control,quantum control software,quantum control theory,quantum engineering,quantum error correction,quantum firmware,quantum fundamentals,quantum navigation,quantum sensing,qubit,qudit,riken
+Author: Q-CTRL
+Author-email: support@q-ctrl.com
+Maintainer: Q-CTRL
+Maintainer-email: support@q-ctrl.com
+Requires-Python: >=3.11,<3.13
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: Other/Proprietary License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Classifier: Topic :: Software Development :: Embedded Systems
+Classifier: Topic :: System :: Distributed Computing
+Requires-Dist: grpcio (>=1.60.0,<2.0.0)
+Requires-Dist: grpcio-tools (>=1.60.0,<2.0.0)
+Requires-Dist: protobuf (>=5.26.0,<6.0.0)
+Requires-Dist: protovalidate (>=0.7.0,<0.8.0)
+Requires-Dist: qctrl-fire-opal-riken-commons (>=0.0.0)
+Requires-Dist: qiskit (>=2.1.2)
+Requires-Dist: qiskit-ibm-runtime (>=0.40.0,<0.43.0)
+Requires-Dist: types-protobuf (<4.25.0.20240417)
+Project-URL: Documentation, https://docs.q-ctrl.com
+Project-URL: Facebook, https://www.facebook.com/qctrl
+Project-URL: GitHub, https://github.com/qctrl
+Project-URL: Homepage, https://q-ctrl.com
+Project-URL: LinkedIn, https://www.linkedin.com/company/q-ctrl/
+Project-URL: Source, https://github.com/qctrl/fire-opal-riken-client
+Project-URL: X, https://x.com/qctrlHQ
+Project-URL: YouTube, https://www.youtube.com/qctrl
+Description-Content-Type: text/markdown
+
+# Fire Opal RIKEN Client
+
+This is the Fire Opal client integration for RIKEN quantum computing infrastructure using a gRPC client.
+
+## Architecture Overview
+
+- **Client**: Qiskit `SamplerV2` implementation that sends circuits to Fire Opal server for optimization
+- **Server**: gRPC service that performs Fire Opal preprocessing/postprocessing
+
+## Usage
+
+Here is a small example of how to use the Fire Opal RIKEN client with Qiskit. This will communicate with a gRPC server to perform Fire Opal pre-processing on a quantum circuit before executing it on the `ibm_kobe` backend. Once the job is complete, results post-processed by Fire Opal will be returned from the `job.result()` call.
+
+```python
+import os
+from qiskit import QuantumCircuit
+from qiskit.providers import BackendV2
+from fireopalrikenclient.sampler import FireOpalSampler
+from fireopalrikenclient.utils.client import FireOpalClient
+
+# Create circuit.
+circuit = QuantumCircuit(2)
+circuit.h(0)
+circuit.cx(0, 1)
+circuit.measure_all()
+
+# Create sampler with Fire Opal preprocessing.
+service = QiskitRuntimeService(token="...", instance="...", channel="ibm_quantum_platform")
+sampler = FireOpalSampler(mode=service.backend("ibm_kobe"))
+
+# Run with Fire Opal optimization.
+sampler_pub = (circuit, None, 1024)
+job = sampler.run([sampler_pub])
+result = job.result()
+```
+
