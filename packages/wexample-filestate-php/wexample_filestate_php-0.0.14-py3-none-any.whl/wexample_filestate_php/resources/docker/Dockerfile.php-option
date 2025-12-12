@@ -1,0 +1,31 @@
+# Base image with PHP CLI
+FROM php:8.2-cli
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create user with UID 1000
+RUN groupadd -g 1000 appuser && \
+    useradd -m -u 1000 -g 1000 -s /bin/bash appuser
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Install PHP-CS-Fixer globally as appuser
+USER appuser
+RUN composer global require friendsofphp/php-cs-fixer
+
+# Add Composer global bin to PATH
+ENV PATH="/home/appuser/.composer/vendor/bin:${PATH}"
+
+# Copy PHP-CS-Fixer configuration
+COPY .php-cs-fixer.dist.php /home/appuser/.php-cs-fixer.dist.php
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Keep container running
+CMD ["tail", "-f", "/dev/null"]
