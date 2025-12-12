@@ -1,0 +1,379 @@
+# DSPy Configuration
+dspy:
+  model: gpt-4.1
+  routing_model: gpt-5-mini # Fast model for analysis/routing phases (Plan #4)
+  temperature: 1.0
+  max_tokens: 16000
+  # When true, raise an error if no compiled DSPy artifact is found.
+  # Recommended for production environments to prevent degraded performance
+  # from zero-shot fallback. Run 'agentic-fleet optimize' before enabling.
+  require_compiled: false
+  optimization:
+    enabled: true
+    examples_path: src/agentic_fleet/data/supervisor_examples.json
+    metric_threshold: 0.8
+    max_bootstrapped_demos: 4
+    use_gepa: true
+    # GEPA exclusivity: choose EXACTLY ONE of:
+    #   1) gepa_auto: light|medium|heavy   (preset internal iteration budgets)
+    #   2) gepa_max_full_evals: <int>      (hard cap on full evaluation cycles)
+    #   3) gepa_max_metric_calls: <int>    (hard cap on metric scoring calls)
+    # If more than one is set, the console/runner will resolve priority: auto > max_full_evals > max_metric_calls.
+    # For FAST completion we disable auto and metric calls, and set a TINY full eval count.
+    # (Previous long run was due to auto mode performing many internal reflection cycles.)
+    # gepa_auto: light  # DISABLED for speed
+    # Switched from full eval cap (still expensive) to metric call cap for ultra-fast run.
+    # gepa_max_full_evals: 3  # (previous setting) commented out; full eval cycles still slow
+    gepa_max_metric_calls: 5 # ultra-short optimization budget
+    gepa_reflection_model:
+    gepa_log_dir: .var/logs/gepa
+    gepa_perfect_score: 1.0
+    gepa_use_history_examples: true
+    gepa_history_min_quality: 8.0
+    gepa_history_limit: 200
+    gepa_val_split: 0.2
+    gepa_seed: 13
+
+# API Configuration
+api:
+  chat:
+    # Agent IDs to include in streaming responses (only these agents' messages will be shown)
+    # By default, only show messages from orchestration agents that synthesize the final response
+    included_agent_ids:
+      - orchestrator
+      - critic_verifier
+      - synthesis_generator
+
+# Workflow Configuration
+workflow:
+  supervisor:
+    max_rounds: 15
+    max_stalls: 3
+    max_resets: 2
+    enable_streaming: true
+    max_task_length: 10000
+    dspy_retry_attempts: 3
+    dspy_retry_backoff_seconds: 1.0
+    analysis_cache_ttl_seconds: 3600
+
+  execution:
+    parallel_threshold: 3
+    timeout_seconds: 300 # Increased from 60 to 300 seconds for complex tasks
+    retry_attempts: 2
+    enable_parallel: true # Enable parallel agent execution where possible
+    max_parallel_agents: 3 # Maximum concurrent agents
+
+  quality:
+    refinement_threshold: 8.0
+    enable_refinement: false # DISABLED: Refinement disabled for Plan #4
+    quality_threshold: 7.0 # Lowered from 8.0 to reduce refinement cycles
+    # Judge-based refinement settings (DISABLED in Plan #4 optimization)
+    judge_threshold: 7.0 # Trigger refinement when Judge score < 7.0 (raised from 5.0)
+
+    max_refinement_rounds: 1 # Set to 1 to satisfy schema validation, but disabled via enable_refinement
+    judge_model: gpt-5-mini # Use gpt-5-mini for faster evaluation
+    judge_reasoning_effort: minimal # Use low reasoning effort for Judge
+    judge_timeout_seconds: 30 # Timeout for judge evaluation (new)
+    refinement_min_improvement: 1.0 # Skip refinement if not improving by 1 point
+
+  performance:
+    enable_caching: true # Enable response caching
+    enable_performance_tracking: true # Track execution metrics
+    slow_execution_threshold: 30 # Log executions over 30 seconds
+    enable_early_stopping: true # Stop refinement if not improving
+
+  handoffs:
+    enabled: true
+
+# Agent Configuration
+agents:
+  researcher:
+    model: gpt-4.1
+    tools:
+      - TavilySearchTool # Requires TAVILY_API_KEY environment variable
+    temperature: 0.5
+    enable_dspy: true # Enable DSPy task enhancement
+    cache_ttl: 300 # Cache responses for 5 minutes
+    timeout: 60 # Task timeout in seconds
+
+  analyst:
+    model: gpt-5-mini
+    tools:
+      - HostedCodeInterpreterTool
+    temperature: 0.3
+    enable_dspy: true
+    cache_ttl: 300
+    timeout: 90 # Longer timeout for computations
+    strategy: "react" # Switch to ReAct for stability
+
+  writer:
+    model: gpt-5-mini
+    tools: []
+    temperature: 0.7
+    enable_dspy: true
+    cache_ttl: 600 # Cache longer for writing
+    timeout: 60
+
+  reviewer:
+    model: gpt-5-mini
+    tools: []
+    temperature: 0.2
+    enable_dspy: true
+    cache_ttl: 300
+    timeout: 45
+
+  # New expanded agent roster (configuration-driven; keeps legacy agents for compatibility)
+  planner:
+    model: gpt-5-mini
+    tools: []
+    temperature: 0.5
+    instructions: prompts.planner
+    enable_dspy: true
+    cache_ttl: 300
+    timeout: 60
+
+  executor:
+    model: gpt-5-mini
+    tools: []
+    temperature: 0.6
+    instructions: prompts.executor
+    enable_dspy: true
+    cache_ttl: 300
+    timeout: 60
+
+  coder:
+    model: gpt-5.1-codex-mini
+    tools:
+      - HostedCodeInterpreterTool
+    temperature: 0.3
+    instructions: prompts.coder
+    enable_dspy: true
+    cache_ttl: 300
+    timeout: 90
+
+  verifier:
+    model: gpt-5-nano
+    tools: []
+    temperature: 0.5
+    instructions: prompts.verifier
+    enable_dspy: true
+    cache_ttl: 300
+    timeout: 60
+
+  generator:
+    model: gpt-5.1-chat
+    tools: []
+    temperature: 0.8
+    instructions: prompts.generator
+    enable_dspy: true
+    cache_ttl: 600
+    timeout: 60
+
+  copilot_researcher:
+    model: gpt-4.1
+    tools:
+      - PackageSearchMCPTool
+      - Context7DeepWikiTool
+      - TavilyMCPTool
+      - BrowserTool
+    temperature: 0.4
+    instructions: prompts.copilot_researcher
+    enable_dspy: true
+    cache_ttl: 300
+    timeout: 120
+
+# Tool Configuration
+tools:
+  enable_tool_aware_routing: true
+  pre_analysis_tool_usage: true
+  tool_registry_cache: true
+  tool_usage_tracking: true
+
+# Logging
+logging:
+  level: DEBUG
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: .var/logs/workflow.log
+  save_history: true
+  history_file: .var/logs/execution_history.jsonl
+  verbose: true
+  # Log verbose GPT-5 reasoning tokens to execution history (default: false)
+  # Enable for debugging/evaluation; disable in production to reduce storage
+  log_reasoning: false
+
+# UI Routing Configuration
+# Maps StreamEventType (and optional kind) to EventCategory and UIHint for frontend rendering
+ui_routing:
+  # Orchestrator thought events - categorized by kind
+  orchestrator_thought:
+    routing:
+      category: planning
+      component: ChatStep
+      priority: high
+      collapsible: true
+      icon_hint: routing
+    analysis:
+      category: thought
+      component: ChatStep
+      priority: medium
+      collapsible: true
+      icon_hint: analysis
+    quality:
+      category: output
+      component: ChatStep
+      priority: medium
+      collapsible: true
+      icon_hint: quality
+    progress:
+      category: status
+      component: ChatStep
+      priority: low
+      collapsible: true
+      icon_hint: progress
+    handoff:
+      category: planning
+      component: ChatStep
+      priority: high
+      collapsible: false
+      icon_hint: handoff
+    _default:
+      category: thought
+      component: ChatStep
+      priority: medium
+      collapsible: true
+
+  # Orchestrator message events
+  orchestrator_message:
+    _default:
+      category: status
+      component: ChatStep
+      priority: low
+      collapsible: true
+
+  # Agent lifecycle events
+  agent_start:
+    _default:
+      category: step
+      component: ChatStep
+      priority: low
+      collapsible: true
+      icon_hint: agent_start
+  agent_complete:
+    _default:
+      category: step
+      component: ChatStep
+      priority: low
+      collapsible: true
+      icon_hint: agent_complete
+  agent_message:
+    _default:
+      category: output
+      component: MessageBubble
+      priority: medium
+      collapsible: false
+  agent_output:
+    _default:
+      category: output
+      component: MessageBubble
+      priority: high
+      collapsible: false
+
+  # Reasoning events (GPT-5 chain-of-thought)
+  reasoning_delta:
+    _default:
+      category: reasoning
+      component: Reasoning
+      priority: medium
+      collapsible: true
+  reasoning_completed:
+    _default:
+      category: reasoning
+      component: Reasoning
+      priority: medium
+      collapsible: true
+
+  # Response events
+  response_delta:
+    _default:
+      category: response
+      component: MessageBubble
+      priority: high
+      collapsible: false
+  response_completed:
+    _default:
+      category: response
+      component: MessageBubble
+      priority: high
+      collapsible: false
+
+  # Error events
+  error:
+    _default:
+      category: error
+      component: ErrorStep
+      priority: high
+      collapsible: false
+
+  # Status events
+  cancelled:
+    _default:
+      category: status
+      component: ChatStep
+      priority: medium
+      collapsible: false
+      icon_hint: cancelled
+  connected:
+    _default:
+      category: status
+      component: ChatStep
+      priority: low
+      collapsible: false
+      icon_hint: connected
+  heartbeat:
+    _default:
+      category: status
+      component: ChatStep
+      priority: low
+      collapsible: true
+      icon_hint: heartbeat
+  done:
+    _default:
+      category: status
+      component: ChatStep
+      priority: low
+      collapsible: true
+
+  # Fallback for unknown event types
+  _fallback:
+    category: status
+    component: ChatStep
+    priority: low
+    collapsible: true
+
+# Tracing / Observability
+tracing:
+  enabled: true # Set to false to disable all tracing
+  otlp_endpoint: http://localhost:4317 # AI Toolkit / OpenTelemetry Collector endpoint (corrected port)
+  capture_sensitive: false # Capture prompts & completions (set to true only for debugging - GDPR/privacy risk)
+  # Azure Monitor / AI Foundry export (optional)
+  # Set connection string to export traces to Microsoft AI Foundry
+  # Get this from: Foundry Portal > Your Project > Tracing > Manage data source > Connection string
+  # Or set APPLICATIONINSIGHTS_CONNECTION_STRING env var
+  azure_monitor_connection_string: # e.g., "InstrumentationKey=xxx;IngestionEndpoint=https://xxx.applicationinsights.azure.com/"
+
+# Evaluation Framework
+evaluation:
+  enabled: true # Enable to run batch evaluations (Option B activated)
+  dataset_path: src/agentic_fleet/data/evaluation_tasks.jsonl
+  output_dir: .var/logs/evaluation
+  metrics:
+    - quality_score
+    - keyword_success
+    - latency_seconds
+    - routing_efficiency
+    - refinement_triggered
+    - relevance_score # Fraction of keywords present (semantic proxy)
+    - token_count # Approximate output token count
+    - estimated_cost_usd # Estimated model cost based on token_count
+  max_tasks: 5 # 0 = no limit
+  stop_on_failure: true # Abort early on first failed success metric
