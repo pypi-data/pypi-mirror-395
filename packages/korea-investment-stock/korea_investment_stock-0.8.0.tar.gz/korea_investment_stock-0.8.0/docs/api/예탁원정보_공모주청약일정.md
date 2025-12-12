@@ -1,0 +1,649 @@
+---
+title: KIS Developers : 한국투자증권 오픈API 개발자센터
+url: https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer
+---
+
+# KIS Developers : 한국투자증권 오픈API 개발자센터
+
+[메뉴 건너뛰기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer#content)
+## [true friend 한국투자 Open API](https://apiportal.koreainvestment.com/)
+  * [소개](javascript:;)
+    * [개발자센터 소개](https://apiportal.koreainvestment.com/about-devcenter)
+    * [Open API 서비스 소개](https://apiportal.koreainvestment.com/about-open-api)
+    * [서비스 이용안내](https://apiportal.koreainvestment.com/about-howto)
+  * [API 문서](javascript:;)
+    * [개요](https://apiportal.koreainvestment.com/apiservice-summary)
+    * [종목정보파일](https://apiportal.koreainvestment.com/apiservice-category)
+    * [API 가이드 문서](https://apiportal.koreainvestment.com/apiservice-apiservice)
+  * [제휴](javascript:;)
+    * [제휴안내](https://apiportal.koreainvestment.com/provider-info)
+    * [제휴 프로세스 ](https://apiportal.koreainvestment.com/provider-process)
+    * [제휴 제안 등록 ](https://apiportal.koreainvestment.com/provider-apply)
+    * [제휴 FAQ ](https://apiportal.koreainvestment.com/provider-faq)
+  * [공지](javascript:;)
+    * [서비스 공지사항](https://apiportal.koreainvestment.com/community-notice)
+    * [이벤트 공지사항](https://apiportal.koreainvestment.com/community-eventnotice)
+  * [FAQ](javascript:;)
+    * [자주 묻는 질문](https://apiportal.koreainvestment.com/faq-faq)
+    * [오류코드](https://apiportal.koreainvestment.com/faq-error-code)
+
+
+[GITHUB](https://github.com/koreainvestment/open-trading-api) [TESTBED](https://apiportal.koreainvestment.com/testbed-intro)
+검색 전체메뉴 열기
+  * [로그인](javascript:fn_login\(\) "로그인")
+  * [API신청](https://securities.koreainvestment.com/main/customer/systemdown/RestAPIService.jsp "API신청")
+
+
+## [true friend 한국투자 Open API](https://apiportal.koreainvestment.com/)
+검색 전체메뉴 닫기
+  * [로그인](javascript:fn_login\(\) "로그인")
+  * [API신청](https://securities.koreainvestment.com/main/customer/systemdown/RestAPIService.jsp "API신청")
+
+
+  * [소개](javascript:;)
+    * [개발자센터 소개](https://apiportal.koreainvestment.com/about-devcenter)
+    * [Open API 서비스 소개](https://apiportal.koreainvestment.com/about-open-api)
+    * [서비스 이용안내](https://apiportal.koreainvestment.com/about-howto)
+  * [API 문서](javascript:;)
+    * [개요](https://apiportal.koreainvestment.com/apiservice-summary)
+    * [종목정보파일](https://apiportal.koreainvestment.com/apiservice-category)
+    * [API 가이드 문서](https://apiportal.koreainvestment.com/apiservice-apiservice)
+  * [제휴](javascript:;)
+    * [제휴안내](https://apiportal.koreainvestment.com/provider-info)
+    * [제휴 프로세스 ](https://apiportal.koreainvestment.com/provider-process)
+    * [제휴 제안 등록 ](https://apiportal.koreainvestment.com/provider-apply)
+    * [제휴 FAQ ](https://apiportal.koreainvestment.com/provider-faq)
+  * [공지](javascript:;)
+    * [서비스 공지사항](https://apiportal.koreainvestment.com/community-notice)
+    * [이벤트 공지사항](https://apiportal.koreainvestment.com/community-eventnotice)
+  * [FAQ](javascript:;)
+    * [자주 묻는 질문](https://apiportal.koreainvestment.com/faq-faq)
+    * [오류코드](https://apiportal.koreainvestment.com/faq-error-code)
+
+
+[GITHUB](https://github.com/koreainvestment/open-trading-api)
+## 사이트맵
+×
+  * [소개](https://apiportal.koreainvestment.com/about)
+    * [개발자센터 소개](https://apiportal.koreainvestment.com/about-devcenter)
+    * [Open API 서비스 소개](https://apiportal.koreainvestment.com/about-open-api)
+    * [서비스 이용안내](https://apiportal.koreainvestment.com/about-howto)
+  * [API 문서](https://apiportal.koreainvestment.com/apiservice)
+    * [개요](https://apiportal.koreainvestment.com/apiservice/apiservice-summary)
+    * [종목정보파일](https://apiportal.koreainvestment.com/apiservice/apiservice-category)
+    * [API 가이드 문서](https://apiportal.koreainvestment.com/apiservice/apiservice-apiservice)
+  * [제휴](https://apiportal.koreainvestment.com/provider)
+    * [제휴안내](https://apiportal.koreainvestment.com/provider-info)
+    * [제휴 프로세스 ](https://apiportal.koreainvestment.com/provider-process)
+    * [제휴 제안 등록 ](https://apiportal.koreainvestment.com/provider-apply)
+    * [제휴 FAQ ](https://apiportal.koreainvestment.com/provider-faq)
+    * [제휴 API 시작하기 ](https://apiportal.koreainvestment.com/provider-doc1)
+    * [기존계좌 API 신청 ](https://apiportal.koreainvestment.com/provider-doc2)
+    * [비대면 계좌개설 API 신청 ](https://apiportal.koreainvestment.com/provider-doc3)
+    * [토큰(접근,갱신) 만료 시 처리 절차 ](https://apiportal.koreainvestment.com/provider-doc4)
+  * [공지](https://apiportal.koreainvestment.com/community)
+    * [서비스 공지사항](https://apiportal.koreainvestment.com/community-notice)
+    * [이벤트 공지사항](https://apiportal.koreainvestment.com/community-eventnotice)
+  * [FAQ](https://apiportal.koreainvestment.com/faq)
+    * [자주 묻는 질문](https://apiportal.koreainvestment.com/faq-faq)
+    * [오류코드](https://apiportal.koreainvestment.com/faq-error-code)
+
+
+csrf
+검색어 입력 검색
+  * [ 개요 ](https://apiportal.koreainvestment.com/apiservice-summary)
+  * [ 종목정보파일 ](https://apiportal.koreainvestment.com/apiservice-category)
+  * [ OAuth인증 ](javascript:;)
+    * [ 접근토큰발급(P) ](javascript:;)
+    * [ 접근토큰폐기(P) ](javascript:;)
+    * [ Hashkey ](javascript:;)
+    * [ 실시간 (웹소켓) 접속키 발급 ](javascript:;)
+  * [ [국내주식] 주문/계좌 ](javascript:;)
+    * [ 주식주문(현금) ](javascript:;)
+    * [ 주식주문(신용) ](javascript:;)
+    * [ 주식주문(정정취소) ](javascript:;)
+    * [ 주식정정취소가능주문조회 ](javascript:;)
+    * [ 주식일별주문체결조회 ](javascript:;)
+    * [ 주식잔고조회 ](javascript:;)
+    * [ 매수가능조회 ](javascript:;)
+    * [ 매도가능수량조회  ](javascript:;)
+    * [ 신용매수가능조회 ](javascript:;)
+    * [ 주식예약주문 ](javascript:;)
+    * [ 주식예약주문정정취소 ](javascript:;)
+    * [ 주식예약주문조회 ](javascript:;)
+    * [ 퇴직연금 체결기준잔고 ](javascript:;)
+    * [ 퇴직연금 미체결내역 ](javascript:;)
+    * [ 퇴직연금 매수가능조회 ](javascript:;)
+    * [ 퇴직연금 예수금조회 ](javascript:;)
+    * [ 퇴직연금 잔고조회 ](javascript:;)
+    * [ 주식잔고조회_실현손익 ](javascript:;)
+    * [ 투자계좌자산현황조회 ](javascript:;)
+    * [ 기간별손익일별합산조회 ](javascript:;)
+    * [ 기간별매매손익현황조회 ](javascript:;)
+    * [ 주식통합증거금 현황  ](javascript:;)
+    * [ 기간별계좌권리현황조회  ](javascript:;)
+  * [ [국내주식] 기본시세 ](javascript:;)
+    * [ 주식현재가 시세 ](javascript:;)
+    * [ 주식현재가 시세2 ](javascript:;)
+    * [ 주식현재가 체결 ](javascript:;)
+    * [ 주식현재가 일자별 ](javascript:;)
+    * [ 주식현재가 호가/예상체결 ](javascript:;)
+    * [ 주식현재가 투자자 ](javascript:;)
+    * [ 주식현재가 회원사 ](javascript:;)
+    * [ 국내주식기간별시세(일/주/월/년) ](javascript:;)
+    * [ 주식당일분봉조회 ](javascript:;)
+    * [ 주식일별분봉조회  ](javascript:;)
+    * [ 주식현재가 당일시간대별체결 ](javascript:;)
+    * [ 주식현재가 시간외일자별주가 ](javascript:;)
+    * [ 주식현재가 시간외시간별체결 ](javascript:;)
+    * [ 국내주식 시간외현재가 ](javascript:;)
+    * [ 국내주식 시간외호가 ](javascript:;)
+    * [ 국내주식 장마감 예상체결가 ](javascript:;)
+    * [ ETF/ETN 현재가 ](javascript:;)
+    * [ ETF 구성종목시세 ](javascript:;)
+    * [ NAV 비교추이(종목) ](javascript:;)
+    * [ NAV 비교추이(일) ](javascript:;)
+    * [ NAV 비교추이(분) ](javascript:;)
+  * [ [국내주식] ELW 시세 ](javascript:;)
+    * [ ELW 현재가 시세 ](javascript:;)
+    * [ ELW 신규상장종목  ](javascript:;)
+    * [ ELW 민감도 순위 ](javascript:;)
+    * [ ELW 기초자산별 종목시세  ](javascript:;)
+    * [ ELW 종목검색  ](javascript:;)
+    * [ ELW 당일급변종목 ](javascript:;)
+    * [ ELW 기초자산 목록조회  ](javascript:;)
+    * [ ELW 비교대상종목조회  ](javascript:;)
+    * [ ELW LP매매추이  ](javascript:;)
+    * [ ELW 투자지표추이(체결)  ](javascript:;)
+    * [ ELW 투자지표추이(분별)  ](javascript:;)
+    * [ ELW 투자지표추이(일별)  ](javascript:;)
+    * [ ELW 변동성 추이(틱)  ](javascript:;)
+    * [ ELW 변동성추이(체결)  ](javascript:;)
+    * [ ELW 변동성 추이(일별)  ](javascript:;)
+    * [ ELW 민감도 추이(체결)  ](javascript:;)
+    * [ ELW 변동성 추이(분별)  ](javascript:;)
+    * [ ELW 민감도 추이(일별)  ](javascript:;)
+    * [ ELW 만기예정/만기종목  ](javascript:;)
+    * [ ELW 지표순위 ](javascript:;)
+    * [ ELW 상승률순위 ](javascript:;)
+    * [ ELW 거래량순위 ](javascript:;)
+  * [ [국내주식] 업종/기타 ](javascript:;)
+    * [ 국내업종 현재지수 ](javascript:;)
+    * [ 국내업종 일자별지수 ](javascript:;)
+    * [ 국내업종 시간별지수(초) ](javascript:;)
+    * [ 국내업종 시간별지수(분) ](javascript:;)
+    * [ 업종 분봉조회 ](javascript:;)
+    * [ 국내주식업종기간별시세(일/주/월/년) ](javascript:;)
+    * [ 국내업종 구분별전체시세 ](javascript:;)
+    * [ 국내주식 예상체결지수 추이 ](javascript:;)
+    * [ 국내주식 예상체결 전체지수 ](javascript:;)
+    * [ 변동성완화장치(VI) 현황  ](javascript:;)
+    * [ 금리 종합(국내채권/금리)  ](javascript:;)
+    * [ 종합 시황/공시(제목)  ](javascript:;)
+    * [ 국내휴장일조회 ](javascript:;)
+    * [ 국내선물 영업일조회  ](javascript:;)
+  * [ [국내주식] 종목정보 ](javascript:;)
+    * [ 상품기본조회 ](javascript:;)
+    * [ 주식기본조회 ](javascript:;)
+    * [ 국내주식 대차대조표 ](javascript:;)
+    * [ 국내주식 손익계산서 ](javascript:;)
+    * [ 국내주식 재무비율 ](javascript:;)
+    * [ 국내주식 수익성비율 ](javascript:;)
+    * [ 국내주식 기타주요비율 ](javascript:;)
+    * [ 국내주식 안정성비율 ](javascript:;)
+    * [ 국내주식 성장성비율 ](javascript:;)
+    * [ 국내주식 당사 신용가능종목 ](javascript:;)
+    * [ 예탁원정보(배당일정) ](javascript:;)
+    * [ 예탁원정보(주식매수청구일정) ](javascript:;)
+    * [ 예탁원정보(합병/분할일정) ](javascript:;)
+    * [ 예탁원정보(액면교체일정) ](javascript:;)
+    * [ 예탁원정보(자본감소일정) ](javascript:;)
+    * [ 예탁원정보(상장정보일정) ](javascript:;)
+    * [ 예탁원정보(공모주청약일정) ](javascript:;)
+    * [ 예탁원정보(실권주일정) ](javascript:;)
+    * [ 예탁원정보(의무예치일정) ](javascript:;)
+    * [ 예탁원정보(유상증자일정)  ](javascript:;)
+    * [ 예탁원정보(무상증자일정)  ](javascript:;)
+    * [ 예탁원정보(주주총회일정)  ](javascript:;)
+    * [ 국내주식 종목추정실적  ](javascript:;)
+    * [ 당사 대주가능 종목  ](javascript:;)
+    * [ 국내주식 종목투자의견  ](javascript:;)
+    * [ 국내주식 증권사별 투자의견  ](javascript:;)
+  * [ [국내주식] 시세분석 ](javascript:;)
+    * [ 종목조건검색 목록조회 ](javascript:;)
+    * [ 종목조건검색조회  ](javascript:;)
+    * [ 관심종목 그룹조회  ](javascript:;)
+    * [ 관심종목(멀티종목) 시세조회  ](javascript:;)
+    * [ 관심종목 그룹별 종목조회  ](javascript:;)
+    * [ 국내기관_외국인 매매종목가집계 ](javascript:;)
+    * [ 외국계 매매종목 가집계  ](javascript:;)
+    * [ 시장별 투자자매매동향(시세) ](javascript:;)
+    * [ 시장별 투자자매매동향(일별)  ](javascript:;)
+    * [ 종목별 외국계 순매수추이  ](javascript:;)
+    * [ 회원사 실시간 매매동향(틱)  ](javascript:;)
+    * [ 주식현재가 회원사 종목매매동향  ](javascript:;)
+    * [ 종목별 프로그램매매추이(체결) ](javascript:;)
+    * [ 종목별 프로그램매매추이(일별)  ](javascript:;)
+    * [ 종목별 외인기관 추정가집계 ](javascript:;)
+    * [ 종목별일별매수매도체결량  ](javascript:;)
+    * [ 프로그램매매 종합현황(시간)  ](javascript:;)
+    * [ 프로그램매매 종합현황(일별) ](javascript:;)
+    * [ 프로그램매매 투자자매매동향(당일)  ](javascript:;)
+    * [ 국내주식 신용잔고 일별추이 ](javascript:;)
+    * [ 국내주식 예상체결가 추이 ](javascript:;)
+    * [ 국내주식 공매도 일별추이 ](javascript:;)
+    * [ 국내주식 시간외예상체결등락률  ](javascript:;)
+    * [ 국내주식 체결금액별 매매비중  ](javascript:;)
+    * [ 국내 증시자금 종합  ](javascript:;)
+    * [ 종목별 일별 대차거래추이  ](javascript:;)
+    * [ 국내주식 상하한가 포착  ](javascript:;)
+    * [ 국내주식 매물대/거래비중  ](javascript:;)
+  * [ [국내주식] 순위분석 ](javascript:;)
+    * [ 거래량순위 ](javascript:;)
+    * [ 국내주식 등락률 순위 ](javascript:;)
+    * [ 국내주식 호가잔량 순위 ](javascript:;)
+    * [ 국내주식 수익자산지표 순위 ](javascript:;)
+    * [ 국내주식 시가총액 상위 ](javascript:;)
+    * [ 국내주식 재무비율 순위 ](javascript:;)
+    * [ 국내주식 시간외잔량 순위 ](javascript:;)
+    * [ 국내주식 우선주/괴리율 상위 ](javascript:;)
+    * [ 국내주식 이격도 순위 ](javascript:;)
+    * [ 국내주식 시장가치 순위 ](javascript:;)
+    * [ 국내주식 체결강도 상위 ](javascript:;)
+    * [ 국내주식 관심종목등록 상위 ](javascript:;)
+    * [ 국내주식 예상체결 상승/하락상위 ](javascript:;)
+    * [ 국내주식 당사매매종목 상위 ](javascript:;)
+    * [ 국내주식 신고/신저근접종목 상위 ](javascript:;)
+    * [ 국내주식 배당률 상위 ](javascript:;)
+    * [ 국내주식 대량체결건수 상위 ](javascript:;)
+    * [ 국내주식 신용잔고 상위 ](javascript:;)
+    * [ 국내주식 공매도 상위종목 ](javascript:;)
+    * [ 국내주식 시간외등락율순위  ](javascript:;)
+    * [ 국내주식 시간외거래량순위  ](javascript:;)
+    * [ HTS조회상위20종목  ](javascript:;)
+  * [ [국내주식] 실시간시세 ](javascript:;)
+    * [ 국내주식 실시간체결가 (KRX)  ](javascript:;)
+    * [ 국내주식 실시간호가 (KRX)  ](javascript:;)
+    * [ 국내주식 실시간체결통보  ](javascript:;)
+    * [ 국내주식 실시간예상체결 (KRX)  ](javascript:;)
+    * [ 국내주식 실시간회원사 (KRX)  ](javascript:;)
+    * [ 국내주식 실시간프로그램매매 (KRX)  ](javascript:;)
+    * [ 국내주식 장운영정보 (KRX)  ](javascript:;)
+    * [ 국내주식 시간외 실시간호가 (KRX)  ](javascript:;)
+    * [ 국내주식 시간외 실시간체결가 (KRX)  ](javascript:;)
+    * [ 국내주식 시간외 실시간예상체결 (KRX)  ](javascript:;)
+    * [ 국내지수 실시간체결  ](javascript:;)
+    * [ 국내지수 실시간예상체결  ](javascript:;)
+    * [ 국내지수 실시간프로그램매매  ](javascript:;)
+    * [ ELW 실시간호가  ](javascript:;)
+    * [ ELW 실시간체결가  ](javascript:;)
+    * [ ELW 실시간예상체결  ](javascript:;)
+    * [ 국내ETF NAV추이  ](javascript:;)
+    * [ 국내주식 실시간체결가 (통합) ](javascript:;)
+    * [ 국내주식 실시간호가 (통합) ](javascript:;)
+    * [ 국내주식 실시간예상체결 (통합) ](javascript:;)
+    * [ 국내주식 실시간회원사 (통합) ](javascript:;)
+    * [ 국내주식 실시간프로그램매매 (통합) ](javascript:;)
+    * [ 국내주식 장운영정보 (통합) ](javascript:;)
+    * [ 국내주식 실시간체결가 (NXT) ](javascript:;)
+    * [ 국내주식 실시간호가 (NXT) ](javascript:;)
+    * [ 국내주식 실시간예상체결 (NXT) ](javascript:;)
+    * [ 국내주식 실시간회원사 (NXT) ](javascript:;)
+    * [ 국내주식 실시간프로그램매매 (NXT) ](javascript:;)
+    * [ 국내주식 장운영정보 (NXT) ](javascript:;)
+  * [ [국내선물옵션] 주문/계좌 ](javascript:;)
+    * [ 선물옵션 주문 ](javascript:;)
+    * [ 선물옵션 정정취소주문 ](javascript:;)
+    * [ 선물옵션 주문체결내역조회 ](javascript:;)
+    * [ 선물옵션 잔고현황 ](javascript:;)
+    * [ 선물옵션 주문가능 ](javascript:;)
+    * [ (야간)선물옵션 주문체결 내역조회  ](javascript:;)
+    * [ (야간)선물옵션 잔고현황  ](javascript:;)
+    * [ (야간)선물옵션 주문가능 조회  ](javascript:;)
+    * [ (야간)선물옵션 증거금 상세  ](javascript:;)
+    * [ 선물옵션 잔고정산손익내역 ](javascript:;)
+    * [ 선물옵션 총자산현황 ](javascript:;)
+    * [ 선물옵션 잔고평가손익내역 ](javascript:;)
+    * [ 선물옵션 기준일체결내역 ](javascript:;)
+    * [ 선물옵션기간약정수수료일별 ](javascript:;)
+  * [ [국내선물옵션] 기본시세 ](javascript:;)
+    * [ 선물옵션 시세 ](javascript:;)
+    * [ 선물옵션 시세호가 ](javascript:;)
+    * [ 선물옵션기간별시세(일/주/월/년) ](javascript:;)
+    * [ 선물옵션 분봉조회 ](javascript:;)
+    * [ 국내옵션전광판_옵션월물리스트 ](javascript:;)
+    * [ 국내선물 기초자산 시세 ](javascript:;)
+    * [ 국내옵션전광판_콜풋 ](javascript:;)
+    * [ 국내옵션전광판_선물 ](javascript:;)
+    * [ 선물옵션 일중예상체결추이 ](javascript:;)
+  * [ [국내선물옵션] 실시간시세 ](javascript:;)
+    * [ 지수선물 실시간호가 ](javascript:;)
+    * [ 지수선물 실시간체결가 ](javascript:;)
+    * [ 지수옵션 실시간호가 ](javascript:;)
+    * [ 지수옵션 실시간체결가 ](javascript:;)
+    * [ 선물옵션 실시간체결통보 ](javascript:;)
+    * [ 상품선물 실시간호가 ](javascript:;)
+    * [ 상품선물 실시간체결가 ](javascript:;)
+    * [ 주식선물 실시간호가  ](javascript:;)
+    * [ 주식선물 실시간체결가  ](javascript:;)
+    * [ 주식선물 실시간예상체결  ](javascript:;)
+    * [ 주식옵션 실시간호가  ](javascript:;)
+    * [ 주식옵션 실시간체결가  ](javascript:;)
+    * [ 주식옵션 실시간예상체결  ](javascript:;)
+    * [ KRX야간옵션 실시간호가  ](javascript:;)
+    * [ KRX야간옵션 실시간체결가  ](javascript:;)
+    * [ KRX야간옵션실시간예상체결  ](javascript:;)
+    * [ KRX야간옵션실시간체결통보  ](javascript:;)
+    * [ KRX야간선물 실시간호가  ](javascript:;)
+    * [ KRX야간선물 실시간종목체결  ](javascript:;)
+    * [ KRX야간선물 실시간체결통보  ](javascript:;)
+  * [ [해외주식] 주문/계좌 ](javascript:;)
+    * [ 해외주식 주문 ](javascript:;)
+    * [ 해외주식 정정취소주문 ](javascript:;)
+    * [ 해외주식 예약주문접수 ](javascript:;)
+    * [ 해외주식 예약주문접수취소 ](javascript:;)
+    * [ 해외주식 매수가능금액조회 ](javascript:;)
+    * [ 해외주식 미체결내역 ](javascript:;)
+    * [ 해외주식 잔고 ](javascript:;)
+    * [ 해외주식 주문체결내역 ](javascript:;)
+    * [ 해외주식 체결기준현재잔고 ](javascript:;)
+    * [ 해외주식 예약주문조회 ](javascript:;)
+    * [ 해외주식 결제기준잔고  ](javascript:;)
+    * [ 해외주식 일별거래내역  ](javascript:;)
+    * [ 해외주식 기간손익 ](javascript:;)
+    * [ 해외증거금 통화별조회  ](javascript:;)
+    * [ 해외주식 미국주간주문 ](javascript:;)
+    * [ 해외주식 미국주간정정취소 ](javascript:;)
+    * [ 해외주식 지정가주문번호조회  ](javascript:;)
+    * [ 해외주식 지정가체결내역조회  ](javascript:;)
+  * [ [해외주식] 기본시세 ](javascript:;)
+    * [ 해외주식 현재가상세 ](javascript:;)
+    * [ 해외주식 현재가 1호가  ](javascript:;)
+    * [ 해외주식 현재체결가 ](javascript:;)
+    * [ 해외주식 체결추이 ](javascript:;)
+    * [ 해외주식분봉조회 ](javascript:;)
+    * [ 해외지수분봉조회 ](javascript:;)
+    * [ 해외주식 기간별시세 ](javascript:;)
+    * [ 해외주식 종목/지수/환율기간별시세(일/주/월/년) ](javascript:;)
+    * [ 해외주식조건검색 ](javascript:;)
+    * [ 해외결제일자조회 ](javascript:;)
+    * [ 해외주식 상품기본정보 ](javascript:;)
+    * [ 해외주식 업종별시세 ](javascript:;)
+    * [ 해외주식 업종별코드조회 ](javascript:;)
+  * [ [해외주식] 시세분석 ](javascript:;)
+    * [ 해외주식 가격급등락 ](javascript:;)
+    * [ 해외주식 거래량급증 ](javascript:;)
+    * [ 해외주식 매수체결강도상위 ](javascript:;)
+    * [ 해외주식 상승율/하락율 ](javascript:;)
+    * [ 해외주식 신고/신저가 ](javascript:;)
+    * [ 해외주식 거래량순위 ](javascript:;)
+    * [ 해외주식 거래대금순위 ](javascript:;)
+    * [ 해외주식 거래증가율순위 ](javascript:;)
+    * [ 해외주식 거래회전율순위 ](javascript:;)
+    * [ 해외주식 시가총액순위 ](javascript:;)
+    * [ 해외주식 기간별권리조회  ](javascript:;)
+    * [ 해외뉴스종합(제목)  ](javascript:;)
+    * [ 해외주식 권리종합  ](javascript:;)
+    * [ 당사 해외주식담보대출 가능 종목  ](javascript:;)
+    * [ 해외속보(제목)  ](javascript:;)
+  * [ [해외주식] 실시간시세 ](javascript:;)
+    * [ 해외주식 실시간호가 ](javascript:;)
+    * [ 해외주식 지연호가(아시아) ](javascript:;)
+    * [ 해외주식 실시간지연체결가 ](javascript:;)
+    * [ 해외주식 실시간체결통보 ](javascript:;)
+  * [ [해외선물옵션] 주문/계좌 ](javascript:;)
+    * [ 해외선물옵션 주문  ](javascript:;)
+    * [ 해외선물옵션 정정취소주문  ](javascript:;)
+    * [ 해외선물옵션 당일주문내역조회  ](javascript:;)
+    * [ 해외선물옵션 미결제내역조회(잔고)  ](javascript:;)
+    * [ 해외선물옵션 주문가능조회  ](javascript:;)
+    * [ 해외선물옵션 기간계좌손익 일별 ](javascript:;)
+    * [ 해외선물옵션 일별 체결내역 ](javascript:;)
+    * [ 해외선물옵션 예수금현황 ](javascript:;)
+    * [ 해외선물옵션 일별 주문내역 ](javascript:;)
+    * [ 해외선물옵션 기간계좌거래내역 ](javascript:;)
+    * [ 해외선물옵션 증거금상세  ](javascript:;)
+  * [ [해외선물옵션] 기본시세 ](javascript:;)
+    * [ 해외선물종목현재가  ](javascript:;)
+    * [ 해외선물종목상세  ](javascript:;)
+    * [ 해외선물 호가  ](javascript:;)
+    * [ 해외선물 분봉조회 ](javascript:;)
+    * [ 해외선물 체결추이(틱) ](javascript:;)
+    * [ 해외선물 체결추이(주간) ](javascript:;)
+    * [ 해외선물 체결추이(일간) ](javascript:;)
+    * [ 해외선물 체결추이(월간) ](javascript:;)
+    * [ 해외선물 상품기본정보  ](javascript:;)
+    * [ 해외선물 미결제추이  ](javascript:;)
+    * [ 해외옵션종목현재가  ](javascript:;)
+    * [ 해외옵션종목상세  ](javascript:;)
+    * [ 해외옵션 호가  ](javascript:;)
+    * [ 해외옵션 분봉조회  ](javascript:;)
+    * [ 해외옵션 체결추이(틱)  ](javascript:;)
+    * [ 해외옵션 체결추이(일간)  ](javascript:;)
+    * [ 해외옵션 체결추이(주간)  ](javascript:;)
+    * [ 해외옵션 체결추이(월간)  ](javascript:;)
+    * [ 해외옵션 상품기본정보  ](javascript:;)
+    * [ 해외선물옵션 장운영시간  ](javascript:;)
+  * [ [해외선물옵션]실시간시세 ](javascript:;)
+    * [ 해외선물옵션 실시간체결가 ](javascript:;)
+    * [ 해외선물옵션 실시간호가 ](javascript:;)
+    * [ 해외선물옵션 실시간주문내역통보 ](javascript:;)
+    * [ 해외선물옵션 실시간체결내역통보 ](javascript:;)
+  * [ [장내채권] 주문/계좌 ](javascript:;)
+    * [ 장내채권 매수주문  ](javascript:;)
+    * [ 장내채권 매도주문  ](javascript:;)
+    * [ 장내채권 정정취소주문  ](javascript:;)
+    * [ 채권정정취소가능주문조회  ](javascript:;)
+    * [ 장내채권 주문체결내역  ](javascript:;)
+    * [ 장내채권 잔고조회  ](javascript:;)
+    * [ 장내채권 매수가능조회  ](javascript:;)
+  * [ [장내채권] 기본시세 ](javascript:;)
+    * [ 장내채권현재가(호가)  ](javascript:;)
+    * [ 장내채권현재가(시세)  ](javascript:;)
+    * [ 장내채권현재가(체결)  ](javascript:;)
+    * [ 장내채권현재가(일별)  ](javascript:;)
+    * [ 장내채권 기간별시세(일)  ](javascript:;)
+    * [ 장내채권 평균단가조회  ](javascript:;)
+    * [ 장내채권 발행정보 ](javascript:;)
+    * [ 장내채권 기본조회  ](javascript:;)
+  * [ [장내채권] 실시간시세 ](javascript:;)
+    * [ 일반채권 실시간체결가  ](javascript:;)
+    * [ 일반채권 실시간호가  ](javascript:;)
+    * [ 채권지수 실시간체결가  ](javascript:;)
+
+
+  1. HOME
+  2. API 문서
+  3. [국내주식] 종목정보
+
+
+API 가이드 목록 OAuth인증 [국내주식] 주문/계좌 [국내주식] 기본시세 [국내주식] ELW 시세 [국내주식] 업종/기타 [국내주식] 종목정보 [국내주식] 시세분석 [국내주식] 순위분석 [국내주식] 실시간시세 [국내선물옵션] 주문/계좌 [국내선물옵션] 기본시세 [국내선물옵션] 실시간시세 [해외주식] 주문/계좌 [해외주식] 기본시세 [해외주식] 시세분석 [해외주식] 실시간시세 [해외선물옵션] 주문/계좌 [해외선물옵션] 기본시세 [해외선물옵션]실시간시세 [장내채권] 주문/계좌 [장내채권] 기본시세 [장내채권] 실시간시세
+[국내주식] 종목정보
+카테고리 다운로드
+# REST예탁원정보(공모주청약일정)[국내주식-151]
+호출테스트
+개별문서 다운로드
+**예탁원정보(공모주청약일정)[국내주식-151] 정보** **Method, URL, 실전 Domain, 모의 Domain, Format, Content-Type** Method | GET | URL | /uapi/domestic-stock/v1/ksdinfo/pub-offer  
+---|---|---|---  
+실전 Domain  | https://openapi.koreainvestment.com:9443 | 모의 Domain | 미지원  
+실전 TR ID  | HHKDB669108C0 | 모의 TR ID | 모의투자 미지원  
+Format |  | Content-Type |   
+## 개요
+```
+예탁원정보(공모주청약일정) API입니다. 
+한국투자 HTS(eFriend Plus) > [0667] 공모주청약 화면의 기능을 API로 개발한 사항으로, 해당 화면을 참고하시면 기능을 이해하기 쉽습니다.
+※ 예탁원에서 제공한 자료이므로 정보용으로만 사용하시기 바랍니다.
+```
+
+## 요청
+### Header
+**주식주문(현금[V1_국내주식-001]) 정보** **Element, 한글명, Type, Rquired, Length, Description** Element | 한글명 | Type | Required | Length | Description  
+---|---|---|---|---|---  
+content-type | 컨텐츠타입 | String | Y | 40 | application/json; charset=utf-8  
+authorization | 접근토큰 | String | Y | 350 | OAuth 토큰이 필요한 API 경우 발급한 Access token 일반고객(Access token 유효기간 1일, OAuth 2.0의 Client Credentials Grant 절차를 준용) 법인(Access token 유효기간 3개월, Refresh token 유효기간 1년, OAuth 2.0의 Authorization Code Grant 절차를 준용)  
+appkey | 앱키 | String | Y | 36 | 한국투자증권 홈페이지에서 발급받은 appkey (절대 노출되지 않도록 주의해주세요.)  
+appsecret | 앱시크릿키 | String | Y | 180 | 한국투자증권 홈페이지에서 발급받은 appkey (절대 노출되지 않도록 주의해주세요.)  
+personalseckey | 고객식별키 | String | N | 180 | [법인 필수] 제휴사 회원 관리를 위한 고객식별키  
+tr_id | 거래ID | String | Y | 13 | HHKDB669108C0  
+tr_cont | 연속 거래 여부 | String | N | 1 | 공백 : 초기 조회 N : 다음 데이터 조회 (output header의 tr_cont가 M일 경우)  
+custtype | 고객 타입 | String | Y | 1 | B : 법인 P : 개인  
+seq_no | 일련번호 | String | N | 2 | [법인 필수] 001  
+mac_address | 맥주소 | String | N | 12 | 법인고객 혹은 개인고객의 Mac address 값  
+phone_number | 핸드폰번호 | String | N | 12 | [법인 필수] 제휴사APP을 사용하는 경우 사용자(회원) 핸드폰번호 ex) 01011112222 (하이픈 등 구분값 제거)  
+ip_addr | 접속 단말 공인 IP | String | N | 12 | [법인 필수] 사용자(회원)의 IP Address  
+hashkey | 해쉬키 | String | N | 256 | [POST API 대상] Client가 요청하는 Request Body를 hashkey api로 생성한 Hash값 * API문서 > hashkey 참조  
+gt_uid | Global UID | String | N | 32 | [법인 전용] 거래고유번호로 사용하므로 거래별로 UNIQUE해야 함  
+### Query Parameter
+**주식주문(현금[V1_국내주식-001]) 정보** **Element, 한글명, Type, Rquired, Length, Description** Element | 한글명 | Type | Required | Length | Description  
+---|---|---|---|---|---  
+SHT_CD | 종목코드 | String | Y | 9 | 공백: 전체, 특정종목 조회시 : 종목코드  
+CTS | CTS | String | Y | 17 | 공백  
+F_DT | 조회일자From | String | Y | 8 | 일자 ~  
+T_DT | 조회일자To | String | Y | 8 | ~ 일자  
+## 응답
+### Header
+**주식주문(현금[V1_국내주식-001]) 정보** **Element, 한글명, Type, Rquired, Length, Description** Element | 한글명 | Type | Required | Length | Description  
+---|---|---|---|---|---  
+content-type | 컨텐츠타입 | String | Y | 40 | application/json; charset=utf-8  
+tr_id | 거래ID | String | Y | 13 | 요청한 tr_id  
+tr_cont | 연속 거래 여부 | String | N | 1 | 공백 : 초기 조회 N : 다음 데이터 조회 (output header의 tr_cont가 M일 경우)  
+gt_uid | Global UID | String | N | 32 | [법인 전용] 거래고유번호로 사용하므로 거래별로 UNIQUE해야 함  
+### Body
+**주식주문(현금[V1_국내주식-001]) 정보** **Element, 한글명, Type, Rquired, Length, Description** Element | 한글명 | Type | Required | Length | Description  
+---|---|---|---|---|---  
+rt_cd | 성공 실패 여부 | String | Y | 1 |   
+msg_cd | 응답코드 | String | Y | 8 |   
+msg1 | 응답메세지 | String | Y | 80 |   
+output1 | 응답상세 | Object Array | Y |  | array  
+record_date  | 기준일 | String | Y | 8 |   
+sht_cd  | 종목코드 | String | Y | 9 |   
+isin_name  | 종목명 | String | Y | 40 |   
+fix_subscr_pri  | 공모가 | String | Y | 12 |   
+face_value  | 액면가 | String | Y | 9 |   
+subscr_dt  | 청약기간 | String | Y | 23 |   
+pay_dt  | 납입일 | String | Y | 10 |   
+refund_dt  | 환불일 | String | Y | 10 |   
+list_dt  | 상장/등록일 | String | Y | 10 |   
+lead_mgr  | 주간사 | String | Y | 41 |   
+pub_bf_cap  | 공모전자본금 | String | Y | 12 |   
+pub_af_cap  | 공모후자본금 | String | Y | 12 |   
+assign_stk_qty  | 당사배정물량 | String | Y | 12 |   
+## 예시
+### Request
+  * Data Class (Python)
+
+
+### Data Class (Python)
+```
+from dataclasses import dataclass
+@dataclass
+class RequestHeader:
+  content-type: str  #컨텐츠타입
+  authorization: str  #접근토큰
+  appkey: str  #앱키
+  appsecret: str  #앱시크릿키
+  personalseckey: Optional[str] = None  #고객식별키
+  tr_id: str  #거래ID
+  tr_cont: Optional[str] = None  #연속 거래 여부
+  custtype: str  #고객 타입
+  seq_no: Optional[str] = None  #일련번호
+  mac_address: Optional[str] = None  #맥주소
+  phone_number: Optional[str] = None  #핸드폰번호
+  ip_addr: Optional[str] = None  #접속 단말 공인 IP
+  hashkey: Optional[str] = None  #해쉬키
+  gt_uid: Optional[str] = None  #Global UID
+@dataclass
+class RequestQueryParam:
+  SHT_CD: str  #종목코드
+  CTS: str  #CTS
+  F_DT: str  #조회일자From
+  T_DT: str  #조회일자To
+
+```
+
+복사하기
+### Response
+  * Data Class (Python)
+
+
+### Data Class (Python)
+```
+from dataclasses import dataclass
+from typing import List, Optional
+@dataclass
+class ResponseHeader:
+  content-type: str  #컨텐츠타입
+  tr_id: str  #거래ID
+  tr_cont: Optional[str] = None  #연속 거래 여부
+  gt_uid: Optional[str] = None  #Global UID
+@dataclass
+class ResponseBody:
+  rt_cd: str  #성공 실패 여부
+  msg_cd: str  #응답코드
+  msg1: str  #응답메세지
+  output1: List[ResponseBodyoutput1] = field(default_factory=list)  #응답상세
+@dataclass
+class ResponseBodyoutput1:
+  record_date: str  #기준일
+  sht_cd: str  #종목코드
+  isin_name: str  #종목명
+  fix_subscr_pri: str  #공모가
+  face_value: str  #액면가
+  subscr_dt: str  #청약기간
+  pay_dt: str  #납입일
+  refund_dt: str  #환불일
+  list_dt: str  #상장/등록일
+  lead_mgr: str  #주간사
+  pub_bf_cap: str  #공모전자본금
+  pub_af_cap: str  #공모후자본금
+  assign_stk_qty: str  #당사배정물량
+
+```
+
+복사하기
+true friend 한국투자 Open API
+[회사소개](javascript:goIntro\(\);) [개인정보처리방침](javascript:goTerms\(\);) [제휴기관 이용약관](javascript:;) [이용약관](javascript:; "이용약관")
+KIS Developers COPYRIGHTS
+## CONFIRM
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+확인
+## CONFIRM
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+예 아니오
+## CONFIRM
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+비밀번호 입력
+예 아니오
+## 시크릿조회
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+비밀번호 입력
+확인
+## 시크릿조회
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+비밀번호 입력
+확인
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+## 제목
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+오늘 하루 닫기 닫기
+## KIS Developers 이용약관
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+확인
+잠시만 기다려 주세요
+## 마지막 로그인
+[팝업 닫기](https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer)
+### 로그인 날짜
+2021-12-29 11:22:33
+### 로그인 IP
+0.0.0.0
+확인
+
+
+---
+
+## 메타 정보
+
+- **URL**: https://apiportal.koreainvestment.com/apiservice-apiservice?/uapi/domestic-stock/v1/ksdinfo/pub-offer
+- **설명**: 예탁원정보(공모주청약일정) API입니다. 
+한국투자 HTS(eFriend Plus) &gt; [0667]
+- **크롤링 시간**: N/A
