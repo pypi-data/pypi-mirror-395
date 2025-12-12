@@ -1,0 +1,55 @@
+services:
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    entrypoint: ["/bin/bash", "-c", "\
+      ollama serve & \
+      sleep 2 && \
+      ollama pull smollm:135m && \
+      wait"]
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+  postgres:
+    container_name: postgres
+    image: postgres:16
+    environment:
+      POSTGRES_USER: alphatrion
+      POSTGRES_PASSWORD: alphatr1on
+      POSTGRES_DB: alphatrion
+    ports:
+      - "5432:5432"
+    # volumes:
+    #   - pg_data:/var/lib/postgresql/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: alphatrion@inftyai.com
+      PGADMIN_DEFAULT_PASSWORD: alphatr1on
+    ports:
+      - 8081:80
+    depends_on:
+      - postgres
+  registry:
+    container_name: registry
+    image: registry:3
+    ports:
+      - "5001:5000"
+#     volumes:
+#       - oras-data:/data
+# volumes:
+#   pg_data:
+#   oras-data:

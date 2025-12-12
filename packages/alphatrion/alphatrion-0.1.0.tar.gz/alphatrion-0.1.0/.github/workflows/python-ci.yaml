@@ -1,0 +1,40 @@
+name: Python CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: source start.sh
+
+      # Lint is already included in `make test`
+
+      - name: Run tests
+        run: make test
+
+      - name: Install docker-compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: Run integration tests
+        run: |
+          make test-integration
