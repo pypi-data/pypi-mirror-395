@@ -1,0 +1,199 @@
+Metadata-Version: 2.4
+Name: geogravL3
+Version: 1.1.1
+Summary: Grace Level 3 Python package.
+Project-URL: Source code, https://git.gfz-potsdam.de/grace_l3/geogravl3
+Project-URL: Issue Tracker, https://git.gfz-potsdam.de/grace_l3/geogravl3/-/issues
+Project-URL: Documentation, https://fernlab.git-pages.gfz-potsdam.de/grace_l3/geogravl3/doc/
+Project-URL: Change log, https://git.gfz-potsdam.de/grace_l3/geogravl3/-/blob/main/HISTORY.rst
+Author-email: Eva Boergens <boergens@gfz.de>
+License-Expression: GPL-3.0-or-later
+License-File: AUTHORS.rst
+Keywords: GRACE,gravity,remote sensing
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >3.9
+Requires-Dist: netcdf4
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: pydantic
+Requires-Dist: scipy
+Requires-Dist: shapely>=2.0
+Requires-Dist: xmltodict
+Provides-Extra: dev
+Requires-Dist: build; extra == 'dev'
+Requires-Dist: coverage; extra == 'dev'
+Requires-Dist: pytest; extra == 'dev'
+Requires-Dist: twine; extra == 'dev'
+Provides-Extra: doc
+Requires-Dist: numpydoc>=1.7; extra == 'doc'
+Requires-Dist: sphinx-argparse; extra == 'doc'
+Requires-Dist: sphinx-autodoc-typehints; extra == 'doc'
+Requires-Dist: sphinx-rtd-theme; extra == 'doc'
+Requires-Dist: sphinx>=4.1.1; extra == 'doc'
+Provides-Extra: lint
+Requires-Dist: flake8; extra == 'lint'
+Requires-Dist: pycodestyle; extra == 'lint'
+Requires-Dist: pydocstyle; extra == 'lint'
+Provides-Extra: test
+Requires-Dist: lychee; extra == 'test'
+Requires-Dist: pytest-cov; extra == 'test'
+Requires-Dist: pytest-reporter-html1; extra == 'test'
+Requires-Dist: pytest>=3; extra == 'test'
+Description-Content-Type: text/x-rst
+
+.. SPDX-License-Identifier: GPL-3.0-or-later
+.. FileType: DOCUMENTATION
+.. SPDX-FileCopyrightText: 2025 GFZ Helmholtz Centre for Geosciences
+.. SPDX-FileCopyrightText: 2025, "Eva Boergens" at GFZ Potsdam
+
+
+
+=================
+geogravl3
+=================
+------------------------------------------------------
+Python Package for Processing Earth Gravity Field Data
+------------------------------------------------------
+
+This package processes Earth gravity field data—provided as spherical harmonic coefficients—into gridded,
+domain-specific datasets. It also includes uncertainty estimation and the generation of regional mean time series.
+
+
+License and Citation
+====================
+
+**geogravL3** is distributed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
+
+When using the software, please cite:
+
+Boergens, E., Rabe, D., Charly, A., Wilms, J., Scheffler, D. (2025): geogravL3 - a Python Package for Processing Earth Gravity Field Data.
+GFZ Data Services.
+https://doi.org/10.5880/GFZ.DQTO.2025.002
+
+
+Documentation
+=============
+The documentation with details on the installation, usage, and configuration can be found at
+https://grace_l3.git-pages.gfz-potsdam.de/geogravl3/doc/.
+
+Description
+===========
+
+**geogravL3** provides the processing pipeline from Level-2 data (spherical harmonic coefficients) to domain-specific
+gridded Level-3 data and the computation of regional mean time series.
+
+**Input:**
+
+- Spherical harmonic coefficients, provided as one file per time step, in either **ICGEM** format (`*.gfc`) or **SINEX** format (`*.snx`).
+- Configuration file steering the processing steps. Either in **Json** format (`*.json`) or **XML** format (`*.xml`).
+
+
+**Output**
+
+- **NetCDF files** (`*.nc`) per domain containing gridded data
+- **CSV files** (`*.csv`) per domain containing mean regional time series
+
+Processing Details
+------------------
+
+Details of the processing steps, or their omission, are govern by the configuration file. Details on the configuration
+file is provided at https://grace_l3.git-pages.gfz-potsdam.de/geogravl3/doc/config.html.
+
+Domain-Independent Processing Steps
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- Removal of the mean field
+- Filtering of spherical harmonic coefficients:
+  - **DDK**
+  - **Gaussian filter**
+  - **VDK** (requires SINEX input)
+- Replacement of **C20** and **C30** with external data
+- Subtraction of the **GIA model**
+- Estimation and insertion of geocentre motion coefficients (**C10**, **C11**, **S11**)
+- Subtraction of the **161-day aliased signal**
+
+Domain-Specific Processing Steps
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Land — Terrestrial Water Storage (TWS)
+""""""""""""""""""""""""""""""""""""""
+- Spherical harmonic synthesis
+- Masking of the ocean
+- Uncertainty estimation based on open-ocean noise
+
+Ocean — Ocean Bottom Pressure (OBP)
+"""""""""""""""""""""""""""""""""""
+
+- Spherical harmonic synthesis (land and ocean domains only)
+- Separation of the ocean signal into:
+  - **Barystatic sea level**, estimated via the sea-level equation
+  - **Residual circulation**
+- Uncertainty estimation based on residual time-series signals
+
+Ice Sheets — Greenland and Antarctica
+"""""""""""""""""""""""""""""""""""""
+
+- Gridded data estimated using the **sensitivity-kernel approach**
+- Uncertainty estimation based on residual time-series signals
+
+
+Status
+======
+.. image:: https://git.gfz-potsdam.de/grace_l3/geogravl3/badges/main/pipeline.svg
+        :target: https://git.gfz-potsdam.de/grace_l3/geogravl3/pipelines
+        :alt: Pipelines
+.. image:: https://git.gfz-potsdam.de/grace_l3/geogravl3/badges/main/coverage.svg
+        :target: https://grace_l3.git-pages.gfz-potsdam.de/geogravl3/coverage/
+        :alt: Coverage
+.. image:: https://img.shields.io/pypi/v/geogravl3.svg
+        :target: https://pypi.python.org/pypi/geogravl3
+.. image:: https://img.shields.io/pypi/l/geogravl3.svg
+        :target: https://git.gfz-potsdam.de/grace_l3/geogravl3/-/blob/main/LICENSES/GPL-3.0-or-later.txt
+.. image:: https://img.shields.io/pypi/pyversions/geogravl3.svg
+        :target: https://img.shields.io/pypi/pyversions/geogravl3.svg
+.. image:: https://img.shields.io/pypi/dm/geogravl3.svg
+        :target: https://pypi.python.org/pypi/geogravl3
+.. image:: https://img.shields.io/static/v1?label=Documentation&message=GitLab%20Pages&color=orange
+        :target: https://grace_l3.git-pages.gfz-potsdam.de/geogravl3/doc/
+        :alt: Documentation
+.. image:: https://img.shields.io/badge/DOI-10.5880%2FGFZ.DQTO.2025.002-blue.svg
+   :target: https://doi.org/10.5880/GFZ.DQTO.2025.002
+   :alt: DOI
+
+
+
+See also the latest coverage_ report and the pytest_ HTML report.
+
+
+History / Changelog
+===================
+
+You can find the protocol of recent changes in the **geogravL3** package
+`here <https://git.gfz-potsdam.de/grace_l3/geogravl3/-/blob/main/HISTORY.rst>`__.
+
+Credits
+=======
+This software package was developed under ESA contract **4000145266/24/NL/SC – NGGM and MAGIC End-to-End Mission
+Performance Evaluation Study**.
+
+The scientific and methodological development was led by Eva Boergens (eva.boergens@gfz.de).
+Martin Horwath (martin.horwath@tu-dresden.de) contributed the ice-processing methodology. A complete list of
+contributors—covering both software development and the heritage code that was translated into Python as part of
+this project—is available `here <https://git.gfz-potsdam.de/grace_l3/geogravl3/-/blob/main/AUTHORS.rst>`__.
+
+
+The FERN.Lab (fernlab@gfz.de) contributed to the development, documentation, continuous integration,
+and testing of the package.
+This package was created using Cookiecutter_ and the `fernlab/cookiecutter-py-package`_ project template.
+
+.. _Cookiecutter: https://github.com/audreyr/cookiecutter
+.. _`fernlab/cookiecutter-py-package`: https://github.com/fernlab/cookiecutter-py-package
+.. _coverage: https://grace_l3.git-pages.gfz-potsdam.de/geogravl3/coverage/
+.. _pytest: https://grace_l3.git-pages.gfz-potsdam.de/geogravl3/test_reports/report.html

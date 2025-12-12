@@ -1,0 +1,115 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# FileType: CONFIG
+# SPDX-FileCopyrightText: 2025 GFZ Helmholtz Centre for Geosciences
+# SPDX-FileCopyrightText: 2025, "Eva Boergens" at GFZ Potsdam
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geogravL3"
+requires-python = ">3.9"
+dynamic = ["version"]
+description = "Grace Level 3 Python package."
+authors = [
+  {name = "Eva Boergens", email = "boergens@gfz.de"}
+]
+license = "GPL-3.0-or-later"
+license-files = ["LICEN[CS]E*", "AUTHORS.rst"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14"
+]
+keywords = [
+    "remote sensing",
+    "GRACE",
+    "gravity"
+]
+dependencies = [
+    "netCDF4",
+    "numpy",
+    "pydantic",
+    "xmltodict",
+    "scipy",
+    "shapely>=2.0",
+    "pandas",
+]
+
+[project.readme]
+file = "README.rst"
+content-type = "text/x-rst"
+
+maintainers = [
+  {name = "Eva Boergens", email = "boergens@gfz.de"}
+]
+
+[project.optional-dependencies]
+doc = [
+    "sphinx>=4.1.1",
+    "sphinx-argparse",
+    "sphinx_rtd_theme",
+    "sphinx-autodoc-typehints",
+    "numpydoc>=1.7",
+]
+
+test = [
+    "pytest>=3",
+    "pytest-cov",
+    "pytest-reporter-html1",
+    "lychee",
+]
+
+lint = [
+    "flake8",
+    "pycodestyle",
+    "pydocstyle"
+]
+
+dev = [
+    "coverage",     # testing
+    "pytest",       # testing
+    "twine",        # deployment
+    "build"         # deployment
+]
+
+[project.scripts]
+geogravL3 = "geogravl3.cli:main"
+
+[project.urls]
+"Source code" = "https://git.gfz-potsdam.de/grace_l3/geogravl3"
+"Issue Tracker" = "https://git.gfz-potsdam.de/grace_l3/geogravl3/-/issues"
+"Documentation" = "https://fernlab.git-pages.gfz-potsdam.de/grace_l3/geogravl3/doc/"
+"Change log" = "https://git.gfz-potsdam.de/grace_l3/geogravl3/-/blob/main/HISTORY.rst"
+# "Zenodo" = "https://zenodo.org/record/doi_number"
+
+[tool.hatch.version]
+path = "geogravl3/version.py"
+
+[tool.hatch.build]
+packages = ["geogravl3", "LICENSES"]
+exclude = [
+    ".coveragerc",
+    ".editorconfig",
+    ".gitattributes",
+    ".gitlab-ci.yml",
+    ".gitlab/**",
+    "docs/**",
+    "tests/**",
+    "geogravl3/resources/**",
+    "__pycache__/**",
+    "*.py[co]",
+]
+
+[tool.pydocstyle]
+match = ".*\\.py"   # only .py files
+match-dir = "(?!(\\.venv|build|dist|.git|def|docs)).*"  # excludes
+# ignore = ["D406", "D407"]
