@@ -1,0 +1,63 @@
+import nvidia.dali.fn as fn
+import nvidia.dali.types as types
+from nvidia.dali.pipeline import pipeline_def
+from nvidia.dali.plugin.pytorch import DALIClassificationIterator
+
+
+def apply_training_augmentations(images, image_size):
+    images = fn.decoders.image_random_crop(
+        images, device="mixed", output_type=types.RGB
+    )
+
+    images = fn.resize(images, size=image_size)
+
+    images = images.gpu()
+
+    images = fn.crop_mirror_normalize(
+        images,
+        dtype=types.FLOAT,
+        crop_h=224,
+        crop_w=224,
+        mean=[0.485 * 255, 0.456 * 255, 0.406 * 255],
+        std=[0.229 * 255, 0.224 * 255, 0.225 * 255],
+        mirror=fn.random.coin_flip(),
+    )
+    return images
+
+
+@pipeline_def
+def dali_training_pipeline(images_dir: str, image_size: int = 224):
+    images, labels = fn.readers.file(
+        file_root=images_dir, random_shuffle=True, pad_last_batch=True, name="Reader"
+    )
+    images = apply_training_augmentations(images=images, image_size=image_size)
+    return images, labels.gpu()
+
+
+def dali_train_loader(
+    images_dir: str,
+    batch_size: int = 128,
+    num_threads: int = 4,
+    device_id: int = 0,
+    image_size: int = 224,
+):
+    pipeline_kwargs = {
+        "batch_size": batch_size,
+        "num_threads": num_threads,
+        "device_id": device_id,
+    }
+    train_loader = DALIClassificationIterator(
+        [
+            dali_training_pipeline(
+                images_dir=images_dir,
+                image_size=image_size,
+                **pipeline_kwargs,
+            )
+        ],
+        reader_name="Reader",
+    )
+    return train_loader
+
+
+def dali_val_loader():
+    pass
