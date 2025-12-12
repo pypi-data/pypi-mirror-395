@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=75.0", "setuptools_scm>=8.1.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ordeq"
+description = "Ordeq is a framework that simplifies IO and modularizes pipeline logic"
+dynamic = ["version"]
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Niels Neerhoff" },
+    { name = "Simon Brugman" },
+]
+maintainers = [
+    { name = "Niels Neerhoff" },
+    { name = "Simon Brugman" }
+]
+requires-python = ">=3.10"
+
+[tool.ordeq-dev]
+group = "framework"
+logo_url = ""
+
+[dependency-groups]
+test = [
+    "cloudpathlib[s3]>=0.20.0",
+    "ordeq-common",
+    "ordeq_test_utils",
+    "pandas",
+    "pandas-stubs",
+    "requests",
+    "duckdb",
+    "types-requests",
+    "ordeq-test-examples",
+    "ordeq-dev-tools",
+    "ordeq-polars",
+    "ordeq-pandas",
+]
+
+[tool.setuptools_scm]
+root = "../../"
+version_file = "src/ordeq/_version.py"
+tag_regex = "^ordeq/(?:[\\w-]+-)?(?P<version>[vV]?\\d+(?:\\.\\d+){0,2}[^\\+]*)(?:\\+.*)?$"
+git_describe_command = "git describe --dirty --tags --long --match ordeq/*"
+
+[tool.setuptools.packages.find]
+namespaces = true
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+
+[tool.coverage.run]
+omit = [
+    "src/ordeq/_version.py"
+]
