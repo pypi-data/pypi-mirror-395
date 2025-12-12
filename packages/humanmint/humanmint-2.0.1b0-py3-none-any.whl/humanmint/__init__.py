@@ -1,0 +1,52 @@
+"""HumanMint: Clean, functional data processing for human-centric applications."""
+
+from __future__ import annotations
+
+import importlib
+from typing import Any, Dict
+
+__version__ = "2.0.1b"
+
+# Lazy module/function map to avoid heavy imports on initial import humanmint
+_LAZY_MODULES: Dict[str, str] = {
+    "emails": "humanmint.emails",
+    "phones": "humanmint.phones",
+    "names": "humanmint.names",
+    "departments": "humanmint.departments",
+    "titles": "humanmint.titles",
+    "addresses": "humanmint.addresses",
+    "organizations": "humanmint.organizations",
+    "compare": "humanmint.compare",
+    "mint": "humanmint.mint",
+    "bulk": "humanmint.mint",
+    "MintResult": "humanmint.mint",
+    "export_json": "humanmint.export",
+    "export_csv": "humanmint.export",
+    "export_parquet": "humanmint.export",
+    "export_sql": "humanmint.export",
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy-load heavy modules/functions on first access."""
+    if name in _LAZY_MODULES:
+        module = importlib.import_module(_LAZY_MODULES[name])
+        attr = getattr(module, name) if hasattr(module, name) else module
+        # If we intended a function/class but got the module, try common exports
+        if attr is module and name in {"mint", "bulk", "MintResult"}:
+            attr = getattr(module, name)
+        globals()[name] = attr
+        return attr
+    raise AttributeError(f"module 'humanmint' has no attribute '{name}'")
+
+
+def __dir__() -> list[str]:
+    return sorted(list(globals().keys()) + list(_LAZY_MODULES.keys()))
+
+
+__all__ = list(_LAZY_MODULES.keys()) + ["__version__"]
+# Optional pandas accessor registration (graceful if pandas not installed)
+try:  # pragma: no cover - optional dependency
+    importlib.import_module("humanmint.pandas_ext")  # noqa: F401
+except Exception:
+    pass
