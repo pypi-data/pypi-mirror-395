@@ -1,0 +1,211 @@
+# -- Shared Values -------------------------------------------------------------
+
+# OEM specific data
+# prettier-ignore
+oem data: &oem_data [
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+   ]
+
+# -- Configuration -------------------------------------------------------------
+
+commands:
+  path:
+    # The keys below this key should contain the path to Simplicity Commander
+    # (`commander`) for different operating systems. If the list for the current
+    # OS does not do that, then the STH test will fail, unless the commands are
+    # already accessible via the path environment variable (`$Env:Path` in
+    # Windows or `$PATH` in Unix).
+    linux: []
+    mac:
+      # The path below stores the default installation path of the `commander`
+      # CLI tool, if you put the app into the directory `/Applications`.
+      - "/Applications/Simplicity Studio.app/Contents/Eclipse/developer/\
+         adapter_packs/commander/Commander.app/Contents/MacOS"
+      # Default path to Commander if you download the standalone installer:
+      # https://community.silabs.com/s/article/simplicity-commander
+      # and put put the app into the directory `/Applications`.
+      - /Applications/Commander.app/Contents/MacOS
+    windows:
+      # The paths below are the default install locations of `commander` in
+      # Windows
+      - C:\SiliconLabs\SimplicityStudio\v4\developer\adapter_packs\commander
+      - C:\SiliconLabs\SimplicityStudio\v5\developer\adapter_packs\commander
+      # We assume that you moved the unzipped Simplicity Commander directory
+      # into the standard Silicon Labs install directory
+      - C:\SiliconLabs\Simplicity Commander
+      # Standard install path for applications
+      - C:\Program Files\Simplicity Commander
+
+sensor node:
+  batch number: 200 # (32 bit unsigned) number that describes the current batch
+  bluetooth:
+    # Advertisement time 1 in ms
+    advertisement time 1: 1250
+    # Advertisement time 2 in ms
+    advertisement time 2: 2500
+    # Time to from disconnect or power on to sleep mode 1 in ms
+    sleep time 1: 300000
+    # Time to/from entering sleep mode 1 to sleep mode 2 in ms
+    sleep time 2: 259200000
+  firmware:
+    # Microcontroller identifier used for firmware upload
+    # Use “BGM113A256V2” for hardware version 1 and “BGM123A256V2” for version 2
+    chip: "BGM113A256V2"
+    location:
+      # This value should contain the path to a complete image (bootloader and
+      # application). Relative paths will be interpreted in relation to the
+      # current working directory. You can use `~` to refer to the user’s home
+      # directory.
+      ~/Documents/Firmware/manufacturingImageSthv2.1.10.hex
+    release name: Minion # Code name of the current firmware release
+
+  gtin: 0 # Global Trade Item Number
+  hardware version: "2.1" # The current version of the PCB design
+  name: Test-STH # This value specifies the current name of the STH unit
+  oem data: *oem_data # OEM specific data
+  # Product name for the  manufacturer (maximum of 128 byte UTF-8 encoded text)
+  product name: "0"
+  # The production date of the STH PCB in the format YYYY-MM-DD
+  production date: 2025-01-01
+  # Serial number for the manufacturer (maximum of 32 byte UTF-8 encoded text)
+  serial number: "0"
+
+  supply:
+    voltage:
+      average: 3.6 # Expected value of power source voltage in Volt
+      tolerance: 0.6 # Tolerance for expected power source voltage in Volt
+
+  power:
+    connected:
+      # Expected average power usage while connected (but not streaming) in mW
+      average: 30
+      # Tolerance for expected power usage while connected but not streaming
+      tolerance: 10
+
+    disconnected:
+      # Expected average power usage without Bluetooth connection in mW
+      average: 2
+      # Tolerance for expected power usage without Bluetooth connection in mW
+      tolerance: 1
+
+    streaming:
+      average: 50 # Expected average power usage while streaming in mW
+      tolerance: 10 # Tolerance for expected power usage while streaming in mW
+
+sth:
+  acceleration sensor:
+    # Values for the Analog Devices ± 100g analog accelerometer sensor ADXL1001.
+    adxl1001:
+      acceleration:
+        # Maximum Acceleration of sensor in multiples of g₀ (= 9.807 m/s²)
+        maximum: 200
+        # This value stores the maximum allowed ratio of noise to maximum
+        # measurement value in dB. If the measured ratio is above this level,
+        # then the tested STH will be considered faulty.
+        ratio noise to max value: -55
+        # Tolerance to expected (stationary) acceleration value (of 0 m/s²) in
+        # multiples of g₀
+        tolerance: 5
+      # The ADC reference voltage used for the measurement
+      reference voltage: 3.3
+      self test:
+        # The dimension (x, y, z) on which the self test takes place
+        dimension: x
+        voltage:
+          # Expected voltage difference between
+          #
+          # - the measured (stationary) acceleration voltage, and
+          # - acceleration voltage when the self test is active
+          #
+          # in mV. For more information, please check the data sheet of the
+          # accelerometer.
+          difference: 90
+          # Tolerance to
+          # - the expected voltage difference and
+          # - tolerance for the measured difference between voltage before and
+          #   after the self test
+          # in mV.
+          tolerance: 20
+    # Values for the Analog Devices ± 50g digital accelerometer sensor ADXL1002.
+    # Please check the comments for sensor `ADXL1001` for a more detailed
+    # description of the config values.
+    adxl1002:
+      acceleration:
+        maximum: 100
+        ratio noise to max value: -55
+        tolerance: 4
+      reference voltage: 3.3
+      self test:
+        dimension: x
+        voltage:
+          difference: 160
+          tolerance: 30
+    # Values for the Analog Devices ± 40g digital accelerometer sensor ADXL356.
+    # Please check the comments for sensor `ADXL1001` for a more detailed
+    # description of the config values.
+    adxl356:
+      acceleration:
+        maximum: 80
+        ratio noise to max value: -55
+        tolerance: 20
+      reference voltage: 1.8
+      self test:
+        dimension: z
+        voltage:
+          # 1.25 g difference at ± 10 g ⇒ 1.25/4 at ± 40 g
+          # 1.8 V reference voltage ⇒ 1.25/(2*40*4)*1.8*1000 ≅ 7 mV
+          #
+          # In reality the difference voltage seems to
+          #
+          # - be significantly smaller and
+          # - change with the position of the PCB.
+          #
+          # We therefore set the tolerance to a very high level.
+          #
+          # More information is available here:
+          #
+          # - https://mytoolit.bitrix24.de/company/personal/user/74/tasks
+          #   /task/view/6207/
+          #
+          difference: 7
+          tolerance: 4
+    # The identifier of the accelerometer sensor (either `ADXL1001` or
+    # `ADXL1002` or `ADXL356`). The values below the key will be used for the
+    # STH test.
+    #
+    # For example, if you specify the value `ADXL1001`, then the value
+    #
+    #  `STH` → `Acceleration Sensor` → `ADXL1001` → `Acceleration` → `Maximum`
+    #
+    # will be used as maximum acceleration value for the current STH.
+    sensor: ADXL1001
+
+stu:
+  batch number: 200 # (32 bit unsigned) number that describes the current batch
+  firmware:
+    chip: BGM111A256V2 # Microcontroller identifier used for firmware upload
+    location:
+      # This value should contain the path to a complete image (bootloader and
+      # application). Relative paths will be interpreted in relation to the
+      # current working directory. You can use `~` to refer to the user’s home
+      # directory.
+      ~/Documents/Firmware/manufacturingImageStuv2.1.10.hex
+    release name: Valerie # Code name of the current firmware release
+
+  gtin: 0 # Global Trade Item Number
+  hardware version: "2.5" # The current version of the PCB design
+  oem data: *oem_data # OEM specific data
+  # Product name for the  manufacturer (maximum of 128 byte UTF-8 encoded text)
+  product name: "0"
+  # The production date of the STH PCB in the format YYYY-MM-DD
+  production date: 2025-01-01
+  # Serial number for the manufacturer (maximum of 32 byte UTF-8 encoded text)
+  serial number: "0"
+
