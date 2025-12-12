@@ -1,0 +1,56 @@
+[project]
+name = "treepeat"
+version = "0.1.0"
+description = "treepeat: a treesitter-based CLI tool to find similarities in a codebase"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Dane Summers", email = "dsummersl@gmail.com" }]
+license = "Apache-2.0"
+classifiers = [
+"Programming Language :: Python :: 3",
+"Typing :: Typed",
+]
+dependencies = [
+    "click>=8.3.0",
+    "datasketch>=1.6.5",
+    "pydantic>=2.12.3",
+    "pydantic-settings>=2.0.0",
+    "python-magic>=0.4.27",
+    "rich>=14.2.0",
+    "sarif-pydantic>=0.6.2",
+    "tdqm>=0.0.1",
+    "tree-sitter>=0.25.2",
+    "tree-sitter-language-pack>=0.10.0",
+]
+
+[project.scripts]
+treepeat = "treepeat.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=6",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+    "radon>=6.0.1",
+]
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+line-length = 100
+exclude = [".venv", ".git", "build", "dist", "tests/fixtures"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["treepeat"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=treepeat  --cov-report=term-missing"
+norecursedirs = ["sample-data"]
+
+[tool.pyright]
+exclude = ["sample-data"]
