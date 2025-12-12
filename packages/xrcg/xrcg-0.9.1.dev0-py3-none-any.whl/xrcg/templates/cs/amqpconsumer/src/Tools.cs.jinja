@@ -1,0 +1,47 @@
+{%- import "util.jinja.include" as util -%}
+{%- import "amqp.jinja.include" as amqp -%}
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{{ util.CommonFileHeader() }}
+
+{%- set uses_cloudevents_message = (root | exists("envelope","CloudEvents/1.0")) %}
+#nullable enable
+
+using System;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Amqp;
+
+{%- if uses_cloudevents_message %}
+{{ cloudEvents.CloudEventsUsings() }}
+{%- endif %}
+
+namespace {{ project_name | pascal }}
+{
+    namespace Tools
+    {
+        public abstract class DispatcherBase
+        {
+            protected readonly ILogger _logger;             
+            public event Func<Exception, Task>? ErrorAsync;
+
+            protected DispatcherBase(ILoggerFactory? loggerFactory)
+            {
+                _logger = loggerFactory != null ? loggerFactory.CreateLogger(GetType()) : new LoggerFactory().CreateLogger(GetType());
+            }
+            
+            internal virtual Task ProcessErrorAsync(Exception error)
+            {
+                if (ErrorAsync != null)
+                {
+                    return Task.WhenAll(Array.ConvertAll(ErrorAsync.GetInvocationList(), e => (Task)(e?.DynamicInvoke(error)??Task.CompletedTask)));
+                }
+                return Task.CompletedTask;
+            }
+            {%- if uses_cloudevents_message %}
+            {{ amqp.CloudEventsMethods() | indent(12) }}
+            {%- endif %}
+        }
+    }
+}

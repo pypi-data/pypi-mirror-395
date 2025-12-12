@@ -1,0 +1,242 @@
+{%- set schema_name = class_name | pascal -%}
+{%- set list_type = "java.util.ArrayList" %}
+{%- set schema = root %}
+
+{%- macro emitclass(type, typeName) -%}
+{%- if type.type == 'object' or not type.type %}
+{%- if type.allOf -%}
+    {%- for allOfType in type.allOf -%}
+        {%- if allOfType['$ref'] %}
+public class {{ typeName }} extends {{ allOfType['$ref'] | schema_type( project_name, root) }} 
+{
+        {% else %}
+public class {{ typeName }} 
+{
+        {% endif -%}
+    {% endfor %}
+{%- else %}
+public class {{ typeName }} 
+{
+    {% endif -%}
+
+    public static {{ typeName }} fromData(Object data) throws JsonProcessingException, JsonMappingException {
+        if ( data instanceof {{ typeName }}) {
+            return ({{ typeName }})data;
+        }
+        if (data instanceof JsonNode) {
+            return (new ObjectMapper()).readValue(((JsonNode)data).toString(), {{ typeName }}.class);
+        }
+        else if ( data instanceof String)
+        {
+            return (new ObjectMapper()).readValue(((String)data), {{ typeName }}.class);
+        }
+        throw new UnsupportedOperationException("Data is not of a supported type for conversion to {{ typeName }}");
+    }
+
+    public byte[] toByteArray() throws JsonProcessingException {
+        return new ObjectMapper().writeValueAsBytes(this);
+    }
+
+    {% for pn, property in type.properties.items() -%}
+        {%- set propertyName = pn -%}
+        {%- set javaType = "" -%}
+        {%- if property.type == 'integer' -%}
+            {%- if property.format == 'int32' -%}
+                {%- set javaType = "int" -%}
+            {%- elif property.format == 'int64' -%}
+                {%- set javaType = "long" -%}
+            {%- else -%}
+                {%- set javaType = "int" -%}
+            {%- endif -%}
+        {%- elif property.type == 'number' -%}
+            {%- if property.format == 'float' -%}
+                {%- set javaType = "float" -%}
+            {%- elif property.format == 'double' -%}
+                {%- set javaType = "double" -%}
+            {%- elif property.format == 'decimal' -%}
+                {%- set javaType = "BigDecimal" -%}
+            {%- else -%}
+                {%- set javaType = "double" -%}
+            {%- endif -%}
+        {%- elif property.type == 'string' -%}
+            {%- if property.format == 'date-time' -%}
+                {%- set javaType = "java.time.LocalDateTime" -%}
+            {%- endif -%}
+            {%- if property.format == 'email' -%}
+                {%- set javaType = "String" -%}
+            {%- endif -%}
+            {%- if property.format == 'uri' -%}
+                {%- set javaType = "URL" -%}
+            {%- endif -%}
+            {%- if property.format == 'date' -%}
+                {%- set javaType = "java.time.LocalDate" -%}
+            {%- endif -%}
+            {%- if property.format == 'time' -%}
+                {%- set javaType = "java.time.LocalTime" -%}
+            {%- endif -%}
+            {%- if property.format == 'uuid' -%}
+                {%- set javaType = "java.util.UUID" -%}
+            {%- endif -%}
+            {%- if property.format == 'ipv4' -%}
+                {%- set javaType = "java.net.Inet4Address" -%}
+            {%- endif -%}
+            {%- if property.format == 'ipv6' -%}
+                {%- set javaType = "java.net.Inet6Address" -%}
+            {%- endif -%}
+            {%- if property.format == 'hostname' -%}
+                {%- set javaType = "String" -%}
+            {%- endif -%}
+            {%- if not property.format -%}
+                {%- set javaType = "String" -%}
+            {%- endif -%}
+        {%- elif property.type == 'array' -%}
+            {%- if property.items.type == 'integer' -%}
+                {%- if property.items.format == 'int32' or not property.items.format -%}
+                    {%- set javaType = list_type+"<int>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'int64' -%}
+                    {%- set javaType = list_type+"<long>" -%}
+                {%- endif -%}
+            {%- elif property.items.type == 'number' -%}
+                {%- if property.items.format == 'float' -%}
+                    {%- set javaType = list_type+"<gloat>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'double' or not property.items.format -%}
+                    {%- set javaType = list_type+"<double>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'decimal' -%}
+                    {%- set javaType = list_type+"<BigDecimal>" -%}
+                {%- endif -%}
+            {%- elif property.items.type == 'string' -%}
+                {%- if property.items.format == 'date-time' -%}
+                    {%- set javaType = list_type+"<LocalDate>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'email' -%}
+                    {%- set javaType = list_type+"<String>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'uri' -%}
+                    {%- set javaType = list_type+"<java.net.URI>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'uuid' -%}
+                    {%- set javaType = list_type+"<java.util.UUID>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'ipv4' -%}
+                    {%- set javaType = list_type+"<java.net.Inet4Address>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'ipv6' -%}
+                    {%- set javaType = list_type+"<java.net.IPAddress>" -%}
+                {%- endif -%}
+                {%- if property.items.format == 'hostname' -%}
+                    {%- set javaType = list_type+"<String>" -%}
+                {%- endif -%}
+                {%- if not property.items.format -%}
+                    {%- set javaType = list_type+"<String>" -%}
+                {%- endif -%}
+            {%- elif property.items['$ref'] -%}
+                {%- set ref = property.items['$ref'] -%}
+                {%- set javaType = list_type+"<"+(ref | schema_type( project_name, root) | pascal)+">" -%}
+            {%- else -%}
+                {%- set javaType = list_type+"<"+((propertyName + "Item") | pascal)+">" -%}
+                {{ emitclass( property['items'], (propertyName + "Item") | pascal) | indent }}
+            {%- endif -%}
+        {%- else -%}
+            {%- set javaType = "object" -%}
+        {%- endif -%}
+        {%- if not property.type and not property.items -%}
+            {%- if property['$ref'] -%}
+                {%- set ref = property['$ref'] -%}
+                {%- set javaType = ref | schema_type( project_name, root) | pascal -%}
+            {%- elif property.properties -%}
+                {%- set javaType = (propertyName + "Item") | pascal -%}
+                {{ emitclass(property, javaType) | indent }}
+            {%- endif -%}
+        {%- endif -%}
+        {%- if property.enum %}
+    public enum {{ propertyName | pascal }}Enum
+    {
+                {% for value in property.enum %}{{ value | pascal }} = {{ loop.index - 1 }},{% endfor %}
+    }
+    private {{ propertyName | pascal }}Enum {{ propertyName }} = {{ propertyName | pascal }}Enum.{{ property.enum[0] | pascal }};
+    public {{ propertyName | pascal }}Enum get{{ propertyName | pascal }}
+    {
+        return _{{ propertyName }};
+    }
+    public void set{{ propertyName | pascal }}({{ propertyName | pascal }}Enum value)
+    {
+        {{ propertyName }} = value;
+    }
+    {%- else %}
+    private {{ javaType }} {{ propertyName }};
+    {% if property.description -%}/// <description>{{ property.description }}</description>{%- endif %}
+    @JsonProperty("{{ propertyName }}")
+    public {{ javaType }} get{{ propertyName | pascal }}()
+    {
+        return {{ propertyName }};
+    }
+    @JsonProperty("{{ propertyName }}")
+    public void set{{ propertyName | pascal }}( {{ javaType }} value)
+    {
+    {%- if property.minimum is defined %}
+        if (value < {{ property.minimum }})
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsTooSmall, value, {{ property.minimum }}));
+        }
+    {%- endif %}
+    {%- if property.exclusiveMinimum is defined %}
+        if (value <= {{ property.exclusiveMinimum }})
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsTooSmall, value, {{ property.exclusiveMinimum }}));
+        }
+    {%- endif %}
+    {%- if property.maximum is defined %}
+        if (value > {{ property.maximum }})
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsTooBig, value, {{ property.maximum }}));
+        }
+    {%- endif %}
+    {%- if property.exclusiveMaximum is defined %}
+        if (value >= {{ property.exclusiveMaximum }})
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsTooBig, value, {{ property.exclusiveMaximum }}));
+        }
+    {%- endif %}
+    {%- if property.maxLength is defined %}
+        if (value.toString().length() > {{ property.maxLength }})
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsTooLong, value, {{ property.maxLength }}));
+        }
+    {%- endif %}
+    {%- if property.minLength is defined %}
+        if (value.toString().length() < {{ property.minLength }})
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsTooShort, value, {{ property.minLength }}));
+        }
+    {%- endif %}
+    {%- if property.pattern is defined %}
+        if (!java.util.regex.Pattern.matches("{{ property.pattern }}", value))
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsInvalid, value));
+        }
+    {%- endif %}
+    {%- if property.format == "email" %}
+        if (!java.util.regex.Pattern.matches({{ project_name | lower }}.RegexPatterns.Email, value))
+        {
+            throw new IllegalArgumentException(String.format({{ project_name | lower }}.ExceptionMessages.ValueIsNotAnEmail, value));
+        }
+    {%- endif %}
+        {{ propertyName }} = value;
+    }
+    {% endif -%}
+    {%- endfor -%}
+{% endif %}
+}
+{%- endmacro -%}
+package {{ class_name | namespace(project_name) | lower }};
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+{{ emitclass(schema, schema_name | strip_namespace | pascal ) }}
