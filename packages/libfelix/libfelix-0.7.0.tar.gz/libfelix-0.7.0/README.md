@@ -1,0 +1,69 @@
+# libfelix
+Felix' library of snippets.
+
+- few dependencies
+- keep it simple
+
+
+## Installation
+```
+pip install libfelix
+```
+
+
+## libfelix.git
+```python
+>>> from libfelix.git import Repo
+>>> r = Repo('.')
+>>> r.head
+'9e260ece8558ba9a6c4ad6a9c89905630fe0140b'
+```
+
+
+## libfelix.music
+Controls music players via dbus (`org.mpris.MediaPlayer2.Player`) and scores them based on a simple heuristic (see
+`score_players` in `libfelix/music/api.py`).
+```
+$ music --help
+Usage: music [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  Next
+  PlayPause
+  Previous
+  players
+```
+
+
+## libfelix.logging
+Structlog shortcut for fast development with opinionated settings.
+
+- log to STDERR
+- configure the log level by setting the environment variable `LOGLEVEL`
+
+```python
+from libfelix.logging import configure_structlog_console, get_logger
+
+configure_structlog_console()
+log = get_logger()
+log.info('...')
+```
+
+
+## libfelix.rename_scans
+Renames scanned PDFs (via M365) in a directory to a sane format.
+```bash
+felix-rename-scans ~/Downloads/kdeconnect/
+```
+
+
+## Development
+```
+mise trust
+mise install
+pre-commit install -f
+uv sync --all-extras
+```
