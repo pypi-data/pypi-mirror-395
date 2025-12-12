@@ -1,0 +1,295 @@
+# Chat
+
+## Completions
+
+Types:
+
+```python
+from together.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionStructuredMessageImageURL,
+    ChatCompletionStructuredMessageText,
+    ChatCompletionStructuredMessageVideoURL,
+    ChatCompletionUsage,
+    ChatCompletionWarning,
+)
+```
+
+Methods:
+
+- <code title="post /chat/completions">client.chat.completions.<a href="./src/together/resources/chat/completions.py">create</a>(\*\*<a href="src/together/types/chat/completion_create_params.py">params</a>) -> <a href="./src/together/types/chat/chat_completion.py">ChatCompletion</a></code>
+
+# Completions
+
+Types:
+
+```python
+from together.types import Completion, CompletionChunk, LogProbs, ToolChoice, Tools
+```
+
+Methods:
+
+- <code title="post /completions">client.completions.<a href="./src/together/resources/completions.py">create</a>(\*\*<a href="src/together/types/completion_create_params.py">params</a>) -> <a href="./src/together/types/completion.py">Completion</a></code>
+
+# Embeddings
+
+Types:
+
+```python
+from together.types import Embedding
+```
+
+Methods:
+
+- <code title="post /embeddings">client.embeddings.<a href="./src/together/resources/embeddings.py">create</a>(\*\*<a href="src/together/types/embedding_create_params.py">params</a>) -> <a href="./src/together/types/embedding.py">Embedding</a></code>
+
+# Files
+
+Types:
+
+```python
+from together.types import (
+    FileList,
+    FileObject,
+    FilePurpose,
+    FileResponse,
+    FileType,
+    FileDeleteResponse,
+)
+```
+
+Methods:
+
+- <code title="get /files/{id}">client.files.<a href="./src/together/resources/files.py">retrieve</a>(id) -> <a href="./src/together/types/file_response.py">FileResponse</a></code>
+- <code title="get /files">client.files.<a href="./src/together/resources/files.py">list</a>() -> <a href="./src/together/types/file_list.py">FileList</a></code>
+- <code title="delete /files/{id}">client.files.<a href="./src/together/resources/files.py">delete</a>(id) -> <a href="./src/together/types/file_delete_response.py">FileDeleteResponse</a></code>
+- <code title="get /files/{id}/content">client.files.<a href="./src/together/resources/files.py">content</a>(id) -> BinaryAPIResponse</code>
+
+# FineTuning
+
+Types:
+
+```python
+from together.types import (
+    FinetuneEvent,
+    FinetuneEventType,
+    FinetuneResponse,
+    FineTuningListResponse,
+    FineTuningDeleteResponse,
+    FineTuningCancelResponse,
+    FineTuningListCheckpointsResponse,
+    FineTuningListEventsResponse,
+)
+```
+
+Methods:
+
+- <code title="get /fine-tunes/{id}">client.fine_tuning.<a href="./src/together/resources/fine_tuning.py">retrieve</a>(id) -> <a href="./src/together/types/finetune_response.py">FinetuneResponse</a></code>
+- <code title="get /fine-tunes">client.fine_tuning.<a href="./src/together/resources/fine_tuning.py">list</a>() -> <a href="./src/together/types/fine_tuning_list_response.py">FineTuningListResponse</a></code>
+- <code title="delete /fine-tunes/{id}">client.fine_tuning.<a href="./src/together/resources/fine_tuning.py">delete</a>(id, \*\*<a href="src/together/types/fine_tuning_delete_params.py">params</a>) -> <a href="./src/together/types/fine_tuning_delete_response.py">FineTuningDeleteResponse</a></code>
+- <code title="post /fine-tunes/{id}/cancel">client.fine_tuning.<a href="./src/together/resources/fine_tuning.py">cancel</a>(id) -> <a href="./src/together/types/fine_tuning_cancel_response.py">FineTuningCancelResponse</a></code>
+- <code title="get /finetune/download">client.fine_tuning.<a href="./src/together/resources/fine_tuning.py">content</a>(\*\*<a href="src/together/types/fine_tuning_content_params.py">params</a>) -> BinaryAPIResponse</code>
+- <code title="get /fine-tunes/{id}/checkpoints">client.fine_tuning.<a href="./src/together/resources/fine_tuning.py">list_checkpoints</a>(id) -> <a href="./src/together/types/fine_tuning_list_checkpoints_response.py">FineTuningListCheckpointsResponse</a></code>
+- <code title="get /fine-tunes/{id}/events">client.fine_tuning.<a href="./src/together/resources/fine_tuning.py">list_events</a>(id) -> <a href="./src/together/types/fine_tuning_list_events_response.py">FineTuningListEventsResponse</a></code>
+
+# CodeInterpreter
+
+Types:
+
+```python
+from together.types import ExecuteResponse
+```
+
+Methods:
+
+- <code title="post /tci/execute">client.code_interpreter.<a href="./src/together/resources/code_interpreter/code_interpreter.py">execute</a>(\*\*<a href="src/together/types/code_interpreter_execute_params.py">params</a>) -> <a href="./src/together/types/execute_response.py">ExecuteResponse</a></code>
+
+## Sessions
+
+Types:
+
+```python
+from together.types.code_interpreter import SessionListResponse
+```
+
+Methods:
+
+- <code title="get /tci/sessions">client.code_interpreter.sessions.<a href="./src/together/resources/code_interpreter/sessions.py">list</a>() -> <a href="./src/together/types/code_interpreter/session_list_response.py">SessionListResponse</a></code>
+
+# Images
+
+Types:
+
+```python
+from together.types import ImageDataB64, ImageDataURL, ImageFile
+```
+
+Methods:
+
+- <code title="post /images/generations">client.images.<a href="./src/together/resources/images.py">generate</a>(\*\*<a href="src/together/types/image_generate_params.py">params</a>) -> <a href="./src/together/types/image_file.py">ImageFile</a></code>
+
+# Videos
+
+Types:
+
+```python
+from together.types import VideoJob
+```
+
+Methods:
+
+- <code title="post /videos">client.videos.<a href="./src/together/resources/videos.py">create</a>(\*\*<a href="src/together/types/video_create_params.py">params</a>) -> <a href="./src/together/types/video_job.py">VideoJob</a></code>
+- <code title="get /videos/{id}">client.videos.<a href="./src/together/resources/videos.py">retrieve</a>(id) -> <a href="./src/together/types/video_job.py">VideoJob</a></code>
+
+# Audio
+
+Types:
+
+```python
+from together.types import AudioFile, AudioSpeechStreamChunk
+```
+
+## Speech
+
+Methods:
+
+- <code title="post /audio/speech">client.audio.speech.<a href="./src/together/resources/audio/speech.py">create</a>(\*\*<a href="src/together/types/audio/speech_create_params.py">params</a>) -> BinaryAPIResponse</code>
+
+## Voices
+
+Types:
+
+```python
+from together.types.audio import VoiceListResponse
+```
+
+Methods:
+
+- <code title="get /voices">client.audio.voices.<a href="./src/together/resources/audio/voices.py">list</a>() -> <a href="./src/together/types/audio/voice_list_response.py">VoiceListResponse</a></code>
+
+## Transcriptions
+
+Types:
+
+```python
+from together.types.audio import TranscriptionCreateResponse
+```
+
+Methods:
+
+- <code title="post /audio/transcriptions">client.audio.transcriptions.<a href="./src/together/resources/audio/transcriptions.py">create</a>(\*\*<a href="src/together/types/audio/transcription_create_params.py">params</a>) -> <a href="./src/together/types/audio/transcription_create_response.py">TranscriptionCreateResponse</a></code>
+
+## Translations
+
+Types:
+
+```python
+from together.types.audio import TranslationCreateResponse
+```
+
+Methods:
+
+- <code title="post /audio/translations">client.audio.translations.<a href="./src/together/resources/audio/translations.py">create</a>(\*\*<a href="src/together/types/audio/translation_create_params.py">params</a>) -> <a href="./src/together/types/audio/translation_create_response.py">TranslationCreateResponse</a></code>
+
+# Models
+
+Types:
+
+```python
+from together.types import ModelObject, ModelListResponse, ModelUploadResponse
+```
+
+Methods:
+
+- <code title="get /models">client.models.<a href="./src/together/resources/models.py">list</a>() -> <a href="./src/together/types/model_list_response.py">ModelListResponse</a></code>
+- <code title="post /models">client.models.<a href="./src/together/resources/models.py">upload</a>(\*\*<a href="src/together/types/model_upload_params.py">params</a>) -> <a href="./src/together/types/model_upload_response.py">ModelUploadResponse</a></code>
+
+# Jobs
+
+Types:
+
+```python
+from together.types import JobRetrieveResponse, JobListResponse
+```
+
+Methods:
+
+- <code title="get /jobs/{jobId}">client.jobs.<a href="./src/together/resources/jobs.py">retrieve</a>(job_id) -> <a href="./src/together/types/job_retrieve_response.py">JobRetrieveResponse</a></code>
+- <code title="get /jobs">client.jobs.<a href="./src/together/resources/jobs.py">list</a>() -> <a href="./src/together/types/job_list_response.py">JobListResponse</a></code>
+
+# Endpoints
+
+Types:
+
+```python
+from together.types import (
+    Autoscaling,
+    DedicatedEndpoint,
+    EndpointListResponse,
+    EndpointListAvzonesResponse,
+)
+```
+
+Methods:
+
+- <code title="post /endpoints">client.endpoints.<a href="./src/together/resources/endpoints.py">create</a>(\*\*<a href="src/together/types/endpoint_create_params.py">params</a>) -> <a href="./src/together/types/dedicated_endpoint.py">DedicatedEndpoint</a></code>
+- <code title="get /endpoints/{endpointId}">client.endpoints.<a href="./src/together/resources/endpoints.py">retrieve</a>(endpoint_id) -> <a href="./src/together/types/dedicated_endpoint.py">DedicatedEndpoint</a></code>
+- <code title="patch /endpoints/{endpointId}">client.endpoints.<a href="./src/together/resources/endpoints.py">update</a>(endpoint_id, \*\*<a href="src/together/types/endpoint_update_params.py">params</a>) -> <a href="./src/together/types/dedicated_endpoint.py">DedicatedEndpoint</a></code>
+- <code title="get /endpoints">client.endpoints.<a href="./src/together/resources/endpoints.py">list</a>(\*\*<a href="src/together/types/endpoint_list_params.py">params</a>) -> <a href="./src/together/types/endpoint_list_response.py">EndpointListResponse</a></code>
+- <code title="delete /endpoints/{endpointId}">client.endpoints.<a href="./src/together/resources/endpoints.py">delete</a>(endpoint_id) -> None</code>
+- <code title="get /clusters/availability-zones">client.endpoints.<a href="./src/together/resources/endpoints.py">list_avzones</a>() -> <a href="./src/together/types/endpoint_list_avzones_response.py">EndpointListAvzonesResponse</a></code>
+
+# Hardware
+
+Types:
+
+```python
+from together.types import HardwareListResponse
+```
+
+Methods:
+
+- <code title="get /hardware">client.hardware.<a href="./src/together/resources/hardware.py">list</a>(\*\*<a href="src/together/types/hardware_list_params.py">params</a>) -> <a href="./src/together/types/hardware_list_response.py">HardwareListResponse</a></code>
+
+# Rerank
+
+Types:
+
+```python
+from together.types import RerankCreateResponse
+```
+
+Methods:
+
+- <code title="post /rerank">client.rerank.<a href="./src/together/resources/rerank.py">create</a>(\*\*<a href="src/together/types/rerank_create_params.py">params</a>) -> <a href="./src/together/types/rerank_create_response.py">RerankCreateResponse</a></code>
+
+# Batches
+
+Types:
+
+```python
+from together.types import BatchJob, BatchCreateResponse, BatchListResponse
+```
+
+Methods:
+
+- <code title="post /batches">client.batches.<a href="./src/together/resources/batches.py">create</a>(\*\*<a href="src/together/types/batch_create_params.py">params</a>) -> <a href="./src/together/types/batch_create_response.py">BatchCreateResponse</a></code>
+- <code title="get /batches/{id}">client.batches.<a href="./src/together/resources/batches.py">retrieve</a>(id) -> <a href="./src/together/types/batch_job.py">BatchJob</a></code>
+- <code title="get /batches">client.batches.<a href="./src/together/resources/batches.py">list</a>() -> <a href="./src/together/types/batch_list_response.py">BatchListResponse</a></code>
+- <code title="post /batches/{id}/cancel">client.batches.<a href="./src/together/resources/batches.py">cancel</a>(id) -> <a href="./src/together/types/batch_job.py">BatchJob</a></code>
+
+# Evals
+
+Types:
+
+```python
+from together.types import EvaluationJob, EvalCreateResponse, EvalListResponse, EvalStatusResponse
+```
+
+Methods:
+
+- <code title="post /evaluation">client.evals.<a href="./src/together/resources/evals.py">create</a>(\*\*<a href="src/together/types/eval_create_params.py">params</a>) -> <a href="./src/together/types/eval_create_response.py">EvalCreateResponse</a></code>
+- <code title="get /evaluation/{id}">client.evals.<a href="./src/together/resources/evals.py">retrieve</a>(id) -> <a href="./src/together/types/evaluation_job.py">EvaluationJob</a></code>
+- <code title="get /evaluation">client.evals.<a href="./src/together/resources/evals.py">list</a>(\*\*<a href="src/together/types/eval_list_params.py">params</a>) -> <a href="./src/together/types/eval_list_response.py">EvalListResponse</a></code>
+- <code title="get /evaluation/{id}/status">client.evals.<a href="./src/together/resources/evals.py">status</a>(id) -> <a href="./src/together/types/eval_status_response.py">EvalStatusResponse</a></code>
