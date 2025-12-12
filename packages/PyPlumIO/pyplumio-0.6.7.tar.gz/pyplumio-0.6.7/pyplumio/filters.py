@@ -1,0 +1,605 @@
+"""Contains callback filters."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from contextlib import suppress
+from copy import copy
+from decimal import Decimal
+from functools import wraps
+import logging
+import math
+import time
+from typing import (
+    Any,
+    Final,
+    Protocol,
+    SupportsFloat,
+    TypeAlias,
+    TypeVar,
+    overload,
+    runtime_checkable,
+)
+
+from pyplumio.helpers.event_manager import EventCallback
+from pyplumio.parameters import Number, Parameter
+
+_LOGGER = logging.getLogger(__name__)
+
+numpy_installed = False
+with suppress(ImportError):
+    import numpy as np
+
+    _LOGGER.info("Using numpy for improved float precision")
+    numpy_installed = True
+
+
+UNDEFINED: Final = "undefined"
+
+
+@runtime_checkable
+class SupportsSubtraction(Protocol):
+    """Supports subtraction operation."""
+
+    __slots__ = ()
+
+    def __sub__(
+        self: SupportsSubtraction, other: SupportsSubtraction
+    ) -> SupportsSubtraction:
+        """Subtract a value."""
+
+
+@runtime_checkable
+class SupportsComparison(Protocol):
+    """Supports comparison."""
+
+    __slots__ = ()
+
+    def __hash__(self) -> int:
+        """Return a hash of the value."""
+
+    def __eq__(self: SupportsComparison, other: SupportsComparison) -> bool:
+        """Compare a value."""
+
+
+_ComparableT = TypeVar("_ComparableT", Parameter, SupportsFloat, SupportsComparison)
+
+DEFAULT_TOLERANCE: Final = 1e-6
+
+
+@overload
+def is_close(old: Parameter, new: Parameter) -> bool: ...
+
+
+@overload
+def is_close(
+    old: SupportsFloat, new: SupportsFloat, *, tolerance: float = DEFAULT_TOLERANCE
+) -> bool: ...
+
+
+@overload
+def is_close(old: SupportsComparison, new: SupportsComparison) -> bool: ...
+
+
+def is_close(
+    old: _ComparableT, new: _ComparableT, *, tolerance: float | None = DEFAULT_TOLERANCE
+) -> bool:
+    """Check if value is significantly changed."""
+    if isinstance(new, Parameter) and new.update_pending.is_set():
+        return False
+
+    if tolerance and isinstance(old, SupportsFloat) and isinstance(new, SupportsFloat):
+        return math.isclose(old, new, abs_tol=tolerance)
+
+    if isinstance(old, Parameter) and isinstance(new, Parameter):
+        return old.values.__eq__(new.values)
+
+    return old.__eq__(new)
+
+
+_SubtractableT = TypeVar("_SubtractableT", list, SupportsSubtraction)
+
+
+@overload
+def diffence_between(old: list, new: list) -> list: ...
+
+
+@overload
+def diffence_between(
+    old: SupportsSubtraction, new: SupportsSubtraction
+) -> SupportsSubtraction: ...
+
+
+def diffence_between(old: _SubtractableT, new: _SubtractableT) -> Any:
+    """Return a difference between values."""
+    if isinstance(old, list) and isinstance(new, list):
+        return [x for x in new if x not in old]
+
+    if isinstance(old, SupportsSubtraction) and isinstance(new, SupportsSubtraction):
+        return new.__sub__(old)
+
+    return NotImplemented
+
+
+_Numeric: TypeAlias = float | int | Decimal | Number
+
+
+def numeric_only(func: Callable) -> Callable:
+    """Mark filter as numeric only.
+
+    Ensure that value passed to filter when used as callable is numeric
+    otherwise raise TypeError.
+    """
+
+    @wraps(func)
+    def wrapper(instance: Filter, new_value: _Numeric) -> Any:
+        """Wrap __call__ method and add numeric check to it."""
+        if not isinstance(new_value, _Numeric):
+            raise TypeError(
+                f"{instance.__class__.__name__.capitalize()} filter can only be used "
+                f"with numeric values, got {type(new_value).__name__}: {new_value}"
+            )
+
+        return func(instance, new_value)
+
+    return wrapper
+
+
+class Filter(ABC):
+    """Represents a filter."""
+
+    __slots__ = ("_callback",)
+
+    _callback: EventCallback
+
+    def __init__(self, callback: EventCallback) -> None:
+        """Initialize a new filter."""
+        self._callback = callback
+
+    def __hash__(self) -> int:
+        """Return a hash of the filter based on its callback."""
+        return hash(self._callback)
+
+    def __eq__(self, other: Any) -> bool:
+        """Compare callbacks."""
+        if isinstance(other, Filter):
+            return self._callback == other._callback
+
+        if callable(other):
+            return bool(self._callback == other)
+
+        return NotImplemented
+
+    @property
+    def __name__(self) -> str:
+        """Return a callback name."""
+        return self._callback.__name__
+
+    @abstractmethod
+    async def __call__(self, new_value: Any) -> Any:
+        """Set a new value for the callback."""
+
+
+class _Aggregate(Filter):
+    """Represents an aggregate filter.
+
+    Calls a callback with a sum of values collected over a specified
+    time period or when sample size limit reached.
+    """
+
+    __slots__ = ("_values", "_sample_size", "_timeout", "_last_call_time")
+
+    _values: list[_Numeric]
+    _sample_size: int
+    _timeout: float
+    _last_call_time: float
+
+    def __init__(
+        self, callback: EventCallback, seconds: float, sample_size: int
+    ) -> None:
+        """Initialize a new aggregate filter."""
+        super().__init__(callback)
+        self._last_call_time = time.monotonic()
+        self._timeout = seconds
+        self._sample_size = sample_size
+        self._values = []
+
+    @numeric_only
+    async def __call__(self, new_value: _Numeric) -> Any:
+        """Set a new value for the callback."""
+        current_time = time.monotonic()
+        self._values.append(new_value)
+        time_since_call = current_time - self._last_call_time
+        if time_since_call >= self._timeout or len(self._values) >= self._sample_size:
+            sum_of_values = (
+                np.sum(np.array(self._values)) if numpy_installed else sum(self._values)
+            )
+            result = await self._callback(float(sum_of_values))
+            self._last_call_time = current_time
+            self._values = []
+            return result
+
+
+def aggregate(callback: EventCallback, seconds: float, sample_size: int) -> _Aggregate:
+    """Create a new aggregate filter.
+
+    A callback function will be called with a sum of values collected
+    over a specified time period or when sample size limit reached.
+    Can only be used with numeric values.
+
+    :param callback: A callback function to be awaited once filter
+        conditions are fulfilled
+    :type callback: EventCallback
+    :param seconds: A callback will be awaited with a sum of values
+        aggregated over this amount of seconds.
+    :type seconds: float
+    :param sample_size: The maximum number of values to aggregate
+        before calling the callback
+    :type sample_size: int
+    :return: An instance of callable filter
+    :rtype: _Aggregate
+    """
+    return _Aggregate(callback, seconds, sample_size)
+
+
+class _Clamp(Filter):
+    """Represents a clamp filter.
+
+    Calls callback with a value clamped between specified boundaries.
+    """
+
+    __slots__ = ("_min_value", "_max_value", "_ignore_out_of_range")
+
+    _min_value: float
+    _max_value: float
+    _ignore_out_of_range: bool
+
+    def __init__(
+        self,
+        callback: EventCallback,
+        min_value: float,
+        max_value: float,
+        *,
+        ignore_out_of_range: bool = False,
+    ) -> None:
+        """Initialize a new Clamp filter."""
+        super().__init__(callback)
+        self._min_value = min_value
+        self._max_value = max_value
+        self._ignore_out_of_range = ignore_out_of_range
+
+    @numeric_only
+    async def __call__(self, new_value: _Numeric) -> Any:
+        """Set a new value for the callback."""
+        if self._ignore_out_of_range and (
+            new_value < self._min_value or new_value > self._max_value
+        ):
+            return
+
+        if new_value < self._min_value:
+            return await self._callback(self._min_value)
+
+        if new_value > self._max_value:
+            return await self._callback(self._max_value)
+
+        return await self._callback(new_value)
+
+
+def clamp(
+    callback: EventCallback,
+    min_value: float,
+    max_value: float,
+    *,
+    ignore_out_of_range: bool = False,
+) -> _Clamp:
+    """Create a new clamp filter.
+
+    A callback function will be called and passed value clamped
+    between specified boundaries.
+
+    :param callback: A callback function to be awaited on new value
+    :type callback: EventCallback
+    :param min_value: A lower boundary
+    :type min_value: float
+    :param max_value: An upper boundary
+    :type max_value: float
+    :param ignore_out_of_range: If `True`, values outside of
+        specified boundaries will be ignored, defaults to `False`
+    :type ignore_out_of_range: bool, optional
+    :return: An instance of callable filter
+    :rtype: _Clamp
+    """
+    return _Clamp(
+        callback, min_value, max_value, ignore_out_of_range=ignore_out_of_range
+    )
+
+
+_FilterFunc: TypeAlias = Callable[[Any], bool]
+
+
+class _Custom(Filter):
+    """Represents a custom filter.
+
+    Calls a callback with value, if user-defined filter function
+    that's called by this class with the value as an argument
+    returns true.
+    """
+
+    __slots__ = ("_filter_func",)
+
+    _filter_func: _FilterFunc
+
+    def __init__(self, callback: EventCallback, filter_func: _FilterFunc) -> None:
+        """Initialize a new custom filter."""
+        super().__init__(callback)
+        self._filter_func = filter_func
+
+    async def __call__(self, new_value: Any) -> Any:
+        """Set a new value for the callback."""
+        if self._filter_func(new_value):
+            await self._callback(new_value)
+
+
+def custom(callback: EventCallback, filter_func: _FilterFunc) -> _Custom:
+    """Create a new custom filter.
+
+    A callback function will be called when a user-defined filter
+    function, that's being called with the value as an argument,
+    returns true.
+
+    :param callback: A callback function to be awaited when
+        filter function return true
+    :type callback: Callback
+    :param filter_func: Filter function, that will be called with a
+        value and should return `True` to await filter's callback
+    :type filter_func: Callable[[Any], bool]
+    :return: An instance of callable filter
+    :rtype: _Custom
+    """
+    return _Custom(callback, filter_func)
+
+
+class _Throttle(Filter):
+    """Represents a throttle filter.
+
+    Calls a callback only when certain amount of seconds passed
+    since the last call.
+    """
+
+    __slots__ = ("_last_called", "_timeout")
+
+    _last_called: float | None
+    _timeout: float
+
+    def __init__(self, callback: EventCallback, seconds: float) -> None:
+        """Initialize a new throttle filter."""
+        super().__init__(callback)
+        self._last_called = None
+        self._timeout = seconds
+
+    async def __call__(self, new_value: Any) -> Any:
+        """Set a new value for the callback."""
+        current_timestamp = time.monotonic()
+        if (
+            self._last_called is None
+            or (current_timestamp - self._last_called) >= self._timeout
+        ):
+            self._last_called = current_timestamp
+            return await self._callback(new_value)
+
+
+def throttle(callback: EventCallback, seconds: float) -> _Throttle:
+    """Create a new throttle filter.
+
+    A callback function will only be called once a certain amount of
+    seconds passed since the last call.
+
+    :param callback: A callback function that will be awaited once
+        filter conditions are fulfilled
+    :type callback: EventCallback
+    :param seconds: A callback will be awaited at most once per
+        this amount of seconds
+    :type seconds: float
+    :return: An instance of callable filter
+    :rtype: _Throttle
+    """
+    return _Throttle(callback, seconds)
+
+
+class ComparisonFilter(Filter):
+    """Represents a filter that compares current and previous values."""
+
+    __slots__ = ("_value",)
+
+    _value: Any
+
+    def __init__(self, callback: EventCallback) -> None:
+        """Initialize a new comparison filter."""
+        self._value = UNDEFINED
+        super().__init__(callback)
+
+    def is_undefined(self) -> bool:
+        """Check if current value is undefined."""
+        return True if self._value == UNDEFINED else False
+
+    @property
+    def value(self) -> Any:
+        """Return filter value."""
+        return self._value
+
+    @value.setter
+    def value(self, value: Any) -> None:
+        """Set filter value."""
+        if isinstance(value, Parameter):
+            self._value = copy(value)
+        else:
+            self._value = value
+
+
+class _Deadband(ComparisonFilter):
+    """Represents a deadband filter.
+
+    Calls a callback only when value is significantly changed from the
+    previous callback call.
+    """
+
+    __slots__ = ("_tolerance",)
+
+    _tolerance: float
+
+    def __init__(self, callback: EventCallback, tolerance: float) -> None:
+        """Initialize a new value changed filter."""
+        self._tolerance = tolerance
+        super().__init__(callback)
+
+    @numeric_only
+    async def __call__(self, new_value: _Numeric) -> Any:
+        """Set a new value for the callback."""
+        if self.is_undefined() or not is_close(
+            self.value, new_value, tolerance=self._tolerance
+        ):
+            self.value = new_value
+            return await self._callback(new_value)
+
+
+def deadband(callback: EventCallback, tolerance: float) -> _Deadband:
+    """Create a new deadband filter.
+
+    A callback function will only be called when the value is significantly changed
+    from the previous callback call.
+
+    :param callback: A callback function to be awaited on significant value change
+    :type callback: EventCallback
+    :param tolerance: The minimum difference required to trigger the callback
+    :type tolerance: float
+    :return: An instance of callable filter
+    :rtype: _Deadband
+    """
+    return _Deadband(callback, tolerance)
+
+
+class _Debounce(ComparisonFilter):
+    """Represents a debounce filter.
+
+    Calls a callback only when value is stabilized across multiple
+    filter calls.
+    """
+
+    __slots__ = ("_calls", "_min_calls")
+
+    _calls: int
+    _min_calls: int
+
+    def __init__(self, callback: EventCallback, min_calls: int) -> None:
+        """Initialize a new debounce filter."""
+        super().__init__(callback)
+        self._calls = 0
+        self._min_calls = min_calls
+
+    async def __call__(self, new_value: Any) -> Any:
+        """Set a new value for the callback."""
+        if self.is_undefined() or not is_close(self.value, new_value):
+            self._calls += 1
+        else:
+            self._calls = 0
+
+        if self.is_undefined() or self._calls >= self._min_calls:
+            self.value = new_value
+            self._calls = 0
+            return await self._callback(new_value)
+
+
+def debounce(callback: EventCallback, min_calls: int) -> _Debounce:
+    """Create a new debounce filter.
+
+    A callback function will only be called once the value is stabilized
+    across multiple filter calls.
+
+    :param callback: A callback function to be awaited on value change
+    :type callback: EventCallback
+    :param min_calls: Value shouldn't change for this amount of
+        filter calls
+    :type min_calls: int
+    :return: An instance of callable filter
+    :rtype: _Debounce
+    """
+    return _Debounce(callback, min_calls)
+
+
+class _Delta(ComparisonFilter):
+    """Represents a difference filter.
+
+    Calls a callback with a difference between two subsequent values.
+    """
+
+    __slots__ = ()
+
+    async def __call__(self, new_value: Any) -> Any:
+        """Set a new value for the callback."""
+        if self.is_undefined() or not is_close(self.value, new_value):
+            old_value = self.value
+            self.value = new_value
+            difference = diffence_between(old_value, new_value)
+            if difference is not NotImplemented:
+                return await self._callback(difference)
+
+
+def delta(callback: EventCallback) -> _Delta:
+    """Create a new difference filter.
+
+    A callback function will be called with a difference between two
+    subsequent values.
+
+    :param callback: A callback function that will be awaited with
+        difference between values in two subsequent calls
+    :type callback: EventCallback
+    :return: An instance of callable filter
+    :rtype: _Delta
+    """
+    return _Delta(callback)
+
+
+class _OnChange(ComparisonFilter):
+    """Represents a value changed filter.
+
+    Calls a callback only when value is changed from the
+    previous callback call.
+    """
+
+    __slots__ = ()
+
+    async def __call__(self, new_value: Any) -> Any:
+        """Set a new value for the callback."""
+        if self.is_undefined() or not is_close(self.value, new_value):
+            self.value = new_value
+            return await self._callback(new_value)
+
+
+def on_change(callback: EventCallback) -> _OnChange:
+    """Create a new value changed filter.
+
+    A callback function will only be called if the value is changed from the
+    previous call.
+
+    :param callback: A callback function to be awaited on value change
+    :type callback: Callback
+    :return: An instance of callable filter
+    :rtype: _OnChange
+    """
+    return _OnChange(callback)
+
+
+__all__ = [
+    "Filter",
+    "ComparisonFilter",
+    "numeric_only",
+    "aggregate",
+    "clamp",
+    "custom",
+    "deadband",
+    "debounce",
+    "delta",
+    "on_change",
+    "throttle",
+]
