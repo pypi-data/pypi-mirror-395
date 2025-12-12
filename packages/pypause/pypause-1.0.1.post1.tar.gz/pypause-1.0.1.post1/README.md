@@ -1,0 +1,1 @@
+### When importing PyPause into your script, use **from pypause import pause**, then call it by writing **pause()**. That's all there is to it.
