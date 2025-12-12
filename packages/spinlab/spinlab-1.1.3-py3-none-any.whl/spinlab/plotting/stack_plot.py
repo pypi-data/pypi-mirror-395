@@ -1,0 +1,69 @@
+import matplotlib.pyplot as _plt
+import numpy as _np
+
+
+def stack(data, *args, offset=None, **kwargs):
+    """Stack Plot for 2D data
+
+    Args:
+        data (sldata): sldata object for matplotlib plot function
+        args: args for matplotlib plot function
+        offset: Value to offset each spectra, by default maximum of absolute value
+        kwargs: kwargs for matplotlib plot function
+
+    Example::
+
+       sl.slResults.plt.figure()
+       sl.slResults.stack(data)
+       sl.slResults.plt.show()
+
+    """
+
+    coord = data.coords[0]
+    dim = data.dims[0]
+
+    if offset == None:
+        offset = _np.max(data.abs)
+
+    offset_matrix = (
+        offset * _np.ones(coord.size).reshape(-1, 1) * _np.r_[0 : data.coords[1].size]
+    )
+
+    _plt.plot(coord, data.values + offset_matrix, *args, **kwargs)
+
+
+def waterfall(data, dx, dy, *args, **kwargs):
+    """Waterfall plot for 2d data
+
+    Args:
+        data (slData): 2d Data object for waterfall plot
+        dx (float, int): x-increment for each line
+        dy (float, int): y-increment for each line
+
+    Example::
+
+       sl.slResults.plt.figure()
+       sl.slResults.waterfall(data)
+       sl.slResults.plt.show()
+
+    """
+
+    coord = data.coords[0]
+    dim = data.dims[0]
+
+    for ix in range(data.coords[data.dims[1]].size):
+        _plt.plot(
+            coord + (ix * dx),
+            data[data.dims[1], ix].values.ravel() + (ix * dy),
+            *args,
+            **kwargs,
+            zorder=-1 * ix,
+        )
+        _plt.fill_between(
+            coord + (ix * dx),
+            data[data.dims[1], ix].values.ravel() + (ix * dy),
+            ix * dy,
+            facecolor="w",
+            edgecolor="None",
+            zorder=-1 * ix,
+        )
