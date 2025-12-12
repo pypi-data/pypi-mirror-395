@@ -1,0 +1,105 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "caema-utils"
+version = "0.1.3"
+description = "System Dependency Manager - A collection of reusable Python modules for AI services"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "CAEMA Solutions", email = "info@caema.com"}
+]
+maintainers = [
+    {name = "CAEMA Solutions", email = "info@caema.com"}
+]
+keywords = [
+    "pose-estimation",
+    "computer-vision",
+    "yolo",
+    "biomechanics",
+    "ai",
+    "utils"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+requires-python = ">=3.9"
+
+# Core dependencies (minimal - just for the base package)
+dependencies = []
+
+[project.optional-dependencies]
+# Pose estimation module dependencies
+pose = [
+    "numpy<2.0.0",
+    "ultralytics>=8.1.0",
+    "opencv-python-headless>=4.9.0",
+]
+# FastAPI server dependencies
+server = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "python-multipart>=0.0.6",
+]
+# All dependencies
+all = [
+    "caema-utils[pose,server]",
+]
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/msorozabal/Utils"
+Documentation = "https://github.com/msorozabal/Utils#readme"
+Repository = "https://github.com/msorozabal/Utils.git"
+Issues = "https://github.com/msorozabal/Utils/issues"
+
+[project.scripts]
+pose-server = "caema_utils.pose_estimation.server:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.pt", "*.yaml", "*.json"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I", "N", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=caema_utils --cov-report=term-missing"
