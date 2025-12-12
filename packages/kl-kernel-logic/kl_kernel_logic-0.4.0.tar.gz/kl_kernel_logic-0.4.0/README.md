@@ -1,0 +1,181 @@
+# KL Kernel Logic
+
+A small deterministic execution model core.
+
+KL Kernel Logic provides three components:
+
+- `PsiDefinition`: operation definition (what)
+- `Kernel`: atomic execution primitive (how)
+- `CAEL`: sequential behaviour order (in what order)
+
+It does not handle orchestration, governance, or policy. Those belong to higher layers.
+
+[![PyPI version](https://img.shields.io/pypi/v/kl-kernel-logic.svg)](https://pypi.org/project/kl-kernel-logic/)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+---
+
+## Version 0.4.0
+
+Version 0.4.0 represents a radical simplification of the core. The codebase has been reduced in three stages:
+
+- From approximately 2000 lines of code
+- To approximately 700 lines of core code
+- To the current **244 LOC** minimal core (psi.py, kernel.py, cael.py)
+
+This reduction reflects a move toward an axiomatic, minimal, stable substrate. The core now contains only what is necessary for the deterministic execution model and tracing.
+
+**KL Kernel Logic 0.4.0 is a minimal, stable core.**  
+The public API in `__init__.py` and the behaviour covered by the tests are considered frozen.
+
+---
+
+## Installation
+
+```bash
+pip install kl-kernel-logic
+```
+
+---
+
+## Core Concepts
+
+### PsiDefinition
+
+A minimal logical operation descriptor. The core treats `PsiDefinition` as opaque. It stores and passes through these values but never interprets them.
+
+```python
+PsiDefinition(
+    psi_type: str,
+    name: str,
+    metadata: Mapping[str, Any] | None = None,
+)
+```
+
+PsiDefinition metadata is purely descriptive and never enters the Kernel or the ExecutionTrace unless explicitly passed to `Kernel.execute()`.
+
+### Kernel
+
+A deterministic execution engine. Deterministic in its execution model, not in the behaviour of user-provided tasks. Given a `PsiDefinition` and a callable, the Kernel executes the task and returns an `ExecutionTrace`.
+
+Semantics:
+
+- `task` is called exactly once with `**kwargs`
+- `success` is `True` if and only if no exception is raised by `task`
+- `output` contains the return value on success, `None` on failure
+- `runtime_ms` is measured via a monotonic perf counter, always non-negative
+- `run_id` is unique per execution
+
+The Kernel never interprets metadata, never makes policy decisions, and never retries. Kernel implements Δ as atomicity of execution and observation, not as state change. State belongs to user logic.
+
+### ExecutionTrace
+
+Immutable record of a single Kernel execution.
+
+Fields:
+
+- `psi`: the PsiDefinition used
+- `run_id`: unique identifier for this execution
+- `success`: `True` if task completed without exception
+- `output`: return value of task (or `None` on failure)
+- `error`: exception message (or `None` on success)
+- `exception_type`: exception class name (or `None`)
+- `exception_repr`: repr of exception (or `None`)
+- `started_at`: UTC datetime when execution started (wall clock)
+- `finished_at`: UTC datetime when execution finished (wall clock)
+- `runtime_ms`: elapsed time in milliseconds (monotonic perf counter)
+- `metadata`: the metadata dict passed to `Kernel.execute()`, not from PsiDefinition
+
+Time carries two layers: observational wall-clock time (UTC timestamps) and monotonic duration (runtime_ms). runtime_ms provides a monotonic measure suitable for ordering and duration, independent of wall-clock adjustments.
+
+The core never mutates traces after creation.
+
+### CAEL
+
+Sequential Atomic Execution Layer. Runs a sequence of independent `(psi, task, kwargs)` steps via a single Kernel instance in deterministic order.
+
+Semantics:
+
+- Steps are executed in order
+- If a step fails, execution stops immediately
+- `CaelResult.success` is `True` if and only if all steps succeeded
+- `CaelResult.final_output` is the output of the last successful step, or `None` if the first step fails
+- `CaelResult.traces` is the ordered list of `ExecutionTrace` objects (only executed steps)
+
+CAEL does not pass output from one step to the next. Each step receives its own independent `kwargs`. It does not include retry logic, routing, or governance. CAEL establishes a total order over execution steps, independent of temporal measurements.
+
+---
+
+## Usage
+
+### Basic Kernel Execution
+
+```python
+from kl_kernel_logic import PsiDefinition, Kernel
+
+def uppercase(text: str) -> str:
+    return text.upper()
+
+psi = PsiDefinition(psi_type="text", name="uppercase")
+kernel = Kernel()
+
+trace = kernel.execute(psi=psi, task=uppercase, text="hello")
+
+print(trace.success)   # True
+print(trace.output)    # "HELLO"
+```
+
+### CAEL with Independent Steps
+
+```python
+from kl_kernel_logic import PsiDefinition, Kernel, CAEL
+
+def step_a() -> int:
+    return 10
+
+def step_b() -> int:
+    return 20
+
+psi_a = PsiDefinition(psi_type="math", name="first")
+psi_b = PsiDefinition(psi_type="math", name="second")
+
+cael = CAEL(kernel=Kernel())
+
+result = cael.run([
+    (psi_a, step_a, {}),
+    (psi_b, step_b, {}),
+])
+
+print(result.success)       # True
+print(result.final_output)  # 20
+print(len(result.traces))   # 2
+```
+
+---
+
+## Scope and Non-Goals
+
+This package does not handle:
+
+- Policy enforcement
+- Governance or access control
+- Rate limiting or quotas
+- Domain-specific logic
+- Retry or fallback strategies
+
+KL Kernel Logic is a small deterministic substrate. Higher layers (gateways, governance layers, orchestrators) build on top of it.
+
+---
+
+## KL Execution Theory
+
+KL Kernel Logic implements Δ (atomic transitions) and V (behaviour sequences) in their stateless form, and provides observable projections of t (logical order and duration). State transitions belong to higher layers or to user logic. G (governance) and L (boundaries) live in higher layers such as gateways or governance systems.
+
+→ [KL Execution Theory](https://github.com/lukaspfisterch/kl-execution-theory)
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
