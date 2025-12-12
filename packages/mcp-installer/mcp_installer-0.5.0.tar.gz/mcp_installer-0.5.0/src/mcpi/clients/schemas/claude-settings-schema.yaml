@@ -1,0 +1,206 @@
+# JSON Schema for Claude settings files (.claude/settings.json, .claude/settings.local.json)
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Claude Settings Schema"
+description: "Schema for Claude IDE settings configuration files"
+type: object
+
+properties:
+  # Editor settings
+  editor:
+    type: object
+    properties:
+      theme:
+        type: string
+        enum: ["light", "dark", "auto"]
+        default: "auto"
+      fontSize:
+        type: number
+        minimum: 8
+        maximum: 72
+        default: 14
+      fontFamily:
+        type: string
+        default: "Monaco, Menlo, 'Ubuntu Mono', monospace"
+      tabSize:
+        type: number
+        minimum: 1
+        maximum: 8
+        default: 2
+      wordWrap:
+        type: boolean
+        default: true
+      minimap:
+        type: boolean
+        default: true
+      lineNumbers:
+        type: boolean
+        default: true
+    additionalProperties: false
+
+  # MCP settings
+  mcp:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: "Enable MCP functionality"
+        default: true
+      serverTimeout:
+        type: number
+        description: "Default server timeout in seconds"
+        minimum: 0
+        default: 30
+      logLevel:
+        type: string
+        enum: ["debug", "info", "warn", "error"]
+        default: "info"
+      maxConcurrentServers:
+        type: number
+        minimum: 1
+        maximum: 50
+        default: 10
+    additionalProperties: false
+
+  # Project settings
+  projects:
+    type: object
+    description: "Per-project configuration overrides"
+    patternProperties:
+      ".*":
+        type: object
+        properties:
+          mcpServers:
+            type: object
+            description: "Project-specific MCP server overrides"
+            patternProperties:
+              "^[a-zA-Z0-9@/_.-]+$":
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    default: true
+                  priority:
+                    type: number
+                    default: 0
+                additionalProperties: false
+          editor:
+            type: object
+            description: "Project-specific editor settings"
+            # Reference to editor schema above
+            $ref: "#/properties/editor"
+        additionalProperties: false
+    additionalProperties: false
+
+  # Workspace settings
+  workspace:
+    type: object
+    properties:
+      autoSave:
+        type: boolean
+        default: true
+      autoSaveDelay:
+        type: number
+        minimum: 100
+        default: 1000
+      defaultLocation:
+        type: string
+        description: "Default workspace directory"
+      recentWorkspaces:
+        type: array
+        items:
+          type: string
+        maxItems: 20
+        default: []
+    additionalProperties: false
+
+  # AI settings
+  ai:
+    type: object
+    properties:
+      model:
+        type: string
+        description: "Default AI model to use"
+      temperature:
+        type: number
+        minimum: 0
+        maximum: 2
+        default: 0.7
+      maxTokens:
+        type: number
+        minimum: 1
+        default: 4000
+      contextWindow:
+        type: number
+        minimum: 1000
+        default: 200000
+    additionalProperties: false
+
+  # Extensions settings
+  extensions:
+    type: object
+    properties:
+      enabled:
+        type: array
+        items:
+          type: string
+        default: []
+      disabled:
+        type: array
+        items:
+          type: string
+        default: []
+      autoUpdate:
+        type: boolean
+        default: true
+    additionalProperties: false
+
+  # MCP Server control arrays (Claude's actual format)
+  enabledMcpjsonServers:
+    type: array
+    description: "Array of MCP server IDs that are enabled"
+    items:
+      type: string
+    default: []
+
+  disabledMcpjsonServers:
+    type: array
+    description: "Array of MCP server IDs that are disabled"
+    items:
+      type: string
+    default: []
+
+  # Permissions for MCP tools
+  permissions:
+    type: object
+    properties:
+      allow:
+        type: array
+        description: "Array of allowed MCP tool names"
+        items:
+          type: string
+        default: []
+    additionalProperties: false
+
+additionalProperties: true  # Allow additional settings for extensibility
+
+examples:
+  - editor:
+      theme: "dark"
+      fontSize: 16
+      tabSize: 4
+    mcp:
+      enabled: true
+      serverTimeout: 45
+      logLevel: "info"
+    projects:
+      "/path/to/project":
+        mcpServers:
+          local-server:
+            enabled: true
+            priority: 10
+    workspace:
+      autoSave: true
+      defaultLocation: "~/Projects"
+    ai:
+      model: "claude-3-5-sonnet-20241022"
+      temperature: 0.5

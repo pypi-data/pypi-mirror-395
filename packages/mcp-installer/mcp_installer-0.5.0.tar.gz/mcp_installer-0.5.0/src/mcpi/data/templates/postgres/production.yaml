@@ -1,0 +1,92 @@
+name: production
+description: "Production PostgreSQL with SSL connection"
+server_id: postgres
+scope: user-mcp
+priority: medium
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-postgres"
+  env: {}
+
+prompts:
+  - name: POSTGRES_HOST
+    description: "Database host (e.g., 'prod-db.example.com')"
+    type: string
+    required: true
+    validation_pattern: "^[a-zA-Z0-9.-]+$"
+
+  - name: POSTGRES_PORT
+    description: "Database port"
+    type: port
+    required: true
+    default: "5432"
+
+  - name: POSTGRES_DATABASE
+    description: "Database name"
+    type: string
+    required: true
+    validation_pattern: "^[a-zA-Z0-9_]+$"
+
+  - name: POSTGRES_USER
+    description: "Database username"
+    type: string
+    required: true
+    validation_pattern: "^[a-zA-Z0-9_]+$"
+
+  - name: POSTGRES_PASSWORD
+    description: "Database password"
+    type: secret
+    required: true
+
+  - name: POSTGRES_SSL_MODE
+    description: "SSL mode (require, verify-ca, verify-full, prefer, disable)"
+    type: string
+    required: true
+    default: "require"
+    validation_pattern: "^(require|verify-ca|verify-full|prefer|disable)$"
+
+# Template discovery metadata
+best_for:
+  - production
+  - remote-database
+  - ssl-required
+  - cloud-hosted
+
+keywords:
+  - production
+  - ssl
+  - secure
+  - remote
+  - cloud
+
+notes: |
+  This template creates a secure PostgreSQL connection for production databases.
+
+  Connection URL format:
+    postgresql://user:password@host:port/database?sslmode=MODE
+
+  SSL modes (in order of security):
+    - disable: No SSL (NOT recommended for production)
+    - prefer: Use SSL if available, but allow non-SSL
+    - require: Require SSL, but don't verify server certificate
+    - verify-ca: Require SSL and verify server certificate
+    - verify-full: Require SSL and verify server hostname
+
+  Recommended for production: require or verify-full
+
+  Security best practices:
+    - Use strong passwords
+    - Enable SSL (sslmode=require minimum)
+    - Use read-only database users when possible
+    - Restrict network access with firewalls
+    - Rotate credentials regularly
+
+  Example connection URLs:
+    - postgresql://app_user:SecurePass123@prod-db.example.com:5432/myapp?sslmode=require
+    - postgresql://readonly:pass@db.internal:5432/analytics?sslmode=verify-full
+
+  Note: This server provides read-only access to PostgreSQL for safety.
+  Write operations are not supported by the MCP server.

@@ -1,0 +1,53 @@
+name: local-development
+description: "Local PostgreSQL database for development"
+server_id: postgres
+scope: user-mcp
+priority: high
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-postgres"
+  env: {}
+
+prompts:
+  - name: POSTGRES_DATABASE
+    description: "Database name to connect to (e.g., 'myapp_dev')"
+    type: string
+    required: true
+    default: "postgres"
+    validation_pattern: "^[a-zA-Z0-9_]+$"
+
+  - name: POSTGRES_USER
+    description: "Database username (leave empty for peer authentication)"
+    type: string
+    required: false
+    default: ""
+    validation_pattern: "^[a-zA-Z0-9_]*$"
+
+# Template discovery metadata
+best_for:
+  - local-development
+  - native-postgres
+  - peer-auth
+  - no-docker
+
+keywords:
+  - local
+  - development
+  - postgresql
+  - native
+  - peer-authentication
+
+notes: |
+  This template creates a PostgreSQL connection URL for local development.
+
+  Connection URL format: postgresql://[user@]localhost/database
+
+  If you leave the username empty, PostgreSQL will use peer authentication
+  (your OS username). This is common for local development on macOS/Linux.
+
+  Examples:
+    - postgresql://localhost/myapp_dev (peer auth)
+    - postgresql://myuser@localhost/myapp_dev (with username)

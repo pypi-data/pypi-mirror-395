@@ -1,0 +1,65 @@
+name: public-repos
+description: "Access to public repositories only (minimal permissions)"
+server_id: github
+scope: user-mcp
+priority: low
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-github"
+  env: {}
+
+prompts:
+  - name: GITHUB_PERSONAL_ACCESS_TOKEN
+    description: "GitHub Personal Access Token with only 'public_repo' scope (get from https://github.com/settings/tokens)"
+    type: secret
+    required: true
+    validation_pattern: "^(ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{82})$"
+
+notes: |
+  This template provides minimal permissions for public repositories only.
+
+  To create a public-only Personal Access Token:
+    1. Go to: https://github.com/settings/tokens
+    2. Click "Generate new token" → "Generate new token (classic)"
+    3. Give it a descriptive name (e.g., "MCP Public Repos")
+    4. Select only one scope:
+       - ✓ public_repo (Access public repositories)
+    5. Click "Generate token" and copy it immediately
+
+  What you CAN do:
+    - Read public repositories
+    - Browse code in public repos
+    - Read public issues and pull requests
+    - View public repository information
+
+  What you CANNOT do:
+    - Access private repositories
+    - Access organization information
+    - Create/modify/delete anything
+    - Fork repositories
+    - Create issues or pull requests
+
+  Comparison with other GitHub templates:
+    - personal-full-access: Full control of private + public repos
+    - read-only: Read access to public repos + org info
+    - public-repos (this): Minimal access to public repos only
+
+  Security benefits:
+    - Most restrictive GitHub template
+    - Safe for public code exploration
+    - No access to private data
+    - No write permissions at all
+    - Minimal risk if token is compromised
+
+  Use cases:
+    - Exploring open source projects
+    - Learning from public code
+    - Contributing to public repos (read-only research)
+    - Maximum security with minimal permissions
+
+  Note: For contributing to open source (creating PRs), you'll need
+  at least 'public_repo' with write access or the 'repo' scope.
+  This template is strictly read-only for exploration.

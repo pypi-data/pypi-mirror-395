@@ -1,0 +1,66 @@
+# JSON Schema for MCP configuration files (.mcp.json, ~/.claude/mcp_servers.json)
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "MCP Configuration Schema"
+description: "Schema for Model Context Protocol server configuration files"
+type: object
+
+properties:
+  mcpServers:
+    type: object
+    description: "Dictionary of MCP server configurations"
+    patternProperties:
+      "^[a-zA-Z0-9@/_.-]+$":
+        type: object
+        description: "MCP server configuration"
+        properties:
+          command:
+            type: string
+            description: "Command to execute the MCP server"
+            minLength: 1
+          args:
+            type: array
+            description: "Arguments to pass to the server command"
+            items:
+              type: string
+            default: []
+          env:
+            type: object
+            description: "Environment variables for the server"
+            additionalProperties:
+              type: string
+            default: {}
+          type:
+            type: string
+            description: "Server communication type"
+            enum: ["stdio", "websocket", "http"]
+            default: "stdio"
+          cwd:
+            type: string
+            description: "Working directory for the server process"
+          disabled:
+            type: boolean
+            description: "Whether the server is disabled"
+            default: false
+          timeout:
+            type: number
+            description: "Server startup timeout in seconds"
+            minimum: 0
+            default: 30
+        required: ["command"]
+        additionalProperties: false
+    additionalProperties: false
+
+additionalProperties: false
+
+examples:
+  - mcpServers:
+      filesystem:
+        command: "npx"
+        args: ["@modelcontextprotocol/server-filesystem", "/path/to/files"]
+        type: "stdio"
+      sqlite:
+        command: "python"
+        args: ["-m", "mcp_server_sqlite", "database.db"]
+        env:
+          DATABASE_URL: "sqlite:///database.db"
+        type: "stdio"

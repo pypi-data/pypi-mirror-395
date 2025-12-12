@@ -1,0 +1,63 @@
+name: project-files
+description: "Access to current project directory only (safest option)"
+server_id: filesystem
+scope: project-mcp
+priority: high
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-filesystem"
+  env: {}
+
+prompts:
+  - name: PROJECT_DIRECTORY
+    description: "Absolute path to your project directory (e.g., '/Users/username/myproject')"
+    type: path
+    required: true
+    validation_pattern: "^(/[^/]+)+/?$"
+
+notes: |
+  This template provides access to a single project directory.
+
+  Security considerations:
+    - ✓ Safest option: limits AI access to one project
+    - ✓ Prevents accidental access to system files
+    - ✓ Ideal for project-specific work
+
+  The path must be absolute (start with /).
+
+  Examples:
+    - /Users/username/Documents/myproject
+    - /home/username/code/webapp
+    - /Users/username/Desktop/demo
+
+  For VS Code / Claude Code integration:
+    You can use ${workspaceFolder} in the client configuration,
+    but when using this template, provide the actual path.
+
+  What the AI can do:
+    - Read files in the directory
+    - Write/edit files in the directory
+    - Create/delete files in the directory
+    - List directory contents
+    - Navigate subdirectories
+
+  What the AI cannot do:
+    - Access files outside this directory
+    - Access parent directories
+    - Access system files
+
+# Template discovery metadata
+best_for:
+  - project-files
+  - local-filesystem
+  - file-management
+
+keywords:
+  - filesystem
+  - files
+  - project
+  - local
+  - directory

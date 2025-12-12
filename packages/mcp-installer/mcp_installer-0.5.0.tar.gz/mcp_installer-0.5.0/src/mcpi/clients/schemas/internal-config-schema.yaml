@@ -1,0 +1,216 @@
+# JSON Schema for Claude internal configuration file (~/.claude.json)
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Claude Internal Configuration Schema"
+description: "Schema for Claude IDE internal configuration and state"
+type: object
+
+properties:
+  # Installation metadata
+  installation:
+    type: object
+    properties:
+      version:
+        type: string
+        description: "Claude IDE version"
+        pattern: "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?$"
+      installDate:
+        type: string
+        format: "date-time"
+        description: "Installation date in ISO 8601 format"
+      updateChannel:
+        type: string
+        enum: ["stable", "beta", "alpha"]
+        default: "stable"
+      autoUpdate:
+        type: boolean
+        default: true
+    additionalProperties: false
+
+  # User identification
+  user:
+    type: object
+    properties:
+      id:
+        type: string
+        description: "Unique user identifier"
+      email:
+        type: string
+        format: "email"
+        description: "User email address"
+      name:
+        type: string
+        description: "User display name"
+      subscription:
+        type: string
+        enum: ["free", "pro", "team", "enterprise"]
+        default: "free"
+    additionalProperties: false
+
+  # Authentication and session
+  auth:
+    type: object
+    properties:
+      token:
+        type: string
+        description: "Authentication token (encrypted)"
+      refreshToken:
+        type: string
+        description: "Refresh token (encrypted)"
+      tokenExpiry:
+        type: string
+        format: "date-time"
+        description: "Token expiration date"
+      sessionId:
+        type: string
+        description: "Current session identifier"
+    additionalProperties: false
+
+  # Application state
+  state:
+    type: object
+    properties:
+      lastLaunched:
+        type: string
+        format: "date-time"
+        description: "Last application launch time"
+      windowGeometry:
+        type: object
+        properties:
+          x:
+            type: number
+          y:
+            type: number
+          width:
+            type: number
+            minimum: 200
+          height:
+            type: number
+            minimum: 200
+          maximized:
+            type: boolean
+            default: false
+        additionalProperties: false
+      activeProject:
+        type: string
+        description: "Path to currently active project"
+      recentFiles:
+        type: array
+        items:
+          type: string
+        maxItems: 50
+        default: []
+    additionalProperties: false
+
+  # Feature flags and experiments
+  features:
+    type: object
+    properties:
+      enableExperimentalFeatures:
+        type: boolean
+        default: false
+      enableTelemetry:
+        type: boolean
+        default: true
+      enableCrashReports:
+        type: boolean
+        default: true
+      betaFeatures:
+        type: array
+        items:
+          type: string
+        default: []
+    additionalProperties: false
+
+  # Performance and diagnostics
+  diagnostics:
+    type: object
+    properties:
+      enablePerformanceMonitoring:
+        type: boolean
+        default: false
+      enableDebugLogging:
+        type: boolean
+        default: false
+      logLevel:
+        type: string
+        enum: ["trace", "debug", "info", "warn", "error", "fatal"]
+        default: "info"
+      maxLogFileSize:
+        type: number
+        minimum: 1048576  # 1MB
+        default: 10485760  # 10MB
+    additionalProperties: false
+
+  # Backup and sync
+  sync:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        default: true
+      provider:
+        type: string
+        enum: ["claude-cloud", "icloud", "none"]
+        default: "claude-cloud"
+      lastSync:
+        type: string
+        format: "date-time"
+        description: "Last synchronization time"
+      autoSync:
+        type: boolean
+        default: true
+      syncInterval:
+        type: number
+        minimum: 300  # 5 minutes
+        default: 3600  # 1 hour
+    additionalProperties: false
+
+  # Security settings
+  security:
+    type: object
+    properties:
+      encryptionEnabled:
+        type: boolean
+        default: true
+      biometricAuth:
+        type: boolean
+        default: false
+      sessionTimeout:
+        type: number
+        minimum: 900  # 15 minutes
+        default: 28800  # 8 hours
+      requireAuthOnWake:
+        type: boolean
+        default: false
+    additionalProperties: false
+
+additionalProperties: true  # Allow for future extensibility
+
+examples:
+  - installation:
+      version: "1.0.0"
+      installDate: "2024-01-01T00:00:00Z"
+      updateChannel: "stable"
+      autoUpdate: true
+    user:
+      id: "user_12345"
+      email: "user@example.com"
+      name: "John Doe"
+      subscription: "pro"
+    state:
+      lastLaunched: "2024-01-15T10:30:00Z"
+      windowGeometry:
+        x: 100
+        y: 100
+        width: 1200
+        height: 800
+        maximized: false
+      activeProject: "/Users/john/projects/my-app"
+    features:
+      enableExperimentalFeatures: false
+      enableTelemetry: true
+      betaFeatures: ["new-editor", "ai-autocomplete"]
+    sync:
+      enabled: true
+      provider: "claude-cloud"
+      autoSync: true
