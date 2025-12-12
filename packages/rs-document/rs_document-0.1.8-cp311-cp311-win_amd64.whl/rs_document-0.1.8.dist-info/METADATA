@@ -1,0 +1,149 @@
+Metadata-Version: 2.4
+Name: rs_document
+Version: 0.1.8
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Rust
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Text Processing
+Classifier: Topic :: Text Processing :: Filters
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: pytest>=7.0.0 ; extra == 'test'
+Requires-Dist: pytest-cov>=4.0.0 ; extra == 'test'
+Requires-Dist: langchain-text-splitters>=0.0.1 ; extra == 'test'
+Requires-Dist: hypothesis>=6.148.1 ; extra == 'test'
+Requires-Dist: pytest>=7.0.0 ; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0 ; extra == 'dev'
+Requires-Dist: langchain-text-splitters>=0.0.1 ; extra == 'dev'
+Requires-Dist: ruff>=0.1.0 ; extra == 'dev'
+Requires-Dist: nox>=2023.4.0 ; extra == 'dev'
+Requires-Dist: prek>=0.2.0 ; extra == 'dev'
+Provides-Extra: test
+Provides-Extra: dev
+License-File: LICENSE.md
+Summary: High-performance Rust implementation of LangChain's Document model and Unstructured.io's text cleaners for RAG applications
+Keywords: LangChain,Document,cleanup,splitter,rust,maturin,pyo3,RAG,Unstructured,text-processing,performance,parallel
+Author-email: Cam Barts <cam@coder.cam>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: homepage, https://github.com/cam-barts/rs_document
+Project-URL: documentation, https://cam-barts.github.io/rs_document
+Project-URL: repository, https://github.com/cam-barts/rs_document
+Project-URL: changelog, https://github.com/cam-barts/rs_document/blob/main/CHANGELOG.md
+Project-URL: Issue Tracker, https://github.com/cam-barts/rs_document/issues
+
+# RS Document
+
+A high-performance Rust implementation of LangChain's Document model and
+Unstructured.io's text cleaners, providing 15-75x performance improvements for
+RAG applications.
+
+## Quick Links
+
+📚 **[Full Documentation](https://cam-barts.github.io/rs_document)** -
+Visit our documentation site for detailed guides
+
+## Installation
+
+```sh
+pip install rs-document
+```
+
+## Quick Start
+
+```python
+from rs_document import Document, clean_and_split_docs
+
+# Create a document
+content = "A" * 4000
+doc = Document(page_content=content, metadata={"source": "example"})
+
+# Run all cleaners
+doc.clean()
+
+# Split document into chunks
+chunks = doc.recursive_character_splitter(1000)
+```
+
+## Key Features
+
+- **20-25x speedup** over pure Python implementations
+- **~23,000 documents/second** processing speed
+- Full compatibility with LangChain's Document model
+- Reimplemented Unstructured.io text cleaners
+- Parallel document processing with Rayon
+
+## Performance
+
+Testing shows that cleaning and splitting documents with the Rust
+implementation provides:
+
+- **20-25x speedup** over pure Python (LangChain + Unstructured.io)
+- **~23,000 documents per second** processing speed
+- Consistent performance across dataset sizes
+
+## Documentation
+
+- [Full Documentation](https://cam-barts.github.io/rs_document) - Complete guides and API reference
+- [Tutorial](https://github.com/cam-barts/rs_document/blob/main/docs/tutorial/index.md) - Get started with rs_document
+- [How-To Guides](https://github.com/cam-barts/rs_document/blob/main/docs/how-to/index.md) - Task-oriented guides
+- [API Reference](https://github.com/cam-barts/rs_document/blob/main/docs/reference/index.md) - Complete API documentation
+- [License](https://github.com/cam-barts/rs_document/blob/main/LICENSE.md) - Project license
+
+## Development
+
+```bash
+# Install uv for fast package management
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Set up development environment
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+
+# Build the Rust extension
+maturin develop
+
+# Run tests
+nox -c dev/noxfile.py
+```
+
+## Attribution & Credits
+
+This project builds upon and is inspired by the following open source projects:
+
+### LangChain
+
+- **Source**: <https://github.com/langchain-ai/langchain>
+- **Author**: LangChain AI
+- **License**: MIT
+- **Usage**: The Document class is designed to be compatible with LangChain's Document model. The recursive character splitter is based on LangChain's RecursiveCharacterTextSplitter algorithm, reimplemented in Rust for performance.
+
+### Unstructured.io
+
+- **Source**: <https://github.com/Unstructured-IO/unstructured>
+- **Author**: Unstructured Technologies, Inc.
+- **License**: Apache 2.0
+- **Usage**: The text cleaning functions are Rust reimplementations of Unstructured.io's post-processor cleaners, maintaining compatible behavior while providing significant performance improvements.
+
+### Diataxis
+
+- **Source**: <https://diataxis.fr>
+- **Author**: Daniele Procida
+- **License**: Creative Commons
+- **Usage**: Documentation structure follows the Diataxis framework for organizing technical documentation into tutorials, how-to guides, reference, and explanation sections.
+
+## License
+
+See LICENSE.md for details.
+
