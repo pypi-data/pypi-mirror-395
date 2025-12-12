@@ -1,0 +1,165 @@
+import numpy as np
+from numpy.typing import NDArray
+
+
+def compute_intermediates(
+    groundtruths: NDArray[np.bool_],
+    predictions: NDArray[np.bool_],
+    groundtruth_labels: NDArray[np.int64],
+    prediction_labels: NDArray[np.int64],
+    n_labels: int,
+) -> NDArray[np.uint64]:
+    """
+    Computes an intermediate confusion matrix containing label counts.
+
+    Parameters
+    ----------
+    groundtruths : NDArray[np.bool_]
+        A 2-D array containing flattened bitmasks for each label.
+    predictions : NDArray[np.bool_]
+        A 2-D array containing flattened bitmasks for each label.
+    groundtruth_labels : NDArray[np.int64]
+        A 1-D array containing ground truth label indices.
+    prediction_labels : NDArray[np.int64]
+        A 1-D array containing prediction label indices.
+    n_labels : int
+        The number of unique labels.
+
+    Returns
+    -------
+    NDArray[np.uint64]
+        A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
+    """
+
+    groundtruth_counts = groundtruths.sum(axis=1)
+    prediction_counts = predictions.sum(axis=1)
+
+    background_counts = np.logical_not(
+        groundtruths.any(axis=0) | predictions.any(axis=0)
+    ).sum()
+
+    intersection_counts = np.logical_and(
+        groundtruths[:, None, :],
+        predictions[None, :, :],
+    ).sum(axis=2)
+    intersected_groundtruth_counts = intersection_counts.sum(axis=1)
+    intersected_prediction_counts = intersection_counts.sum(axis=0)
+
+    confusion_matrix = np.zeros((n_labels + 1, n_labels + 1), dtype=np.uint64)
+    confusion_matrix[0, 0] = background_counts
+    confusion_matrix[
+        np.ix_(groundtruth_labels + 1, prediction_labels + 1)
+    ] = intersection_counts
+    confusion_matrix[0, prediction_labels + 1] = (
+        prediction_counts - intersected_prediction_counts
+    )
+    confusion_matrix[groundtruth_labels + 1, 0] = (
+        groundtruth_counts - intersected_groundtruth_counts
+    )
+    return confusion_matrix
+
+
+def compute_metrics(
+    confusion_matrix: NDArray[np.uint64],
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    float,
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
+    """
+    Computes semantic segmentation metrics.
+
+    Parameters
+    ----------
+    counts : NDArray[np.uint64]
+        A 2-D confusion matrix with shape (n_labels + 1, n_labels + 1).
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Precision.
+    NDArray[np.float64]
+        Recall.
+    NDArray[np.float64]
+        F1 Score.
+    float
+        Accuracy
+    NDArray[np.float64]
+        Confusion matrix containing IOU values.
+    NDArray[np.float64]
+        Unmatched prediction ratios.
+    NDArray[np.float64]
+        Unmatched ground truth ratios.
+    """
+    n_labels = confusion_matrix.shape[0] - 1
+    n_pixels = confusion_matrix.sum()
+    gt_counts = confusion_matrix[1:, :].sum(axis=1)
+    pd_counts = confusion_matrix[:, 1:].sum(axis=0)
+
+    # compute iou, unmatched_ground_truth and unmatched predictions
+    intersection_ = confusion_matrix[1:, 1:]
+    union_ = (
+        gt_counts[:, np.newaxis] + pd_counts[np.newaxis, :] - intersection_
+    )
+
+    ious = np.zeros((n_labels, n_labels), dtype=np.float64)
+    np.divide(
+        intersection_,
+        union_,
+        where=union_ > 1e-9,
+        out=ious,
+    )
+
+    unmatched_prediction_ratio = np.zeros((n_labels), dtype=np.float64)
+    np.divide(
+        confusion_matrix[0, 1:],
+        pd_counts,
+        where=pd_counts > 1e-9,
+        out=unmatched_prediction_ratio,
+    )
+
+    unmatched_ground_truth_ratio = np.zeros((n_labels), dtype=np.float64)
+    np.divide(
+        confusion_matrix[1:, 0],
+        gt_counts,
+        where=gt_counts > 1e-9,
+        out=unmatched_ground_truth_ratio,
+    )
+
+    # compute precision, recall, f1
+    tp_counts = confusion_matrix.diagonal()[1:]
+
+    precision = np.zeros(n_labels, dtype=np.float64)
+    np.divide(tp_counts, pd_counts, where=pd_counts > 1e-9, out=precision)
+
+    recall = np.zeros_like(precision)
+    np.divide(tp_counts, gt_counts, where=gt_counts > 1e-9, out=recall)
+
+    f1_score = np.zeros_like(precision)
+    np.divide(
+        2 * (precision * recall),
+        (precision + recall),
+        where=(precision + recall) > 0,
+        out=f1_score,
+    )
+
+    # compute accuracy
+    tp_count = confusion_matrix[1:, 1:].diagonal().sum()
+    background_count = confusion_matrix[0, 0]
+    accuracy = (
+        (tp_count + background_count) / n_pixels if n_pixels > 0 else 0.0
+    )
+
+    return (
+        precision,
+        recall,
+        f1_score,
+        accuracy,
+        ious,
+        unmatched_prediction_ratio,
+        unmatched_ground_truth_ratio,
+    )
