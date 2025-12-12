@@ -1,0 +1,61 @@
+[project]
+name = "iceberg-mcp-server"
+version = "0.1.8"
+description = "MCP Server for Apache Iceberg"
+readme = "README.md"
+license = "MPL-2.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+]
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb",
+    "fastexcel",
+    "fastmcp",
+    "polars",
+    "pyarrow",
+    "pydantic",
+    "pyiceberg[duckdb,polars,pyarrow,pyiceberg-core]",
+    "sentry-sdk",
+]
+
+[project.urls]
+homepage = "https://pypi.org/project/iceberg-mcp-server/"
+source = "https://github.com/dragonejt/iceberg-mcp-server.git"
+issues = "https://github.com/dragonejt/iceberg-mcp-server/issues"
+documentation = "https://github.com/dragonejt/iceberg-mcp-server/wiki"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "ty",
+]
+
+[project.scripts]
+iceberg-mcp-server = "src.iceberg:main"
+
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "src"
+module-root = "."
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "PL",  # pylint
+    "I",   # isort
+    "C90", # mccabe
+    "FAST" # fastmcp
+]
