@@ -1,0 +1,72 @@
+[project]
+name = "carrot_transform"
+version = "0.6.1"
+description = ""
+authors = [{ name = "anwarfg", email = "913028+anwarfg@users.noreply.github.com" }]
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "awscli>=1.42.74",
+    "boto3>=1.40.74",
+    "click>=8.1.7,<9",
+    "psycopg2-binary>=2.9.10",
+    "sqlalchemy>=2.0.42",
+    "trino>=0.335.0",
+]
+license = "MIT"
+
+
+
+[project.scripts]
+carrot-transform = "carrottransform.cli.command:transform"
+
+[dependency-groups]
+test = [
+    "pytest>=8.3.4,<9",
+    "coverage>=7.10.3",
+]
+dev = [
+    "boto3-stubs>=1.40.74",
+    "build>=1.2.2.post1",
+    "mypy>=1.18.1",
+    "ruff>=0.12.0",
+]
+
+[tool.uv]
+default-groups = [
+    "test",
+    "dev",
+]
+
+[tool.hatch.build]
+include = [
+  "LICENSE",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["carrottransform"]
+
+[tool.hatch.build.targets.wheel]
+include = ["carrottransform"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: marks tests as unit tests (deselect with '-m \"not unit\"')",
+    "integration: marks integration tests",
+    "docker: marks tests to run against the docker container",
+    "s3tests: marks tests that require s3 credentials and quotas",
+]
+
+# not all platforms have docker and s3 creds, so, don't run the docker tests by default
+# ... you can run them with `λ uv run pytest -m 'not docker and not s3tests'`
+addopts = "-m 'not docker and not s3tests'"
+
+
+
+[[tool.mypy.overrides]]
+module = "trino.*"
+ignore_missing_imports = true
