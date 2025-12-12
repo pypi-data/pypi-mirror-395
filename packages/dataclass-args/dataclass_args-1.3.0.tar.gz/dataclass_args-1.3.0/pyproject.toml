@@ -1,0 +1,177 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dataclass-args"
+version = "1.3.0"
+description = "Zero-boilerplate CLI generation from Python dataclasses with advanced type support and file loading"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Martin Bartlett", email = "martin.j.bartlett@gmail.com"},
+]
+keywords = [
+    "cli",
+    "dataclass",
+    "argparse",
+    "configuration",
+    "command-line",
+    "type-safe",
+    "validation",
+    "file-loading",
+    "config-merging"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "typing-extensions>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "flake8>=6.0.0",
+    "bandit>=1.7.0",
+    "types-PyYAML>=6.0.0",
+]
+yaml = [
+    "PyYAML>=6.0",
+]
+toml = [
+    "tomli>=2.0.0;python_version<'3.11'",
+]
+validation = [
+    "pydantic>=2.0",
+]
+all = [
+    "dataclass-args[yaml,toml,validation]",
+]
+
+[project.urls]
+Homepage = "https://github.com/bassmanitram/dataclass-args"
+Repository = "https://github.com/bassmanitram/dataclass-args"
+Documentation = "https://github.com/bassmanitram/dataclass-args#readme"
+Issues = "https://github.com/bassmanitram/dataclass-args/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dataclass_args*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "unit: Unit tests that test individual components in isolation",
+    "integration: Integration tests that test component interactions",
+]
+addopts = [
+    "--cov=dataclass_args",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=90",
+]
+
+[tool.coverage.run]
+source = ["dataclass_args"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+    "*/examples/*",
+]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["dataclass_args"]
+
+[tool.mypy]
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+no_implicit_optional = false
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503", "F401", "F541"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "examples"]
+skips = ["B101"]
