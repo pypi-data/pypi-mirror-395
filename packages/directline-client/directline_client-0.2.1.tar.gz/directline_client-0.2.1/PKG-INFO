@@ -1,0 +1,328 @@
+Metadata-Version: 2.4
+Name: directline_client
+Version: 0.2.1
+Summary: A Python library intended to facilitate the use of Copilot Studio agents through code.
+Author-email: Abel Soto Valdez <abelsotovaldez@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/Niels-Bored/Directline-Client
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests==2.32.5
+Dynamic: license-file
+
+
+  
+
+## DirectLine Client
+
+  
+
+Direct Line is the REST API used to communicate directly with Copilot Studio bots from external applications, so this library is intended to facilitate its use in Python.
+
+  
+
+### Installation
+
+You can install this library through pip.
+
+```bash
+
+  
+
+pip  install  directline-client
+
+  
+
+```
+
+### Quickstart
+
+  
+
+```python
+
+from directline_client import DirectLineClient
+
+  
+
+client = DirectLineClient(secret="YOUR_SECRET_KEY")
+
+print(client.call_llm("Hello!"))
+
+```
+
+### Features
+
+  
+
+- Start new conversations
+
+- Maintain conversation context automatically
+
+- Simple text generation through `.call_llm()` method
+
+  
+
+### Import DirectLineClient class
+
+  
+
+First, you'll need to import the DirectLineClient class to instantiate an object.
+
+  
+
+```python
+
+  
+
+from directline_client import DirectLineClient
+
+  
+
+```
+
+  
+
+  
+
+### How to use DirectLineClient class
+
+  
+
+To use a Copilot Studio model through Direct Line Client, it's necessary to get your secret key.
+
+  
+
+
+#### Parameters
+
+-   **secret** (_str_, optional):  
+    Direct Line secret used for authentication.
+    
+-   **endpoint** (_str_, optional):  
+    Base Direct Line API endpoint.  
+    **Default:** `"https://directline.botframework.com/v3/directline"`
+    
+-   **user_name** (_str_, optional):  
+    Display name to associate with user messages.  
+    **Default:** `"PythonUser"`
+
+  
+
+#### Attributes
+
+- **secret** (str): Authentication secret.
+
+- **endpoint** (str): Target Direct Line endpoint.
+
+- **user_id** (str): Randomly generated unique identifier for the client.
+
+- **conversation_id** (str | None): ID of the active conversation.
+
+- **watermark** (str): Tracks last processed bot message.
+
+- **headers** (dict): Authorization header for Direct Line.
+
+- **user_name** (str): User display name.
+
+#### Methods
+
+### `start_conversation() -> str | None`
+
+Starts a new Direct Line conversation.
+
+**Returns**
+
+-   `str | None`: The created conversation ID, or `None` if the request fails or no secret is provided.
+    
+
+Initializes internal state such as `conversation_id` and resets the watermark.
+
+----------
+
+### `send_message(conversation_id: str, message_text: str) -> bool`
+
+Sends a text message to the bot within an existing conversation.
+
+**Parameters**
+
+-   **conversation_id** (`str`): Conversation identifier returned from `start_conversation()`.
+    
+-   **message_text** (`str`): Text message to send.
+    
+
+**Returns**
+
+-   `bool`: `True` if the message is sent successfully, otherwise `False`.
+    
+
+----------
+
+### `poll_responses(conversation_id: str, since_watermark: str = "0") -> (list[str], str)`
+
+Retrieves bot messages that have appeared since the last known watermark.
+
+**Parameters**
+
+-   **conversation_id** (`str`): The active Direct Line conversation ID.
+    
+-   **since_watermark** (`str`, optional): The last processed watermark.
+    
+
+**Returns**
+
+-   `(list[str], str)`:
+    
+    -   A list of new bot message strings.
+        
+    -   The updated watermark for future polling.
+        
+
+Only messages not sent by the client user are returned.
+
+----------
+
+### `call_llm(prompt: str, timeout: int = 30, poll_interval: float = 1.0) -> str`
+
+High-level convenience method that sends a prompt to the bot and waits for a reply, simulating a standard LLM call.
+
+**Parameters**
+
+-   **prompt** (`str`): Prompt or query to send.
+    
+-   **timeout** (`int`, optional): Maximum wait time (seconds) for any bot response.
+    
+-   **poll_interval** (`float`, optional): Time (seconds) to wait between polling cycles.
+    
+
+**Returns**
+
+-   `str`: The concatenated bot response text, or an error/timeout message if no response is received.
+    
+
+Automatically starts a conversation if needed, sends the prompt, polls until a response arrives, and updates the internal watermark.
+
+#### How to get your Copilot Studio Secret Key
+
+  
+
+-   **Open Copilot Studio** and select the agent you want to work with.
+    
+-   Go to the **Security** section, choose **Authentication**, and click **Authenticate with Microsoft**.
+    
+-   Return to the **Security** section and open **Web Channel Security**. Copy one of the available secret keys.
+    
+-   **Publish the agent** to make your changes live.
+
+  
+
+#### Instantiate the object
+
+  
+
+Once you have your secret key, you'll be able to instantiate a DirectLineClient object.
+
+  
+
+  
+
+```python
+
+  
+
+client = DirectLineClient(secret=YOUR_SECRET_KEY)
+
+  
+
+```
+
+  
+
+### Usage Example
+
+  
+
+To use your Copilot Studio agent and generate text from a prompt, call it like this:
+
+  
+
+  
+
+```python
+
+  
+
+response = client.call_llm("Hello bot!")
+
+  
+
+```
+
+  
+
+`call_llm()` returns a simple string with the model response.
+
+  
+
+  
+
+### Follow Up Conversations
+
+  
+
+  
+
+DirectLineClient automatically creates a conversation_id that allows you to continue a specific conversation, but you can start a new one anytime. To start a new conversation flow you just call `start_conversation()`.
+
+  
+
+`start_conversation()` resets the current conversation by requesting a new `conversationId` from the Direct Line API. The next `call_llm()` call will begin a fresh thread.
+
+  
+
+```python
+
+response = client.call_llm("How many states are there in the USA?")
+
+  
+
+print(response)
+
+  
+
+# The United States has 50 states.
+
+  
+
+response = client.call_llm("Now, how many of them begin with the letter A?")
+
+  
+
+print(response)
+
+  
+
+# Four U.S. states begin with the letter A: Alabama, Alaska, Arizona, and Arkansas.
+
+  
+
+client.start_conversation()
+
+  
+
+response = client.call_llm("Now, how many of them begin with the letter A?")
+
+  
+
+print(response)
+
+  
+
+# There are five elements that begin with the letter A: Actinium, Aluminum, Americium, Antimony, and Argon. If you need information about any of them, let me know.
+
+```
+
+  
+
+**Note:** The client preserves context **as long as the conversationId remains active**.
