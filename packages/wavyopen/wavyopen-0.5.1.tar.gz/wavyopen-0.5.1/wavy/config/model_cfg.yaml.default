@@ -1,0 +1,280 @@
+--- # wave model specifications
+
+########################################################################
+# """
+# general structure:
+#   + model
+#       + specs
+#           + subspecs
+#                + subsubspecs
+# """
+
+# define model after the following example:
+# modelname:
+#    vardef:
+#        Hs: # varname in your model output file
+#        Mdir:
+#            convention: # e.g. oceanographic
+#        ...
+#    coords:
+#    wavy_input:
+#    reader:
+#    collector:
+#    misc:
+#    	xtra_h: # h adjustment according to position in filename
+#    	lt_switch_f: # should lead time be used for filedate [False/True]
+#   	lt_switch_p: # should lead time be used for pathdate [False/True]
+#    	nr_filedates: # how many dates are introduced in the filename
+#    	filedate_formats: # time string format e.g. %Y%m%d
+#    	init_times: # UTC hours of model initialization
+#    	init_step: # hours between model initialization
+#    	leadtimes: # if desired
+#    	grid_date: # date and time of a model run you know exists
+#    	date_incr_unit:
+#    	date_incr:
+#    proj4: # proj string to be read if not available in model output
+#    tags:
+########################################################################
+
+ARCMFC3:
+    vardef:
+        Hs: VHM0
+        Tp: VTPK
+        Tm02: VTM02
+        Mdir: VMDR
+        Pdir: VPED
+        time: time
+        lons: lon
+        lats: lat
+    coords:
+    wavy_input:
+        src_tmplt: "https://thredds.met.no/thredds/dodsC/cmems/mywavewam3km_files/%Y/%m/"
+        # Best guess: 2019071500_MyWaveWam3_b20190715T06.nc
+        # - This is actually 2019071500_*_b20190715T00* but due
+        #   to delay the bulletin date/time is adjusted
+        # introduce the sub-string filedate into filename
+        # for each time a date should be replaced
+        fl_tmplt: "filedate_MyWaveWam3_bfiledate.nc"
+    reader: read_ww3_4km
+    collector:
+    misc:
+        xtra_h: [0,6] # h bias adjustment according to position in filename
+        lt_switch_f: [1,0] # should lead time adjust filedate [False/True]
+        lt_switch_p: 1 # should lead time adjust pathdate [False/True]
+        nr_filedates: 2
+        # defining format which substitutes filedate in file_template
+        filedate_formats: ['%Y%m%d%H','%Y%m%dT%H']
+        init_times: [0,12]
+        init_step: 12
+        leadtimes: [0,12,36,60,84,108,132,156,180,204,228]
+        grid_date: 2020-02-01 00:00:00
+        date_incr_unit: h
+        date_incr: 1
+    tags:
+
+ww3_4km:
+    # not mandatory for models
+    name: ww3_4km
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt: "https://thredds.met.no/thredds/dodsC/\
+                    ww3_4km_archive_files/%Y/%m/%d/"
+        fl_tmplt: ww3_4km_%Y%m%dT%HZ.nc
+    # optional, if not defined the class default is used
+    reader: read_ww3_4km
+    collector:
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        Hs: hs
+        time: time
+        Mdir: dir
+        Pdir: dp
+        Fp: fp
+        Tm01: t01
+        Tm02: t02
+        lons: longitude
+        lats: latitude
+        U: ff
+        hmaxt: hmaxe
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        init_times: [0,6,12,18]
+        init_step: 6
+        leadtimes: [0,6,12,18,24,36,48,60]
+        _FillValue: 9.96921e+36
+        proj4: "+proj=ob_tran +o_proj=longlat +lon_0=-40
+                +o_lat_p=22 +R=6.371e+06 +no_defs"
+        grid_date: 2021-11-16 00:00:00
+        convention: meteorological
+        date_incr_unit: h
+        date_incr: 1
+    # optional, to ease grouping
+    tags:
+
+ww3_unstr:
+    name:
+    download:
+    vardef:
+        Hs: hs
+        time: time
+        lons: longitude
+        lats: latitude
+        nodes: node
+    coords:
+    wavy_input:
+        src_tmplt: "https://thredds.met.no/thredds/dodsC/norac_wave/field/"
+        fl_tmplt: ww3.%Y%m.nc
+    reader: read_ww3_unstructured_to_grid
+    collector:
+    misc:
+        init_times: [0]
+        init_step: 24
+        proj4: "unstructured"
+        grid_date: 2021-11-16 00:00:00
+        convention: meteorological
+        date_incr_unit: h
+        date_incr: 1
+    tags:
+
+cmems_MY_L4:
+    # not mandatory for models
+    name: cmems_MY_L4
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt: "https://my.cmems-du.eu/thredds/dodsC/"
+        fl_tmplt: "cmems_obs-wave_glo_phy-swh_my_multi-l4-2deg_P1D"
+    # optional, if not defined the class default is used
+    reader: read_remote_ncfiles_aggregated_credentials
+    collector:
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        Hs: VAVH_DAILY_MEAN
+        time: time
+        lons: longitude
+        lats: latitude
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        init_times: [0,6,12,18]
+        init_step: 6
+        leadtimes: [0,6,12,18,24,36,48,60]
+        _FillValue: 9.96921e+36
+        proj4: "+proj=ob_tran +o_proj=longlat +lon_0=-40
+                +o_lat_p=22 +R=6.371e+06 +no_defs"
+        grid_date: 2021-11-16 00:00:00
+        convention: meteorological
+        date_incr_unit: h
+        date_incr: 1
+        remoteHostName: my.cmems-du.eu
+    # optional, to ease grouping
+    tags:
+
+ecwam:
+    name:
+    download:
+    vardef:
+        Hs: significant_wave_height
+        Mdir: wave_direction
+        Tp: peak_wave_period
+        Tm02: mean_wave_period
+        time: time
+        lons: longitude
+        lats: latitude
+        hmaxt: time_domain_max_ind_wave_height
+        hmaxst: space_time_max_ind_wave_height
+        hmax: sea_surface_wave_maximum_height
+    coords:
+    wavy_input:
+        src_tmplt: "/lustre/storeB/project/metproduction/products/ecmwf/nc/"
+        fl_tmplt: "ec_ocean_wave_%Y%m%dT%H00Z.nc"
+    reader: read_ecwam
+    collector:
+    misc:
+        init_times: [0,12]
+        init_step: 12
+        grid_date: 2023-09-18 00:00:00
+        convention: meteorological
+        date_incr_unit: h
+        date_incr: 3
+        proj4: "+proj=longlat +a=6367470 +e=0 +no_defs"
+
+MEPS:
+    name: MEPS
+    download:
+    wavy_input:
+        src_tmplt: "https://thredds.met.no/thredds/dodsC/meps25epsarchive/%Y/%m/%d/"
+        fl_tmplt: meps_det_2_5km_%Y%m%dT%HZ.nc
+    # optional, if not defined the class default is used
+    reader: read_meps
+    collector:
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        time: time
+        lons: longitude
+        lats: latitude
+        U: wind_speed
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        init_times: [0,6,12,18]
+        init_step: 6
+        leadtimes: [0,6,12,18,24,36,48,60]
+        _FillValue: 9.96921e+36
+        grid_date: 2025-04-25 00:00:00
+        convention: meteorological
+        date_incr_unit: h
+        date_incr: 1
+    # optional, to ease grouping
+    tags:
+
+mwam800_finnmark:
+    name:
+    download:
+    vardef:
+        Hs: hs
+        time: time
+        lons: longitude
+        lats: latitude
+    coords:
+    wavy_input:
+        src_tmplt: "https://thredds.met.no/thredds/dodsC/fou-hi/mywavewam800f_currhf/"
+        fl_tmplt: "mywavewam800_finnmark.an.%Y%m%d%H.nc"
+    reader: read_ww3_4km
+    collector:
+    misc:
+        init_times: [18]
+        init_step: 24
+        grid_date: 2024-10-25 18:00:00
+        date_incr_unit: h
+        date_incr: 1
+
+NORA3_hc_waves:
+    name:
+    download:
+    vardef:
+        Hs: hs
+        time: time
+        lons: longitude
+        lats: latitude
+    coords:
+    wavy_input:
+        src_tmplt: "https://thredds.met.no/thredds/dodsC/windsurfer\
+                    /mywavewam3km_files/%Y/%m/"
+        fl_tmplt: "%Y%m%d_MyWam3km_hindcast.nc"
+    reader: read_ww3_4km
+    collector:
+    misc:
+        init_times: [0]
+        init_step: 24
+        grid_date: 2019-01-01 00:00:00
+        date_incr_unit: h
+        date_incr: 1

@@ -1,0 +1,79 @@
+name: Python build and test wheels
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - v*
+  pull_request:
+
+jobs:
+  tests:
+    name: pytests (${{ matrix.os }} - ${{ matrix.python-version }}, Miniforge3)
+    runs-on: ${{ matrix.os }}-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      matrix:
+        os: ["ubuntu", "macos"]
+        python-version: ['3.12', '3.14']
+    env:
+      COVERALLS_REPO_TOKEN: xIILGI4RaHRkMSqLgZN8taBLNMaMNrBzD
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          python-version: ${{ matrix.python-version }}
+          miniforge-version: latest
+          miniforge-variant: Miniforge3
+
+      - name: Run tests
+        run: |
+          conda activate test
+          mamba install -c conda-forge pytest-cov coveralls
+          pytest --junitxml=test-results/junit.xml --cov=wavy -v --log-cli-level=debug -m 'not need_credentials'
+
+      - name: Upload to Coveralls
+        if: matrix.python-version == '3.14' && matrix.os == 'ubuntu'
+        run: |
+          conda activate test
+          coveralls
+
+      - name: Build wheels
+        run: |
+          conda activate test
+          pip install build
+          python -m build -vv
+
+      - name: Upload wheels
+        if: matrix.python-version == '3.14' && matrix.os == 'ubuntu'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: dist
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [ tests ]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: '3.14'
+          miniforge-version: latest
+          miniforge-variant: Miniforge3
+      - name: Publish to PyPi
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          pip install --upgrade packaging twine
+          twine upload --verbose --skip-existing *.tar.gz
+

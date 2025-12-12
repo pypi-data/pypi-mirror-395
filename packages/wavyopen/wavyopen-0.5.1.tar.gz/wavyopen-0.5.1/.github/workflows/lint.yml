@@ -1,0 +1,28 @@
+name: lint
+
+on: [push]
+
+jobs:
+  tests:
+    name: pytests (${{ matrix.os }} - ${{ matrix.python-version }}, Miniforge3)
+    runs-on: ${{ matrix.os }}-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      matrix:
+        os: [ "ubuntu" ]
+        python-version: [ '3.14' ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          python-version: ${{ matrix.python-version }}
+          miniforge-version: latest
+          miniforge-variant: Miniforge3
+
+      - name: Lint with pylint
+        run: |
+          pylint --fail-under=9 wavy
+

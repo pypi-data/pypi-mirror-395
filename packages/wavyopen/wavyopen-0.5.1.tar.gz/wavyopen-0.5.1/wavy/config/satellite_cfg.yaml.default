@@ -1,0 +1,409 @@
+--- # specifications for satellite missions
+
+########################################################################
+# """
+# general structure:
+#       + product (eumetsat/cmems)
+#           + specs
+# """
+########################################################################
+
+cmems_L3_NRT:
+    # mandatory
+    name:
+        s3a: s3a
+        s3b: s3b
+        c2: c2
+        j3: j3
+        h2b: h2b
+        h2c: h2c
+        al: al
+        cfo: cfo
+        s6a: s6a
+        swon: swon
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        copernicus:
+            dataset_id: cmems_obs-wave_glo_phy-swh_nrt_name-l3_PT1S
+            trgt_tmplt:
+            path_date_incr_unit: 'm'
+            path_date_incr: 1
+            strsub: ['name']
+            server: "nrt.cmems-du.eu"
+            time_incr: 'h' # 'h', 'd', 'm'
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt:
+        strsub: ['name']
+        path_date_incr_unit: 'm'
+        path_date_incr: 1
+    # optional, if not defined the class default is used
+    reader: read_local_ncfiles
+    collector: get_remote_files_copernicusmarine
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        Hs: VAVH
+        U: WIND_SPEED
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level:
+        provider:
+        obs_type:
+    # optional, to ease grouping
+    tags:
+
+cmems_L3_MY:
+    # mandatory
+    name:
+        c2: c2
+        al: al
+        j1: j1
+        j2: j2
+        j3: j3
+        cfo: cfo
+        env: en
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        copernicus: 
+            dataset_id: cci_obs-wave_glo_phy-swh_my_name-l3_PT1S
+            trgt_tmplt:
+            path_date_incr_unit: 'm'
+            path_date_incr: 1
+            strsub:
+            server: "my.cmems-du.eu"
+            time_incr: 'h' # 'h', 'd', 'm'
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt: /home/patrikb/tmp_altimeter/L3/MY/name/%Y/%m
+        fl_tmplt:
+        strsub:
+        path_date_incr_unit: 'm'
+        path_date_incr: 1
+    # optional, if not defined the class default is used
+    reader: read_local_ncfiles
+    collector: get_remote_files_ftp
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        Hs: VAVH
+        U: WIND_SPEED
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level:
+        provider:
+        obs_type:
+    # optional, to ease grouping
+    tags:
+
+L2_20Hz_s3a:
+    # mandatory
+    name:
+        s3a: s3a
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        ftp: # downloading method
+            src_tmplt: "/products/v3/data/satellite/altimeter/\
+                        l2_20Hz/l2/sentinel-3_a/%Y/%j/"
+            trgt_tmplt:
+            strsub:
+            server: "eftp.ifremer.fr"
+            path_date_incr_unit: 'd'
+            path_date_incr: 1
+            search_str: '%Y%m%d'
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt:
+        strsub:
+        path_date_incr_unit: 'd'
+        path_date_incr: 1
+    # optional, if not defined the default is used
+    reader: read_local_20Hz_files
+    collector: get_remote_files_ftp
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        Hs: swh_lrrmc_corr_hfa_20_ku # time
+        time: time_echo_sar_ku
+        lats: lat_echo_sar_ku
+        lons: lon_echo_sar_ku
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level:
+        provider:
+        obs_type:
+        sat_specs:
+            s3a:
+                tau: 3.125 # ns, compressed pulse length or range gate resolution
+                h: 814.5 # km, height over ground
+    # optional, to ease grouping
+    tags:
+
+L2_20Hz_c2:
+    # mandatory
+    name:
+        c2: c2
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        ftp: # downloading method
+            src_tmplt: "/products/v3/data/satellite/altimeter/\
+                        l2_20Hz/l2/cryosat-2/%Y/%j/"
+            trgt_tmplt:
+            strsub:
+            server: "eftp.ifremer.fr"
+            path_date_incr_unit: 'd'
+            path_date_incr: 1
+            search_str: '%Y%m%d'
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt:
+        strsub:
+        path_date_incr_unit: 'd'
+        path_date_incr: 1
+    # optional, if not defined the default is used
+    reader: read_local_20Hz_files
+    collector: get_remote_files_ftp
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        Hs: swh_lrrmc_corr_hfa_20_ku # time
+        time: time_echo_sar_ku
+        lats: lat_echo_sar_ku
+        lons: lon_echo_sar_ku
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level:
+        provider:
+        obs_type:
+        sat_specs:
+            s3a:
+                tau: 3.125 # ns, compressed pulse length or range gate resolution
+                tau2: 44.8 # micro-seconds, pulse duration from cryosat product  handbook
+                h: 730. # km, height over ground, also seen 717km - not sure
+    # optional, to ease grouping
+    tags:
+
+CCIv1_L3:
+    # FTP is down, should now use opendap or wget/curl, see:
+    # https://help.ceda.ac.uk/article/99-download-data-from-ceda-archives
+    # https://help.ceda.ac.uk/article/4431-ceda-archive-web-download-and-service
+    # mandatory
+    name:
+        multi: multi
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        ftp: # downloading method
+            src_tmplt: "/neodc/esacci/sea_state/data/v1.1_release/\
+                        l3/v1.1/%Y/%m/%d/"
+            trgt_tmplt:
+            strsub:
+            server: "ftp.ceda.ac.uk"
+            path_date_incr_unit: 'd'
+            path_date_incr: 1
+            search_str: '%Y%m%d'
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt:
+        strsub:
+        path_date_incr_unit: 'm'
+        path_date_incr: 1
+    # optional, if not defined the default is used
+    reader: read_local_ncfiles
+    #collector: get_remote_files_cci
+    collector: get_remote_files_ftp
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef: # varalias: varname
+        Hs: swh_denoised # time
+        U: wind_speed_alt # time
+        time: time
+        lats: lat
+        lons: lon
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level: L3
+        provider: cci
+        obs_type:
+    # optional, to ease grouping
+    tags:
+
+CCIv3_L3:
+    # mandatory
+    name:
+        multi: multi
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        ftp: # downloading method
+            src_tmplt: /products/v3/data/satellite/altimeter/l3/%Y/%j/
+            trgt_tmplt:
+            strsub:
+            server:
+            path_date_incr_unit:
+            path_date_incr:
+            search_str:
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt: ESACCI-SEASTATE-L3-SWH-MULTI_1D-%Y%m%d-fv01.nc
+        strsub:
+        path_date_incr_unit: 'm'
+        path_date_incr: 1
+    # optional, if not defined the default is used
+    reader: read_local_ncfiles
+    collector:
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef: # varalias: varname
+        Hs: swh_denoised
+        dtc: distance_to_coast
+        time: time
+        lats: lat
+        lons: lon
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level: L3
+        provider: cci
+        obs_type:
+    # optional, to ease grouping
+    tags:
+
+CCIv3_L3_20Hz:
+    # mandatory
+    name:
+        S3A: S3A
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        ftp: # downloading method
+            src_tmplt: "/products/v3/data/satellite/altimeter\
+                        /l2_20Hz/l2/sentinel-3_a/%Y/%j/"
+            trgt_tmplt:
+            strsub:
+            server:
+            path_date_incr_unit:
+            path_date_incr:
+            search_str:
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt:
+        strsub:
+        path_date_incr_unit: 'm'
+        path_date_incr: 1
+    # optional, if not defined the default is used
+    reader: read_local_ncfiles
+    collector:
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef: # varalias: varname
+        Hs: swh_denoised
+        dtc: distance_to_coast
+        time: time
+        lats: lat
+        lons: lon
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level: L3
+        provider: cci
+        obs_type:
+    # optional, to ease grouping
+    tags:
+
+s3a_sla_5Hz:
+    # mandatory
+    name:
+        s3a: s3a
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        ftp: # downloading method
+            src_tmplt:
+            trgt_tmplt:
+            path_date_incr_unit: 'm'
+            path_date_incr: 1
+            search_str: '%Y%m%dT'
+            strsub: ['name']
+            server: "nrt.cmems-du.eu"
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt:
+        strsub:
+        path_date_incr_unit: 'm'
+        path_date_incr: 1
+    # optional, if not defined the class default is used
+    reader: read_local_ncfiles
+    collector: get_remote_files_ftp
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef:
+        SLA: sla_filtered
+        lons: longitude
+        lats: latitude
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level:
+        provider:
+        obs_type:
+    # optional, to ease grouping
+    tags:
+
+cfo_swim:
+    # mandatory
+    name:
+        swim: swim
+    # mandatory when downloading
+    # where to store downloaded data
+    download:
+        ftp: # downloading method
+            src_tmplt: "/cfosat_products/swim_l2p_box_nrt/%Y/"
+            trgt_tmplt:
+            path_date_incr_unit: 'm'
+            path_date_incr: 1
+            search_str: '%Y%m%dT'
+            strsub:
+            server: "ftp-access.aviso.altimetry.fr"
+    # optional: where to read from
+    #           can be defined directly when calling wavy
+    wavy_input:
+        src_tmplt:
+        fl_tmplt: 
+        strsub:
+        path_date_incr_unit: 'm'
+        path_date_incr: 1
+    # optional, if not defined the default is used
+    reader: read_local_ncfiles
+    collector: get_remote_files_ftp
+    # optional, needs to be defined if not cf and in variable_info.yaml
+    vardef: # varalias: varname
+        Hs: swh_denoised
+        dtc: distance_to_coast
+        time: time
+        lats: lat
+        lons: lon
+    coords:
+    # optional, info that can be used by class functions
+    misc:
+        processing_level: L3
+        provider: aviso
+        obs_type:
+    # optional, to ease grouping
+    tags:
