@@ -1,0 +1,11 @@
+add_shedskin_product(
+    SYS_MODULES
+        getopt
+        math
+        os
+        os.path
+        stat
+        sys
+    DATA
+        voronoi2.txt
+)

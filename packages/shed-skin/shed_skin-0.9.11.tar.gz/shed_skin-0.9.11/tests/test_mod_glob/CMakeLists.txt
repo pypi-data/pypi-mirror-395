@@ -1,0 +1,9 @@
+add_shedskin_product(
+    SYS_MODULES
+        fnmatch
+        glob
+        os
+        os.path
+        re
+        stat
+)

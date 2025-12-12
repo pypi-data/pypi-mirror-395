@@ -1,0 +1,16 @@
+add_shedskin_product(
+    SYS_MODULES
+        itertools
+    APP_MODULES
+        bar
+        boo/__init__
+        boo/quotes
+    	pak/__init__
+    	pak/hier
+    	pak/sub/__init__
+    	pak/sub/daar
+    	pak/sub/subsub/__init__
+    	pak/sub/subsub/insubsub
+        foo
+        spam
+)
