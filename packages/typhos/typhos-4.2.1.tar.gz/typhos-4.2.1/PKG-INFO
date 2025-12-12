@@ -1,0 +1,195 @@
+Metadata-Version: 2.4
+Name: typhos
+Version: 4.2.1
+Summary: Interface generation for ophyd devices
+Author: SLAC National Accelerator Laboratory
+License: Copyright (c) 2023, The Board of Trustees of the Leland Stanford Junior
+        University, through SLAC National Accelerator Laboratory (subject to receipt
+        of any required approvals from the U.S. Dept. of Energy). All rights reserved.
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+        
+        (1) Redistributions of source code must retain the above copyright notice,
+            this list of conditions and the following disclaimer.
+        
+        (2) Redistributions in binary form must reproduce the above copyright notice,
+            this list of conditions and the following disclaimer in the documentation
+            and/or other materials provided with the distribution.
+        
+        (3) Neither the name of the Leland Stanford Junior University, SLAC National
+            Accelerator Laboratory, U.S. Dept. of Energy nor the names of its
+            contributors may be used to endorse or promote products derived from this
+            software without specific prior written permission.
+        
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+        ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+        WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER, THE UNITED STATES GOVERNMENT,
+        OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+        EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+        OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+        INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+        CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+        IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+        OF SUCH DAMAGE.
+        
+        You are under no obligation whatsoever to provide any bug fixes, patches, or
+        upgrades to the features, functionality or performance of the source code
+        ("Enhancements") to anyone; however, if you choose to make your Enhancements
+        available either publicly, or directly to SLAC National Accelerator Laboratory,
+        without imposing a separate written license agreement for such Enhancements,
+        then you hereby grant the following license: a non-exclusive, royalty-free
+        perpetual license to install, use, modify, prepare derivative works, incorporate
+        into other computer software, distribute, and sublicense such Enhancements or
+        derivative works thereof, in binary and source code form.
+        
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+License-File: AUTHORS.rst
+Requires-Dist: coloredlogs
+Requires-Dist: entrypoints
+Requires-Dist: numpy
+Requires-Dist: numpydoc
+Requires-Dist: ophyd
+Requires-Dist: pcdsutils
+Requires-Dist: platformdirs
+Requires-Dist: PyQt5
+Requires-Dist: pydm>=1.19.1
+Requires-Dist: pyqtgraph
+Requires-Dist: pyyaml
+Requires-Dist: qdarkstyle
+Requires-Dist: qtawesome
+Requires-Dist: qtpy
+Requires-Dist: timechart
+Provides-Extra: test
+Requires-Dist: caproto; extra == "test"
+Requires-Dist: flake8; extra == "test"
+Requires-Dist: ipython>=7.16; extra == "test"
+Requires-Dist: jinja2; extra == "test"
+Requires-Dist: line_profiler; extra == "test"
+Requires-Dist: pcdsdevices>=8.4.0; extra == "test"
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-benchmark; extra == "test"
+Requires-Dist: pytest-cov; extra == "test"
+Requires-Dist: pytest-qt; extra == "test"
+Requires-Dist: pytest-timeout; extra == "test"
+Requires-Dist: simplejson; extra == "test"
+Provides-Extra: doc
+Requires-Dist: docs-versions-menu; extra == "doc"
+Requires-Dist: happi; extra == "doc"
+Requires-Dist: sphinx; extra == "doc"
+Requires-Dist: sphinx_rtd_theme; extra == "doc"
+Requires-Dist: sphinxcontrib-jquery; extra == "doc"
+Dynamic: license-file
+
+<img src="docs/source/_static/hydra.jpg" width="200" height="250" align="right"/>
+  <h1>Typhos</h1>
+  <h3>Automated User Interface Creation from Ophyd Devices</h3>
+</p>
+
+EPICS is a flexible and powerful controls system that gives access to experimental
+information, however, the relation and meaning of process variables is often
+obscure. Many of the user interfaces for EPICS information reflect this, as
+walls of buttons and flashing lights bombard the user with little thought to
+structure or cohesion.
+
+Typhos addresses this by providing an automated way to generate screens based
+on a provided hierarchy of devices and signals. Built using PyDM, a PyQt based
+display manager developed at SLAC National Laboratory, Typhos utilizes a large
+toolkit of widgets to display EPICS information. For each process variable, a
+corresponding widget is created based on; the importance to the average
+operator, the type of value the EPICS PV will return, and whether a user should
+be allowed to write to the variable. These widgets are then placed in a
+convenient tab-based system to only show the necessary information for basic
+function, but still allow access to more advanced signals.
+
+Instead of reinventing a new way to specify device structures, Typhos uses
+`Ophyd`, a library to abstract EPICS information into consistently structured
+Python objects. Originally built for scripting experimental procedures at
+NSLSII, Ophyd represents devices as combinations of components which are
+either signals or nested devices. Then, either at runtime or by using the
+defaults of the representative Python class, these signals are sorted into
+different categories based on their relevance to operators. Typhos uses this
+information to craft user interfaces.
+
+## Installation
+Recommended installation on Linux:
+```
+conda install typhos -c conda-forge -c pcds-tag
+```
+All `-tag` channels have `-dev` counterparts for bleeding edge installations.
+Both `requirements.txt` and optional `dev-requirements.txt` are kept up to date
+as well for those who prefer installation via `pip`
+
+typhos utilizes PyDM's designer widget entrypoints.  This means that if you
+have PyDM working correctly with the Qt Designer, typhos widgets will also be
+available.  No further customization or environment settings are required.
+
+`happi` is an optional dependency but is recommended. This must be installed
+manually if not using the CONDA recipe.
+
+### Qt Installation
+There have been some observed inconsistencies between installations of `Qt`
+available on `pip`, `defaults` and `conda-forge`. It is recommended that if you
+want to use the full `typhos` feature to install via `conda-forge`. We have
+found this the most reliable, especially when it comes to using the
+`QtDesigner`. It is worth noting that since this library uses `qtpy` as an
+interface layer to the various options for Qt Python bindings, the bare
+requirements will not install a specific one for you. The testing suite runs
+using `PyQt5`.
+
+## Getting Started
+Creating your first ``typhos`` panel for an``ophyd.Device`` only takes two
+lines:
+
+```python
+import sys
+from ophyd.sim import motor
+from qtpy.QtWidgets import QApplication
+import typhos
+
+# Create our application
+app = QApplication.instance() or QApplication(sys.argv)
+typhos.use_stylesheet()  # Optional
+suite = typhos.TyphosSuite.from_device(motor)
+
+# Launch
+suite.show()
+app.exec_()
+```
+
+## Available Widgets
+Typhos has three major building blocks that combine into the final display seen
+by the operator:
+
+* ``TyphosSuite``: The overall view for a Typhos window. It allows the
+operator to view all of the loaded components and tools
+
+* ``TyphosDeviceDisplay``: This is the widget created for a standard
+``ophyd.Device``. Signals are organized based on their
+``Kind`` and description.
+
+* ``typhos.tools``: These are widgets that interface with external
+applications. While you may have other GUIs for these systems,
+``typhos.tools`` are built especially to handle the handshaking between all the
+information stored on your device and the tool you are interfacing with. This
+saves your operator clicks and ensures consistency in use.
+
+### Initialization Pattern
+All three of the widgets listed above share a similar API for creation.
+Instantiating the object by itself handles loading the container widgets and
+placing them in the correct place, but these do not accept ``ophyd.Device``
+arguments. The reason for this is to ensure that we can use all of the
+``typhos`` screens as templates, and regardless or not of whether you have an
+``ophyd.Device`` you can always populate the screens by hand. If you do in fact
+have an ``ophyd.Device`` every class has an ``add_device`` method and
+alternatively and be constructed using the ``from_device`` classmethod.
+
+## Related Projects
+[**PyDM**](https://github.com/slaclab/pydm) - PyQT Display Manager for EPICS information
+
+[**Ophyd**](https://github.com/NSLS-II/ophyd) - Device abstraction for Experimental Control
