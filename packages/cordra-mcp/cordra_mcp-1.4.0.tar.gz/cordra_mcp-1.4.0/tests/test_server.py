@@ -1,0 +1,800 @@
+"""Unit tests for the MCP server."""
+
+import json
+from typing import Any
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from cordra_mcp.client import (
+    CordraAuthenticationError,
+    CordraClientError,
+    CordraNotFoundError,
+    DigitalObject,
+)
+from cordra_mcp.server import (
+    count_objects,
+    get_cordra_design_object,
+    get_object,
+    get_type_schema,
+    list_types,
+    search_objects,
+)
+
+
+@pytest.fixture
+def sample_digital_object() -> DigitalObject:
+    """Create a sample DigitalObject for testing."""
+    return DigitalObject(
+        id="people/john-doe-123",
+        type="Person",
+        content={
+            "name": "John Doe",
+            "birthday": "1990-05-15",
+            "email": "john.doe@example.com",
+        },
+        metadata={"created": "2023-01-01", "modified": "2023-06-15"},
+        acl={"read": ["public"], "write": ["admin"]},
+        payloads=[
+            {
+                "name": "profile_photo",
+                "filename": "john_doe_profile.jpg",
+                "size": 125440,
+                "mediaType": "image/jpeg",
+            }
+        ],
+    )
+
+
+class TestGetObject:
+    """Test the get_object tool."""
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_object_success(
+        self, mock_client: Any, sample_digital_object: DigitalObject
+    ) -> None:
+        """Test successful object retrieval with complete ID."""
+        mock_client.get_object = AsyncMock(return_value=sample_digital_object)
+
+        result = await get_object("people/john-doe-123")
+
+        # Verify the result is valid JSON
+        parsed_result = json.loads(result)
+        assert parsed_result["id"] == "people/john-doe-123"
+        assert parsed_result["type"] == "Person"
+        assert parsed_result["content"]["name"] == "John Doe"
+
+        # Verify the client was called with the correct object ID
+        mock_client.get_object.assert_called_once_with("people/john-doe-123")
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_object_not_found(self, mock_client: Any) -> None:
+        """Test object not found exception."""
+        mock_client.get_object = AsyncMock(
+            side_effect=CordraNotFoundError("Object not found: test/nonexistent")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_object("test/nonexistent")
+
+        assert "Object not found: test/nonexistent" in str(exc_info.value)
+        mock_client.get_object.assert_called_once_with("test/nonexistent")
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_object_client_error(self, mock_client: Any) -> None:
+        """Test general client error handling."""
+        mock_client.get_object = AsyncMock(
+            side_effect=CordraClientError("Connection failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_object("test/obj123")
+
+        assert "Failed to retrieve object test/obj123" in str(exc_info.value)
+        mock_client.get_object.assert_called_once_with("test/obj123")
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_object_authentication_error(self, mock_client: Any) -> None:
+        """Test authentication error handling."""
+        mock_client.get_object = AsyncMock(
+            side_effect=CordraAuthenticationError("Authentication failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_object("test/obj123")
+
+        assert "Authentication failed" in str(exc_info.value)
+        mock_client.get_object.assert_called_once_with("test/obj123")
+
+
+class TestListTypes:
+    """Test the list_types tool."""
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_list_types_success(self, mock_client: Any) -> None:
+        """Test successful listing of available types."""
+        mock_search_result = {
+            "results": [
+                {"content": {"name": "User"}, "id": "test/user-schema"},
+                {"content": {"name": "Project"}, "id": "test/project-schema"},
+                {"content": {"name": "Document"}, "id": "test/doc-schema"},
+            ],
+            "total_size": 3,
+            "page_num": 0,
+            "page_size": 20,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await list_types()
+
+        # Verify the result is valid JSON
+        parsed_result = json.loads(result)
+        assert parsed_result == ["Document", "Project", "User"]  # Should be sorted
+
+        # Verify the client was called with correct query
+        mock_client.find.assert_called_once_with(
+            "type:Schema", page_size=20, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_list_types_with_pagination(self, mock_client: Any) -> None:
+        """Test listing types with pagination."""
+        first_page = {
+            "results": [
+                {"content": {"name": f"Type{i}"}, "id": f"test/schema{i}"}
+                for i in range(20)
+            ],
+            "total_size": 25,
+            "page_num": 0,
+            "page_size": 20,
+        }
+
+        second_page = {
+            "results": [
+                {"content": {"name": "ZType"}, "id": "test/zschema"},
+            ],
+            "total_size": 25,
+            "page_num": 1,
+            "page_size": 20,
+        }
+
+        mock_client.find = AsyncMock(side_effect=[first_page, second_page])
+
+        result = await list_types()
+
+        parsed_result = json.loads(result)
+        # Should contain all 21 types and be sorted
+        assert len(parsed_result) == 21
+        assert parsed_result == sorted(parsed_result)
+        assert "Type0" in parsed_result
+        assert "ZType" in parsed_result
+
+        # Verify pagination calls
+        assert mock_client.find.call_count == 2
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_list_types_missing_name(self, mock_client: Any) -> None:
+        """Test listing types when some schemas have missing name field."""
+        mock_search_result = {
+            "results": [
+                {"content": {"name": "User"}, "id": "test/user-schema"},
+                {"content": {}, "id": "test/no-name-schema"},  # Missing name
+                {"content": {"name": "Project"}, "id": "test/project-schema"},
+            ],
+            "total_size": 3,
+            "page_num": 0,
+            "page_size": 20,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await list_types()
+
+        # Only 2 types should be returned (those with name)
+        parsed_result = json.loads(result)
+        assert parsed_result == ["Project", "User"]
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_list_types_client_error(self, mock_client: Any) -> None:
+        """Test listing types with client error."""
+        mock_client.find = AsyncMock(side_effect=CordraClientError("Search failed"))
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await list_types()
+
+        assert "Failed to list types:" in str(exc_info.value)
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_list_types_authentication_error(self, mock_client: Any) -> None:
+        """Test listing types with authentication error."""
+        mock_client.find = AsyncMock(
+            side_effect=CordraAuthenticationError("Authentication failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await list_types()
+
+        assert "Authentication failed:" in str(exc_info.value)
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_list_types_empty(self, mock_client: Any) -> None:
+        """Test listing types when no types are available."""
+        mock_search_result = {
+            "results": [],
+            "total_size": 0,
+            "page_num": 0,
+            "page_size": 20,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await list_types()
+
+        parsed_result = json.loads(result)
+        assert parsed_result == []
+
+
+class TestGetTypeSchema:
+    """Test the get_type_schema tool."""
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_type_schema_success(self, mock_client: Any) -> None:
+        """Test successful schema retrieval."""
+        mock_schema = DigitalObject(
+            id="test/user-schema",
+            type="Schema",
+            content={"name": "User", "type": "object", "properties": {}},
+        )
+        mock_client.get_schema = AsyncMock(return_value=mock_schema)
+
+        result = await get_type_schema("User")
+
+        # Verify the result is valid JSON
+        parsed_result = json.loads(result)
+        assert parsed_result["id"] == "test/user-schema"
+        assert parsed_result["type"] == "Schema"
+        assert parsed_result["content"]["name"] == "User"
+
+        # Verify the client was called with correct schema name
+        mock_client.get_schema.assert_called_once_with("User")
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_type_schema_not_found(self, mock_client: Any) -> None:
+        """Test schema retrieval with type not found."""
+        mock_client.get_schema = AsyncMock(
+            side_effect=CordraNotFoundError("Schema not found")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_type_schema("NonExistent")
+
+        assert "Type 'NonExistent' not found" in str(exc_info.value)
+        mock_client.get_schema.assert_called_once_with("NonExistent")
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_type_schema_authentication_error(self, mock_client: Any) -> None:
+        """Test schema retrieval with authentication error."""
+        mock_client.get_schema = AsyncMock(
+            side_effect=CordraAuthenticationError("Authentication failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_type_schema("User")
+
+        assert "Authentication failed:" in str(exc_info.value)
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_type_schema_client_error(self, mock_client: Any) -> None:
+        """Test schema retrieval with client error."""
+        mock_client.get_schema = AsyncMock(
+            side_effect=CordraClientError("Connection failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_type_schema("User")
+
+        assert "Failed to retrieve schema for type 'User':" in str(exc_info.value)
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_type_schema_json_formatting(self, mock_client: Any) -> None:
+        """Test that schema is properly formatted as JSON."""
+        mock_schema = DigitalObject(
+            id="test/schema",
+            type="Schema",
+            content={"name": "Test", "properties": {"field": "value"}},
+        )
+        mock_client.get_schema = AsyncMock(return_value=mock_schema)
+
+        result = await get_type_schema("Test")
+
+        # Verify it's valid JSON with proper indentation
+        parsed_result = json.loads(result)
+        assert isinstance(parsed_result, dict)
+        assert "  " in result  # Should have 2-space indentation
+
+
+class TestSearchObjects:
+    """Test the search_objects tool."""
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_success(self, mock_client: Any) -> None:
+        """Test successful object search."""
+        mock_search_result = {
+            "results": [
+                {
+                    "id": "people/john-doe",
+                    "type": "Person",
+                    "content": {"name": "John Doe"},
+                },
+                {
+                    "id": "people/jane-smith",
+                    "type": "Person",
+                    "content": {"name": "Jane Smith"},
+                },
+            ],
+            "total_size": 2,
+            "page_num": 0,
+            "page_size": 1000,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await search_objects("name:John")
+
+        # Verify the result is valid JSON
+        parsed_result = json.loads(result)
+        assert parsed_result["results"] == ["people/john-doe", "people/jane-smith"]
+        assert parsed_result["total_count"] == 2
+        assert parsed_result["page_num"] == 0
+        assert parsed_result["page_size"] == 1000
+
+        # Verify the client was called with correct parameters
+        mock_client.find.assert_called_once_with(
+            "name:John", object_type=None, page_size=25, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_with_type_filter(self, mock_client: Any) -> None:
+        """Test object search with type filter."""
+        mock_search_result = {
+            "results": [
+                {
+                    "id": "people/john-doe",
+                    "type": "Person",
+                    "content": {"name": "John Doe"},
+                },
+            ],
+            "total_size": 1,
+            "page_num": 0,
+            "page_size": 1000,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await search_objects("name:John", type="Person")
+
+        # Verify the result is valid JSON
+        parsed_result = json.loads(result)
+        assert parsed_result["results"] == ["people/john-doe"]
+        assert parsed_result["total_count"] == 1
+
+        # Verify the client was called with type filter
+        mock_client.find.assert_called_once_with(
+            "name:John", object_type="Person", page_size=25, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_with_limit(self, mock_client: Any) -> None:
+        """Test object search with custom limit."""
+        mock_search_result = {
+            "results": [
+                {
+                    "id": "people/john-doe",
+                    "type": "Person",
+                    "content": {"name": "John Doe"},
+                },
+            ],
+            "total_size": 1,
+            "page_num": 0,
+            "page_size": 50,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await search_objects("name:John", limit=50)
+
+        # Verify the result is valid JSON with new format
+        parsed_result = json.loads(result)
+        assert parsed_result["results"] == ["people/john-doe"]
+        assert parsed_result["page_size"] == 50
+
+        # Verify the client was called with custom limit
+        mock_client.find.assert_called_once_with(
+            "name:John", object_type=None, page_size=50, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_with_all_parameters(self, mock_client: Any) -> None:
+        """Test object search with all parameters."""
+        mock_search_result = {
+            "results": [
+                {
+                    "id": "documents/report-123",
+                    "type": "Document",
+                    "content": {"title": "Report"},
+                },
+            ],
+            "total_size": 1,
+            "page_num": 0,
+            "page_size": 25,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await search_objects("title:Report", type="Document", limit=25)
+
+        # Verify the result is valid JSON
+        parsed_result = json.loads(result)
+        assert parsed_result["results"] == ["documents/report-123"]
+        assert parsed_result["total_count"] == 1
+
+        # Verify the client was called with all parameters
+        mock_client.find.assert_called_once_with(
+            "title:Report", object_type="Document", page_size=25, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_empty_results(self, mock_client: Any) -> None:
+        """Test object search with no results."""
+        mock_search_result = {
+            "results": [],
+            "total_size": 0,
+            "page_num": 0,
+            "page_size": 1000,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await search_objects("nonexistent:data")
+
+        # Verify the result is valid JSON with empty array
+        parsed_result = json.loads(result)
+        assert parsed_result["results"] == []
+        assert parsed_result["total_count"] == 0
+
+        mock_client.find.assert_called_once_with(
+            "nonexistent:data", object_type=None, page_size=25, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_with_slash_prefixed_properties(
+        self, mock_client: Any
+    ) -> None:
+        """Test object search with correct slash-prefixed property syntax."""
+        mock_search_result = {
+            "results": [
+                {
+                    "id": "reports/2024-annual",
+                    "type": "Document",
+                    "content": {"title": "Annual Report 2024"},
+                },
+            ],
+            "total_size": 1,
+            "page_num": 0,
+            "page_size": 25,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        # Test with slash-prefixed property and nested property
+        result = await search_objects("/title:*report* AND /author/name:Daniel")
+
+        parsed_result = json.loads(result)
+        assert parsed_result["results"] == ["reports/2024-annual"]
+        assert parsed_result["total_count"] == 1
+
+        mock_client.find.assert_called_once_with(
+            "/title:*report* AND /author/name:Daniel",
+            object_type=None,
+            page_size=25,
+            page_num=0,
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_client_error(self, mock_client: Any) -> None:
+        """Test object search with client error."""
+        mock_client.find = AsyncMock(side_effect=CordraClientError("Search failed"))
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await search_objects("test:query")
+
+        assert "Search failed:" in str(exc_info.value)
+        mock_client.find.assert_called_once_with(
+            "test:query", object_type=None, page_size=25, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_value_error(self, mock_client: Any) -> None:
+        """Test object search with value error."""
+        mock_client.find = AsyncMock(side_effect=ValueError("Invalid query"))
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await search_objects("invalid:query")
+
+        assert "Invalid search parameters:" in str(exc_info.value)
+        mock_client.find.assert_called_once_with(
+            "invalid:query", object_type=None, page_size=25, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_json_formatting(self, mock_client: Any) -> None:
+        """Test that search results are properly formatted as JSON."""
+        mock_search_result = {
+            "results": [
+                {"id": "test/object", "type": "Test", "content": {"data": "value"}},
+            ],
+            "total_size": 1,
+            "page_num": 0,
+            "page_size": 1000,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await search_objects("test:query")
+
+        # Verify it's valid JSON with proper indentation
+        parsed_result = json.loads(result)
+        assert isinstance(parsed_result, dict)
+
+        # Check that the result contains indentation (pretty-printed)
+        assert "  " in result  # Should have 2-space indentation
+
+        # Verify the content is correctly formatted
+        assert parsed_result["results"] == ["test/object"]
+        assert parsed_result["total_count"] == 1
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_with_page_num(self, mock_client: Any) -> None:
+        """Test object search with page number parameter."""
+        mock_search_result = {
+            "results": [
+                {
+                    "id": "documents/doc-21",
+                    "type": "Document",
+                    "content": {"title": "Page 2 Doc"},
+                },
+            ],
+            "total_size": 50,
+            "page_num": 1,
+            "page_size": 20,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        await search_objects("type:Document", page_num=1)
+
+        # Verify the client was called with correct page number
+        mock_client.find.assert_called_once_with(
+            "type:Document", object_type=None, page_size=25, page_num=1
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_search_objects_with_all_pagination_params(
+        self, mock_client: Any
+    ) -> None:
+        """Test object search with all pagination parameters."""
+        mock_search_result = {
+            "results": [
+                {
+                    "id": "reports/report-51",
+                    "type": "Report",
+                    "content": {"title": "Report 51"},
+                },
+            ],
+            "total_size": 100,
+            "page_num": 5,
+            "page_size": 10,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        await search_objects("type:Report", type="Report", limit=10, page_num=5)
+
+        # Verify the client was called with all parameters
+        mock_client.find.assert_called_once_with(
+            "type:Report", object_type="Report", page_size=10, page_num=5
+        )
+
+
+class TestGetCordraDesign:
+    """Test the get_cordra_design_object tool."""
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_design_success(self, mock_client: Any) -> None:
+        """Test successful design object retrieval."""
+        mock_design = DigitalObject(
+            id="design",
+            type="CordraDesign",
+            content={
+                "types": {"User": {}, "Project": {}},
+                "workflows": {},
+                "systemConfig": {"serverName": "test-cordra"},
+            },
+            metadata={"created": "2023-01-01", "modified": "2023-06-15"},
+        )
+        mock_client.get_design = AsyncMock(return_value=mock_design)
+
+        result = await get_cordra_design_object()
+
+        # Verify the result is valid JSON
+        parsed_result = json.loads(result)
+        assert parsed_result["id"] == "design"
+        assert parsed_result["type"] == "CordraDesign"
+        assert parsed_result["content"]["systemConfig"]["serverName"] == "test-cordra"
+        assert "types" in parsed_result["content"]
+        assert "workflows" in parsed_result["content"]
+
+        # Verify the client was called
+        mock_client.get_design.assert_called_once()
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_design_not_found(self, mock_client: Any) -> None:
+        """Test design object not found exception."""
+        mock_client.get_design = AsyncMock(
+            side_effect=CordraNotFoundError("Design object not found")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_cordra_design_object()
+
+        assert "Design object not found" in str(exc_info.value)
+        mock_client.get_design.assert_called_once()
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_design_authentication_error(self, mock_client: Any) -> None:
+        """Test design object authentication error."""
+        mock_client.get_design = AsyncMock(
+            side_effect=CordraAuthenticationError("Authentication failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_cordra_design_object()
+
+        assert "Authentication failed" in str(exc_info.value)
+        mock_client.get_design.assert_called_once()
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_design_client_error(self, mock_client: Any) -> None:
+        """Test design object general client error."""
+        mock_client.get_design = AsyncMock(
+            side_effect=CordraClientError("Connection failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await get_cordra_design_object()
+
+        assert "Failed to retrieve design object" in str(exc_info.value)
+        assert "Connection failed" in str(exc_info.value)
+        mock_client.get_design.assert_called_once()
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_get_design_json_formatting(self, mock_client: Any) -> None:
+        """Test that the design object is properly formatted as JSON."""
+        mock_design = DigitalObject(
+            id="design",
+            type="CordraDesign",
+            content={"data": "value"},
+            metadata={"created": "2023-01-01"},
+        )
+        mock_client.get_design = AsyncMock(return_value=mock_design)
+
+        result = await get_cordra_design_object()
+
+        # Verify it's valid JSON with proper indentation
+        parsed_result = json.loads(result)
+        assert isinstance(parsed_result, dict)
+
+        # Check that the result contains indentation (pretty-printed)
+        assert "  " in result  # Should have 2-space indentation
+
+        # Verify all expected fields are present
+        assert "id" in parsed_result
+        assert "type" in parsed_result
+        assert "content" in parsed_result
+        assert "metadata" in parsed_result
+
+
+class TestCountObjects:
+    """Test the count_objects tool."""
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_count_objects_success(self, mock_client: Any) -> None:
+        """Test successful object count."""
+        mock_search_result = {
+            "results": [{"id": "people/john-doe", "type": "Person"}],
+            "total_size": 42,
+            "page_num": 0,
+            "page_size": 1,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await count_objects("name:John")
+
+        # Verify the result is a string representation of the count
+        assert result == "42"
+
+        # Verify the client was called with correct parameters
+        mock_client.find.assert_called_once_with(
+            "name:John", object_type=None, page_size=1, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_count_objects_with_type_filter(self, mock_client: Any) -> None:
+        """Test object count with type filter."""
+        mock_search_result = {
+            "results": [{"id": "people/john-doe", "type": "Person"}],
+            "total_size": 15,
+            "page_num": 0,
+            "page_size": 1,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await count_objects("name:John", type="Person")
+
+        # Verify the result is a string representation of the count
+        assert result == "15"
+
+        # Verify the client was called with type filter
+        mock_client.find.assert_called_once_with(
+            "name:John", object_type="Person", page_size=1, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_count_objects_zero_results(self, mock_client: Any) -> None:
+        """Test object count with zero results."""
+        mock_search_result = {
+            "results": [],
+            "total_size": 0,
+            "page_num": 0,
+            "page_size": 1,
+        }
+        mock_client.find = AsyncMock(return_value=mock_search_result)
+
+        result = await count_objects("nonexistent:data")
+
+        # Verify the result is "0"
+        assert result == "0"
+
+        mock_client.find.assert_called_once_with(
+            "nonexistent:data", object_type=None, page_size=1, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_count_objects_client_error(self, mock_client: Any) -> None:
+        """Test object count with client error."""
+        mock_client.find = AsyncMock(side_effect=CordraClientError("Search failed"))
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await count_objects("test:query")
+
+        assert "Count failed:" in str(exc_info.value)
+        mock_client.find.assert_called_once_with(
+            "test:query", object_type=None, page_size=1, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_count_objects_value_error(self, mock_client: Any) -> None:
+        """Test object count with value error."""
+        mock_client.find = AsyncMock(side_effect=ValueError("Invalid query"))
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await count_objects("invalid:query")
+
+        assert "Invalid search parameters:" in str(exc_info.value)
+        mock_client.find.assert_called_once_with(
+            "invalid:query", object_type=None, page_size=1, page_num=0
+        )
+
+    @patch("cordra_mcp.server.cordra_client")
+    async def test_count_objects_authentication_error(self, mock_client: Any) -> None:
+        """Test object count with authentication error."""
+        mock_client.find = AsyncMock(
+            side_effect=CordraAuthenticationError("Authentication failed")
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await count_objects("test:query")
+
+        assert "Authentication failed:" in str(exc_info.value)
+        mock_client.find.assert_called_once_with(
+            "test:query", object_type=None, page_size=1, page_num=0
+        )
