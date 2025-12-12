@@ -1,0 +1,57 @@
+<configure
+  xmlns="http://namespaces.zope.org/zope"
+  xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+  i18n_domain="eea">
+
+  <genericsetup:upgradeSteps
+    source="*"
+    destination="6.0"
+    profile="eea.dexterity.indicators:default">
+
+    <genericsetup:upgradeDepends
+       title="Import all steps from eea.dexterity.indicators"
+       import_profile="eea.dexterity.indicators:default"
+      />
+
+  </genericsetup:upgradeSteps>
+
+  <genericsetup:upgradeSteps
+    source="6.0"
+    destination="9.5"
+    profile="eea.dexterity.indicators:default">
+
+    <genericsetup:upgradeDepends
+       title="Custom add permission for IMS indicator"
+       import_profile="eea.dexterity.indicators:upgrade_95"
+      />
+
+  </genericsetup:upgradeSteps>
+
+  <genericsetup:upgradeStep
+    title="Reindex IMS Indicator SearchableText to include tags"
+    description=""
+    source="9.5"
+    destination="9.9"
+    handler=".evolve99.to_99"
+    profile="eea.dexterity.indicators:default"
+    />
+
+  <genericsetup:upgradeStep
+    title="Upgrade step to upgrade indicators to the new embed block"
+    description=""
+    source="9.9"
+    destination="11.0"
+    handler=".evolve110.to_110"
+    profile="eea.dexterity.indicators:default"
+    />
+
+  <genericsetup:upgradeStep
+    title="Add new dividers to all indicators"
+    description="Add dividers 43df8fab-b278-4b0e-a62c-ce6b8e0a881d and 43df8fab-b278-4b0e-a62c-ce6b8e0a881e to existing indicators"
+    source="11.0"
+    destination="12.0"
+    handler=".add_dividers.add_dividers_to_indicators"
+    profile="eea.dexterity.indicators:default"
+    />
+
+</configure>
