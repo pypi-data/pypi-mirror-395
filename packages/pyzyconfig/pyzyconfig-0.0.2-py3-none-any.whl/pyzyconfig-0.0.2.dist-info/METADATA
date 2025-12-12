@@ -1,0 +1,86 @@
+Metadata-Version: 2.4
+Name: pyzyconfig
+Version: 0.0.2
+Summary: Easy experiment configuration saver for ML projects
+Author-email: Thomas 'Sourisimos' Sesmat <tom.sesmat@gmail.com>
+License: MIT
+Keywords: experiment,config,ml,deep-learning,reproducibility
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+
+# Experiment Config Saver
+
+Automatically save all your experiment constants to JSON for reproducibility.
+
+## Usage
+
+### Simple usage
+```python
+from pyzyconfig import save_config_to_json
+
+# Your experiment constants
+RUN_NAME = "my_experiment"
+BATCH_SIZE = 32
+LEARNING_RATE = 0.001
+EPOCHS = 100
+
+# Save all UPPERCASE variables
+save_config_to_json("./outputs")
+```
+
+### With exclusions
+```python
+from pyzyconfig import save_config_to_json
+
+DEVICE = "cuda"  # Don't want to save this
+RUN_NAME = "my_experiment"
+BATCH_SIZE = 32
+
+# Exclude DEVICE from being saved
+save_config_to_json("./outputs", exclude=['DEVICE'])
+```
+
+### Class-based usage
+```python
+from pyzyconfig import ConfigSaver
+
+saver = ConfigSaver(exclude=['DEVICE', 'DEBUG'])
+saver.save("./outputs")
+```
+
+### Load config
+```python
+from exp_config_saver import load_config_from_json
+
+config = load_config_from_json("./outputs/config.json")
+print(config['BATCH_SIZE'])  # 32
+```
+
+## Output example
+```json
+{
+    "BATCH_SIZE": 32,
+    "EPOCHS": 100,
+    "LEARNING_RATE": 0.001,
+    "RUN_NAME": "my_experiment",
+    "_config_version": "0.1.0",
+    "_saved_at": "2025-12-03T15:30:45.123456"
+}
+```
