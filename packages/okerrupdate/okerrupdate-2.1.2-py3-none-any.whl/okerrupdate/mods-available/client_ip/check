@@ -1,0 +1,35 @@
+#!/usr/bin/python3
+
+import os
+import time
+import requests
+
+requests.packages.urllib3.util.connection.HAS_IPV6 = False
+
+url = os.getenv('URL', 'https://ifconfig.me/ip')
+user_agent = os.getenv('USER_AGENT', 'curl/7.58.0')
+
+def myip():
+    headers = { 'User-Agent': user_agent}
+
+    for attempt in range(5):
+        try:
+            print(f"# attempt {attempt}: GET {url}")
+            r = requests.get(url, headers=headers, timeout=5)
+        except requests.exceptions.RequestException:
+            time.sleep(1)
+            pass
+        if r.status_code == 200:
+            return r.text.strip()
+        else:
+            time.sleep(5)
+
+
+ip = myip()
+
+prefix = os.getenv('PREFIX')
+print("NAME: {}ip".format(prefix))
+print("TAGS: ip")
+print("METHOD: string|options=reinit dynamic")
+print("DETAILS: {}".format(ip))
+print("STATUS: {}".format(ip))

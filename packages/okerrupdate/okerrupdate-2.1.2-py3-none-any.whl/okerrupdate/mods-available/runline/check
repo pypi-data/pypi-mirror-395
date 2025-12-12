@@ -1,0 +1,69 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import shlex
+import subprocess
+import re
+
+# read parameters
+prefix = os.getenv('PREFIX')
+
+VARSUFFIX = '_RUN'
+
+for k, v in os.environ.items():
+    if not k.endswith(VARSUFFIX):
+        continue
+
+    name = k[:-len(VARSUFFIX)]
+    lineno = int(os.getenv('{}_LINE'.format(name), '0'))
+    grep = os.getenv('{}_GREP'.format(name), '')
+    case = int(os.getenv('{}_CASE'.format(name), '1'))
+    stderr = bool(os.getenv('{}_STDERR'.format(name), ''))
+    join = os.getenv('{}_JOIN'.format(name))
+
+    cm = os.getenv('{name}_CM'.format(name=name), 'string')
+    if cm == 'string':
+        def_cmargs = 'options=reinit dynamic'
+    else:
+        def_cmargs = ''
+
+    cmargs = os.getenv('{name}_CMARGS'.format(name=name),def_cmargs)
+
+    if case == 0:
+        grep_opts = re.IGNORECASE
+    else:
+        grep_opts = 0
+
+    line = ''
+    try:
+        r = subprocess.run(shlex.split(v), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except Exception as e:
+        line = str(e)
+    else:
+        if stderr:
+            lines = r.stderr.decode().strip().split('\n')
+        else:
+            lines = r.stdout.decode().strip().split('\n')
+
+
+        if grep:
+            lines = list(filter(lambda s: re.search(grep, s, grep_opts), lines))
+
+        if join is not None:
+            line = join.join(lines)
+        else:
+            try:
+                line = lines[lineno]
+            except IndexError:
+                line = ''
+
+    print('NAME: {prefix}{name}'.format(prefix=prefix, name=name))
+    print('TAGS: run')
+    print('DETAILS: {line}'.format(line=line))
+    if cmargs:
+        print('METHOD: {cm}|{cmargs}'.format(cm=cm, cmargs=cmargs))
+    else:
+        print('METHOD: {cm}'.format(cm=cm))
+    print('STATUS: {line}'.format(line=line))
+    print()
