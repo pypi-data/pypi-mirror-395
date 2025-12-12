@@ -1,0 +1,60 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  qc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0
+      - run: pixi run format
+      - run: pixi run check
+  test:
+    runs-on: ubuntu-latest
+    env:
+      KISIAC_ENCRYPTION_PASSWORD: "dummy"
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup test data
+        run: |
+          cd .test/repo
+          git init .
+          git config user.name "Test User"
+          git config user.email "test@test.com"
+          git add *
+          git commit -m "Initial commit"
+          cd ../..
+          mkdir /tmp/test
+          touch /tmp/test/exec
+      - uses: prefix-dev/setup-pixi@v0
+      - name: setup kisiac config
+        shell: pixi run bash -e {0}
+        run: |
+          ls /etc
+          echo "test: true" | sudo bash -c 'tee /etc/kisiac.yaml'
+          kisiac --non-interactive setup-config << EOF
+          repo: .test/repo
+          infrastructure_name: test-infra
+          EOF
+      - name: fake block device
+        run: |
+          # Create a fake block device
+          head -c 104857600 /dev/zero > /tmp/zeroes # 100 MB
+          # Use it as a block device
+          sudo losetup /dev/loop0 /tmp/zeroes
+          sudo blockdev --getsize64 /dev/loop0
+      - name: update-hosts first run
+        shell: pixi run bash -e {0}
+        run: |
+          kisiac --non-interactive update-hosts --skip-system-upgrade localhost
+      - name: update-hosts second run
+        shell: pixi run bash -e {0}
+        run: |
+          kisiac --non-interactive update-hosts --skip-system-upgrade localhost
