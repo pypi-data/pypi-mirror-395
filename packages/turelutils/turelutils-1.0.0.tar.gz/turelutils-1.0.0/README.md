@@ -1,0 +1,102 @@
+# TurelUtils
+
+Small, practical Python utility helpers used across personal projects.
+
+## Overview
+
+`turelutils` is a lightweight collection of utility modules packaged under the `src/turelutils` namespace. It contains small, focused helpers for common tasks such as string manipulation, hashing, time helpers, and small type utilities. The package is intended for local use and easy reuse across projects.
+
+## Features
+
+- Collection of focused utility modules:
+  - `constants` — project constants and shared values
+  - `hash_utils` — hashing helpers and convenience functions
+  - `menu_utlis` — small menu/UI helpers (note: spelled `menu_utlis` in the package)
+  - `string_utils` — common string helpers (formatting, parsing, normalization)
+  - `time_utils` — helpers for time parsing/formatting
+  - `type_utils` — lightweight type helpers and checks
+- Small, dependency-light, and easy to import into other projects
+
+## Requirements
+
+- Python 3.8+ recommended
+
+## Installation (local development)
+
+To install the package into your local environment in editable mode:
+
+```bash
+pip install -e .
+```
+
+This installs the package from the repository root using the `src/` layout.
+
+If you have a virtual environment, activate it first:
+
+Windows (cmd.exe):
+
+```cmd
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e .
+```
+
+## Quick Usage
+
+Import modules from the package directly. Example usage pattern:
+
+```python
+# import a module
+from turelutils import string_utils, hash_utils
+
+# call functions from the module (replace `some_function` with the actual helper name)
+# result = string_utils.some_function("value")
+# digest = hash_utils.hash_value("secret")
+
+print("Modules loaded:", string_utils, hash_utils)
+```
+
+Because the package follows a `src` layout, you can also run tools from the project root while the package is installed in editable mode.
+
+## Project Structure
+
+Top-level files and important package modules:
+
+```
+README.MD
+pyproject.toml
+src/
+	turelutils/
+		__init__.py
+		constants.py
+		hash_utils.py
+		menu_utlis.py
+		string_utils.py
+		time_utils.py
+		type_utils.py
+```
+
+## Contributing
+
+- Please open issues or pull requests with enhancements or bug fixes.
+- Follow standard best practices: small, focused PRs with a clear description.
+
+## Tests & CI
+
+There are no tests included in this repository by default. If you add tests, consider using `pytest` and configuring a GitHub Actions workflow for CI.
+
+## License
+
+No license file is included in the repository. Add a `LICENSE` file (for example, `MIT` or `Apache-2.0`) to make usage terms explicit.
+
+## Notes
+
+- The module `menu_utlis.py` appears to have a typo in its filename (`utlis` vs `utils`). If that's unintentional and you prefer `menu_utils`, consider renaming the file and updating imports.
+- This README provides usage patterns and installation steps — update examples with real function names from the modules for clearer guidance.
+
+---
+
+If you'd like, I can:
+
+- Inspect the individual modules and add concrete usage examples for the most useful functions.
+- Add a simple `LICENSE` file (MIT by default) and a minimal contribution guideline.
