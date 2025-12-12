@@ -1,0 +1,138 @@
+include:
+  - 'ci-templates/common-ci.yml'
+
+stages:
+  - build
+  - test
+  - docs
+  - deploy
+  - release
+
+variables:
+  MPHOME: '$CI_PROJECT_DIR'
+
+
+workflow:
+  rules:
+    - if: '$CI_COMMIT_REF_NAME'   # Trigger on any commit (branch or tag)
+    - if: '$CI_COMMIT_TAG'        # Trigger on tag commits
+
+build:
+  script:
+    - echo "Building project..."
+  rules:
+    - if: '$CI_COMMIT_REF_NAME' # This triggers for any branch
+
+build-job:
+  stage: build
+  image: python:3.12
+  before_script:
+    - python -m venv venv
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - pip install build pyyaml
+  script:
+    - set -ex
+    - echo "*** build-job begins ..."
+    - pwd
+    - ls -la
+    - make clean
+    - python -m build
+    - echo "*** build-job done ***"
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+unit-test-job:
+  image: python:3.12
+  stage: test
+  dependencies:
+    - build-job
+  before_script:
+    - python -m venv venv
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - pip install coverage pyyaml
+    - pip install dist/*.whl
+  script:
+    - echo "*** Running unit tests with coverage analysis..."
+    - coverage run -m unittest discover ./tests
+    - coverage report --precision=2
+    - coverage xml
+  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\.\d+)%/'
+  artifacts:
+    paths:
+      - coverage.xml
+    expire_in: 1 day
+
+run-app-test-job:
+  image: python:3.12
+  stage: test
+  dependencies:
+    - build-job
+  before_script:
+    - python -m venv venv
+    - . venv/bin/activate
+    - pip install --upgrade pip pyyaml
+    - ls dist/
+    - pip install dist/*.whl
+  script:
+    - echo "*** Running test app... "
+    - if [ -f "examples/myapp.py" ]; then python examples/myapp.py; else echo "No test app found"; fi
+    - echo "*** Test app run complete. ***"
+  rules:
+    - exists:
+        - examples/myapp.py
+
+
+lint-test-job:
+  stage: test
+  image: python:3.12
+  before_script:
+    - apt-get update && apt-get install -y npm
+    - npm install -g pyright
+    - python -m venv venv
+    - . venv/bin/activate
+    - pip install --upgrade pip colorama pyyaml
+  script:
+    - echo "*** Running Pyright..."
+    - pyright masterpiece tests examples > pyright-report.txt || true
+    - echo "*** Pyright done ***"
+  artifacts:
+    paths:
+      - pyright-report.txt
+    expire_in: 1 week
+
+deploy-job:
+  stage: deploy
+  environment: production
+  image: python:3.12
+  before_script:
+    - python -m venv venv
+    - . venv/bin/activate
+    - pip install --upgrade pip pyyaml
+    - pip install build
+  script:
+    - echo "*** Deploying ... "
+    - make clean
+    - python -m build
+    - make install
+    - echo "*** Deployment done ***"
+  artifacts:
+    paths:
+      - dist/
+
+# Automated PyPI release job
+.upload-pypi-job:
+  stage: release
+  image: python:3.12
+  before_script:
+    - python -m venv venv
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - pip install twine
+  script:
+    - echo "*** Deploying stable release ..."
+    - python -m twine upload dist/* -u __token__ -p "$PYPI_TOKEN"
+    - echo "*** Deployment done ***"

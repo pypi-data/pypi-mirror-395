@@ -1,0 +1,139 @@
+include:
+  - 'ci-templates/common-ci.yml'
+
+
+stages:
+  - setup
+  - build
+  - test
+  - docs
+  - deploy
+  - release
+
+variables:
+  MPHOME: '$CI_PROJECT_DIR'
+
+# Setup job: Installs the masterpiece package
+setup-masterpiece-job:
+  stage: setup
+  image: python:3.12
+  before_script:
+    - echo "setup-masterpiece-job/before_script start"
+    - pwd
+    - echo "MPHOME is $MPHOME"
+    - set -ex
+    - python -m venv venv
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - echo "setup-masterpiece-job/before_script DONE"
+  script:
+    - echo "setup-masterpiece-job/script start"
+    - pwd
+    - git clone https://gitlab.com/juham/masterpiece.git masterpiece
+    - pip install --upgrade ./masterpiece  # Install masterpiece locally
+    - pip show masterpiece  # Debugging
+    - ls -la
+    - echo "MPHOME is $MPHOME"
+    - echo "setup-masterpiece-job/script DONE"
+    
+  artifacts:
+    paths:
+      - venv/  # Save the virtual environment for later stages
+      - masterpiece/  # Keep the cloned repo available
+    expire_in: 1 hour
+  rules:
+    - when: always
+    
+build-job:
+  stage: build
+  image: python:3.12
+  dependencies: 
+    - setup-masterpiece-job
+  when: on_success
+  before_script:
+    - . venv/bin/activate
+  script:
+    - pip install build
+    - python -m build
+    - echo "*** build-job done ***"    
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+
+# Unit testing job
+unit-test-job:
+  image: python:3.12
+  stage: test
+  dependencies:
+    - setup-masterpiece-job
+    - build-job
+  before_script:
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - pip install coverage pyyaml
+    - pip install dist/*.whl
+  script:
+    - echo "*** Running unit tests with coverage analysis..."
+    - coverage run -m unittest discover ./tests
+    - coverage report --precision=2
+    - coverage xml
+  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\.\d+)%/'
+  artifacts:
+    paths:
+      - coverage.xml
+    expire_in: 1 day
+
+# Test job: Runs the example app to verify the plugin functionality
+run-app-test-job:
+  stage: test
+  image: python:3.12
+  dependencies: 
+    - setup-masterpiece-job
+    - build-job
+  before_script:
+    - . venv/bin/activate
+    - ls dist/
+    - pip install dist/*.whl
+    - pip show masterpiece
+  script:
+    - echo "*** Running test app... "
+    - if [ -f "examples/myapp.py" ]; then python examples/myapp.py; else echo "No test app found"; fi
+    - echo "*** Test app run complete. ***"
+  rules:
+    - exists:
+        - examples/myapp.py
+
+# Deploy job
+deploy-masterpiece-plugin-job:
+  stage: deploy
+  image: python:3.12
+  environment: production
+  dependencies:
+    - setup-masterpiece-job
+    - build-job
+  before_script:
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - pip install build
+    - pip install dist/*.whl
+  script:
+    - python -m build
+  artifacts:
+    paths:
+      - dist/
+
+# Automated PyPI release job
+.upload-pypi-job:
+  stage: release
+  image: python:3.12
+  dependencies:
+    - build-job
+    - setup-masterpiece-job  # Add this line to bring in the 'venv' directory from the setup job
+  before_script:
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - pip install twine
+  script:
+    - python -m twine upload dist/* -u __token__ -p "$PYPI_PLUGIN_TOKEN" --verbose

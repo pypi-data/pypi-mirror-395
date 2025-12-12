@@ -1,0 +1,49 @@
+build_docs:
+  stage: docs
+  image: python:3.12
+  before_script:
+    - echo "common-ci.yml/before_script START"
+    - set -ex
+    - apt-get update
+    - apt-get install -y graphviz
+    - python -m venv venv    
+    - . venv/bin/activate
+    - pip install --upgrade pip
+    - pip install sphinx sphinx_bootstrap_theme pyyaml typing-extensions colorama
+    - pip install extension sphinx_autodoc_typehints sphinxcontrib.plantuml sphinxcontrib.mermaid
+    - pip install dist/*.whl
+    - pip install build
+    - echo "common-ci.yml/before_script DONE"	
+  script:
+    - echo "common-ci.yml/script STARTS"
+    - set -ex
+    - echo "*** Building Sphinx docs... "
+    - pwd
+    - ls -la
+    - ls -la ./masterpiece
+    - echo "MPHOME is $MPHOME"
+    - ls -la $MPHOME/masterpiece/config
+    - cd docs && make html 
+    - echo "*** Docs built ***"
+    - echo "common-ci.yml/script DONE"
+  artifacts:
+    paths:
+      - public
+    expire_in: 1 week
+
+    
+
+pages:
+  stage: deploy
+  dependencies:
+    - build_docs
+  script:
+    - echo "*** Deploying Sphinx docs to GitLab Pages... ***"
+    - pwd
+    - ls -la public  # Verify that the public folder is there before uploading
+  artifacts:
+    paths:
+      - public
+  only:
+    - master  # Deploy only from the default branch
+
