@@ -1,0 +1,62 @@
+target_sources(
+  gui
+  PRIVATE dialogabout.cpp
+          dialogabout.ui
+          dialoganalytic.cpp
+          dialoganalytic.ui
+          dialogconcentrationimage.cpp
+          dialogconcentrationimage.ui
+          dialogcoordinates.cpp
+          dialogcoordinates.ui
+          dialogdisplayoptions.cpp
+          dialogdisplayoptions.ui
+          dialogeditunit.cpp
+          dialogeditunit.ui
+          dialogexport.cpp
+          dialogexport.ui
+          dialoggeometryimage.cpp
+          dialoggeometryimage.ui
+          dialogimage.cpp
+          dialogimage.ui
+          dialogimageslice.cpp
+          dialogimageslice.ui
+          dialogmeshingoptions.cpp
+          dialogmeshingoptions.ui
+          dialogoptcost.cpp
+          dialogoptcost.ui
+          dialogoptimize.cpp
+          dialogoptimize.ui
+          dialogsteadystate.cpp
+          dialogsteadystate.ui
+          dialogoptparam.cpp
+          dialogoptparam.ui
+          dialogoptsetup.cpp
+          dialogoptsetup.ui
+          dialogsimulationoptions.cpp
+          dialogsimulationoptions.ui
+          dialogunits.cpp
+          dialogunits.ui)
+target_include_directories(gui PUBLIC .)
+
+if(BUILD_TESTING)
+  target_sources(
+    gui_tests
+    PUBLIC dialogabout_t.cpp
+           dialoganalytic_t.cpp
+           dialogconcentrationimage_t.cpp
+           dialogcoordinates_t.cpp
+           dialogdisplayoptions_t.cpp
+           dialogeditunit_t.cpp
+           dialogexport_t.cpp
+           dialoggeometryimage_t.cpp
+           dialogimage_t.cpp
+           dialogimageslice_t.cpp
+           dialogmeshingoptions_t.cpp
+           dialogoptcost_t.cpp
+           dialogoptimize_t.cpp
+           dialogoptparam_t.cpp
+           dialogoptsetup_t.cpp
+           dialogsimulationoptions_t.cpp
+           dialogunits_t.cpp
+           dialogsteadystate_t.cpp)
+endif()

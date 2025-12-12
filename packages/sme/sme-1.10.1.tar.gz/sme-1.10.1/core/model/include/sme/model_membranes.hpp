@@ -1,0 +1,57 @@
+// Membrane compartments
+
+#pragma once
+
+#include "sme/geometry.hpp"
+#include <QColor>
+#include <QImage>
+#include <QStringList>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
+namespace libsbml {
+class Model;
+}
+
+namespace sme::model {
+
+class ImageMembranePixels;
+
+class ModelMembranes {
+private:
+  QStringList ids{};
+  QStringList names{};
+  QStringList compIds{};
+  std::vector<geometry::Membrane> membranes{};
+  std::unique_ptr<ImageMembranePixels> membranePixels;
+  std::vector<std::pair<std::string, std::pair<QRgb, QRgb>>> idColorPairs{};
+  libsbml::Model *sbmlModel{nullptr};
+  bool hasUnsavedChanges{false};
+
+public:
+  [[nodiscard]] const QStringList &getIds() const;
+  [[nodiscard]] const QStringList &getNames() const;
+  QString setName(const QString &id, const QString &name);
+  [[nodiscard]] QString getName(const QString &id) const;
+  [[nodiscard]] const std::vector<geometry::Membrane> &getMembranes() const;
+  [[nodiscard]] const geometry::Membrane *getMembrane(const QString &id) const;
+  [[nodiscard]] const std::vector<
+      std::pair<std::string, std::pair<QRgb, QRgb>>> &
+  getIdColorPairs() const;
+  [[nodiscard]] double getSize(const QString &id) const;
+  void updateCompartmentNames(const QStringList &compartmentNames);
+  void updateCompartments(
+      const std::vector<std::unique_ptr<geometry::Compartment>> &compartments);
+  void updateCompartmentImages(const common::ImageStack &imgs);
+  void updateGeometryImageColor(QRgb oldColor, QRgb newColor);
+  void importMembraneIdsAndNames();
+  void exportToSBML(const common::VolumeF &voxelSize);
+  explicit ModelMembranes(libsbml::Model *model = nullptr);
+  ~ModelMembranes();
+  [[nodiscard]] bool getHasUnsavedChanges() const;
+  void setHasUnsavedChanges(bool unsavedChanges);
+};
+
+} // namespace sme::model
