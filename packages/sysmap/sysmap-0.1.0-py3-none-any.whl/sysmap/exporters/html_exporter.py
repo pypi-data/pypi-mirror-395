@@ -1,0 +1,293 @@
+"""HTML exporter with interactive features."""
+
+from typing import Any, Dict
+from .base import BaseExporter
+
+
+class HTMLExporter(BaseExporter):
+    """Export system data as interactive HTML."""
+
+    def export(self) -> str:
+        """Export data to HTML format with interactive features."""
+        html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Inventory Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        h3 {
+            color: #555;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        .meta {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .platform-info {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .platform-info p {
+            margin: 5px 0;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-card.updates {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .summary-card h3 {
+            color: white;
+            margin: 0;
+            font-size: 1em;
+            font-weight: normal;
+            opacity: 0.9;
+        }
+        .summary-card .number {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th {
+            background: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .package-manager {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 600;
+            background: #3498db;
+            color: white;
+        }
+        .search-box {
+            margin: 20px 0;
+            padding: 10px;
+            width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
+        }
+        .update-available {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>System Inventory Report</h1>
+        <p class="meta">Generated: {timestamp}</p>
+"""
+
+        # Platform info
+        if "platform" in self.data:
+            html += self._render_platform_info(self.data["platform"])
+
+        # Summary cards
+        html += self._render_summary()
+
+        # Search box
+        html += """
+        <h2>Installed Packages</h2>
+        <input type="text" class="search-box" id="searchBox" placeholder="Search packages..." onkeyup="filterPackages()">
+"""
+
+        # Package managers
+        if "package_managers" in self.data:
+            for pm_name, pm_data in self.data["package_managers"].items():
+                html += self._render_package_manager(pm_name, pm_data)
+
+        # Footer
+        html += """
+        <div class="footer">
+            <p>Generated by <a href="https://github.com/yourusername/sysmap">SysMap</a></p>
+        </div>
+    </div>
+
+    <script>
+        function filterPackages() {
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            const tables = document.querySelectorAll('table');
+
+            tables.forEach(table => {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+    </script>
+</body>
+</html>
+"""
+        return html.format(timestamp=self.data.get("timestamp", "N/A"))
+
+    def _render_platform_info(self, platform: Dict[str, str]) -> str:
+        """Render platform information section."""
+        html = '<div class="platform-info">\n'
+        html += "<h3>Platform Information</h3>\n"
+        html += f"<p><strong>System:</strong> {platform.get('system', 'N/A')}</p>\n"
+        html += f"<p><strong>Release:</strong> {platform.get('release', 'N/A')}</p>\n"
+        html += f"<p><strong>Machine:</strong> {platform.get('machine', 'N/A')}</p>\n"
+        html += f"<p><strong>Node:</strong> {platform.get('node', 'N/A')}</p>\n"
+        html += "</div>\n"
+        return html
+
+    def _render_summary(self) -> str:
+        """Render summary cards."""
+        total_packages = sum(
+            pm.get("count", 0)
+            for pm in self.data.get("package_managers", {}).values()
+        )
+        total_updates = sum(
+            len(pm.get("updates", []))
+            for pm in self.data.get("package_managers", {}).values()
+        )
+
+        html = '<div class="summary">\n'
+        html += '    <div class="summary-card">\n'
+        html += '        <h3>Total Packages</h3>\n'
+        html += f'        <div class="number">{total_packages}</div>\n'
+        html += '    </div>\n'
+
+        if total_updates > 0:
+            html += '    <div class="summary-card updates">\n'
+            html += '        <h3>Updates Available</h3>\n'
+            html += f'        <div class="number">{total_updates}</div>\n'
+            html += '    </div>\n'
+
+        html += '</div>\n'
+        return html
+
+    def _render_package_manager(self, name: str, data: Dict[str, Any]) -> str:
+        """Render a package manager section."""
+        count = data.get("count", 0)
+        packages = data.get("packages", [])
+
+        html = f'<div class="package-manager">\n'
+        html += f'    <h3>{name.title()} <span class="badge">{count} packages</span></h3>\n'
+
+        if packages:
+            html += '    <table>\n'
+            html += '        <thead><tr>\n'
+
+            # Determine headers from first package
+            headers = list(packages[0].keys())
+            for header in headers:
+                html += f'            <th>{header.replace("_", " ").title()}</th>\n'
+
+            html += '        </tr></thead>\n'
+            html += '        <tbody>\n'
+
+            for package in packages:
+                html += '            <tr>\n'
+                for header in headers:
+                    value = package.get(header, "")
+                    html += f'                <td>{value}</td>\n'
+                html += '            </tr>\n'
+
+            html += '        </tbody>\n'
+            html += '    </table>\n'
+
+        # Updates section
+        if "updates" in data and data["updates"]:
+            updates = data["updates"]
+            html += f'    <h4 class="update-available">Updates Available ({len(updates)})</h4>\n'
+            html += '    <table>\n'
+            html += '        <thead><tr>\n'
+            html += '            <th>Package</th>\n'
+            html += '            <th>Current Version</th>\n'
+            html += '            <th>Available Version</th>\n'
+            html += '        </tr></thead>\n'
+            html += '        <tbody>\n'
+
+            for update in updates:
+                html += '            <tr>\n'
+                html += f'                <td>{update.get("name", "")}</td>\n'
+                html += f'                <td>{update.get("current_version", "")}</td>\n'
+                html += f'                <td>{update.get("available_version", "")}</td>\n'
+                html += '            </tr>\n'
+
+            html += '        </tbody>\n'
+            html += '    </table>\n'
+
+        html += '</div>\n'
+        return html
