@@ -1,0 +1,162 @@
+Metadata-Version: 2.4
+Name: mesh-toolkit
+Version: 0.1.0
+Summary: Python SDK for Meshy AI 3D asset generation API
+Project-URL: Homepage, https://github.com/jbcom/jbcom-oss-ecosystem
+Project-URL: Repository, https://github.com/jbcom/jbcom-oss-ecosystem/tree/main/packages/mesh-toolkit
+Project-URL: Documentation, https://github.com/jbcom/jbcom-oss-ecosystem/tree/main/packages/mesh-toolkit#readme
+Author-email: jbcom <jbogaty@gmail.com>
+License: MIT
+Keywords: 3d,ai,game-assets,glb,meshy,procedural-generation
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Games/Entertainment
+Classifier: Topic :: Multimedia :: Graphics :: 3D Modeling
+Requires-Python: >=3.9
+Requires-Dist: eval-type-backport>=0.2.0; python_version < '3.10'
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: rich>=14.0.0
+Requires-Dist: tenacity>=9.1.2
+Provides-Extra: agents
+Requires-Dist: crewai[tools]>=1.5.0; extra == 'agents'
+Requires-Dist: mcp>=1.0.0; extra == 'agents'
+Provides-Extra: all
+Requires-Dist: crewai[tools]>=1.5.0; extra == 'all'
+Requires-Dist: fastapi>=0.115.0; extra == 'all'
+Requires-Dist: mcp>=1.0.0; extra == 'all'
+Requires-Dist: pyngrok>=7.2.2; extra == 'all'
+Requires-Dist: sentence-transformers>=3.0.0; extra == 'all'
+Requires-Dist: sqlite-vec>=0.1.0; extra == 'all'
+Requires-Dist: uvicorn>=0.38.0; extra == 'all'
+Provides-Extra: crewai
+Requires-Dist: crewai[tools]>=1.5.0; extra == 'crewai'
+Provides-Extra: dev
+Requires-Dist: beautifulsoup4>=4.12.0; extra == 'dev'
+Provides-Extra: mcp
+Requires-Dist: mcp>=1.0.0; extra == 'mcp'
+Provides-Extra: tests
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'tests'
+Requires-Dist: pytest-cov>=5.0.0; extra == 'tests'
+Requires-Dist: pytest-mock>=3.14.0; extra == 'tests'
+Requires-Dist: pytest>=8.0.0; extra == 'tests'
+Provides-Extra: vector
+Requires-Dist: sentence-transformers>=3.0.0; extra == 'vector'
+Requires-Dist: sqlite-vec>=0.1.0; extra == 'vector'
+Provides-Extra: webhooks
+Requires-Dist: fastapi>=0.115.0; extra == 'webhooks'
+Requires-Dist: pyngrok>=7.2.2; extra == 'webhooks'
+Requires-Dist: uvicorn>=0.38.0; extra == 'webhooks'
+Description-Content-Type: text/markdown
+
+# mesh-toolkit
+
+Python SDK for [Meshy AI](https://www.meshy.ai/) 3D asset generation API.
+
+## Installation
+
+```bash
+pip install mesh-toolkit
+```
+
+## Usage
+
+```python
+from mesh_toolkit import text3d, rigging, animate, retexture
+
+# Generate a 3D model
+model = text3d.generate("a medieval sword with ornate handle")
+
+# Rig it for animation
+rigged = rigging.rig(model.id)
+
+# Apply an animation (678 available)
+animated = animate.apply(rigged.id, animation_id=0)  # Idle
+
+# Or retexture it
+gold = retexture.apply(model.id, "golden with embedded gems")
+```
+
+## Modules
+
+### text3d
+
+```python
+from mesh_toolkit import text3d
+
+# Generate model
+result = text3d.generate("a wooden chest", art_style="realistic")
+print(result.model_urls.glb)
+
+# Or manually control the workflow
+task_id = text3d.create(request)  # Returns immediately
+result = text3d.get(task_id)      # Check status
+result = text3d.poll(task_id)     # Wait for completion
+```
+
+### rigging
+
+```python
+from mesh_toolkit import rigging
+
+result = rigging.rig(model_id)
+# Or from URL
+result = rigging.rig_from_url("https://example.com/model.glb")
+```
+
+### animate
+
+```python
+from mesh_toolkit import animate
+from mesh_toolkit.animations import ANIMATIONS
+
+# Apply animation
+result = animate.apply(rigged_id, animation_id=0)
+
+# Browse 678 animations
+for anim in ANIMATIONS.values():
+    print(f"{anim.id}: {anim.name} ({anim.category})")
+```
+
+### retexture
+
+```python
+from mesh_toolkit import retexture
+
+result = retexture.apply(model_id, "rusty metal with scratches")
+# Or from reference image
+result = retexture.apply_from_image(model_id, "https://example.com/style.png")
+```
+
+## Architecture
+
+```
+mesh_toolkit/
+├── base.py         # HTTP infrastructure (auth, retries, rate limiting)
+├── text3d.py       # Text-to-3D API
+├── rigging.py      # Rigging API  
+├── animate.py      # Animation API
+├── retexture.py    # Retexture API
+├── animations.py   # 678 animation catalog
+├── models.py       # Pydantic models
+└── jobs.py         # Batch workflow orchestration
+```
+
+Each API module imports `base` and implements its endpoints directly. No monolithic client class.
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `MESHY_API_KEY` | Your Meshy API key (required) |
+
+## License
+
+MIT
