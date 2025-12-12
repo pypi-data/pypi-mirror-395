@@ -1,0 +1,20 @@
+# Simple inventory for bootstrapping Kolla seed node.
+[seed]
+{% for seed in groups.get('seed', []) %}
+{{ seed }}
+{% endfor %}
+
+[seed:vars]
+ansible_user={{ kolla_ansible_user }}
+{% if kolla_ansible_target_venv is not none %}
+# Execute ansible modules on the remote target hosts using a virtualenv.
+virtualenv={{ kolla_ansible_target_venv }}
+{% endif %}
+
+[baremetal:children]
+seed
+
+[bifrost:children]
+{% if kolla_enable_bifrost | bool %}
+seed
+{% endif %}

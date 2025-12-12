@@ -1,0 +1,48 @@
+---
+- name: Copy Rocky/CentOS repo templates
+  vars:
+    repo_file_prefix: "{{ ansible_facts.distribution | lower }}"
+  template:
+    src: "{{ item }}.j2"
+    dest: /etc/yum.repos.d/{{ item }}
+    owner: root
+    group: root
+    mode: 0664
+  become: True
+  loop:
+    - "{{ repo_file_prefix }}.repo"
+    - "{{ repo_file_prefix }}-extras.repo"
+
+- name: Update cache
+  dnf:
+    name: []
+    update_cache: yes
+  become: True
+
+# NOTE(mgoddard): Install epel-release to ensure it does not get installed
+# later and override our repo file.
+- name: Install epel-release
+  dnf:
+    name: epel-release
+    state: installed
+  become: True
+  when: dnf_install_epel | bool
+
+- name: Copy EPEL repo templates
+  template:
+    src: "{{ item }}.j2"
+    dest: /etc/yum.repos.d/{{ item }}
+    owner: root
+    group: root
+    mode: 0664
+  become: True
+  loop:
+    - epel.repo
+  when: dnf_install_epel | bool
+
+- name: Update cache
+  dnf:
+    name: []
+    update_cache: yes
+  become: True
+  when: dnf_install_epel | bool
