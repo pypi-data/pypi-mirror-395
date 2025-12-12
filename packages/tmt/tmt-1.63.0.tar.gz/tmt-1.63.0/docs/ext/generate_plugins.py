@@ -1,0 +1,251 @@
+"""
+Sphinx extension to generate ``plugins/*.rst`` files
+"""
+
+import dataclasses
+import enum
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from sphinx.application import Sphinx
+
+import tmt.checks
+import tmt.container
+import tmt.log
+import tmt.plugins
+import tmt.steps
+import tmt.steps.cleanup
+import tmt.steps.discover
+import tmt.steps.execute
+import tmt.steps.finish
+import tmt.steps.prepare
+import tmt.steps.prepare.feature
+import tmt.steps.provision
+import tmt.steps.report
+import tmt.utils
+import tmt.utils.hints
+from tmt.container import ContainerClass
+from tmt.utils import Path
+from tmt.utils.templates import render_template_file_into_file
+
+REVIEWED_PLUGINS: tuple[str, ...] = (
+    'prepare/ansible',
+    'provision/connect',
+    'provision/local',
+    'test-checks/avc',
+    'test-checks/dmesg',
+    'test-checks/watchdog',
+    'test-checks/internal/abort',
+    'test-checks/internal/guest',
+    'test-checks/internal/interrupt',
+    'test-checks/internal/invocation',
+    'test-checks/internal/permission',
+    'test-checks/internal/timeout',
+)
+
+
+def _is_ignored(
+    container: ContainerClass,
+    field: dataclasses.Field[Any],
+    metadata: tmt.container.FieldMetadata,
+) -> bool:
+    """
+    Check whether a given field is to be ignored in documentation
+    """
+
+    if field.name in ('how', '_OPTIONLESS_FIELDS'):
+        return True
+
+    if metadata.internal is True:
+        return True
+
+    return hasattr(container, '_OPTIONLESS_FIELDS') and field.name in container._OPTIONLESS_FIELDS
+
+
+def _is_inherited(
+    container: ContainerClass,
+    field: dataclasses.Field[Any],
+    metadata: tmt.container.FieldMetadata,
+) -> bool:
+    """
+    Check whether a given field is inherited from step data base class
+    """
+
+    # TODO: for now, it's a list, but inspecting the actual tree of classes
+    # would be more generic. It's good enough for now.
+    return field.name in ('name', 'where', 'when', 'order', 'summary', 'enabled', 'result')
+
+
+def container_ignored_fields(container: ContainerClass) -> list[str]:
+    """
+    Collect container field names that are never displayed
+    """
+
+    field_names: list[str] = []
+
+    for field in tmt.container.container_fields(container):
+        _, _, _, _, metadata = tmt.container.container_field(container, field.name)
+
+        if _is_ignored(container, field, metadata):
+            field_names.append(field.name)
+
+    return field_names
+
+
+def container_inherited_fields(container: ContainerClass) -> list[str]:
+    """
+    Collect container field names that are inherited from step data base class
+    """
+
+    field_names: list[str] = []
+
+    for field in tmt.container.container_fields(container):
+        _, _, _, _, metadata = tmt.container.container_field(container, field.name)
+
+        if _is_inherited(container, field, metadata):
+            field_names.append(field.name)
+
+    return field_names
+
+
+def container_intrinsic_fields(container: ContainerClass) -> list[str]:
+    """
+    Collect container fields specific for the given step data
+    """
+
+    field_names: list[str] = []
+
+    for field in tmt.container.container_fields(container):
+        _, _, _, _, metadata = tmt.container.container_field(container, field.name)
+
+        if _is_ignored(container, field, metadata):
+            continue
+
+        if _is_inherited(container, field, metadata):
+            continue
+
+        field_names.append(field.name)
+
+    return field_names
+
+
+def is_enum(value: Any) -> bool:
+    """
+    Find out whether a given value is an enum member
+    """
+
+    return isinstance(value, enum.Enum)
+
+
+def _create_step_plugin_iterator(registry: tmt.plugins.PluginRegistry[tmt.steps.Method]):
+    """
+    Create iterator over plugins of a given registry
+    """
+
+    def plugin_iterator():
+        for plugin_id in sorted(registry.iter_plugin_ids()):
+            plugin = registry.get_plugin(plugin_id).class_
+
+            if hasattr(plugin, 'get_data_class'):
+                yield plugin_id, plugin, plugin.get_data_class()
+
+            else:
+                yield plugin_id, plugin, plugin._data_class
+
+    return plugin_iterator
+
+
+def _create_feature_plugin_iterator(
+    registry: tmt.plugins.PluginRegistry[tmt.steps.prepare.feature.FeatureClass],
+):
+    """Create iterator over plugins of a feature plugin registry"""
+
+    def plugin_iterator():
+        for plugin_id in sorted(registry.iter_plugin_ids()):
+            plugin = registry.get_plugin(plugin_id)
+
+            yield plugin_id, plugin, plugin._data_class
+
+    return plugin_iterator
+
+
+def _create_test_check_plugin_iterator(registry: tmt.plugins.PluginRegistry[tmt.steps.Method]):
+    """
+    Create iterator over plugins of a test check registry
+    """
+
+    def plugin_iterator():
+        for plugin_id in sorted(registry.iter_plugin_ids()):
+            plugin = registry.get_plugin(plugin_id)
+
+            yield plugin_id, plugin, plugin._check_class
+
+    return plugin_iterator
+
+
+def generate_plugins(app: "Sphinx") -> None:
+    """
+    Generate ``plugins/*.rst`` files
+    """
+
+    template_filepath = Path(app.confdir / "templates/plugins.rst.j2")
+    (app.confdir / "plugins").mkdir(exist_ok=True)
+
+    # We will need a logger...
+    logger = tmt.log.Logger.create()
+    logger.add_console_handler()
+
+    # ... explore available plugins...
+    tmt.plugins.explore(logger)
+
+    for step_name, plugin_generator in {
+        "cleanup": _create_step_plugin_iterator(
+            registry=tmt.steps.cleanup.CleanupPlugin._supported_methods,
+        ),
+        "discover": _create_step_plugin_iterator(
+            registry=tmt.steps.discover.DiscoverPlugin._supported_methods,
+        ),
+        "execute": _create_step_plugin_iterator(
+            registry=tmt.steps.execute.ExecutePlugin._supported_methods,
+        ),
+        "finish": _create_step_plugin_iterator(
+            registry=tmt.steps.finish.FinishPlugin._supported_methods
+        ),
+        "prepare": _create_step_plugin_iterator(
+            registry=tmt.steps.prepare.PreparePlugin._supported_methods,
+        ),
+        "provision": _create_step_plugin_iterator(
+            registry=tmt.steps.provision.ProvisionPlugin._supported_methods,
+        ),
+        "report": _create_step_plugin_iterator(
+            registry=tmt.steps.report.ReportPlugin._supported_methods
+        ),
+        "prepare-feature": _create_feature_plugin_iterator(
+            registry=tmt.steps.prepare.feature._FEATURE_PLUGIN_REGISTRY,
+        ),
+        "test-checks": _create_test_check_plugin_iterator(
+            registry=tmt.checks._CHECK_PLUGIN_REGISTRY,
+        ),
+    }.items():
+        output_filepath = Path(app.confdir / f"plugins/{step_name}.rst")
+
+        # render the template.
+        render_template_file_into_file(
+            template_filepath,
+            output_filepath,
+            LOGGER=logger,
+            STEP=step_name,
+            PLUGINS=plugin_generator,
+            REVIEWED_PLUGINS=REVIEWED_PLUGINS,
+            HINTS=tmt.utils.hints.HINTS,
+            is_enum=is_enum,
+            container_fields=tmt.container.container_fields,
+            container_field=tmt.container.container_field,
+            container_ignored_fields=container_ignored_fields,
+            container_inherited_fields=container_inherited_fields,
+            container_intrinsic_fields=container_intrinsic_fields,
+        )
+
+
+def setup(app: "Sphinx"):
+    app.connect("builder-inited", generate_plugins)

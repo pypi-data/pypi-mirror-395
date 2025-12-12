@@ -1,0 +1,249 @@
+---
+
+specfile_path: packaging/rpm/tmt.spec
+files_to_sync:
+  - src: packaging/rpm/
+    dest: ./
+    delete: true
+    filters:
+      - "protect .git*"
+      - "protect sources"
+      - "protect changelog"
+      - "protect README*"
+      # TODO: remove once https://github.com/fedora-ci/jenkins-pipeline-library/pull/100 is merged
+      - "protect ci.fmf"
+  - src: packaging/
+    dest: ./
+    filters:
+      - "- rpm"
+  - .packit.yaml
+
+upstream_package_name: tmt
+downstream_package_name: tmt
+
+upstream_project_url: https://github.com/teemtee/tmt
+issue_repository: https://github.com/teemtee/tmt
+
+srpm_build_deps:
+  - hatch
+  - python3-hatch-vcs
+
+actions: &base-actions
+  create-archive:
+    - hatch build -t sdist
+    - bash -c "echo dist/tmt-$PACKIT_PROJECT_VERSION.tar.gz"
+  get-current-version:
+    - hatch version
+
+targets: &all-targets
+  - fedora-all
+  - epel-9
+  - epel-10
+
+# Uncomment below line if OpenScanHub scans are failing
+# osh_diff_scan_after_copr_build: false
+
+
+# Common definitions
+_:
+  # Copr jobs under the packit project
+  - &copr-under-packit
+    job: copr_build
+    additional_repos:
+      - copr://@teemtee/stable
+
+  # Copr jobs under the teemtee project
+  - &copr-under-teemtee
+    <<: *copr-under-packit
+    list_on_homepage: true
+    preserve_project: true
+    owner: "@teemtee"
+
+  # Test jobs base setup
+  - &test-base
+    job: tests
+    trigger: pull_request
+    tf_extra_params:
+      environments:
+        - &copr-teemtee-stable
+          artifacts:
+            # Testing Farm fails to install the repository when a multiline
+            # string is used. The script looks broken, as if one piece of
+            # the process incorrectly loads it, producing broken repo file
+            # URL.
+            - type: repository-file
+              # yamllint disable-line rule:line-length
+              id: https://copr.fedorainfracloud.org/coprs/g/teemtee/stable/repo/fedora-rawhide/group_teemtee-stable-fedora-rawhide.repo
+            - type: repository-file
+              # yamllint disable-line rule:line-length
+              id: https://copr.fedorainfracloud.org/coprs/g/teemtee/stable/repo/epel-9/group_teemtee-stable-epel-9.repo
+
+  # Latest fedora & epel targets
+  - &latest-targets
+    - fedora-latest-stable
+    - epel-10
+
+  # Internal jobs
+  - &internal
+    use_internal_tf: true
+    targets:
+      - fedora-latest-stable
+    tf_extra_params:
+      environments:
+        - &tmt-cloud-resources
+          <<: *copr-teemtee-stable
+          settings:
+            provisioning:
+              tags:
+                BusinessUnit: tmt
+
+  # Core test requires
+  - &require-core-tests
+    require:
+      label:
+        absent:
+          - ci | skip
+
+  # Full test requires
+  - &require-full-tests
+    require:
+      label:
+        present:
+          - ci | full test
+        absent:
+          - status | discuss
+          - ci | skip
+
+  # Internal provisioning jobs
+  - &internal-provision
+    <<: *test-base
+    <<: *internal
+    <<: *require-full-tests
+    tf_extra_params:
+      environments:
+        - tmt:
+            context:
+              how: provision
+          <<: *tmt-cloud-resources
+    # Temporarily running these on F42 because tests started to break due to avc on F43
+    # TODO: Move revert this targets overwrite
+    targets:
+      - fedora-42
+
+jobs:
+  # Build released bits to stable
+  - <<: *copr-under-teemtee
+    trigger: release
+    project: stable
+
+  # Build commits merged to main to latest
+  - <<: *copr-under-teemtee
+    trigger: commit
+    branch: main
+    project: latest
+    release_suffix: "{PACKIT_PROJECT_BRANCH}"
+
+  # Build pull requests
+  - <<: *copr-under-packit
+    trigger: pull_request
+
+  # Test core
+  - <<: *test-base
+    <<: *require-core-tests
+    targets: *latest-targets
+    identifier: core
+    tmt_plan: '/plans/features/core'
+
+  # Test full
+  - <<: *test-base
+    <<: *require-full-tests
+    identifier: full
+    # Do not run extended unit tests. That plan gets its own job
+    # because of podman vs systemd-resolved flakiness.
+    tmt_plan: '^(?!/plans/features/extended-unit-tests).*$'
+
+  # Extended unit tests
+  - <<: *test-base
+    <<: *require-full-tests
+    targets:
+      - fedora-latest-stable
+    identifier: extended-unit-tests
+    tmt_plan: '/plans/features/extended-unit-tests$'
+
+  # Test provision plugins
+  - <<: *internal-provision
+    identifier: 'provision:bootc'
+    tmt_plan: /plans/provision/bootc
+
+  - <<: *internal-provision
+    identifier: 'provision:virtual'
+    tmt_plan: /plans/provision/virtual
+
+  # Test internal plugins
+  - <<: *test-base
+    <<: *internal
+    <<: *require-full-tests
+    identifier: internal-plugins
+    fmf_url: "https://gitlab.cee.redhat.com/baseos-qe/tmt.git"
+
+  # Test internal wow
+  - <<: *test-base
+    <<: *internal
+    <<: *require-full-tests
+    identifier: internal-wow
+    fmf_url: "https://gitlab.cee.redhat.com/baseos-qe/integration_scripts.git"
+    tmt_plan: '/tmt/integration/plan'
+
+  # Run missing tests identified in Connect
+  - <<: *test-base
+    <<: *internal
+    <<: *require-full-tests
+    identifier: internal-fusa
+    fmf_url: "https://gitlab.cee.redhat.com/automotive/tests/all.git"
+    fmf_ref: "main"
+    tmt_plan: '/tmt/plans/fusa/tests'
+    targets:
+      - epel-9
+
+  # OS-agnostic sanity and coding-standard checks
+  - <<: *test-base
+    targets:
+      - fedora-latest-stable
+    identifier: sanity
+    tf_extra_params:
+      test:
+        tmt:
+          name: /plans/sanity
+    skip_build: true
+
+  # Downstream tests
+  - <<: *test-base
+    <<: *require-full-tests
+    targets:
+      - fedora-latest-stable
+    identifier: downstream
+    fmf_path: packaging
+
+  # Propose downstream pull requests
+  - job: propose_downstream
+    trigger: release
+    dist_git_branches:
+      rawhide:
+        fast_forward_merge_into:
+          - fedora-branched
+          - epel-10
+          - epel-9
+
+  # Create koji builds
+  - job: koji_build
+    trigger: commit
+    allowed_pr_authors: ["packit", "all_committers"]
+    dist_git_branches: *all-targets
+
+  # Create bodhi updates
+  - job: bodhi_update
+    trigger: commit
+    dist_git_branches:
+      - fedora-branched
+      - epel-9
+      - epel-10

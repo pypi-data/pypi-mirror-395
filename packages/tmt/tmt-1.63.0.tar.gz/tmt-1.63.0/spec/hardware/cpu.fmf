@@ -1,0 +1,194 @@
+summary: |
+    Select or provision a guest with given CPU properties.
+
+description: |
+    .. code-block::
+
+       cpu:
+           # Integer or string, number of CPU sockets in the system.
+          sockets: 1|">= 1"
+
+          # Integer or string, number of CPU cores in the system.
+          cores: 4|">= 4"
+
+          # Integer or string, number of CPU threads in the system.
+          threads: 8|">= 8"
+
+          # Integer or string, number of CPU cores per socket.
+          cores-per-socket: 4|">= 4"
+
+          # Integer or string, number of CPU threads per core.
+          threads-per-core: 2|">= 2"
+
+          # Integer or string, number of logical CPUs.
+          processors: 8|">= 8"
+
+          # String, CPU family name.
+          family-name: Comet Lake
+
+          # Integer or string, CPU family.
+          family: 6|">= 6"
+
+          # String, CPU model name.
+          model-name: Intel(R) Core(TM) i7-10610U CPU @ 1.80GHz
+
+          # Integer or string, CPU model.
+          model: 142|">= 142"
+
+          # String, CPU vendor name.
+          vendor-name: GenuineIntel
+
+          # Number or string, an ID of CPU vendor.
+          vendor: 1234|"> 1234"
+
+          # Float or string, CPU frequency.
+          # MHz are assumed when no unit is specified.
+          frequency: 2300.0|">= 2300.0"
+
+          # Integer or string, CPU stepping.
+          stepping: 10|">= 10"
+
+          # List of strings, CPU flags as reported
+          # Field applies an implicit "and" to listed flags, all items of the
+          # list must match.
+          # Items may contain a nested operator, "=" and "!=" are only two allowed.
+          flag:
+            - flag1
+            - flag2
+            - "= flag3"
+            - "!= flag4"
+              ...
+
+          # Request a CPU with hyper-threading enabled.
+          hyper-threading: true|false
+
+    .. important::
+
+        See e.g. https://virtual-dba.com/blog/sockets-cores-and-threads/
+        for the socket, core and thread distinction. tmt defines ``sockets``,
+        ``cores`` and ``threads`` keys with precise meanings, following
+        their physical separation. ``processors`` then works with *logical*
+        CPUs, as visible to the OS as distinct CPUs. For example, Linux
+        would report "processors" via its ``/proc/cpuinfo`` file, or in
+        the output of the ``lscpu`` command:
+
+        .. code-block::
+
+            $ lscpu
+            ...
+            CPU(s):                      4
+              On-line CPU(s) list:       0-3
+                ...
+                Thread(s) per core:      1
+                Core(s) per socket:      1
+                Socket(s):               4
+                ...
+                Flags:                   ...
+
+        This corresponds to the following HW requirements:
+
+        .. code-block:: yaml
+
+            hyper-threading: false
+            sockets: 4
+            cores: 4
+            threads: 4
+            processors: 4
+            cores-per-socket: 1
+            threads-per-core: 1
+
+        Another example:
+
+        .. code-block::
+
+            $ lscpu
+            ...
+            CPU(s):                      14
+              On-line CPU(s) list:       0-13
+                ...
+                Thread(s) per core:      2
+                Core(s) per socket:      12
+                Socket(s):               1
+                ...
+                Flags:                  ... ht ...
+
+        This corresponds to the following HW requirements:
+
+        .. code-block:: yaml
+
+            hyper-threading: true
+            sockets: 1
+            cores: 12
+            threads: 14
+            processors: 14
+            cores-per-socket: 12
+
+        ``threads-per-core`` will be left undefined, because of the custom
+        CPU topology: only some cores support and enable hyper-threading,
+        therefore a simple multiplier is not applicable.
+
+    See e.g. https://www.cpu-world.com/ for information on family, model,
+    stepping and corresponding names. ``/proc/cpuinfo`` and ``lscpu`` are
+    also useful resources.
+
+    .. versionchanged:: 1.39
+       ``beaker`` plugins supports ``family`` and ``frequency``
+
+    .. versionchanged:: 1.38
+       ``beaker`` plugins supports ``stepping``
+
+    .. versionchanged:: 1.35
+       ``beaker`` plugins supports ``vendor-name``
+
+    .. versionchanged:: 1.33
+       ``beaker`` plugin supports ``cpu.cores``
+
+    .. versionchanged:: 1.31
+       ``beaker`` plugin supports ``cpu.flag``
+
+    .. versionchanged:: 1.30
+       ``artemis`` plugin supports ``cpu.flag`` with Artemis 0.0.67
+
+    .. versionchanged:: 1.27
+       ``beaker`` plugin supports ``cpu.model`` and ``cpu.processors``
+
+example:
+  - |
+    # Request a rather stronger guest.
+    cpu:
+        processors: ">= 16"
+
+  - |
+    # Request a CPU of a specific model set.
+    cpu:
+        model-name: "~ Intel(R) Core(TM) i7-.+"
+
+  - |
+    # Request a CPU with AVX support
+    cpu:
+        flag:
+          - avx
+          - avx2
+
+  - |
+    # Request a CPU with more than 4 cores.
+    cpu:
+        cores: ">= 4"
+
+  - |
+    # Request a CPU with hyper-threading enabled.
+    cpu:
+        hyper-threading: true
+
+  - |
+    # Request a CPU with specified stepping.
+    cpu:
+        stepping: 9
+
+link:
+  - implemented-by: /tmt/steps/provision/artemis.py
+    note: "``cpu.vendor``, ``cpu.vendor-name``, ``cpu.frequency`` and ``cpu.hyper-threading`` not implemented yet"
+  - implemented-by: /tmt/steps/provision/mrack.py
+    note: "``cpu.sockets``, ``cpu.threads``, ``cpu.cores-per-socket``, ``cpu.threads-per-core``, ``cpu.family-name``, ``cpu.vendor`` not implemented yet"
+  - implemented-by: /tmt/steps/provision/testcloud.py
+    note: "``cpu.processors`` only"

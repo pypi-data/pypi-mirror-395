@@ -1,0 +1,47 @@
+name: test-docs
+run-name: Documentation tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  HATCH_ENV_TYPE_VIRTUAL_PATH: ${{ github.workspace }}/.hatch_envs
+
+jobs:
+  doc-test:
+    name: Sphinx Documentation Tests
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.pull_request.labels.*.name, 'ci | skip')"
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+          cache: 'pip'
+
+      - name: Install hatch
+        run: pip install hatch==1.15.1
+
+      - name: Run sphinx html builder
+        run: hatch run docs:html -W
+
+      - name: Cache linkcheck results
+        uses: actions/cache@v4
+        with:
+          path: docs/_build/linkcheck_cache.json
+          key: linkcheck
+
+      - name: Run sphinx linkcheck
+        run: hatch run docs:linkcheck
+
+      - name: Run Sphinx ReST linter
+        run: hatch run docs:sphinx-rest-linter

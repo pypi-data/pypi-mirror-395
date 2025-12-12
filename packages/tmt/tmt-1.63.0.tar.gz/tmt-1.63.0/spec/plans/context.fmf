@@ -1,0 +1,44 @@
+summary: Definition of the test execution context
+
+story:
+    As a user I want to define the default context in which tests
+    included in given plan should be executed.
+
+description: |
+    Define the default context values for all tests executed under
+    the given plan. Can be overridden by context provided directly
+    on the command line. See the :ref:`/spec/context` definition
+    for the full list of supported context dimensions. Must be a
+    ``dictionary``.
+
+    .. note::
+
+        The context dimensions which are defined in the plan are
+        not evaluated when the :ref:`/spec/core/adjust` rules are
+        applied to the plan itself. Use the command line option
+        ``--context`` to provide the desired context instead.
+
+example:
+  - |
+    summary:
+        Test basic functionality of the httpd24 collection
+    discover:
+        how: fmf
+    execute:
+        how: tmt
+    context:
+        collection: httpd24
+
+  - |
+    summary:
+        Verify dash against the shared shell tests repository
+    discover:
+        how: fmf
+        url: https://src.fedoraproject.org/tests/shell
+    execute:
+        how: tmt
+    context:
+        component: dash
+
+link:
+  - implemented-by: /tmt/base.py

@@ -1,0 +1,85 @@
+summary: |
+    Select or provision a guest with a given disk storage.
+
+description: |
+    .. code-block::
+
+       # A list of dictionaries, each describing one disk storage.
+       disk:
+           # Number or string, the amount of storage requested.
+           # Bytes are assumed when no unit is specified.
+         - size: 1234|">= 512 GiB"
+
+           # String, disk model requested.
+         - model-name: "well-known disk model"
+
+           # String, disk driver requested.
+         - driver: "well-known disk driver"
+
+           # Number or string, logical sector size.
+           # Bytes are assumed when no unit is specified.
+         - logical-sector-size: 512|">= 512"
+
+           # Number or string, physical sector size.
+           # Bytes are assumed when no unit is specified.
+         - physical-sector-size: 4096|">= 4096"
+
+    The :ref:`/spec/plans/guest-topology` may include the following
+    fields in its description of the actual guest hardware:
+
+    .. code-block::
+
+       # String, path to the block device representing this disk.
+       block-device: "/dev/vda"
+
+    .. versionchanged:: 1.32
+       Added `driver` and `model-name` into specification.
+
+    .. versionchanged:: 1.34
+       Added ``block-device`` into specification.
+
+example:
+  - |
+    # Require a disk big enough for testing
+    disk:
+      - size: 500 GB
+
+  - |
+    # Require a disk with specified model
+    disk:
+      - model-name: 'PERC H310'
+
+  - |
+    # Require a disk with specified driver
+    disk:
+      - driver: mpt3sas
+
+  - |
+    # Multiple disks can be requested as well
+    disk:
+      - size: '>= 2 GB'
+      - model-name: 'PERC H310'
+      - driver: '~ sas.*'
+
+  - |
+    # Guest topology exposing details about the actual disks
+    disk:
+      - size: 21474836480
+        model-name: PERC H310
+        driver: megaraid_sas
+        block-device: /dev/sda
+        logical-sector-size: "512 byte"
+
+      - size: 21474836480
+        model-name: PERC H310
+        driver: megaraid_sas
+        block-device: /dev/sdb
+        physical-sector-size: "4096 byte"
+
+link:
+  - implemented-by: /tmt/steps/provision/artemis.py
+    note: "``size`` and ``model-name`` only"
+  - implemented-by: /tmt/steps/provision/mrack.py
+    note: "``block-device`` not implemented yet"
+  - implemented-by: /tmt/steps/provision/testcloud.py
+    note: "``size`` only with ``=``, ``>=`` and ``<=`` operators only"

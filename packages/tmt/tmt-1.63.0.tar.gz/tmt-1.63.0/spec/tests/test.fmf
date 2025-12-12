@@ -1,0 +1,50 @@
+summary: Shell command which executes the test
+
+story:
+    As a test writer I want to run a single test script in
+    multiple ways (e.g. by providing different parameters).
+
+description: |
+    This attribute defines how the test is to be executed.
+    Allows to parametrize a single test script and in this way
+    create virtual test cases.
+
+    If the test is a file, it is expected to be executable.
+
+    If the test is :ref:`/spec/tests/manual`, it points to the
+    document describing the manual test case steps in Markdown
+    format with defined structure.
+
+    Must be a ``string``. This is a **required** attribute.
+
+    ``Bash`` is used as shell and options ``errexit`` and ``pipefail``
+    are applied using ``set -eo pipefail`` to avoid potential errors
+    going unnoticed. You may revert this setting by explicitly
+    using ``set +eo pipefail``. These options are not applied when
+    ``beakerlib`` is used as the :ref:`/spec/tests/framework`.
+
+example:
+  - |
+    # Run a script
+    test: ./test.sh
+
+  - |
+    # Run a script with parameter
+    test: ./test.sh --depth 1000
+
+  - |
+    # Execute selected tests using pytest
+    test: pytest -k performance
+
+  - |
+    # Run test using a Makefile target
+    test: make run
+
+  - |
+    # Define a manual test
+    test: manual.md
+    manual: true
+
+link:
+  - implemented-by: /tmt/base.py
+  - verified-by: /tests/execute

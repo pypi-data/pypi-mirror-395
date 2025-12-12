@@ -1,0 +1,29 @@
+name: pre-commit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    env:
+      SKIP: no-commit-to-branch
+    steps:
+    # Required because of https://github.com/hadolint/hadolint/issues/886
+    - run: |
+        wget -O /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+        chmod +x /usr/local/bin/hadolint
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v6
+      with:
+        # Python 3.9 is for mypy testing the lowest python version
+        # Python 3.13 is for ansible-lint hard-coding the python requirement
+        python-version: |
+          3.9
+          3.13
+          3.x
+    - uses: pre-commit/action@v3.0.1

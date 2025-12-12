@@ -1,0 +1,42 @@
+summary: Definition of the trigger dimension
+
+story:
+    As a user I want to run a custom set of tests for
+    different events which trigger the testing.
+
+description: |
+    Testing can be triggered by various events and a different set
+    of tests is usually executed for each of them. The ``trigger``
+    dimension supports the following values:
+
+    commit
+        Project source code has changed. This can be either a
+        pull/merge request creation or update, new branch created
+        or a new commit pushed to an existing branch.
+
+    build
+        There has been a new official package built in koji or
+        brew. It can be a non-scratch build created directly or a
+        `draft build`__ which has been promoted to non-draft.
+
+    update
+        A new bodhi update or errata advisory with one or more
+        builds has been created or updated.
+
+    compose
+        There is a new compose ready for integration testing.
+
+    This context dimension will usually be provided from the
+    command line.
+
+    __ https://docs.pagure.org/koji/draft_builds/
+
+example: |
+    summary: Full test coverage (takes three days)
+    discover:
+        how: fmf
+    execute:
+        how: tmt
+    adjust:
+        enabled: false
+        when: trigger == code
