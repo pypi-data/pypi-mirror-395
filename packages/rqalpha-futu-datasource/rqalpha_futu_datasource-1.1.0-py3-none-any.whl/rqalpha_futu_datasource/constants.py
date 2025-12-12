@@ -1,0 +1,33 @@
+# Futu API related constants
+FUTU_HOST = "127.0.0.1"
+FUTU_PORT = 11111
+
+# Market data types
+MARKET_HK = "HK"  # Hong Kong market
+MARKET_US = "US"  # US market
+MARKET_SH = "SH"  # Shanghai market
+MARKET_SZ = "SZ"  # Shenzhen market
+
+# Data frequency constants
+FREQUENCY_TICK = "tick"
+FREQUENCY_MINUTE = "1m"
+FREQUENCY_3MINUTE = "3m"
+FREQUENCY_5MINUTE = "5m"
+FREQUENCY_15MINUTE = "15m"
+FREQUENCY_30MINUTE = "30m"
+FREQUENCY_HOURLY = "60m"
+FREQUENCY_DAILY = "1d"
+FREQUENCY_WEEKLY = "1w"
+FREQUENCY_MONTHLY = "1mo"
+
+SUPPORTED_FREQUENCIES = [
+    FREQUENCY_MINUTE,
+    FREQUENCY_3MINUTE,
+    FREQUENCY_5MINUTE,
+    FREQUENCY_DAILY,
+    FREQUENCY_WEEKLY,
+    # FREQUENCY_MONTHLY,  // 由于RQAlpha不支持1mo频率，所以注释掉
+]
+
+# Error codes
+ERROR_INVALID_SYMBOL = "INVALID_SYMBOL"
