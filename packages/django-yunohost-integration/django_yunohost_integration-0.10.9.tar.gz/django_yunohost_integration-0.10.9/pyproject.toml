@@ -1,0 +1,172 @@
+[project]
+name = "django_yunohost_integration"
+dynamic = ["version"]
+description = "Glue code to package django projects as yunohost apps."
+license = {text = "GPL-3.0-or-later"}
+readme = "README.md"
+authors = [
+    {name = 'Jens Diemer', email = 'git@jensdiemer.de'}
+]
+# Until we can update to Django 5.2, we need to stay with Python <3.14
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    # Stay with Django <= 5.1, because >=5.2 requires postgresql >= 14
+    # See: https://docs.djangoproject.com/en/dev/ref/databases/#postgresql-notes
+    # But current YunoHost v12.x postgresql version is 13.x
+    "Django<5.2",
+    'django-tools',  # https://github.com/jedie/django-tools
+
+    'PyJWT',  # https://github.com/jpadilla/pyjwt
+
+    'colorlog',   # https://github.com/borntyping/python-colorlog
+    'packaging',   # https://github.com/pypa/packaging
+    'pyyaml',   # https://github.com/yaml/pyyaml
+    "cli-base-utilities>=0.17.0",  # https://github.com/jedie/cli-base-utilities
+    "tyro",  # https://github.com/brentyi/tyro
+]
+
+[dependency-groups]
+ynh = [  # install "django_yunohost_integration" as YunoHost app:
+    'gunicorn',
+    'psycopg[binary]', # https://github.com/psycopg/psycopg
+    'django-redis',
+    'django-axes', # https://github.com/jazzband/django-axes
+]
+dev = [
+    'django-axes', # https://github.com/jazzband/django-axes
+    'django-example',  # https://github.com/jedie/django-example
+    'bx_django_utils',   # https://github.com/boxine/bx_django_utils
+    'requests-mock',  # https://github.com/jamielennox/requests-mock
+    "cli-base-utilities",  # https://github.com/jedie/cli-base-utilities
+    "rich",  # https://github.com/Textualize/rich
+
+    "manageprojects",  # https://github.com/jedie/manageprojects
+    "urllib3", # for bx_py_utils.test_utils.deny_requests.deny_any_real_request() in tests
+    "uv",  # https://github.com/astral-sh/uv
+    "hatchling",  # https://github.com/pypa/hatch/tree/master/backend
+    "nox",  # https://github.com/wntrblm/nox
+    "coverage",  # https://github.com/nedbat/coveragepy
+    "ruff", # https://github.com/astral-sh/ruff
+    "codespell",  # https://github.com/codespell-project/codespell
+    "EditorConfig",  # https://github.com/editorconfig/editorconfig-core-py
+    "pip-audit",  # https://github.com/pypa/pip-audit
+    "mypy",  # https://github.com/python/mypy
+    "twine",  # https://github.com/pypa/twine
+    "pre-commit",  # https://github.com/pre-commit/pre-commit
+    "typeguard",  # https://github.com/agronholm/typeguard/
+]
+
+[project.urls]
+Documentation = "https://github.com/YunoHost-Apps/django_yunohost_integration"
+Source = "https://github.com/YunoHost-Apps/django_yunohost_integration"
+
+[project.scripts]
+django_yunohost_integration_app = "django_yunohost_integration.__main__:main"
+django_yunohost_integration_dev = "django_yunohost_integration.cli_dev:main"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["django_yunohost_integration"]
+
+[tool.hatch.version]
+path = "django_yunohost_integration/__init__.py"
+
+
+[tool.cli_base]
+version_module_name = "django_yunohost_integration" # Used in cli_base.cli_tools.git_history.update_readme_history()
+
+[tool.cli_base.pip_audit]
+strict=true
+require_hashes=true
+ignore-vuln=[]
+
+[ynh-integration]
+local_settings_source= "django_yunohost_integration/local_settings_source.py"
+
+
+[tool.ruff]
+# https://docs.astral.sh/ruff/configuration/
+line-length = 120
+exclude = [
+  ".*/",
+]
+
+[tool.ruff.lint]
+preview = true  # Needed for some of the rules
+extend-select = [
+    "E", # pycodestyle: https://docs.astral.sh/ruff/rules/#error-e
+    "I", # isort: https://docs.astral.sh/ruff/rules/#isort-i
+]
+ignore = [
+    "E402", # https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file/
+    "E731", # https://docs.astral.sh/ruff/rules/lambda-assignment/
+]
+
+[tool.ruff.lint.isort]
+# https://docs.astral.sh/ruff/settings/#lintisort
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "single"
+
+
+[tool.coverage.run]
+branch = true
+parallel = true
+concurrency = ["multiprocessing"]
+source = ['.']
+command_line = '-m django_yunohost_integration test'
+
+[tool.coverage.report]
+omit = ['.*', '*/tests/*']
+skip_empty = true
+fail_under = 60
+show_missing = true
+exclude_lines = [
+    'if self.debug:',
+    'pragma: no cover',
+    'raise NotImplementedError',
+    'if __name__ == .__main__.:',
+]
+
+
+[tool.mypy]
+warn_unused_configs = true
+ignore_missing_imports = true
+allow_redefinition = true  # https://github.com/python/mypy/issues/7165
+show_error_codes = true
+plugins = []
+exclude = ['.venv', 'tests']
+
+
+[manageprojects] # https://github.com/jedie/manageprojects
+initial_revision = "5c06368"
+initial_date = 2023-02-19T17:27:46+01:00
+cookiecutter_template = "https://github.com/jedie/cookiecutter_templates/"
+cookiecutter_directory = "uv-python"
+applied_migrations = [
+    "877e2ec", # 2023-08-17T20:54:24+02:00
+    "56c0eb7", # 2023-12-22T08:36:44+01:00
+    "52669d0", # 2024-08-02T15:47:04+02:00
+    "3dac094", # 2024-08-25T15:13:50+02:00
+    "7b8d152", # 2024-12-03T21:16:56+01:00
+    "d1df540", # 2025-01-11T08:58:27+01:00
+    "a36dd75", # 2025-03-23T11:39:23+01:00
+    "ac28103", # 2025-10-25T19:03:33+02:00
+]
+
+[manageprojects.cookiecutter_context.cookiecutter]
+full_name = "Jens Diemer"
+github_username = "jedie"
+author_email = "git@jensdiemer.de"
+package_name = "django_yunohost_integration"
+package_version = "0.10.1"
+package_description = "Glue code to package django projects as yunohost apps."
+package_url = "https://github.com/YunoHost-Apps/django_yunohost_integration"
+issues_url = "https://github.com/YunoHost-Apps/django_yunohost_integration/issues"
+license = "GPL-3.0-or-later"
+_template = "https://github.com/jedie/cookiecutter_templates/"
