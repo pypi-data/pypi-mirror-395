@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title }}</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.0.0/build/pure-min.css" integrity="sha384-R9JpA3aI0bY8h1NIsDPKySx1VHa4EraseFH8blYNx+a3Pl6xNcNehJIK/gB+BeIV" crossorigin="anonymous">
+  <style>
+    :root {
+      color-scheme: light;
+      --color-bg: #f7f8fa;
+      --color-surface: #ffffff;
+      --color-primary: #264653;
+      --color-accent: #358dc2;
+      --color-muted: #6c757d;
+    }
+
+    body {
+      font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background: var(--color-bg);
+      color: #1b1f24;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .header-logo img {
+      max-height: 72px;
+      max-width: 140px;
+      border-radius: 12px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    header h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      color: var(--color-primary);
+    }
+
+    header p {
+      margin: 0.15rem 0;
+      color: var(--color-muted);
+      max-width: 720px;
+      font-size: 0.9rem;
+    }
+
+    .panel {
+      background: var(--color-surface);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(11, 16, 27, 0.08);
+      padding: 1.75rem;
+      margin-bottom: 1rem;
+      page-break-inside: avoid;
+    }
+
+    .panel h2 {
+      margin: 0 0 1rem;
+      font-size: 1.25rem;
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .panel-actions button {
+      border: none;
+      background: #358dc2;
+      color: #fff;
+      padding: 0.4rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: opacity 0.2s ease;
+    }
+
+    .panel-actions button:hover:not(:disabled) {
+      opacity: 0.85;
+    }
+
+    .panel-actions button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .benchmark-label {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      margin: 0.2rem 0;
+    }
+
+    .benchmark-label--panel {
+      margin-top: 0.75rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: #f2f7f9;
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-muted);
+    }
+
+    .info-icon {
+      font-size: 0.75rem;
+      margin-left: 0.25rem;
+      color: var(--color-accent);
+      cursor: help;
+    }
+
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    .plot-container {
+      width: 100%;
+      height: 320px;
+    }
+
+    .plot-container--half {
+      height: 180px;
+    }
+
+    .risk-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .risk-section .chart-area {
+      flex: 17;
+      min-width: 280px;
+    }
+
+    .risk-section .table-area {
+      flex: 7;
+      min-width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .two-column-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .two-column-grid .primary {
+      flex: 17;
+      min-width: 280px;
+    }
+
+    .two-column-grid.single-column .primary {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .two-column-grid .secondary {
+      flex: 7;
+      min-width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .chart-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .chart-title {
+      margin-bottom: 0.4rem;
+      color: var(--color-primary);
+      font-size: 1rem;
+    }
+
+    .metric-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .metric-table th {
+      text-align: left;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      color: var(--color-muted);
+      text-transform: uppercase;
+      padding-bottom: 0.4rem;
+    }
+
+    .metric-table tr:nth-child(even) {
+      background: #f6fafb;
+    }
+
+    .dual-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .dual-grid .half {
+      flex: 1;
+      min-width: 260px;
+    }
+
+
+    .metric-table td {
+      padding: 0.4rem 0.25rem;
+    }
+
+    .metric-table tr:nth-child(even) {
+      background: #f6fafb;
+    }
+
+    /* Custom Panel Layouts */
+    .custom-panel-full {
+      width: 100%;
+    }
+
+    .custom-panel-split {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+
+    .custom-panel-charts {
+      flex: 17;
+      min-width: 280px;
+    }
+
+    .custom-panel-metrics {
+      flex: 7;
+      min-width: 240px;
+    }
+
+    .custom-chart {
+      margin-bottom: 1rem;
+    }
+
+    .custom-chart:last-child {
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 768px) {
+      .panel {
+        padding: 1.25rem;
+      }
+
+      .grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+
+      .custom-panel-charts,
+      .custom-panel-metrics {
+        flex: 1;
+        min-width: 100%;
+      }
+    }
+  </style>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+</head>
+
+<body>
+  <div class="page">
+    <header>
+      {% if header_logo %}
+      <div class="header-logo">
+        <img src="{{ header_logo }}" alt="Client identity" />
+      </div>
+      {% endif %}
+      <div class="header-text">
+        <h1>{{ title }}</h1>
+        <p id="header-subtitle-primary">{{ header_primary }}</p>
+        <p id="header-subtitle-secondary">{{ header_secondary }}</p>
+        {% if has_benchmark %}
+        <p class="benchmark-label"><strong>Benchmark:</strong> {{ benchmark_label }}</p>
+        {% endif %}
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Portfolio Summary</h2>
+        <div class="panel-actions"><button class="panel-export" type="button">PNG</button></div>
+      </div>
+      <div class="grid">
+        {% for card in summary_stat_cards %}
+        <div class="stat-card">
+          <span class="stat-label">
+            {{ card.label }}
+            {% if card.tooltip %}
+            <span class="info-icon" title="{{ card.tooltip }}">ⓘ</span>
+            {% endif %}
+          </span>
+          <span class="stat-value">{{ card.value }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% if has_benchmark %}
+      <p class="benchmark-label benchmark-label--panel"><strong>Benchmark Comparison:</strong> {{ benchmark_label }}</p>
+      {% endif %}
+      <div class="two-column-grid{% if not parameter_rows %} single-column{% endif %}" style="margin-top:1.5rem;">
+        <div class="primary">
+          <div id="chart-cumulative" class="plot-container"></div>
+        </div>
+        {% if parameter_rows %}
+        <div class="secondary">
+          <div>
+            <h3 class="chart-title">Strategy Parameters</h3>
+            <table class="metric-table" id="table-parameters"></table>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Performance Analysis</h2>
+        <div class="panel-actions"><button class="panel-export" type="button">PNG</button></div>
+      </div>
+      <div class="risk-section">
+        <div class="chart-area">
+          <h3 class="chart-title">EOY Returns</h3>
+          <div id="chart-eoy" class="plot-container" style="height: 260px;"></div>
+        </div>
+        <div class="table-area">
+          <div>
+            <h3 class="chart-title">EOY Breakdown</h3>
+            <table class="metric-table">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th style="text-align:right;">Return</th>
+                  {% if has_benchmark %}
+                  <th style="text-align:right;">Return ({{ benchmark_label }})</th>
+                  {% endif %}
+                  <th style="text-align:right;">Cum.</th>
+                  {% if has_benchmark %}
+                  <th style="text-align:right;">Cum. ({{ benchmark_label }})</th>
+                  {% endif %}
+                </tr>
+              </thead>
+              <tbody id="table-eoy"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="risk-section">
+        <div class="chart-area">
+          <h3 class="chart-title">Daily Returns</h3>
+          <div id="chart-daily" class="plot-container" style="height: 260px;"></div>
+        </div>
+        <div class="table-area">
+          <div>
+            <h3 class="chart-title">Period Returns</h3>
+            <table class="metric-table">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th style="text-align:right;">Strategy</th>
+                  {% if has_benchmark %}
+                  <th style="text-align:right;">{{ benchmark_label }}</th>
+                  {% endif %}
+                </tr>
+              </thead>
+              <tbody id="period-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Risk Analysis</h2>
+        <div class="panel-actions"><button class="panel-export" type="button">PNG</button></div>
+      </div>
+      <div class="risk-section">
+        <div class="chart-area">
+          <div class="chart-stack">
+            <div>
+              <h3 class="chart-title">Rolling Sharpe</h3>
+              <div id="chart-roll-sharpe" class="plot-container plot-container--half"></div>
+            </div>
+            <div>
+              <h3 class="chart-title">Rolling Sortino</h3>
+              <div id="chart-roll-sortino" class="plot-container plot-container--half"></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-area">
+          <h3 class="chart-title">Risk-adjusted Returns</h3>
+          <table class="metric-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th style="text-align:right;">Strategy</th>
+                {% if has_benchmark %}
+                <th style="text-align:right;">{{ benchmark_label }}</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody id="table-risk-adjusted"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="risk-section">
+        <div class="chart-area">
+          <div class="chart-stack">
+            <div>
+              <h3 class="chart-title">Rolling Volatility</h3>
+              <div id="chart-roll-vol" class="plot-container plot-container--half"></div>
+            </div>
+            <div>
+              <h3 class="chart-title">Underwater Curve</h3>
+              <div id="chart-underwater" class="plot-container plot-container--half"></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-area">
+          <h3 class="chart-title">Volatility & Drawdown</h3>
+          <table class="metric-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th style="text-align:right;">Strategy</th>
+                {% if has_benchmark %}
+                <th style="text-align:right;">{{ benchmark_label }}</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody id="table-vol-draw"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="risk-section">
+        <div class="chart-area">
+            <h3 class="chart-title">Return Distribution <small>(0.5–99.5%)</small></h3>
+          <div id="chart-return-dist" class="plot-container" style="height: 260px;"></div>
+        </div>
+        <div class="table-area">
+          <h3 class="chart-title">Distribution & Tail Risk</h3>
+          <table class="metric-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th style="text-align:right;">Strategy</th>
+                {% if has_benchmark %}
+                <th style="text-align:right;">{{ benchmark_label }}</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody id="table-tail"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="risk-section">
+        <div class="chart-area">
+          <h3 class="chart-title">Top 5 Longest Drawdowns</h3>
+              <div id="chart-drawdown-highlight" class="plot-container" style="height: 260px;"></div>
+        </div>
+        <div class="table-area">
+          <h3 class="chart-title">Worst 10 Drawdowns</h3>
+          <table class="metric-table">
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Recovered</th>
+                <th style="text-align:right;">Drawdown</th>
+                <th style="text-align:right;">Days</th>
+              </tr>
+            </thead>
+            <tbody id="table-drawdowns"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Consistency Metrics</h2>
+        <div class="panel-actions"><button class="panel-export" type="button">PNG</button></div>
+      </div>
+      <div class="chart-stack">
+        <div>
+          <h3 class="chart-title">Monthly Returns Heatmap</h3>
+          <div id="chart-heatmap" class="plot-container" style="height: 320px;"></div>
+        </div>
+        <div>
+          <h3 class="chart-title">Performance by Period (Trend)</h3>
+          <div id="chart-performance-trend" class="plot-container" style="height: 260px;"></div>
+        </div>
+        <div>
+          <h3 class="chart-title">Performance by Period</h3>
+          <table class="metric-table" id="table-performance-grid"></table>
+        </div>
+        <div>
+          <h3 class="chart-title">Performance by Year (Chart)</h3>
+          <div id="chart-performance-years" class="plot-container" style="height: 260px;"></div>
+        </div>
+        <div>
+          <h3 class="chart-title">Performance by Year</h3>
+          <table class="metric-table" id="table-performance-years"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Custom Panels -->
+    {% if custom_panels %}
+    {% for panel in custom_panels %}
+    <section class="panel">
+      <div class="panel-header">
+        <h2>{{ panel.title }}</h2>
+        <div class="panel-actions"><button class="panel-export" type="button">PNG</button></div>
+      </div>
+
+      {% if panel.layout == "charts_only" %}
+        <!-- Charts only: expand to 100% width -->
+        <div class="custom-panel-full">
+          {% for chart_html in panel.charts %}
+          <div class="custom-chart">
+            {{ chart_html | safe }}
+          </div>
+          {% endfor %}
+        </div>
+
+      {% elif panel.layout == "metrics_only" %}
+        <!-- Metrics only: expand to 100% width -->
+        <div class="custom-panel-full">
+          <table class="metric-table">
+            <tbody>
+              {% for metric in panel.metrics %}
+              <tr>
+                <td class="metric-label">{{ metric.label }}</td>
+                <td class="metric-value">{{ metric.value }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+      {% elif panel.layout == "both" %}
+        <!-- Both charts and metrics: 70/30 split -->
+        <div class="custom-panel-split">
+          <div class="custom-panel-charts">
+            {% for chart_html in panel.charts %}
+            <div class="custom-chart">
+              {{ chart_html | safe }}
+            </div>
+            {% endfor %}
+          </div>
+          <div class="custom-panel-metrics">
+            <table class="metric-table">
+              <tbody>
+                {% for metric in panel.metrics %}
+                <tr>
+                  <td class="metric-label">{{ metric.label }}</td>
+                  <td class="metric-value">{{ metric.value }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  <script>
+    // Placeholder data for scaffolding
+    const hasBenchmark = {{ has_benchmark | tojson }};
+    const benchmarkLabel = {{ benchmark_label | tojson }};
+    const dates = Array.from({ length: 60 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (60 - i));
+      return d.toISOString().split("T")[0];
+    });
+
+    const sampleReturns = dates.map((_, idx) => {
+      const base = Math.pow(1.12, idx / 12) - 1; // 12% annualized profile
+      const noise = (Math.sin(idx / 3) + Math.cos(idx / 5)) * 0.2;
+      return parseFloat((base + noise).toFixed(2));
+    });
+
+    const sampleDrawdown = sampleReturns.map((value, idx) => {
+      const peak = Math.max(...sampleReturns.slice(0, idx + 1));
+      return parseFloat((value - peak).toFixed(2));
+    });
+
+    const dailyReturnSeries = sampleReturns.map((value, idx) => {
+      if (idx === 0) {
+        return 0;
+      }
+      return parseFloat((value - sampleReturns[idx - 1]).toFixed(3));
+    });
+
+    const consistencyRows = {{ consistency_rows | tojson }};
+    const eoyRows = {{ eoy_rows | tojson }};
+    const eoyYears = {{ eoy_years | tojson }};
+    const eoyReturns = {{ eoy_returns | tojson }};
+    const eoyAverage = {{ eoy_average | tojson }};
+    const benchmarkEoyReturns = {{ benchmark_eoy_returns | tojson }};
+    const benchmarkEoyAverage = {{ benchmark_eoy_average | tojson }};
+    const dailyBars = Array.from({ length: 60 }, () => parseFloat((Math.random() * 2 - 1).toFixed(2)));
+    const actualDailyDates = {{ daily_dates | tojson }};
+    const actualDailyReturnSeries = {{ daily_returns | tojson }};
+    const periodReturns = {{ period_rows | tojson }};
+
+    const longestDrawdowns = {{ longest_drawdowns | tojson }};
+
+    const actualSummaryDates = {{ summary_dates | tojson }};
+    const actualSummaryValues = {{ summary_values | tojson }};
+    const benchmarkSummaryDates = {{ benchmark_summary_dates | tojson }};
+    const benchmarkSummaryValues = {{ benchmark_summary_values | tojson }};
+    const summaryDates = actualSummaryDates.length ? actualSummaryDates : dates;
+    const summaryValues = actualSummaryValues.length ? actualSummaryValues : sampleReturns;
+    const summaryBenchmarkDates = benchmarkSummaryDates.length ? benchmarkSummaryDates : summaryDates;
+    const summaryBenchmarkValues = benchmarkSummaryValues.length ? benchmarkSummaryValues : [];
+
+    const actualRollingSharpe = {{ rolling_sharpe_series | tojson }};
+      const actualRollingSortino = {{ rolling_sortino_series | tojson }};
+      const benchmarkRollingSharpeRaw = {{ benchmark_rolling_sharpe_series | default([]) | tojson }};
+      const benchmarkRollingSharpeDatesSource = {{ benchmark_rolling_sharpe_dates | default([]) | tojson }};
+      const benchmarkRollingSortinoRaw = {{ benchmark_rolling_sortino_series | default([]) | tojson }};
+      const benchmarkRollingSortinoDatesSource = {{ benchmark_rolling_sortino_dates | default([]) | tojson }};
+      const sampleRollingSharpe = sampleReturns.map((_, idx) => parseFloat((1 + Math.sin(idx / 6)).toFixed(2)));
+      const sampleRollingSortino = sampleReturns.map((_, idx) => parseFloat((0.9 + Math.cos(idx / 7)).toFixed(2)));
+      const rollingSharpe = actualRollingSharpe.length ? actualRollingSharpe : sampleRollingSharpe;
+      const rollingSortino = actualRollingSortino.length ? actualRollingSortino : sampleRollingSortino;
+      const benchmarkRollingSharpe = benchmarkRollingSharpeRaw.length ? benchmarkRollingSharpeRaw : [];
+      const benchmarkRollingSortino = benchmarkRollingSortinoRaw.length ? benchmarkRollingSortinoRaw : [];
+      const actualRollingVol = {{ rolling_vol_series | default([]) | tojson }};
+      const benchmarkRollingVolRaw = {{ benchmark_rolling_vol_series | default([]) | tojson }};
+      const rollingVolRaw = actualRollingVol.length
+        ? actualRollingVol
+        : sampleReturns.map((_, idx) => parseFloat((0.5 + Math.sin(idx / 10)).toFixed(2)));
+      const rollingVol = rollingVolRaw.map((v) =>
+        v === null || v === undefined ? null : parseFloat((v * 100).toFixed(2))
+      );
+      const benchmarkRollingVol = benchmarkRollingVolRaw.map((v) =>
+        v === null || v === undefined ? null : parseFloat((v * 100).toFixed(2))
+      );
+      const volBaseline = {{ vol_baseline | tojson }};
+      const rollingSharpeDatesSource = {{ rolling_sharpe_dates | tojson }};
+      const rollingSortinoDatesSource = {{ rolling_sortino_dates | tojson }};
+      const rollingVolDatesSource = {{ rolling_vol_dates | default([]) | tojson }}; // reuse same axis if provided
+      const rollingSharpeDates =
+        (rollingSharpeDatesSource.length ? rollingSharpeDatesSource : dates);
+      const rollingSortinoDates =
+        (rollingSortinoDatesSource.length ? rollingSortinoDatesSource : dates);
+      const rollingVolDates =
+        (rollingVolDatesSource.length ? rollingVolDatesSource : dates);
+      const benchmarkRollingSharpeDates = benchmarkRollingSharpeDatesSource.length
+        ? benchmarkRollingSharpeDatesSource
+        : summaryBenchmarkDates;
+      const benchmarkRollingSortinoDates = benchmarkRollingSortinoDatesSource.length
+        ? benchmarkRollingSortinoDatesSource
+        : summaryBenchmarkDates;
+      const benchmarkRollingVolDates = {{ benchmark_rolling_vol_dates | default([]) | tojson }};
+    const sharpeBaseline = {{ sharpe_baseline | tojson }};
+    const sortinoBaseline = {{ sortino_baseline | tojson }};
+    const actualUnderwater = {{ underwater_series | tojson }};
+    const underwaterSeries = actualUnderwater.length ? actualUnderwater : sampleDrawdown;
+    const benchmarkUnderwaterSeries = {{ benchmark_underwater_series | tojson }};
+    const worstDrawdowns = {{ worst_drawdowns | tojson }};
+    const highlightMax = summaryValues.length
+      ? Math.max(...summaryValues)
+      : Math.max(...sampleReturns);
+    const drawdownBands = longestDrawdowns.length
+      ? longestDrawdowns
+      : [
+          { start: dates[5], end: dates[7] },
+          { start: dates[14], end: dates[17] },
+          { start: dates[24], end: dates[26] },
+          { start: dates[33], end: dates[35] },
+          { start: dates[42], end: dates[44] },
+        ];
+
+    const riskAdjustedRows = {{ risk_adjusted_rows | tojson }};
+    const riskTooltipMap = {
+      "Sharpe Ratio": "Average excess return per unit of total volatility.",
+      "Sortino Ratio": "Similar to Sharpe but only penalizes downside variation.",
+      "Smart Sharpe": "Sharpe adjusted for higher moments and persistence.",
+      "Smart Sortino": "Sortino adjusted for higher moments and downside risk.",
+      "Sortino/√2": "Sortino scaled by √2 to match half-normal downside.",
+      "Smart Sortino/√2": "Smart Sortino scaled for half-normal downside.",
+      "Calmar Ratio": "Annualized return divided by maximum drawdown, highlighting return per unit drawdown.",
+      "Omega Ratio": "Ratio of gains to losses above/below a threshold, capturing tail asymmetry.",
+      "RoMaD": "Return over maximum drawdown, emphasizing recovery efficiency.",
+    };
+    const volRows = {{ vol_rows | tojson }};
+    const tailRows = {{ tail_rows | tojson }};
+    const parameterRows = {{ parameter_rows | tojson }};
+    const heatmapMonths = {{ heatmap_months | tojson }};
+    const heatmapYears = {{ heatmap_years | tojson }};
+    const heatmapValues = {{ heatmap_values | tojson }};
+    const heatmapFlat = heatmapValues.flat();
+    const heatmapMin = heatmapFlat.length ? Math.min(...heatmapFlat) : 0;
+    const heatmapMax = heatmapFlat.length ? Math.max(...heatmapFlat) : 1;
+    const heatmapColorStops = [
+      { stop: 0.0, color: "#a50026" },
+      { stop: 0.1, color: "#d73027" },
+      { stop: 0.2, color: "#f46d43" },
+      { stop: 0.3, color: "#fdae61" },
+      { stop: 0.4, color: "#fee08b" },
+      { stop: 0.5, color: "#ffffbf" },
+      { stop: 0.6, color: "#d9ef8b" },
+      { stop: 0.7, color: "#a6d96a" },
+      { stop: 0.8, color: "#66bd63" },
+      { stop: 0.9, color: "#1a9850" },
+      { stop: 1.0, color: "#006837" },
+    ];
+    const heatmapColorScale = heatmapColorStops.map(({ stop, color }) => [stop, color]);
+    const heatmapTextWhite = new Set(["#a50026", "#d73027", "#006837"]);
+    const normalizeHeatmapValue = (value) => {
+      if (heatmapMax === heatmapMin) {
+        return 0;
+      }
+      return Math.min(Math.max((value - heatmapMin) / (heatmapMax - heatmapMin), 0), 1);
+    };
+    const heatmapColorForValue = (value) => {
+      const ratio = normalizeHeatmapValue(value);
+      for (let i = heatmapColorStops.length - 1; i >= 0; i -= 1) {
+        if (ratio >= heatmapColorStops[i].stop) {
+          return heatmapColorStops[i].color;
+        }
+      }
+      return heatmapColorStops[0].color;
+    };
+    const heatmapTextColor = (value) =>
+      heatmapTextWhite.has(heatmapColorForValue(value)) ? "#ffffff" : "#1b1f24";
+    const winRateBuckets = {{ win_rate_buckets | tojson }};
+    const winRateValues = {{ win_rate_values | tojson }};
+    const eoyTableRows = eoyRows;
+    const drawdownRows = [
+      ["2025-10-10", "2025-10-30", "-8.27%", "21"],
+      ["2022-11-02", "2022-11-21", "-5.12%", "20"],
+      ["2022-01-19", "2022-02-28", "-4.28%", "41"],
+      ["2020-06-12", "2020-06-24", "-4.24%", "13"],
+      ["2024-08-19", "2024-09-13", "-3.97%", "26"],
+      ["2022-12-02", "2023-01-13", "-3.93%", "43"],
+      ["2020-12-21", "2021-01-20", "-3.62%", "31"],
+      ["2024-11-08", "2024-11-29", "-3.51%", "22"],
+      ["2020-09-11", "2020-09-30", "-3.46%", "20"],
+      ["2024-12-16", "2025-01-16", "-3.41%", "32"],
+    ];
+
+    function renderCharts() {
+      const chartPrimaryColor = "#358DC2";
+      const cumulativeTraces = [
+        {
+          x: summaryDates,
+          y: summaryValues,
+          mode: "lines",
+          name: "Strategy",
+          line: { color: chartPrimaryColor, width: 3 },
+          hovertemplate: "%{y:.2f}%<extra></extra>",
+        },
+      ];
+      if (hasBenchmark && summaryBenchmarkValues.length) {
+        cumulativeTraces.push({
+          x: summaryBenchmarkDates,
+          y: summaryBenchmarkValues,
+          mode: "lines",
+          name: benchmarkLabel,
+          hovertemplate: "%{y:.2f}%<extra></extra>",
+        });
+      }
+      Plotly.newPlot("chart-cumulative", cumulativeTraces, {
+        margin: { t: 20, r: 10, b: 40, l: 50 },
+        yaxis: { ticksuffix: "%", zeroline: false },
+        xaxis: { type: "date", dtick: "M6", tickformat: "%b %Y" },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        showlegend: false,
+      }, { responsive: true });
+
+      const eoyTraces = [
+        {
+          x: eoyYears,
+          y: eoyReturns,
+          type: "bar",
+          name: "Strategy",
+          marker: { color: chartPrimaryColor },
+          hovertemplate: "%{y:.1f}%<extra></extra>",
+        },
+      ];
+      if (hasBenchmark && benchmarkEoyReturns.some((val) => typeof val === "number")) {
+        eoyTraces.push({
+          x: eoyYears,
+          y: benchmarkEoyReturns,
+          type: "bar",
+          name: benchmarkLabel,
+          hovertemplate: "%{y:.1f}%<extra></extra>",
+        });
+      }
+      eoyTraces.push({
+          x: [
+            eoyYears[0],
+            eoyYears[eoyYears.length - 1] || eoyYears[0],
+          ],
+          y: [eoyAverage, eoyAverage],
+          mode: "lines",
+          name: "Avg Annual",
+          line: { color: "#ff4747", width: 3, dash: "dash" },
+          hovertemplate: "Avg %{y:.1f}%<extra></extra>",
+          showlegend: false,
+        });
+      Plotly.newPlot("chart-eoy", eoyTraces, {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        yaxis: { ticksuffix: "%", zeroline: false },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        showlegend: false,
+        barmode: "group",
+      }, { responsive: true });
+
+      const dailyXAxis = actualDailyDates.length ? actualDailyDates : Array.from({ length: dailyBars.length }, (_, i) => i + 1);
+      const dailyYAxis = actualDailyReturnSeries.length ? actualDailyReturnSeries : dailyBars;
+      Plotly.newPlot("chart-daily", [{
+        x: dailyXAxis,
+        y: dailyYAxis,
+        type: "bar",
+        marker: { color: chartPrimaryColor },
+        hovertemplate: "%{y:.2f}%<extra></extra>",
+      }], {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        yaxis: { ticksuffix: "%", zeroline: false },
+        xaxis: { type: "date", dtick: "M6", tickformat: "%b %Y" },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+      }, { responsive: true });
+
+      const tableBody = document.getElementById("period-table");
+      tableBody.innerHTML = periodReturns
+        .map(({ label, value, benchmark_value }) => {
+          const benchmarkCell = hasBenchmark
+            ? `<td align="right">${benchmark_value || "--"}</td>`
+            : "";
+          return `<tr><td>${label}</td><td align="right">${value}</td>${benchmarkCell}</tr>`;
+        })
+        .join("");
+
+    const distValues = actualDailyReturnSeries.length ? actualDailyReturnSeries.slice(1) : dailyReturnSeries.slice(1);
+    const distMean = distValues.reduce((acc, val) => acc + val, 0) / distValues.length;
+      const distVariance = distValues.reduce((acc, val) => acc + Math.pow(val - distMean, 2), 0) / distValues.length;
+      const distStd = Math.max(Math.sqrt(distVariance), 0.01);
+      const normalX = [];
+      const normalDensity = [];
+      for (let i = -4; i <= 4; i += 0.1) {
+        const x = distMean + i * distStd;
+        const y = (1 / (distStd * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - distMean) / distStd, 2));
+        normalX.push(x);
+        normalDensity.push(y);
+      }
+
+      const distMaxDensity = Math.max(...normalDensity);
+      const sortedDist = distValues.slice().sort((a, b) => a - b);
+      const clamp = (arr, pct) => {
+        const idx = Math.floor(arr.length * pct);
+        return arr[Math.min(Math.max(idx, 0), arr.length - 1)];
+      };
+      const xMin = clamp(sortedDist, 0.005);
+      const xMax = clamp(sortedDist, 0.995);
+      Plotly.newPlot("chart-return-dist", [
+        {
+          x: distValues,
+          type: "histogram",
+          opacity: 0.75,
+          marker: { color: chartPrimaryColor },
+          hovertemplate: "%{x:.2f}%<extra></extra>",
+        },
+        {
+          x: normalX,
+          y: normalDensity,
+          mode: "lines",
+          line: { color: chartPrimaryColor, width: 2, dash: "dash" },
+          hoverinfo: "skip",
+        },
+      ], {
+        margin: { t: 10, r: 10, b: 40, l: 50 },
+        xaxis: { title: "Daily Return (%)" },
+        yaxis: { title: "Count" },
+        xaxis: { title: "Daily Return (%)", range: [xMin, xMax] },
+        showlegend: false,
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        bargap: 0.2,
+        shapes: [
+          {
+            type: "line",
+            x0: distMean,
+            x1: distMean,
+            y0: 0,
+            y1: distMaxDensity * 1.1,
+            line: { color: "#ff4747", width: 2, dash: "dashdot" },
+          },
+        ],
+      }, { responsive: true });
+
+      const baselineSharpeValue = 1.65;
+      const baselineSharpeDates = rollingSharpeDates.length
+        ? [rollingSharpeDates[0], rollingSharpeDates[rollingSharpeDates.length - 1]]
+        : [dates[0], dates[dates.length - 1]];
+      const sharpeTraces = [
+        {
+          x: rollingSharpeDates,
+          y: rollingSharpe,
+          mode: "lines",
+          line: { color: chartPrimaryColor },
+          hovertemplate: "%{y:.2f}<extra></extra>",
+          showlegend: false,
+          connectgaps: true,
+        },
+      ];
+      if (hasBenchmark && benchmarkRollingSharpe.length) {
+        sharpeTraces.push({
+          x: benchmarkRollingSharpeDates.length ? benchmarkRollingSharpeDates : summaryBenchmarkDates,
+          y: benchmarkRollingSharpe,
+          mode: "lines",
+          name: benchmarkLabel,
+          hovertemplate: "%{y:.2f}<extra></extra>",
+          connectgaps: true,
+        });
+      }
+      sharpeTraces.push({
+        x: baselineSharpeDates,
+        y: [sharpeBaseline, sharpeBaseline],
+        mode: "lines",
+        line: { color: "#ff4747", width: 2, dash: "dash" },
+        hovertemplate: `Sharpe ${sharpeBaseline.toFixed(2)}<extra></extra>`,
+        showlegend: false,
+      });
+      Plotly.newPlot("chart-roll-sharpe", sharpeTraces, {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        xaxis: { type: "date", dtick: "M6", tickformat: "%b %Y" },
+        yaxis: { zeroline: false },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        showlegend: false,
+      }, { responsive: true });
+
+      const baselineSortinoDates = rollingSortinoDates.length
+        ? [rollingSortinoDates[0], rollingSortinoDates[rollingSortinoDates.length - 1]]
+        : [dates[0], dates[dates.length - 1]];
+      const sortinoTraces = [
+        {
+          x: rollingSortinoDates,
+          y: rollingSortino,
+          mode: "lines",
+          line: { color: chartPrimaryColor },
+          hovertemplate: "%{y:.2f}<extra></extra>",
+          showlegend: false,
+          connectgaps: true,
+        },
+      ];
+      if (hasBenchmark && benchmarkRollingSortino.length) {
+        sortinoTraces.push({
+          x: benchmarkRollingSortinoDates.length ? benchmarkRollingSortinoDates : summaryBenchmarkDates,
+          y: benchmarkRollingSortino,
+          mode: "lines",
+          name: benchmarkLabel,
+          hovertemplate: "%{y:.2f}<extra></extra>",
+          connectgaps: true,
+        });
+      }
+      sortinoTraces.push({
+        x: baselineSortinoDates,
+        y: [sortinoBaseline, sortinoBaseline],
+        mode: "lines",
+        line: { color: "#ff4747", width: 2, dash: "dash" },
+        hovertemplate: `Sortino ${sortinoBaseline.toFixed(2)}<extra></extra>`,
+        showlegend: false,
+      });
+      Plotly.newPlot("chart-roll-sortino", sortinoTraces, {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        xaxis: { type: "date", dtick: "M6", tickformat: "%b %Y" },
+        yaxis: { zeroline: false },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        showlegend: false,
+      }, { responsive: true });
+
+      const rollingVolTraces = [
+        {
+          x: rollingVolDates,
+          y: rollingVol,
+          mode: "lines",
+          line: { color: chartPrimaryColor },
+          hovertemplate: "%{y:.2f}%<extra></extra>",
+          showlegend: false,
+          connectgaps: true,
+        },
+      ];
+      if (hasBenchmark && benchmarkRollingVol.length) {
+        const benchmarkVolDates =
+          benchmarkRollingVolDates.length ? benchmarkRollingVolDates : summaryBenchmarkDates;
+        rollingVolTraces.push({
+          x: benchmarkVolDates,
+          y: benchmarkRollingVol,
+          mode: "lines",
+          name: benchmarkLabel,
+          hovertemplate: "%{y:.2f}%<extra></extra>",
+          connectgaps: true,
+        });
+      }
+      rollingVolTraces.push({
+        x: rollingVolDates.length
+          ? [rollingVolDates[0], rollingVolDates[rollingVolDates.length - 1]]
+          : [dates[0], dates[dates.length - 1]],
+        y: [volBaseline * 100, volBaseline * 100],
+        mode: "lines",
+        line: { color: "#ff4747", width: 2, dash: "dash" },
+        hovertemplate: `Ann Vol %{y:.2f}%<extra></extra>`,
+        showlegend: false,
+      });
+      Plotly.newPlot("chart-roll-vol", rollingVolTraces, {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        xaxis: { type: "date", dtick: "M6", tickformat: "%b %Y" },
+        yaxis: { zeroline: false, ticksuffix: "%" },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        showlegend: false,
+      }, { responsive: true });
+
+      const underwaterTraces = [
+        {
+          x: summaryDates,
+          y: underwaterSeries,
+          mode: "lines",
+          name: "Strategy",
+          fill: "tozeroy",
+          line: { color: chartPrimaryColor },
+          hovertemplate: "%{y:.2f}%<extra></extra>",
+        },
+      ];
+      if (hasBenchmark && benchmarkUnderwaterSeries.length) {
+        underwaterTraces.push({
+          x: summaryBenchmarkDates,
+          y: benchmarkUnderwaterSeries,
+          mode: "lines",
+          name: benchmarkLabel,
+          hovertemplate: "%{y:.2f}%<extra></extra>",
+        });
+      }
+      Plotly.newPlot("chart-underwater", underwaterTraces, {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        yaxis: { ticksuffix: "%" },
+        xaxis: { type: "date", dtick: "M6", tickformat: "%b %Y", ticks: "outside" },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        showlegend: false,
+      }, { responsive: true });
+
+      Plotly.newPlot("chart-drawdown-highlight", [
+        {
+          x: summaryDates,
+          y: summaryValues,
+          mode: "lines",
+          line: { color: chartPrimaryColor },
+          showlegend: false,
+        },
+        ...drawdownBands.map(({ start, end }) => ({
+          x: [start, end, end, start],
+          y: [0, 0, highlightMax, highlightMax],
+          fill: "toself",
+          fillcolor: "rgba(231,111,81,0.15)",
+          line: { width: 0 },
+          mode: "none",
+          hoverinfo: "skip",
+          showlegend: false,
+        }))
+      ], {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        xaxis: { type: "date", dtick: "M6", tickformat: "%b %Y", ticks: "outside" },
+        yaxis: { ticksuffix: "%" },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+      }, { responsive: true });
+
+      const formatMetricValue = (value) =>
+        value === null || value === undefined || value === "" ? "--" : value;
+      const renderMetricTable = (id, rows, tooltipMap = {}) => {
+        const body = document.getElementById(id);
+        body.innerHTML = rows
+          .map(({ label, strategy, benchmark }) => {
+            const tooltip = tooltipMap[label] || "";
+            const infoIcon = tooltip ? ` <span class="info-icon" title="${tooltip}">ⓘ</span>` : "";
+            const benchmarkCell = hasBenchmark
+              ? `<td align="right">${formatMetricValue(benchmark)}</td>`
+              : "";
+            return `<tr><td>${label}${infoIcon}</td><td align="right">${formatMetricValue(strategy)}</td>${benchmarkCell}</tr>`;
+          })
+          .join("");
+      };
+
+      renderMetricTable("table-risk-adjusted", riskAdjustedRows, riskTooltipMap);
+      const tailTooltipMap = {
+        "Skewness": "Measures asymmetry; positive values suggest upside outliers, negative values indicate deeper downside tails.",
+        "Kurtosis": "Indicates tail thickness; higher numbers mean more extreme events than a normal distribution.",
+        "Daily VaR": "Value-at-Risk estimates the worst expected daily loss at the chosen confidence level.",
+        "Expected Shortfall": "Expected Shortfall (cVaR) averages losses beyond the VaR cutoff, capturing tail severity.",
+        "Serenity Index": "Combines return and drawdown profiles; higher values imply smoother equity curves with better rewards.",
+      };
+      renderMetricTable("table-tail", tailRows, tailTooltipMap);
+      const volTooltipMap = {
+        "Recovery Factor": "Recovery Factor = cumulative return divided by max drawdown; higher values reflect quicker recoveries.",
+        "Ulcer Index": "Ulcer Index quantifies depth and duration of drawdowns; lower is smoother equity curve.",
+      };
+      renderMetricTable("table-vol-draw", volRows, volTooltipMap);
+      const parametersTable = document.getElementById("table-parameters");
+      if (parameterRows.length && parametersTable) {
+        parametersTable.innerHTML = parameterRows
+          .map(([label, value]) => `<tr><td>${label}</td><td align="right">${value}</td></tr>`)
+          .join("");
+      }
+      const drawdownTable = document.getElementById("table-drawdowns");
+      drawdownTable.innerHTML = worstDrawdowns
+        .map(
+          ({ start, end, drawdown, days }) =>
+            `<tr><td align="right">${start}</td><td align="right">${end}</td><td align="right">${drawdown}</td><td align="right">${days}</td></tr>`
+        )
+        .join("");
+      const formatPercent = (value) =>
+        typeof value === "number" ? `${value.toFixed(2)}%` : "--";
+      const eoyTable = document.getElementById("table-eoy");
+      eoyTable.innerHTML = eoyTableRows
+        .map(
+          ({
+            year,
+            annual_return,
+            cumulative_return,
+            benchmark_return,
+            benchmark_cumulative,
+          }) => {
+            const benchmarkCells = hasBenchmark
+              ? `<td align="right">${formatPercent(benchmark_return)}</td><td align="right">${formatPercent(
+                  benchmark_cumulative
+                )}</td>`
+              : "";
+            return `<tr><td>${year}</td><td align="right">${formatPercent(annual_return)}</td>${benchmarkCells}<td align="right">${formatPercent(
+              cumulative_return
+            )}</td></tr>`;
+          }
+        )
+        .join("");
+
+      Plotly.newPlot("chart-heatmap", [{
+        z: heatmapValues,
+        x: heatmapMonths,
+        y: heatmapYears,
+        type: "heatmap",
+        colorscale: heatmapColorScale,
+        hovertemplate: "%{y} %{x}: %{z:.2f}%<extra></extra>",
+        showscale: false,
+        xgap: 1,
+        ygap: 1,
+        zmin: heatmapMin,
+        zmax: heatmapMax,
+      }], {
+        margin: { t: 10, r: 10, b: 40, l: 50 },
+        zmid: 0,
+        yaxis: { automargin: true, autorange: "reversed" },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        annotations: [].concat(...heatmapYears.map((year, yi) =>
+          heatmapMonths.map((month, xi) => {
+            const value = heatmapValues[yi][xi];
+            const textColor = heatmapTextColor(value);
+            return {
+              x: month,
+              y: year,
+              text: `${value}%`,
+              font: { color: textColor, size: 10 },
+              showarrow: false,
+            };
+          })
+        )),
+      }, { responsive: true });
+
+      const consistencyLookup = Object.fromEntries(consistencyRows.map(({ label, value }) => [label, value]));
+      const additionalYears = eoyYears || [];
+      const perYearBest = {{ per_year_best | default([]) | tojson }};
+      const perYearAvgUp = {{ per_year_avg_up | default([]) | tojson }};
+      const perYearExpected = {{ per_year_expected | default([]) | tojson }};
+      const perYearAvgDown = {{ per_year_avg_down | default([]) | tojson }};
+      const perYearWorst = {{ per_year_worst | default([]) | tojson }};
+      const perYearWinRate = {{ per_year_win_rate | default([]) | tojson }};
+      const perYearTimeInMarket = {{ per_year_time_in_market | default([]) | tojson }};
+      const performanceBuckets = ["Day", "Week", "Month", "Quarter", "Year"];
+      const performanceRows = [
+        ["Best", [
+          consistencyLookup["Best Day"] || "--",
+          consistencyLookup["Best Week"] || "--",
+          consistencyLookup["Best Month"] || "--",
+          consistencyLookup["Best Quarter"] || "--",
+          consistencyLookup["Best Year"] || "--",
+        ]],
+        ["Avg Up", [
+          consistencyLookup["Avg Up Day"] || "--",
+          consistencyLookup["Avg Up Week"] || "--",
+          consistencyLookup["Avg Up Month"] || "--",
+          consistencyLookup["Avg Up Quarter"] || "--",
+          consistencyLookup["Avg Up Year"] || "--",
+        ]],
+        ["Expected", [
+          consistencyLookup["Expected Daily%"] || "--",
+          consistencyLookup["Expected Weekly%"] || "--",
+          consistencyLookup["Expected Monthly%"] || "--",
+          consistencyLookup["Expected Quarterly%"] || "--",
+          consistencyLookup["Expected Yearly%"] || "--",
+        ]],
+        ["Avg Down", [
+          consistencyLookup["Avg Down Day"] || "--",
+          consistencyLookup["Avg Down Week"] || "--",
+          consistencyLookup["Avg Down Month"] || "--",
+          consistencyLookup["Avg Down Quarter"] || "--",
+          consistencyLookup["Avg Down Year"] || "--",
+        ]],
+        ["Worst", [
+          consistencyLookup["Worst Day"] || "--",
+          consistencyLookup["Worst Week"] || "--",
+          consistencyLookup["Worst Month"] || "--",
+          consistencyLookup["Worst Quarter"] || "--",
+          consistencyLookup["Worst Year"] || "--",
+        ]],
+      ];
+      const performanceTableRows = [
+        ...performanceRows,
+        [
+          "Win Rate",
+          winRateValues.map((v) => `${v}%`),
+        ],
+        [
+          "Time in Market",
+          Array(performanceBuckets.length).fill(consistencyLookup["Time in Market"] || "--"),
+        ],
+      ];
+      const performanceTable = document.getElementById("table-performance-grid");
+      performanceTable.innerHTML = [
+        `<tr><th></th>${performanceBuckets.map((b) => `<th style="text-align:center;">${b}</th>`).join("")}</tr>`,
+        ...performanceTableRows.map(([label, values]) => {
+          const tds = values.map((v) => `<td style="text-align:center;">${v}</td>`).join("");
+          return `<tr><td>${label}</td>${tds}</tr>`;
+        }),
+      ].join("");
+
+      // Yearly performance table (if years exist)
+      const yearsTable = document.getElementById("table-performance-years");
+      if (additionalYears.length && yearsTable) {
+        const yearRows = [
+          ["Best", perYearBest.map((v) => `${v}%`)],
+          ["Avg Up", perYearAvgUp.map((v) => `${v}%`)],
+          ["Expected", perYearExpected.map((v) => `${v}%`)],
+          ["Avg Down", perYearAvgDown.map((v) => `${v}%`)],
+          ["Worst", perYearWorst.map((v) => `${v}%`)],
+          ["Win Rate", perYearWinRate.map((v) => `${v}%`)],
+          ["Time in Market", perYearTimeInMarket.map((v) => `${v}%`)],
+        ];
+        yearsTable.innerHTML = [
+          `<tr><th></th>${additionalYears.map((y) => `<th style="text-align:center;">${y}</th>`).join("")}</tr>`,
+          ...yearRows.map(([label, vals]) => {
+            const tds = vals.map((v) => `<td style="text-align:center;">${v}</td>`).join("");
+            return `<tr><td>${label}</td>${tds}</tr>`;
+          }),
+        ].join("");
+
+        const yearSeries = [
+          { name: "Best", y: perYearBest, color: "#264653" },
+          { name: "Avg Up", y: perYearAvgUp, color: "#2a9d8f" },
+          { name: "Expected", y: perYearExpected, color: "#e9c46a" },
+          { name: "Avg Down", y: perYearAvgDown, color: "#f4a261" },
+          { name: "Worst", y: perYearWorst, color: "#e76f51" },
+        ];
+        Plotly.newPlot("chart-performance-years", yearSeries.map((s) => ({
+          x: additionalYears,
+          y: s.y,
+          mode: "lines+markers",
+          name: s.name,
+          line: { color: s.color, shape: "spline" },
+          hovertemplate: `${s.name} %{x}: %{y:.2f}%<extra></extra>`,
+        })), {
+          margin: { t: 10, r: 10, b: 40, l: 40 },
+          yaxis: { ticksuffix: "%" },
+          xaxis: { type: "category" },
+          paper_bgcolor: "rgba(0,0,0,0)",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          hovermode: "x unified",
+          hoverlabel: { bgcolor: "#ffffff", font: { color: "#1b1f24" } },
+          showlegend: false,
+        }, { responsive: true });
+      }
+
+      // Line chart for performance rows
+      const performanceSeries = performanceRows.map(([label, values]) => ({
+        x: performanceBuckets,
+        y: values.map((v) => parseFloat(String(v).replace("%", ""))),
+        mode: "lines+markers",
+        name: label,
+        line: { shape: "spline" },
+      }));
+
+      Plotly.newPlot("chart-performance-trend", performanceSeries, {
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        yaxis: { ticksuffix: "%" },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        hovermode: "x unified",
+        hoverlabel: { bgcolor: "#ffffff", font: { color: "#1b1f24" } },
+        showlegend: false,
+      }, { responsive: true });
+    }
+
+    async function copyPanel(panel, button) {
+      if (!window.html2canvas) {
+        alert("Screenshot capability is unavailable in this environment.");
+        return;
+      }
+      button.disabled = true;
+      const originalText = button.textContent;
+      button.textContent = "Copying...";
+      try {
+        const canvas = await html2canvas(panel, { backgroundColor: "#ffffff", scale: 2 });
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (blob && navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          button.textContent = "Copied!";
+        } else {
+          const link = document.createElement("a");
+          link.href = canvas.toDataURL("image/png");
+          link.download = "quantalytics-panel.png";
+          link.click();
+          button.textContent = "Downloaded";
+        }
+      } catch (err) {
+        console.error(err);
+        button.textContent = "Failed";
+      } finally {
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = originalText;
+        }, 1500);
+      }
+    }
+
+    function setupPanelExport() {
+      document.querySelectorAll(".panel-export").forEach((button) => {
+        button.addEventListener("click", () => {
+          const panel = button.closest(".panel");
+          if (panel) {
+            copyPanel(panel, button);
+          }
+        });
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderCharts();
+      setupPanelExport();
+    });
+  </script>
+</body>
+
+</html>
