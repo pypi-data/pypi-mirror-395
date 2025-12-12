@@ -1,0 +1,195 @@
+[project]
+name = "duplicity"
+version = "3.0.7.dev0"
+dynamic = ["dependencies"]
+description = "Encrypted backup using rsync algorithm"
+authors = [
+    { name = "Kenneth Loafman", email = "kenneth@loafman.com" },
+]
+maintainers = [
+    { name = "Edgar Soldin" },
+    { name = "Thomas Laubrock" },
+]
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = "> 3.8, < 3.15"
+# not all LP builders will take license=
+#license = "GPL-2.0-or-later"
+classifiers = [
+    "Development Status :: 6 - Mature",
+    "Environment :: Console",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Archiving :: Backup",
+]
+
+
+[build-system]
+requires = [
+    "build>=1.1",
+    "pip>=24.0",
+    "pipx>=1.5",
+    "packaging>=20.0",
+    "setuptools>=78.1.0",
+    "wheel>=0.42.0",
+]
+build-backend = "setuptools.build_meta"
+
+
+[project.scripts]
+duplicity = "duplicity.__main__:dup_run"
+
+
+[project.urls]
+Homepage = "http://duplicity.us"
+Download = "https://gitlab.com/duplicity/duplicity/-/releases"
+Issues = "https://gitlab.com/duplicity/duplicity/-/issues"
+Contact = "https://lists.nongnu.org/mailman/listinfo/duplicity-talk"
+Documentation = "http://duplicity.us"
+Repository = "https://gitlab.com/duplicity/duplicity"
+Changelog = "https://gitlab.com/duplicity/duplicity/-/blob/main/CHANGELOG.md"
+
+
+[tool.setuptools]
+platforms = [
+    "any"
+]
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+
+[tool.setuptools.packages.find]
+where = [
+    ".",
+]
+include = [
+    "duplicity",
+    "duplicity.backends",
+    "duplicity.backends.pyrax_identity",
+]
+exclude = [
+    ".*",
+    "Makefile",
+    "crowdin.yml",
+    "debian*",
+    "docs*",
+    "readthedocs.yaml",
+    "snap*",
+    "testing*",
+    "tools*",
+    "venv*",
+]
+
+
+[tool.black]
+line-length = 120
+target-version = [
+    "py39",
+    "py310",
+    "py311",
+    "py312",
+    "py313",
+    "py314",
+]
+
+
+[tool.flynt]
+line-length = 120
+dry-run = true
+aggressive = true
+transform-joins = true
+# TODO: Remove duplicity.argparse311 when py310 goes EOL
+exclude = ["argparse311"]
+
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:.*use of fork\\(\\).*:DeprecationWarning",
+    "ignore:.*ssl.PROTOCOL_TLS is deprecated.*:DeprecationWarning",
+    "ignore:.*pkg_resources.*:DeprecationWarning",
+]
+addopts = [
+    "--capture=fd",
+    "--failed-first",
+    "--showlocals",
+    "--verbose",
+    "-p no:hypothesis",
+    "-p no:randomly",
+    "-p no:xdist",
+]
+markers = [
+    "slow: test runs >= 10 secs",
+]
+testpaths = [
+    "testing/test_code.py",
+    "testing/unit",
+    "testing/functional",
+]
+
+
+[tool.cibuildwheel]
+
+before-all = [
+    # WARNING: wheel builds are RedHat based, not Debian.
+    "yum update -y",
+    "yum install -y gcc gcc-c++ make git intltool librsync-devel",
+    "yum install -y libffi-devel openssl-devel openssl tzdata",
+    "yum install -y libxml2-devel libxslt-devel",
+    "python -m pip install -q -r requirements.txt",
+    "python ./setup.py build_ext",
+]
+
+[tool.cibuildwheel.config-settings]
+build-option = "--use-pep517"
+
+[tool.cibuildwheel.linux]
+archs = [
+    "x86_64",
+    "aarch64",
+]
+build = [
+    "cp{39,310,311,312,313,314}-manylinux_aarch64",
+    "cp{39,310,311,312,313,314}-manylinux_x86_64",
+]
+
+
+[tool.pylint]
+jobs = 8
+errors-only = "yes"
+ignore = "_librsync.so"
+msg-template = '{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}'
+disable = [
+        "C",
+        "R",
+        "invalid-name",
+        "line-too-long",
+        "missing-function-docstring",
+        "missing-module-docstring",
+        "no-member",
+        "no-name-in-module",
+        "not-callable",
+        "possibly-used-before-assignment",
+        "raise-missing-from",
+        "unexpected-keyword-arg",
+        "undefined-variable",
+        "wrong-import-order",
+        "wrong-import-position",
+]
+enable = [
+        "unused-argument",
+        "access-member-before-definition",
+        "unused-wildcard-import",
+        "redefined-builtin",
+        "bad-indentation",
+        "mixed-indentation",
+        "unreachable",
+]
