@@ -1,0 +1,206 @@
+import os
+from pathlib import Path
+
+import humanize
+import requests
+
+from ._MultiPage import _MultiPage
+from ._OncService import _OncService
+from ._util import _createErrorMessage, _formatDuration, saveAsFile
+
+
+class _OncArchive(_OncService):
+    """
+    Methods that wrap the API archivefiles service
+    """
+
+    def __init__(self, parent: object):
+        super().__init__(parent)
+
+    def getArchivefileByLocation(self, filters: dict, allPages: bool):
+        """
+        Return a list of archived files for a device category in a location.
+
+        The filenames obtained can be used to download files using the ``downloadArchivefile`` method.
+        """  # noqa: E501
+        return self._getList(filters, service="archivefile/location", allPages=allPages)
+
+    def getArchivefileByDevice(self, filters: dict, allPages: bool):
+        """
+        Return a list of archived files from a specific device.
+
+        The filenames obtained can be used to download files using the ``downloadArchivefile`` method.
+        """  # noqa: E501
+        return self._getList(filters, service="archivefile/device", allPages=allPages)
+
+    def getArchivefile(self, filters: dict, allPages: bool):
+        return self._delegateByFilters(
+            byDevice=self.getArchivefileByDevice,
+            byLocation=self.getArchivefileByLocation,
+            filters=filters,
+            allPages=allPages,
+        )
+
+    def getArchivefileUrls(self, filters: dict, allPages: bool) -> list[str]:
+        file_list: list[str] = self.getArchivefile(filters, allPages)["files"]
+        return list(map(self.getArchivefileUrl, file_list))
+
+    def getArchivefileUrl(self, filename: str) -> str:
+        """
+        Return an archivefile absolute download URL for a filename
+        """
+        url = self._serviceUrl("archivefile/download")
+        token = self._config("token")
+        return f"{url}?filename={filename}&token={token}"
+
+    def downloadArchivefile(self, filename: str = "", overwrite: bool = False):
+        url = self._serviceUrl("archivefile/download")
+
+        filters = {
+            "token": self._config("token"),
+            "filename": filename,
+        }
+
+        # Download the archived file with filename (response contents is binary)
+        response = requests.get(
+            url, filters, timeout=self._config("timeout"), stream=True
+        )
+        status = response.status_code
+
+        if response.ok:
+            # Save file to output path
+            outPath: Path = self._config("outPath")
+            size, downloadTime = saveAsFile(response, outPath, filename, overwrite)
+
+        else:
+            msg = _createErrorMessage(response)
+            raise requests.HTTPError(msg)
+
+        # Prepare a readable status
+        txtStatus = "error"
+        if status == 200:
+            txtStatus = "completed"
+
+        return {
+            "url": response.url,
+            "status": txtStatus,
+            "size": size,
+            "downloadTime": downloadTime,
+            "file": filename,
+        }
+
+    def downloadDirectArchivefile(
+        self, filters: dict, overwrite: bool = False, allPages: bool = False
+    ):
+        """
+        Download a list of archived files that match the filters provided.
+
+        This function invokes the method ``getArchivefile`` to obtain a list of files,
+        and the method ``downloadArchivefile`` to download all files found.
+
+        See https://wiki.oceannetworks.ca/display/O2A/archivefiles
+        for usage and available filters.
+        """
+        # make sure we only get a simple list of files
+        if "returnOptions" in filters:
+            del filters["returnOptions"]
+
+        # Get a list of files
+        dataRows = self.getArchivefile(filters, allPages)
+
+        n = len(dataRows["files"])
+        print(f"Obtained a list of {n} files to download.")
+
+        # Download the files obtained
+        tries = 1
+        successes = 0
+        size = 0
+        time = 0
+        downInfos = []
+        for filename in dataRows["files"]:
+            # only download if file doesn't exist (or overwrite is True)
+            outPath: Path = self._config("outPath")
+            filePath = outPath / filename
+            fileExists = os.path.exists(filePath)
+
+            if not fileExists or os.path.getsize(filePath) == 0 or overwrite:
+                print(f'   ({tries} of {n}) Downloading file: "{filename}"')
+                downInfo = self.downloadArchivefile(filename, overwrite)
+                size += downInfo["size"]
+                time += downInfo["downloadTime"]
+                downInfos.append(downInfo)
+                successes += 1
+                tries += 1
+            else:
+                print(f'   Skipping "{filename}": File already exists.')
+                downInfo = {
+                    "url": self.getArchivefileUrl(filename),
+                    "status": "skipped",
+                    "size": 0,
+                    "downloadTime": 0,
+                    "file": filename,
+                }
+                downInfos.append(downInfo)
+
+        print(f"{successes} files ({humanize.naturalsize(size)}) downloaded")
+        print(f"Total Download Time: {_formatDuration(time)}")
+
+        return {
+            "downloadResults": downInfos,
+            "stats": {"totalSize": size, "downloadTime": time, "fileCount": successes},
+        }
+
+    def _getList(
+        self, filters: dict, service: str = "location", allPages: bool = False
+    ):
+        """
+        Wraps archivefiles getArchivefileByLocation and getArchivefileByDevice methods
+        """
+        url = self._serviceUrl(service)
+        filters["token"] = self._config("token")
+
+        # parse and remove the artificial parameter extension
+        extension = None
+        filters2 = filters.copy()
+        if "extension" in filters2:
+            extension = filters2["extension"]
+
+        if allPages:
+            mp = _MultiPage(self)
+            result = mp.getAllPages(service, url, filters2)
+        else:
+            if "extension" in filters2:
+                del filters2["extension"]
+            result = self._doRequest(url, filters2)
+            result = self._filterByExtension(result, extension)
+        return result
+
+    def _filterByExtension(self, results: dict, extension: str):
+        """
+        Filter results to only those where filenames end with the extension
+        If extension is None, won't do anything
+        Returns the filtered list
+        """
+        if extension is None:
+            return results
+
+        extension = "." + extension  # match the dot to avoid matching substrings
+        n = len(extension)
+        filtered = []  # appending is faster than deleting
+
+        # determine the row structure
+        rowFormat = "filename"
+        if len(results["files"]) > 0 and isinstance(results["files"][0], dict):
+            rowFormat = "dict"
+
+        # filter
+        for file in results["files"]:
+            if rowFormat == "filename":
+                if file[-n:] == extension:
+                    filtered.append(file)
+            else:
+                if file["filename"][-n:] == extension:
+                    filtered.append(file)
+        results["files"] = filtered
+
+        return results
