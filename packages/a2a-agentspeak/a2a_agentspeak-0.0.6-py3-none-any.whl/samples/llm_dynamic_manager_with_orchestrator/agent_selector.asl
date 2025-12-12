@@ -1,0 +1,91 @@
+!start.
+
+sleep_time(10).
+
+
++!start <-
+    .my_name(N) ;
+    .print("Hello from", N).
+
++!register(A) <-
+    +available_agent(A) ;
+    !print_available_agents.
+
++!print_available_agents <-
+    .print("All registered agents:");
+    for (available_agent(X)) { .print(X) }.
+
++selected(A) : available_agent(A) <-
+    .print("Selecting agent", A).
+
++selected(A) : not available_agent(A) <-
+    .print("Warning : selected an agent which is not available.").
+
++reply_to(F) <-
+    .print("Reply-to:", F).
+
+
++!reply_with_failure : reply_to(F) <-
+    .my_name(N) ;
+    .send(F, tell, failure(N)).
+
++failure(A) <-
+    -failure(A) ;
+    +failure.
+
++failed(A) : available_agent(A) <-
+    .print("Received: failure from", A);
+    .print("Removing", A, "from registered agents.");
+    -available_agent(A) ;
+    -selected(A) ;
+    !print_available_agents ;
+    .print("Trying with another agent.");
+    !select_another ;
+    !build.
+
++!select_another : available_agent(A)  <-
+    +selected(A).
+
++!select_another <-
+    .print("No agent available for this task.").
+
++failed(A) : not available_agent(A) <-
+    .print("Warning: Received an information about", A, "but that agent was not registered").
+
++failure : selected(A) <-
+    -failure ;
+    +failed(A).
+
++spec(S)[source(F)] <-
+    +reply_to(F) ;
+    .print("Specification received.").
+
++!build : spec(S) & selected(A) & available_agent(A)<-
+    .print("Received the order to start the job.");
+    .send(A, tell, spec(S)) ;
+    .print("(spec sent)") ;
+    .wait(200) ;
+    .send(A, achieve, build) ;
+    .print("(build sent)").
+
++!build : not spec(_) <-
+    .print("Error: Cannot process because of missing spec.").
+
++!build : not selected(_) <-
+    .print("Error: Cannot process because no agent has been selected.").
+
++!build : not available_agent(_) <-
+    .print("Error: Cannot process because no agent is available.").
+
++!build : selected(A) & available_agent(B) <-
+    .print("Error: Cannot process (mismatch between selected agent", A, "and available agents).").
+
+
++reply(L) : reply_to(F)<-
+    .print ("Answer received from requirement manager.") ;
+    .print("Answer is:", L) ;
+    .send(F,tell, result(L)) ;
+    .print("Reply sent.").
+
++reply <-
+    .print ("Error: Bad answer received from requirement manager.").
