@@ -1,0 +1,36 @@
+name: Setup Bowtie
+description: "Install Bowtie, hooray!"
+author: "Julian Berman"
+branding:
+  icon: package
+  color: blue
+inputs:
+  version:
+    required: false
+    description: "bowtie version to be installed"
+    default: ""
+  installation-attempts:
+    required: false
+    default: "5"
+    description: "number of attempts to install bowtie with specified version if this version is not yet avaialble"
+  installation-wait-seconds:
+    required: false
+    default: "10"
+    description: "number of seconds to wait before performing the next installation attempt if current one has failed"
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@3259c6206f993105e3a61b142c2d97bf4b9ef83d # v7.1.0
+      with:
+        python-version: 3.13
+
+    - name: Install latest Bowtie
+      if: inputs.version == ''
+      run: uv tool install bowtie-json-schema
+      shell: bash
+
+    - name: "Install Bowtie ${{ inputs.version }}"
+      if: inputs.version != ''
+      run: uv tool install bowtie-json-schema==${{ inputs.version }}
+      shell: bash

@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""
+Check that lintsonschema's schema matches the "real" one.
+
+This is the most straightforward way to keep things in sync that I can think
+of. For why, see #521.
+"""
+
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).absolute().parent.parent
+PACKAGE = ROOT / "bowtie"
+CANONICAL_PATH = PACKAGE / "schemas"
+LINTSONSCHEMA_PATH = PACKAGE / "tests/fauxmplementations/lintsonschema/schemas"
+
+if not CANONICAL_PATH.is_dir():
+    sys.exit("Didn't find any schemas to check. Something seems wrong!")
+
+failed = False
+for path in CANONICAL_PATH.rglob("*.json"):
+    schema = path.read_text()
+
+    copy = LINTSONSCHEMA_PATH / path.relative_to(CANONICAL_PATH)
+    if not copy.is_file() or schema != copy.read_text():
+        failed = True
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        copy.write_text(schema)
+
+if failed:
+    sys.exit("lintsonschema's schemas drifted from the real ones. Fixing...")
+
+
+extra = []
+for path in LINTSONSCHEMA_PATH.rglob("*.json"):
+    source = CANONICAL_PATH / path.relative_to(LINTSONSCHEMA_PATH)
+    if not source.is_file():
+        extra.append(str(source))
+if extra:
+    sys.exit(
+        f"lintsonschema's schemas contain extra files: {extra}. "
+        "Refusing to delete them, you should inspect them manually.",
+    )

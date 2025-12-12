@@ -1,0 +1,66 @@
+{
+  "title": "Bowtie IO Protocol",
+  "description": "Input/output specification for Bowtie, a meta-validator for JSON Schema validator implementations",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+
+  "$id": "tag:bowtie.report,2023:ihop",
+
+  "$defs": {
+    "version": {
+      "description": "The current version of this protocol, to be incremented if changed",
+
+      "$anchor": "version",
+
+      "type": "integer",
+      "const": 1
+    },
+
+    "command": {
+      "type": "object",
+      "required": ["cmd"],
+      "unevaluatedProperties": false,
+      "oneOf": [
+        { "$ref": "tag:bowtie.report,2023:ihop:command:start" },
+        { "$ref": "tag:bowtie.report,2023:ihop:command:dialect" },
+        { "$ref": "tag:bowtie.report,2023:ihop:command:run" },
+        { "$ref": "tag:bowtie.report,2023:ihop:command:stop" }
+      ]
+    },
+
+    "case": {
+      "description": "An individual test case, consisting of a single schema and one or more instances to validate under it",
+
+      "$anchor": "case",
+
+      "type": "object",
+      "required": ["description", "schema", "tests"],
+      "properties": {
+        "description": {
+          "description": "A (human-readable) short description of this test case",
+          "type": "string"
+        },
+        "comment": {
+          "description": "Any additional comments about the test case",
+          "type": "string"
+        },
+        "schema": {
+          "description": "A valid JSON Schema.",
+          "$id": "tag:bowtie.report,2024:ihop:schemaInCurrentDialect",
+          "$comment": "We do no current validation here, as we may want to send schemas which truly aren't valid, but some day we likely will again."
+        },
+        "registry": {
+          "description": "A collection of schemas (with URIs) which tests may reference (via $ref) and expect to be retrievable. They should be registered in whatever mechanism is expected by the implementation.",
+          "type": "object",
+          "propertyNames": { "format": "uri" }
+        },
+        "tests": {
+          "description": "A set of related tests all using the same schema",
+          "type": "array",
+          "items": { "$ref": "tag:bowtie.report,2023:models:test" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
