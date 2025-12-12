@@ -1,0 +1,17 @@
+default:
+  interruptible: true
+
+variables:
+  CI_IMAGE: "$CI_REGISTRY_IMAGE:ci-$CI_COMMIT_REF_SLUG"
+  PIP_CACHE_DIR: ".cache/pip"
+  PIP_ROOT_USER_ACTION: "ignore"
+
+.pip_cache_template:
+  cache:
+    key:
+      files:
+        - pyproject.toml
+    paths:
+      - .cache/pip/
+    policy: pull-push
+    when: on_success

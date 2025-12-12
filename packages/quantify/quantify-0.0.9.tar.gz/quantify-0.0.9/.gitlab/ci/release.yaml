@@ -1,0 +1,59 @@
+release-testpypi:
+  stage: Release
+  image: $CI_IMAGE
+  needs:
+    - job: build-package
+      artifacts: true
+    - job: deploy-documentation
+  before_script:
+    - python -m pip install "pip==25.3" "twine==6.2.0"
+    - export TWINE_USERNAME="__token__"
+    - export TWINE_PASSWORD="$PYPI_API_TOKEN_TEST"
+  script:
+    - |
+      if [ -z "$PYPI_API_TOKEN_TEST" ]; then
+        echo "Error: PYPI_API_TOKEN_TEST is not set."
+        exit 1
+      fi
+    - |
+      twine upload --verbose --skip-existing --repository testpypi dist/* || {
+        echo "Twine upload failed. Check credentials or permissions.";
+        exit 1;
+      }
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+((rc|a|b)[0-9]+)?$/'
+      variables:
+        CFLAGS: "-O2 -s"
+      when: on_success
+    - when: never
+
+release-pypi:
+  stage: Release
+  image: $CI_IMAGE
+  needs:
+    - job: build-package
+      artifacts: true
+    - job: release-testpypi
+  before_script:
+    - python -m pip install "pip==25.3" "twine==6.2.0"
+    - export TWINE_USERNAME="__token__"
+    - export TWINE_PASSWORD="$PYPI_API_TOKEN_PROD"
+  script:
+    - |
+      if [ -z "$PYPI_API_TOKEN_PROD" ]; then
+        echo "Error: PYPI_API_TOKEN_PROD is not set."
+        exit 1
+      fi
+    - |
+      ls -la dist/  # optional for debugging
+      twine upload --verbose --repository pypi dist/* || {
+        echo "Twine upload failed. Check credentials or permissions.";
+        exit 1;
+      }
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+((rc|a|b)[0-9]+)?$/'
+      variables:
+        CFLAGS: "-O2 -s"
+      when: manual
+    - when: never
+  interruptible: false

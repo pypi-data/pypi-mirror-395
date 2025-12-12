@@ -1,0 +1,75 @@
+pytest-linux:
+  stage: Test
+  needs:
+    - job: build-package
+      artifacts: true
+
+  image: python:${PYTHON_VERSION}-slim
+  parallel:
+    matrix:
+      - PYTHON_VERSION: "3.10"
+      - PYTHON_VERSION: "3.11"
+      - PYTHON_VERSION: "3.12"
+      - PYTHON_VERSION: "3.13"
+      # TODO: Unpin to "3.14" once Python 3.14.2+ fixes the dataclasses bug
+      # See: https://github.com/python/cpython/issues/142214
+      # Also see: https://github.com/python/cpython/issues/142214#issuecomment-3605721277
+      - PYTHON_VERSION: "3.14.0"
+
+  variables:
+    DISPLAY: ":99.0"
+    DEBIAN_FRONTEND: "noninteractive"
+    MPLBACKEND: "Agg"
+    QT_QPA_PLATFORM: "offscreen"
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+  cache:
+    - key: "pytest-linux-py${PYTHON_VERSION}"
+      paths:
+        - .cache/pip
+      policy: pull-push
+      when: on_success
+
+  before_script:
+    - set -ex
+    - python -m venv .venv
+    - source .venv/bin/activate
+    - python -m pip install "pip>=25.3" "setuptools>=80.9.0" "wheel>=0.45.1"
+    # Install GUI dependencies
+    - |
+      echo 'APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+      apt-get -o Acquire::Retries=3 update -qq
+      apt-get install -y -qq --no-install-recommends eatmydata
+      eatmydata apt-get -o Acquire::Retries=3 install -y -qq --no-install-recommends \
+        build-essential \
+        git xvfb xauth x11-utils \
+        libx11-xcb1 libxkbcommon-x11-0 \
+        libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+        libxcb-randr0 libxcb-render-util0 libxcb-xfixes0 \
+        libxcb-cursor0 libgl1 libegl1 libdbus-1-3 libglib2.0-0
+    - |
+      PY_TAG="cp$(echo $PYTHON_VERSION | tr -d '.')"
+      WHEEL="$(find dist -name "*-${PY_TAG}-*.whl" | head -n 1 || true)"
+      if [ -z "$WHEEL" ]; then
+        WHEEL="$(find dist -name "*-py3-none-any.whl" | head -n 1 || true)"
+      fi
+      if [ -z "$WHEEL" ]; then
+        echo "ERROR No suitable wheel found for Python $PYTHON_VERSION"
+        ls -la dist/ || true
+        exit 1
+      fi
+      echo "Installing wheel $WHEEL"
+      pip install "$WHEEL"
+      pip install diff-cover pytest pytest-cov pytest-mock pytest-mpl pytest-xdist
+
+  script:
+    - |
+      xvfb-run -a -s "-screen 0 1280x1024x24" \
+        pytest --disable-warnings -n auto \
+        --junitxml=pytest-junit.xml
+
+  artifacts:
+    when: always
+    reports:
+      junit: pytest-junit.xml
+    expire_in: 1 week

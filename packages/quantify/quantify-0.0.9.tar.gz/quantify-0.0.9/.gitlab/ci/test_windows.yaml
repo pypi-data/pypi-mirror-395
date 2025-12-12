@@ -1,0 +1,73 @@
+pytest-windows:
+  stage: Test
+  needs:
+    - job: build-package
+      artifacts: true
+
+  tags: ["saas-windows-medium-amd64"]
+  when: manual
+  allow_failure: true
+
+  parallel:
+    matrix:
+      - PYTHON_VERSION: "3.10"
+      - PYTHON_VERSION: "3.11"
+      - PYTHON_VERSION: "3.12"
+      - PYTHON_VERSION: "3.13"
+      - PYTHON_VERSION: "3.14"
+
+  variables:
+    QT_QPA_PLATFORM: "offscreen"
+    MPLBACKEND: "Agg"
+    UV_CACHE_DIR: "$CI_PROJECT_DIR\\.uv\\cache"
+    UV_PYTHON_INSTALL_DIR: "$CI_PROJECT_DIR\\.uv\\py"
+    RUST_LOG: "error"
+
+  cache:
+    key: "pytest-win-py$PYTHON_VERSION"
+    paths:
+      - .uv/cache
+      - .uv/py
+    policy: pull-push
+    when: on_success
+
+  before_script:
+    - $ErrorActionPreference = 'Stop'
+    - $env:PY_TAG = $env:PYTHON_VERSION -replace '\\D',''
+    - |
+      irm https://astral.sh/uv/install.ps1 | iex
+      $uvBin = "$HOME\\.local\\bin"
+      if (Test-Path $uvBin) { $env:Path = "$uvBin;${env:Path}" }
+      uv --version
+      Write-Output "UV_CACHE_DIR=$env:UV_CACHE_DIR"
+      Write-Output "UV_PYTHON_INSTALL_DIR=$env:UV_PYTHON_INSTALL_DIR"
+      Write-Output "PYTHON_VERSION=$env:PYTHON_VERSION"
+      Write-Output "PY_TAG=$env:PY_TAG"
+      Write-Output "PWD=$(Get-Location)"
+      uv -q python install $env:PYTHON_VERSION
+      where.exe uv
+      uv python list
+      uv run -p $env:PYTHON_VERSION -- where.exe python
+      uv run -p $env:PYTHON_VERSION -- python -V
+    - Write-Output "Listing dist contents:"; Get-ChildItem dist -ErrorAction SilentlyContinue | Select-Object Name,Length,LastWriteTime
+    - if (-not (Test-Path dist\*.whl)) { Write-Error "No wheels found!"; exit 1 }
+
+  script:
+    - |
+      $wheels = Get-ChildItem dist\*.whl
+      if (-not $wheels) { Write-Error "No wheels found in dist/"; exit 1 }
+      $pattern = "cp{0}[^0-9]" -f $env:PY_TAG
+      $Wheel = $wheels | Where-Object { $_.Name -match $pattern } | Select-Object -First 1
+      if (-not $Wheel) { $Wheel = $wheels | Where-Object { $_.Name -match "py3-none-any" } | Select-Object -First 1 }
+      if (-not $Wheel) { $Wheel = $wheels | Select-Object -First 1 }
+      if (-not $Wheel) { Write-Error "No matching wheel found for Python $env:PYTHON_VERSION (tried cp$env:PY_TAG, py3-none-any). Found: $($wheels.Name -join ', ')"; exit 1 }
+      Write-Output "Chosen wheel: $($Wheel.Name)"
+    - Write-Output "Installing $($Wheel.FullName)"
+    - uv pip install --python $env:PYTHON_VERSION "$( $Wheel.FullName )" diff-cover pytest pytest-cov pytest-mock pytest-mpl pytest-xdist
+    - uv run -p $env:PYTHON_VERSION -- pytest --disable-warnings -n auto --junitxml=pytest-junit.xml
+
+  artifacts:
+    when: always
+    reports:
+      junit: pytest-junit.xml
+    expire_in: 1 week

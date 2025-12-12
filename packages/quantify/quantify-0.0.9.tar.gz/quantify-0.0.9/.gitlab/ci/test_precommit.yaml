@@ -1,0 +1,16 @@
+pre-commit:
+  extends:
+    - .pip_cache_template
+  stage: Test
+  image: $CI_IMAGE
+  needs:
+    - job: build-ci-image
+    - job: build-package
+      artifacts: true
+  before_script:
+    - mkdir -p .cache/pip
+    - python -m pip install "pip>=25.3" "setuptools>=80.9.0" "wheel>=0.45.1"
+    - python -m pip install dist/*.whl
+    - python -m pip install pre-commit
+  script:
+    - pre-commit run --all-files --show-diff-on-failure

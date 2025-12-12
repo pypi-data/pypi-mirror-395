@@ -1,0 +1,64 @@
+pytest-macos:
+  stage: Test
+  needs:
+    - job: build-package
+      artifacts: true
+
+  tags: ["saas-macos-medium-m1"]
+  image: macos-15-xcode-16
+  when: manual
+  allow_failure: true
+
+  parallel:
+    matrix:
+      - PYTHON_VERSION: "3.10"
+      - PYTHON_VERSION: "3.11"
+      - PYTHON_VERSION: "3.12"
+      - PYTHON_VERSION: "3.13"
+      - PYTHON_VERSION: "3.14"
+
+  variables:
+    QT_QPA_PLATFORM: "offscreen"
+    MPLBACKEND: "Agg"
+
+  before_script:
+    - set -e
+    - echo "PWD=$(pwd)"
+    - echo "Installing Python $PYTHON_VERSION via uv"
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv --version
+    - uv python install "$PYTHON_VERSION"
+    - uv venv --python "$PYTHON_VERSION" .venv
+    - source .venv/bin/activate
+    - python -m ensurepip --upgrade
+    - echo "Listing dist contents:"; ls -la dist || true
+    - |
+      PY_TAG=$(python -c 'import sys; print(f"cp{sys.version_info.major}{sys.version_info.minor}")')
+      WHEEL=$(find dist -name "*-${PY_TAG}-*.whl" | head -n 1)
+      if [ -z "$WHEEL" ]; then
+        WHEEL=$(find dist -name "*-py3-none-any.whl" | head -n 1)
+      fi
+      if [ -z "$WHEEL" ]; then
+        WHEEL=$(find dist -name "*.whl" | head -n 1)
+      fi
+      if [ -z "$WHEEL" ]; then
+        PY_INFO=$(python -c 'import platform; print(platform.python_version())')
+        echo "ERROR: No wheels found in dist/ for Python ${PY_INFO} (tried ${PY_TAG}, py3-none-any)"
+        ls -la dist/
+        exit 1
+      fi
+      echo "Chosen wheel: $(basename "$WHEEL")"
+      echo "Installing $WHEEL"
+      python -m pip install --no-cache-dir "${WHEEL}" diff-cover pytest pytest-cov pytest-mock pytest-mpl pytest-xdist
+
+  script:
+    - |
+      source .venv/bin/activate
+      pytest --disable-warnings -n auto --junitxml=pytest-junit.xml
+
+  artifacts:
+    when: always
+    reports:
+      junit: pytest-junit.xml
+    expire_in: 1 week

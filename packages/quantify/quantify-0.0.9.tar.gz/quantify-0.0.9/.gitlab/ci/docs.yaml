@@ -1,0 +1,163 @@
+.docs-base:
+  stage: Docs
+  needs:
+    - job: build-ci-image
+    - job: build-package
+      artifacts: true
+  image: $CI_IMAGE
+  before_script:
+    - git config --add --global safe.directory "$CI_PROJECT_DIR"
+    - git fetch --tags
+    - python -m pip install "pip>=25.3" "setuptools>=80.9.0" "wheel>=0.45.1"
+    - python -m pip install dist/*.whl
+    - |
+      python -m pip install \
+        "jupyter-sphinx>=0.5.3" \
+        "jupytext>=1.18.1" \
+        "linkify-it-py>=2.0.3" \
+        "myst-nb>=1.3.0" \
+        "myst-parser>=4.0.1" \
+        "nbsphinx>=0.9.7" \
+        "plotly>=6.4.0" \
+        "pydata-sphinx-theme>=0.16.1" \
+        "scanpydoc>=0.15.4" \
+        "sphinx>=8.1.3" \
+        "sphinx-autoapi>=3.6.0" \
+        "sphinx-autobuild>=2025.8.25" \
+        "sphinx-autodoc-typehints>=3.0.1, <= 3.5.2" \
+        "sphinx-copybutton>=0.5.2" \
+        "sphinx-design>=0.6.1" \
+        "sphinx-jsonschema>=1.19.1" \
+        "sphinx-rtd-theme>=3.0.2" \
+        "sphinx-togglebutton>=0.3.2" \
+        "sphinxcontrib-bibtex>=2.6.5" \
+        "sphinxcontrib-mermaid>=1.2.3"
+  cache:
+    key: "sphinx-doctrees"
+    paths:
+      - docs/_build/doctrees/
+    policy: pull-push
+    when: on_success
+
+
+# Build docs as an artifact for all branches and merge requests (no Pages deploy)
+preview-documentation:
+  extends: .docs-base
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: never
+    - if: '$CI_COMMIT_TAG'
+      when: never
+    - when: on_success
+  script:
+    - |
+      OUT_DIR="docs/_build/html"
+      echo "Building docs (no deploy) to: $OUT_DIR"
+      sphinx-build -b html --keep-going -d docs/_build/doctrees docs/source "$OUT_DIR"
+  artifacts:
+    expose_as: "Documentation preview"
+    paths:
+      - docs/_build/html
+
+
+# Publish docs to GitLab Pages for the main branch and version tags
+deploy-documentation:
+  stage: Deploy
+  pages: true
+  extends: .docs-base
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+((rc|a|b)[0-9]+)?$/'
+  script:
+    # Build multi-version documentation for GitLab Pages: dev + last 3 tags
+    - |
+      set -euo pipefail
+
+      echo "Building multi-version documentation for GitLab Pages"
+
+      mkdir -p public tmp
+
+      # Determine all version tags (newest first), then filter to stable (no rc/a/b suffix)
+      ALL_TAGS=$(git tag --list "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname || true)
+      echo "All version tags (newest first):"
+      echo "$ALL_TAGS"
+
+      STABLE_TAGS=$(echo "$ALL_TAGS" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+      echo "Stable release tags (newest first):"
+      echo "$STABLE_TAGS"
+
+      TAGS_TO_BUILD=$(echo "$STABLE_TAGS" | head -n 3 | tr '\n' ' ' | sed 's/ *$//')
+      echo "Tags selected for docs: $TAGS_TO_BUILD"
+
+      # Stable tag is the newest one, if any
+      STABLE_TAG=$(echo "$TAGS_TO_BUILD" | awk '{print $1}' || true)
+      echo "Stable tag: ${STABLE_TAG:-<none>}"
+
+      # Always build dev docs from the current checkout
+      export DOCS_VERSION="dev"
+      sphinx-build -b html --keep-going -d docs/_build/doctrees docs/source "public/dev"
+
+      # Build docs for each selected tag in its own worktree
+      for TAG in $TAGS_TO_BUILD; do
+        echo "Building docs for tag $TAG"
+        WORKTREE_DIR="tmp/docs-$TAG"
+        rm -rf "$WORKTREE_DIR"
+        git worktree add "$WORKTREE_DIR" "$TAG"
+        (
+          cd "$WORKTREE_DIR"
+          export DOCS_VERSION="$TAG"
+          sphinx-build -b html --keep-going -d docs/_build/doctrees docs/source "$CI_PROJECT_DIR/public/$TAG"
+        )
+        git worktree remove "$WORKTREE_DIR" --force
+      done
+
+      # Create GitLab Pages redirects file so project root always goes to the dev docs.
+      # For project Pages under namespace.gitlab.io/project, GitLab requires paths to be
+      # prefixed with the project path (see https://docs.gitlab.com/user/project/pages/redirects/).
+      REDIRECTS_FILE="public/_redirects"
+      : > "$REDIRECTS_FILE"
+      PROJECT_PATH="/${CI_PROJECT_NAME}"
+      echo "${PROJECT_PATH}/ ${PROJECT_PATH}/dev/ 302" >> "$REDIRECTS_FILE"
+
+      # Export tag data for switcher.json generation
+      export DOCS_TAGS="$TAGS_TO_BUILD"
+      export DOCS_STABLE_TAG="$STABLE_TAG"
+
+      python - << 'PY'
+      import json
+      import os
+      from pathlib import Path
+
+      base_url = os.environ.get("CI_PAGES_URL", "").rstrip("/") or "https://quantify-os.gitlab.io/quantify"
+      tags = [t for t in os.environ.get("DOCS_TAGS", "").split() if t]
+      stable = os.environ.get("DOCS_STABLE_TAG") or None
+
+      entries = [
+          {
+              "name": "dev (latest)",
+              "version": "dev",
+              "url": f"{base_url}/dev/",
+          }
+      ]
+
+      for tag in tags:
+          name = tag
+          if stable and tag == stable:
+              name = f"{tag} (stable)"
+          entries.append(
+              {
+                  "name": name,
+                  "version": tag,
+                  "url": f"{base_url}/{tag}/",
+              }
+          )
+
+      out_path = Path("public") / "switcher.json"
+      out_path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+      PY
+  artifacts:
+    paths:
+      - public
+  environment:
+    name: production
+    url: $CI_PAGES_URL

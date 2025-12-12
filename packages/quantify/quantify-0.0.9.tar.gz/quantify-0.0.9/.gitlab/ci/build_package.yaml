@@ -1,0 +1,25 @@
+build-package:
+  extends:
+    - .pip_cache_template
+  stage: Build
+  image: $CI_IMAGE
+  needs:
+    - job: build-ci-image
+  before_script:
+    - git config --add --global safe.directory "$CI_PROJECT_DIR"
+    - |
+      if [ -f .git/shallow ]; then
+        git fetch --unshallow --tags
+      else
+        git fetch --tags
+      fi
+    - mkdir -p .cache/pip
+    - python -m pip install "pip>=25.3" "build>=1.3.0"
+  script:
+    - python -m build
+    - ls -la dist/
+  artifacts:
+    paths:
+      - dist
+      - quantify.egg-info/
+    expire_in: 1 week

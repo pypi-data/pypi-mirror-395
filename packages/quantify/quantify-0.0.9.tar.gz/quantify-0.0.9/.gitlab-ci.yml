@@ -1,0 +1,41 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /\[(skip ci|ci skip)\]/i
+      when: never
+    # Pipelines for tags
+    - if: $CI_COMMIT_TAG
+    # Prefer MR pipelines when an MR exists
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # When pushing to a branch that already has an open MR, skip the branch pipeline
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    # Otherwise allow normal branch pipelines
+    - if: $CI_COMMIT_BRANCH
+
+stages:
+  - Build
+  - Test
+  - Docs
+  - Deploy
+  - Release
+
+include:
+  # Shared defaults
+  - local: .gitlab/ci/defaults.yaml
+
+  # Build
+  - local: .gitlab/ci/build_image.yaml
+  - local: .gitlab/ci/build_package.yaml
+
+  # Quality & tests
+  - local: .gitlab/ci/test_precommit.yaml
+  - local: .gitlab/ci/test_pyright.yaml
+  - local: .gitlab/ci/test_linux.yaml
+  - local: .gitlab/ci/test_macos.yaml
+  - local: .gitlab/ci/test_windows.yaml
+
+  # Docs build and deploy
+  - local: .gitlab/ci/docs.yaml
+
+  # Release
+  - local: .gitlab/ci/release.yaml

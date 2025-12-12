@@ -1,0 +1,331 @@
+[build-system]
+requires = ["setuptools>=80.9.0", "setuptools_scm[toml]>=9.2.2", "wheel>=0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantify"
+
+description = """\
+A framework for controlling quantum computing and solid-state physics experiments.\
+"""
+license = "BSD-3-Clause"
+license-files = ["LICEN[CS]E*"]
+maintainers = [
+    {name = "Olga Lebiga", email = "olga@orangeqs.com"},
+    {name = "Amirtha Varshiny Arumugam", email = "amirthavarshiny@orangeqs.com"},
+    {name = "Mahmut Çetin", email = "mahmut@orangeqs.com"},
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+]
+keywords = [
+    "quantum",
+    "quantify",
+]
+dynamic = ["readme", "version"]
+
+dependencies = [
+    "adaptive >= 1.3.0",
+    "appnope >= 0.1.3",
+    "bokeh >= 3.8.0",
+    "dataclasses-json >= 0.6.6",
+    "deepdiff >= 8.6.0",
+    "deepmerge >= 2.0",
+    "fastjsonschema >= 2.21.0",
+    "filelock >= 3.18.0",
+    "h5netcdf >= 0.7.0",
+    "ipython >= 8.35.0",
+    "jsonschema >= 4.25.0",
+    "lmfit >= 1.3.0",
+    "matplotlib >= 3.10.5",
+    "methodtools >= 0.4.5",
+    "netCDF4 >= 1.6.5",
+    "networkx >= 3.2",
+    "numpy >= 2.2.2",
+    "packaging >= 24.0",
+    "pandas >= 2.2.2",
+    "plotly >= 6.4.0",
+    "psutil >= 7.1.2",
+    "pydantic >= 2.9.0",
+    "pydantic-core >= 2.23.2",
+    "pyqt5 >= 5.15.10",
+    "pyqtgraph >= 0.13.7",
+    "python-dateutil >= 2.9.0",
+    "pyzmq >= 25.1.1",
+    "qcodes>=0.52.0,<0.53.0",
+    "qcodes-loop >= 0.1.2",
+    "rich[jupyter] >= 14.1.0",
+    "ruamel.yaml >= 0.18.15",
+    "scikit-learn >= 1.7.1",
+    "scipy >= 1.13.0",
+    "tqdm >= 4.67.0",
+    "typing-extensions >= 4.14.1",
+    "uncertainties >= 3.2.2",
+    "xarray>=2022.6.0",
+    "xxhash >= 3.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy >= 1.6.1",
+    "pre-commit >= 4.5.0",
+    "pre-commit-hooks >= 6.0.0",
+    "pyright >= 1.1.407",
+    "ruff >= 0.14.6",
+    "typos >= 1.40.0",
+]
+
+docs = [
+    "jupyter-sphinx >= 0.5.3",
+    "jupytext >= 1.18.1",
+    "linkify-it-py>=2.0.3",
+    "myst-nb >= 1.3.0",
+    "myst-parser >= 4.0.1",
+    "nbsphinx >= 0.9.7",
+    "plotly >= 6.4.0",
+    "pydata-sphinx-theme >= 0.16.1",
+    "scanpydoc >= 0.15.4",
+    "sphinx >= 8.1.3",
+    "sphinx-autoapi >= 3.6.0",
+    "sphinx-autobuild >= 2024.10.3",
+    "sphinx-autodoc-typehints >= 3.0.1, <= 3.5.2",
+    "sphinx-copybutton >= 0.5.2",
+    "sphinx-design >= 0.6.1",
+    "sphinx-jsonschema >= 1.19.1",
+    "sphinx-rtd-theme >= 3.0.2",
+    "sphinx-togglebutton >= 0.3.2",
+    "sphinxcontrib-bibtex >= 2.6.5",
+    "sphinxcontrib-mermaid >= 1.2.3",
+]
+
+test = [
+    "diff-cover >= 9.7.2",
+    "pytest >= 9.0.0",
+    "pytest-cov >= 7.0.0",
+    "pytest-mock >= 3.15.1",
+    "pytest-mpl",
+    "pytest-xdist >= 3.8.0",
+]
+
+[project.urls]
+"Documentation" = "https://quantify-os.gitlab.io/quantify"
+"Website" = "https://quantify-os.org"
+"Source" = "https://gitlab.com/quantify-os/quantify"
+"Issue tracker" = "https://gitlab.com/quantify-os/quantify/-/issues"
+"Slack" = "https://join.slack.com/t/quantify-hq/shared_invite/zt-1nd78r4e9-rbWdna53cW4DO_YbtMhVuA"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+include = ["quantify", "quantify.*"]
+exclude = ["*.git*", "logs*", "rr-cache*"]
+
+[tool.setuptools.package-data]
+quantify = ["py.typed", "**/schemas/*.json"]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}
+
+[tool.setuptools_scm]
+
+[tool.ruff]
+exclude = [
+    "quantify/_version.py",
+]
+line-length = 88
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "I",      # isort
+    "N",      # pep8-naming
+    "NPY",    # NumPy-specific rules
+    "RUF",    # Ruff-specific rules
+    "C90",    # mccabe complexity
+    "PL",     # Pylint
+    "PERF",   # Performance anti-patterns
+    "FURB",   # refurb - modernize code
+    "LOG",    # flake8-logging
+    "G",      # flake8-logging-format
+    "PIE",    # flake8-pie
+    "PT",     # flake8-pytest-style
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "SLOT",   # flake8-slots
+    "TID",    # flake8-tidy-imports
+    "TCH",    # flake8-type-checking
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate commented code
+    "PGH",    # pygrep-hooks
+    "FLY",    # flynt string formatting
+    "ASYNC",  # flake8-async
+]
+
+ignore = [
+    "ANN",      # flake8-annotations: missing/partial function/type-annotation checks (PEP 3107/484 related).
+    "B007",     # flake8-bugbear: unused loop control variable.
+    "B008",     # flake8-bugbear: function call in default argument.
+    "B020",     # flake8-bugbear: loop variable overrides iterable it iterates.
+    "B023",     # flake8-bugbear: function uses loop variable in default argument.
+    "B024",     # flake8-bugbear: abstract base class with no abstract methods.
+    "B026",     # flake8-bugbear: star-arg unpacking after keyword argument.
+    "B028",     # flake8-bugbear: no explicit stacklevel in warnings.warn.
+    "B904",     # flake8-bugbear: raise without from inside except (missing exception chain).
+    "B905",     # flake8-bugbear: zip without explicit strict parameter.
+    "D",        # pydocstyle: all D* docstring rules (PEP 257 docstring checks).
+    "E741",     # pycodestyle: ambiguous single-character names 'l', 'O', 'I' (avoid visually ambiguous names).
+    "EM",       # flake8-errmsg: message formatting / errno-related lint rules.
+    "ERA001",   # eradicate: commented-out code detection.
+    "FBT",      # flake8-boolean-trap: boolean-trap patterns (e.g., `if x is not None and x`).
+    "G004",     # flake8-logging-format: logging statement uses f-string.
+    "G201",     # flake8-logging-format: logging .exception() call without exc_info.
+    "LOG015",   # (custom/plugin rule - verify if this exists in your setup).
+    "N802",     # pep8-naming: class member name (project chooses to ignore).
+    "N803",     # pep8-naming: module level variable naming convention (project chooses to ignore).
+    "N806",     # pep8-naming: argument naming convention (project chooses to ignore).
+    "N816",     # pep8-naming: variable/function naming style (project chooses to ignore).
+    "PERF102",  # perflint: incorrect-dict-iterator (performance suggestion).
+    "PERF203",  # perflint: try-except within loop (performance suggestion).
+    "PERF401",  # perflint: manual list comprehension (performance suggestion).
+    "PGH003",   # pygrep-hooks: blanket-type-ignore (flag type: ignore without specific codes).
+    "PLR0133",  # pylint: two constants compared in a comparison.
+    "PLR0913",  # pylint: too many arguments (long functions intentionally allowed).
+    "PLR0912",  # pylint: too many branches (complex function allowed).
+    "PLR0915",  # pylint: too many statements (complex function allowed).
+    "PLR2004",  # pylint: magic value comparisons (physical constants) – project exception for constants.
+    "PLR0911",  # pylint: too many return statements (allowed for clarity).
+    "PLR1702",  # pylint: too many nested blocks (project allows some nesting).
+    "PTH",      # flake8-use-pathlib: path manipulation rule (project prefers os.path in places).
+    "PT022",    # "No teardown in fixture `device_cfg_transmon_example`, use `return` instead of `yield`
+    "RET503",   # flake8-return: implicit return with explicit return value in function.
+    "RET504",   # flake8-return: unnecessary assignment before return statement.
+    "RET505",   # flake8-return: unnecessary else after return statement.
+    "RUF005",   # ruff-specific: prefer iterable unpacking over concatenation (style choice).
+    "RUF012",   # ruff-specific: mutable class attributes (allowed in this codebase).
+    "RUF013",   # ruff-specific: PEP 484 implicit Optional (typing style choice).
+    "RUF015",   # ruff-specific: prefer next(...) over single-element slice.
+    "RUF022",   # ruff-specific: __all__ ordering (kept unsorted intentionally).
+    "RUF043",   # ruff-specific: regex pattern warnings (escaping/raw-string style choice).
+    "RUF046",   # ruff-specific: unnecessary int cast (casting warnings where value is already int).
+    "RUF059",   # ruff-specific: unused unpacked variable (intentional `_`-style usage).
+    "RUF100",   # ruff-specific: unused `noqa` directive (non-enabled: `TC003`)
+    "S101",     # flake8-bandit: use of assert (tests rely on asserts; allowed per-file).
+    "SLF001",   # flake8-self: private member access (intentional access to private members in tests/utilities).
+    "TRY003",   # tryceratops: raise vanilla exceptions with long messages (project choice).
+    "TC003",    # flake8-type-checking: move standard library imports into type-checking block (choice).
+    "FLY002",   # flynt: consider f-string instead of string join (style choice).
+    "C901",     # mccabe: function too complex (accepted for some legacy functions).
+    "NPY002",   # numpy-deprecated-api: legacy random API usage (project accepts current usage).
+    "PT003",    # flake8-pytest-style: scope='function' implicit in fixture (style/verbosity rule).
+    "PT006",    # flake8-pytest-style: parametrize names wrong type (project-specific patterns).
+    "PT007",    # flake8-pytest-style: parametrize values wrong type (project-specific patterns).
+    "PT009",    # flake8-pytest-style: prefer pytest assert over unittest-style asserts.
+    "PT012",    # flake8-pytest-style: pytest.raises block should contain single statement (project uses multi-statement blocks).
+    "PT013",    # flake8-pytest-style: pytest import style (project-specific test patterns).
+    "PT021",    # flake8-pytest-style: pytest.fixture finalizer should use yield (project uses addfinalizer).
+    "PT031",    # flake8-pytest-style: pytest.warns context missing match parameter (project test style).
+    "PGH004",   # pygrep-hooks: use specific rule codes with # noqa (blanket noqa discouraged).
+]
+
+fixable = ["ALL"]
+unfixable = []
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [
+    "F401",    # Unused import
+    "F403",    # Star import
+    "E402",    # Module level import not at top
+]
+
+"tests/**/*.py" = [
+    "PLR2004", # Magic values
+    "S105",    # Possible hardcoded password
+    "S106",    # Possible hardcoded password
+    "ARG001",  # Unused function argument (fixtures)
+    "ARG002",  # Unused method argument
+    "FBT001",  # Boolean positional arg
+    "PT011",   # pytest.raises without match
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.pylint]
+max-args = 10
+max-branches = 15
+max-returns = 8
+max-statements = 60
+
+[tool.ruff.lint.isort]
+known-first-party = ["quantify"]
+force-sort-within-sections = true
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*", "*Tests"]
+python_functions = ["test_*"]
+# Exclude the following directories
+norecursedirs = ["_build", "docs", ".git", ".*cache", "*.egg", "*site-packages*"]
+markers = [
+    "slow: mark test as slow (deselect with '-m \"not slow\"')",
+    "integration: mark test as integration (run with '-m integration')",
+    "serial: mark test to run without parallelization",
+    "mpl_image_compare",
+    "deprecated",
+    "needs_zhinst",
+]
+filterwarnings = [
+    'error:.*quantify-(scheduler|core).*:FutureWarning',
+    'ignore::pytest.PytestDeprecationWarning',
+    'ignore:.*starts before the previous ends.*:RuntimeWarning',
+    'ignore::pytest_mock.PytestMockWarning',
+    'ignore:Distortion correction portclock.*',
+    'ignore:.*has conflicting frequency definitions.*',
+    'ignore:.*Schedule contains an operation, for which distortion correction is not implemented.*',
+]
+addopts = "-ra -q --maxfail=1 --durations=10 --strict-markers --tb=short --color=yes"
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]

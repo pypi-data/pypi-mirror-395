@@ -1,0 +1,82 @@
+build-ci-image:
+  stage: Build
+  image: docker:24.0.2
+  services:
+    - name: docker:24.0.2-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: "tcp://docker:2376"
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "/certs/client"
+    DOCKER_TLS_VERIFY: "1"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
+    - when: on_success
+  cache: []
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker pull "$CI_IMAGE" || true   # cache source
+  script: |
+    #!/usr/bin/env bash
+    set -Eeuo pipefail
+
+    TS() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
+    log() { echo "[$(TS)] $*"; }
+
+    export DOCKER_BUILDKIT=1   # ensure BuildKit (needed for inline cache)
+    : "${CI_IMAGE:?CI_IMAGE must be set}"
+
+    log "Docker version:"
+    docker version || { log "docker not available"; exit 1; }
+
+    log "Attempting to pull previous image for cache (if exists): $CI_IMAGE"
+    if docker pull "$CI_IMAGE" >/dev/null 2>&1; then
+      PRE_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "$CI_IMAGE" || true)"
+      log "Previous image digest: ${PRE_DIGEST:-<none>}"
+      CACHE_FROM="--cache-from $CI_IMAGE"
+    else
+      log "No previous image found; building cold."
+      CACHE_FROM=""
+    fi
+
+    # Capture the built image ID to an iidfile; useful for debugging & tagging.
+    IIDFILE="$(mktemp)"
+    cleanup() { rm -f "$IIDFILE"; }
+    trap cleanup EXIT
+
+    log "Building CI image: $CI_IMAGE"
+    docker build \
+      --pull \
+      ${CACHE_FROM} \
+      --build-arg BUILDKIT_INLINE_CACHE=1 \
+      --iidfile "$IIDFILE" \
+      --progress=plain \
+      -f .gitlab/ci/Dockerfile.runner \
+      -t "$CI_IMAGE" \
+      .
+
+    NEW_IID="$(cat "$IIDFILE" || true)"
+    log "Build completed. Image ID: ${NEW_IID:-<unknown>}"
+
+    log "Pushing image: $CI_IMAGE"
+    docker push "$CI_IMAGE" > /tmp/push.log
+    tail -n 20 /tmp/push.log || true
+
+    # After push, show canonical digest as a verification line.
+    if docker pull "$CI_IMAGE" >/dev/null 2>&1; then
+      POST_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "$CI_IMAGE" || true)"
+      log "Pushed image digest: ${POST_DIGEST:-<unknown>}"
+    else
+      log "Warn: could not re-pull $CI_IMAGE to verify digest."
+    fi
+
+    # Also push a stable alias on the default branch for better cache reuse.
+    if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
+      STABLE_TAG="$CI_REGISTRY_IMAGE:ci"
+      log "Tagging stable alias for default branch: $STABLE_TAG"
+      docker tag "$CI_IMAGE" "$STABLE_TAG"
+      docker push "$STABLE_TAG"
+    fi
+
+    log "Done."
