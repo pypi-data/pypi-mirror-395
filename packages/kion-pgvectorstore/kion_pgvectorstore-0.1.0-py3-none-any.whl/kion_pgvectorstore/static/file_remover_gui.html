@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kion Consulting Vectorstore – Remove Files</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,700,900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #012044;
+      --blue: #2366b3;
+      --accent: #ff8700;
+      --accent-light: #ffd280;
+      --background: #e6eafd;
+      --glass4: rgba(255,255,255,0.56);
+      --border: #bed1ea;
+      --gold: #ffd280;
+      --error: #de4848;
+      --shadow: 0 4px 24px 1px #01204422;
+      --sapphire: #2366b3;
+    }
+    html, body {
+      background: var(--background);
+      min-height: 100vh;
+      font-family: 'Inter', Arial, sans-serif;
+      color: var(--navy);
+      margin: 0; padding: 0;
+      letter-spacing: .01em;
+      overflow-x: hidden;
+      overscroll-behavior: none;
+    }
+    .page-geometry-bg { position:fixed; z-index:0; left:0; top:0; width:100vw; height:100vh; pointer-events:none;}
+    .topbar {
+      background: linear-gradient(90deg, var(--navy) 60%, var(--accent) 200%);
+      color: #fff; display:flex; align-items:center; justify-content:flex-start;
+      padding: 0 44px 0 45px; height: 60px;
+      position: sticky; top: 0; z-index: 1001;
+      font-weight: 900; border-bottom:2.5px solid var(--accent-light);
+    }
+    .brand { display: flex; align-items:center; gap: 13px; }
+    .brand-logo {
+      height: 38px; border-radius: 0; background: #fff; padding: 1.5px 7px 1.5px 1.5px;
+      box-shadow: 0 2px 14px var(--accent-light); border: 2.5px solid var(--accent-light); object-fit: contain;
+    }
+    .header-labels { display:flex; flex-direction:column; gap: 1.5px; margin-left: 7px;}
+    .brand-name { font-weight: 900; font-size: 1.11em; letter-spacing: 1.7px; color: #fff; margin-top: 0.5px; }
+    .vectorstore-label {
+      font-size: 0.94em; color: var(--accent); font-weight: 700; letter-spacing:1.3px; margin-top: 1px;
+    }
+    .nav { margin-left:auto; display: flex; gap: 12px;}
+    .nav-link { padding: 7px 17px; border-radius: 3px; color: #fff; font-weight: 700; letter-spacing: 0.03em; text-decoration: none;
+      background: none; font-size: 1.04em; transition: background .2s,color .13s,border .2s; border: 1.5px solid transparent; }
+    .nav-link.active, .nav-link:hover {
+      background: var(--accent); color: var(--navy); border: 1.5px solid #fff7; box-shadow: 0 1px 8px #ff870021;
+    }
+
+    .main-center-container { display:flex; align-items:center; justify-content:center; min-height:calc(100vh - 80px);}
+    .panel-sharp {
+      max-width: 520px;
+      width: 100%;
+      margin: 8px;
+      padding: 24px 32px 38px 32px;
+      box-shadow: var(--shadow);
+      border: 2.4px solid var(--border);
+      background: var(--glass4);
+      position: relative;
+      z-index: 2;
+      overflow: visible;
+      border-radius: 0;
+      display:flex; flex-direction:column; align-items: stretch; justify-content: center;
+    }
+    @media (max-width:600px){
+        .panel-sharp {
+            max-width: 99vw;
+            padding: 10px 3vw 20px 3vw;
+            margin: 12px 0;
+        }
+    }
+    .panel-content {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 11;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .panel-geom {
+      position: absolute; pointer-events:none;
+      right: 0; top:0; width:81px; height:70px; z-index:6;
+      opacity: 0.18; transform:rotate(6deg);
+    }
+    .panel-diag {
+      position:absolute; left:0; bottom:0; width:100%; height:32px;
+      z-index:7; opacity:0.11;
+    }
+    .panel-sharp h3 {
+      margin: 0 0 15px 0;
+      font-size:1.19em;
+      font-weight:850;
+      color: var(--navy);
+      letter-spacing:0.07em;
+      border-bottom:2.8px solid var(--accent);
+      padding-bottom:10px;
+      text-transform:uppercase;
+      background: linear-gradient(92deg, #ff870012 52%, #ffd28026 100%);
+    }
+    label {
+      font-weight: 800;
+      color: var(--navy); font-size: 1.07em;
+      margin-bottom: 7px; display:block; text-shadow:0 2px 12px #edf6c833;
+      letter-spacing:0.04em;
+    }
+    select, input[type="text"] {
+      width: 100%;
+      border: 1.5px solid #ccd9ef;
+      border-radius: 3px;
+      padding: 14px 15px;
+      font-size: 1.09em;
+      margin-bottom: 13px;
+      font-family: inherit;
+      background: #fcfdffef;
+      box-shadow: 0 1.5px 8px #dbe6f651;
+    }
+    select:focus, input[type="text"]:focus {
+      border-color: var(--sapphire); outline: none;
+      background: #fff; box-shadow: 0 2px 18px #ffd28026;
+    }
+
+    /* File list card style */
+    .file-list-block {
+      border: 1.4px solid #dbe6f6;
+      background: #f7fafdee;
+      border-radius: 0;
+      padding: 10px 10px 4px 10px;
+      margin-bottom: 18px;
+      position: relative;
+      box-shadow: 0 1.5px 7px #bfd9ff1a;
+      width: 100%;
+    }
+    .files-header-label {
+      font-weight: 650;
+      margin-bottom: 7px;
+      color: #335096;
+      letter-spacing:0.02em;
+      margin-left: 1px;
+      font-size: 1.015em;
+    }
+    ul.file-list { list-style: none; padding: 0; margin: 0; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f9fbfe;
+      border-radius: 2px;
+      border: 1px solid #e0ebf7;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      font-size: 1.03em;
+      box-sizing: border-box;
+    }
+    .file-item:last-child { margin-bottom: 0; }
+    .file-name {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: #1d437d;
+      max-width: 70%;
+    }
+    .delete-btn {
+      border: none;
+      background: none;
+      cursor: pointer;
+      margin-left: 15px;
+      padding: 0 1px 0 5px;
+      display: flex;
+      align-items: center;
+      transition: filter .13s;
+    }
+    .delete-btn svg {
+      width: 21px;
+      height: 21px;
+      stroke: #DE4848;
+      fill: none;
+      stroke-width: 2.25;
+      transition: stroke 0.18s;
+      display: block;
+    }
+    .delete-btn:hover svg, .delete-btn:focus svg {
+      stroke: #ff4200;
+    }
+    .delete-btn:active { filter: brightness(1.11); }
+
+    .error {
+      color: var(--error); background: #fff3f0; border-radius: 2.5px;
+      margin: 10px 0; padding: 12px 13px; font-weight: 700;
+      border-left: 5px solid var(--accent); font-size: 1.04em; box-shadow: 0 1px 8px #fbb6b611; display: none;
+    }
+    .result {
+      margin-top: 16px; color: #218055; background: #e8fbe6df; border: 2px solid #43c2717a;
+      border-radius: 3px; padding: 12px 13px; white-space: pre-line; font-size: 1.01em; font-weight: 600;
+      box-shadow: 0 1px 7px #43c27112; display: none;
+    }
+    #no-files {
+      color: #c0504d;
+      display: none;
+      font-size: 1.03em;
+      margin-top: 8px;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+    .loading-msg {
+      font-size: 1.07em;
+      margin-top: 21px;
+      text-align:center;
+      letter-spacing:0.02em;
+      color: #31416a;
+      background: #f8f8f8e9;
+      border: 1.5px solid #c8d3ea;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+
+    @media (max-width:700px) {
+      .main-center-container { padding:0 2vw;}
+      .panel-content { padding: 13px 4vw;}
+      button {font-size:1em;}
+    }
+  </style>
+</head>
+<body>
+<svg class="page-geometry-bg" viewBox="0 0 1440 900" fill="none">
+  <polygon points="1360,0 1440,120 1440,0" fill="#ffd28035"/>
+  <polygon points="0,900 80,800 0,800" fill="#2366b325"/>
+  <rect x="1080" y="80" width="390" height="8" fill="#2366b377" />
+  <rect x="90" y="220" width="490" height="11" fill="#ffd2803b" />
+  <line x1="0" y1="650" x2="1440" y2="590" stroke="#dbe6f6" stroke-width="31" stroke-opacity="0.12" />
+  <line x1="1100" y1="100" x2="1440" y2="340" stroke="#012044" stroke-width="3.2" stroke-opacity="0.19"/>
+  <rect x="1110" y="700" width="9" height="150" fill="#ff870032"/>
+  <rect x="0" y="810" width="200" height="5" fill="#ffd28044"/>
+  <polygon points="1440,900 1340,890 1440,800" fill="#2366b323"/>
+  <polygon points="25,35 50,90 70,20" fill="#2366b325"/>
+</svg>
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="https://kion.co.za/wp-content/uploads/2022/10/Screenshot_2022-07-07_151429-removebg-preview.png" alt="Kion Consulting Logo" />
+    <div class="header-labels">
+      <span class="brand-name">Kion Consulting</span>
+      <span class="vectorstore-label">VECTORSTORE</span>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="file_loader_gui.html" class="nav-link" id="nav-upload">Upload</a>
+    <a href="file_remover_gui.html" class="nav-link active" id="nav-delete">Delete</a>
+    <a href="chat.html" class="nav-link" id="nav-chat">Assistant Chat</a>
+  </nav>
+</header>
+
+<div class="main-center-container">
+  <section class="panel-sharp panel2">
+    <svg class="panel-geom" viewBox="0 0 80 70">
+      <polygon points="0,0 80,0 65,70" fill="#ff8700"/>
+      <polyline points="0,69 80,12" stroke="#ffd280" stroke-width="6" opacity="0.09"/>
+    </svg>
+    <svg class="panel-diag" viewBox="0 0 200 32">
+      <polygon points="0,32 120,0 200,32" fill="#ffd28077"/>
+    </svg>
+    <div class="panel-content">
+      <h3>Delete Files</h3>
+
+      <label for="delete-collection">Data Collection</label>
+      <select id="delete-collection" required>
+        <option disabled selected>Loading...</option>
+      </select>
+
+      <div class="file-list-block" id="files-area" style="display:none;">
+        <div class="files-header-label">Files in Collection</div>
+        <ul class="file-list" id="file-list"></ul>
+        <div id="no-files">No files found in this collection.</div>
+      </div>
+      <div class="loading-msg" id="loadingMsg" style="display:none;">
+        <span id="loadingText">Processing, please wait...</span>
+      </div>
+      <div class="error" id="delete-error"></div>
+      <div class="result" id="delete-result"></div>
+    </div>
+  </section>
+</div>
+<script>
+document.getElementById('nav-delete').classList.add('active');
+const API_BASE_URL = "http://127.0.0.1:5000/api";
+
+function showError(msg) {
+  const errorDiv = document.getElementById('delete-error');
+  if (!msg) { errorDiv.style.display = 'none'; return; }
+  errorDiv.textContent = msg; errorDiv.style.display = 'block';
+}
+function showResult(msg) {
+  const resultDiv = document.getElementById('delete-result');
+  if (!msg) { resultDiv.style.display = 'none'; return; }
+  resultDiv.textContent = msg; resultDiv.style.display = 'block';
+}
+function clearMessages() { showError(''); showResult(''); }
+
+async function fetchCollections() {
+  const resp = await fetch(`${API_BASE_URL}/list_collections`);
+  if (!resp.ok) throw new Error(`Failed to fetch collections`);
+  const data = await resp.json();
+  return data.collections || [];
+}
+async function fetchFiles(collection_name) {
+  const resp = await fetch(`${API_BASE_URL}/list_files?collection_name=${encodeURIComponent(collection_name)}`);
+  if (!resp.ok) throw new Error(`Failed to fetch files`);
+  const data = await resp.json();
+  return data.files || [];
+}
+async function deleteFile(collection_name, file_name) {
+  const formData = new FormData();
+  formData.append('collection_name', collection_name);
+  formData.append('file_name', file_name);
+  const response = await fetch(`${API_BASE_URL}/delete_file`, {
+    method: "POST",
+    body: formData
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Unknown backend error");
+  return result;
+}
+async function deleteCollection(collection_name) {
+    const formData = new FormData();
+    formData.append('collection_name', collection_name);
+    const response = await fetch(`${API_BASE_URL}/delete_collection`, {
+      method: "POST",
+      body: formData
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Error while deleting collection");
+    return result;
+}
+
+async function populateCollectionsDropdown() {
+  const sel = document.getElementById('delete-collection');
+  try {
+    const collections = await fetchCollections();
+    sel.innerHTML = `<option disabled selected>Select a collection...</option>`;
+    if (collections.length === 0) {
+      sel.innerHTML = `<option disabled selected>No collections found</option>`;
+      sel.disabled = true;
+      document.getElementById('files-area').style.display = 'none';
+      return;
+    }
+    collections.forEach(col => {
+      const o = document.createElement('option');
+      o.value = col;
+      o.textContent = col;
+      sel.appendChild(o);
+    });
+    sel.disabled = false;
+  } catch (err) {
+    showError('Failed to fetch collections from server.');
+    sel.innerHTML = `<option disabled selected>Failed to load!</option>`;
+    sel.disabled = true;
+  }
+}
+
+function renderFileList(files, collection_name) {
+  const ul = document.getElementById('file-list');
+  const noFilesDiv = document.getElementById('no-files');
+  ul.innerHTML = '';
+  if (!files || files.length === 0) {
+    noFilesDiv.style.display = 'block';
+    setTimeout(async () => {
+      if (window.confirm(`No files found in collection "${collection_name}".\n\nWould you like to delete the entire collection?`)) {
+        try {
+          clearMessages();
+          showResult(`Deleting collection "${collection_name}"...`);
+          await deleteCollection(collection_name);
+          showResult(`Collection "${collection_name}" was deleted successfully.`);
+          document.getElementById('files-area').style.display = 'none';
+          await populateCollectionsDropdown();
+        } catch (err) {
+          showError(err.message);
+        }
+      }
+    }, 100);
+    return;
+  }
+  noFilesDiv.style.display = 'none';
+  files.forEach(fileName => {
+    const li = document.createElement('li');
+    li.className = 'file-item';
+    li.innerHTML = `
+      <span class="file-name" title="${fileName}">${fileName}</span>
+      <button class="delete-btn" title="Delete file">
+        <svg viewBox="0 0 22 22" aria-hidden="true"><line x1="5" y1="5" x2="17" y2="17"/><line x1="17" y1="5" x2="5" y2="17"/></svg>
+      </button>`;
+    li.querySelector('.delete-btn').onclick = async function() {
+      if (!confirm(`Are you sure you want to delete "${fileName}" from "${collection_name}"?`)) return;
+      try {
+        clearMessages();
+        this.disabled = true;
+        this.style.opacity = 0.5;
+        const r = await deleteFile(collection_name, fileName);
+        showResult(`Deleted "${fileName}" from collection "${collection_name}" (Chunks affected: ${r.rows_affected ?? "?"})`);
+        const updatedFiles = await fetchFiles(collection_name);
+        renderFileList(updatedFiles, collection_name);
+      } catch (err) {
+        showError(err.message);
+        this.disabled = false;
+        this.style.opacity = '';
+      }
+    };
+    ul.appendChild(li);
+  });
+  document.getElementById('files-area').style.display = '';
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  clearMessages();
+  document.getElementById('files-area').style.display = 'none';
+  const sel = document.getElementById('delete-collection');
+  sel.innerHTML = `<option disabled selected>Loading...</option>`;
+  await populateCollectionsDropdown();
+
+  // Auto select the first collection if available
+  if (sel.options.length > 1 && sel.selectedIndex === 0) {
+    setTimeout(() => {
+      sel.selectedIndex = 1; // Select the first real collection
+      sel.dispatchEvent(new Event('change'));
+    }, 10);
+  }
+
+  sel.addEventListener('change', async function() {
+    clearMessages();
+    const col = sel.value;
+    if (!col) {
+      document.getElementById('files-area').style.display = 'none';
+      return;
+    }
+    document.getElementById('files-area').style.display = '';
+    document.getElementById('file-list').innerHTML =
+      `<li style="color:#aaa;background:none;border:none;">Loading files...</li>`;
+    document.getElementById('no-files').style.display = 'none';
+    try {
+      const files = await fetchFiles(col);
+      renderFileList(files, col);
+    } catch (err) {
+      showError('Could not fetch files for this collection.');
+      document.getElementById('file-list').innerHTML = '';
+    }
+  });
+});
+</script>
+</body>
+</html>
+    

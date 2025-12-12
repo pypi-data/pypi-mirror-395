@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kion Consulting Vectorstore – File Loader</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,700,900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #012044;
+      --blue: #2366b3;
+      --accent: #ff8700;
+      --accent-light: #ffd280;
+      --background: #e6eafd;
+      --glass4: rgba(255,255,255,0.56);
+      --border: #bed1ea;
+      --gold: #ffd280;
+      --error: #de4848;
+      --shadow: 0 4px 24px 1px #01204422;
+      --sapphire: #2366b3;
+    }
+    html, body {
+      background: var(--background);
+      min-height: 100vh;
+      font-family: 'Inter', Arial, sans-serif;
+      color: var(--navy);
+      margin: 0; padding: 0;
+      letter-spacing: .01em;
+      overflow-x: hidden;
+      overscroll-behavior: none;
+    }
+    .page-geometry-bg { position:fixed; z-index:0; left:0; top:0; width:100vw; height:100vh; pointer-events:none;}
+    .topbar {
+      background: linear-gradient(90deg, var(--navy) 60%, var(--accent) 200%);
+      color: #fff; display:flex; align-items:center; justify-content:flex-start;
+      padding: 0 44px 0 45px; height: 60px;
+      position: sticky; top: 0; z-index: 1001;
+      font-weight: 900; border-bottom:2.5px solid var(--accent-light);
+    }
+    .brand { display: flex; align-items:center; gap: 13px; }
+    .brand-logo {
+      height: 38px; border-radius: 0; background: #fff; padding: 1.5px 7px 1.5px 1.5px;
+      box-shadow: 0 2px 14px var(--accent-light); border: 2.5px solid var(--accent-light); object-fit: contain;
+    }
+    .header-labels { display:flex; flex-direction:column; gap: 1.5px; margin-left: 7px;}
+    .brand-name { font-weight: 900; font-size: 1.11em; letter-spacing: 1.7px; color: #fff; margin-top: 0.5px; }
+    .vectorstore-label {
+      font-size: 0.94em; color: var(--accent); font-weight: 700; letter-spacing:1.3px; margin-top: 1px;
+    }
+    .nav { margin-left:auto; display: flex; gap: 12px;}
+    .nav-link { padding: 7px 17px; border-radius: 3px; color: #fff; font-weight: 700; letter-spacing: 0.03em; text-decoration: none;
+      background: none; font-size: 1.04em; transition: background .2s,color .13s,border .2s; border: 1.5px solid transparent; }
+    .nav-link.active, .nav-link:hover {
+      background: var(--accent); color: var(--navy); border: 1.5px solid #fff7; box-shadow: 0 1px 8px #ff870021;
+    }
+    /* Center everything! */
+    .main-center-container { display:flex; align-items:center; justify-content:center; min-height:calc(100vh - 80px);}
+    .panel-sharp {
+      max-width: 520px;
+      width: 100%;
+      margin: 8px;
+      padding: 48px 32px 38px 32px; /* set as you wish, but stick with < max-width/2 for side padding */
+      /* rest unchanged */
+    }
+    @media (max-width:600px){
+        .panel-sharp {
+            max-width: 99vw;
+            padding: 13px 3vw;
+            margin: 12px 0;
+        }
+    }
+    .panel-content {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 11;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .file-group { width: 100%; max-width: 100%; box-sizing: border-box; }
+    .file-fields-grid {
+      display: grid;
+      width: 100%;
+      grid-template-columns: 1fr;
+      gap: 0 16px;
+    }
+    .file-group input[type="text"],
+    .file-group input[type="number"], 
+    .file-group input[type="file"] {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      margin-bottom: 13px;
+    }
+    .file-group label {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .file-group input[type="file"] {
+      font-size: 1.02em;
+      padding: 13px 10px;
+      height: 45px;
+      background: #fcfdffef;
+      border: 1.5px solid #ccd9ef;
+      border-radius: 3px;
+      color: #012044;
+      box-shadow: 0 1.5px 8px #dbe6f651;
+    }
+    .panel-geom {
+      position: absolute; pointer-events:none;
+      right: 0; top:0; width:81px; height:70px; z-index:6;
+      opacity: 0.18; transform:rotate(6deg);
+    }
+    .panel-diag {
+      position:absolute; left:0; bottom:0; width:100%; height:32px;
+      z-index:7; opacity:0.11;
+    }
+    .panel-sharp h3 {
+      margin: 0 0 17px 0; font-size:1.19em; font-weight:850;
+      color: var(--navy); letter-spacing:0.07em; border-bottom:2.8px solid var(--accent);
+      padding-bottom:11px; text-transform:uppercase;
+      background: linear-gradient(92deg, #ff870012 52%, #ffd28026 100%);
+    }
+    label {
+      font-weight: 800; color: var(--navy); font-size: 1.07em;
+      margin-bottom: 7px; display:block; text-shadow:0 2px 12px #edf6c833;
+      letter-spacing:0.04em;
+    }
+    input[type="text"], input[type="number"], input[type="file"] {
+      width: 100%; 
+      border: 1.5px solid #ccd9ef; 
+      border-radius: 3px;
+      padding: 14px 15px; 
+      font-size: 1.09em;
+      margin-bottom: 13px;
+      font-family: inherit;
+      background: #fcfdffef;
+      box-shadow: 0 1.5px 8px #dbe6f651;
+    }
+    input:focus { border-color: var(--sapphire); outline: none; background: #fff; box-shadow: 0 2px 18px #ffd28026;}
+    button {
+      display: block;
+      margin: 27px 0 0 0;
+      padding: 20px 0;
+      width: 100%;
+      border-radius: 3px;
+      background: linear-gradient(91deg,#ff8700 5%,#ffd280 92%);
+      border: none;
+      color: #002050;
+      font-weight: 900;
+      font-size: 1.17em;
+      letter-spacing: 0.07em;
+      box-shadow: 0 3px 18px #ffd28061;
+      text-shadow: 0 1px 4px #fff6;
+      transition: background .16s, box-shadow .12s, color .09s;
+      cursor: pointer;
+      min-width: 220px; /* always enough for all button text */
+      border: 2.2px solid #ffd280;
+      outline: none;
+    }
+    #addFileBtn { margin-top:8px; margin-bottom:0; background:var(--sapphire); color:#fff;}
+    button:hover, button:focus {
+      background: linear-gradient(90deg,#ffd280 65%,#ffb000 100%);
+      color: #fff; box-shadow: 0 8px 30px #ffd28085; outline: none;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .error {
+      color: var(--error); background: #fff3f0; border-radius: 2.5px;
+      margin: 10px 0; padding: 12px 13px; font-weight: 700;
+      border-left: 5px solid var(--accent); font-size: 1.04em; box-shadow: 0 1px 8px #fbb6b611; display: none;
+    }
+    .result {
+      margin-top: 16px; color: #218055; background: #e8fbe6df; border: 2px solid #43c2717a;
+      border-radius: 3px; padding: 12px 13px; white-space: pre-line; font-size: 1.01em; font-weight: 600;
+      box-shadow: 0 1px 7px #43c27112; display: none;
+    }
+    .loading-msg {
+      font-size: 1.07em; margin-top: 21px; text-align:center; letter-spacing:0.02em; color: #31416a;
+      background: #f8f8f8e9; border: 1.5px solid #c8d3ea; border-radius: 4px; padding: 10px 14px; font-weight: 600;
+    }
+    .file-group {
+      border: 1.4px solid #dbe6f6;
+      background: #f7fafdee;
+      border-radius: 0;
+      padding: 18px 13px 14px 13px;
+      margin-bottom: 21px;
+      position: relative;
+      box-shadow: 0 1.5px 7px #bfd9ff1a;
+    }
+
+    .tokens-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 13px 0;
+    }
+    button.tokens-btn {
+      width: auto;
+      padding: 8px 16px;
+      margin: 8px 0 0 0;
+      font-size: 0.95em;
+      min-width: 0;
+      box-shadow: 0 2px 10px #ffd28061;
+    }
+    .tokens-label {
+      font-size: 0.95em;
+      font-weight: 600;
+      color: #012044;
+    }
+    .removeFileBtn {
+      background: none;
+      border: none;
+      color: var(--error);
+      font-weight: 800;
+      font-size: 1em;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-top: 10px;
+      padding-left: 0;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 0;
+    }
+    .removeFileBtn:hover {color: #a80000;}
+    @media (max-width:700px) {
+      .main-center-container { padding:0 2vw;}
+      .panel-content { padding: 13px 4vw;}
+      button {font-size:1em;}
+    }
+  </style>
+</head>
+<body>
+<svg class="page-geometry-bg" viewBox="0 0 1440 900" fill="none">
+  <polygon points="1360,0 1440,120 1440,0" fill="#ffd28035"/>
+  <polygon points="0,900 80,800 0,800" fill="#2366b325"/>
+  <rect x="1080" y="80" width="390" height="8" fill="#2366b377" />
+  <rect x="90" y="220" width="490" height="11" fill="#ffd2803b" />
+  <line x1="0" y1="650" x2="1440" y2="590" stroke="#dbe6f6" stroke-width="31" stroke-opacity="0.12" />
+  <line x1="1100" y1="100" x2="1440" y2="340" stroke="#012044" stroke-width="3.2" stroke-opacity="0.19"/>
+  <rect x="1110" y="700" width="9" height="150" fill="#ff870032"/>
+  <rect x="0" y="810" width="200" height="5" fill="#ffd28044"/>
+  <polygon points="1440,900 1340,890 1440,800" fill="#2366b323"/>
+  <polygon points="25,35 50,90 70,20" fill="#2366b325"/>
+</svg>
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="https://kion.co.za/wp-content/uploads/2022/10/Screenshot_2022-07-07_151429-removebg-preview.png" alt="Kion Consulting Logo" />
+    <div class="header-labels">
+      <span class="brand-name">Kion Consulting</span>
+      <span class="vectorstore-label">VECTORSTORE</span>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="file_loader_gui.html" class="nav-link active" id="nav-upload">Upload</a>
+    <a href="file_remover_gui.html" class="nav-link" id="nav-delete">Delete</a>
+    <a href="chat.html" class="nav-link" id="nav-chat">Assistant Chat</a>
+  </nav>
+</header>
+
+<div class="main-center-container">
+  <section class="panel-sharp panel2">
+    <svg class="panel-geom" viewBox="0 0 80 70">
+      <polygon points="0,0 80,0 65,70" fill="#ff8700"/>
+      <polyline points="0,69 80,12" stroke="#ffd280" stroke-width="6" opacity="0.09"/>
+    </svg>
+    <svg class="panel-diag" viewBox="0 0 200 32">
+      <polygon points="0,32 120,0 200,32" fill="#ffd28077"/>
+    </svg>
+    <div class="panel-content">
+      <h3>Load Files</h3>
+      <form id="fileLoaderForm" enctype="multipart/form-data" autocomplete="off">
+        <div id="file-group-list"></div>
+        <button id="addFileBtn" type="button" style="background:var(--sapphire);color:white;">+ Add File</button>
+        <button type="submit">Load Files</button>
+      </form>
+      <div class="error" id="error"></div>
+      <div class="result" id="result"></div>
+      <div class="loading-msg" id="loadingMsg" style="display:none;">
+        <span id="loadingText">Uploading and processing files, please wait...</span>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+document.getElementById('nav-upload').classList.add('active');
+let fileGroupIdx = 0;
+function getMaxOverlap(chunkSize) { return Math.ceil(chunkSize * 0.5); }
+
+// Add initial file input group on load
+window.addEventListener('DOMContentLoaded', () => { addFileGroup(); });
+
+// Add File Group
+function addFileGroup() {
+    const list = document.getElementById('file-group-list');
+    const idx = fileGroupIdx++;
+    const group = document.createElement('div');
+    group.className = 'file-group';
+    group.innerHTML = `
+      <div class="file-fields-grid">
+        <label>File ${idx + 1}</label>
+        <input type="file" name="file_${idx}" class="file-path" accept=".pdf,.txt" required>
+        <div class="tokens-row">
+          <button type="button" class="tokens-btn">Tokens</button>
+          <span class="tokens-label"></span>
+        </div>
+        <label>Chunk Size</label>
+        <input type="number" class="chunk-size" value="2000" min="100" max="8000" required>
+        <label>Chunk Overlap <span class="overlap-max"></span></label>
+        <input type="number" class="chunk-overlap" value="750" min="0" required>
+        <label>Data Collection</label>
+        <input type="text" class="collection-name" placeholder="e.g. MxTestDataCollection" required>
+        ${idx !== 0 ? '<button type="button" class="removeFileBtn">Remove</button>' : ''}
+      </div>
+    `;
+    const chunkSizeElem = group.querySelector('.chunk-size');
+    const chunkOverlapElem = group.querySelector('.chunk-overlap');
+    const overlapMaxElem = group.querySelector('.overlap-max');
+    const fileInput = group.querySelector('.file-path');
+    const tokensBtn = group.querySelector('.tokens-btn');
+    const tokensLabel = group.querySelector('.tokens-label');
+
+    function updateGroupChunkLimit() {
+        let chunkSize = parseInt(chunkSizeElem.value, 10) || 2000;
+        chunkSizeElem.value = chunkSize;
+        const maxOverlap = getMaxOverlap(chunkSize);
+        chunkOverlapElem.max = maxOverlap;
+        overlapMaxElem.textContent = `(max: ${maxOverlap})`;
+        if (parseInt(chunkOverlapElem.value, 10) > maxOverlap) {
+            chunkOverlapElem.value = maxOverlap;
+        }
+    }
+    chunkSizeElem.addEventListener('input', updateGroupChunkLimit);
+    updateGroupChunkLimit();
+
+    // Validate file type immediately when a user selects a file
+    fileInput.addEventListener('change', () => {
+        const errorDiv = document.getElementById('error');
+        if (fileInput.files && fileInput.files.length > 0) {
+            const name = fileInput.files[0].name.toLowerCase();
+            if (!(name.endsWith('.pdf') || name.endsWith('.txt'))) {
+                errorDiv.textContent = `Unsupported file type for File ${idx + 1}. Please select a .pdf or .txt file.`;
+                errorDiv.style.display = 'block';
+                fileInput.value = '';
+                fileInput.focus();
+            } else {
+                if (errorDiv.style.display !== 'none') {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }
+            }
+        }
+    });
+
+    // Calculate average tokens per page for the selected file
+    if (tokensBtn) {
+        tokensBtn.addEventListener('click', async () => {
+            const errorDiv = document.getElementById('error');
+            // Clear any global error when starting a new calculation
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+                errorDiv.textContent = '';
+            }
+            tokensLabel.textContent = '';
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                tokensLabel.textContent = 'Please choose a file first.';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const fname = file.name.toLowerCase();
+            if (!(fname.endsWith('.pdf') || fname.endsWith('.txt'))) {
+                tokensLabel.textContent = 'Only .pdf or .txt files are supported.';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const originalText = tokensBtn.textContent;
+            tokensBtn.disabled = true;
+            tokensBtn.textContent = 'Calculating...';
+            tokensLabel.textContent = '';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/calc_tokens', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    tokensLabel.textContent = data.error || 'Could not calculate tokens.';
+                    return;
+                }
+
+                const avg = data.average_tokens_per_page ?? 0;
+                const pages = data.pages ?? 0;
+                tokensLabel.textContent = `Avg tokens/page: ${avg} (pages: ${pages})`;
+            } catch (err) {
+                console.error(err);
+                tokensLabel.textContent = 'Failed to connect to backend.';
+            } finally {
+                tokensBtn.disabled = false;
+                tokensBtn.textContent = originalText;
+            }
+        });
+    }
+
+    if (group.querySelector('.removeFileBtn')) {
+        group.querySelector('.removeFileBtn').onclick = function() { group.remove(); }
+    }
+    list.appendChild(group);
+}
+document.getElementById('addFileBtn').onclick = () => { addFileGroup(); }
+
+// Submission
+document.getElementById('fileLoaderForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+    const errorDiv = document.getElementById('error');
+    const resultDiv = document.getElementById('result');
+    const loadingMsg = document.getElementById('loadingMsg');
+
+    // Reset messages
+    errorDiv.style.display = 'none'; errorDiv.textContent = '';
+    resultDiv.style.display = 'none'; resultDiv.textContent = '';
+    loadingMsg.style.display = 'none';
+
+    const fileGroups = document.querySelectorAll('.file-group');
+    if (fileGroups.length === 0) {
+        errorDiv.textContent = "Add at least one file."; errorDiv.style.display = 'block'; return;
+    }
+
+    const formData = new FormData();
+
+    // Validate each group and build FormData
+    for (let i = 0; i < fileGroups.length; ++i) {
+        const group = fileGroups[i];
+        const fileInput = group.querySelector('.file-path');
+        const chunkSizeElem = group.querySelector('.chunk-size');
+        const chunkOverlapElem = group.querySelector('.chunk-overlap');
+        const collectionNameElem = group.querySelector('.collection-name');
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+            errorDiv.textContent = `Please select a file in group ${i+1}.`;
+            errorDiv.style.display = 'block';
+            fileInput.focus();
+            return;
+        }
+        const fname = fileInput.files[0].name.toLowerCase();
+        if (!(fname.endsWith('.pdf') || fname.endsWith('.txt'))) {
+            errorDiv.textContent = `Unsupported file type for group ${i+1}. Please select a .pdf or .txt file.`;
+            errorDiv.style.display = 'block';
+            fileInput.focus();
+            return;
+        }
+
+        const chunkSize = parseInt(chunkSizeElem.value, 10);
+        if (isNaN(chunkSize) || chunkSize > 8000 || chunkSize < 100) {
+            errorDiv.textContent = `Chunk Size in group ${i+1} must be between 100 and 8000.`;
+            errorDiv.style.display = 'block';
+            chunkSizeElem.focus();
+            return;
+        }
+
+        const maxOverlap = getMaxOverlap(chunkSize);
+        const chunkOverlap = parseInt(chunkOverlapElem.value, 10);
+        if (isNaN(chunkOverlap) || chunkOverlap < 0 || chunkOverlap > maxOverlap) {
+            errorDiv.textContent = `Chunk Overlap in group ${i+1} must be between 0 and ${maxOverlap}.`;
+            errorDiv.style.display = 'block';
+            chunkOverlapElem.focus();
+            return;
+        }
+
+        if (!collectionNameElem.value.trim()) {
+            errorDiv.textContent = `Please enter a collection name in group ${i+1}.`;
+            errorDiv.style.display = 'block';
+            collectionNameElem.focus();
+            return;
+        }
+
+        // Append fields for this file
+        formData.append(`file_${i}`, fileInput.files[0]);
+        formData.append(`chunk_size_${i}`, chunkSize);
+        formData.append(`chunk_overlap_${i}`, chunkOverlap);
+        formData.append(`collection_name_${i}`, collectionNameElem.value.trim());
+    }
+
+    formData.append('num_files', fileGroups.length);
+
+    try {
+        loadingMsg.style.display = 'block';
+        const response = await fetch("http://127.0.0.1:5000/api/load_vectorstore", {
+            method: "POST",
+            body: formData
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+            errorDiv.textContent = result.error || "An error occurred.";
+            errorDiv.style.display = 'block';
+        } else {
+            // Show upload status for each file
+            if (Array.isArray(result.results)) {
+                resultDiv.innerHTML = result.results.map(
+                  (r, i) => `<b>File ${i+1}:</b><br>
+                  ${r.message || r.error || ''}<br>
+                  File Name: ${r.file_name || ''}<br>
+                  Chunk Size: ${r.chunk_size || ''}<br>
+                  Chunk Overlap: ${r.chunk_overlap || ''}<br>
+                  Data Collection: ${r.collection_name || ''}<br><br>`
+                ).join('');
+            } else {
+                resultDiv.textContent = JSON.stringify(result);
+            }
+            resultDiv.style.display = 'block';
+            // RESET FORM after successful upload
+            resetFileLoaderForm();
+        }
+    } catch(err) {
+        console.error(err);
+        errorDiv.textContent = "Failed to connect to backend.";
+        errorDiv.style.display = 'block';
+    } finally {
+        loadingMsg.style.display = 'none';
+    }
+});
+
+function resetFileLoaderForm() {
+  const list = document.getElementById('file-group-list');
+  list.innerHTML = '';
+  fileGroupIdx = 0;
+  addFileGroup();
+}
+</script>
+</body>
+</html>
