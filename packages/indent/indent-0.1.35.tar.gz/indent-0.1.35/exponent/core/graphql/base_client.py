@@ -1,0 +1,59 @@
+from typing import Any
+
+from httpx import AsyncClient, Response
+
+
+class AsyncBaseClient:
+    """Base client for Ariadne-generated GraphQL clients."""
+
+    def __init__(self, url: str, headers: dict[str, str] | None = None):
+        self.url = url
+        self.headers = headers or {}
+        self._client: AsyncClient | None = None
+
+    async def _get_client(self) -> AsyncClient:
+        """Get or create the HTTP client."""
+        if self._client is None:
+            self._client = AsyncClient(headers=self.headers)
+        return self._client
+
+    async def execute(
+        self,
+        query: str,
+        operation_name: str | None = None,
+        variables: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Execute a GraphQL query."""
+        client = await self._get_client()
+        response: Response = await client.post(
+            self.url,
+            json={
+                "query": query,
+                "operationName": operation_name,
+                "variables": variables or {},
+            },
+            **kwargs,
+        )
+        response.raise_for_status()
+        json_response: dict[str, Any] = response.json()
+        return json_response
+
+    async def aclose(self) -> None:
+        """Close the HTTP client."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+    @staticmethod
+    def get_data(response: dict[str, Any]) -> dict[str, Any]:
+        """Extract data from GraphQL response."""
+        if "errors" in response:
+            errors = response["errors"]
+            raise ValueError(f"GraphQL errors: {errors}")
+        if "data" not in response:
+            raise ValueError("GraphQL response missing 'data' field")
+        data: dict[str, Any] = response["data"]
+        if data is None:
+            raise ValueError("GraphQL response data is null")
+        return data
