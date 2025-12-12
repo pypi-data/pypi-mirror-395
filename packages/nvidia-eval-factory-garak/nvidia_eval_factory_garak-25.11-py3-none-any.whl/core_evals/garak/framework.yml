@@ -1,0 +1,55 @@
+framework:
+  name: garak
+  pkg_name: garak
+  full_name: Garak
+  description: Garak is an LLM vulnerability scanner.
+  url: https://github.com/NVIDIA/garak/tree/main
+defaults:
+  command: |
+    cat > garak_config.yaml << 'EOF'
+    {% if config.params.extra.seed is not none %}run:
+      seed: {{config.params.extra.seed}}{% endif %}
+    plugins:
+      {% if config.params.extra.probes is not none %}probe_spec: {{config.params.extra.probes}}{% endif %}
+      extended_detectors: true
+      target_type: {% if target.api_endpoint.type == "completions" %}nim.NVOpenAICompletion{% elif target.api_endpoint.type == "chat" %}nim.NVOpenAIChat{% endif %}
+      target_name: {{target.api_endpoint.model_id}}
+      generators:
+        nim:
+          uri: {{target.api_endpoint.url | replace('/chat/completions', '') | replace('/completions', '')}}
+          {% if config.params.temperature is not none %}temperature: {{config.params.temperature}}{% endif %}
+          {% if config.params.top_p is not none %}top_p: {{config.params.top_p}}{% endif %}
+          {% if config.params.max_new_tokens is not none %}max_tokens: {{config.params.max_new_tokens}}{% endif %}
+    system:
+      parallel_attempts: {{config.params.parallelism}}
+      lite: false
+    EOF
+    {% if target.api_endpoint.api_key is not none %}
+    export NIM_API_KEY=${{target.api_endpoint.api_key}} &&
+    {% else %}
+    export NIM_API_KEY=dummy &&
+    {% endif %}
+    export XDG_DATA_HOME={{config.output_dir}} &&
+    garak --config garak_config.yaml --report_prefix=results
+  config:
+    supported_endpoint_types:
+    - chat
+    - completions
+    params:
+      max_new_tokens: 150
+      temperature: 0.1
+      top_p: 0.7
+      parallelism: 32
+      extra:
+        probes: null
+        seed: null
+  target:
+    api_endpoint: {}  # required to add: url, model_id, api_key
+evaluations:
+- name: garak
+  description: Task for running the default set of Garak probes
+  defaults:
+    config:
+      type: garak
+      params:
+        task: garak
