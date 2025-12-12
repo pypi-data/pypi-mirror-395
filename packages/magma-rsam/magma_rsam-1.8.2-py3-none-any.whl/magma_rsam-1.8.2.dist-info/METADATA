@@ -1,0 +1,105 @@
+Metadata-Version: 2.4
+Name: magma-rsam
+Version: 1.8.2
+Summary: Calculating RSAM Value
+Keywords: seismic,volcano,volcanology,convert,sds,seiscomp,mseed
+Author-email: Martanto <martanto@live.com>, Devy Kamil Syahbana <devy.syahbana@gmail.com>, Syarif Abdul Manaf <riefmof@gmail.com>
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+License-File: LICENSE
+Requires-Dist: obspy>=1.4.2
+Requires-Dist: openpyxl>=3.1.5
+Requires-Dist: pandas>=2.2.2
+Requires-Dist: numpy>=2.2.5
+Requires-Dist: matplotlib>=3.9.0
+Requires-Dist: magma-database>=1.5.0
+Requires-Dist: magma-converter>=1.9.0
+Requires-Dist: questdb[dataframe]>=2.0.3
+Requires-Dist: peewee>=3.17.5
+Requires-Dist: material-color
+Requires-Dist: tqdm
+Requires-Dist: obspy ; extra == "base"
+Requires-Dist: openpyxl ; extra == "base"
+Requires-Dist: pandas ; extra == "base"
+Requires-Dist: numpy ; extra == "base"
+Requires-Dist: matplotlib ; extra == "base"
+Requires-Dist: magma-database ; extra == "base"
+Requires-Dist: questdb[dataframe] ; extra == "base"
+Requires-Dist: peewee ; extra == "base"
+Requires-Dist: magma-converter ; extra == "base"
+Requires-Dist: material-color ; extra == "base"
+Project-URL: Homepage, https://github.com/martanto/magma-rsam
+Project-URL: Issues, https://github.com/martanto/magma-rsam/issues
+Provides-Extra: base
+
+# magma-rsam
+Python package to calculating RSAM Value
+
+```python
+from magma_rsam import RSAM, PlotRsam
+
+rsam = RSAM(
+    seismic_dir="G:\\Output\\Converted\\SDS",
+    station='AWU1',
+    channel='EHZ',
+    network = 'VG',
+    location = '00',
+    start_date = '2024-01-01',
+    end_date = '2024-07-31',
+    directory_structure = 'sds' # check https://github.com/martanto/magma-converter for supported directory
+)
+```
+
+Apply filter:
+```python
+rsam.apply_filter(freq_min=5.0, freq_max=18.0)
+```
+
+Run RSAM calculation:
+```python
+rsam.run()
+```
+
+## Plot RSAM
+```python
+plot_rsam = PlotRsam(
+    station = 'AWU1',
+    channel = 'EHZ',
+    network = 'VG',
+    location = '00',
+    start_date = '2024-01-01',
+    end_date = '2024-07-31',
+    resample = '10min'
+)
+```
+
+Plot using filter:
+```python
+plot_rsam.with_filter(
+    freq_min=5.0,
+    freq_max=18.0
+)
+```
+
+Set `y_limit`:
+```python
+plot_rsam.set_y_lim(
+    y_min=0,
+    y_max=1200
+)
+```
+
+Run plot:
+```python
+plot_rsam.run(
+    metrics = ['mean', 'median'],
+    windows = ['1d'],
+    plot_as_log = False,
+    datetime_interval = 7,
+    colors = ['#FFEB3B', '#F44336'] # colors must have the same length of metrics*windows
+)
+```
