@@ -1,0 +1,60 @@
+stages:
+  - build_image
+  # - deploy_on_50
+  # - deploy_dev_k8s
+  # - deploy_qa_k8s
+
+variables:
+  DEV_REGISTRY: "harbor.xmov.ai/xmov"
+  PRO_REGISTRY: "registry.cn-hangzhou.aliyuncs.com/xmov"
+  # FS_URL: "https://open.feishu.cn/open-apis/bot/v2/hook/596839f6-7241-4e81-b8cf-bca30c299c51"
+
+build_image:
+  stage: build_image
+  only:
+    - jiangbin_dev
+    - dev
+    - qa
+    - master
+    - tags
+  script:
+    - |
+      if [[ $CI_COMMIT_REF_NAME == "master" ]]
+      then
+        docker buildx build --builder newbuilder --push . -t $PRO_REGISTRY/$CI_PROJECT_NAME:latest
+      else
+        docker buildx build --builder newbuilder --push . -t $DEV_REGISTRY/$CI_PROJECT_NAME:$CI_COMMIT_REF_NAME
+      fi
+  tags:
+    - node-50
+
+# deploy_on_50:
+#   stage: deploy_on_50
+#   variables:
+#     GIT_STRATEGY: none
+#   only:
+#     - jiangbin_dev
+#   script:
+#     - cd /data/devops/deploy/$CI_PROJECT_NAME
+#     - docker-compose pull
+#     - docker-compose up -d
+#   tags:
+#     - node-50
+
+# deploy_qa_k8s:
+#   stage: deploy_qa_k8s
+#   only:
+#     - qa
+#   script:
+#     - update test-xingyun-open $CI_PROJECT_NAME
+#   tags:
+#     - xmov-local-ut
+
+# deploy_dev_k8s:
+#   stage: deploy_dev_k8s
+#   only:
+#     - dev
+#   script:
+#     - update dev-xingyun-open $CI_PROJECT_NAME
+#   tags:
+#     - xmov-local-ut

@@ -1,0 +1,131 @@
+{% extends 'file_explorer/base.html' %}
+
+{% block title %}删除文件 - {{ file.original_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <!-- 导航面包屑 -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'file_explorer:file_list' %}">
+                            <i class="fas fa-home"></i> 文件列表
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'file_explorer:file_detail' file.pk %}">
+                            {{ file.original_name }}
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">删除文件</li>
+                </ol>
+            </nav>
+
+            <!-- 删除确认卡片 -->
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> 确认删除文件
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- 警告图标 -->
+                    <div class="text-center mb-4">
+                        <i class="fas fa-trash-alt fa-4x text-danger"></i>
+                    </div>
+
+                    <!-- 文件信息 -->
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-info-circle"></i> 要删除的文件信息</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>文件名:</strong><br>
+                                <span class="text-danger">{{ file.original_name }}</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>文件类型:</strong> {{ file.file_type|upper }}<br>
+                                <strong>文件大小:</strong> {{ file.get_file_size_display }}
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <strong>上传时间:</strong> {{ file.uploaded_at|date:"Y-m-d H:i" }}<br>
+                            <strong>上传用户:</strong> {{ file.uploaded_by.username }}<br>
+                            <strong>下载次数:</strong> {{ file.download_count }}
+                        </div>
+                    </div>
+
+                    <!-- 删除说明 -->
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle"></i> 删除操作说明</h6>
+                        <ul class="mb-0">
+                            <li><strong>此操作不可撤销！</strong></li>
+                            <li>文件将从系统中永久删除</li>
+                            <li>物理文件也将从服务器中删除</li>
+                            <li>所有相关的下载记录将丢失</li>
+                        </ul>
+                    </div>
+
+                    <!-- 确认表单 -->
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- 确认复选框 -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="confirmDelete"
+                                    required
+                                >
+                                <label class="form-check-label" for="confirmDelete">
+                                    我确认要删除这个文件，并且理解此操作不可撤销
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'file_explorer:file_detail' file.pk %}"
+                               class="btn btn-secondary">
+                                <i class="fas fa-times"></i> 取消
+                            </a>
+                            <button type="submit" class="btn btn-danger" id="deleteBtn" disabled>
+                                <i class="fas fa-trash"></i> 确认删除
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 安全提示 -->
+            <div class="alert alert-info mt-3">
+                <h6><i class="fas fa-shield-alt"></i> 安全提示</h6>
+                <ul class="mb-0">
+                    <li>如果您不确定是否需要删除，建议先备份文件</li>
+                    <li>删除前请确认没有其他用户正在使用此文件</li>
+                    <li>如需恢复文件，请联系系统管理员</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 启用/禁用删除按钮的逻辑
+document.getElementById('confirmDelete').addEventListener('change', function() {
+    const deleteBtn = document.getElementById('deleteBtn');
+    deleteBtn.disabled = !this.checked;
+
+    if (this.checked) {
+        deleteBtn.classList.remove('btn-outline-danger');
+        deleteBtn.classList.add('btn-danger');
+    } else {
+        deleteBtn.classList.remove('btn-danger');
+        deleteBtn.classList.add('btn-outline-danger');
+    }
+});
+</script>
+{% endblock %}
