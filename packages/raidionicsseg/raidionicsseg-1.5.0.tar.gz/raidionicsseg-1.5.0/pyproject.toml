@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "cibuildwheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "raidionicsseg"
+version = "1.5.0"
+description = "Raidionics segmentation and classification back-end with ONNX runtime"
+readme = "README.md"
+license = { text = "BSD-2-Clause" }
+requires-python = ">=3.9"
+authors = [{ name = "David Bouget", email = "david.bouget@sintef.no" }]
+
+dependencies = [
+  "nibabel",
+  "h5py",
+  "pandas",
+  "SimpleITK<=2.4.1",
+  "aenum",
+  "scikit-image",
+  "tqdm",
+  "numpy",
+  "onnxruntime",]
+
+[project.optional-dependencies]
+torch = ["torch>=2.0.0"]
+ort-gpu = ["onnxruntime-gpu"]
+
+[project.scripts]
+raidionicsseg = "raidionicsseg.__main__:main"
+
+[tool.setuptools.packages.find]
+include = [
+  "raidionicsseg",
+  "raidionicsseg.Utils",
+  "raidionicsseg.Utils.Torch",
+  "raidionicsseg.PreProcessing",
+  "raidionicsseg.Inference",
+  "tests", ]
+
+[tool.black]
+line-length=120
+
+[tool.flake8]
+max-line-length = 120
+ignore = ["E203"]
