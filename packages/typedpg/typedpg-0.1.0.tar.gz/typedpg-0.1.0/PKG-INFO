@@ -1,0 +1,382 @@
+Metadata-Version: 2.4
+Name: typedpg
+Version: 0.1.0
+Summary: Generate type-safe Python code from PostgreSQL queries
+Project-URL: Homepage, https://github.com/jsegaran/typedpg
+Project-URL: Repository, https://github.com/jsegaran/typedpg
+Author: Jason Segaran
+License: MIT
+Keywords: asyncpg,codegen,postgresql,psycopg,sql,typed
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Database
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Typing :: Typed
+Requires-Python: >=3.11
+Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: click>=8.0
+Requires-Dist: pglast>=6.0
+Requires-Dist: psycopg[binary]>=3.1.0
+Requires-Dist: pydantic>=2.0
+Requires-Dist: watchfiles>=0.21.0
+Provides-Extra: dev
+Requires-Dist: asyncpg-stubs>=0.29.0; extra == 'dev'
+Requires-Dist: mypy>=1.8; extra == 'dev'
+Requires-Dist: psycopg2-binary>=2.9.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'dev'
+Requires-Dist: pytest>=8.0; extra == 'dev'
+Requires-Dist: ruff>=0.3.0; extra == 'dev'
+Requires-Dist: syrupy>=4.0; extra == 'dev'
+Requires-Dist: testcontainers[postgres]>=4.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# typedpg
+
+Generate type-safe Python code from PostgreSQL queries. A Python equivalent of [pgtyped](https://pgtyped.dev/) for TypeScript.
+
+## Features
+
+- **Type-safe queries**: Generates fully typed dataclasses or Pydantic models from your SQL
+- **Live type inference**: Connects to your PostgreSQL database to infer exact types
+- **Multiple drivers**: Supports both `asyncpg` and `psycopg` (v3)
+- **Watch mode**: Automatically regenerate code when SQL files change
+- **Named parameters**: Use `@param` annotations for readable parameter names
+- **Python file support**: Define queries in `.py` files using the `@query` decorator
+
+## Installation
+
+```bash
+pip install typedpg
+```
+
+Or with uv:
+
+```bash
+uv add typedpg
+```
+
+## Quick Start
+
+### 1. Create annotated SQL files
+
+```sql
+-- queries/users.sql
+
+/* @name GetUserById @param userId */
+SELECT id, name, email, created_at
+FROM users
+WHERE id = $1;
+
+/* @name ListActiveUsers */
+SELECT id, name, email
+FROM users
+WHERE is_active = true
+ORDER BY created_at DESC;
+
+/* @name CreateUser @returns one @param name @param email */
+INSERT INTO users (name, email)
+VALUES ($1, $2)
+RETURNING id, name, email, created_at;
+
+/* @name UpdateUserEmail @param userId @param newEmail */
+UPDATE users
+SET email = $2
+WHERE id = $1;
+```
+
+### 2. Run typedpg
+
+```bash
+typedpg queries/ -o src/db/queries.py -d postgresql://user:pass@localhost/mydb
+```
+
+### 3. Use the generated code
+
+```python
+import asyncio
+import asyncpg
+from src.db.queries import (
+    get_user_by_id, GetUserByIdParams,
+    list_active_users,
+    create_user, CreateUserParams,
+)
+
+async def main():
+    conn = await asyncpg.connect("postgresql://user:pass@localhost/mydb")
+    
+    # Fully typed parameters and results
+    user = await get_user_by_id(conn, GetUserByIdParams(userId=42))
+    if user:
+        print(f"Found: {user.name} ({user.email})")
+        print(f"Created: {user.created_at}")  # datetime type
+    
+    # List queries return typed lists
+    users = await list_active_users(conn)
+    for u in users:
+        print(f"- {u.name}")
+    
+    # Insert with RETURNING
+    new_user = await create_user(conn, CreateUserParams(
+        name="Alice",
+        email="alice@example.com"
+    ))
+    print(f"Created user with ID: {new_user.id}")
+    
+    await conn.close()
+
+asyncio.run(main())
+```
+
+## Generated Code Example
+
+From the SQL above, typedpg generates:
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+from datetime import datetime
+import asyncpg
+
+
+@dataclass(frozen=True, slots=True)
+class GetUserByIdResult:
+    id: int | None
+    name: str | None
+    email: str | None
+    created_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class GetUserByIdParams:
+    userId: int
+
+
+async def get_user_by_id(
+    conn: asyncpg.Connection[Any], 
+    params: GetUserByIdParams
+) -> GetUserByIdResult | None:
+    row = await conn.fetchrow(
+        """SELECT id, name, email, created_at FROM users WHERE id = $1;""",
+        params.userId,
+    )
+    return GetUserByIdResult(**dict(row)) if row else None
+```
+
+## SQL Annotations
+
+Annotations are placed in SQL block comments before each query:
+
+| Annotation | Required | Description |
+|------------|----------|-------------|
+| `@name QueryName` | Yes | Names the query. Generates `query_name()` function and `QueryNameResult`/`QueryNameParams` classes |
+| `@returns one\|many\|exec\|affected` | No | Override return type inference (see below) |
+| `@param paramName` | No | Name positional parameters. Use multiple times for multiple params |
+
+### Return Types
+
+| Type | Description | Python Return Type |
+|------|-------------|-------------------|
+| `one` | Single row (or None) | `ResultClass \| None` |
+| `many` | Multiple rows (default for SELECT) | `list[ResultClass]` |
+| `exec` | No return value | `None` |
+| `affected` | Row count (for INSERT/UPDATE/DELETE without RETURNING) | `int` |
+
+typedpg automatically infers return types:
+- `LIMIT 1` or single-parameter `WHERE id = $1` queries return `one`
+- INSERT/UPDATE/DELETE without RETURNING return `affected`
+- Everything else returns `many`
+
+Use `@returns` to override when the heuristic is wrong.
+
+## Python File Support
+
+In addition to `.sql` files, pytyped can extract queries from Python files. This is useful when you want to keep queries close to the code that uses them.
+
+### Using the `@query` Decorator
+
+```python
+# queries.py
+from typedpg import query
+
+@query(name="GetUserById", param="userId")
+GET_USER = """
+SELECT id, name, email FROM users WHERE id = $1
+"""
+
+@query(name="CreateUser", returns="one", params=["name", "email"])
+CREATE_USER = """
+INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *
+"""
+
+@query(name="UpdateUserEmail", param="userId", param="newEmail")
+UPDATE_EMAIL = """
+UPDATE users SET email = $2 WHERE id = $1
+"""
+```
+
+Then run:
+
+```bash
+typedpg queries.py -o generated.py -d postgresql://localhost/mydb
+```
+
+### Inline Annotations in Python
+
+You can also use the same `/* @name ... */` annotation style inside Python strings:
+
+```python
+GET_USER = """
+/* @name GetUserById @param userId */
+SELECT id, name, email FROM users WHERE id = $1
+"""
+```
+
+### Decorator Options
+
+| Option | Description |
+|--------|-------------|
+| `name="QueryName"` | Required. Names the query |
+| `returns="one\|many\|exec\|affected"` | Optional. Override return type |
+| `param="paramName"` | Optional. Name a single parameter (can repeat) |
+| `params=["a", "b"]` | Optional. Name multiple parameters |
+
+## CLI Reference
+
+```
+Usage: typedpg [OPTIONS] SQL_PATH
+
+  Generate typed Python code from SQL queries.
+
+Arguments:
+  SQL_PATH  Path to .sql/.py file or directory containing query files
+
+Options:
+  -o, --output PATH             Output Python file [default: generated_queries.py]
+  -d, --dsn TEXT                PostgreSQL connection string 
+                                [default: postgresql://postgres:postgres@localhost/postgres]
+  --driver [asyncpg|psycopg]    Target database driver [default: asyncpg]
+  --model [dataclass|pydantic]  Model type to generate [default: dataclass]
+  -w, --watch                   Watch for file changes and regenerate
+  --help                        Show this message and exit.
+```
+
+### Examples
+
+```bash
+# Generate from a single file
+typedpg queries.sql -o db/queries.py -d postgresql://localhost/mydb
+
+# Generate from a directory of SQL files
+pytyped sql/ -o src/generated/queries.py
+
+# Use Pydantic models instead of dataclasses
+typedpg queries.sql --model pydantic -o queries.py
+
+# Generate for psycopg instead of asyncpg
+typedpg queries.sql --driver psycopg -o queries.py
+
+# Watch mode for development
+typedpg queries/ -o queries.py -w
+
+# Generate from a Python file with @query decorators
+typedpg queries.py -o generated.py -d postgresql://localhost/mydb
+```
+
+## Transactions
+
+The generated functions accept a connection parameter and work naturally inside transactions. Use `async with conn.transaction():` to wrap multiple queries:
+
+```python
+async with conn.transaction():
+    # Check balance first
+    account = await get_account(conn, GetAccountParams(id=from_account_id))
+    if account.balance < amount:
+        raise InsufficientFundsError()
+    
+    # Execute transfer
+    await debit_account(conn, DebitAccountParams(accountId=from_account_id, amount=amount))
+    await credit_account(conn, CreditAccountParams(accountId=to_account_id, amount=amount))
+```
+
+If any query fails or an exception is raised, the entire transaction is rolled back automatically.
+
+### Nested Transactions (Savepoints)
+
+asyncpg supports nested transactions via PostgreSQL savepoints:
+
+```python
+async with conn.transaction():
+    await create_order(conn, CreateOrderParams(...))
+    
+    try:
+        async with conn.transaction():  # Creates a savepoint
+            await charge_payment(conn, ChargePaymentParams(...))
+    except PaymentError:
+        # Savepoint rolled back, but outer transaction continues
+        await mark_order_pending(conn, MarkOrderPendingParams(...))
+```
+
+## Type Mappings
+
+| PostgreSQL Type | Python Type |
+|-----------------|-------------|
+| `int2`, `int4`, `int8`, `serial`, `bigserial` | `int` |
+| `float4`, `float8`, `real`, `double precision` | `float` |
+| `numeric`, `money` | `Decimal` |
+| `text`, `varchar`, `char` | `str` |
+| `bool`, `boolean` | `bool` |
+| `timestamp`, `timestamptz` | `datetime` |
+| `date` | `date` |
+| `time`, `timetz` | `time` |
+| `interval` | `timedelta` |
+| `uuid` | `UUID` |
+| `json`, `jsonb` | `Any` |
+| `bytea` | `bytes` |
+| `text[]`, `int4[]`, etc. | `list[str]`, `list[int]`, etc. |
+
+## Requirements
+
+- Python 3.11+
+- PostgreSQL database (for type inference)
+- One of: `asyncpg` or `psycopg[binary]` (v3)
+
+## How It Works
+
+1. **Parse SQL files**: Extracts queries with `@name` annotations
+2. **Connect to PostgreSQL**: Uses a live database connection for type inference
+3. **Prepare statements**: Uses `PREPARE` to get parameter and result types without executing
+4. **Map types**: Converts PostgreSQL OIDs to Python types
+5. **Generate code**: Outputs typed dataclasses/Pydantic models and async query functions
+
+This approach ensures 100% accurate types that match your actual database schema.
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/typedpg.git
+cd pytyped
+
+# Install with uv
+uv sync
+
+# Run linting
+uv run ruff check pytyped
+
+# Run type checking
+uv run mypy pytyped
+
+# Test against a local PostgreSQL
+uv run typedpg examples/users.sql -o test_output.py -d postgresql://localhost/testdb
+```
+
+## License
+
+MIT

@@ -1,0 +1,82 @@
+[project]
+name = "typedpg"
+version = "0.1.0"
+description = "Generate type-safe Python code from PostgreSQL queries"
+authors = [{ name = "Jason Segaran" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["postgresql", "sql", "typed", "codegen", "asyncpg", "psycopg"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Code Generators",
+    "Typing :: Typed",
+]
+dependencies = [
+    "asyncpg>=0.29.0",
+    "psycopg[binary]>=3.1.0",
+    "pglast>=6.0",
+    "pydantic>=2.0",
+    "click>=8.0",
+    "watchfiles>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23.0",
+    "syrupy>=4.0",
+    "testcontainers[postgres]>=4.0",
+    "psycopg2-binary>=2.9.0",
+    "mypy>=1.8",
+    "ruff>=0.3.0",
+    "asyncpg-stubs>=0.29.0",
+]
+
+[project.scripts]
+typedpg = "typedpg.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/jsegaran/typedpg"
+Repository = "https://github.com/jsegaran/typedpg"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "pglast.*",
+    "watchfiles.*",
+    "testcontainers.*",
+    "psycopg2.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning:testcontainers.*",
+]
