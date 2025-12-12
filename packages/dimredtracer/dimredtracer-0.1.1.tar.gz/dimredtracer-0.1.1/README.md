@@ -1,0 +1,112 @@
+# dimredtracer
+
+A minimal Python SDK that wraps OpenTelemetry and OpenInference for seamless LLM observability.
+
+## Features
+
+- **Simple API**: Just three methods: `set_attribute()`, `start_span()`, and `force_flush()`
+- **Environment-driven configuration**: No hardcoded endpoints
+- **OpenInference integration**: Pass any OpenInference instrumentor during initialization
+- **Works with async/await**: Full support for async OpenAI clients
+- **Production-ready**: Idempotent initialization, fail-soft error handling
+
+## Installation
+
+```bash
+pip install dimredtracer
+```
+
+## Quick Start
+
+### 1. Set environment variables
+
+```bash
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://your-collector:4318/v1/traces"
+export OTEL_SERVICE_NAME="my-service"
+export DIMRED_TENANT_ID="your-tenant-id"  # optional
+export OPENAI_API_KEY="sk-..."  # for OpenAI examples
+```
+
+### 2. Basic usage
+
+```python
+from dimredtracer import Tracer
+from openinference.instrumentation.openai import OpenAIInstrumentor
+from openai import AsyncOpenAI
+
+# Initialize tracer with OpenInference instrumentation
+tracer = Tracer(OpenAIInstrumentor())
+
+client = AsyncOpenAI()
+
+# Set attributes on the current span
+tracer.set_attribute("experiment", "demo-1")
+tracer.set_attribute("user.id", "user-123")
+
+# Make LLM call (auto-instrumented by OpenInference)
+response = await client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+
+# Add post-call attributes
+tracer.set_attribute("response.length", len(response.choices[0].message.content))
+
+# Ensure spans are exported
+tracer.force_flush()
+```
+
+### 3. Custom spans
+
+```python
+# Create custom spans for non-LLM operations
+with tracer.start_span("preprocessing"):
+    tracer.set_attribute("chunks_processed", 42)
+    # ... your preprocessing logic ...
+
+with tracer.start_span("postprocessing"):
+    tracer.set_attribute("validation_passed", True)
+    # ... your postprocessing logic ...
+```
+
+## API Reference
+
+### `Tracer(instrumentation=None, name="dimred.tracer")`
+
+Initialize the tracer with optional OpenInference instrumentation.
+
+**Parameters:**
+- `instrumentation` (optional): An OpenInference instrumentor instance (e.g., `OpenAIInstrumentor()`)
+- `name` (str): Logical name for the OTEL tracer
+
+### `tracer.set_attribute(key: str, value: Any)`
+
+Attach an attribute to the current active span.
+
+### `tracer.start_span(name: str)`
+
+Context manager that creates a custom span and makes it current.
+
+### `tracer.force_flush(timeout_millis: int = 30000)`
+
+Force flush buffered spans to the collector.
+
+## Environment Variables
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Yes | Full OTLP HTTP endpoint | `http://your-collector:4318/v1/traces` |
+| `OTEL_SERVICE_NAME` | No | Service identifier | `my-llm-service` (default: `dimredtracer-service`) |
+| `DIMRED_TENANT_ID` | No | Tenant ID for multi-tenancy | `acme-corp` |
+
+## Examples
+
+See the [examples/](examples/) directory for complete examples:
+
+- **[openai_async_example.py](examples/openai_async_example.py)**: Async OpenAI with OpenInference instrumentation
+
+## Requirements
+
+- Python 3.10+
+- OpenTelemetry SDK 1.22.0+
+- (Optional) OpenInference instrumentation packages
