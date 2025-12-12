@@ -1,0 +1,64 @@
+Metadata-Version: 2.4
+Name: boomboxlib
+Version: 0.2.8
+Summary: Boombox SDK for Python
+Author: Membrane Team
+License-Expression: Apache-2.0
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=2.2.5
+Requires-Dist: typing-extensions<5,>=4.13.2
+Requires-Dist: tqdm<5,>=4.67.1
+Requires-Dist: platformdirs<5,>=4.4
+Dynamic: license-file
+
+![boombox_transparent](https://github.com/user-attachments/assets/1c5f25a2-cc27-4349-ae72-91315d43d6a1)
+
+This package is a Python API of Boombox - a high-level tool for audio & video streaming tool based on the [Membrane Framework](https://membrane.stream).
+
+- **Documentation:** https://boombox.readthedocs.io
+- **Source code:** https://github.com/membraneframework/boombox/tree/master/python
+
+## Installation
+
+The package is available on PyPI and can be downloaded with pip:
+
+```bash
+pip install boomboxlib
+```
+
+Because of some reliance on native libraries for encoding and decoding, the package is available for
+the following platforms:
+  - MacOS on ARM architecture
+  - Linux on x86 architecture
+  - Linux on ARM architecture
+
+## Example usage
+The following example will read the MP4 file from the provided URL, flip the video and save it to
+`output.mp4`
+
+```python
+boombox1 = Boombox(
+input="https://raw.githubusercontent.com/membraneframework/static/gh-pages/samples/big-buck-bunny/bun33s.mp4",
+output=Array(video=True, audio=True),
+)
+boombox2 = Boombox(input=Array(video=True, audio=True), output="output.mp4")
+for b in boombox1.read():
+    if isinstance(b, VideoPacket):
+        b.payload = np.flip(b.payload, axis=0)
+    boombox2.write(b)
+boombox2.close(wait=True)
+```
+
+## Authors
+
+Boombox is created by Software Mansion.
+
+Since 2012 [Software Mansion](https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=boombox) is a software agency with experience in building web and mobile apps as well as complex multimedia solutions. We are Core React Native Contributors and experts in live streaming and broadcasting technologies. We can help you build your next dream product – [Hire us](https://swmansion.com/contact/projects).
+
+Copyright 2024, [Software Mansion](https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=boombox)
+
+[![Software Mansion](https://logo.swmansion.com/logo?color=white&variant=desktop&width=200&tag=membrane-github)](https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=boombox)
+
+Licensed under the [Apache License, Version 2.0](LICENSE)
