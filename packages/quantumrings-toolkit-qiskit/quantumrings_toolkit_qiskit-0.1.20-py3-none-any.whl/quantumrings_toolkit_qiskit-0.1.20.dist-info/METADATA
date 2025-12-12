@@ -1,0 +1,113 @@
+Metadata-Version: 2.4
+Name: quantumrings-toolkit-qiskit
+Version: 0.1.20
+Summary: QuantumRings toolkit for Qiskit 1.x
+Author-email: "Quantum Rings Inc." <contact@quantumrings.com>
+Project-URL: Homepage, https://www.quantumrings.com/docs
+Project-URL: Documentation, https://www.quantumrings.com/docs
+Project-URL: API Reference, https://quantumrings.com/doc/modules.html
+Keywords: quantum,quantum circuit,quantum computing,quantum programming language,quantum register,quantum tools,qiskit,tools,sdk
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: Scientific/Engineering
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: POSIX :: Linux
+Requires-Python: >=3.6
+Description-Content-Type: text/x-rst
+License-File: LICENSE.rst
+Requires-Dist: numpy
+Requires-Dist: qiskit<2.0
+Dynamic: license-file
+
+
+Quantum Rings Plugin for Qiskit
+-------------------------------
+
+=====================================
+Step 1. Import the required libraries
+=====================================
+
+
+.. code-block:: console
+
+    from qiskit.circuit import QuantumCircuit
+    from qiskit import QuantumCircuit, transpile, QuantumRegister, ClassicalRegister, AncillaRegister
+    from qiskit.visualization import plot_histogram
+    from matplotlib import pyplot as plt
+
+    import QuantumRingsLib
+    from QuantumRingsLib import QuantumRingsProvider
+    from quantumrings.toolkit.qiskit import QrBackendV2
+    from quantumrings.toolkit.qiskit import QrJobV1
+
+    from matplotlib import pyplot as plt
+
+=========================================
+Step 2. Obtain the Quantum Rings Provider
+=========================================
+
+Do not forget to replace your account key and account name.
+
+
+.. code-block:: console
+
+    qr_provider = QuantumRingsProvider(token = <ACCOUNT_KEY>, name=<ACCOUNT_NAME>)
+
+=================================================================
+Step 3. Build the Quantum Circuit using Qiskit provided functions
+=================================================================
+
+.. code-block:: console
+
+    shots = 1000
+    numberofqubits = int(qr_provider.active_account()["max_qubits"])
+    q = QuantumRegister(numberofqubits , 'q')
+    c = ClassicalRegister(numberofqubits , 'c')
+    qc = QuantumCircuit(q, c)
+
+
+    # Create the GHZ state (Greenberger–Horne–Zeilinger)
+    qc.h(0);
+    for i in range (qc.num_qubits - 1):
+        qc.cx(i, i + 1);
+
+    # Measure all qubits
+    qc.measure_all();
+
+
+================================================
+Step 4. Transpile the code for Quantum Rings SDK
+================================================
+
+
+.. code-block:: console
+
+    mybackend = QrBackendV2(qr_provider)
+    qc_transpiled = transpile(qc, mybackend)
+
+
+===============================================
+Step 5. Execute the code and plot the histogram
+===============================================
+
+.. code-block:: console
+
+    job = mybackend.run(qc_transpiled, shots = shots)
+    result = job.result()
+    counts = result.get_counts()
+    plot_histogram(counts)
+
+
