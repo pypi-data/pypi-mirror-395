@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gymnasium-retinatask"
+version = "0.1.0"
+description = "A Gymnasium-compatible implementation of the Left & Right Retina Problem"
+readme = "README.md"
+authors = [
+    {name = "Stefano Palmieri", email = "teaspoonaistu@gmail.com"},
+]
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium>=1.1.1",
+    "numpy>=1.21.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Teaspoon-AI/gymnasium-retinatask"
+"Bug Tracker" = "https://github.com/Teaspoon-AI/gymnasium-retinatask/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[dependency-groups]
+dev = [
+    "isort>=5.13.2",
+    "pyright>=1.1.405",
+    "pytest>=8.3.5",
+    "pre-commit",
+    "pytest-cov>=7.0.0",
+]
+docs = [
+    "furo",
+    "myst-parser>=3.0.1",
+    "sphinx>=7.1.2",
+    "sphinx-autobuild>=2021.3.14",
+    "sphinx-github-changelog>=1.1.2",
+]
+examples-neat = [
+    "neat-python>=0.92",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312", "py313"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203"
+exclude = [".git", "__pycache__", "build", "dist"]
+
+[tool.pyright]
+include = ["src/**", "docs/**"]
+exclude = [
+    "**/__pycache__"
+]
+typeCheckingMode = "basic"
+pythonVersion = "3.10"
+pythonPlatform = "All"
+enableTypeIgnoreComments = true
+
+# This is required as the CI pre-commit does not download the module dependencies
+# Therefore, we have to ignore missing imports
+reportMissingImports = "none"
+reportGeneralTypeIssues = "none"
+reportUnboundVariable = "warning"
+
+[tool.uv.sources]
+furo = { git = "https://github.com/Farama-Foundation/Celshast" }
