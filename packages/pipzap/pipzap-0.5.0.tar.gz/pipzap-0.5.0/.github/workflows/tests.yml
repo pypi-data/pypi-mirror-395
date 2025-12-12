@@ -1,0 +1,60 @@
+name: Tests
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+  push:
+    branches:
+      - 'main'
+      - 'release/*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+  
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Create badges directory
+        run: mkdir -p .badges
+
+      - name: Run tests
+        run: uv run pytest --cov=pipzap --cov-report=xml -n auto
+
+      - name: Generate coverage badge
+        uses: tj-actions/coverage-badge-py@v2
+        with:
+          output: .badges/coverage.svg
+      
+      - name: Commit coverage badge
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Update coverage badge"
+          commit_options: "--no-verify"
+          file_pattern: ".badges/coverage.svg"
+          branch: ${{ github.head_ref }}
+          skip_dirty_check: false 
+          skip_fetch: false 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
