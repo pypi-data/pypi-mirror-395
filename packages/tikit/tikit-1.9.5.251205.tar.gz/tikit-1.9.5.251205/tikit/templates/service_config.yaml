@@ -1,0 +1,148 @@
+# 命名相关
+## 创建一个新服务
+# service_group_name: group_name # 不超过60个字，仅支持英文、数字、下划线"_"、短横"-"，只能以英文、数字开头
+# service_group_description: description # 模型服务的描述
+## 为已有服务添加新版本
+# service_group_id: ms-xxxx # 已有服务的服务ID
+# new_version: true # 必须显示赋予new_version为true
+# 以下为创建一个新服务的配置
+service_group_name: group_name # 不超过60个字，仅支持英文、数字、下划线"_"、短横"-"，只能以英文、数字开头
+service_group_description: description # 模型服务的描述
+
+# 计费相关
+## 后付费需要指定机型
+# charge_type: POSTPAID_BY_HOUR # 付费模式,有 PREPAID(预付费) 
+#                               # POSTPAID_BY_HOUR(后付费) 
+#                               # HYBRID_PAID(混合计费) 
+# instance_type: TI.S.MEDIUM.POST # 使用DescribeBillingSpecs接口返回的规格列表中的值，或者参考实例列表:
+#                                 # TI.S.MEDIUM.POST	2C4G
+#                                 # TI.S.LARGE.POST	4C8G
+#                                 # TI.S.2XLARGE16.POST	8C16G
+#                                 # TI.S.2XLARGE32.POST	8C32G
+#                                 # TI.S.4XLARGE32.POST	16C32G
+#                                 # TI.S.4XLARGE64.POST	16C64G
+#                                 # TI.S.6XLARGE48.POST	24C48G
+#                                 # TI.S.6XLARGE96.POST	24C96G
+#                                 # TI.S.8XLARGE64.POST	32C64G
+#                                 # TI.S.8XLARGE128.POST 32C128G
+#                                 # TI.GN7.LARGE20.POST	4C20G T4*1/4
+#                                 # TI.GN7.2XLARGE40.POST	10C40G T4*1/2
+#                                 # TI.GN7.2XLARGE32.POST	8C32G T4*1
+#                                 # TI.GN7.5XLARGE80.POST	20C80G T4*1
+#                                 # TI.GN7.8XLARGE128.POST	32C128G T4*1
+#                                 # TI.GN7.10XLARGE160.POST	40C160G T4*2
+#                                 # TI.GN7.20XLARGE320.POST	80C320G T4*4
+## 预付费需要指定资源组和资源大小
+# charge_type: PREPAID
+# resource_group_id: xxxx # 预付费模式下所属的资源组id，同服务组下唯一
+# resources:  # 资源描述，指定预付费模式下的cpu,mem,gpu等信息，后付费无需填写
+#   cpu: 1000 # 处理器资源, 单位为1/1000核
+#   memory: 256 # 内存资源, 单位为1M
+#   gpu: 100 # Gpu卡个数资源, 单位为0.01单位的GpuType.
+#            # Gpu=100表示使用了“一张”gpu卡, 但此处的“一张”卡有可能是虚拟化后的1/4卡, 也有可能是整张卡. 取决于实例的机型
+#            # 例1 实例的机型带有1张虚拟gpu卡, 每张虚拟gpu卡对应1/4张实际T4卡, 则此时 GpuType=T4, Gpu=100, RealGpu=25.
+#            # 例2 实例的机型带有4张gpu整卡, 每张卡对应1张实际T4卡, 则 此时 GpuType=T4, Gpu=400, RealGpu=400.
+#   gpu_type: T4 # Gpu卡型号 T4或者V100
+## 混合计费需要同时指定预付费、后付费资源
+# charge_type: HYBRID_PAID
+# resource_group_id: xxxx
+# instance_type: TI.S.MEDIUM.POST
+# hybrid_billing_prepaid_replicas: 1 # 混合计费模式下预付费实例数
+charge_type: POSTPAID_BY_HOUR
+instance_type: TI.S.MEDIUM.POST
+
+# 模型信息，需要挂载模型时填写
+# model_version_id: m-ddd-1 # 模型版本id, DescribeTrainingModelVersion查询模型接口时的id
+#                           # 自动学习类型的模型填写自动学习的任务id
+# model_type: normal        # 模型类型: 默认为normal。normal(来自模型仓库的模型); accelerate (来自模型仓库的已加速模型); auto_ml (来自自动学习的模型)
+# model_hot_update_enable: false # 是否开启模型的热更新
+
+# 镜像信息
+## 平台预置镜像
+# image_info:
+#   image_type: PreSet 
+#   image_url: tione.tencentcloudcr.com/qcloud-ti-platform/ti-cloud-infer-pytorch-cpu:py38-torch1.9.0-cpu-2.0.1 # 使用DescribeInferTemplates接口返回的列表中的镜像地址
+## 个人镜像仓库 CCR
+# image_info:
+#   image_type: CCR 
+#   image_url: ccr.ccs.tencentyun.com/ti-platform/hellotest:http-test # 镜像地址
+## 企业版实例 TCR
+# image_info:
+#   image_type: TCR 
+#   image_url: test.tencentcloudcr.com/ti-platform/hellotest:http-test # 镜像地址
+#   registry_region: '' # TCR镜像对应的地域
+#   registry_id: ''     # TCR 镜像对应的实例id
+image_info:
+  image_type: PreSet 
+  image_url: tione.tencentcloudcr.com/qcloud-ti-platform/ti-cloud-infer-pytorch-cpu:py38-torch1.9.0-cpu-2.0.1 
+
+# 设置实例数量与扩缩容
+## 手动设置数量
+# scale_mode: MANUAL
+# replicas: 1 # 实例数量
+## 自动扩缩容，但关闭定时扩缩容
+# scale_mode: AUTO
+# scale_strategy: HPA
+# replicas: 1 # 默认实例数量
+# horizontal_pod_autoscaler: # 自动伸缩信息
+#   min_replicas: 1 # 最小实例数量
+#   max_replicas: 2 # 最大实例数量
+#   hpa_metrics: # 扩所容指标
+#     - name: gpu-util # 指标名字
+#                      # gpu-util: GPU利用率。范围{10, 100}
+#                      # cpu-util: CPU利用率。范围{10, 100}
+#                      # memory-util: 内存利用率。范围{10, 100}
+#                      # service-qps: 单个实例QPS值。范围{1, 5000}
+#       value: 70 # 指标值
+## 自动扩缩容，并开启定时扩缩容
+# scale_mode: AUTO
+# scale_strategy: CRON # 自动伸缩策略配置 HPA : 通过HPA进行弹性伸缩 CRON 通过定时任务进行伸缩
+# replicas: 1 # 默认实例数量
+# cron_scale_jobs: # 定时伸缩任务
+#   - name: 周末两天副本为1  # 定时任务名
+#     target_replicas: 1  # 目标实例数，仅在不使用 hpa 时生效 
+#     min_replicas: 1     # 最少实例数，仅在 hpa 使用时生效
+#     max_replicas: 3     # 最多实例数，仅在 hpa 使用时生效
+#     schedule: '0 30 23 * * *' # Cron表达式，某个定时任务的时间点。具体参考 https://cloud.tencent.com/document/product/851/74143
+#                               # 每天的23:30
+scale_mode: MANUAL
+replicas: 1 # 实例数量
+
+# 日志相关
+log_enable: false # 是否开启日志投递，开启后需填写配置投递到指定cls
+# log_config: # 日志配置，需要投递服务日志到指定cls时填写
+#     logset_id: cls-eee # 日志需要投递到cls的日志集
+#     topic_id: cls-topic-cccc # 日志需要投递到cls的主题
+
+authorization_enable: false # 是否开启接口鉴权，开启后自动生成token信息，访问需要token鉴权 
+
+# 服务限速限流相关配置
+# service_limit:
+#  enable_instance_rps_limit: false # 是否开启实例层面限流限速
+#  instance_rps_limit: 0 # 每个服务实例的 request per second 限速, 0 为不限流
+
+# 存储挂载, 目前只支持CFS
+# volume_mount:
+#   volume_source_type: CFS # volumeSource 的类型, 可选值: CFS
+#   cfs_config: # cfs的挂载相关配置
+#     id: cfs-ccc # 对应的 cfs-id
+#     path: /the_path_to_mount # 挂载路径
+
+# 定时停止配置
+# scheduled_action:
+#   schedule_stop: false # 是否要定时停止服务，true or false。true 则 schedule_stop_time 必填， false 则 ScheduleStopTime 不生效
+#   schedule_stop_time: '' # 要执行定时停止的时间，格式：“2022-01-26 19:46:22”
+
+# 环境变量，用于配置容器中的环境变量
+# env:
+#   - name: ENV_1
+#     value: value_1
+#   - name: ENV_2
+#     value: value_2
+
+# 腾讯云标签
+# tags:
+#   - tag_key: tag-type-1 # 标签键
+#     tag_value: tag-type-1 # 标签值
+#   - tag_key: tag-type-2
+#     tag_value: tag-type-2
