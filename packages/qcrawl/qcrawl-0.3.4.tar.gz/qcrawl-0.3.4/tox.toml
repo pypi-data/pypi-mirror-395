@@ -1,0 +1,49 @@
+requires = ["tox>=4.0"]
+env_list = ["tests", "lint", "type", "precommit", "coverage"]
+
+[env_run_base]
+usedevelop = true
+
+commands_pre = [
+    ["python", "-m", "pip", "install", "--upgrade", "pip"],
+    ["python", "-m", "pip", "install", "-e", ".[dev]"],
+]
+
+setenv = { PYTHONWARNINGS = "default::DeprecationWarning" }
+passenv = ["CI", "GITHUB_ACTIONS", "GITHUB_*", "QCRAWL_*"]
+skip_install = false
+
+commands = [["pytest", "-q", "--maxfail=1"]]
+
+[env.tests]
+description = "Run all tests (unit + integration)"
+
+[env.tests-unit]
+description = "Run unit tests only (skip integration tests requiring Docker)"
+commands = [["pytest", "-q", "--maxfail=1", "-m", "not integration"]]
+
+[env.lint]
+description = "Run linters / formatter (ruff)"
+commands = [
+    ["ruff", "format", "--exit-non-zero-on-fix", "."],
+    ["ruff", "check", "."],
+]
+
+[env.type]
+description = "Run static typing (mypy)"
+commands = [["mypy", "."]]
+
+[env.precommit]
+description = "Run pre-commit hooks"
+commands = [["pre-commit", "run", "--all-files"]]
+
+[env.coverage]
+description = "Run tests with coverage report"
+commands = [
+    ["pytest",
+        "--cov=qcrawl",
+        "--cov-report=term-missing",
+        "--cov-report=xml",
+        "--junitxml=junit.xml",
+        "-o", "junit_family=legacy"],
+]
