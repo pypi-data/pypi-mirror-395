@@ -1,0 +1,43 @@
+framework:
+  name: ifbench
+  pkg_name: ifbench
+  full_name: Generalizing Verifiable Instruction Following
+  description: IFBench is a new, challenging benchmark for precise instruction following.
+  url: https://github.com/allenai/IFBench
+defaults:
+  command: >-
+    {% if target.api_endpoint.api_key is not none %}export OPENAI_API_KEY=${{target.api_endpoint.api_key}}  && {% endif %}
+    ifbench --model-url {{target.api_endpoint.url}} --model-name {{target.api_endpoint.model_id}}  --results-dir {{config.output_dir}}
+    --inference-params max_tokens={{config.params.max_new_tokens}},temperature={{config.params.temperature}},top_p={{config.params.top_p}}
+    --parallelism {{config.params.parallelism}} --retries {{config.params.max_retries}} {% if config.params.limit_samples is not none %} --limit {{config.params.limit_samples}} {% endif %}
+  config:
+    supported_endpoint_types:
+    - chat
+    params:
+      limit_samples: null
+      max_new_tokens: 4096
+      temperature: 0.01
+      top_p: 0.95
+      parallelism: 8 # how many request to sent to the MUT endpoint in parallel. 
+      max_retries: 5 # if request fails, how many times should the client try again
+  target:
+    api_endpoint: # required to add: url, model_id, type
+      stream: false
+evaluations:
+  - name: ifbench
+    description: IFBench with vanilla settings
+    defaults:
+      config:
+        type: ifbench
+        params:
+          task: ifbench
+  - name: ifbench_aa_v2
+    description: IFBench - params aligned with Artificial Analysis Index v2
+    defaults:
+      config:
+        type: ifbench_aa_v2
+        params:
+          task: ifbench_aa_v2
+          max_new_tokens: 16384
+          temperature: 0.0
+          max_retries: 30
