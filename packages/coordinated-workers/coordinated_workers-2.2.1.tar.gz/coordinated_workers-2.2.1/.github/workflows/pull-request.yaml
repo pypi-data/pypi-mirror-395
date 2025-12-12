@@ -1,0 +1,83 @@
+name: Pull Requests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - main
+      - track/**
+      - feature/**
+  workflow_call:
+
+jobs:
+  call-inclusive-naming-check:
+    name: Inclusive naming
+    uses: canonical/Inclusive-naming/.github/workflows/woke.yaml@main
+    with:
+      fail-on-error: "true"
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: Install dependencies
+        run: |
+          sudo snap install charmcraft --classic
+          sudo snap install astral-uv --classic
+      - name: Run static analysis
+        run: uvx tox -vve fetch-libs,static
+  linting:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: Install dependencies
+        run: |
+          sudo snap install charmcraft --classic
+          sudo snap install astral-uv --classic
+      - name: Run linters
+        run: uvx tox -vve fetch-libs,lint
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: Install dependencies
+        run: |
+          sudo snap install charmcraft --classic
+          sudo snap install astral-uv --classic
+      - name: Run tests
+        run: uvx tox -e fetch-libs,unit
+  # Adapted from https://github.com/canonical/observability/blob/main/.github/workflows
+  # Need to think how this could be driven by the central CI
+  integration-mono:
+    name: Integration Tests (sequential)
+    runs-on: ubuntu-latest
+    env:
+      CONCIERGE_JUJU_CHANNEL: 3.6/stable
+      CONCIERGE_MICROK8S_CHANNEL: 1.32-strict/stable
+      CONCIERGE_CHARMCRAFT_CHANNEL: 3.x/candidate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install dependencies
+        run: |
+          sudo snap install concierge --classic
+          sudo concierge prepare -p microk8s --extra-snaps=astral-uv
+          sudo snap install kubectl --classic
+          juju model-defaults automatically-retry-hooks="true"
+      - name: Run integration tests
+        run: |
+          uvx tox -e integration
