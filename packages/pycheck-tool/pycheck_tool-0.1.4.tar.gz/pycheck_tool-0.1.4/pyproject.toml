@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pycheck-tool"
+version = "0.1.4"
+description = "A simple, dynamic sanity-check library for Python distributions."
+readme = "README.md"
+authors = [ { name = "Aubrey" } ]
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: System :: Systems Administration",
+	"Programming Language :: Python",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.9",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Programming Language :: Python :: 3.13",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=6.0"]
+
+[project.scripts]
+# These point to the FOLDER (pycheck) -> FILE (cli) -> FUNCTION (main)
+pycheck = "pycheck.cli:main"
+do_check = "pycheck.cli:main"
+"pycheck-tool" = "pycheck.cli:main"
+
+# Use 'find' to automatically grab the 'pycheck' folder inside 'src'
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning:importlib.*:",
+    "ignore:module 'sre_:DeprecationWarning",
+]
