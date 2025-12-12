@@ -1,0 +1,116 @@
+@startuml
+participant "Pod Manager (PM)" as PM
+participant "Request Handler" as RH
+participant "Server" as Server
+participant "Agent" as Agent
+
+
+
+
+PM -> Agent: create
+Agent -> Server: start(RequestHandler)
+Server -> RH: register
+note over Agent
+    READY
+end note
+
+PM -> RH: /status
+RH -> PM
+PM -> RH: /start
+note over Agent
+    RUNNING
+end note
+
+Agent -> Agent: _run_pre_training()
+Agent -> Agent: _start_workers()
+
+
+
+
+loop Monitoring Loop of AGENT
+
+Agent -> Agent: _monitor_workers(delay)
+
+
+else WorkerState == "SUCCEEDED"
+
+Agent -> Agent: _run_post_training()
+note over Agent
+    COMPLETED
+end note
+
+PM -> RH: /status
+RH -> PM
+note over PM
+ Wait for all Agents
+ to COMPLETED
+end note
+
+PM -> RH: /shutdown
+
+
+else WorkerState == "UNHEALTHY/FAILED"
+note over Agent
+    UNHEALTHY/FAILED
+end note
+
+PM -> RH: /status
+RH -> PM
+PM -> RH: /stop
+note over Agent
+    STOPPING
+end note
+
+Agent -> Agent: _shutdown(is_restart=True)
+note over Agent
+    READY
+end note
+
+PM -> RH: /status
+RH -> PM
+note over PM
+ Wait for
+ 1) Job to be Remediated
+ 2) all Agents to be READY
+end note
+
+PM -> RH: /start (if remaining_restarts > 0)
+note over Agent
+    RUNNING
+end note
+
+PM -> RH: /shutdown (if remaining_restarts == 0)
+
+
+else WorkerState == "HEALTHY" but Job == "FAULTED" i.e. some other Agent/Node failed
+note over Agent
+    RUNNING
+end note
+
+PM -> RH: /stop
+note over Agent
+    STOPPING
+end note
+
+Agent -> Agent: _shutdown(is_restart=True)
+note over Agent
+    READY
+end note
+
+PM -> RH: /status
+RH -> PM
+note over PM
+ Wait for
+ 1) Job to be Remediated
+ 2) all Agents to be READY
+end note
+
+PM -> RH: /shutdown (if remaining_restarts == 0)
+note over Agent
+    RUNNING
+end note
+
+
+end # loop
+
+@enduml

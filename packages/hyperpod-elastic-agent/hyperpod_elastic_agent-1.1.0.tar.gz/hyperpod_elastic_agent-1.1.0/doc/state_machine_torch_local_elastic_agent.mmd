@@ -1,0 +1,20 @@
+---
+title: torch.distributed.elastic.agent.server.local_elastic_agent.LocalElasticAgent StateMachine
+---
+
+stateDiagram
+  direction LR
+  [*] --> INIT:WorkerGroup.__ init __()
+  HEALTHY --> SUCCEEDED:not RunProcsResult._is_failed()
+  FAILED --> [*]:_remaining_restarts == 0
+  SUCCEEDED --> [*]:exit(0)
+  INIT --> HEALTHY:_initialize_workers()
+  HEALTHY --> HEALTHY:RunProcsResult is None
+  HEALTHY --> UNKNOWN:worker_pids != process_context_pids
+  HEALTHY --> FAILED:RunProcsResult._is_failed()
+  UNHEALTHY --> FAILED:_remaining_restarts == 0
+  UNHEALTHY --> STOPPED:_remaining_restarts > 0
+  STOPPED --> HEALTHY:_initialize_workers()
+  FAILED --> STOPPED:_remaining_restarts > 0
+  HEALTHY --> STOPPED:Membership Change
+  UNKNOWN --> [*]:Exception

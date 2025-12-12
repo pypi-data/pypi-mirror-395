@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "Running script..."
+i=1;
+for arg in "$@"
+do
+  echo "Arg $i: $arg"
+  i=$((i + 1));
+done
+echo "LOCAL_RANK: $LOCAL_RANK"
+echo "RANK: $RANK"
+echo "GROUP_RANK: $GROUP_RANK"
+echo "ROLE_RANK: $ROLE_RANK"
+echo "LOCAL_WORLD_SIZE: $LOCAL_WORLD_SIZE"
+echo "WORLD_SIZE: $WORLD_SIZE"
+echo "GROUP_WORLD_SIZE: $GROUP_WORLD_SIZE"
+echo "MASTER_ADDR: $MASTER_ADDR"
+echo "MASTER_PORT: $MASTER_PORT"
+echo "TORCHELASTIC_RESTART_COUNT: $TORCHELASTIC_RESTART_COUNT"
+echo "TORCHELASTIC_MAX_RESTARTS: $TORCHELASTIC_MAX_RESTARTS"

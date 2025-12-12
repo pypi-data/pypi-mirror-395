@@ -1,0 +1,56 @@
+Metadata-Version: 2.4
+Name: hyperpod-elastic-agent
+Version: 1.1.0
+License-File: LICENSE.md
+License-File: NOTICE
+Requires-Python: >=3.8.0
+Requires-Dist: fastapi>=0.113.0
+Requires-Dist: pip<25.3
+Requires-Dist: torch<2.7.0,>=2.4.0
+Requires-Dist: uvicorn[standard]>=0.30.6
+Description-Content-Type: text/markdown
+
+# HyperPod elastic agent
+
+The HyperPod elastic agent is an extension of [PyTorch’s ElasticAgent](https://docs.pytorch.org/docs/stable/elastic/agent.html). It orchestrates lifecycles of training workers on each container and communicates with the HyperPod training operator. To use the HyperPod training operator, you must first install the HyperPod elastic agent into your training image before you can submit and run jobs using the operator. The following is a docker file that installs elastic agent and uses hyperpodrun to create the job launcher. For more information about the HyperPod training operator, installation of the operator, and how to use it, see the [official AWS documentation](http://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-eks-operator.html).
+
+```
+RUN pip install hyperpod-elastic-agent
+
+ENTRYPOINT ["entrypoint.sh"]
+# entrypoint.sh
+...
+hyperpodrun --nnodes=node_count --nproc-per-node=proc_count \
+            --rdzv-backend hyperpod \ # Optional
+            ... # Other torchrun args
+            # pre-traing arg_group
+            --pre-train-script pre.sh --pre-train-args "pre_1 pre_2 pre_3" \
+            # post-train arg_group
+            --post-train-script post.sh --post-train-args "post_1 post_2 post_3" \
+            training.py --script-args
+```
+You can now submit jobs with `kubectl`.
+
+Note: When invoking `hyperpodrun` in a container entrypoint, ensure that `hyperpodrun` is PID 1 or alternatively is able to receive signals(specifically SIGTERM) forwared from PID 1 in the container to allow graceful termination during container/pod teardown. This can be done in the following ways:
+- Use `exec` when specifying `ENTRYPOINT` in shell mode, for ex: `ENTRYPOINT exec hyperpodrun .....`
+- Use exec format to speicify the container entrypoint, for ex: `ENTRYPOINT ["hyperpodrun", .....]`
+- Use an init process that can forward signals to its child processes, for ex: [tini](https://github.com/krallin/tini)
+
+## HyperPod elastic agent arguments
+
+The HyperPod elastic agent supports all of the  original arguments from the PyTorch Elastic Agent [official documentation](https://docs.pytorch.org/docs/stable/elastic/agent.html). The following is a list of additional arguments available in the HyperPod elastic agent:
+
+| **Argument**              | **Description**                                             | **Default Value** |
+|---------------------------|-------------------------------------------------------------|-------------------|
+| --shutdown-signal         | Signal to send to workers for shutdown (SIGTERM or SIGKILL) | "SIGKILL"         |
+| --shutdown-timeout        | Timeout in seconds between SIGTERM and SIGKILL signals      | 15                |
+| --server-host             | Agent server address                                        | "0.0.0.0"         |
+| --server-port             | Agent server port                                           | 8080              |
+| --server-log-level        | Agent server log level                                      | "info"            |
+| --server-shutdown-timeout | Server shutdown timeout in seconds                          | 300               |
+| --pre-train-script        | Path to pre-training script                                 | None              |
+| --pre-train-args          | Arguments for pre-training script                           | None              |
+| --post-train-script       | Path to post-training script                                | None              |
+| --post-train-args         | Arguments for post-training script                          | None              |
+| --inprocess-restart       | Flag specifying whether to use the inprocess_restart feature| false             |
+| --inprocess-timeout       | Time in seconds the Agent waits for workers to come to barrier before triggering a process level restart | None |

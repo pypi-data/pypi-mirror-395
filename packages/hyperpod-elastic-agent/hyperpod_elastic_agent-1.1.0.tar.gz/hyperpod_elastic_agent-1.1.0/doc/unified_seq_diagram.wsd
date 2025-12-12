@@ -1,0 +1,205 @@
+@startuml
+participant "Pod Reconciler (PR)" as PR
+participant "Pod Manager (PM)" as PM
+participant "Pod" as Pod
+participant "Agent" as Agent
+database "Job Table" as JT
+database "Instance Table" as IT
+
+note across
+The below diagram assumes 1:1 PM to (Pod+Agent) mapping for simplicity.
+In reality, there can be multiple (Pod+Agent)s assigned to a single PM.
+all(READY) in the sequence below means all (Pod+Agent)s across all PMs
+not all (Pod+Agent)s for a single PM
+end note
+
+
+
+== Pod Management ==
+PR -> Pod: Create/Validate Pods
+Pod -> Agent: Initialize
+PR -> PM: Create/Validate PMs
+PR -> JT: CREATE: Job Table
+
+note over PM
+    CREATED
+end note
+
+PR -> JT: WRITE: Pod to PM assignment
+JT -> PM: READ: Pod to PM assignment
+
+note over Agent
+    READY
+end note
+
+note over PM
+    CREATED_READY
+end note
+
+PM -> JT: WRITE: PM state Ready
+
+note over Agent
+    all(READY)
+end note
+
+JT -> PR: READ: all(PM state)
+
+note over PM
+    READY
+end note
+
+
+
+
+== Pod Manager ==
+PM -> Pod: Send /start
+Pod -> Agent: Update Agent state
+
+note over Agent
+    RUNNING
+end note
+
+note over PM
+    READY_RUNNING
+end note
+
+note over Agent
+    all(RUNNING)
+end note
+
+note over PM
+    RUNNING
+end note
+
+
+
+
+loop Monitoring Loop: For each pod of current job
+/'
+**** HAPPY CASE ****
+'/
+else job state == "Completed"
+
+note over Agent
+    COMPLETED
+end note
+
+PM -> Pod: Check /status
+Pod -> Agent: get_agent_state()
+Agent -> Pod
+Pod -> PM
+
+note over PM
+    RUNNING_COMPLETED
+end note
+
+PM -> JT: WRITE: PM state Completed
+
+note over Agent
+    all(COMPLETED)
+end note
+
+JT -> PR: READ: all(PM state)
+
+note over PM
+    COMPLETED
+end note
+
+
+
+
+/'
+**** FAULT_1 ****
+'/
+else job state == "Fault (Agent reported)"
+
+note over Agent
+    FAULTED
+end note
+
+PM -> Pod: Check /status
+Pod -> Agent: get_agent_state()
+Agent -> Pod
+Pod -> PM
+
+note over PM
+    FAULTED
+end note
+
+PM -> JT: WRITE: PM state Faulted
+JT -> PR: READ: all(PM state)
+PR -> JT: WRITE: PM state Faulted
+
+PM -> Pod: Send /stop
+Pod -> Agent: Update Agent state
+
+note over Agent
+    STOPPING
+end note
+
+note over Agent
+    READY
+end note
+
+PM -> Pod: Check /status
+Pod -> Agent: get_agent_state()
+Agent -> Pod
+Pod -> PM
+
+note over PM
+    RUNNING_READY
+end note
+
+PM -> JT: WRITE: PM state Ready
+
+note over Agent
+    all(READY)
+end note
+
+JT -> PR: READ: all(PM state)
+
+note over PM
+    READY
+end note
+
+
+
+
+/'
+**** FAULT_2 ****
+'/
+else node state == "Fault (Node label/Status change)"
+PM -> Pod: Send /stop
+Pod -> Agent: Update Agent state
+
+note over Agent
+    STOPPING
+end note
+
+note over Agent
+    READY
+end note
+
+PM -> Pod: Check /status
+Pod -> Agent: get_agent_state()
+Agent -> Pod
+Pod -> PM
+
+note over PM
+    RUNNING_READY
+end note
+
+note over Agent
+    all(READY)
+end note
+
+JT -> PR: READ: all(PM state)
+
+note over PM
+    READY
+end note
+
+end # loop
+
+PM -> JT: Wait for Job Status transition to REMEDIATED
+@enduml

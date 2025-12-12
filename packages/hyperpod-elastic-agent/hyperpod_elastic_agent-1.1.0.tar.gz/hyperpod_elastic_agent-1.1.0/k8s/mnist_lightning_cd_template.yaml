@@ -1,0 +1,57 @@
+apiVersion: sagemaker.amazonaws.com.golang.a2z.com/v1
+kind: HyperPodPytorchJob
+metadata:
+  labels:
+    # Uncomment the label to use kueue through the queue named user-queue
+    # The queue can be created by running "make create-default-queues"
+    # kueue.x-k8s.io/queue-name: user-queue
+    app.kubernetes.io/name: hyperpod
+    app.kubernetes.io/managed-by: kustomize
+  name: hppt-mnist-lightning-cd
+spec:
+  nprocPerNode: "2"
+  runPolicy:
+    cleanPodPolicy: "None"
+    restartPolicy:
+      numRestartBeforeFullJobRestart: 1 # standard restart
+      evalPeriodSeconds: 10000000 # period of evaluating the restart limit in seconds
+      maxFullJobRestarts: 0 # prevent any job level restarts
+  replicaSpecs:
+    - name: pods
+      replicas: 2
+      template:
+        spec:
+          containers:
+            - name: ptjob
+              env:
+                - name: NNODES
+                  value: "2"
+                - name: NPROC_PER_NODE
+                  value: "2"
+                - name: TEST_TYPE
+                  value: "standard" # [standard, manual_rollback]
+                - name: TYPE_CASE
+                  value: "sad" # [happy, sad]
+                - name: TEST_CKPT_FAIL
+                  value: "data" # [both, model, data]
+                - name: TEST_UPDATE_FAIL
+                  value: "set" # [all, half_across_nodes, half_within_nodes, set]
+                - name: K8S_POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: K8S_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: K8S_IP
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: status.podIP
+                - name: TORCHELASTIC_MAX_RESTARTS
+                  value: "1"
+              image: 448049793756.dkr.ecr.us-west-2.amazonaws.com/ptjob:cd-viczhu # TODO(viczhu): update with generic image tag
+              imagePullPolicy: Always
+              ports:
+                - containerPort: 8080
+              command: ["/usr/local/bin/entrypoint-lightning-cd.sh"]

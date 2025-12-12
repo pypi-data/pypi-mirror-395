@@ -1,0 +1,171 @@
+[build-system]
+# pip 25.3 introduced backwards incompatible changes
+#     AttributeError: 'InstallRequirement' object has no attribute 'use_pep517'
+#     ref: https://github.com/jazzband/pip-tools/issues/2252
+requires = ["hatchling", "pip<25.3"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hyperpod-elastic-agent"
+version = "1.1.0"
+readme = "README.md"
+license-files = ["LICEN[CS]E*", "NOTICE"]
+dependencies = [
+    "fastapi>=0.113.0",
+    "torch>=2.4.0,<2.7.0", # torch 2.7.1 is not available on AL2 with PERU on manylinux_2_26_x86_64
+    "uvicorn[standard]>=0.30.6",
+    "pip<25.3", # pip 25.3 introduced backwards incompatible changes
+]
+requires-python = ">=3.8.0"
+
+[project.scripts]
+hyperpodrun = "hyperpod_elastic_agent.run:main"
+
+[tool.hatch.envs.default]
+# This controls what version of Python you want to be the default
+# when running any scripts or tools to do things like debug test failures
+# or do general development.  It's lockfile is ./requirements.txt
+python = "3.12"
+dependencies = [
+    "pytest",
+    "mypy",
+    "yapf",
+    "pip<25.3", # pip 25.3 introduced backwards incompatible changes
+]
+pip-compile-args = [
+    "--no-emit-index-url",
+    "--no-emit-trusted-host",
+    "--unsafe-package=nvidia-cublas-cu12",
+    "--unsafe-package=nvidia-cuda-cupti-cu12",
+    "--unsafe-package=nvidia-cuda-nvrtc-cu12",
+    "--unsafe-package=nvidia-cuda-runtime-cu12",
+    "--unsafe-package=nvidia-cudnn-cu12",
+    "--unsafe-package=nvidia-cufft-cu12",
+    "--unsafe-package=nvidia-curand-cu12",
+    "--unsafe-package=nvidia-cusolver-cu12",
+    "--unsafe-package=nvidia-cusparse-cu12",
+    "--unsafe-package=nvidia-cusparselt-cu12",
+    "--unsafe-package=nvidia-nccl-cu12",
+    "--unsafe-package=nvidia-nvjitlink-cu12",
+    "--unsafe-package=nvidia-nvtx-cu12",
+    "--unsafe-package=triton",
+]
+
+[tool.hatch.envs.hatch-test]
+extra-dependencies = [
+  # for testing the server
+  "httpx",
+]
+pip-compile-args = [
+    "--no-emit-index-url",
+    "--no-emit-trusted-host",
+    "--unsafe-package=nvidia-cublas-cu12",
+    "--unsafe-package=nvidia-cuda-cupti-cu12",
+    "--unsafe-package=nvidia-cuda-nvrtc-cu12",
+    "--unsafe-package=nvidia-cuda-runtime-cu12",
+    "--unsafe-package=nvidia-cudnn-cu12",
+    "--unsafe-package=nvidia-cufft-cu12",
+    "--unsafe-package=nvidia-curand-cu12",
+    "--unsafe-package=nvidia-cusolver-cu12",
+    "--unsafe-package=nvidia-cusparse-cu12",
+    "--unsafe-package=nvidia-cusparselt-cu12",
+    "--unsafe-package=nvidia-nccl-cu12",
+    "--unsafe-package=nvidia-nvjitlink-cu12",
+    "--unsafe-package=nvidia-nvtx-cu12",
+    "--unsafe-package=triton",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--durations=5",
+    "--color=yes",
+]
+testpaths = [ "tests" ]
+
+[tool.coverage.run]
+source_pkgs = ["hyperpod_elastic_agent"]
+branch = true
+parallel = true
+# fail_under = 99
+
+[tool.coverage.paths]
+"hyperpod_elastic_agent" = ["src/hyperpod_elastic_agent", "**/site-packages/hyperpod_elastic_agent"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+show_missing = true
+
+[tool.coverage.xml]
+output = "private/brazil-documentation/coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = "private/brazil-documentation/coverage/"
+
+[tool.ruff.lint]
+isort.known-first-party = ["hyperpod_elastic_agent"]
+exclude = [ "./build", ".hatch", "private" ]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.hatch.build]
+directory = "./build"
+
+[tool.hatch.env]
+requires = [ "hatch-pip-compile" ]
+
+[tool.hatch.envs.default.scripts]
+# These are scripts you can run using `brazil-build run <script-name>`
+typing = [
+  "mkdir -p .mypy_cache",
+  "PIP_CONSTRAINT=constraints/al2_x86_64_numpy.txt mypy --install-types --non-interactive src/hyperpod_elastic_agent tests"
+]
+
+generate-version = [ "hatch version | tail -1 > ./build/latest_version" ]
+
+# This command is for updating all your lock files across all environments 
+update = [ "hatch-pip-compile --upgrade --all" ]
+
+release = [
+    "yapf --in-place src/**/*.py tests/**/*.py docker/**/*.py",
+    "typing",
+    "hatch test --all --cover",
+    "mkdir -p ./build",
+    "generate-version",
+]
+
+[[tool.hatch.envs.hatch-test.matrix]]
+# This defines multiple variables you can generate combinations
+# to test underneath different environments.  A separate environment and 
+# lock file will be created for every combination located in `./requirements/`
+python = ["3.11", "3.12"]
+
+## This environment is used solely to generate a lock file on hatch,
+# and hatch-pip-compile that can be automatically updated
+[tool.hatch.envs.build-tools]
+# This version states what version your build tools build with.  To change it,
+# you will need to:
+# * Remove the `requirements/requirements-build-tools.txt` file
+# * Run `brazil-build run update` to generate a new lock file for the environment
+python = "3.12"
+detached = true
+skip-install = true
+dependencies = [
+  "hatch",
+  "hatch-pip-compile",
+  "pip<25.3", # pip 25.3 introduced backwards incompatible changes
+]
+
+# PeruHatch repository and package locking plugin
+[tool.hatch.env.collectors.custom]
+path = ".hatch/hatch_plugin.py"
+
+# This is necessary to use 'uv' as the resolver if this is the top-level package
+# in a monorepo (which is usually the case).  Remove this if copying the
+# package into a monorepo
+[tool.uv.workspace]
