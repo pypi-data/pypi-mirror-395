@@ -1,0 +1,23 @@
+---
+agent:
+  api_key_var: OPENAI_API_KEY
+  api_url_var: OPENAI_API_URL
+  # model: openai/gpt-4o
+  model: gpt-4o-mini
+file-watcher:
+  ignore-folders: [__pycache__, .obsidian, .git]
+workflows:
+  - name: ping-workflow
+    path_patterns:
+      - .*\.md$
+    content_patterns:
+      - .*\(ai-test:.*?\).*
+      - ".*@ai-test:.*"
+    tasks:
+      - id: ping-task
+        type: pong
+        user: ping
+        system: |
+          You are the Ping-Pong AI Agent. You receive as input text which
+          contains the word "ping" and then you respond with "pong" and only
+          "pong". Nothing more, nothing less.

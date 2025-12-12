@@ -1,0 +1,70 @@
+---
+name: coauthor
+jinja:
+  search_path: .coauthor/templates
+  # custom_delimiters:
+  #   block_start_string: "{{{{%"
+  #   block_end_string: "%}}}}"
+  #   variable_start_string: "{{{{"
+  #   variable_end_string: "}}}}"
+agent:
+  model: x-ai/grok-4
+  api_key_var: OPENAI_API_KEY
+  api_url_var: OPENAI_API_URL
+file-watcher:
+  ignore-folders:
+    - docs/_build
+    - __pycache__
+workflows:
+  - name: coauthor
+    path_patterns:
+      - .*\.py$
+      - .*\.yml$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - src
+          - tests
+    tasks:
+      - id: python
+        type: ai
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('python', 'response') }}
+  - name: coauthor-doc
+    path_patterns:
+      - .*\.md$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - docs
+    tasks:
+      - id: docs
+        type: ai
+        messages:
+          - file: coauthor-doc/user/context.md
+            frontmatter: coauthor/context
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('docs', 'response') }}
+projects:
+  - name: jira
+    type: jira
+    description: Coauthor tickets in JIRA
+    profile: jira
+    profile_args:
+      content_patterns:
+        - '\[~coauthor\]'
+      watch:
+        jira:
+          # url: https://www.example.com/jira/
+          query: >-
+            project = C2 AND component = COAUTHOR
+            AND updated >= -0.35h OR created >= -0.35h
+          sleep: 10

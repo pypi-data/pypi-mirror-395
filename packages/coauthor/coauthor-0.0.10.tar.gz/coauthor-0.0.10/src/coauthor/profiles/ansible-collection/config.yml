@@ -1,0 +1,129 @@
+---
+workflows:
+  - name: role-meta-file
+    path_patterns:
+      - .*meta/main\.yml$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - roles
+    tasks:
+      - id: ai-update
+        type: ai
+        messages:
+          - file: role-meta-file/user/readme.md
+          - file: role-meta-file/user/galaxy.md
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('ai-update', 'response') }}
+  - name: role-readme
+    path_patterns:
+      - .*roles/.*/README\.md$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - roles
+    tasks:
+      - id: ai-update
+        type: ai
+        messages:
+          - file: role-readme/user/role-template.md
+          - file: role-readme/user/role-file.md
+            files: "{{ task['path-modify-event'] | dirname }}"
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('ai-update', 'response') }}
+  - name: module-doc
+    path_patterns:
+      - .*\.yml$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - plugins/modules
+    tasks:
+      - id: ai
+        type: ai
+        messages:
+          - file: module-doc/user/code.md
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('ai', 'response') }}
+  - name: modules-linux
+    path_patterns:
+      - .*\.py$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - plugins/modules
+    tasks:
+      - id: ai-update
+        type: ai
+        messages:
+          - file: modules-linux/user/git_remote.py
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('ai-update', 'response') }}
+  - name: modules-win
+    path_patterns:
+      - .*\.ps1$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - plugins/modules
+    tasks:
+      - id: ai-update
+        type: ai
+        messages:
+          - file: modules-win/user/win_certificate.ps1
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('ai-update', 'response') }}
+  - name: ansible-collection
+    path_patterns:
+      - .*\.yml$
+      - .*\.py$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - roles
+          - plugins
+    tasks:
+      - id: ai-update
+        type: ai
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('ai-update', 'response') }}
+  - name: ansible-collection-readme
+    path_patterns:
+      - .*README\.md$
+    content_patterns:
+      - ".*@ai:.*"
+    watch:
+      filesystem:
+        paths:
+          - roles
+    tasks:
+      - id: ai-update
+        type: ai
+      - id: write-file
+        type: write_file
+        content: >-
+          {{ config | get_task_attribute('ai-update', 'response') }}

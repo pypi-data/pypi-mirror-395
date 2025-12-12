@@ -1,0 +1,41 @@
+---
+workflows:
+  - name: include-files
+    path_patterns:
+      - .*\.md$
+    watch:
+      filesystem:
+        paths:
+          - content/en/
+    scan:
+      filesystem:
+        paths:
+          - content/en/
+    tasks:
+      - id: include-code-examples
+        type: include_file
+        regex: <!--\s*start-code-sample\s+([^ \t\n]+)\s*-->\s*(.*?)<!--\s*end-code-sample\s*-->
+        template: |
+          <!-- start-code-sample {{ task['include_file_path'] }} -->
+          ```{{ task['include_file_path'] | extname }}
+          # {{ task['include_file_path'] | replace('static/','') }}
+          {{ task['include_file_content'] }}
+          ```
+          <!-- end-code-sample -->
+test:
+  main-content: |
+    whatever
+    <!-- start-code-sample include.txt -->
+    whatever
+    <!-- end-code-sample -->
+    whatever
+  include-content: This is included content
+  expected-main-content: |
+    whatever
+    <!-- start-code-sample include.txt -->
+    ```txt
+    # include.txt
+    This is included content
+    ```
+    <!-- end-code-sample -->
+    whatever

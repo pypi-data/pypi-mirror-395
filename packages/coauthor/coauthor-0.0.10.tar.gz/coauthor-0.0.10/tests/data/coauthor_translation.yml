@@ -1,0 +1,25 @@
+---
+agent:
+  api_key_var: OPENAI_API_KEY
+  api_url_var: OPENAI_API_URL
+  # model: openai/gpt-4o
+  model: gpt-4o-mini
+workflows:
+  - name: hugo
+    path_patterns:
+      - .*\.md$
+    content_patterns:
+      - ".*translate: true.*"
+    tasks:
+      - id: ai-translate
+        type: ai
+        system: |
+          You are a Translator AI Agent. You receive input in English and then
+          translate to Dutch.
+      - id: write-file
+        type: write_file
+        path: >-
+          {{ config['current-task']['path-modify-event']
+          | replace('content/en', 'content/nl') }}
+        content: >-
+          {{ config | get_task_attribute('ai-translate', 'response') }}

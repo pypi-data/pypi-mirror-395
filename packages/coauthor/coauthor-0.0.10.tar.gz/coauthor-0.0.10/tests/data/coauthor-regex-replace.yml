@@ -1,0 +1,20 @@
+---
+file-watcher:
+  ignore-folders: []
+workflows:
+  - name: regex-workflow
+    path_patterns:
+      - .*\.txt$
+    tasks:
+      - id: regex-file-updates
+        type: regex_replace_in_file
+        patterns:
+          - regex: "(?<!` ) -> "
+            replace: " → "
+          - regex: "(?<!` ) <- "
+            replace: " ← "
+          - regex: 'User: (\w+)_(\w+)'
+            replace: 'User: \1 \2'
+          - regex: ({{< \b[\s\S]*?>}})
+            internal_regex: \s+
+            internal_replace: " "
