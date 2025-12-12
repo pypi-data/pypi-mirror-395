@@ -1,0 +1,120 @@
+.. doctest-skip-all
+
+.. _whatsnew-4.1:
+
+************************
+What's New in sunpy 4.1?
+************************
+The SunPy project is pleased to announce the 4.1 release of the ``sunpy`` core package.
+
+On this page, you can read about some of the big changes in this release.
+
+.. contents::
+    :local:
+    :depth: 1
+
+``sunpy`` 4.1 also includes a large number of smaller improvements and bug fixes, which are described in the :ref:`changelog`.
+
+This release of ``sunpy`` contains 1408 commits in 191 merged pull requests closing 86 issues from 28 people, 18 of which are first-time contributors.
+
+* 1408 commits have been added since 4.0
+* 86 issues have been closed since 4.0
+* 191 pull requests have been merged since 4.0
+* 28 people have contributed since 4.0
+* 18 of which are new contributors
+
+The people who have contributed to the code for this release are:
+
+-  Akash Verma  *
+-  Alasdair Wilson
+-  Albert Y. Shih
+-  Alex Kaszynski  *
+-  Alex W  *
+-  Andy Tang  *
+-  Chris Bard  *
+-  Conor MacBride
+-  Daniel Garcia Briseno  *
+-  David Stansby
+-  Jan Gieseler  *
+-  Jia Qing  *
+-  Karthikeyan Singaravelan  *
+-  Krish Agrawal  *
+-  Laura Hayes
+-  Lazar Zivadinovic
+-  Marius Giger  *
+-  Matt Wentzel-Long  *
+-  Nabil Freij
+-  Naveen Srinivasan  *
+-  Stuart Mumford
+-  Timo Laitinen  *
+-  Will Barnes
+-  William Jamieson  *
+-  William Russell  *
+-  tal66  *
+
+Where a * indicates that this release contains their first contribution to ``sunpy``.
+
+Extracting map values along coordinate paths
+============================================
+It is now easy to extract data values from a `~sunpy.map.GenericMap` along a curve specified by set of coordinates using the new ``sunpy.map.extract_along_coord`` function.
+This is done by applying `Bresenham's line algorithm <http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm>`__ between the consecutive coordinates, in pixel space, and then indexing the data array of the map at those points.
+
+Easier reprojecting to Carrington and Stonyhurst coordinates
+============================================================
+``sunpy.map.header_helper`` has a new :func:`~sunpy.map.header_helper.make_heliographic_header` function that simplifies creating map headers that span the whole solar surface in Carrington or Stonyhurst coordinates.
+When used in combination with :meth:`sunpy.map.GenericMap.reproject_to` this greatly simplifies reprojecting helioprojective maps into heliographic full-Sun maps.
+
+.. minigallery:: sunpy.map.make_heliographic_header
+
+Drawing the solar equator and prime meridian
+============================================
+The new `sunpy.visualization.drawing` module can be used to draw the solar equator and prime meridian (zero Carrington longitude) on a plot with Astropy WCS Axes.
+
+.. minigallery:: sunpy.visualization.drawing.equator
+
+Sample data downloaded on demand
+================================
+The sample data files provided through `sunpy.data.sample` are now downloaded individually on demand rather than being all downloaded upon import of that module.
+All the sample data files can still be downloaded at once by calling :func:`sunpy.data.sample.download_all`.
+
+``sunpy.database`` deprecation
+==============================
+The ``sunpy.database`` module is no longer actively maintained and has a number of outstanding issues.
+It is anticipated that sunpy.database will be formally deprecated in sunpy 5.0 and removed in sunpy 6.0.
+If you are using sunpy.database and would like to see a replacement, please join the discussion thread at https://community.openastronomy.org/t/deprecating-sunpy-database/495.
+
+``sunpy.visualization.limb`` moved
+==================================
+``sunpy.visualization.limb.draw_limb`` has been moved into the `sunpy.visualization.drawing` module and renamed :func:`sunpy.visualization.drawing.limb`.
+The ``sunpy.visualization.limb`` module will remain working, but is deprecated and will be removed in version 5.1.
+
+``HelioviewerClient`` deprecated
+================================
+The Helioviewer Project now maintains a Python Wrapper called `hvpy <https://hvpy.readthedocs.io/en/latest/>`__.
+As such, in consultation with the Helioviewer Project, the ``sunpy.net.helioviewer`` module is deprecated and will be removed in sunpy 5.1.
+
+Changes to timeseries plotting
+==============================
+To make plotting a timeseries as source-independent as possible, a number of source-specific plot customisations in ``peek()`` and ``plot()`` methods have been removed.
+See the changelog for full details on what has changed.
+
+To harmonize different ``peek()`` and ``plot()`` signatures, all non-keyword arguments to these methods are deprecated.
+To avoid a warning pass all arguments with keywords (e.g. ``plot(title='my plot title')``) instead.
+
+Updated data downloader dependency
+==================================
+The package that handles downloading data from remote sources, ``parfive``, has had a recent major release to version 2.0.
+This new version comes with major usability improvements: removal of incomplete files and major error reporting upgrades.
+
+sunpy users are encouraged to upgrade ``parfive`` to benefit from these improvements.
+To upgrade you can use pip:
+
+.. code-block:: bash
+
+    $ pip install -U parfive
+
+or conda:
+
+.. code-block:: bash
+
+    $ conda update parfive
