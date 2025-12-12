@@ -1,0 +1,27 @@
+{% load static %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Contact Form</h2>
+
+        <form novalidate action="{% url 'core_website_app_contact' %}" method="post" class="form-horizontal">
+            {% csrf_token %}
+
+            {% for field in data.contact_form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                <div>
+                    {{ field }}
+                    <span style="color:red">{{ field.errors }}</span>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="form-group">
+                <div class="col-sm-12">
+                    <button type="submit" class="btn btn-lg btn-primary {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+                        <i class="fas fa-paper-plane"></i> Send Message
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
