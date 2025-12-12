@@ -1,0 +1,65 @@
+
+
+DEFAULT: str = 'x9Ke0BY7'
+
+BLOODY_GOOD_TIME: str = 'K4PeJwL7'
+
+CONTAGION_WEAPONS: str = 'fUk0fF69'
+
+CONTAGION_SCRIPTS: str = '5!rrFz6p'
+
+COUNTER_STRIKE_SOURCE: str = 'd7NSuLq2'
+
+COUNTER_STRIKE_GLOBAL_OFFENSIVE: str = 'd7NSuLq2'
+
+COUNTER_STRIKE_2: str = 'd7NSuLq2'
+
+COUNTER_STRIKE_PROMOD: str = 'H1aRQ0n1'
+
+DAY_OF_DEFEAT_SOURCE: str = 'Wl0u5B3F'
+
+DYSTOPIA_1_2: str = 'pH3apO8w'
+
+DYSTOPIA_1_3: str = 'G8stUh3F'
+
+FORTRESS_FOREVER_PRE_GREENLIGHT: str = 'saxEWr5v'
+
+GOLDEN_EYE_SOURCE: str = 'Gr3naDes'
+
+HALF_LIFE_2_CTF: str = 'R1dj3axP'
+
+HALF_LIFE_2_DM: str = 'x9Ke0BY7'
+
+INSURGENCY: str = 'DrA5e3EB'
+
+LEFT_4_DEAD_2: str = 'SDhfi878'
+
+NO_MORE_ROOM_IN_HELL: str = 'lREeeapA'
+
+NUCLEAR_DAWN: str = 'TA+*veh9'
+
+TACTICAL_INTERVENTION: str = '71B4Dt1Z'
+
+TEAM_FORTRESS_2: str = 'E2NcUkG2'
+
+TEAM_FORTRESS_2_ITEMS: str = 'A5fSXbf7'
+
+THE_SHIP: str = 'eb3A4m79'
+
+ZOMBIE_PANIC_SOURCE: str = '5R0ni0pZ'
+
+GPU_DEFAULT: str = 'X8bU2qll'
+
+GPU_ALIEN_SWARM: str = 'sW9.JupP'
+
+GPU_DOTA_2: str = 'dAIt1IL!'
+
+GPU_HALF_LIFE_2_EPISODE_2: str = 'Xx81uBl)'
+
+GPU_LEFT_4_DEAD_1: str = 'zp14Hi(]'
+
+GPU_LEFT_4_DEAD_2: str = 'zp14Hi(]'
+
+GPU_TEAM_FORTRESS_2: str = 'E2NcUkG2'
+
+GPU_PORTAL_2: str = 'UrE66!Ap'
