@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package nuclei;
+
+option go_package = "nuclei-server/pb";
+
+// Authentication service
+service Auth {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Validate(ValidateRequest) returns (ValidateResponse);
+}
+
+// Command execution service
+service NucleiExecutor {
+  rpc ExecuteCommand(ExecuteRequest) returns (stream ExecuteResponse);
+}
+
+// File transfer service
+service FileTransfer {
+  rpc UploadFile(stream UploadRequest) returns (UploadResponse);
+  rpc DownloadFile(DownloadRequest) returns (stream DownloadResponse);
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+}
+
+// Discovery and heartbeat service
+service Discovery {
+  rpc RegisterChild(RegisterRequest) returns (RegisterResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+// Authentication messages
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  bool success = 1;
+  string token = 2;
+  string message = 3;
+}
+
+message ValidateRequest {
+  string token = 1;
+}
+
+message ValidateResponse {
+  bool valid = 1;
+  string username = 2;
+}
+
+// Command execution messages
+message ExecuteRequest {
+  string command = 1;
+  string token = 2;
+  map<string, string> env_vars = 3;
+}
+
+message ExecuteResponse {
+  string output = 1;
+  string error = 2;
+  int32 exit_code = 3;
+  bool completed = 4;
+}
+
+// File transfer messages
+message UploadRequest {
+  string filename = 1;
+  bytes data = 2;
+  string token = 3;
+}
+
+message UploadResponse {
+  bool success = 1;
+  string message = 2;
+  string file_path = 3;
+}
+
+message DownloadRequest {
+  string filename = 1;
+  string token = 2;
+}
+
+message DownloadResponse {
+  bytes data = 1;
+  string filename = 2;
+  bool completed = 3;
+}
+
+message ListFilesRequest {
+  string token = 1;
+  string directory = 2;
+}
+
+message ListFilesResponse {
+  repeated FileInfo files = 1;
+}
+
+message FileInfo {
+  string name = 1;
+  int64 size = 2;
+  bool is_dir = 3;
+  int64 modified_time = 4;
+}
+
+// Discovery and heartbeat messages
+message RegisterRequest {
+  string node_id = 1;
+  string host = 2;
+  int32 port = 3;
+}
+
+message RegisterResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message HeartbeatRequest {
+  string node_id = 1;
+  string status = 2;
+  float cpu_usage = 3;
+  float memory_usage = 4;
+  int32 active_connections = 5;
+  int32 uptime_seconds = 6;
+}
+
+message HeartbeatResponse {
+  bool received = 1;
+  string message = 2;
+}

@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nuclei-grpc"
+version = "1.0.0"
+description = "Distributed Nuclei scanner with gRPC server and web UI"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Recon Tasks"}]
+keywords = ["nuclei", "grpc", "scanner", "security", "distributed"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: System :: Networking :: Monitoring",
+]
+
+dependencies = [
+    "grpcio>=1.59.0",
+    "grpcio-tools>=1.59.0",
+    "protobuf>=4.25.1",
+    "psutil>=5.9.0",
+    "Flask>=2.3.0",
+    "Werkzeug>=2.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "flake8>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/nuclei-grpc"
+Documentation = "https://github.com/yourusername/nuclei-grpc#readme"
+Repository = "https://github.com/yourusername/nuclei-grpc.git"
+
+[project.scripts]
+nuclei-grpc = "nuclei_server.server:main"
+nuclei-client = "nuclei_server.cli_client:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nuclei_server*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
