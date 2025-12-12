@@ -1,0 +1,142 @@
+import asyncio
+import os
+
+from asgi_middleware_static_file import ASGIMiddlewareStaticFile
+from asgiref.typing import ASGISendCallable
+from http_router import NotFoundError, Router
+from httpx import AsyncClient
+
+from harp import get_logger
+from harp.controllers import RoutingController
+from harp.errors import ConfigurationError
+from harp.http import AlreadyHandledHttpResponse, HttpRequest, HttpResponse
+from harp_apps import dashboard
+from harp_apps.proxy.controllers import HttpProxyController
+from harp_apps.proxy.settings.remote import Remote
+from harp_apps.storage.types import IStorage
+
+from ..settings import DashboardSettings
+from ..settings.auth import BasicAuthSettings
+
+logger = get_logger(__name__)
+
+
+class DashboardController(RoutingController):
+    name = "ui"
+
+    storage: IStorage
+    settings: DashboardSettings
+    http_client: AsyncClient
+
+    _ui_static_middleware = None
+    _ui_devserver_proxy_controller = None
+
+    #: Static directory to look for pre-built assets.
+    static_build_path = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(dashboard.__file__)), "web"))
+
+    def __init__(
+        self,
+        storage: IStorage,
+        settings: DashboardSettings,
+        http_client: AsyncClient,
+        router: Router = None,
+    ):
+        super().__init__(router=router, handle_errors=False)
+
+        # context for usage in handlers
+        self.http_client = http_client
+        self.storage = storage
+        self.settings = settings
+
+        # create users if they don't exist
+        if isinstance(self.settings.auth, BasicAuthSettings):
+            asyncio.create_task(self.storage.create_users_once_ready(self.settings.auth.users))
+
+        # UI is always initialized when the dashboard app is enabled
+        # (the `enabled` setting controls whether the entire app loads)
+        self._initialize_ui()
+
+    def _initialize_ui(self):
+        # controllers for delegating requests
+        if self.settings.devserver.enabled and self.settings.devserver.port:
+            self._ui_devserver_proxy_controller = self._create_ui_devserver_proxy_controller(
+                port=self.settings.devserver.port
+            )
+
+        # if no devserver is configured, we may need to serve static files
+        if not self._ui_devserver_proxy_controller:
+            if os.path.exists(self.static_build_path):
+                self._ui_static_middleware = ASGIMiddlewareStaticFile(None, "", [self.static_build_path])
+
+        # if no devserver is configured and no static files are found, we can't serve the dashboard
+        if not self._ui_static_middleware and not self._ui_devserver_proxy_controller:
+            raise ConfigurationError(
+                "Dashboard controller could not initiate because it got neither compiled assets nor a devserver "
+                "configuration. If you're using an editable install, make sure to run `make build-frontend` in the "
+                "target working copy, or start a frontend development server."
+            )
+
+    def __repr__(self):
+        features = {
+            "api": True,
+            "devserver": bool(self._ui_devserver_proxy_controller),
+            "static": bool(self._ui_static_middleware),
+        }
+        return f"{type(self).__name__}({'+'.join(f for f in features if features[f])})"
+
+    def _create_ui_devserver_proxy_controller(self, *, port):
+        return HttpProxyController(
+            Remote.from_settings_dict(
+                {
+                    "endpoints": [{"url": f"http://localhost:{port}/"}],
+                    "liveness": {"type": "ignore"},
+                }
+            ),
+            http_client=self.http_client,
+            logging=False,
+            name="dashboard-devserver",
+        )
+
+    async def __call__(self, request: HttpRequest, asgi_send: ASGISendCallable, *, transaction_id=None) -> HttpResponse:
+        request.extensions.setdefault("user", None)
+
+        if self.settings.auth:
+            current_auth = request.basic_auth
+
+            if current_auth:
+                request.extensions["user"] = self.settings.auth.check(current_auth[0], current_auth[1])
+
+            if not request.extensions["user"]:
+                return HttpResponse(
+                    b"Unauthorized",
+                    status=401,
+                    headers={"WWW-Authenticate": 'Basic realm="Harp Dashboard"'},
+                    content_type="text/plain",
+                )
+
+        # Is this a prebuilt static asset? Can we serve it using our middleware? This wil need refactoring, as it ties
+        # the controller implementation to the underlying webserver protocol implementation, but for now, it works.
+        if (
+            self._ui_static_middleware
+            and not request.path.startswith("/api/")
+            and hasattr(request._impl, "asgi_receive")
+        ):
+            # XXX todo fix
+            await self._ui_static_middleware(
+                {
+                    "type": "http",
+                    "path": request.path if "." in request.path else "/index.html",
+                    "method": request.method,
+                },
+                request._impl.asgi_receive,
+                asgi_send,
+            )
+            return AlreadyHandledHttpResponse()
+
+        try:
+            return await super().__call__(request)
+        except NotFoundError:
+            if self._ui_devserver_proxy_controller:
+                return await self._ui_devserver_proxy_controller(request)
+
+        return HttpResponse("Not found.", status=404, content_type="text/plain")
