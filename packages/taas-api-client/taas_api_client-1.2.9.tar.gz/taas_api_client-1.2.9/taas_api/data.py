@@ -1,0 +1,276 @@
+from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
+from taas_api.enums import PosSide, Strategy, Side
+import re
+
+INTERNAL_PAIR_RE_PATTERN = r"([a-zA-Z0-9]+)(:\w+)?-([a-zA-Z0-9]+)"
+
+
+@dataclass
+class PlaceOrderRequest:
+    accounts: List[str]
+    pair: str
+    side: str
+    strategy: str
+    duration: int = None
+    sell_token_amount: float = None
+    base_asset_qty: float = None
+    quote_asset_qty: float = None
+    engine_passiveness: float = None
+    schedule_discretion: float = None
+    alpha_tilt: float = None
+    order_condition: str = None
+    order_condition_expiry: str = None
+    pov_limit: float = None
+    pov_target: float = None
+    limit_price: float = None
+    strategy_params: dict = None
+    notes: str = None
+    custom_order_id: str = None
+    updated_leverage: int = None
+    max_otc: float = None
+    pos_side: Optional[str] = None
+
+    def validate(self):
+        try:
+            Side(self.side)
+        except ValueError:
+            return False, "side must be 'buy' or 'sell'"
+
+        try:
+            Strategy(self.strategy)
+        except ValueError:
+            return False, f"unexpected strategy {self.strategy}"
+
+        result = re.search(INTERNAL_PAIR_RE_PATTERN, self.pair)
+
+        if result is None:
+            return (
+                False,
+                "pair must correct syntax: {BASE}-{QUOTE} or {BASE}:{VARIANT}-{QUOTE} ex. ETH-USDT or ETH:PERP-USDT",
+            )
+
+        qty_fields = ["sell_token_amount", "base_asset_qty", "quote_asset_qty"]
+        if all([getattr(self, field) is None for field in qty_fields]):
+            return False, f"need one of {qty_fields}"
+
+        if self.engine_passiveness is not None:
+            if not (0 <= self.engine_passiveness <= 1):
+                return False, "engine_passiveness out of range, must be [0,1]"
+
+        if self.schedule_discretion is not None:
+            if not (0.02 <= self.schedule_discretion <= 1):
+                return False, "schedule_discretion out of range, must be [0.02,1]"
+
+        if self.alpha_tilt is not None:
+            if not (-1 <= self.alpha_tilt <= 1):
+                return False, "alpha_tilt out of range, must be [-1,1]"
+
+        if self.pov_limit is not None:
+            if not (0 < self.pov_limit <= 1):
+                return False, "pov_limit is a ratio within (0,1]"
+
+        if self.pov_target is not None:
+            if not (0 < self.pov_target <= 1):
+                return False, "pov_target is a ratio within (0,1]"
+
+        if self.max_otc is not None:
+            if self.max_otc <= 0:
+                return False, "max_otc must be a positive value"
+
+        if self.strategy_params is not None:
+            if not isinstance(self.strategy_params, dict):
+                return False, "strategy_params must be a dict"
+
+        if self.duration is None and self.pov_target is None:
+            return False, "duration or pov_target must be provided"
+
+        return True, None
+
+    def to_post_body(self):
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+
+@dataclass
+class ChildOrder:
+    pair: str
+    side: str
+    base_asset_qty: float = None
+    quote_asset_qty: float = None
+    pos_side: str = None
+    account: str = None
+
+    def validate(self):
+        try:
+            Side(self.side)
+        except ValueError:
+            return False, "side must be 'buy' or 'sell'"
+
+        result = re.search(INTERNAL_PAIR_RE_PATTERN, self.pair)
+
+        if result is None:
+            return (
+                False,
+                "pair must correct syntax: {BASE}-{QUOTE} or {BASE}:{VARIANT}-{QUOTE} ex. ETH-USDT or ETH:PERP-USDT",
+            )
+
+        if self.pos_side:
+            try:
+                PosSide(self.pos_side)
+            except ValueError:
+                return (False, "pos_side must be 'long' or 'short'")
+
+        return True, None
+
+
+@dataclass
+class PlaceMultiOrderRequest:
+    duration: int
+    strategy: str
+    child_orders: List[ChildOrder]
+    accounts: dict = None
+    engine_passiveness: float = None
+    schedule_discretion: float = None
+    alpha_tilt: float = None
+    order_condition: str = None
+    order_condition_expiry: str = None
+    strategy_params: dict = None
+    exposure_tolerance: float = None
+    custom_order_id: str = None
+
+    def validate(self):
+        if len(self.child_orders) == 0:
+            return False, [f"No child orders declared!"]
+
+        if not self.accounts:
+            self.accounts = list(
+                {order.account for order in self.child_orders if order.account}
+            )
+            if not self.accounts:
+                return False, ["Accounts must be provided for child orders"]
+
+        try:
+            Strategy(self.strategy)
+        except ValueError:
+            return False, [f"unexpected strategy {self.strategy}"]
+
+        if self.engine_passiveness is not None:
+            if not (0 <= self.engine_passiveness <= 1):
+                return False, ["engine_passiveness out of range, must be [0,1]"]
+
+        if self.schedule_discretion is not None:
+            if not (0.02 <= self.schedule_discretion <= 1):
+                return False, ["schedule_discretion out of range, must be [0.02,1]"]
+
+        if self.alpha_tilt is not None:
+            if not (-1 <= self.alpha_tilt <= 1):
+                return False, ["alpha_tilt out of range, must be [-1,1]"]
+
+        if self.exposure_tolerance is not None:
+            if not (0.02 <= self.exposure_tolerance <= 1):
+                return False, ["exposure_tolerance out of range, must be [0.02,1]"]
+
+        if self.strategy_params is not None:
+            if not isinstance(self.strategy_params, dict):
+                return False, ["strategy_params must be a dict"]
+
+        order_validations = [order.validate() for order in self.child_orders]
+
+        if any([not success for success, error in order_validations]):
+            return False, [error for success, error in order_validations if not success]
+
+        return True, []
+
+    def to_post_body(self):
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+
+@dataclass
+class GetOrderMessagesRequest:
+    order_ids: List[str]
+
+    def to_post_body(self):
+        return {"order_ids": self.order_ids}
+
+
+@dataclass
+class AmendOrderRequest:
+    order_id: str
+    changes: dict
+
+    def to_post_body(self):
+        return {"order_id": self.order_id, "changes": self.changes}
+
+
+@dataclass
+class GetOrderRequest:
+    statuses: Optional[List[str]] = None
+    account_names: Optional[List[str]] = None
+    before: Optional[str] = None
+    after: Optional[str] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+    def to_post_body(self):
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+
+@dataclass
+class OrderInChain:
+    order_request: PlaceOrderRequest
+    priority: int
+
+    def validate(self):
+        order_success, order_error = self.order_request.validate()
+
+        if not isinstance(self.priority, int) or self.priority <= 0:
+            return False, "priority must be a positive integer"
+
+        if not order_success:
+            return False, order_error
+
+        return True, None
+
+
+@dataclass
+class PlaceChainedOrderRequest:
+    orders_in_chain: List[OrderInChain]
+
+    def validate(self):
+        if len(self.orders_in_chain) < 2:
+            return False, ["At least two orders are required in a chain."]
+
+        for order in self.orders_in_chain:
+            success, error = order.validate()
+            if not success:
+                return False, error
+
+        return True, []
+
+    def to_post_body(self):
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+
+@dataclass
+class SetLeverageRequest:
+    account_ids: List[str]
+    pair: str
+    leverage: str
+
+    def validate(self):
+        result = re.search(INTERNAL_PAIR_RE_PATTERN, self.pair)
+
+        if result is None:
+            return (
+                False,
+                "pair must correct syntax: {BASE}-{QUOTE} or {BASE}:{VARIANT}-{QUOTE} ex. ETH-USDT or ETH:PERP-USDT",
+            )
+        if not self.account_ids:
+            return False, "account_ids must be provided"
+        if not self.leverage:
+            return False, "leverage must be provided"
+
+        return True, None
+
+    def to_post_body(self):
+        return {k: v for k, v in asdict(self).items() if v is not None}
