@@ -1,0 +1,141 @@
+name: CI
+
+# --- TRIGGER: Runs on Pull Requests ---
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUN_BENCHMARKS: false
+
+jobs:
+  test:
+    name: Tests via tox (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed for coverage badge/artifacts
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- SETUP ---
+      - name: Install Rust toolchain
+        # Required for the 'clippy' environment and maturin builds
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv and tools
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install tox and plugins
+        # Install tox and the tox-gh-actions plugin into the base environment
+        run: uv pip install --system tox tox-gh-actions
+
+      # --- LINT & CLIPPY STEPS (Run once on 3.11) ---
+      # Running static checks only on one version to save time
+      - name: 🔎 Run Lint (tox -e lint)
+        if: matrix.python-version == '3.11'
+        run: tox -e lint
+
+      - name: 🔎 Run Rust Checks (tox -e clippy)
+        if: matrix.python-version == '3.11'
+        run: tox -e clippy
+
+      # --- CORE TESTS STEP (Run on both 3.11 and 3.12) ---
+      - name: 🧪 Run Tests (tox -e py${{ matrix.python-version }})
+        id: tests_step
+        # Runs 'maturin develop' and 'pytest -q'
+        run: tox -e py${{ matrix.python-version }}
+
+      # --- COVERAGE & BADGE STEPS (Run once on 3.12) ---
+      - name: 📊 Run Coverage Threshold Check
+        if: matrix.python-version == '3.12'
+        id: coverage_step
+        # This assumes the tox 'coverage' environment produces a coverage.xml file in the repository root.
+        run: |
+          set -euo pipefail
+          tox -e coverage
+          python scripts/generate_coverage_badge.py coverage.xml coverage-badge.svg || echo "Badge generation skipped"
+
+      - name: 🚀 Run Example Scripts (Smoke Tests)
+        if: matrix.python-version == '3.12'
+        run: |
+          set -e
+          echo "Running smoke-test examples..."
+          uv run python examples/basic_usage.py
+          uv run python examples/temporal_operations.py
+          uv run python examples/spatial_distances.py
+          # Optional dependencies may not be installed in minimal CI; tolerate failure.
+          uv run python examples/xarray_dask_usage.py || echo "xarray/dask example skipped (optional deps missing)"
+          uv run python examples/map_blocks.py || echo "map_blocks example skipped (optional deps missing)"
+
+      - name: 🏁 Benchmark (Optional)
+        if: matrix.python-version == '3.12' && env.RUN_BENCHMARKS == 'true'
+        run: |
+          set -e
+          echo "Running benchmark suite (with NumPy baseline comparisons)..."
+          uv run python -m benchmarking --group all --height 1024 --width 1024 --time 8 --points-a 500 --points-b 500 --point-dim 8 --loops 2 --warmups 1 --compare-numpy --json-out benchmark-results.json --quiet
+          echo "Benchmark JSON generated: benchmark-results.json"
+      - name: 📦 Upload Benchmark Artifact
+        if: matrix.python-version == '3.12' && env.RUN_BENCHMARKS == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  docs:
+    name: Build & Validate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (for potential extension build)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install docs dependencies
+        run: |
+          set -e
+          uv pip install --system .[docs]
+
+      - name: Build Sphinx documentation
+        run: |
+          set -e
+          make docs
+
+      - name: Basic link / warning scan
+        run: |
+          set -e
+          # Fail on common unresolved references or undefined warnings
+          if grep -R "WARNING: unknown document" -n docs/build/html || \
+             grep -R "WARNING: undefined label" -n docs/build/html ; then
+             echo "Documentation build warnings detected"; exit 1; fi
+
+      - name: Upload built docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-docs
+          path: docs/build/html
+          if-no-files-found: error
