@@ -1,0 +1,104 @@
+[project]
+name = "pomo-i18n"
+version = "0.1.4"
+description = "Strict-typed, dependency-free gettext-compatible i18n library (PO/MO parser, Plural-Forms evaluator, Catalog API)."
+authors = [{ name = "Kiminori Kato" }]
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+	"Development Status :: 4 - Beta",
+	"License :: OSI Approved :: MIT License",
+	"Programming Language :: Python",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Operating System :: OS Independent",
+	"Topic :: Software Development :: Internationalization",
+	"Topic :: Software Development :: Localization",
+]
+
+[project.urls]
+Homepage = "https://github.com/kimikato/pomo-i18n"
+Source = "https://github.com/kimikato/pomo-i18n"
+Issues = "https://github.com/kimikato/pomo-i18n/issues"
+Documentation = "https://github.com/kimikato/pomo-i18n/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pypomo"]
+
+[project.optional-dependencies]
+dev = [
+	"black",
+	"flake8",
+	"mypy",
+	"pytest",
+	"coverage",
+	"pytest-benchmark",
+	"build",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ---------------------------------------------------------
+# Black
+# ---------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+skip-string-normalization = true
+
+# ---------------------------------------------------------
+# Mypy (strict mode)
+# ---------------------------------------------------------
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+show_error_context = true
+show_column_numbers = true
+ignore_missing_imports = true
+
+# src/pypomo/* を対象
+mypy_path = "src"
+
+# ---------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+# ---------------------------------------------------------
+# Coverage
+# ---------------------------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["src/pypomo"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+# ---------------------------------------------------------
+# Flake8
+# ---------------------------------------------------------
+[tool.flake8]
+max-line-length = 100
+extend-ignore = [
+	"E203", # Black と競合
+	"W503", # 改行位置、旧PEP
+	"E501", # 行の長さ（Black に任せる）
+]
+exclude = [".git", "__pycache__", ".venv", "build", "dist"]
+per-file-ignores = ["*/__init__.py:F401"]
