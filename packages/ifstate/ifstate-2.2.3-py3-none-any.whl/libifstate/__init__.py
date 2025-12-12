@@ -1,0 +1,880 @@
+from libifstate.exception import LinkDuplicate, NetnsUnknown
+from libifstate.link.base import ethtool_path, Link
+from libifstate.link.vlan import VlanFlags
+from libifstate.address import Addresses, AddressIgnore
+from libifstate.fdb import FDB
+from libifstate.hook import Hooks
+from libifstate.neighbour import Neighbours
+from libifstate.routing import Tables, Rules, RTLookups
+from libifstate.parser import Parser, get_available_hooks
+from libifstate.tc import TC
+from libifstate.exception import netlinkerror_classes
+import bisect
+import os
+import pyroute2
+
+from pyroute2.netlink.rtnl.ifaddrmsg import IFA_F_PERMANENT
+try:
+    from libifstate.wireguard import WireGuard
+except ModuleNotFoundError:
+    # ignore missing plugin
+    pass
+except Exception as err:
+    # ignore plugin failure if kmod is not loaded
+    if not isinstance(err, netlinkerror_classes):
+        raise
+
+try:
+    from libifstate.bpf import libbpf, BPF
+
+    try:
+        from libifstate.xdp import XDP
+    except ModuleNotFoundError:
+        # ignore missing plugin
+        pass
+except ModuleNotFoundError:
+    # ignore missing plugin
+    pass
+
+try:
+    from jsonschema import validate, ValidationError, FormatChecker
+except ModuleNotFoundError:
+    # fail open and ignore missing jsonschema dependency
+    pass
+
+from libifstate.netns import NetNameSpace, prepare_netns, LinkRegistry, get_netns_instances
+from libifstate.util import logger, root_iw, kind_has_identify, IfStateLogging, LinkDependency, IDENTIFY_LOOKUPS
+from libifstate.exception import FeatureMissingError, LinkCircularLinked, LinkNoConfigFound, ParserValidationError
+from ipaddress import ip_network, ip_interface
+from copy import deepcopy
+import os
+import pkgutil
+import re
+import secrets
+import json
+import errno
+import logging
+
+__version__ = "2.2.3"
+
+class IfState():
+    def __init__(self):
+        logger.debug('IfState {}'.format(__version__))
+
+        self.namespaces = None
+        self.root_netns = NetNameSpace(None)
+        self.defaults = []
+        self.ignore = {}
+        self.features = {
+            'brport': True,
+            'devicetree': os.access('/sys/firmware/devicetree', os.R_OK),
+            'iw': root_iw is not None,
+            'link': True,
+            'sysctl': os.access('/proc/sys/net', os.R_OK),
+            'ethtool': not ethtool_path is None,
+            'schema': not globals().get("validate") is None,
+            'tc': True,
+            'wireguard': not globals().get("WireGuard") is None,
+            'bpf': not globals().get("libbpf") is None,
+            'xdp': not globals().get("XDP") is None,
+        }
+
+        logger.debug('{}'.format(' '.join(sorted(
+            [x for x, y in self.features.items() if y]))), extra={'iface': 'features'})
+
+        if self.features['bpf']:
+            if logger.level != logging.DEBUG:
+                # BPF: disable libbpf stderr output
+                libbpf.libbpf_set_print(0)
+
+    def update(self, ifstates, soft_schema):
+        if self.features['schema']:
+            # check config schema
+            schema = json.loads(pkgutil.get_data(
+                "libifstate", "schema/{}/ifstate.conf.schema.json".format(__version__.split('.')[0])))
+            try:
+                validate(ifstates, schema, format_checker=FormatChecker())
+            except ValidationError as ex:
+                if len(ex.path) > 0:
+                    path = ["$"]
+                    for i, p in enumerate(ex.absolute_path):
+                        if type(p) == int:
+                            path.append("[{}]".format(p))
+                        else:
+                            path.append(".")
+                            path.append(p)
+
+                    detail = "{}: {}".format("".join(path), ex.message)
+                else:
+                    detail = ex.message
+                if soft_schema:
+                    logger.error("Config validation failed for {}".format(detail))
+                else:
+                    raise ParserValidationError(detail)
+        else:
+            logger.debug('Python package jsonschema not available, skipping config validation.')
+
+        # add interface defaults
+        if 'defaults' in ifstates['parameters']:
+            self.defaults = ifstates['parameters']['defaults']
+
+        # add ignore list items
+        self.ignore.update(ifstates['parameters']['ignore'])
+        self.ipaddr_ignore = []
+        for ip in self.ignore.get('ipaddr', []):
+            self.ipaddr_ignore.append(AddressIgnore(ip))
+        self.fdb_ignore = None
+        if self.ignore.get('fdb'):
+            self.fdb_ignore = re.compile('|'.join(self.ignore.get('fdb')))
+
+        # save cshaper profiles
+        self.cshaper_profiles = ifstates['parameters']['cshaper']
+
+        # prepare hooks
+        self.hooks = Hooks(ifstates['parameters'].get('hooks', {}))
+
+        # build link registry over all named netns
+        self.link_registry = LinkRegistry(self.ignore.get('ifname', []), self.root_netns)
+
+        self._update(self.root_netns, ifstates)
+        self.namespaces = {}
+        self.new_namespaces = []
+        for netns_name, netns_ifstates in ifstates.get('namespaces', {}).items():
+            is_new = netns_name not in pyroute2.netns.listnetns()
+            self.namespaces[netns_name] = NetNameSpace(netns_name)
+            if is_new:
+                self.new_namespaces.append(netns_name)
+                self.link_registry.inventory_netns(self.namespaces[netns_name])
+            self._update(self.namespaces[netns_name], netns_ifstates)
+
+    def _update(self, netns, ifstates):
+        # parse network sysctl settings
+        if 'sysctl' in ifstates:
+            for proto in  ifstates['sysctl'].keys():
+                if proto in ['all', 'default']:
+                    netns.sysctl.add(
+                        proto, ifstates['sysctl'][proto])
+                else:
+                    netns.sysctl.add_global(
+                        proto, ifstates['sysctl'][proto])
+
+        # load BPF programs
+        if 'bpf' in ifstates:
+            if not self.features['bpf']:
+                raise FeatureMissingError("bpf")
+
+            if netns.bpf_progs is None:
+                netns.bpf_progs = BPF(netns)
+            for name, config in ifstates['bpf'].items():
+                netns.bpf_progs.add(name, config)
+
+        # add interfaces from config
+        ifb_ifaces = {}
+        add_routes = []
+        for name, ifstate in ifstates['interfaces'].items():
+            kind = ifstate['link']['kind']
+            defaults = self.get_defaults(
+                ifname=name,
+                kind=kind)
+
+            if name in netns.links:
+                raise LinkDuplicate()
+
+            # prepare ethtool settings
+            if name != 'lo':
+                ethtool = {}
+                if 'ethtool' in defaults:
+                    ethtool.update(defaults['ethtool'])
+                for k, v in ifstate.get('ethtool', {}).items():
+                    if k in ethtool:
+                        ethtool[k].update(v)
+                    else:
+                        ethtool[k] = v
+                if not ethtool:
+                    ethtool = None
+            else:
+                ethtool = None
+
+            link = {}
+            if 'link' in defaults:
+                link.update(defaults['link'])
+            if 'link' in ifstate:
+                link.update(ifstate['link'])
+            if link:
+                netns.links[name] = Link(self,
+                    netns, name, link, ifstate.get('identify', {}), ethtool, ifstate.get('hooks', []), ifstate.get('vrrp'), ifstate.get('brport'))
+            else:
+                netns.links[name] = None
+
+            if 'addresses' in ifstate:
+                netns.addresses[name] = Addresses(netns, name, ifstate['addresses'])
+            elif defaults.get('clear_addresses', False):
+                netns.addresses[name] = Addresses(netns, name, [])
+
+            if 'fdb' in ifstate:
+                netns.fdb[name] = FDB(netns, name, ifstate['fdb'])
+            elif defaults.get('clear_fdb', False):
+                netns.fdb[name] = FDB(netns, name, [])
+
+            if 'neighbours' in ifstate:
+                netns.neighbours[name] = Neighbours(netns, name, ifstate['neighbours'])
+            elif defaults.get('clear_neighbours', False):
+                netns.neighbours[name] = Neighbours(netns, name, [])
+
+            if 'vrrp' in ifstate:
+                ktype = ifstate['vrrp']['type']
+                kname = ifstate['vrrp']['name']
+                kstates = ifstate['vrrp']['states']
+                if not kname in netns.vrrp[ktype]:
+                    netns.vrrp[ktype][kname] = {}
+                for kstate in kstates:
+                    if not kstate in netns.vrrp[ktype][kname]:
+                        netns.vrrp[ktype][kname][kstate] = []
+                    netns.vrrp[ktype][kname][kstate].append(name)
+                netns.vrrp['links'].append(name)
+
+            if 'sysctl' in ifstate:
+                netns.sysctl.add(name, ifstate['sysctl'])
+
+            if 'cshaper' in ifstate:
+                profile_name = ifstate['cshaper'].get(
+                    'profile', 'default')
+                logger.debug('cshaper profile {} enabled'.format(profile_name),
+                             extra={'iface': name, 'netns': netns})
+                cshaper_profile = deepcopy(self.cshaper_profiles[profile_name])
+
+                # ingress
+                ifb_name = re.sub(
+                    cshaper_profile['ingress_ifname']['search'], cshaper_profile['ingress_ifname']['replace'], name)
+                logger.debug('cshaper ifb name {}'.format(ifb_name),
+                             extra={'iface': name, 'netns': netns})
+
+                # prepare ifb interface settings
+                ifb_ifaces[ifb_name] = {
+                    'link': {
+                        'state': 'up',
+                        'kind': 'ifb',
+                    },
+                    'tc': {
+                        'qdisc': cshaper_profile['ingress_qdisc'],
+                    }
+                }
+
+                # configure tc on ifb
+                ifb_ifaces[ifb_name]['tc']['qdisc']['bandwidth'] = ifstate['cshaper'].get(
+                    'ingress', 'unlimited')
+                netns.tc[ifb_name] = TC(netns, ifb_name, ifb_ifaces[ifb_name]['tc'])
+
+                # clone vrrp settings
+                if 'vrrp' in ifstate:
+                    ifb_ifaces[ifb_name]['vrrp'] = ifstate['vrrp']
+
+                # add ifb link to known links
+                netns.links[ifb_name] = Link(self,
+                    netns, ifb_name, ifb_ifaces[ifb_name]["link"], {}, None, [], ifstate.get('vrrp'), None)
+
+                # egress
+                if 'tc' in ifstate:
+                    logger.warning(
+                        'cshaper settings replaces tc settings', extra={'iface': name, 'netns': netns})
+
+                ifstate['tc'] = {
+                    'ingress': True,
+                    'qdisc': cshaper_profile['egress_qdisc'],
+                    'filter': [
+                        {
+                            'kind': 'matchall',
+                            'parent': 'ffff:',
+                            'action': [
+                                {
+                                    'kind': 'mirred',
+                                    'direction': 'egress',
+                                    'action': 'redirect',
+                                    'dev': ifb_name,
+                                }
+                            ]
+                        }
+
+                    ]
+                }
+
+                ifstate['tc']['qdisc']['bandwidth'] = ifstate['cshaper'].get('egress', 'unlimited')
+
+                del ifstate['cshaper']
+
+            if 'tc' in ifstate:
+                netns.tc[name] = TC(
+                    netns, name, ifstate['tc'])
+            elif defaults.get('clear_tc', False):
+                netns.tc[name] = TC(
+                    netns, name, {
+                        'ingress': False,
+                        'filter': [],
+                        'qdisc': None
+                    })
+
+            if 'wireguard' in ifstate:
+                if not self.features['wireguard']:
+                    raise FeatureMissingError("wireguard")
+
+                netns.wireguard[name] = WireGuard(netns, name, ifstate['wireguard'])
+                add_routes.extend(netns.wireguard[name].get_routes())
+
+            if 'xdp' in ifstate:
+                if not self.features['xdp']:
+                    raise FeatureMissingError("xdp")
+
+                netns.xdp[name] = XDP(netns, name, ifstate['xdp'])
+
+        # cshaper: append ifb interfaces to config
+        ifstates['interfaces'].update(ifb_ifaces)
+
+        # add routing from config
+        if 'routing' in ifstates:
+            if netns.tables is None:
+                netns.tables = Tables(netns)
+            if 'routes' in ifstates['routing']:
+                for route in ifstates['routing']['routes']:
+                    netns.tables.add(route)
+                for route in add_routes:
+                    netns.tables.add(route)
+
+            if netns.rules is None:
+                netns.rules = Rules(netns)
+            if 'rules' in ifstates['routing']:
+                for rule in ifstates['routing']['rules']:
+                    netns.rules.add(rule)
+
+    def apply(self, vrrp_type=None, vrrp_name=None, vrrp_state=None):
+        self._apply(True, vrrp_type, vrrp_name, vrrp_state)
+
+    def check(self, vrrp_type=None, vrrp_name=None, vrrp_state=None):
+        self._apply(False, vrrp_type, vrrp_name, vrrp_state)
+
+    def free_registry_item(self, do_apply, item):
+        ifname = item.attributes['ifname']
+
+        log_str = ifname
+        if item.netns.netns is not None:
+            log_str += "[netns={}]".format(item.netns.netns)
+
+        if item.attributes['kind'] != 'physical':
+            # remove virtual interface
+            logger.log_del(log_str)
+            if do_apply:
+                try:
+                    item.netns.ipr.link('set', index=item.attributes['index'], state='down')
+                    item.netns.ipr.link('del', index=item.attributes['index'])
+                except Exception as err:
+                    if not isinstance(err, netlinkerror_classes):
+                         raise
+                    # ignore if the link is already gone, this might happen
+                    # when removing veth link peers
+                    if err.code != errno.ENODEV:
+                        logger.warning('removing failed: {}'.format(
+                            err.args[1]), extra={'iface': ifname, 'netns': item.netns})
+            return True
+        else:
+            # shutdown physical interfaces
+            if item.state == 'down':
+                logger.log_ok(log_str, 'orphan')
+            else:
+                logger.log_del(log_str, 'orphan')
+                if do_apply:
+                    try:
+                        item.netns.ipr.link('set', index=item.attributes['index'], state='down')
+                    except Exception as err:
+                        if not isinstance(err, netlinkerror_classes):
+                            raise
+                        logger.warning('updating failed: {}'.format(
+                            err.args[1]), extra={'iface': ifname, 'netns': item.netns})
+            return False
+
+    def _dependencies(self, netns):
+        deps = {}
+        for ifname, link in netns.links.items():
+            deps[LinkDependency(ifname, netns.netns)] = link.depends()
+
+        return deps
+
+    def _stages(self, continue_on_circualar):
+        def dep(arg):
+            '''
+                Dependency resolver
+
+            "arg" is a dependency dictionary in which
+            the values are the dependencies of their respective keys.
+            '''
+            d=dict((k, set(arg[k])) for k in arg)
+            r=[]
+            while d:
+                # values not in keys (items without dep)
+                t=set(i for v in d.values() for i in v)-set(d.keys())
+                # and keys without value (items without dep)
+                t.update(k for k, v in d.items() if not v)
+
+                if len(t) == 0:
+                    logger.error("Circualar link dependency detected: ")
+                    for k, v in d.items():
+                        logger.error('  {} => {}'.format(k, ", ".join(map(str, v))))
+                    logger.error("")
+
+                    if continue_on_circualar:
+                        # remaining link deps cannot be resolved, drop them
+                        # if we shall continue
+                        return r
+                    else:
+                        raise LinkCircularLinked()
+
+                # can be done right away
+                r.append( sorted(t) )
+                # and cleaned up
+                d=dict(((k, v-t) for k, v in d.items() if v))
+            return r
+
+        dependencies = self._dependencies(self.root_netns)
+        if self.namespaces is not None:
+            for netns in self.namespaces.values():
+                dependencies.update(self._dependencies(netns))
+
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            logger.debug('dependencies dump:')
+            for ifname, deps in dependencies.items():
+                logger.debug('  %s => %s', ifname, ", ".join(map(str, deps)))
+
+        stages = dep(dependencies)
+
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            logger.debug('stages dump:')
+            i = 1
+            for stage in stages:
+                logger.debug('  #%d => %s', i, ", ".join(map(str, stage)))
+                i += 1
+
+        return stages
+
+    def _apply(self, do_apply, vrrp_type=None, vrrp_name=None, vrrp_state=None):
+        # check if called from vrrp hook and ignore non-vrrp interfaces
+        by_vrrp = not None in [
+            vrrp_type, vrrp_name, vrrp_state]
+        if by_vrrp:
+            logger.info("triggered by vrrp state update")
+            logger.log_change("{} {}".format(vrrp_type, vrrp_name), vrrp_state)
+            logger.info("")
+
+            # ifstate schema requires lower case keywords
+            vrrp_type = vrrp_type.lower()
+            vrrp_state = vrrp_state.lower()
+
+        # create and destroy namespaces to match config
+        if not by_vrrp and self.namespaces is not None:
+            prepare_netns(do_apply, self.namespaces.keys(), self.new_namespaces, self.ignore.get('netns', []))
+            logger.info("")
+
+        # get link dependency tree
+        stages = self._stages(do_apply)
+
+        # remove any orphan (non-ignored) links
+        if not by_vrrp:
+            had_cleanup = False
+            cleanup_items = []
+            for item in self.link_registry.registry:
+                ifname = item.attributes['ifname']
+                # items without a link are orphan - keep them if they match the ignore (ifname|netns) regex list...
+                if item.link is None and \
+                   not any(re.match(regex, ifname) for regex in self.ignore.get('ifname', [])) and \
+                   not any(re.match(regex, item.netns.netns or '') for regex in self.ignore.get('netns', [])):
+                    # ...or are in a netns namespace while the config has no `namespaces` setting
+                    if self.namespaces is not None or item.netns.netns is None:
+                        if not had_cleanup:
+                            logger.info("cleanup orphan interfaces...")
+                            had_cleanup = True
+                        if self.free_registry_item(do_apply, item):
+                            cleanup_items.append(item)
+                        else:
+                            item.attributes['orphan'] = True
+
+            if cleanup_items:
+                for item in cleanup_items:
+                    self.link_registry.registry.remove(item)
+
+            if had_cleanup:
+                logger.info("")
+
+        # dump link registry in verbose mode
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            self.link_registry.debug_dump()
+
+        if not by_vrrp:
+            # apply bpf settings
+            had_bpf = self._apply_bpf(do_apply, self.root_netns)
+            if self.namespaces is not None:
+                for name, netns in self.namespaces.items():
+                    had_bpf = self._apply_bpf(do_apply, netns, had_bpf)
+            if had_bpf:
+                logger.info("")
+
+            # apply sysctl settings
+            had_sysctl = self._apply_sysctl(do_apply, self.root_netns)
+            if self.namespaces is not None:
+                for name, netns in self.namespaces.items():
+                    had_sysctl = self._apply_sysctl(do_apply, netns, had_sysctl)
+            if had_sysctl:
+                logger.info("")
+
+        # create/modify links in order of dependencies
+        logger.info("configure interfaces...")
+        tc_apply = []
+        for stage in stages:
+            for link_dep in stage:
+                if link_dep.netns is None:
+                    self._apply_iface(do_apply, self.root_netns, link_dep, by_vrrp, vrrp_type, vrrp_name, vrrp_state)
+                    if link_dep.ifname in self.root_netns.tc:
+                        tc_apply.append(link_dep)
+                else:
+                    if self.namespaces is None or link_dep.netns not in self.namespaces:
+                        logger.warning("apply link {} failed: netns '{}' is unknown".format(link_dep.ifname, link_dep.netns))
+                    else:
+                        self._apply_iface(do_apply, self.namespaces[link_dep.netns], link_dep, by_vrrp, vrrp_type, vrrp_name, vrrp_state)
+                        if link_dep.ifname in self.namespaces[link_dep.netns].tc:
+                            tc_apply.append(link_dep)
+
+        # apply tc settings
+        for link_dep in tc_apply:
+            if link_dep.netns is None:
+                self.root_netns.tc[link_dep.ifname].apply(do_apply)
+            else:
+                self.namespaces[link_dep.netns].tc[link_dep.ifname].apply(do_apply)
+
+        # configure routing
+        logger.info("")
+        logger.info("configure routing...")
+        self._apply_routing(do_apply, self.root_netns, by_vrrp, vrrp_type, vrrp_name, vrrp_state)
+        if self.namespaces is not None:
+            for name, netns in self.namespaces.items():
+                self._apply_routing(do_apply, netns, by_vrrp, vrrp_type, vrrp_name, vrrp_state)
+
+    def _apply_bpf(self, do_apply, netns, had_bpf=False):
+        if not netns.bpf_progs is None:
+            if not had_bpf:
+                logger.info("load BPF programs...")
+                had_bpf = True
+            netns.bpf_progs.apply(do_apply)
+
+        return had_bpf
+
+    def _apply_sysctl(self, do_apply, netns, had_sysctl=False):
+        for iface in ['all', 'default']:
+            if netns.sysctl.has_settings(iface):
+                if not had_sysctl:
+                    logger.info("configure sysctl settings...")
+                    had_sysctl = True
+                netns.sysctl.apply(iface, do_apply)
+
+        if netns.sysctl.has_globals():
+            if not had_sysctl:
+                logger.info("configure sysctl settings...")
+                had_sysctl = True
+            netns.sysctl.apply_globals(do_apply)
+
+        return had_sysctl
+
+    def _apply_iface(self, do_apply, netns, link_dep, by_vrrp, vrrp_type, vrrp_name, vrrp_state):
+        ifname = link_dep.ifname
+        if not ifname in netns.links:
+            logger.warning('no link settings found', extra={'iface': ifname, 'netns': netns})
+            return
+        link = netns.links[ifname]
+
+        # check for vrrp mode:
+        #   disable: vrrp type & name matches, but vrrp state not
+        #   ignore : vrrp type & name does not match
+        if ifname in netns.vrrp['links']:
+            # this is a vrrp link but not running in a vrrp action
+            if not by_vrrp:
+                return
+            else:
+                # skip if another vrrp type & name is addressed
+                if not link.match_vrrp_select(vrrp_type, vrrp_name):
+                    logger.debug('other vrrp',
+                                extra={'iface': ifname})
+                    return
+                # vrrp type & name does match, but the state does not => disable this interface
+                elif not vrrp_name in netns.vrrp[vrrp_type] or not vrrp_state in netns.vrrp[vrrp_type][vrrp_name] or not ifname in netns.vrrp[vrrp_type][vrrp_name][vrrp_state]:
+                    if ifname in netns.links:
+                        logger.debug('disabled due to vrrp constraint',
+                                    extra={'iface': ifname})
+                        link.settings['state'] = 'down'
+        # ignore if this link is not vrrp aware at all
+        elif by_vrrp:
+            logger.debug('no vrrp setting',
+                        extra={'iface': ifname})
+            return
+
+        logger.info(" {}".format(link_dep))
+
+        if ifname in netns.links:
+            excpts = link.apply(do_apply, netns.sysctl)
+            if excpts.has_errno(errno.EEXIST):
+                retry = True
+
+        if ifname in netns.xdp:
+            netns.xdp[ifname].apply(do_apply, netns.bpf_progs)
+
+        if ifname in netns.addresses and netns.addresses[ifname]:
+            netns.addresses[ifname].apply(self.ipaddr_ignore, self.ignore.get(
+                'ipaddr_dynamic', True), do_apply)
+
+        if ifname in netns.fdb:
+            netns.fdb[ifname].apply(self.fdb_ignore, do_apply)
+
+        if ifname in netns.neighbours:
+            netns.neighbours[ifname].apply(do_apply)
+
+        if ifname in netns.wireguard:
+            netns.wireguard[ifname].apply(do_apply)
+
+        self.hooks.apply(link, do_apply)
+
+    def _apply_routing(self, do_apply, netns, by_vrrp, vrrp_type, vrrp_name, vrrp_state):
+        if not netns.tables is None:
+            netns.tables.apply(self.ignore.get('routes', []), do_apply, by_vrrp, vrrp_type, vrrp_name, vrrp_state)
+
+        if not netns.rules is None:
+            netns.rules.apply(self.ignore.get('rules', []), do_apply, by_vrrp, vrrp_type, vrrp_name, vrrp_state)
+
+    def identify(self):
+        root_config = self._identify_netns(self.root_netns)
+        if root_config is None:
+            root_config = {"interfaces": {}}
+        netns_instances = get_netns_instances()
+        if len(netns_instances) > 0:
+            netns_identifies = {}
+            for netns in netns_instances:
+                netns_identify = self._identify_netns(netns)
+                if netns_identify is not None:
+                    netns_identifies[netns.netns] = netns_identify
+
+            if netns_identifies:
+                return {**root_config, 'namespaces': netns_identifies}
+
+        return {**root_config}
+
+    def _identify_netns(self, netns):
+        ifs_links = {}
+        for ipr_link in netns.ipr.get_links():
+            name = ipr_link.get_attr('IFLA_IFNAME')
+            # skip links on ignore list
+            if name != 'lo' and not any(re.match(regex, name) for regex in Parser._default_ifstates['parameters']['ignore']['ifname_builtin']):
+                info = ipr_link.get_attr('IFLA_LINKINFO')
+                if info is None:
+                    kind = None
+                else:
+                    kind = info.get_attr('IFLA_INFO_KIND')
+
+                if not kind_has_identify(kind):
+                    continue
+
+                ifs_link = {
+                    'identify': {
+                    },
+                }
+
+                for attr, lookup in IDENTIFY_LOOKUPS.items():
+                    value = lookup(netns, ipr_link)
+                    if value is not None:
+                        ifs_link['identify'][attr] = value
+
+                ifs_links[name] = ifs_link
+
+        if ifs_links:
+            return {**{'interfaces': ifs_links}}
+        else:
+            return None
+
+    def show(self, showall=False, show_secrets=False):
+        if showall:
+            defaults = deepcopy(Parser._default_ifstates)
+
+            hooks = get_available_hooks()
+            if hooks:
+                defaults['parameters']['hooks'] = hooks
+        else:
+            defaults = {}
+
+        ipaddr_ignore = []
+        for ip in Parser._default_ifstates['parameters']['ignore']['ipaddr_builtin']:
+            ipaddr_ignore.append(AddressIgnore(ip))
+
+        root_config = self._show_netns(self.root_netns, showall, show_secrets, ipaddr_ignore)
+        netns_instances = get_netns_instances()
+        if len(netns_instances) > 0:
+            netns_configs = {}
+            for netns in netns_instances:
+                netns_configs[netns.netns] = self._show_netns(netns, showall, show_secrets, ipaddr_ignore)
+
+            return {**defaults, **root_config, 'namespaces': netns_configs}
+
+
+        return {**defaults, **root_config}
+
+    def _show_netns(self, netns, showall, show_secrets, ipaddr_ignore):
+        ifs_links = {}
+        for ipr_link in netns.ipr.get_links():
+            name = ipr_link.get_attr('IFLA_IFNAME')
+            # skip links on ignore list
+            if name != 'lo' and not any(re.match(regex, name) for regex in Parser._default_ifstates['parameters']['ignore']['ifname_builtin']):
+                ifs_link = {
+                    'addresses': [],
+                    'link': {
+                        'state': ipr_link['state'],
+                    },
+                }
+
+                for addr in netns.ipr.get_addr(index=ipr_link['index']):
+                    if addr['flags'] & IFA_F_PERMANENT == IFA_F_PERMANENT:
+                        ip = ip_interface(addr.get_attr(
+                            'IFA_ADDRESS') + '/' + str(addr['prefixlen']))
+                        if not any(ign.matches(ip, addr) for ign in ipaddr_ignore):
+                            ifa_attrs = {}
+
+                            # get non-default IFA attributes
+                            v = addr.get_attr('IFA_PROTO')
+                            if v:
+                                ifa_attrs['proto'] = RTLookups.addrprotos.lookup_str(int(v))
+                            v = addr.get_attr('IFA_SCOPE')
+                            if v:
+                                ifa_attrs['scope'] = RTLookups.scopes.lookup_str(int(v))
+                            v = addr.get_attr('IFA_LOCAL')
+                            if v and v != addr.get_attr('IFA_ADDRESS'):
+                                ifa_attrs['local'] = v
+                            v = addr.get_attr('IFA_LABEL')
+                            if v and v != name:
+                                ifa_attrs['label'] = v
+
+                            if ifa_attrs:
+                                ifa_attrs['address'] = ip.with_prefixlen
+                                ifs_link['addresses'].append(ifa_attrs)
+                            else:
+                                ifs_link['addresses'].append(ip.with_prefixlen)
+
+                # drop empty ip addresses list, they are cleaned up by default
+                if not ifs_link['addresses']:
+                    del(ifs_link['addresses'])
+
+                info = ipr_link.get_attr('IFLA_LINKINFO')
+                if info is None:
+                    kind = None
+                else:
+                    kind = info.get_attr('IFLA_INFO_KIND')
+                if not kind_has_identify(kind):
+                    ifs_link['link']['kind'] = kind
+
+                    data = info.get_attr('IFLA_INFO_DATA')
+                    # unsupported link type, fallback to raw encoding
+                    if data is not None and type(data) != str:
+                        for k, v in data['attrs']:
+                            # decode vlan_flags attribute
+                            if k == 'IFLA_VLAN_FLAGS':
+                                vlan_flags = {}
+                                for flag in VlanFlags:
+                                    enabled = v['flags'] & flag.value == flag.value
+                                    if showall or (enabled and flag != VlanFlags.reorder_hdr):
+                                        vlan_flags[flag.name] = enabled
+                                if vlan_flags:
+                                    ifs_link['link']['vlan_flags'] = vlan_flags
+                            # add scalar attributes
+                            elif k != 'UNKNOWN':
+                                attr = ipr_link.nla2name(k)
+                                if attr in Link.attr_value_maps:
+                                    ifs_link['link'][attr] = Link.attr_value_maps[attr].get(
+                                        v, v)
+                                elif attr in Link.attr_value_lookup:
+                                    ifs_link['link'][attr] = Link.attr_value_lookup[attr].lookup_str(v)
+                                else:
+                                    ifs_link['link'][attr] = v
+                else:
+                    ifs_link['link']['kind'] = 'physical'
+                    addr = ipr_link.get_attr('IFLA_ADDRESS')
+                    if not addr is None:
+                        ifs_link['link']['address'] = addr
+
+                    # add identify section for physical links
+                    ifs_link['identify'] = {}
+                    for attr, func in IDENTIFY_LOOKUPS.items():
+                        value = func(netns, ipr_link)
+                        if value:
+                            ifs_link['identify'][attr] = value
+
+                # add device group if not 0
+                group = ipr_link.get_attr('IFLA_GROUP')
+                if not group is None and group != 0:
+                    ifs_link['link']['group'] = RTLookups.group.lookup_str(group)
+
+                for attr in ['link', 'master', 'gre_link', 'ip6gre_link', 'vxlan_link', 'xfrm_link']:
+                    ref = ipr_link.get_attr('IFLA_{}'.format(attr.upper()))
+                    if ref is not None:
+                        try:
+                            ifs_link['link'][attr] = netns.ipr.get_ifname_by_index(
+                                ref)
+                        except Exception as err:
+                            if not isinstance(err, netlinkerror_classes):
+                                raise
+                            logger.warning('lookup {} failed: {}'.format(
+                                attr, err.args[1]), extra={'iface': name, 'netns': netns})
+                            ifs_link['link'][attr] = ref
+
+                mtu = ipr_link.get_attr('IFLA_MTU')
+                if not mtu is None:
+                    if not mtu in [1500, 65536] or name == 'lo':
+                        ifs_link['link']['mtu'] = mtu
+
+                brport.BRPort.show(netns.ipr, showall, ipr_link['index'], ifs_link)
+
+                if ifs_link['link']['kind'] == 'wireguard':
+                    wireguard.WireGuard.show(netns, showall, show_secrets, name, ifs_link)
+
+                if name == 'lo':
+                    if ifs_link['addresses'] == Parser._default_lo_link['addresses']:
+                        del(ifs_link['addresses'])
+
+                    if ifs_link['link'] == Parser._default_lo_link['link']:
+                        del(ifs_link['link'])
+
+                    if len(ifs_link) > 1:
+                        ifs_links['lo'] = ifs_link
+                else:
+                    ifs_links[name] = ifs_link
+
+        routing = {
+            'routes': Tables(netns).show_routes(Parser._default_ifstates['parameters']['ignore']['routes_builtin']),
+            'rules': Rules(netns).show_rules(Parser._default_ifstates['parameters']['ignore']['rules_builtin']),
+        }
+
+        return {**{'interfaces': ifs_links, 'routing': routing}}
+
+    def get_defaults(self, **kwargs):
+        for default in self.defaults:
+            for match in default['match']:
+                matching = True
+
+                for option, regex in match.items():
+                    if not option in kwargs:
+                        matching = False
+                    elif not re.match(regex, kwargs[option]):
+                        matching = False
+
+                if matching:
+                    return default
+
+        return {}
+
+    def gen_unique_ifname(self):
+        '''
+        Get a random unique ifname over all namespaces and configured ifnames.
+        '''
+        while True:
+            ifname = "ifs.tmp.{}".format(secrets.token_hex(3))
+            item = self.link_registry.get_link(ifname=ifname)
+            if item is None:
+                return ifname
