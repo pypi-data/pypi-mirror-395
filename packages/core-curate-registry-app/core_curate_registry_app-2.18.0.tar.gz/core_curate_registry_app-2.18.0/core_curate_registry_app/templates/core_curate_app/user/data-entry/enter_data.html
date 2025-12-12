@@ -1,0 +1,47 @@
+{% load i18n %}
+
+<h1>
+    {% if data.role_choice %}
+    <i class="fas {{data.icon}}" style="color: {{data.icon_color}};" aria-hidden="true"></i>
+       {% if data.edit %}Edit{% else %}Add a new{% endif %} {{data.role_choice}}
+    {% else %}
+    {% if data.edit %}Edit{% else %}Add new{% endif %} Resource
+    {% endif %}
+</h1>
+
+<div class="toolbar">
+	<div class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+		<button class="btn btn-danger clear-fields {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-eraser"></i> Clear Fields </button>
+        <button class="btn btn-danger cancel-changes {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-sync"></i> Cancel Changes </button>
+        <button class="btn btn-danger cancel-form {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-trash"></i> Delete {% trans "form_label"|title %} </button>
+    	<button class="btn btn-secondary save-form-registry {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-save"></i> Save {% trans "form_label"|title %} </button>
+        <a href= "{% url 'core_curate_download_document' data.data_structure.id %}" class="btn btn-secondary download-registry {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-download"></i> Download </a>
+        <button class="btn btn-secondary switch-to-text-editor"><i class="fas fa-circle-right"></i> Switch to text editor </button>
+        <button class="btn btn-primary validate"><i class="fas fa-check-square"></i> Validate &rarr; Review </button>
+
+	</div>
+    <br/><br/>
+
+    <span>Title: {{data.data_structure.name}}</span>
+    <div id = "data_title" class = "hidden" >
+    {{data.data_structure.name}}
+    </div>
+
+    {% if data.data_structure.template.format == "XSD" %}
+    <div id="xsdForm" class="xsdForm">
+        {{data.form|safe}}
+    </div>
+    {% elif data.data_structure.template.format == "JSON" %}
+    <div class="spinner"></div>
+    <div id="jsonForm"></div>
+    {% endif %}
+</div>
+
+<div id="curate_data_structure_id" class="hidden">{{ data.data_structure.id }}</div>
+<div id="role_choice" class="hidden">{{ data.role_choice }}</div>
+<div id="role_type" class="hidden">{{ data.role_type }}</div>
+<div id="template_format" class="hidden">{{data.data_structure.template.format}}</div>
+{% if data.data_structure.template.format == "JSON" %}
+<div id="template_id" class="hidden">{{data.data_structure.template.id}}</div>
+<div id="form_string" class="hidden">{{data.data_structure.form_string}}</div>
+{% endif %}

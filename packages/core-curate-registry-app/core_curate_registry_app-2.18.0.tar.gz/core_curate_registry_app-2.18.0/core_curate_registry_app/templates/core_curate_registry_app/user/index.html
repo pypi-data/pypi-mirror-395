@@ -1,0 +1,24 @@
+{% load static %}
+
+<h3>Select a Resource type to add</h3>
+
+{% include 'core_main_registry_app/resource_banner/resource_banner.html' %}
+
+
+{% for custom_resource in data.custom_resources %}
+    {% if custom_resource.type == data.type_resource %}
+        <p>
+            <a id="{{custom_resource.slug}}_link" href="{% url 'core_curate_start_from_role' custom_resource.slug %}">
+                {{custom_resource.title}}</a> -
+            {{custom_resource.description}}
+        </p>
+    {% endif %}
+{% endfor %}
+
+{% if data.ALLOW_MULTIPLE_SCHEMAS %}
+<p>
+    <a href="{% url 'core_curate_other_resources_index' %}">
+        Other Resources</a> -
+    A set of additional metadata documents hosted on the registry.
+</p>
+{% endif %}
