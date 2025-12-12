@@ -1,0 +1,70 @@
+"""Coordinate enums for data schema"""
+
+from enum import Enum
+
+
+class Origin(str, Enum):
+    """Origin positions for coordinate systems"""
+
+    ORIGIN = "Origin"  # only exists in Atlases / Images
+    BREGMA = "Bregma"
+    LAMBDA = "Lambda"
+    BETWEEN_C1_C2 = "Between_C1-C2"
+    BETWEEN_C2_C3 = "Between_C2-C3"
+    BETWEEN_C3_C4 = "Between_C3-C4"
+    BETWEEN_C4_C5 = "Between_C4-C5"
+    BETWEEN_C6_C7 = "Between_C6-C7"
+    BETWEEN_C7_C8 = "Between_C7-C8"
+    BETWEEN_C8_T1 = "Between_C8-T1"
+    BETWEEN_T1_T2 = "Between_T1-T2"
+    TIP = "Tip"  # of a probe
+    FRONT_CENTER = "Front_center"  # front center of a device, e.g. camera
+    ARENA_CENTER = "Arena_center"  # center of an arena on the ground surface
+    ARENA_FRONT_LEFT = "Arena_front_left"
+    ARENA_FRONT_RIGHT = "Arena_front_right"
+    ARENA_BACK_LEFT = "Arena_back_left"
+    ARENA_BACK_RIGHT = "Arena_back_right"
+
+
+class AxisName(str, Enum):
+    """Axis name"""
+
+    X = "X"
+    Y = "Y"
+    Z = "Z"
+    AP = "AP"
+    ML = "ML"
+    SI = "SI"
+    DEPTH = "Depth"
+
+
+class Direction(str, Enum):
+    """Local and anatomical directions"""
+
+    LR = "Left_to_right"
+    RL = "Right_to_left"
+    AP = "Anterior_to_posterior"
+    PA = "Posterior_to_anterior"
+    IS = "Inferior_to_superior"
+    SI = "Superior_to_inferior"
+    FB = "Front_to_back"
+    BF = "Back_to_front"
+    UD = "Up_to_down"
+    DU = "Down_to_up"
+    OTHER = "Other"
+    POS = "Positive"
+    NEG = "Negative"
+
+
+class AnatomicalRelative(str, Enum):
+    """Relative positions in 3D space"""
+
+    SUPERIOR = "Superior"
+    INFERIOR = "Inferior"
+    ANTERIOR = "Anterior"
+    POSTERIOR = "Posterior"
+    LEFT = "Left"
+    RIGHT = "Right"
+    MEDIAL = "Medial"
+    LATERAL = "Lateral"
+    ORIGIN = "Origin"  # on the origin

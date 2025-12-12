@@ -1,0 +1,199 @@
+"""Organizations"""
+{% raw -%}
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Literal, Union, Optional
+from typing_extensions import Annotated
+from aind_data_schema_models.registries import Registry
+from aind_data_schema_models.utils import one_of_instance
+{% endraw %}
+
+class OrganizationModel(BaseModel):
+    """Base model for organizations"""
+    model_config = ConfigDict(frozen=True)
+    name: str
+    abbreviation: str
+    registry: Optional[Registry] = Field(default=None)
+    registry_identifier: Optional[str] = Field(default=None)
+
+{% for _, row in data.iterrows() %}
+class {{ row['name'] | to_class_name_underscored }}(OrganizationModel):
+    """Model {{row['name']}}"""
+    name: Literal["{{ row['name'] }}"] = "{{ row['name'] }}"
+    {% set abbreviation = row['abbreviation'] -%}
+    {% set registry_abbreviation = row['registry_abbreviation'] -%}
+    {% set registry_identifier = row['registry_identifier'] -%}
+    abbreviation: Literal[{% if abbreviation == abbreviation %}"{{ abbreviation }}"{% else %}None{% endif %}] = {% if abbreviation == abbreviation %}"{{ abbreviation }}"{% else %}None{% endif %}
+    registry: Optional[Registry] = {% if registry_abbreviation == registry_abbreviation %}Field(default=Registry.{{ registry_abbreviation }}){% else %}Field(default=None){% endif %}
+    registry_identifier: Optional[str] = {% if registry_identifier == registry_identifier %}Field(default="{{ registry_identifier }}"){% else %}Field(default=None){% endif %}
+
+{% endfor %}
+class Organization:
+    """Organization"""
+{% for _, row in data.iterrows() -%}
+    {% set abbreviation = row['abbreviation'] %}
+    {{ (abbreviation if abbreviation == abbreviation else row['name']) | to_class_name | upper }} = {{ row['name'] | to_class_name_underscored }}()
+{%- endfor %}
+
+    ALL = tuple(OrganizationModel.__subclasses__())
+
+    ONE_OF = Annotated[Union[tuple(OrganizationModel.__subclasses__())], Field(discriminator="name")]
+
+    abbreviation_map = {m().abbreviation: m() for m in ALL if m().abbreviation is not None}
+
+    @classmethod
+    def from_abbreviation(cls, abbreviation: str):
+        """Get platform from abbreviation"""
+        return cls.abbreviation_map.get(abbreviation, None)
+
+    name_map = {m().name: m() for m in ALL}
+
+    @classmethod
+    def from_name(cls, name: str):
+        """Get platform from name"""
+        return cls.name_map.get(name, None)
+
+
+Organization.DETECTOR_MANUFACTURERS = one_of_instance(
+    [
+        Organization.AILIPU,
+        Organization.ALLIED,
+        Organization.BASLER,
+        Organization.DODOTRONIC,
+        Organization.EDMUND_OPTICS,
+        Organization.HAMAMATSU,
+        Organization.SPINNAKER,
+        Organization.FLIR,
+        Organization.THE_IMAGING_SOURCE,
+        Organization.THORLABS,
+        Organization.VIEWORKS,
+        Organization.OTHER,
+    ]
+)
+
+Organization.FILTER_MANUFACTURERS = one_of_instance(
+    [
+        Organization.CHROMA,
+        Organization.EDMUND_OPTICS,
+        Organization.MIDOPT,
+        Organization.SEMROCK,
+        Organization.THORLABS,
+        Organization.OTHER,
+    ]
+)
+
+Organization.LENS_MANUFACTURERS = one_of_instance(
+    [
+        Organization.COMPUTAR,
+        Organization.EDMUND_OPTICS,
+        Organization.FUJINON,
+        Organization.HAMAMATSU,
+        Organization.INFINITY_PHOTO_OPTICAL,
+        Organization.KOWA,
+        Organization.LEICA,
+        Organization.MITUTUYO,
+        Organization.NAVITAR,
+        Organization.NIKON,
+        Organization.OLYMPUS,
+        Organization.SCHNEIDER_KREUZNACH,
+        Organization.TAMRON,
+        Organization.THORLABS,
+        Organization.CARL_ZEISS,
+        Organization.OTHER,
+    ]
+)
+
+Organization.DAQ_DEVICE_MANUFACTURERS = one_of_instance(
+    [
+        Organization.AIND,
+        Organization.ARDUINO,
+        Organization.CHAMPALIMAUD,
+        Organization.NATIONAL_INSTRUMENTS,
+        Organization.NEURALYNX,
+        Organization.IMEC,
+        Organization.OEPS,
+        Organization.SECOND_ORDER_EFFECTS,
+        Organization.OTHER,
+    ]
+)
+
+Organization.LASER_MANUFACTURERS = one_of_instance(
+    [
+        Organization.COHERENT_SCIENTIFIC,
+        Organization.HAMAMATSU,
+        Organization.LASOS,
+        Organization.OXXIUS,
+        Organization.QUANTIFI,
+        Organization.SPECTRA_PHYSICS,
+        Organization.THORLABS,
+        Organization.VORTRAN,
+        Organization.OTHER,
+    ]
+)
+
+Organization.LED_MANUFACTURERS = one_of_instance(
+    [Organization.AMS_OSRAM, Organization.DORIC, Organization.PRIZMATIX, Organization.THORLABS, Organization.OTHER]
+)
+
+Organization.MANIPULATOR_MANUFACTURERS = one_of_instance([Organization.NEW_SCALE_TECHNOLOGIES, Organization.OTHER])
+
+Organization.MONITOR_MANUFACTURERS = one_of_instance([Organization.ASUS, Organization.LG, Organization.OTHER])
+
+Organization.SPEAKER_MANUFACTURERS = one_of_instance(
+    [Organization.DIGIKEY, Organization.TYMPHANY, Organization.ISL, Organization.OTHER]
+)
+
+Organization.FUNDERS = one_of_instance(
+    [
+        Organization.AI,
+        Organization.CZI,
+        Organization.MBF,
+        Organization.MJFF,
+        Organization.NCCIH,
+        Organization.NIMH,
+        Organization.NINDS,
+        Organization.SIMONS_FOUNDATION,
+        Organization.TWCF,
+    ]
+)
+
+Organization.RESEARCH_INSTITUTIONS = one_of_instance(
+    [
+        Organization.AIBS,
+        Organization.AIND,
+        Organization.MIT_BCS,
+        Organization.BU,
+        Organization.COLUMBIA,
+        Organization.HUST,
+        Organization.JANELIA,
+        Organization.JHU,
+        Organization.MIBR,
+        Organization.MIT,
+        Organization.NYU,
+        Organization.UCSD,
+        Organization.UPENN,
+        Organization.OTHER,
+    ]
+)
+
+Organization.SUBJECT_SOURCES = one_of_instance(
+    [
+        Organization.AI,
+        Organization.BCM,
+        Organization.COLUMBIA,
+        Organization.HUST,
+        Organization.JANELIA,
+        Organization.JAX,
+        Organization.NYU,
+        Organization.UPENN,
+        Organization.OTHER,
+    ]
+)
+
+Organization.CATHETER_IMPLANT_INSTITUTIONS = one_of_instance(
+    [
+        Organization.AIND,
+        Organization.CRL,
+        Organization.JAX,
+        Organization.OTHER,
+    ]
+)
