@@ -1,0 +1,32 @@
+# Paralex: lexicons of morphological paradigms
+
+[![PyPI version](https://badge.fury.io/py/paralex.svg)](https://badge.fury.io/py/paralex)
+
+Paralex is a standard for morphological lexicons which document inflectional paradigms.
+
+It strives to provide data which is [FAIR](https://doi.org/10.1038/sdata.2016.18), 
+so it can be used automatically,
+[CARE](https://www.gida-global.org/care), so it respects and empowers language 
+communities, and [DeAR](principles.md) (our own set of principles),
+so we can create a virtuous data ecosystem. It was inspired by the [
+Cross-Linguistic Data Formats
+(CLDF)](https://cldf.clld.org/) standard, and adheres to a similar philosophy. We aim to keep the two standards compatible in order to facilitate inter-operability.
+
+![Paralex-schema](graph-paralex.png)
+
+A **paralex** lexicon is a set of tables written as [comma separated value (csv) files](https://frictionlessdata.io/blog/2018/07/09/csv/).
+It follows a relational model, tables are written in [long form](long-form.md), 
+[metadata](metadata.md)
+is written using the [frictionless standard](https://frictionlessdata.io/), and the 
+tables respect [pre-defined conventions](standard.md). An [ontology](paralex_ontology.xml) is also provided to allow converting paralex lexicons into RDF [lemon/ontolex](https://www.w3.org/2016/05/ontolex/) lexicons.
+
+The standard is meant for sharing and interfacing, but not necessarily for data input.
+The expectation is for data creators to first input data through any convenient means,
+then convert the result into the standardized structure for publishing and sharing.
+
+# Available datasets
+
+<iframe src="mapframe.html" height="650" width="100%" marginheight="0" frameborder="0" border="0"></iframe>
+
+**Contributors to the standard:** Sacha Beniamine, Cormac Anderson, Mae Carroll, Borja Herce, Matías Guzmán Naranjo, Matteo Pellegrini, Erich Round, Helen Sims-Williams.
+

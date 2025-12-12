@@ -1,0 +1,660 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="owl2html.xsl"?>
+
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:oa="https://www.w3.org/ns/oa#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:gold="http://purl.org/linguistics/gold/"
+     xmlns:lila="http://lila-erc.eu/ontologies/lila/"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:morph="https://ontolex.github.io/morph/"
+     xmlns:lexicog="http://www.w3.org/ns/lemon/lexicog#"
+     xmlns:lexinfo="http://www.lexinfo.net/ontology/3.0/lexinfo#"
+     xmlns:ontolex="http://www.w3.org/ns/lemon/ontolex#"
+     xmlns:paralex="https://www.paralex-standard.org/paralex_ontology.xml#"
+     xmlns:unimorph="http://purl.org/olia/unimorph.owl#"
+     xmlns:latinflexi="http://lila-erc.eu/ontologies/latinflexi/"
+     xmlns:lila_lemma="http://lila-erc.eu/data/id/lemma/"
+     xmlns:latinflexi_data="http://lila-erc.eu/data/lexicalResources/LatInfLexi/id/">
+    <Ontology>
+        <rdfs:comment>The Paralex ontology introduces classes and properties corresponding respectively to tables and columns defined in the Paralex standard format for paradigmatic lexicons, allowing for a conversion of Paralex lexicons to RDF. Classes and properties that do not correspond to tables and columns of the standard are also introduced to allow for the treatment of more complex aspects (e.g., the modelling of tags and defectiveness; see comments in the corresponding classes and properties).
+
+The names of classes follow the usual convention of RDF classes (i.e., camel style with capitalization of the first letter; e.g., paralex:Form).
+Properties are named exactly as the corresponding column in the standard when there is one (e.g., paralex:phon_form), following the convention of RDF properties when there isn&apos;t one (i.e., camel style without capitalization of the first letter; e.g., paralex:isDefectiveOf, introduced in the ontology to model defective cells).
+
+In general, classes correspond to tables; ids can be used to generate the URI of named individuals that belong to the appropriate class; information on those named individuals can then be expressed by means of properties corresponding to the columns of that table.
+For instance, when converting the data of the example table in https://www.paralex-standard.org/standard/#forms to RDF, we would have an individual :f266 (belonging to the class paralex:Form), linked through the object property paralex:lexeme to the individual :dominus (belonging to the class paralex:Lexeme), through the object property paralex:cell to the individual :abl.pl (belonging to the class paralex:Cell), through the datatype property paralex:phon_form to the string &quot;d o m i n iː s&quot;, and so on.
+
+Whenever possible, Paralex classes and properties are defined as sub-classes and sub-properties of classes and properties of existing vocabularies, to allow for interoperability with other resources using those same vocabularies.
+In particular, reference is made to the Lexicon Model for Ontologies (OntoLex-Lemon). This is by now established as a de-facto standard for the release of lexical resources as RDF Linked Data. Hence, Paralex lexicons can be converted to OntoLex-compliant RDF lexicons.</rdfs:comment>
+    </Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.w3.org/ns/lemon/ontolex#morphologicalPattern -->
+
+    <ObjectProperty rdf:about="http://www.w3.org/ns/lemon/ontolex#morphologicalPattern"/>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#CLTS_id -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#CLTS_id">
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Sound"/>
+        <rdfs:comment>Identifier of this sound in CLTS.</rdfs:comment>
+        <rdfs:label>CLTS id</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#PHOIBLE_id -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#PHOIBLE_id">
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Sound"/>
+        <rdfs:comment>Identifier of this sound in PHOIBLE.</rdfs:comment>
+        <rdfs:label>PHOIBLE id</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#POS -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#POS">
+        <rdfs:range rdf:resource="http://www.lexinfo.net/ontology/3.0/lexinfo#PartOfSpeech"/>
+        <rdfs:comment>Part of Speech. The relevant part of speech for this item.</rdfs:comment>
+        <rdfs:label>POS</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#analysis_tag -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#analysis_tag">
+        <rdfs:subPropertyOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#tag"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#AnalysisTag"/>
+        <rdfs:comment>Property that connects items to their Analysis Tags.</rdfs:comment>
+        <rdfs:label>analysis tag</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#cell -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#cell">
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Cell"/>
+        <rdfs:comment>Reference to a cell identifier. The set of feature values as would appear in a gloss, separated by dots, eg. prs.ind.1sg or f.pl.</rdfs:comment>
+        <rdfs:label>cell</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#composedOf -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#composedOf">
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Cell"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#FeatureValue"/>
+        <rdfs:comment>Property that connects Cells to the FeatureValues they are composed of.</rdfs:comment>
+        <rdfs:label>composed of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#defectiveness_tag -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#defectiveness_tag">
+        <rdfs:subPropertyOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#tag"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#DefectivenessTag"/>
+        <rdfs:comment>Property that connects items to their Defectiveness Tags.</rdfs:comment>
+        <rdfs:label>defectiveness tag</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#epistemic_tag -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#epistemic_tag">
+        <rdfs:subPropertyOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#tag"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#EpistemicTag"/>
+        <rdfs:comment>Property that connects items to their Epistemic Tags.</rdfs:comment>
+        <rdfs:label>epistemic tag</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#feature -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#feature">
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#FeatureValue"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Feature"/>
+        <rdfs:comment>The name of the dimension of this feature, eg. case, tense, modality, voice, force, gender, evidentiality, person, number, polarity...</rdfs:comment>
+        <rdfs:label>feature</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#form -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#form">
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Form"/>
+        <rdfs:comment>Reference to form table row identifiers. These identifiers are specific to form, lexeme, cell triples.</rdfs:comment>
+        <rdfs:label>form</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#hasGrapheme -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#hasGrapheme">
+        <rdfs:range rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq"/>
+        <rdfs:comment>Property that connects Forms to the ordered sequence of Graphemes they are composed of (using rdf:Seq).</rdfs:comment>
+        <rdfs:label>has grapheme</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#hasSound -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#hasSound">
+        <rdfs:range rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq"/>
+        <rdfs:comment>Property that connects Forms to the ordered sequence of Sounds they are composed of (using rdf:Seq).</rdfs:comment>
+        <rdfs:label>has sound</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#inflection_class -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#inflection_class">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#morphologicalPattern"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#InflectionClass"/>
+        <rdfs:comment>Inflection class identifier. This identifier groups together lexemes of the same inflection class.</rdfs:comment>
+        <rdfs:label>inflection class</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#isDefectiveOf -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#isDefectiveOf">
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Lexeme"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Cell"/>
+        <rdfs:comment>Property that connects Lexemes to the Cells they are defective of (i.e., the ones marked as #DEF# in paralex lexicons).</rdfs:comment>
+        <rdfs:label>is defective of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#language_ID -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#language_ID">
+        <rdfs:comment>Identifier for the language. Language identifiers should use some standard ID (iso code, glottocode, etc)</rdfs:comment>
+        <rdfs:label>language ID</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#lexeme -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#lexeme">
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Lexeme"/>
+        <rdfs:comment>Reference to a lexeme identifier. Lexeme identifiers must be unique to paradigms.</rdfs:comment>
+        <rdfs:label>lexeme</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#overabundance_tag -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#overabundance_tag">
+        <rdfs:subPropertyOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#tag"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#OverabundanceTag"/>
+        <rdfs:comment>Property that connects items to their Overabundance Tags.</rdfs:comment>
+        <rdfs:label>overabundance tag</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#source -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#source">
+        <rdfs:comment>Source. Reference to a specific source (bibtex key)</rdfs:comment>
+        <rdfs:label>source</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#tag -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#tag">
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Tag"/>
+        <rdfs:comment>Superproperty that subsumes the specific properties that connect items to different types of tag (analysis_tag, defectiveness_tag, epistemic_tag, variants tag, overabundance tag).</rdfs:comment>
+        <rdfs:label>tag</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#ud -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#ud">
+        <rdfs:comment>The cell or feature value, written following the universal dependency format.</rdfs:comment>
+        <rdfs:comment>UD tags can be modelled as annotations using the Web Annotation Data Model (cf. https://www.w3.org/TR/annotation-model/) when converting data to rdf.</rdfs:comment>
+        <rdfs:label>ud</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#unimorph -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#unimorph">
+        <rdfs:comment>The cell or feature value, written following the unimorph schema.</rdfs:comment>
+        <rdfs:comment>unimorph tags can be modelled as annotations using the Web Annotation Data Model (cf. https://www.w3.org/TR/annotation-model/) when converting data to rdf.</rdfs:comment>
+        <rdfs:label>unimorph</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#variants_tag -->
+
+    <ObjectProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#variants_tag">
+        <rdfs:subPropertyOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#tag"/>
+        <rdfs:range rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#VariantsTag"/>
+        <rdfs:comment>Property that connects items to their Variants Tags.</rdfs:comment>
+        <rdfs:label>variants tag</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Data properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.w3.org/ns/lemon/ontolex#phoneticRep -->
+
+    <DatatypeProperty rdf:about="http://www.w3.org/ns/lemon/ontolex#phoneticRep">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#representation"/>
+    </DatatypeProperty>
+    
+
+
+    <!-- http://www.w3.org/ns/lemon/ontolex#representation -->
+
+    <DatatypeProperty rdf:about="http://www.w3.org/ns/lemon/ontolex#representation"/>
+    
+
+
+    <!-- http://www.w3.org/ns/lemon/ontolex#writtenRep -->
+
+    <DatatypeProperty rdf:about="http://www.w3.org/ns/lemon/ontolex#writtenRep">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#representation"/>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#analysed_orth_form -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#analysed_orth_form">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#representation"/>
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Form"/>
+        <rdfs:comment>Inflected form with analysis, such as segmentation markers (orthographic). The form, given orthographically, with markers for analysis.</rdfs:comment>
+        <rdfs:label>analysed orth. form</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#analysed_phon_form -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#analysed_phon_form">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#representation"/>
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Form"/>
+        <rdfs:comment>Inflected form with analysis, such as segmentation markers (phonemic or phonetic). The form, given in phonemic or phonetic notation, with sounds separated by spaces, and analysis markers.</rdfs:comment>
+        <rdfs:label>analysed phon. form</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#canonical_order -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#canonical_order">
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#int"/>
+        <rdfs:comment>Sorting order for visual presentation. The order in which items are canonically presented. Use integers to represent relative order, order is used per-item.</rdfs:comment>
+        <rdfs:label>canonical order</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#frequency -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#frequency">
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#int"/>
+        <rdfs:comment>Frequency for this row.</rdfs:comment>
+        <rdfs:label>frequency</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#gloss -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#gloss">
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Lexeme"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+        <rdfs:comment>Short meaning, used for glossing. Gloss for this lexeme.</rdfs:comment>
+        <rdfs:label>gloss</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#meaning -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#meaning">
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Lexeme"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+        <rdfs:comment>Definition for this lexeme. This is a description of the lexeme&apos;s overall meaning.</rdfs:comment>
+        <rdfs:label>meaning</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#orth_form -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#orth_form">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#writtenRep"/>
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Form"/>
+        <rdfs:comment>Inflected form (orthographic). The form, given orthographically</rdfs:comment>
+        <rdfs:label>orth. form</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#phon_form -->
+
+    <DatatypeProperty rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#phon_form">
+        <rdfs:subPropertyOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#phoneticRep"/>
+        <rdfs:domain rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Form"/>
+        <rdfs:comment>Inflected form (phonemic or phonetic). The form, given in phonemic or phonetic notation, with sounds separated by spaces</rdfs:comment>
+        <rdfs:label>phon. form</rdfs:label>
+    </DatatypeProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/linguistics/gold/Class -->
+
+    <Class rdf:about="http://purl.org/linguistics/gold/Class"/>
+    
+
+
+    <!-- http://purl.org/linguistics/gold/FeatureSpecification -->
+
+    <Class rdf:about="http://purl.org/linguistics/gold/FeatureSpecification"/>
+    
+
+
+    <!-- http://purl.org/linguistics/gold/FeatureStructure -->
+
+    <Class rdf:about="http://purl.org/linguistics/gold/FeatureStructure"/>
+    
+
+
+    <!-- http://purl.org/linguistics/gold/FormUnit -->
+
+    <Class rdf:about="http://purl.org/linguistics/gold/FormUnit"/>
+    
+
+
+    <!-- http://purl.org/linguistics/gold/Grapheme -->
+
+    <Class rdf:about="http://purl.org/linguistics/gold/Grapheme"/>
+    
+
+
+    <!-- http://purl.org/linguistics/gold/LexicalItem -->
+
+    <Class rdf:about="http://purl.org/linguistics/gold/LexicalItem"/>
+    
+
+
+    <!-- http://purl.org/linguistics/gold/MorphosyntacticProperty -->
+
+    <Class rdf:about="http://purl.org/linguistics/gold/MorphosyntacticProperty"/>
+    
+
+
+    <!-- http://www.lexinfo.net/ontology/3.0/lexinfo#MorphosyntacticProperty -->
+
+    <Class rdf:about="http://www.lexinfo.net/ontology/3.0/lexinfo#MorphosyntacticProperty"/>
+    
+
+
+    <!-- http://www.lexinfo.net/ontology/3.0/lexinfo#PartOfSpeech -->
+
+    <Class rdf:about="http://www.lexinfo.net/ontology/3.0/lexinfo#PartOfSpeech"/>
+    
+
+
+    <!-- http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq -->
+
+    <Class rdf:about="http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq"/>
+    
+
+
+    <!-- http://www.w3.org/ns/lemon/ontolex#Form -->
+
+    <Class rdf:about="http://www.w3.org/ns/lemon/ontolex#Form"/>
+    
+
+
+    <!-- http://www.w3.org/ns/lemon/ontolex#LexicalEntry -->
+
+    <Class rdf:about="http://www.w3.org/ns/lemon/ontolex#LexicalEntry"/>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#AnalysisTag -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#AnalysisTag">
+        <rdfs:subClassOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Tag"/>
+        <rdfs:comment>Class of items in the analysis_tag column of paralex. Tags for marking separate analyses. Identifies sets of forms which are related by the same analysis. Eg: forms from two distinct sources, or a more phonetic and a more phonological transcription.</rdfs:comment>
+        <rdfs:label>Analysis Tag</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Cell -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Cell">
+        <rdfs:subClassOf rdf:resource="http://purl.org/linguistics/gold/FeatureStructure"/>
+        <rdfs:comment>Also subclass of morph:GrammaticalMeaning when morph will be released?</rdfs:comment>
+        <rdfs:comment>Class of items in the cells table of paralex.</rdfs:comment>
+        <rdfs:label>Cell</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#DefectivenessTag -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#DefectivenessTag">
+        <rdfs:subClassOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Tag"/>
+        <rdfs:comment>Class of items in the defectiveness_tag column of paralex. Tags for defectiveness status. Identifies sets of defective forms (eg. pluralia tantum).</rdfs:comment>
+        <rdfs:label>Defectiveness Tag</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#EpistemicTag -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#EpistemicTag">
+        <rdfs:subClassOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Tag"/>
+        <rdfs:comment>Class of items in the epistemic_tag column of paralex. Tags for epistemic status. Identifies sets of forms with the same epistemic status.</rdfs:comment>
+        <rdfs:label>Epistemic Tag</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Feature -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Feature">
+        <rdfs:subClassOf rdf:resource="http://purl.org/linguistics/gold/MorphosyntacticProperty"/>
+        <rdfs:subClassOf rdf:resource="http://www.lexinfo.net/ontology/3.0/lexinfo#MorphosyntacticProperty"/>
+        <rdfs:comment>Class of items in the feature column of paralex.</rdfs:comment>
+        <rdfs:label>Feature</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#FeatureValue -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#FeatureValue">
+        <rdfs:subClassOf rdf:resource="http://purl.org/linguistics/gold/FeatureSpecification"/>
+        <rdfs:comment>Also subclass of morph:GrammaticalMeaning when morph will be released?</rdfs:comment>
+        <rdfs:comment>Class of items in the features-values table of paralex.</rdfs:comment>
+        <rdfs:label>Feature Value</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Form -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Form">
+        <rdfs:subClassOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#Form"/>
+        <rdfs:comment>Class of items in the forms table of paralex.</rdfs:comment>
+        <rdfs:label>Form</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Frequency -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Frequency">
+        <rdfs:comment>Class of items in the frequency table of paralex.</rdfs:comment>
+        <rdfs:comment>Subclass of frac:Frequency when the frac module will be released?</rdfs:comment>
+        <rdfs:label>Frequency</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Grapheme -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Grapheme">
+        <rdfs:subClassOf rdf:resource="http://purl.org/linguistics/gold/Grapheme"/>
+        <rdfs:comment>Class of items in the graphemes table of paralex.</rdfs:comment>
+        <rdfs:label>Grapheme</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#InflectionClass -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#InflectionClass">
+        <rdfs:subClassOf rdf:resource="http://purl.org/linguistics/gold/Class"/>
+        <rdfs:comment>Also subclass of morph:Paradigm when the morph module will be released?</rdfs:comment>
+        <rdfs:comment>Class of items in the inflection_class column of paralex.</rdfs:comment>
+        <rdfs:label>Inflection Class</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Lexeme -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Lexeme">
+        <rdfs:subClassOf rdf:resource="http://purl.org/linguistics/gold/LexicalItem"/>
+        <rdfs:subClassOf rdf:resource="http://www.w3.org/ns/lemon/ontolex#LexicalEntry"/>
+        <rdfs:comment>Class of items in the lexemes table of paralex.</rdfs:comment>
+        <rdfs:label>Lexeme</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#OrthMorph -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#OrthMorph">
+        <rdfs:comment>Class of morphs that are inferred from segmentations of orthographic transcriptions (i.e., from the analysed_orth_form column) when converting data to rdf.</rdfs:comment>
+        <rdfs:comment>Subclass of morph:Morph when the morph module will be released?</rdfs:comment>
+        <rdfs:label>Orth. Morph</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#OverabundanceTag -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#OverabundanceTag">
+        <rdfs:subClassOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Tag"/>
+        <rdfs:comment>Class of items in the overabundance_tag column of paralex. Tags for overabundant forms. Identifies sets of overabundant forms. For example, overabundant forms across lexemes might belong to a series of regular and irregular forms, or a series of short and long forms, etc.</rdfs:comment>
+        <rdfs:label>Overabundance Tag</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#PhonMorph -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#PhonMorph">
+        <rdfs:comment>Class of morphs that are inferred from segmentations of phonemic or phonetic transcriptions (i.e., from the analysed_phon_form column of paralex) when converting data to rdf.</rdfs:comment>
+        <rdfs:comment>Subclass of morph:Morph when the morph module will be released?</rdfs:comment>
+        <rdfs:label>Phon. Morph</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Sound -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Sound">
+        <rdfs:subClassOf rdf:resource="http://purl.org/linguistics/gold/FormUnit"/>
+        <rdfs:comment>Class of items in the sounds table of paralex.</rdfs:comment>
+        <rdfs:label>Sound</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#Tag -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#Tag">
+        <rdfs:comment>Class of items in the tags table of paralex. Tags can be modelled as annotations using the Web Annotation Data Model (cf. https://www.w3.org/TR/annotation-model/) when converting data to rdf.</rdfs:comment>
+        <rdfs:label>Tag</rdfs:label>
+    </Class>
+    
+
+
+    <!-- https://www.paralex-standard.org/paralex_ontology.xml#VariantsTag -->
+
+    <Class rdf:about="https://www.paralex-standard.org/paralex_ontology.xml#VariantsTag">
+        <rdfs:subClassOf rdf:resource="https://www.paralex-standard.org/paralex_ontology.xml#Tag"/>
+        <rdfs:comment>Class of items in the variants_tag column of paralex. Tags for form variants. Identifies sets of forms used by specific groups of speakers. Eg. dialectal variants.</rdfs:comment>
+        <rdfs:label>Variants Tag</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.25.2023-02-15T19:15:49Z) https://github.com/owlcs/owlapi -->
+
