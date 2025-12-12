@@ -1,0 +1,155 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nabu"
+authors = [
+    {name = "Pierre Paleo", email = "pierre.paleo@esrf.fr"},
+    {name = "Henri Payno", email = "henri.payno@esrf.fr"},
+    {name = "Alessandro Mirone", email = "mirone@esrf.fr"},
+    {name = "Jérôme Lesaint", email = "jerome.lesaint@esrf.fr"},
+]
+maintainers = [
+    {name = "Pierre Paleo", email = "pierre.paleo@esrf.fr"}
+]
+dynamic = ["version"]
+description = "Nabu - Tomography software"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = [
+    "tomography",
+    "reconstruction",
+    "X-ray imaging",
+    "synchrotron radiation",
+    "High Performance Computing",
+    "Parallel geometry",
+    "Conebeam geometry",
+    "Helical geometry",
+    "Ring artefact correction",
+    "Geometric calibration",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Environment :: Console",
+    "Operating System :: Unix",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+
+]
+dependencies = [
+    "numpy > 1.9.0",
+    "scipy",
+    "h5py>=3.0",
+    "silx >= 0.15.0",
+    "tomoscan >= 2.3.0",
+    "psutil",
+    "pytest",
+    "tifffile",
+    "tqdm",
+]
+#packages = find
+
+
+
+[project.urls]
+Homepage = "https://gitlab.esrf.fr/tomotools/nabu"
+Documentation = "http://www.silx.org/pub/nabu/doc"
+Repository = "https://gitlab.esrf.fr/tomotools/nabu/-/releases"
+Changelog = "https://gitlab.esrf.fr/tomotools/nabu/-/blob/master/CHANGELOG.md"
+
+[project.optional-dependencies]
+full = [
+    "scikit-image",
+    "PyWavelets",
+    "glymur",
+    "pycudwt",
+    "sluurp >=0.3",
+    "pyvkfft",
+]
+full_nocuda = [
+    "scikit-image",
+    "PyWavelets",
+    "glymur",
+    "sluurp >=0.3",
+    "pyvkfft",
+]
+doc = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocs-material-extensions",
+    "mkdocs-gen-files",
+    "mkdocs-markdownextradata-plugin",
+    "mkdocs-pagetree-plugin",
+    "mkapi",
+    "mkdocs-jupyter",
+    "nbconvert",
+    "markdown-exec",
+]
+
+[project.scripts]
+nabu = "nabu.app.reconstruct:main"
+nabu-config = "nabu.app.bootstrap:bootstrap"
+nabu-test = "nabu.tests:nabu_test"
+nabu-histogram = "nabu.app.histogram:histogram_cli"
+nabu-rotate = "nabu.app.rotate:rotate_cli"
+nabu-double-flatfield = "nabu.app.double_flatfield:dff_cli"
+nabu-validator = "nabu.app.validator:main"
+nabu-helical = "nabu.app.reconstruct_helical:main_helical"
+nabu-helical-prepare-weights-double = "nabu.app.prepare_weights_double:main"
+nabu-stitching-config = "nabu.app.bootstrap_stitching:bootstrap_stitching"
+nabu-stitching = "nabu.app.stitching:main"
+nabu-cast = "nabu.app.cast_volume:main"
+nabu-compare-volumes = "nabu.app.compare_volumes:compare_volumes_cli"
+nabu-shrink-dataset = "nabu.app.shrink_dataset:shrink_cli"
+nabu-composite-cor = "nabu.app.composite_cor:main"
+nabu-poly2map = "nabu.app.create_distortion_map_from_poly:create_distortion_maps_entry_point"
+nabu-diag2pix = "nabu.app.diag_to_pix:main"
+nabu-diag2rot = "nabu.app.diag_to_rot:main"
+nabu-multicor = "nabu.app.multicor:main"
+nabu-reduce-dark-flat = "nabu.app.reduce_dark_flat:main"
+nabu-display-timings = "nabu.app.parse_reconstruction_log:parse_reclog_cli"
+nabu-pcaflats = "nabu.app.pcaflats:main"
+nabu-estimate-motion = "nabu.app.estimate_motion:estimate_motion"
+nabu-zflip = "nabu.app.flip_volume_vertically:flip_volume_vertically_app"
+
+[tool.setuptools.dynamic]
+version = {attr = "nabu.version"}
+#readme = {file = ["README.md"]}
+
+[tool.setuptools.packages.find]
+where = ["."]  # list of folders that contain the packages (["."] by default)
+# include = ["nabu*"]  # package names should match these glob patterns (["*"] by default)
+exclude = ["sandbox","build*"]  # exclude packages matching these glob patterns (empty by default)
+# namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+
+[tool.setuptools.package-data]
+"nabu.cuda" = ["src/*.cu", "src/*.h"]
+"nabu.opencl" = ["src/*.cl", "src/*.h"]
+"nabu.resources" = ["templates/*.conf"]
+
+
+[tool.bandit]
+exclude_dirs = []
+tests = []
+skips = [
+    "B101", # TODO - to be handled properly
+    "B105", # B105:hardcoded_password_string - already accounted by ruff
+    "B110", # Try, Except, Pass detected. - already accounted by ruff
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+extend-exclude = "nabu/thirdparty/"
