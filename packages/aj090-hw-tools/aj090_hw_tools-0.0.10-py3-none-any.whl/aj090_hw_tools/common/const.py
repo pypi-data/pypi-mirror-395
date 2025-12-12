@@ -1,0 +1,2 @@
+SERIAL_NUM_PATTERN = r'\w\d{10}'
+SERIAL_INPUT_PATTERN = r'\d{10}'
