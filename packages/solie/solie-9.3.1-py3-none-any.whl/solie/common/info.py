@@ -1,0 +1,9 @@
+"""Package information and metadata."""
+
+from importlib import import_module, metadata
+from inspect import getfile
+from pathlib import Path
+
+PACKAGE_NAME = __name__.split(".")[0]
+PACKAGE_VERSION = metadata.version(PACKAGE_NAME)
+PACKAGE_PATH = Path(getfile(import_module(PACKAGE_NAME))).parent
