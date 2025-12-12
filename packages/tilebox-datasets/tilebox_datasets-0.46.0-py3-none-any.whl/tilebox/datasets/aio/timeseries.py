@@ -1,0 +1,6 @@
+from tilebox.datasets.aio.dataset import CollectionClient as TimeseriesCollection
+from tilebox.datasets.aio.dataset import DatasetClient as TimeseriesDataset
+
+# only for for legacy reasons, to preserve backwards compatibility for older imports
+
+__all__ = ["TimeseriesCollection", "TimeseriesDataset"]
