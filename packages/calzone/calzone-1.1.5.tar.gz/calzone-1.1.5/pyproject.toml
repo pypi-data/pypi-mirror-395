@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools", "setuptools-rust"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calzone"
+authors = [
+    {name = "Valentin Niess", email = "valentin.niess@gmail.com"}
+]
+description = "A Geant4 Python wrapper."
+readme = "README.md"
+license = {text = "LGPLv3"}
+keywords = ["Python", "Monte Carlo", "Geant4"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics"
+]
+version = "1.1.5"
+requires-python = ">=3.7.0"
+dependencies = [
+    "numpy >= 1.6.0",
+]
+
+[project.scripts]
+calzone = "calzone.__main__:main"
+
+[project.urls]
+source = "https://github.com/niess/calzone"
+
+[tool.setuptools.packages.find]
+where = ["src/python"]
+
+[[tool.setuptools-rust.ext-modules]]
+target = "calzone._core"
+
+# Build options for Python wheels.
+[tool.cibuildwheel.linux]
+build = [ "cp37-manylinux_x86_64", "cp37-manylinux_aarch64" ]
+manylinux-x86_64-image = "manylinux2014"
+
+environment = "PATH=$HOME/.cargo/bin:$PATH"
+environment-pass = [ "GEANT4_PREFIX" ]
+before-all = """
+curl -sSf https://sh.rustup.rs -o rustup.sh && \
+sh rustup.sh -y\
+"""
+repair-wheel-command = """
+LD_LIBRARY_PATH=$PWD/$GEANT4_PREFIX/lib64/:$PWD/$GEANT4_PREFIX/lib/:$LD_LIBRARY_PATH \
+auditwheel repair -w {dest_dir} {wheel}\
+"""
+
+[tool.cibuildwheel.macos]
+build = [ "cp38-macosx_arm64", "cp38-macosx_x86_64" ]
+
+repair-wheel-command = """
+DYLD_LIBRARY_PATH=$PWD/$GEANT4_PREFIX/lib/:$DYLD_LIBRARY_PATH \
+delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}\
+"""
+
+[tool.cibuildwheel.windows]
+build = [ "cp39-win_amd64", "cp39-win_arm64" ]
+
+before-all = "python3 -m pip install delvewheel"
+repair-wheel-command = 'delvewheel repair --add-path "%CD%\%GEANT4_PREFIX%\bin;%CD%\%GEANT4_PREFIX%\lib" -w {dest_dir} -v {wheel}'
