@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package {{stinger.name | snake_case}};
+
+{%macro field(arg, index)%}
+{%-if arg.arg_type.name.lower() == 'primitive'%}
+{%if arg.optional%}optional {%endif%}{{arg.pb.data_type}} {{arg.name}} = {{index}};
+{%-elif arg.arg_type.name.lower() == 'enum'%}
+{%if arg.optional%}optional {%endif%}{{arg.pb.data_type}} {{arg.name}} = {{index}};
+{%-elif arg.arg_type.name.lower() == 'struct'%}
+{%if arg.optional%}optional {%endif%}{{arg.pb.data_type}} {{arg.name}} = {{index}};
+{%-elif arg.arg_type.name.lower() == 'array'%}
+{%if arg.optional%}optional {%endif%}repeated {{arg.pb.item_type}} {{arg.name}} = {{index}};
+{%-elif arg.arg_type.name.lower() == 'datetime'%}
+{%if arg.optional%}optional {%endif%}string {{arg.name}} = {{index}};  // ISO 8601 format
+{%-elif arg.arg_type.name.lower() == 'duration'%}
+{%if arg.optional%}optional {%endif%}string {{arg.name}} = {{index}};  // ISO 8601 duration format
+{%-elif arg.arg_type.name.lower() == 'binary'%}
+{%if arg.optional%}optional {%endif%}string {{arg.name}} = {{index}};  // base64 encoded binary
+{%- else %}
+// Unknown type for {{arg.name}}: {{arg.arg_type.name}}
+{%-endif-%}
+{%endmacro%}
+
+{%for i_enum_name, i_enum in stinger.enums.items()%}
+enum {{i_enum.pb.message_name}} {
+    {{i_enum_name | CONST_CASE}}_UNSPECIFIED = 0; 
+    {%-for value in i_enum.values %}
+    {{value | CONST_CASE}} = {{loop.index}};
+    {%-endfor%}
+}
+{%endfor%}
+{%for struct_name, struct in stinger.structs.items() %}
+message {{struct.pb.message_name}} {
+    {%-for arg in struct.members%}
+    {{- field(arg, loop.index) | indent(4) }}
+    {%-endfor%}
+}
+{%endfor%}
+
+{%for signal_name, signal in stinger.signals.items()%}
+message {{signal_name | UpperCamelCase}}Signal {
+    {%- for arg in signal.arg_list %}
+    {{- field(arg, loop.index) | indent(4) }}
+    {%-endfor%}
+}
+{%endfor%}
+
+{%for prop_name, prop in stinger.properties.items()%}
+message {{prop_name | UpperCamelCase}}Property {
+    {%- for arg in prop.arg_list %}
+    {{- field(arg, loop.index) | indent(4) }}
+    {%-endfor%}
+}
+{%endfor%}
+
+{%for method_name, method in stinger.methods.items()%}
+message {{method_name | UpperCamelCase}}Request {
+    {%- for arg in method.arg_list %}
+    {{- field(arg, loop.index) | indent(4) }}
+    {%-endfor%}
+}
+
+message {{method_name | UpperCamelCase}}Response {
+    {%- for arg in method.return_arg_list %}
+    {{- field(arg, loop.index) | indent(4) }}
+    {%-endfor%}
+}
+{%endfor%}
