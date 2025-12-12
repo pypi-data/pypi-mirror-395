@@ -1,0 +1,354 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+The abacus wrapper
+"""
+
+import numpy as np
+from scipy.linalg import eigh
+
+from HamiltonIO.hamiltonian import Hamiltonian
+from HamiltonIO.mathutils.lowdin import Lowdin_symmetric_orthonormalization
+from HamiltonIO.mathutils.rotate_spin import (
+    rotate_spinor_matrix_einsum_R,
+)
+from HamiltonIO.model.kR_convert import R_to_k, R_to_onek
+from HamiltonIO.model.occupations import Occupations
+
+
+class LCAOHamiltonian(Hamiltonian):
+    def __init__(
+        self,
+        HR,
+        SR,
+        Rlist,
+        nbasis=None,
+        orbs=None,
+        atoms=None,
+        nspin=1,
+        HR_soc=None,
+        HR_nosoc=None,
+        nel=None,
+        so_strength=1.0,
+        orth=False,
+        orb_dict=None,
+    ):
+        self.R2kfactor = 2j * np.pi
+        self.is_orthogonal = False
+        self.split_soc = False
+        self._name = "LCAOHamiltonian"
+        self._HR = HR
+        self.SR = SR
+        self.Rlist = Rlist
+        self.nbasis = nbasis
+        self.orbs = orbs
+        self.atoms = atoms
+        self.nspin = nspin
+        self.norb = nbasis * nspin
+        self.nel = nel
+        self.orb_dict = orb_dict  # Store orb_dict for SIESTA parsers
+        if HR_soc is not None:
+            self.set_HR_soc(HR_soc=HR_soc, HR_nosoc=HR_nosoc, HR_full=HR)
+        self.soc_rotation_angle = [0.0, 0.0]
+        self.so_strength = so_strength
+        self.orth = orth
+        if orth:
+            self.is_orthogonal = True
+        self.H0 = None
+
+    @property
+    def Rlist(self):
+        return self._Rlist
+
+    @Rlist.setter
+    def Rlist(self, Rlist):
+        self._Rlist = Rlist
+        self._build_Rdict()
+
+    def get_Ridx(self, R):
+        """
+        Get the index of R in the Rlist
+        """
+        return self.Rdict[tuple(R)]
+
+    # def get_H0(self):
+    #    return self._get_H0(*self.soc_rotation_angle)
+
+    def get_max_Hsoc_abs(self):
+        return np.max(np.abs(np.abs(self.HR_soc)))
+
+    def get_max_H0_spin_abs(self):
+        H0 = self.get_H0()
+        Hupup = H0[::2, ::2]
+        Hupdn = H0[::2, 1::2]
+        Hdnup = H0[1::2, ::2]
+        Hdndn = H0[1::2, 1::2]
+        # Hdiff = np.abs(np.abs(Hupup - Hdndn))
+        Hx = np.abs(np.abs(Hupdn + Hdnup))
+        Hy = np.abs(np.abs(Hupdn - Hdnup))
+        Hz = np.abs(np.abs(Hupup - Hdndn))
+        return np.max([Hx, Hy, Hz])
+
+    def get_H0(self):
+        R0 = self.get_Ridx((0, 0, 0))
+        if self.split_soc:
+            if self.H0 is None:
+                theta, phi = self.soc_rotation_angle
+                self.H0 = rotate_spinor_matrix_einsum_R(self.HR_nosoc, theta, phi)[R0]
+            return self.H0
+        else:
+            return self.HR[R0]
+
+    def get_HR_soc(self, R):
+        return self.HR_soc[self.get_Ridx(R)]
+
+    def get_Hk_soc(self, kpts):
+        return R_to_k(kpts, self.Rlist, self.HR_soc)
+
+    def set_HR_soc(self, HR_soc=None, HR_nosoc=None, HR_full=None):
+        self.split_soc = True
+        self.HR_soc = HR_soc
+        self.HR_nosoc = HR_nosoc
+        self.HR_full = HR_full
+        if HR_soc is None:
+            self.HR_soc = HR_full - HR_nosoc
+        if HR_nosoc is None:
+            self.HR_nosoc = HR_full - HR_soc
+        if HR_full is None:
+            self.HR_full = HR_soc + HR_nosoc
+
+    def set_so_strength(self, so_strength):
+        self.so_strength = so_strength
+
+    def set_Hsoc_rotation_angle(self, angle):
+        """
+        Set the rotation angle for SOC part of Hamiltonian
+        """
+        self.soc_rotation_angle = angle
+
+    @property
+    def HR(self):
+        if self.split_soc:
+            theta, phi = self.soc_rotation_angle
+            _HR = self.get_HR_from_soc(theta, phi, self.so_strength)
+            return _HR
+        else:
+            return self._HR
+
+    def get_HR_from_soc(self, theta, phi, so_strength):
+        HR = (
+            rotate_spinor_matrix_einsum_R(self.HR_nosoc, theta, phi)
+            + self.HR_soc * so_strength
+        )
+        return HR
+
+    @HR.setter
+    def set_HR(self, HR):
+        self._HR = HR
+
+    def _build_Rdict(self):
+        if hasattr(self, "Rdict"):
+            pass
+        else:
+            self.Rdict = {}
+            for iR, R in enumerate(self.Rlist):
+                self.Rdict[tuple(R)] = iR
+
+    def get_hamR(self, R):
+        return self.HR[self.Rdict[tuple(R)]]
+
+    def gen_ham(self, k, convention=2):
+        """
+        generate hamiltonian matrix at k point.
+        H_k( i, j)=\sum_R H_R(i, j)^phase.
+        There are two conventions,
+        first:
+        phase =e^{ik(R+rj-ri)}. often better used for berry phase.
+        second:
+        phase= e^{ikR}. We use the first convention here.
+
+        :param k: kpoint
+        :param convention: 1 or 2.
+        """
+        # Hk = np.zeros((self.nbasis, self.nbasis), dtype="complex")
+        # Sk = np.zeros((self.nbasis, self.nbasis), dtype="complex")
+        if convention == 2:
+            # for iR, R in enumerate(self.Rlist):
+            #    phase = np.exp(self.R2kfactor * np.dot(k, R))
+            #    H = self.HR[iR] * phase
+            #    # Hk += H + H.conjugate().T
+            #    Hk += H
+            #    S = self.SR[iR] * phase
+            #    # Sk += S + S.conjugate().T
+            #    Sk += S
+            #    # Hk = (Hk + Hk.conj().T)/2
+            #    # Sk = (Sk + Sk.conj().T)/2
+            Hk = R_to_onek(k, self.Rlist, self.HR)
+            Sk = R_to_onek(k, self.Rlist, self.SR)
+            if self.orth:
+                print("applying Lowdin symmetric orthonormalization...")
+                Hk = Lowdin_symmetric_orthonormalization(Hk, Sk)
+                Sk = None
+        elif convention == 1:
+            # TODO: implement the first convention (the r convention)
+            raise NotImplementedError("convention 1 is not implemented yet.")
+            pass
+        else:
+            raise ValueError("convention should be either 1 or 2.")
+        return Hk, Sk
+
+    def solve(self, k, convention=2):
+        Hk, Sk = self.gen_ham(k, convention=convention)
+        return eigh(Hk, Sk)
+
+    def solve_all(self, kpts, convention=2):
+        nk = len(kpts)
+        evals = np.zeros((nk, self.nbasis), dtype=float)
+        evecs = np.zeros((nk, self.nbasis, self.nbasis), dtype=complex)
+        for ik, k in enumerate(kpts):
+            evals[ik], evecs[ik] = self.solve(k, convention=convention)
+        return evals, evecs
+
+    def HSE_k(self, kpt, convention=2):
+        H, S = self.gen_ham(tuple(kpt), convention=convention)
+        evals, evecs = eigh(H, S)
+        return H, S, evals, evecs
+
+    def HS_and_eigen(self, kpts, convention=2):
+        """
+        calculate eigens for all kpoints.
+        :param kpts: list of k points.
+        """
+        nk = len(kpts)
+        hams = np.zeros((nk, self.nbasis, self.nbasis), dtype=complex)
+        if self.orth:
+            Ss = None
+        else:
+            Ss = np.zeros((nk, self.nbasis, self.nbasis), dtype=complex)
+        evals = np.zeros((nk, self.nbasis), dtype=float)
+        evecs = np.zeros((nk, self.nbasis, self.nbasis), dtype=complex)
+        if self.orth:
+            for ik, k in enumerate(kpts):
+                hams[ik], _, evals[ik], evecs[ik] = self.HSE_k(
+                    tuple(k), convention=convention
+                )
+        else:
+            for ik, k in enumerate(kpts):
+                hams[ik], Ss[ik], evals[ik], evecs[ik] = self.HSE_k(
+                    tuple(k), convention=convention
+                )
+        return hams, Ss, evals, evecs
+
+    def get_fermi_energy(self, evals, width=0.01, kweights=None, nspin=2):
+        occ = Occupations(nel=self.nel, wk=kweights, nspin=nspin)
+        efermi = occ.efermi(evals)
+        return efermi
+
+    def _get_orbital_atom_mapping(self):
+        """
+        Get mapping from orbital indices to atom indices.
+
+        Returns:
+            dict: Dictionary mapping atom_index -> list of orbital indices
+
+        For ABACUS: Uses orbital.iatom attribute
+        For SIESTA: Uses orb_dict attribute if available
+        """
+        orb_atom_map = {}
+
+        # Try ABACUS-style (orbs list with iatom attribute)
+        if hasattr(self, "orbs") and self.orbs is not None:
+            if hasattr(self.orbs[0], "iatom"):
+                # ABACUS case
+                for iorb, orb in enumerate(self.orbs):
+                    iatom = orb.iatom
+                    if iatom not in orb_atom_map:
+                        orb_atom_map[iatom] = []
+                    orb_atom_map[iatom].append(iorb)
+                return orb_atom_map
+
+        # Try SIESTA-style (orb_dict attribute)
+        if hasattr(self, "orb_dict") and self.orb_dict is not None:
+            # SIESTA case - orb_dict maps atom_index -> list of orbital names
+            # Need to map orbital names to indices
+            orb_name_to_idx = (
+                {name: idx for idx, name in enumerate(self.orbs)}
+                if hasattr(self, "orbs") and self.orbs
+                else {}
+            )
+            for iatom, orb_names in self.orb_dict.items():
+                orb_atom_map[iatom] = [
+                    orb_name_to_idx[name]
+                    for name in orb_names
+                    if name in orb_name_to_idx
+                ]
+            return orb_atom_map
+
+        raise AttributeError(
+            "Cannot determine orbital-to-atom mapping. "
+            "Neither ABACUS orbs nor SIESTA orb_dict found."
+        )
+
+    def get_intra_atomic_blocks(self, atom_indices=None):
+        """
+        Extract intra-atomic (on-site, R=(0,0,0)) Hamiltonian blocks for each atom.
+
+        Parameters:
+            atom_indices: list of int or None
+                Atom indices to extract. If None, extract all atoms.
+
+        Returns:
+            dict: Dictionary with structure:
+                {
+                    atom_index: {
+                        'H_full': H(R=0) block for this atom (nbasis_atom x nbasis_atom),
+                        'H_nosoc': non-SOC part if split_soc=True, else None,
+                        'H_soc': SOC part if split_soc=True, else None,
+                        'orbital_indices': list of orbital indices for this atom
+                    }
+                }
+        """
+        # Get H(R=0)
+        R0_idx = self.get_Ridx((0, 0, 0))
+        H0_full = self.HR[R0_idx]
+
+        # Get SOC decomposition if available
+        H0_nosoc = None
+        H0_soc = None
+        if self.split_soc:
+            H0_nosoc = self.HR_nosoc[R0_idx]
+            H0_soc = self.HR_soc[R0_idx]
+
+        # Get orbital-to-atom mapping
+        orb_atom_map = self._get_orbital_atom_mapping()
+
+        # Filter atoms if specified
+        if atom_indices is None:
+            atom_indices = sorted(orb_atom_map.keys())
+
+        # Extract blocks for each atom
+        result = {}
+        for iatom in atom_indices:
+            if iatom not in orb_atom_map:
+                continue
+
+            orb_inds = orb_atom_map[iatom]
+            orb_inds = np.array(orb_inds)
+
+            # Extract atom block using advanced indexing
+            H_atom_full = H0_full[np.ix_(orb_inds, orb_inds)]
+
+            atom_data = {
+                "H_full": H_atom_full,
+                "H_nosoc": None,
+                "H_soc": None,
+                "orbital_indices": orb_inds.tolist(),
+            }
+
+            if self.split_soc:
+                atom_data["H_nosoc"] = H0_nosoc[np.ix_(orb_inds, orb_inds)]
+                atom_data["H_soc"] = H0_soc[np.ix_(orb_inds, orb_inds)]
+
+            result[iatom] = atom_data
+
+        return result
