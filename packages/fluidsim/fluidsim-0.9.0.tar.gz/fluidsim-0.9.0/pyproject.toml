@@ -1,0 +1,273 @@
+[build-system]
+requires = [
+         "meson-python",
+         "numpy",
+         # "transonic@hg+https://foss.heptapod.net/fluiddyn/transonic",
+         "transonic>=0.6.2",
+         # "pythran@git+https://github.com/serge-sans-paille/pythran",
+         "pythran>=0.9.7",
+         ]
+build-backend = 'mesonpy'
+
+[project]
+name = 'fluidsim'
+description = "Framework for studying fluid dynamics with simulations."
+keywords = [
+         "Fluid dynamics",
+         "research",
+]
+authors = [
+    {name = "pierre.augier", email = "pierre.augier@univ-grenoble-alpes.fr"},
+]
+version = '0.9.0'
+requires-python = ">=3.11"
+dependencies = [
+    # should be (but issue PDM)
+    # "fluidsim-core==0.9.0",
+    "fluidsim-core>=0.8.6,<0.9.1",
+    "h5py",
+    "h5netcdf",
+    "transonic>=0.6.2",
+    "xarray",
+    "rich",
+    "matplotlib>=3.3",
+    "scipy",
+]
+
+classifiers = [
+      "Development Status :: 5 - Production/Stable",
+      "Intended Audience :: Science/Research",
+      "Intended Audience :: Education",
+      "Topic :: Scientific/Engineering",
+      "Programming Language :: Python",
+      "Programming Language :: Python :: 3",
+      "Programming Language :: Python :: 3.11",
+      "Programming Language :: Python :: 3.12",
+      "Programming Language :: Python :: 3.13",
+      "Programming Language :: Python :: 3.14",
+]
+readme = "README.md"
+license = "CeCILL-2.1"
+license-files = ["LICENSE.txt"]
+
+[project.urls]
+"Source" = "https://foss.heptapod.net/fluiddyn/fluidsim"
+"Documentation" = "https://fluidsim.readthedocs.io"
+"Git Mirror" = "https://github.com/fluiddyn/fluidsim"
+
+[project.optional-dependencies]
+
+fft = [
+    "pyfftw >= 0.10.4",
+    "fluidfft >= 0.4.0",
+]
+# sphere = [
+#     "fluidsht >= 0.0.3a0",
+# ]
+mpi = [
+    "mpi4py",
+]
+test = [
+    "pytest",
+    "coverage",
+    "pytest-cov",
+    "pytest-allclose",
+    "pytest-mock",
+    "ipython",
+    "pymech",
+]
+test-mpi = ["fluidsim[test]", "pytest-mpi"]
+pulp = ["pulp"]
+
+[project.scripts]
+fluidsim = "fluidsim.util.console.__main__:run"
+fluidsim-create-xml-description = "fluidsim.base.output:run"
+fluidsim-profile = "fluidsim.util.console.__main__:run_profile"
+fluidsim-bench = "fluidsim.util.console.__main__:run_bench"
+fluidsim-bench-analysis = "fluidsim.util.console.__main__:run_bench_analysis"
+fluidsim-test = "fluidsim.util.testing:run"
+fluidsim-restart = "fluidsim.util.scripts.restart:main"
+fluidsim-modif-resolution = "fluidsim.util.scripts.modif_resolution:main"
+fluidsim-ipy-load = "fluidsim.util.scripts.ipy_load:start_ipython_load_sim"
+
+[project.entry-points."fluidsim.solvers"]
+basil = "fluidsim.base.basilisk.solver"
+dedalus = "fluidsim.base.dedalus.solver"
+Base = "fluidsim.base.solvers.base"
+BasePS = "fluidsim.base.solvers.pseudo_spect"
+BaseSH = "fluidsim.base.sphericalharmo.solver"
+ad1d = "fluidsim.solvers.ad1d.solver"
+burgers1d = "fluidsim.solvers.burgers1d.solver"
+nl1d = "fluidsim.solvers.nl1d.solver"
+ns2d = "fluidsim.solvers.ns2d.solver"
+ns3d = "fluidsim.solvers.ns3d.solver"
+plate2d = "fluidsim.solvers.plate2d.solver"
+sw1l = "fluidsim.solvers.sw1l.solver"
+waves2d = "fluidsim.solvers.waves2d.solver"
+
+[project.entry-points."fluidsim.solvers.ad1d"]
+pseudo_spect = "fluidsim.solvers.ad1d.pseudo_spect.solver"
+
+[project.entry-points."fluidsim.solvers.burgers1d"]
+skew_sym = "fluidsim.solvers.burgers1d.skew_sym.solver"
+
+[project.entry-points."fluidsim.solvers.models0d"]
+lorenz = "fluidsim.solvers.models0d.lorenz.solver"
+predaprey = "fluidsim.solvers.models0d.predaprey.solver"
+
+[project.entry-points."fluidsim.solvers.ns2d"]
+bouss = "fluidsim.solvers.ns2d.bouss.solver"
+strat = "fluidsim.solvers.ns2d.strat.solver"
+
+[project.entry-points."fluidsim.solvers.ns3d"]
+bouss = "fluidsim.solvers.ns3d.bouss.solver"
+strat = "fluidsim.solvers.ns3d.strat.solver"
+
+[project.entry-points."fluidsim.solvers.sphere"]
+ns2d = "fluidsim.solvers.sphere.ns2d.solver"
+sw1l = "fluidsim.solvers.sphere.sw1l.solver"
+
+[project.entry-points."fluidsim.solvers.sw1l"]
+exactlin = "fluidsim.solvers.sw1l.exactlin.solver"
+#exactlin.modified = "fluidsim.solvers.sw1l.exactlin.modified.solver"
+modified = "fluidsim.solvers.sw1l.modified.solver"
+onlywaves = "fluidsim.solvers.sw1l.onlywaves.solver"
+
+[tool.pdm]
+ignore_package_warnings = ["ipython"]
+
+[tool.pdm.dev-dependencies]
+
+# because meson-python editable build needs the build dependencies
+build = [
+    "meson-python",
+    "numpy>=2.0.0",
+    # "transonic@hg+https://foss.heptapod.net/fluiddyn/transonic@default",
+    "transonic>=0.6.2",
+    "pythran>=0.9.7",
+    "ninja",
+    # needed for fluidsim-core (from lib and --no-isolation)
+    "flit-core >=3.2,<4",
+]
+doc = [
+    "sphinx",
+    "sphinx_rtd_theme",
+    "numpydoc",
+    "jupyterlab",
+    "ipympl",
+    "pandas",
+    "ipynbname",
+    "myst-nb",
+    "sphinx-copybutton",
+    # needed for fluidsim-core (from lib and --no-isolation)
+    "flit-core >=3.2,<4",
+]
+dev = [
+    "pip",
+    "ruff",
+    "pylint",
+    "ipdb",
+    "mdformat-myst",
+    # needed for fluidsim-core (from lib and --no-isolation)
+    "flit-core >=3.2,<4",
+    "-e fluidsim-core @ file:///${PROJECT_ROOT}/lib",
+]
+
+[tool.pdm.scripts]
+format-py = 'ruff format *.py fluidsim scripts bench doc lib'
+lint = {shell="pylint -rn --rcfile=pylintrc --jobs=$(nproc) fluidsim --exit-zero"}
+check-format = 'ruff format --check fluidsim scripts bench doc lib'
+validate_code = {composite = ["check-format", "lint"]}
+
+[tool.pdm.options]
+lock = ["-G", ":all"]
+sync = ["--no-isolation"]
+install = ["--no-isolation"]
+
+
+[tool.coverage.run]
+source = [
+  "./fluidsim",
+  "./lib",
+]
+data_file = ".coverage/coverage"
+omit = [
+    "*/try_*.py",
+    "*/_old_*.py",
+    "**/__pythran__/*.py",
+    "**/__python__/*.py",
+    "**/__numba__/*.py",
+]
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "if \"sphinx\" in sys.modules:",
+    "raise ValueError",
+    "raise NotImplementedError",
+    "raise ImportError",
+    "except KeyError:",
+    "except ImportError:",
+    "except AttributeError:",
+    "except NotImplementedError:",
+]
+
+[tool.coverage.html]
+directory = ".coverage"
+
+[tool.coverage.xml]
+output = ".coverage/coverage.xml"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "lib",
+    "fluidsim",
+]
+addopts = "--pdbcls=IPython.terminal.debugger:TerminalPdb"
+
+[tool.towncrier]
+package = "fluidsim"
+single_file = true  # if false, filename is formatted like `title_format`.
+filename = "CHANGES.md"
+directory = "doc/newsfragments"
+template = "doc/newsfragments/template.rst.j2"
+title_format = false  # if false, template includes title
+issue_format = "`!{issue} <https://foss.heptapod.net/fluiddyn/fluidsim/-/merge_requests/{issue}>`__"
+underline = "-~"
+# wrap = true # Wrap text to 79 characters
+all_bullets = true  # make all fragments bullet points
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "changed"
+name = "Changed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "deprecated"
+name = "Deprecated"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removed"
+name = "Removed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "security"
+name = "Security"
+showcontent = true
+
+[tool.ruff]
+line-length = 82
+target-version = "py39"
+exclude = [".venv", "build", ".*", "**/__py*__", "**/__numba__", "doc/_build", "**/.ipynb_checkpoints"]
