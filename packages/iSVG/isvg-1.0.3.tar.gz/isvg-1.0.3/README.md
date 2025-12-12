@@ -1,0 +1,214 @@
+# Inline SVG Extension for Markdown
+
+A Python-Markdown extension that enables **inline embedding of local SVG 
+files** directly into rendered HTML. Unlike standard Markdown image 
+syntax—which outputs `<img>` tags. This extension inserts the **actual SVG 
+markup**, enabling:
+
+ - full CSS styling of embedded SVGs  
+ - consistent scaling behaviour  
+ - `figure` + `figcaption` support  
+ - improved control over accessibility and semantics
+
+## Features
+
+### Inline SVG injection
+
+Embed SVG files using a syntax similar to normal images:
+
+```markdown
+![caption](path/to/image.svg)
+```
+
+or without caption:
+
+```markdown
+!(path/to/image.svg)
+```
+
+### Automatic `<figure>` + `<figcaption>` wrapping
+
+If a caption is provided, the output becomes:
+
+```html
+<figure>
+    <svg> ... </svg>
+    <figcaption>Your caption</figcaption>
+</figure>
+```
+
+Without a caption, only the SVG element is inserted.
+
+### Safe Placeholder Handling
+
+The extension first inserts placeholder tokens, preventing Python-Markdown from 
+escaping the SVG. Placeholders are later replaced with the final SVG markup in 
+the postprocessor phase.
+
+### Internal Caching
+
+SVG files are parsed once and stored in a global cache for the lifetime of the 
+process, improving performance.
+
+## Installation
+
+```bash
+pip install markdown isvg
+```
+
+Use the extension:
+
+```python
+import markdown
+from isvg import InlineSVGExtension
+
+md = markdown.Markdown(extensions=[InlineSVGExtension(root="assets/svg")])
+html = md.convert("![Logo](logo.svg)")
+```
+
+## Usage
+
+### Basic Inline SVG
+
+```markdown
+!(diagram.svg)
+```
+
+### Inline SVG with Caption
+
+```markdown
+![Data Flow](images/flow.svg)
+```
+
+### Example HTML Output
+
+```html
+<figure>
+  <svg xmlns="http://www.w3.org/2000/svg" ...> ... </svg>
+  <figcaption>Data Flow</figcaption>
+</figure>
+```
+
+## Configuration
+
+### `root`
+
+Defines the base directory from which SVG paths are resolved. Defaults to 
+`""`, the current working directory.
+
+```python
+InlineSVGExtension(root="/var/www/assets/svg")
+```
+
+A Markdown reference such as:
+
+```markdown
+![icon](ui/menu.svg)
+```
+
+resolves to:
+
+```text
+/var/www/assets/svg/ui/menu.svg
+```
+
+### `remove_prefix`
+
+If your Markdown is generated from a web source that prefixes URLs with `/`,
+you can remove that prefix:
+
+```python
+InlineSVGExtension(remove_prefix="/")
+```
+
+```markdown
+![logo](/images/logo.svg)
+```
+
+Becomes reference to:
+
+```text
+images/logo.svg
+```
+
+`remove_prefex` defaults to `""`, which means no prefix is removed.
+
+## How it Works
+
+ 1. **Reference detection**
+    A lightweight custom parser matches `![caption](file.svg)` and `!(file.svg)`.
+ 2. **Structured extraction**
+    `caption` and `href` sections are parsed using a bracket-aware tokenizer,
+    not regex grouping. This ensures correct handling of nested brackets.
+ 3. **Path rewriting**
+    `remove_prefix` and `root` are applied.
+ 4. **File validation**
+     - Must exist
+     - Must end in `.svg`
+     - Must not be remote (`http`/`https`/`//`)
+ 5. **Caching & XML parsing**
+    SVGs are loaded with `xml.etree.ElementTree` and stored in a module-level
+    cache for reuse.
+ 6. **Placeholder emission**
+    A unique stable placeholder token (`\x02path\x03`) prevents Markdown from
+    interfering with raw XML.
+ 7. **Postprocessing**
+    Placeholders are replaced with the final SVG markup after Markdown
+    rendering is complete.
+
+## Error Handling
+
+The extension silently ignores:
+
+ - Non-SVG files
+ - Remote URLs (`http://`, `https://`, `//`)
+ - Missing paths
+ - Invalid or malformed SVGs
+
+In such cases, the original Markdown text is left unchanged.
+
+## Security Considerations
+
+Inlining SVGs introduces risks if files are not trusted. SVGs can contain:
+
+ - JavaScript
+ - External resource references
+ - Embedded HTML
+ - CSS injections
+
+If processing user-provided content, sanitize SVGs beforehand using tools 
+such as: external SVG sanitizers or whitelist-based filtering.
+
+## Testing
+
+This project includes pytest-based unit tests located in the test/
+directory.
+
+Run the full suite with:
+
+```bash
+pytest test
+```
+
+The tests cover:
+
+ - Correct placeholder insertion
+ - Proper caption extraction
+ - `figure` + `figcaption` generation
+ - SVG loading and caching behavior
+ - Error-handling paths (invalid SVG, missing files, remote URLs)
+ - Interactions with other Python-Markdown extensions
+
+If you extend or modify the extension, adding tests in this folder is highly
+recommended.
+
+## Known Limitations
+
+ - A global cache is used, which persists for the lifetime of the process.
+ - Relative links inside SVGs are not rewritten.
+ - Interactions with other Markdown extensions may affect final output order.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 (GPLv3).
+You may redistribute and/or modify it under the terms of the GPLv3.
