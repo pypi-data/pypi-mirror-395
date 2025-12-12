@@ -1,0 +1,185 @@
+Metadata-Version: 2.4
+Name: jules-cli
+Version: 12.0.0
+Summary: A developer CLI for Jules API automation
+Author: dhruv13x
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests
+Requires-Dist: typer>=0.9.0
+Requires-Dist: python-slugify>=8.0.0
+Requires-Dist: anthropic>=0.18.0
+Requires-Dist: toml>=0.10.0
+Requires-Dist: PyYAML>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.2.0; extra == "dev"
+Requires-Dist: pytest-json-report>=1.5.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.10.0; extra == "dev"
+Requires-Dist: pyfakefs>=5.0.0; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+Requires-Dist: black>=24.3.0; extra == "dev"
+Requires-Dist: mypy>=1.11.0; extra == "dev"
+Requires-Dist: PyYAML>=6.0; extra == "dev"
+Requires-Dist: types-PyYAML>=6.0; extra == "dev"
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/dhruv13x/jules-cli/main/jules-cli_logo.png" alt="jules-cli logo" width="200"/>
+</div>
+
+<div align="center">
+
+<!-- Package Info -->
+[![PyPI version](https://img.shields.io/pypi/v/jules-cli.svg)](https://pypi.org/project/jules-cli/)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+![Wheel](https://img.shields.io/pypi/wheel/jules-cli.svg)
+[![Release](https://img.shields.io/badge/release-PyPI-blue)](https://pypi.org/project/jules-cli/)
+
+<!-- Build & Quality -->
+[![Build status](https://github.com/dhruv13x/jules-cli/actions/workflows/publish.yml/badge.svg)](https://github.com/dhruv13x/jules-cli/actions/workflows/publish.yml)
+[![Codecov](https://codecov.io/gh/dhruv13x/jules-cli/graph/badge.svg)](https://codecov.io/gh/dhruv13x/jules-cli)
+[![Test Coverage](https://img.shields.io/badge/coverage-90%25%2B-brightgreen.svg)](https://github.com/dhruv13x/jules-cli/actions/workflows/test.yml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/badge/linting-ruff-yellow.svg)](https://github.com/astral-sh/ruff)
+![Security](https://img.shields.io/badge/security-CodeQL-blue.svg)
+
+<!-- Usage -->
+![Downloads](https://img.shields.io/pypi/dm/jules-cli.svg)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/jules-cli.svg)](https://pypistats.org/packages/jules-cli)
+![OS](https://img.shields.io/badge/os-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)
+[![Python Versions](https://img.shields.io/pypi/pyversions/jules-cli.svg)](https://pypi.org/project/jules-cli/)
+
+<!-- License -->
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+<!-- Docs -->
+[![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://your-docs-link)
+
+</div>
+
+
+# jules-cli
+
+[![PyPI Version](https://img.shields.io/pypi/v/jules-cli.svg)](https://pypi.org/project/jules-cli/)
+![Python Versions](https://img.shields.io/pypi/pyversions/jules-cli)
+[![License](https://img.shields.io/github/license/dhruv13x/jules-cli)](LICENSE)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dhruv13x/jules-cli/publish.yml?label=PyPI%20Publish)](https://github.com/dhruv13x/jules-cli/actions)
+
+A fully automated **developer assistant CLI** built on the **Jules API** (Google’s experimental code automation system).  
+`jules-cli` lets you run tests, fix bugs, apply patches, refactor code, and even create GitHub pull requests — all from your terminal.
+
+Designed for real-world workflows, CI pipelines, and local debugging sessions.
+
+---
+
+## 🚀 Quick Start (User View)
+
+### Prerequisites
+- Python 3.8+
+- `pip`
+
+### One-command installation
+```bash
+pip install jules-cli
+```
+
+### Usage Example
+```bash
+jules auto
+```
+---
+
+## ✨ Key Features
+
+- **Automated Test Fixer**: Runs pytest, sends failures to the Jules API, receives automated patches, applies them locally, and re-runs tests.
+- **AI-Powered Development Assistant**: Issue natural-language commands to refactor code, add test coverage, or fix bugs.
+- **Stateful Interactive REPL**: Access a full command shell for an immersive development experience.
+- **GitHub Integration**: Automatically create branches, commits, and pull requests.
+- **Structured Logging**: Debug-friendly logs with `--debug`, `--verbose`, and `--json` support for better observability.
+- **Context Management**: Use `.julesignore` to filter out sensitive files and directories (like `.env`, `node_modules/`) from being sent to the AI.
+- **Trusted Auth**: Uses Google's Jules API with the `X-Goog-Api-Key` header for secure and isolated sessions.
+
+---
+
+## ⚙️ Configuration & Advanced Usage (Dev View)
+
+### Environment Variables
+- `JULES_API_KEY`: Your Jules API key.
+- `GITHUB_TOKEN`: Your GitHub token for PR creation.
+
+### CLI/API Table
+
+| Command | Description | Arguments | Options |
+| --- | --- | --- | --- |
+| `init` | Interactive setup wizard. | | |
+| `auto` | Run pytest and auto-fix failures. | | |
+| `testgen` | Generate tests for a given file. | `file_path` | `--type, -t` |
+| `refactor` | Run a repository-wide refactor. | `instruction` | |
+| `task` | Ask Jules to perform an arbitrary dev task. | `prompt` | |
+| `approve` | Approve the plan for the current or specified session. | `session_id` | |
+| `reject` | Reject the plan for the current or specified session. | `session_id` | |
+| `session list` | List sessions. | | |
+| `session show` | Show session details. | `session_id` | |
+| `history list` | List all sessions. | | |
+| `history view` | Show session details by id. | `session_id` | |
+| `apply` | Apply last patch received. | | |
+| `commit` | Commit & create branch after apply. | | `--message, -m`, `--type, -t` |
+| `push` | Push branch to origin. | | |
+| `pr create` | Create a GitHub PR from last branch. | | `--title, -t`, `--body, -b`, `--draft`, `--labels, -l`, `--reviewers, -r`, `--assignees, -a`, `--issue, -i` |
+| `stage` | Interactively stage changes. | | |
+| `doctor` | Run environment validation checks. | | |
+| `suggest` | Proactively scan the codebase and suggest improvements. | | `--focus, -f`, `--security`, `--tests`, `--chore` |
+| `interact` | Start an interactive chat session with Jules. | `prompt` | |
+
+---
+
+## 🏗️ Architecture
+
+```
+jules-cli/
+│
+├── src/
+│   └── jules_cli/
+│       ├── commands/
+│       │   ├── auto.py
+│       │   ├── task.py
+│       │   └── ...
+│       ├── core/
+│       ├── git/
+│       ├── patch/
+│       ├── pytest/
+│       ├── utils/
+│       ├── cli.py
+│       ├── __init__.py
+│       └── ...
+│
+├── tests/
+├── pyproject.toml
+└── README.md
+```
+
+The `jules-cli` is a Python-based command-line interface powered by the `typer` library. The core logic is organized into several modules within the `src/jules_cli` directory, including `commands` for CLI command definitions, `core` for Jules API interaction, `git` for Git utilities, `patch` for patch management, `pytest` for test integration, and `utils` for shared helpers. The main entry point of the application is `cli.py`, which defines the CLI commands and their arguments.
+
+---
+
+## 🗺️ Roadmap
+
+### Upcoming
+- Multi-repo workspace automation
+- AI-powered merge conflict resolver
+
+### Completed
+- Automated test fixer
+- AI-powered development assistant
+- Stateful interactive REPL
+- GitHub integration
+
+---
+
+## 🤝 Contributing & License
+
+Contributions, bug reports, and feature requests are welcome. Please refer to the `FEATURE_PROPOSAL_TEMPLATE` for more information.
+
+This project is licensed under the MIT License. See `LICENSE` for details.
