@@ -1,0 +1,493 @@
+{
+  "$defs": {
+    "topologyLabels": {
+      "enum": [
+        "topology.k8s.aws/ultraserver-id",
+        "topology.k8s.aws/network-node-layer-1",
+        "topology.k8s.aws/network-node-layer-2",
+        "topology.k8s.aws/network-node-layer-3"
+      ]
+    },
+    "VolumeConfig": {
+      "properties": {
+        "name": {
+          "description": "Volume name",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "description": "Volume type",
+          "enum": [
+            "hostPath",
+            "pvc"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "mount_path": {
+          "description": "Mount path in container",
+          "minLength": 1,
+          "title": "Mount Path",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Host path (required for hostPath volumes)",
+          "title": "Path"
+        },
+        "claim_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "PVC claim name (required for pvc volumes)",
+          "title": "Claim Name"
+        },
+        "read_only": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Read-only flag for pvc volumes",
+          "title": "Read Only"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "mount_path"
+      ],
+      "title": "VolumeConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "job_name": {
+      "description": "Job name",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "title": "Job Name",
+      "type": "string"
+    },
+    "image": {
+      "description": "Docker image for training",
+      "minLength": 1,
+      "title": "Image",
+      "type": "string"
+    },
+    "namespace": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kubernetes namespace",
+      "title": "Namespace"
+    },
+    "command": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Command to run in the container",
+      "title": "Command"
+    },
+    "args": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Arguments for the entry script",
+      "title": "Args"
+    },
+    "environment": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Environment variables as key_value pairs",
+      "title": "Environment"
+    },
+    "pull_policy": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Image pull policy",
+      "title": "Pull Policy"
+    },
+    "instance_type": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Instance type for training",
+      "title": "Instance Type"
+    },
+    "node_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Number of nodes",
+      "title": "Node Count"
+    },
+    "tasks_per_node": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "auto",
+      "description": "Number of workers per node; supported values: [auto,cpu, gpu, int]",
+      "title": "Tasks Per Node"
+    },
+    "label_selector": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Node label selector as key_value pairs",
+      "title": "Label Selector"
+    },
+    "deep_health_check_passed_nodes_only": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": false,
+      "description": "Schedule pods only on nodes that passed deep health check",
+      "title": "Deep Health Check Passed Nodes Only"
+    },
+    "scheduler_type": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "If specified, training job pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.",
+      "title": "Scheduler Type"
+    },
+    "queue_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Queue name for job scheduling",
+      "title": "Queue Name"
+    },
+    "accelerators": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of accelerators (GPUs/TPUs)"
+    },
+    "vcpu": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Number of vCPUs"
+    },
+    "memory": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Amount of memory in GiB"
+    },
+    "accelerators_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Limit for the number of accelerators (GPUs/TPUs)"
+    },
+    "vcpu_limit": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Limit for the number of vCPUs"
+    },
+    "memory_limit": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Limit for the amount of memory in GiB"
+    },
+    "accelerator_partition_type": {
+      "type": "string",
+      "enum": [
+        "mig-1g.5gb", "mig-1g.10gb", "mig-1g.18gb", "mig-1g.20gb", "mig-1g.23gb", "mig-1g.35gb",
+        "mig-1g.45gb", "mig-1g.47gb", "mig-2g.10gb", "mig-2g.20gb", "mig-2g.35gb", "mig-2g.45gb",
+        "mig-2g.47gb", "mig-3g.20gb", "mig-3g.40gb", "mig-3g.71gb", "mig-3g.90gb", "mig-3g.93gb",
+        "mig-4g.20gb", "mig-4g.40gb", "mig-4g.71gb", "mig-4g.90gb", "mig-4g.93gb", "mig-7g.40gb",
+        "mig-7g.80gb", "mig-7g.141gb", "mig-7g.180gb", "mig-7g.186gb"
+      ],
+      "default": null,
+      "description": "Type of accelerator partition",
+      "title": "Accelerator Partition Type"
+    },
+    "accelerator_partition_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of accelerator partitions to request"
+    },
+    "accelerator_partition_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Limit for the number of accelerator partitions"
+    },
+    "priority": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Priority class for job scheduling",
+      "title": "Priority"
+    },
+    "max_retry": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum number of job retries",
+      "title": "Max Retry"
+    },
+    "volume": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/VolumeConfig"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of volume configurations.         Command structure: --volume name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options>         For hostPath: --volume name=model-data,type=hostPath,mount_path=/data,path=/data          For persistentVolumeClaim: --volume name=training-output,type=pvc,mount_path=/mnt/output,claim_name=training-output-pvc,read_only=false         If multiple --volume flag if multiple volumes are needed         ",
+      "title": "Volume"
+    },
+    "service_account_name": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Service account name",
+      "title": "Service Account Name"
+    },
+    "preferred_topology": {
+      "type": "string",
+      "description": "Preferred topology annotation for scheduling",
+      "$ref": "#/$defs/topologyLabels"
+        },
+    "required_topology": {
+      "type": "string", 
+      "description": "Required topology annotation for scheduling",
+      "$ref": "#/$defs/topologyLabels"
+        },
+    "elastic_replica_increment_step": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Scaling step size for elastic training",
+      "title": "Elastic Training Replica Increment Step"
+    },
+    "max_node_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum number of nodes for elastic training",
+      "title": "Max Node Count"
+    },
+    "elastic_graceful_shutdown_timeout_in_seconds": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Graceful shutdown timeout in seconds for elastic scaling operations",
+      "title": "Elastic Graceful Shutdown Timeout In Seconds"
+    },
+    "elastic_scaling_timeout_in_seconds": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Scaling timeout for elastic training",
+      "title": "Elastic Scaling Timeout In Seconds"
+    },
+    "elastic_scale_up_snooze_time_in_seconds": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Timeout period after job restart during which no scale up/workload admission is allowed",
+      "title": "Elastic Scale Up Snooze Time In Seconds"
+    },
+    "elastic_replica_discrete_values": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Alternative to replica increment step. Provides exact values for total replicas count",
+      "title": "Elastic Replica Discrete Values"
+    }
+
+  },
+  "required": [
+    "job_name",
+    "image"
+  ],
+  "title": "PyTorchJobConfig",
+  "type": "object"
+}
