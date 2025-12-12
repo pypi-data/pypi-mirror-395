@@ -1,0 +1,90 @@
+---
+# Create a virtualenv for ansible modules to use on the remote target systems
+# when running kolla-ansible.
+
+- name: Ensure a virtualenv exists for kolla-ansible
+  hosts: seed:overcloud
+  gather_facts: False
+  max_fail_percentage: >-
+    {{ kolla_target_venv_max_fail_percentage |
+       default(host_configure_max_fail_percentage) |
+       default(kayobe_max_fail_percentage) |
+       default(100) }}
+  vars:
+    # kolla_overcloud_inventory_top_level_group_map looks like:
+    # kolla_overcloud_inventory_top_level_group_map:
+    #  control:
+    #    groups:
+    #      - controllers
+    hosts_in_kolla_inventory: >-
+      {{ kolla_overcloud_inventory_top_level_group_map.values() |
+         map(attribute='groups') | flatten | unique | union(['seed']) | join(':') }}
+  tags:
+    - kolla-ansible
+    - kolla-target-venv
+  tasks:
+    - block:
+        - name: Gather facts
+          setup:
+            filter: "{{ kayobe_ansible_setup_filter }}"
+            gather_subset: "{{ kayobe_ansible_setup_gather_subset }}"
+          when: not ansible_facts
+
+        - name: Ensure the Python venv package is installed on Debian family systems
+          package:
+            name: python3-venv
+            state: present
+            cache_valid_time: "{{ apt_cache_valid_time }}"
+            update_cache: "True"
+          become: True
+          when: ansible_facts.os_family == 'Debian'
+
+        - name: Ensure kolla-ansible virtualenv has the latest version of pip installed
+          pip:
+            name: pip
+            state: latest
+            virtualenv: "{{ kolla_ansible_target_venv }}"
+            # Site packages are required for using the dnf python module, which
+            # is not available via PyPI.
+            virtualenv_site_packages: True
+            virtualenv_command: "python3.{{ ansible_facts.python.version.minor }} -m venv"
+          become: True
+
+        - name: Ensure kolla-ansible virtualenv has docker SDK for python installed
+          pip:
+            name: docker
+            state: latest
+            virtualenv: "{{ kolla_ansible_target_venv }}"
+            extra_args: "{% if kolla_upper_constraints_file %}-c {{ kolla_upper_constraints_file }}{% endif %}"
+          become: True
+          when: container_engine == 'docker'
+
+        - name: Ensure kolla-ansible virtualenv has podman SDK installed
+          pip:
+            name: podman
+            state: latest
+            virtualenv: "{{ kolla_ansible_target_venv }}"
+            extra_args: "{% if kolla_upper_constraints_file %}-c {{ kolla_upper_constraints_file }}{% endif %}"
+          become: True
+          when: container_engine == 'podman'
+
+        - name: Ensure kolla-ansible virtualenv has SELinux bindings installed
+          pip:
+            name: selinux
+            state: latest
+            virtualenv: "{{ kolla_ansible_target_venv }}"
+          become: True
+          when:
+            - ansible_facts.os_family == 'RedHat'
+
+        - name: Ensure kolla-ansible virtualenv has correct ownership
+          file:
+            path: "{{ kolla_ansible_target_venv }}"
+            recurse: True
+            state: directory
+            owner: "{{ kolla_ansible_user }}"
+            group: "{{ kolla_ansible_group }}"
+          become: True
+      when:
+        - kolla_ansible_target_venv is not none
+        - inventory_hostname in query('inventory_hostnames', hosts_in_kolla_inventory)

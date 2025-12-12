@@ -1,0 +1,133 @@
+---
+- name: Ensure ironic inspector kernel and ramdisk images are present
+  vars:
+    image_download_url: "{{ item.url }}"
+    image_download_checksum_url: "{{ item.checksum_url }}"
+    image_download_checksum_algorithm: "{{ item.checksum_algorithm }}"
+    image_download_path: "{{ item.path }}"
+    image_download_dest: "{{ item.dest }}"
+    image_download_host: "{{ kolla_inspector_ipa_host }}"
+  include_role:
+    name: image-download
+  with_items:
+    - url: "{{ kolla_inspector_ipa_kernel_upstream_url }}"
+      checksum_url: "{{ kolla_inspector_ipa_kernel_checksum_url }}"
+      checksum_algorithm: "{{ kolla_inspector_ipa_kernel_checksum_algorithm }}"
+      path: "{{ kolla_inspector_ipa_kernel_path }}"
+      dest: "{{ kolla_node_custom_config_path }}/ironic/ironic-agent.kernel"
+    - url: "{{ kolla_inspector_ipa_ramdisk_upstream_url }}"
+      checksum_url: "{{ kolla_inspector_ipa_ramdisk_checksum_url }}"
+      checksum_algorithm: "{{ kolla_inspector_ipa_ramdisk_checksum_algorithm }}"
+      path: "{{ kolla_inspector_ipa_ramdisk_path }}"
+      dest: "{{ kolla_node_custom_config_path }}/ironic/ironic-agent.initramfs"
+  when: kolla_enable_ironic | bool
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Make destination directory for Nova certificates
+  file:
+    state: directory
+    path: "{{ kolla_node_custom_config_path }}/nova/nova-libvirt/"
+  when: kolla_enable_nova | bool and kolla_libvirt_tls | bool
+
+- name: Copy client TLS certificates for Nova
+  vars:
+    certificates:
+      - clientcert.pem
+      - clientkey.pem
+      - cacert.pem
+  copy:
+    src: "{{ kolla_nova_libvirt_certificates_src }}/{{ item }}"
+    dest: "{{ kolla_node_custom_config_path }}/nova/nova-libvirt/{{ item }}"
+  loop: "{{ certificates if kolla_enable_nova | bool and kolla_libvirt_tls | bool else [] }}"
+
+- name: Copy server TLS certificates for Nova
+  vars:
+    certificates:
+      - servercert.pem
+      - serverkey.pem
+  copy:
+    src: "{{ kolla_nova_libvirt_certificates_src }}/{{ item }}"
+    dest: "{{ kolla_node_custom_config_path }}/nova/nova-libvirt/{{ item }}"
+  loop: "{{ certificates if kolla_enable_nova | bool and kolla_enable_nova_libvirt_container | bool and kolla_libvirt_tls | bool else [] }}"
+
+# We support a fairly flexible mechanism of dropping config file templates into
+# an 'extra' config directory, and passing these through to kolla-ansible. We
+# look for matching files in the source directory to template, and also remove
+# any unexpected files from the destination, to support removal of files.
+
+- name: Collect details about custom config
+  kolla_custom_config_info:
+    destination: "{{ kolla_node_custom_config_path }}"
+    ignore_globs: "{{ _kolla_openstack_custom_config_cleanup_ignore_globs }}"
+    include_globs: "{{ kolla_openstack_custom_config_include_globs }}"
+    rules: "{{ kolla_openstack_custom_config_rules }}"
+    search_paths: "{{ kolla_openstack_custom_config_paths | product(['/kolla/config']) | map('join') | list }}"
+  register: kolla_custom_config_info
+
+- name: Print kolla_custom_config_info when using -v
+  debug:
+    msg: "{{ kolla_custom_config_info }}"
+    verbosity: 1
+
+- name: Ensure extra configuration parent directories are present
+  file:
+    path: "{{ item }}"
+    recurse: true
+    state: directory
+  with_items: "{{ kolla_custom_config_info.create_dir }}"
+
+- name: "Ensure extra configuration files exist (strategy: template)"
+  vars:
+    params:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      mode: 0640
+  template: "{{ params | combine(item.params) }}"
+  with_items: "{{ kolla_custom_config_info.template }}"
+
+- name: "Ensure extra configuration files exist (strategy: copy)"
+  vars:
+    params:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+      mode: 0640
+  copy: "{{ params | combine(item.params) }}"
+  # NOTE: .copy is ambiguous with copy method
+  with_items: "{{ kolla_custom_config_info['copy'] }}"
+
+- name: "Ensure extra configuration files exist (strategy: merge_configs)"
+  vars:
+    params:
+      sources: "{{ item.sources }}"
+      dest: "{{ item.dest }}"
+      mode: 0640
+  merge_configs: "{{ params | combine(item.params) }}"
+  with_items: "{{ kolla_custom_config_info.merge_configs }}"
+
+- name: "Ensure extra configuration files exist (strategy: merge_yaml)"
+  vars:
+    params:
+      sources: "{{ item.sources }}"
+      dest: "{{ item.dest }}"
+      mode: 0640
+  merge_yaml: "{{ params | combine(item.params) }}"
+  with_items: "{{ kolla_custom_config_info.merge_yaml }}"
+
+- name: "Ensure extra configuration files exist (strategy: concat)"
+  vars:
+    params:
+      content: |
+        {%- for path in item.sources -%}
+        {{ lookup('file', path) }}
+        {%- endfor -%}
+      dest: "{{ item.dest }}"
+      mode: 0640
+  template_content: "{{ params | combine(item.params) }}"
+  with_items: "{{ kolla_custom_config_info.concat }}"
+
+- name: Ensure unnecessary extra configuration files are absent
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items: "{{ kolla_custom_config_info.delete }}"

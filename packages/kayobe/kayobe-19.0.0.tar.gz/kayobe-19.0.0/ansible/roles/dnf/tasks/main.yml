@@ -1,0 +1,15 @@
+---
+- name: Ensure dnf.conf configuration exists
+  ini_file:
+    path: /etc/dnf/dnf.conf
+    section: "main"
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+  loop: "{{ query('dict', dnf_config) }}"
+  become: true
+
+- name: Configure local mirror
+  include_tasks: local-mirror.yml
+  when: dnf_use_local_mirror | bool
+
+- import_tasks: custom-repo.yml

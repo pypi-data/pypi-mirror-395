@@ -1,0 +1,24 @@
+---
+- name: Ensure iptables is installed
+  package:
+    name: iptables
+    cache_valid_time: "{{ apt_cache_valid_time if ansible_facts.os_family == 'Debian' else omit }}"
+    update_cache: "{{ True if ansible_facts.os_family == 'Debian' else omit }}"
+  become: true
+
+# iptables -t nat -A POSTROUTING -o {{ interface }} -j SNAT --to-source {{ source_ip }}
+- name: Ensure SNAT iptables rules exist
+  iptables:
+    action: append
+    table: nat
+    chain: POSTROUTING
+    out_interface: "{{ item.interface }}"
+    jump: SNAT
+    to_source: "{{ item.source_ip }}"
+    destination: "{{ item.destination | default(omit) }}"
+    destination_port: "{{ item.destination_port | default(omit) }}"
+    destination_ports: "{{ item.destination_ports | default(omit) }}"
+    source: "{{ item.source | default(omit) }}"
+    source_port: "{{ item.source_port | default(omit) }}"
+  with_items: "{{ snat_rules }}"
+  become: True

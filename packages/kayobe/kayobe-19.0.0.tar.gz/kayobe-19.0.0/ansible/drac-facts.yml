@@ -1,0 +1,29 @@
+---
+- name: Gather and display BIOS and RAID facts from iDRACs
+  hosts: overcloud
+  gather_facts: no
+  max_fail_percentage: >-
+    {{ drac_facts_max_fail_percentage |
+       default(kayobe_max_fail_percentage) |
+       default(100) }}
+  roles:
+    # The role simply pulls in the drac_facts module.
+    - role: stackhpc.drac-facts
+  tasks:
+    - name: Gather facts via DRAC
+      delegate_to: localhost
+      drac_facts:
+        address: "{{ ipmi_address }}"
+        username: "{{ ipmi_username }}"
+        password: "{{ ipmi_password }}"
+      register: result
+
+    - name: Display results
+      debug:
+        var: result
+
+    - name: Write facts to a file
+      delegate_to: localhost
+      copy:
+        content: "{{ result }}"
+        dest: "/tmp/drac-facts-{{ inventory_hostname }}.json"

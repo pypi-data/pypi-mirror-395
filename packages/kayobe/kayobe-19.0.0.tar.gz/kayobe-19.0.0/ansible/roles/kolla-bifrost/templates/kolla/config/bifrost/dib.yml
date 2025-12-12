@@ -1,0 +1,22 @@
+---
+{% if not overcloud_dib_build_host_images | bool %}
+# Diskimage-builder element for base OS.
+dib_os_element: "{{ kolla_bifrost_dib_os_element }}"
+
+# DIB OS release.
+dib_os_release: "{{ kolla_bifrost_dib_os_release }}"
+
+# List of DIB image elements.
+dib_elements: "{{ (kolla_bifrost_dib_elements + [kolla_bifrost_dib_init_element]) | join(' ') }}"
+
+# DIB image environment variables.
+{{ {'dib_env_vars': kolla_bifrost_dib_env_vars} | to_nice_yaml(width=131072) }}
+
+# List of DIB image packages.
+dib_packages: "{{ kolla_bifrost_dib_packages | join(',') }}"
+{% else %}
+# Stop building overcloud host image using Bifrost. This needs to be defined
+# here to override the default true value set in kolla-ansible in
+# ansible/roles/bifrost/templates/dib.yml.j2.
+create_image_via_dib: False
+{% endif %}

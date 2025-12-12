@@ -1,0 +1,20 @@
+---
+- name: Ensure /etc/hosts is configured
+  hosts: overcloud
+  max_fail_percentage: >-
+    {{ etc_hosts_max_fail_percentage |
+       default(host_configure_max_fail_percentage) |
+       default(kayobe_max_fail_percentage) |
+       default(100) }}
+  tags:
+    - etc-hosts
+  tasks:
+    # NOTE(mgoddard): Need to ensure that all hosts have facts available.
+    - import_role:
+        name: gather-facts-delegated
+      tags:
+        - gather-facts-delegated
+      when: etc_hosts_gather_facts | default(true)
+
+    - import_role:
+        name: etc-hosts

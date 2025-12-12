@@ -1,0 +1,75 @@
+---
+- name: Ensure destination directory exists
+  file:
+    state: directory
+    path: "{{ image_download_dest | dirname }}"
+
+- block:
+    - block:
+        - name: Fail if the checksum algorithm is not set
+          fail:
+            msg: "Checksum algorithm for image {{ image_download_url }} not set"
+          when: image_download_checksum_algorithm is falsy
+
+        - name: Get the expected checksum
+          uri:
+            url: "{{ image_download_checksum_url }}"
+            return_content: true
+            url_username: "{{ image_download_url_username or omit }}"
+            url_password: "{{ image_download_url_password or omit }}"
+            force_basic_auth: "{{ image_download_force_basic_auth or omit }}"
+            unredirected_headers: "{{ image_download_unredirected_headers or omit }}"
+          register: expected_checksum
+          until: expected_checksum is successful
+          retries: 3
+          delay: 5
+      when:
+        - image_download_checksum_url is truthy
+
+    - name: Ensure the image is downloaded
+      vars:
+        # NOTE(wszumski): This is evaluated even when expected_checksum is skipped
+        checksum: "{{ image_download_checksum_algorithm }}:{{ expected_checksum.content.split(' ')[0] if 'content' in expected_checksum else '' }}"
+      get_url:
+        url: "{{ image_download_url }}"
+        dest: "{{ image_download_dest }}"
+        mode: 0640
+        # If the file exists locally, its checksum will be compared with this.
+        checksum: "{{ checksum if expected_checksum is not skipped else omit }}"
+        # Always download the image if we have no checksum to compare with.
+        force: "{{ expected_checksum is skipped }}"
+        backup: true
+        url_username: "{{ image_download_url_username or omit }}"
+        url_password: "{{ image_download_url_password or omit }}"
+        force_basic_auth: "{{ image_download_force_basic_auth or omit }}"
+        unredirected_headers: "{{ image_download_unredirected_headers or omit }}"
+      register: result
+      until: result is successful
+      retries: 3
+      delay: 5
+  when:
+    - image_download_url is truthy
+
+- when: image_download_path is truthy
+  block:
+    - name: Ensure the local image is copied
+      copy:
+        src: "{{ image_download_path }}"
+        dest: "{{ image_download_dest }}"
+        mode: 0640
+      when:
+        - image_download_host is falsy
+
+    - name: Ensure the remote image is fetched
+      fetch:
+        src: "{{ image_download_path }}"
+        dest: "{{ image_download_dest }}"
+        mode: 0640
+        flat: true
+      when:
+        - image_download_host is truthy
+      delegate_to: "{{ image_download_host | default('localhost', true) }}"
+      vars:
+        # NOTE: Without this, the hosts's ansible_host variable will not be
+        # respected when using delegate_to.
+        ansible_host: "{{ hostvars[image_download_host].ansible_host | default(image_download_host) }}"
