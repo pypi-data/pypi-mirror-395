@@ -1,0 +1,70 @@
+# PilotSpace Yolkfile (minimal)
+# Purpose: Basic manifest with essential metadata, entry points, and minimal tasks.
+
+name: PilotSpace
+version: 0.1.0
+description: "AI-Native Workspace Revolution."
+license: "AGPL-3.0-only"
+
+maintainers:
+  - name: "LightJUNction"
+    email: "lightjunction@gmail.com"
+    url: "https://github.com/LightJUNction"
+
+repository:
+  type: git
+  url: "https://github.com/LightJUNction/PilotSpace.git"
+  branch: main
+
+readme: README.md
+
+# Minimal files list (used by packaging/tools)
+files:
+  - README.md
+  - LICENSE
+  - src/
+  - scripts/
+
+# Optional entry points — keep whichever apply to your stack
+entry_points:
+  node: "src/index.js"     # optional: remove if no Node runtime
+  python: "src/app.py"     # optional: remove if no Python runtime
+
+# Minimal environment defaults (override in actual deployments)
+env:
+  default:
+    PORT: 3000
+    NODE_ENV: development
+
+# Minimal helpful tasks for onboarding and running the project
+tasks:
+  setup:
+    description: "Detect and install dependencies (Node or Python)"
+    run: |
+      set -e
+      if [ -f package.json ]; then
+        echo "Installing Node dependencies..."
+        npm ci || true
+      elif [ -f requirements.txt ]; then
+        echo "Installing Python dependencies..."
+        pip install -r requirements.txt || true
+      else
+        echo "No package.json or requirements.txt found; nothing to install."
+      fi
+
+  start:
+    description: "Start the application using the detected stack or entry point"
+    run: |
+      set -e
+      if [ -f package.json ]; then
+        npm start || node "${ENTRYPOINT:-src/index.js}" || echo "No start command"
+      elif [ -f requirements.txt ]; then
+        python "${ENTRYPOINT:-src/app.py}" || echo "No start command"
+      else
+        echo "No start configuration found; add scripts/start.sh, package.json, or pyproject.toml."
+      fi
+
+# Simple discoverability tags
+keywords:
+  - ai
+  - workspace
