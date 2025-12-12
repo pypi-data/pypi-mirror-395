@@ -1,0 +1,106 @@
+# {project_name}
+
+A Streamlit multi-page application.
+
+## Project Structure
+
+```
+{project_name}/
+├── src/
+│   ├── app/                # Streamlit application
+│   │   ├── App.py          # Main entry point
+│   │   └── pages/          # Additional pages
+│   │       ├── 1_Page_1.py
+│   │       └── 2_Page_2.py
+│   └── entrypoint.sh       # Container entrypoint script
+├── tests/                  # Test files
+├── Dockerfile              # Docker configuration
+├── docker-compose.yml      # Docker Compose configuration
+├── pyproject.toml          # Project dependencies
+├── .pre-commit-config.yaml # Pre-commit hooks
+└── .gitignore              # Git ignore rules
+```
+
+## Getting Started
+
+### Local Development (with uv)
+
+1. Install dependencies:
+```bash
+uv sync
+```
+
+2. Run the application:
+```bash
+uv run streamlit run src/app/App.py
+```
+
+### Docker Development
+
+1. Build and run with Docker Compose:
+```bash
+docker-compose up --build
+```
+
+The application will be available at http://localhost:8501
+
+The `LOCALRUN=TRUE` environment variable enables hot-reloading for development.
+
+### Production Deployment
+
+For production, set `LOCALRUN=FALSE` in the docker-compose.yml or use the Dockerfile directly:
+
+```bash
+docker build -t {project_name} .
+docker run -p 8501:8501 -e LOCALRUN=FALSE {project_name}
+```
+
+## Running Tests
+
+### Locally
+```bash
+uv run pytest tests/
+```
+
+### In Docker
+```bash
+docker-compose run -e PYTEST=TRUE streamlit-app
+```
+
+## Adding New Pages
+
+This app uses Streamlit's `st.navigation()` for organized multi-page navigation.
+
+To add a new page:
+
+1. Create a new Python file in `src/app/pages/`:
+   - Example: `src/app/pages/analytics.py`
+
+2. Add your page content:
+```python
+import streamlit as st
+
+st.title("Analytics")
+# Your page content here
+```
+
+3. Register the page in `src/app/App.py`:
+```python
+pages = {{
+    "📊 Main": [
+        st.Page("pages/1_Page_1.py", title="Page 1", icon="📈"),
+        st.Page("pages/2_Page_2.py", title="Page 2", icon="📋"),
+        st.Page("pages/analytics.py", title="Analytics", icon="📊"),  # New page
+    ],
+    # ...
+}}
+```
+
+## Pre-commit Hooks
+
+Install pre-commit hooks:
+```bash
+pre-commit install
+```
+
+This will run linting and formatting checks before each commit.

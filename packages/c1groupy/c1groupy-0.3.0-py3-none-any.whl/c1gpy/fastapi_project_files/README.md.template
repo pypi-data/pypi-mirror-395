@@ -1,0 +1,161 @@
+# {project_name}
+
+A FastAPI application with organized router structure.
+
+## Project Structure
+
+```
+{project_name}/
+├── src/
+│   ├── api_interface.py    # Main FastAPI app
+│   ├── routers/            # API routers
+│   │   ├── router1.py
+│   │   └── router2.py
+│   ├── endpoints/          # Endpoint logic
+│   │   ├── router1/
+│   │   │   └── example_endpoint.py
+│   │   └── router2/
+│   │       └── example_endpoint.py
+│   └── entrypoint.sh       # Container entrypoint script
+├── tests/                  # Test files
+├── Dockerfile              # Docker configuration
+├── docker-compose.yml      # Docker Compose configuration
+├── pyproject.toml          # Project dependencies
+├── .pre-commit-config.yaml # Pre-commit hooks
+└── .gitignore              # Git ignore rules
+```
+
+## Getting Started
+
+### Local Development (with uv)
+
+1. Install dependencies:
+```bash
+uv sync
+```
+
+2. Run the application:
+```bash
+uv run hypercorn src.api_interface:rest_api --bind :8000 --reload
+```
+
+The API will be available at:
+- **API**: http://localhost:8000
+- **Interactive Docs**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Docker Development
+
+1. Build and run with Docker Compose:
+```bash
+docker-compose up --build --force-recreate --remove-orphans
+```
+
+The application will be available at http://localhost:8000
+
+The `LOCALRUN=TRUE` environment variable enables hot-reloading for development.
+
+### Production Deployment
+
+For production, set `LOCALRUN=FALSE` in the docker-compose.yml or use the Dockerfile directly:
+
+```bash
+docker build -t {project_name} .
+docker run -p 8000:8000 -e LOCALRUN=FALSE -e PORT=8000 {project_name}
+```
+
+## Running Tests
+
+### Locally
+```bash
+uv run pytest tests/
+```
+
+### In Docker
+```bash
+docker-compose run -e PYTEST=TRUE fastapi-app
+```
+
+## API Structure
+
+### Routers
+
+Routers are defined in `src/routers/` and organize related endpoints:
+
+- **router1.py**: Example router with basic CRUD operations
+- **router2.py**: Example router with data processing endpoints
+
+### Endpoints
+
+Endpoint logic is separated into `src/endpoints/` for better organization:
+
+- **router1/**: Business logic for router1 endpoints
+- **router2/**: Business logic for router2 endpoints
+
+### Adding New Endpoints
+
+1. Create endpoint logic in `src/endpoints/router_name/`:
+```python
+# src/endpoints/router1/new_endpoint.py
+async def get_data() -> dict:
+    return {{"data": "example"}}
+```
+
+2. Add route in `src/routers/router1.py`:
+```python
+from endpoints.router1 import new_endpoint
+
+@router.get("/data")
+async def get_data():
+    return await new_endpoint.get_data()
+```
+
+### Adding New Routers
+
+1. Create router file in `src/routers/router3.py`:
+```python
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/router3", tags=["router3"])
+
+@router.get("/example")
+async def example():
+    return {{"message": "Hello from router3"}}
+```
+
+2. Register in `src/api_interface.py`:
+```python
+from routers import router1, router2, router3
+
+rest_api.include_router(router3.router)
+```
+
+## API Security
+
+The template includes commented-out API key authentication:
+
+```python
+# Uncomment in routers to enable
+from fastapi.security import APIKeyHeader
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+@router.get("/secure")
+async def secure_endpoint(api_key: str = Security(api_key_header)):
+    # Validate api_key
+    return {{"secure": "data"}}
+```
+
+## Environment Variables
+
+- `PORT`: Port for the API server (default: 8000)
+- `LOCALRUN`: Set to `TRUE` for development mode with hot-reloading (default: `FALSE`)
+- `PYTEST`: Set to `TRUE` to run tests instead of the app (default: `FALSE`)
+
+## Pre-commit Hooks
+
+Install pre-commit hooks:
+```bash
+pre-commit install
+```
+
+This will run linting and formatting checks before each commit.
