@@ -1,0 +1,97 @@
+Metadata-Version: 2.4
+Name: swh.loader.core
+Version: 5.24.2
+Summary: Software Heritage core and package loaders
+Author-email: Software Heritage developers <swh-devel@inria.fr>
+Project-URL: Homepage, https://gitlab.softwareheritage.org/swh/devel/swh-loader-core
+Project-URL: Bug Reports, https://gitlab.softwareheritage.org/swh/devel/swh-loader-core/-/issues
+Project-URL: Funding, https://www.softwareheritage.org/donate
+Project-URL: Documentation, https://docs.softwareheritage.org/devel/swh-loader-core/
+Project-URL: Source, https://gitlab.softwareheritage.org/swh/devel/swh-loader-core.git
+Classifier: Programming Language :: Python :: 3
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Requires-Python: >=3.10
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+License-File: AUTHORS
+Requires-Dist: beautifulsoup4
+Requires-Dist: chardet
+Requires-Dist: psutil
+Requires-Dist: requests
+Requires-Dist: iso8601
+Requires-Dist: looseversion
+Requires-Dist: lxml
+Requires-Dist: pkginfo
+Requires-Dist: python-debian
+Requires-Dist: python-dateutil
+Requires-Dist: tenacity>=8.4.2
+Requires-Dist: typing-extensions
+Requires-Dist: toml
+Requires-Dist: swh.core>=4.5.3
+Requires-Dist: swh.model>=8.1.0
+Requires-Dist: swh.objstorage>=0.2.2
+Requires-Dist: swh.scheduler>=2.3.0
+Requires-Dist: swh.storage>=2.4.1
+Provides-Extra: testing
+Requires-Dist: celery-types; extra == "testing"
+Requires-Dist: pytest; extra == "testing"
+Requires-Dist: pytest-mock; extra == "testing"
+Requires-Dist: requests_mock>=1.11.0; extra == "testing"
+Requires-Dist: urllib3; extra == "testing"
+Requires-Dist: swh-core[testing]; extra == "testing"
+Requires-Dist: swh.scheduler[pytest]>=3.1.0; extra == "testing"
+Requires-Dist: swh.storage[pytest]>=3.1.0; extra == "testing"
+Requires-Dist: swh-vault>=1.12.2; extra == "testing"
+Requires-Dist: types-python-dateutil; extra == "testing"
+Requires-Dist: types-psutil; extra == "testing"
+Requires-Dist: types-pyyaml; extra == "testing"
+Requires-Dist: types-requests; extra == "testing"
+Requires-Dist: types-toml; extra == "testing"
+Dynamic: license-file
+
+Software Heritage - Loader foundations
+======================================
+
+The Software Heritage Loader Core is a low-level loading utilities and
+helpers used by `loaders <https://docs.softwareheritage.org/devel/glossary.html#term-loader>`_.
+
+The main entry points are classes:
+
+- `swh.loader.core.loader.BaseLoader <https://docs.softwareheritage.org/devel/apidoc/swh.loader.core.loader.html#swh.loader.core.loader.BaseLoader>`_
+  for VCS loaders (e.g. git, svn, ...)
+
+- `swh.loader.core.loader.ContentLoader <https://docs.softwareheritage.org/devel/apidoc/swh.loader.core.loader.html#swh.loader.core.loader.ContentLoader>`_
+  for Content loader
+
+- `swh.loader.core.loader.BaseDirectoryLoader <https://docs.softwareheritage.org/devel/apidoc/swh.loader.core.loader.html#swh.loader.core.loader.BaseDirectoryLoader>`_
+  for Directory loaders
+
+- `swh.loader.package.loader.PackageLoader <https://docs.softwareheritage.org/devel/apidoc/swh.loader.package.loader.html#swh.loader.package.loader.PackageLoader>`_
+  for Package loaders (e.g. PyPI, Npm, ...)
+
+Package loaders
+---------------
+
+This package also implements many package loaders directly, out of convenience,
+as they usually are quite similar and each fits in a single file.
+
+They all roughly follow these steps, explained in the
+`swh.loader.package.loader.PackageLoader.load <https://docs.softwareheritage.org/devel/apidoc/swh.loader.package.loader.html#swh.loader.package.loader.PackageLoader.load>`_
+documentation.
+See the `Package Loader tutorial <https://docs.softwareheritage.org/devel/swh-loader-core/package-loader-tutorial.html#package-loader-tutorial>`_
+for details.
+
+VCS loaders
+-----------
+
+Unlike package loaders, VCS loaders remain in separate packages,
+as they often need more advanced conversions and very VCS-specific operations.
+
+This usually involves getting the branches of a repository and recursively loading
+revisions in the history (and directory trees in these revisions),
+until a known revision is found
