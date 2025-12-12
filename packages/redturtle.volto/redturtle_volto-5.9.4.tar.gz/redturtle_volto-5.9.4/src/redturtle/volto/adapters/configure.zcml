@@ -1,0 +1,126 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    >
+
+  <adapter factory=".link_linkintegrity_retriever.LinkRetriever" />
+
+  <adapter
+      factory=".stringinterp.VoltoUrlSubstitution"
+      provides="plone.stringinterp.interfaces.IStringSubstitution"
+      for="*"
+      name="volto_url"
+      />
+
+  <adapter
+      factory=".stringinterp.VoltoParentUrlSubstitution"
+      provides="plone.stringinterp.interfaces.IStringSubstitution"
+      for="*"
+      name="volto_parent_url"
+      />
+
+  <!-- blocks link integrity for contenttypes with BlocksFields -->
+  <configure zcml:condition="installed collective.volto.blocksfield">
+    <adapter factory=".blocks_linkintegrity_blocksfield.BlocksRetrieverContainer" />
+    <adapter factory=".blocks_linkintegrity_blocksfield.BlocksRetrieverItem" />
+  </configure>
+
+  <!-- blocks linkintegrity for specific blocks -->
+  <subscriber
+      factory=".blocks_linkintegrity.TextBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.GenericBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.RTSlateBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.SimpleCardBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.AccordionBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.AlertBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.ImageCardBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.CalloutBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.CTABlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.TableBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.ContactsBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.IconBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <subscriber
+      factory=".blocks_linkintegrity.CountDownBlockLinksRetriever"
+      provides="plone.restapi.interfaces.IBlockFieldLinkIntegrityRetriever"
+      />
+  <!-- end of blocks linkintegrity for specific blocks -->
+
+  <adapter
+      factory=".rss.EventItem"
+      provides="plone.base.interfaces.syndication.IFeedItem"
+      for="plone.app.contenttypes.interfaces.IEvent
+           plone.base.interfaces.syndication.IFeed"
+      zcml:condition="have plone-60"
+      />
+
+  <adapter
+      factory=".rss.EventItem"
+      provides="Products.CMFPlone.interfaces.syndication.IFeedItem"
+      for="plone.app.contenttypes.interfaces.IEvent
+           Products.CMFPlone.interfaces.syndication.IFeed"
+      zcml:condition="not-have plone-60"
+      />
+
+  <!-- namechooser adapters -->
+  <adapter
+      factory=".namechooser.NormalizingNameChooser"
+      provides="zope.container.interfaces.INameChooser"
+      for="plone.dexterity.interfaces.IDexterityContainer"
+      />
+  <adapter
+      factory=".namechooser.NormalizingNameChooser"
+      provides="zope.container.interfaces.INameChooser"
+      for="Products.CMFCore.interfaces.ISiteRoot"
+      />
+
+  <adapter
+      factory=".rss.CustomFeedItem"
+      provides="plone.base.interfaces.syndication.IFeedItem"
+      for="redturtle.volto.interfaces.ICustomFeedItem
+           plone.base.interfaces.syndication.IFeed"
+      zcml:condition="have plone-60"
+      />
+  <adapter
+      factory=".rss.CustomFeedItem"
+      provides="Products.CMFPlone.interfaces.syndication.IFeedItem"
+      for="redturtle.volto.interfaces.ICustomFeedItem
+           Products.CMFPlone.interfaces.syndication.IFeed"
+      zcml:condition="not-have plone-60"
+      />
+</configure>
