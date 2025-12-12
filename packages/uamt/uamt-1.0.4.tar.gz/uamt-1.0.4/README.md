@@ -1,0 +1,67 @@
+#🔧 UAMT – Ultimate Android Modding Tool
+
+UAMT is a Termux-based Android modding toolkit for injecting Frida Gadget, custom native libraries, patching APKs, rebuilding, aligning, and signing them — all directly on your Android device.
+It’s fast, simple, stable, and includes a full-screen TUI with automatic dependency setup.
+
+Run this tool by using uamt command after installing
+---
+
+✨ Features
+
+🧩 Injection
+
+⚡ Inject Frida Gadget (Listen / Wait / Pre-Injected Script)
+
+🧬 Inject any custom .so library into APKs
+
+
+🧠 Smart Detection
+
+🤖 Auto-detects best injection mode
+
+🔵 Native (patchelf)
+
+🟣 Smali (APKEditor)
+
+
+
+🛠️ Tools & Build System
+
+📦 Auto-download + unpack Frida Gadget
+
+🏗️ Full APK rebuild with:
+
+zipalign
+
+v1 / v2 / v3 signing
+
+
+🎨 Colorful curses-based interactive UI
+
+
+🛡️ Safe Modding
+
+🔐 Auto-adds missing INTERNET permission
+
+🔍 Detects main native library (libil2cpp.so, libunity.so, etc.)
+
+
+⚙️ Automation
+
+🚀 Automatic installation of all system dependencies
+
+🔌 One-tap connect to Frida Gadget
+
+
+
+---
+
+📱 Requirements
+
+Termux (latest)
+
+Run once:
+
+termux-setup-storage
+
+Note - during running this tool for first time just go through install and update option with active internet connection 
