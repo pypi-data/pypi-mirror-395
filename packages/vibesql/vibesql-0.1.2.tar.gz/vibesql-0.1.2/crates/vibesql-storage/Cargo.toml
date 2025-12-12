@@ -1,0 +1,85 @@
+[package]
+name = "vibesql-storage"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Storage engine for vibesql SQL database"
+keywords = ["sql", "database", "storage"]
+categories = ["database"]
+readme = "README.md"
+
+[features]
+default = ["compression"]
+# zstd compression for binary persistence (disabled in WASM where browsers provide compression)
+compression = ["zstd"]
+# OpenDAL for multi-backend storage support (base feature)
+opendal = ["dep:opendal", "dep:tokio"]
+# Storage backend features - each enables opendal with the specific service
+storage-fs = ["opendal", "opendal/services-fs"]
+storage-s3 = ["opendal", "opendal/services-s3"]
+storage-gcs = ["opendal", "opendal/services-gcs"]
+storage-azure = ["opendal", "opendal/services-azblob"]
+storage-memory = ["opendal", "opendal/services-memory"]
+# Convenience feature for all storage backends
+storage-all = ["storage-fs", "storage-s3", "storage-gcs", "storage-azure", "storage-memory"]
+
+[dependencies]
+vibesql-types = { version = "0.1.2", path = "../vibesql-types" }
+vibesql-catalog = { version = "0.1.2", path = "../vibesql-catalog" }
+vibesql-ast = { version = "0.1.2", path = "../vibesql-ast" }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+zstd = { version = "0.13", optional = true }
+rstar = "0.12"
+lru = "0.16"
+log = "0.4"
+rand = "0.9"  # For statistical sampling (Phase 5.2)
+instant = { version = "0.1", features = ["wasm-bindgen"] }  # WASM-compatible time primitives
+# uuid is specified per-target below to add "js" feature for WASM
+bytes = "1.5"
+tokio = { version = "1", features = ["rt", "sync"], optional = true }
+opendal = { version = "0.55", optional = true }
+
+# Use parking_lot for native builds, std::sync for WASM
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+parking_lot = "0.12"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# WASM-specific dependencies for browser storage
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+uuid = { version = "1.6", features = ["v4", "serde", "js"] }  # "js" feature for WASM RNG support
+web-sys = { version = "0.3", features = [
+    "File",
+    "FileSystemDirectoryHandle",
+    "FileSystemFileHandle",
+    "FileSystemWritableFileStream",
+    "FileSystemSyncAccessHandle",
+    "FileSystemGetFileOptions",
+    "StorageManager",
+    "Navigator",
+    "Window",
+    "Blob",
+] }
+
+[dev-dependencies]
+vibesql-parser = { version = "0.1.2", path = "../vibesql-parser" }
+tempfile = "3.8"
+criterion = { version = "0.8", features = ["html_reports"] }
+tokio = { version = "1", features = ["rt", "macros"] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[[bench]]
+name = "storage_bench"
+harness = false
+
+[[bench]]
+name = "change_event_bench"
+harness = false

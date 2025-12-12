@@ -1,0 +1,222 @@
+[package]
+name = "vibesql-executor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Query execution engine for vibesql SQL database"
+keywords = ["sql", "database", "executor", "query"]
+categories = ["database"]
+readme = "README.md"
+
+[dependencies]
+vibesql-types = { version = "0.1.2", path = "../vibesql-types" }
+vibesql-ast = { version = "0.1.2", path = "../vibesql-ast" }
+vibesql-catalog = { version = "0.1.2", path = "../vibesql-catalog" }
+vibesql-storage = { version = "0.1.2", path = "../vibesql-storage" }
+vibesql-parser = { version = "0.1.2", path = "../vibesql-parser" }
+chrono = "0.4"
+rayon = { version = "1.10", optional = true }
+indexmap = "2.0"
+hex = "0.4"
+instant = { version = "0.1", features = ["wasm-bindgen"] }
+geo = { version = "0.31", optional = true }
+wkt = { version = "0.14", optional = true }
+rstar = { version = "0.12", optional = true }
+lru = "0.16"
+log = "0.4"
+bumpalo = { version = "3.16", features = ["collections"] }
+ahash = "0.8"
+
+# Arrow dependencies for vectorized execution
+# Using 53.0+ for chrono 0.4.42 compatibility (fixes quarter() method ambiguity)
+arrow = "57.1"
+arrow-array = "57.1"
+arrow-arith = "57.1"  # For SIMD-accelerated temporal operations
+arrow-select = "57.1"
+
+# Optional benchmark-comparison dependencies
+rusqlite = { version = "0.37", features = ["bundled"], optional = true }
+duckdb = { version = "1.1", features = ["bundled"], optional = true }
+mysql = { version = "26.0", optional = true }
+
+# Optional JIT compilation dependencies
+cranelift = { version = "0.126", optional = true }
+cranelift-jit = { version = "0.126", optional = true }
+cranelift-module = { version = "0.126", optional = true }
+cranelift-native = { version = "0.126", optional = true }
+
+# jemalloc for better memory release characteristics in benchmarks
+# These must be in [dependencies] (not dev-dependencies) to be feature-gated
+tikv-jemallocator = { version = "0.6", optional = true }
+tikv-jemalloc-ctl = { version = "0.6", features = ["stats"], optional = true }
+
+[dev-dependencies]
+vibesql-parser = { version = "0.1.2", path = "../vibesql-parser" }
+criterion = { version = "0.8", features = ["html_reports"] }
+rand = "0.9"
+rand_chacha = "0.9"
+rust_decimal = "1.33"
+paste = "1.0"
+env_logger = "0.11"
+libc = "0.2"
+sysinfo = "0.37"
+
+[features]
+default = ["parallel", "spatial"]
+# Parallel processing using rayon (disabled in WASM where it provides no benefit)
+parallel = ["rayon"]
+# Spatial/geospatial query support (optional, reduces binary size)
+spatial = ["geo", "wkt", "rstar"]
+# Individual comparison features - use these for granular control
+# IMPORTANT: DuckDB linking causes significant binary bloat (73MB vs 15MB) which
+# affects CPU cache locality and slows down ALL benchmarks, even VibeSQL-only ones.
+# For fair OLTP comparisons (Sysbench, TPC-C), use sqlite-comparison only.
+sqlite-comparison = ["rusqlite"]
+duckdb-comparison = ["duckdb"]
+mysql-comparison = ["mysql"]
+# Enable this feature for benchmarks that compare against SQLite (lightweight, fair OLTP comparison)
+# Usage: cargo bench --features benchmark-comparison
+# For DuckDB comparisons (OLAP), use: cargo bench --features benchmark-comparison,duckdb-comparison
+# MySQL requires MYSQL_URL env var (e.g., mysql://root:password@localhost:3306/tpch)
+benchmark-comparison = ["sqlite-comparison", "native-columnar"]
+# Enable detailed profiling output for Q6 query
+profile-q6 = []
+# Enable detailed profiling output for TPC-C transactions
+profile-tpcc = []
+# Enable native columnar execution (Phase 2b - zero row materialization)
+# Now enabled by default for eligible queries. Set VIBESQL_DISABLE_COLUMNAR=1 to opt-out.
+native-columnar = []
+# Enable JIT compilation support using Cranelift (research/experimental)
+# Usage: cargo bench --features jit,benchmark-comparison
+jit = ["cranelift", "cranelift-jit", "cranelift-module", "cranelift-native"]
+# Enable experimental SIMD-accelerated group-by aggregation (research/experimental)
+simd = []
+# Use jemalloc allocator for better memory release characteristics
+# Usage: cargo bench --features jemalloc -- tpcds_runner
+jemalloc = ["tikv-jemallocator", "tikv-jemalloc-ctl"]
+
+[[test]]
+name = "foreign_key_tests"
+path = "tests/foreign_key_tests.rs"
+
+[[test]]
+name = "having_subquery_tests"
+path = "tests/having_subquery_tests.rs"
+
+[[test]]
+name = "delete_tests"
+path = "tests/delete_tests.rs"
+
+[[test]]
+name = "conversion_function_tests"
+path = "tests/conversion_function_tests.rs"
+
+[[test]]
+name = "test_numeric_edge_cases"
+path = "tests/test_numeric_edge_cases.rs"
+
+[[test]]
+name = "date_arithmetic_tests"
+path = "tests/date_arithmetic_tests.rs"
+
+[[test]]
+name = "string_edge_case_tests"
+path = "tests/string_edge_case_tests.rs"
+
+[[test]]
+name = "predicate_pushdown_tests"
+path = "tests/predicate_pushdown_tests.rs"
+
+[[test]]
+name = "spatial_function_tests"
+path = "tests/spatial_function_tests.rs"
+
+[[test]]
+name = "truncate_tests"
+path = "tests/truncate_tests.rs"
+
+[[bench]]
+name = "iterator_execution"
+harness = false
+
+[[bench]]
+name = "spatial_index_benchmark"
+harness = false
+
+[[bench]]
+name = "tpch_benchmark"
+harness = false
+required-features = ["benchmark-comparison"]
+
+[[bench]]
+name = "hash_join_parallel"
+harness = false
+
+[[bench]]
+name = "parallel_sort"
+harness = false
+
+[[bench]]
+name = "tpch_profiling"
+harness = false
+required-features = ["benchmark-comparison"]
+
+[[bench]]
+name = "columnar_execution"
+harness = false
+
+[[bench]]
+name = "tpcds_benchmark"
+harness = false
+
+[[bench]]
+name = "tpcc_benchmark"
+harness = false
+
+[[bench]]
+name = "tpch_deep_profiling"
+harness = false
+required-features = ["benchmark-comparison"]
+
+[[bench]]
+name = "tpch_instrumented"
+harness = false
+required-features = ["benchmark-comparison"]
+
+[[bench]]
+name = "sysbench_oltp"
+harness = false
+
+[[bench]]
+name = "columnar_storage_benchmark"
+harness = false
+
+[[bench]]
+name = "tpcds_runner"
+harness = false
+
+[[bench]]
+name = "simd_filter_benchmark"
+harness = false
+
+[[bench]]
+name = "sysbench_benchmark"
+harness = false
+
+[[bench]]
+name = "lineitem_scan_profiling"
+harness = false
+
+[[bench]]
+name = "tpce_benchmark"
+harness = false
+
+[[bench]]
+name = "prepared_statement_benchmark"
+harness = false
+
+[[bench]]
+name = "arena_prepared_statement_benchmark"
+harness = false

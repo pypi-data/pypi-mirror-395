@@ -1,0 +1,13 @@
+mod auto_increment;
+mod basic;
+mod bit_type;
+mod constraints_column;
+mod constraints_table;
+mod mysql_table_options;
+mod northwind;
+mod numeric_types;
+mod spatial_types;
+mod storage_format;
+mod string_types;
+mod temporal_types;
+mod text_types;
