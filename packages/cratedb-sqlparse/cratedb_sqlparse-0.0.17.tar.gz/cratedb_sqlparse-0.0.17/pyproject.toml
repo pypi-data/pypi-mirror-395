@@ -1,0 +1,200 @@
+[project]
+name = "cratedb-sqlparse"
+version = "0.0.17"
+description = "Parsing utilities to validate and split SQL statements for CrateDB."
+readme = "README.md"
+keywords = [
+  "antlr4",
+  "antlr4 grammar",
+  "cratedb",
+  "grammar",
+  "sql",
+  "sql grammar",
+  "sql parser",
+  "sql parsing",
+]
+license = { text = "Apache License 2.0" }
+authors = [
+  { name = "Ivan Sanchez Valencia", email = "ivan.sanchezvalencia@crate.io" },
+]
+requires-python = ">=3.9"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Customer Service",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Education",
+  "Intended Audience :: End Users/Desktop",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Telecommunications Industry",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: Unix",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: SQL",
+  "Topic :: Communications",
+  "Topic :: Database",
+  "Topic :: Documentation",
+  "Topic :: Education",
+  "Topic :: Office/Business",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Testing",
+  "Topic :: System :: Archiving",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Text Processing",
+  "Topic :: Utilities",
+]
+
+dependencies = [
+  "antlr4-python3-runtime<4.14",
+]
+
+urls.Changelog = "https://github.com/crate/cratedb-sqlparse/releases"
+urls.Documentation = "https://github.com/crate/cratedb-sqlparse"
+urls.Homepage = "https://github.com/crate/cratedb-sqlparse"
+urls.Repository = "https://github.com/crate/cratedb-sqlparse"
+
+[dependency-groups]
+dev = [
+  "mypy<1.20",
+  "packaging",
+  "poethepoet<1",
+  "pyproject-fmt<2.9",
+  "pytest<9",
+  "pytest-cov<8",
+  "ruff<0.15",
+  "validate-pyproject<0.25",
+]
+generate = [
+  "antlr4-tools<0.3",
+  "requests<3",
+]
+
+[tool.setuptools.packages.find]
+namespaces = false
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+line-length = 120
+
+lint.select = [
+  # Builtins
+  "A",
+  # Bugbear
+  "B",
+  # comprehensions
+  "C4",
+  # Pycodestyle
+  "E",
+  # eradicate
+  "ERA",
+  # Pyflakes
+  "F",
+  # isort
+  "I",
+  # pandas-vet
+  "PD",
+  # return
+  "RET",
+  # Bandit
+  "S",
+  # print
+  "T20",
+  "W",
+  # flake8-2020
+  "YTT",
+]
+
+lint.extend-ignore = [
+  "RET504", # Unnecessary variable assignment before `return` statement
+  "RET505", # Unnecessary `elif` after `return` statement
+]
+
+lint.per-file-ignores."tests/*" = [
+  "S101", # Use of `assert` detected.
+]
+
+[tool.pytest.ini_options]
+addopts = """
+  -rA --verbosity=3 --capture=no
+  --cov --cov-report=term-missing --cov-report=xml
+"""
+minversion = "2.0"
+log_level = "DEBUG"
+log_cli_level = "DEBUG"
+log_format = "%(asctime)-15s [%(name)-24s] %(levelname)-8s: %(message)s"
+testpaths = [
+  "cratedb_sqlparse",
+  "tests",
+]
+xfail_strict = true
+markers = [  ]
+
+[tool.coverage.run]
+branch = false
+omit = [
+  "tests/*",
+  "cratedb_sqlparse/generated_parser/*",
+]
+source = [ "cratedb_sqlparse" ]
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+
+[tool.mypy]
+packages = [ "cratedb_sqlparse" ]
+install_types = true
+ignore_missing_imports = true
+implicit_optional = true
+non_interactive = true
+# FIXME: Does not work?
+exclude = [
+  "^SqlBaseLexer\\.py$",
+  "cratedb_sqlparse/generated_parser/",
+  "cratedb_sqlparse/generated_parser/SqlBaseParser.py",
+]
+
+# ===================
+# Tasks configuration
+# ===================
+
+[tool.poe.tasks]
+
+check = [
+  "lint",
+  "test",
+]
+
+format = [
+  { cmd = "ruff format ." },
+  # Configure Ruff not to auto-fix (remove!) unused variables (F841) and `print` statements (T201).
+  { cmd = "ruff check --fix --ignore=ERA --ignore=F401 --ignore=F841 --ignore=T20 --ignore=E501 ." },
+  { cmd = "pyproject-fmt --keep-full-version pyproject.toml" },
+]
+
+lint = [
+  { cmd = "ruff format --check ." },
+  { cmd = "ruff check ." },
+  { cmd = "validate-pyproject pyproject.toml" },
+  # { cmd = "mypy ." },
+]
+
+release = [
+  { cmd = "python -m build" },
+  { cmd = "twine upload dist/*" },
+]
+
+test = { cmd = "pytest" }
