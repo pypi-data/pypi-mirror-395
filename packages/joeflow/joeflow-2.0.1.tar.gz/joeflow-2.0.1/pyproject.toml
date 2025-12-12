@@ -1,0 +1,144 @@
+[build-system]
+requires = ["flit_core>=3.2", "flit_scm", "wheel"]
+build-backend = "flit_scm:buildapi"
+
+[project]
+name = "joeflow"
+authors = [
+  { name = "Johannes Maron", email = "johannes@maron.family" }
+]
+readme = "README.rst"
+license = { file = "LICENSE" }
+dynamic = ["version", "description"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+  "Programming Language :: JavaScript",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
+  "Framework :: Django",
+  "Framework :: Django :: 5.2",
+  "Topic :: Software Development",
+  "Topic :: Home Automation",
+  "Topic :: Internet",
+  "Topic :: Office/Business",
+  "Topic :: Office/Business :: Financial",
+  "Topic :: Office/Business :: Financial :: Accounting",
+  "Topic :: Office/Business :: Financial :: Investment",
+  "Topic :: Office/Business :: Financial :: Point-Of-Sale",
+  "Topic :: Office/Business :: Scheduling",
+  "Topic :: Software Development",
+]
+keywords = [
+  "django",
+  "process",
+  "automation",
+  "workflow",
+  "framework",
+  "task",
+]
+requires-python = ">=3.10"
+dependencies = [
+  "django>=5.2",
+  "django-appconf",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov",
+  "pytest-django",
+  "pytest-env",
+  "redis",
+]
+docs = [
+  "celery>=4.2.0",
+  "django-reversion",
+  "dramatiq>=2.0.0",
+  "django_dramatiq",
+  "redis",
+  "graphviz>=0.18",
+]
+graphviz = [
+  "graphviz>=0.18",
+]
+reversion = [
+  "django-reversion",
+]
+celery = [
+  "celery>=4.2.0",
+]
+dramatiq = [
+  "dramatiq>=2.0.0",
+  "django_dramatiq",
+]
+
+[project.urls]
+Project-URL = "https://github.com/codingjoe/joeflow"
+
+[tool.flit.module]
+name = "joeflow"
+
+[tool.setuptools_scm]
+write_to = "joeflow/_version.py"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=joeflow --doctest-modules"
+testpaths = [
+  "tests",
+]
+norecursedirs = "tests/testapp"
+DJANGO_SETTINGS_MODULE = "tests.testapp.settings"
+env = "D:DRAMATIQ_BROKER = dramatiq.brokers.stub.StubBroker"
+
+[tool.coverage.report]
+show_missing = true
+
+
+[tool.ruff]
+src = ["joeflow", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "S", # flake8-bandit
+    "D", # pydocstyle
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "C", # flake8-comprehensions
+]
+
+ignore = ["B904", "D1", "E501", "S101", "C901"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S", "DJ", "E731", "B018"
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+split-on-trailing-comma = true
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+force-wrap-aliases = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.djlint]
+profile="django"
+indent=2
+max_line_length=120
+exclude=".direnv,.venv,venv"
