@@ -1,0 +1,77 @@
+"""
+Utility to manage resource json schema files.
+
+Used for reading a schema file, validate against firestone schema and convert to
+dict.
+"""
+
+import importlib.resources
+import io
+import logging
+
+import json
+import jsonref
+import jsonschema
+import yaml
+
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _jsonloader(uri, **kwargs):
+    # Handle file:// URIs (7 characters)
+    if uri.startswith("file://"):
+        uri = uri[7:]
+    # Handle file: URIs (5 characters)
+    elif uri.startswith("file:"):
+        uri = uri[5:]
+
+    with io.open(uri, "r", encoding="utf-8") as fh:
+        if uri.endswith(".json"):
+            _LOGGER.debug(f"Loading resource file {uri} using jsonref")
+            return jsonref.load(fh)
+
+        _LOGGER.debug(f"Loading resource file {uri} using yaml")
+        rsrc_data = yaml.safe_load(fh)
+
+        dumpj = json.dumps(rsrc_data)
+        return jsonref.loads(dumpj, loader=_jsonloader, base_uri=f"file:{uri}", **kwargs)
+
+
+def get_resource_schema(filename: str) -> dict:
+    """Get a resource schema file in JSON or YAML format.
+
+    First try YAML, then JSON
+
+    :param str filename: the file name, full path, to read JSON schema from
+    :return: return a dictionary of the json schema, usable for validation
+    :rtype: dict
+    """
+    with io.open(filename, "r", encoding="utf-8") as fh:
+        if filename.endswith(".json"):
+            _LOGGER.debug(f"Loading resource file {filename} using jsonref")
+            return jsonref.load(fh)
+
+        _LOGGER.debug(f"Loading resource file {filename} using yaml")
+        rsrc_data = yaml.safe_load(fh)
+        dumpj = json.dumps(rsrc_data)
+        return jsonref.loads(
+            dumpj, loader=_jsonloader, base_uri=f"file:{filename}", lazy_load=False
+        )
+
+
+def validate(data: dict) -> bool:
+    """Validate user given resource schema, data, against our schema.
+
+    :param dict data: the data as a dict from user resource
+    :return: return True if validate, else throw exception
+    :rtype: bool
+    """
+    schema_fh = (
+        importlib.resources.files("firestone.schema")
+        .joinpath("resource.yaml")
+        .open("r", encoding="utf-8")
+    )
+    schema = get_resource_schema(schema_fh.name)
+
+    jsonschema.validate(instance=data, schema=schema)
