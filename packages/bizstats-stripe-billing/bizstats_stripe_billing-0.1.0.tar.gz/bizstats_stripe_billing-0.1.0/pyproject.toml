@@ -1,0 +1,125 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bizstats-stripe-billing"
+version = "0.1.0"
+description = "Comprehensive Stripe billing integration with subscription management, webhooks, and usage-based billing"
+readme = "README.md"
+license = {text = "Proprietary - Copyright (c) 2025 Absolut-e Data Com Inc. and BizStats.AI. All rights reserved."}
+requires-python = ">=3.11"
+authors = [
+    { name = "Absolut-e Data Com Inc.", email = "account@absolut-e.com" }
+]
+keywords = [
+    "stripe",
+    "billing",
+    "payments",
+    "subscriptions",
+    "webhooks",
+    "saas",
+    "metered-billing",
+    "checkout"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "stripe>=7.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "tenacity>=8.2.0",
+    "httpx>=0.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "respx>=0.20.0",
+]
+redis = [
+    "redis>=5.0.0",
+]
+sqlalchemy = [
+    "sqlalchemy>=2.0.0",
+]
+all = [
+    "redis>=5.0.0",
+    "sqlalchemy>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/absolut-e/bizstats-stripe-billing"
+Documentation = "https://github.com/absolut-e/bizstats-stripe-billing#readme"
+Repository = "https://github.com/absolut-e/bizstats-stripe-billing"
+Issues = "https://github.com/absolut-e/bizstats-stripe-billing/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bizstats_stripe_billing"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: Unit tests (no external dependencies)",
+    "integration: Integration tests (requires Stripe test keys)",
+    "slow: Slow running tests",
+]
+
+[tool.coverage.run]
+source = ["src/bizstats_stripe_billing"]
+branch = true
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+fail_under = 75
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

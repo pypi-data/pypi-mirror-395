@@ -1,0 +1,151 @@
+Metadata-Version: 2.4
+Name: bizstats-stripe-billing
+Version: 0.1.0
+Summary: Comprehensive Stripe billing integration with subscription management, webhooks, and usage-based billing
+Project-URL: Homepage, https://github.com/absolut-e/bizstats-stripe-billing
+Project-URL: Documentation, https://github.com/absolut-e/bizstats-stripe-billing#readme
+Project-URL: Repository, https://github.com/absolut-e/bizstats-stripe-billing
+Project-URL: Issues, https://github.com/absolut-e/bizstats-stripe-billing/issues
+Author-email: "Absolut-e Data Com Inc." <account@absolut-e.com>
+License: Proprietary - Copyright (c) 2025 Absolut-e Data Com Inc. and BizStats.AI. All rights reserved.
+Keywords: billing,checkout,metered-billing,payments,saas,stripe,subscriptions,webhooks
+Classifier: Development Status :: 4 - Beta
+Classifier: Framework :: AsyncIO
+Classifier: Intended Audience :: Developers
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Office/Business :: Financial
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.11
+Requires-Dist: httpx>=0.26.0
+Requires-Dist: pydantic-settings>=2.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: stripe>=7.0.0
+Requires-Dist: tenacity>=8.2.0
+Provides-Extra: all
+Requires-Dist: redis>=5.0.0; extra == 'all'
+Requires-Dist: sqlalchemy>=2.0.0; extra == 'all'
+Provides-Extra: dev
+Requires-Dist: black>=24.0.0; extra == 'dev'
+Requires-Dist: mypy>=1.8.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.12.0; extra == 'dev'
+Requires-Dist: pytest>=8.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Provides-Extra: redis
+Requires-Dist: redis>=5.0.0; extra == 'redis'
+Provides-Extra: sqlalchemy
+Requires-Dist: sqlalchemy>=2.0.0; extra == 'sqlalchemy'
+Provides-Extra: test
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'test'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'test'
+Requires-Dist: pytest-mock>=3.12.0; extra == 'test'
+Requires-Dist: pytest>=8.0.0; extra == 'test'
+Requires-Dist: respx>=0.20.0; extra == 'test'
+Description-Content-Type: text/markdown
+
+# @bizstats/stripe-billing
+
+Comprehensive Stripe billing integration for BizStats applications.
+
+## Features
+
+- Customer management (create, update, delete)
+- Subscription lifecycle (create, cancel, resume, update)
+- Checkout sessions for payment flow
+- Billing portal integration
+- Webhook handling with signature verification
+- Usage-based/metered billing
+- Invoice management
+- Payment method management
+
+## Installation
+
+```bash
+pip install bizstats-stripe-billing
+```
+
+## Quick Start
+
+```python
+from bizstats_stripe_billing import (
+    BillingService,
+    CustomerCreate,
+    CheckoutSessionCreate,
+)
+
+# Initialize the service
+billing = BillingService()
+
+# Create a customer
+result = billing.create_customer(
+    CustomerCreate(
+        email="user@example.com",
+        name="John Doe",
+    )
+)
+
+# Create checkout session
+checkout = billing.create_checkout_session(
+    CheckoutSessionCreate(
+        customer_id=result.stripe_customer_id,
+        price_id="price_xxx",
+        success_url="https://example.com/success",
+        cancel_url="https://example.com/cancel",
+    )
+)
+
+print(f"Checkout URL: {checkout.checkout_url}")
+```
+
+## Configuration
+
+Set environment variables:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+```
+
+Or configure programmatically:
+
+```python
+from bizstats_stripe_billing import StripeConfig, configure
+
+config = StripeConfig(
+    secret_key="sk_test_xxx",
+    webhook_secret="whsec_xxx",
+)
+configure(config)
+```
+
+## Webhook Handling
+
+```python
+from bizstats_stripe_billing import (
+    WebhookHandler,
+    WebhookEventType,
+    WebhookResult,
+)
+
+handler = WebhookHandler()
+
+@handler.on(WebhookEventType.SUBSCRIPTION_CREATED)
+async def handle_subscription(data, event):
+    # Process subscription created event
+    return WebhookResult.ok(event.id, event.type)
+
+# Process incoming webhook
+result = await handler.process(payload, signature)
+```
+
+## License
+
+Copyright (c) 2025 Absolut-e Data Com Inc. and BizStats.AI
+All rights reserved. Proprietary and confidential.
