@@ -1,0 +1,1190 @@
+Metadata-Version: 2.4
+Name: agent-framework-lib
+Version: 0.3.3
+Summary: A comprehensive Python framework for building and serving conversational AI agents with FastAPI
+Author-email: Sebastian Pavel <sebastian@cinco.ai>, Elliott Girard <elliott.girard@icloud.com>
+Maintainer-email: Sebastian Pavel <sebastian@cinco.ai>
+License: MIT
+Project-URL: Homepage, https://github.com/Cinco-AI/AgentFramework
+Project-URL: Repository, https://github.com/Cinco-AI/AgentFramework.git
+Project-URL: Issues, https://github.com/Cinco-AI/AgentFramework/issues
+Project-URL: Documentation, https://github.com/Cinco-AI/AgentFramework/blob/main/README.md
+Project-URL: Changelog, https://github.com/Cinco-AI/AgentFramework/blob/main/docs/CHANGELOG.md
+Project-URL: Bug Tracker, https://github.com/Cinco-AI/AgentFramework/issues
+Project-URL: Source Code, https://github.com/Cinco-AI/AgentFramework
+Keywords: ai,agents,fastapi,llamaindex,framework,conversational-ai,multi-agent,llm,openai,gemini,chatbot,session-management,framework-agnostic
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Communications :: Chat
+Classifier: Topic :: Internet :: WWW/HTTP :: HTTP Servers
+Classifier: Framework :: FastAPI
+Classifier: Environment :: Web Environment
+Classifier: Typing :: Typed
+Requires-Python: <3.14,>=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiofiles>=24.1.0
+Requires-Dist: fastapi>=0.115.12
+Requires-Dist: uvicorn>=0.34.2
+Requires-Dist: fastmcp>=2.2.7
+Requires-Dist: mcp-python-interpreter
+Requires-Dist: pyyaml>=6.0.2
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: opentelemetry-sdk>=1.33.1
+Requires-Dist: opentelemetry-api>=1.33.1
+Requires-Dist: opentelemetry-exporter-otlp-proto-grpc>=1.33.1
+Requires-Dist: pymongo>=4.10.1
+Requires-Dist: motor>=3.6.0
+Requires-Dist: black>=25.1.0
+Requires-Dist: markitdown[all]>=0.1.2
+Requires-Dist: psutil>=7.0.0
+Requires-Dist: weasyprint>=60.0
+Requires-Dist: markdown>=3.5
+Requires-Dist: playwright>=1.56.0
+Provides-Extra: llamaindex
+Requires-Dist: llama-index-core>=0.13.3; extra == "llamaindex"
+Requires-Dist: llama-index>=0.13.3; extra == "llamaindex"
+Requires-Dist: llama-index-llms-openai>=0.4.7; extra == "llamaindex"
+Requires-Dist: llama-index-llms-gemini>=0.4.7; extra == "llamaindex"
+Requires-Dist: llama-index-llms-anthropic>=0.4.7; extra == "llamaindex"
+Provides-Extra: mcp
+Requires-Dist: llama-index-tools-mcp>=0.4.0; extra == "mcp"
+Provides-Extra: microsoft
+Provides-Extra: dev
+Requires-Dist: pytest>=8.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=6.2.1; extra == "dev"
+Requires-Dist: pytest-mock>=3.10.0; extra == "dev"
+Requires-Dist: pytest-benchmark>=4.0.0; extra == "dev"
+Requires-Dist: pytest-xdist>=3.3.0; extra == "dev"
+Requires-Dist: black>=25.1.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.5.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: pre-commit>=3.0.0; extra == "dev"
+Requires-Dist: aiohttp>=3.12.13; extra == "dev"
+Requires-Dist: httpx>=0.28.1; extra == "dev"
+Requires-Dist: coverage>=7.0.0; extra == "dev"
+Provides-Extra: mongodb
+Requires-Dist: pymongo>=4.10.1; extra == "mongodb"
+Requires-Dist: motor>=3.6.0; extra == "mongodb"
+Provides-Extra: s3
+Requires-Dist: boto3>=1.34.0; extra == "s3"
+Requires-Dist: botocore>=1.34.0; extra == "s3"
+Provides-Extra: minio
+Requires-Dist: minio>=7.2.0; extra == "minio"
+Provides-Extra: multimodal
+Requires-Dist: pillow>=10.0.0; extra == "multimodal"
+Requires-Dist: opencv-python>=4.8.0; extra == "multimodal"
+Requires-Dist: pytesseract>=0.3.10; extra == "multimodal"
+Provides-Extra: all
+Requires-Dist: agent-framework-lib[dev,llamaindex,mcp,microsoft,minio,mongodb,multimodal,s3]; extra == "all"
+Dynamic: license-file
+
+# Agent Framework Library
+
+A comprehensive Python framework for building and serving conversational AI agents with FastAPI. Create production-ready AI agents in minutes with automatic session management, streaming responses, file storage, and easy MCP integration.
+
+**Key Features:**
+- 🚀 **Quick Setup** - Create agents in 10-15 minutes
+- 🔌 **Easy MCP Integration** - Connect to external tools effortlessly
+- 🛠️ **Off-the-Shelf Tools** - Pre-built tools for files, PDFs, charts, and more
+- 🔄 **Multi-Provider Support** - OpenAI, Anthropic, Gemini
+- 💾 **Session Management** - Automatic conversation persistence
+- 📁 **File Storage** - Local, S3, MinIO support
+
+## Installation
+
+```bash
+# Install with LlamaIndex support (recommended)
+uv add agent-framework-lib[llamaindex]
+
+# Install with MCP support
+uv add agent-framework-lib[llamaindex,mcp]
+
+# Install with all features
+uv add agent-framework-lib[all]
+
+# Or with pip
+pip install agent-framework-lib[llamaindex]
+```
+
+**Available extras:** `llamaindex`, `mcp`, `mongodb`, `s3`, `minio`, `multimod`
+
+**Optional: System Dependencies**
+
+The framework **automatically detects and configures** system libraries. Manual installation is only needed if you encounter issues:
+
+**For PDF Generation (WeasyPrint):**
+```bash
+# macOS
+brew install pango gdk-pixbuf libffi cairo
+
+# Ubuntu/Debian
+sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libcairo2
+
+# Fedora/RHEL
+sudo dnf install pango gdk-pixbuf2 libffi-devel cairo
+```
+
+**For Chart/Mermaid Image Generation (Playwright):**
+```bash
+# Install Playwright and browser
+uv add playwright
+playwright install chromium
+
+# Or with pip
+pip install playwright
+playwright install chromium
+```
+
+The framework handles library path configuration automatically on startup.
+
+
+
+## 🚀 Getting Started
+
+### Create Your First Agent
+
+Here's a complete, working agent with LlamaIndex:
+
+```python
+from typing import List
+from agent_framework import LlamaIndexAgent, create_basic_agent_server
+from llama_index.core.tools import FunctionTool
+
+class MyAgent(LlamaIndexAgent):
+    def __init__(self):
+        super().__init__()
+        # Required: Unique agent ID for session isolation
+        self.agent_id = "my_calculator_agent"
+    
+    def get_agent_prompt(self) -> str:
+        """Define your agent's behavior and personality."""
+        return "You are a helpful calculator assistant."
+  
+    def get_agent_tools(self) -> List[callable]:
+        """Define the tools your agent can use."""
+        def add(a: float, b: float) -> float:
+            """Add two numbers together."""
+            return a + b
+        
+        def multiply(a: float, b: float) -> float:
+            """Multiply two numbers together."""
+            return a * b
+        
+        return [
+            FunctionTool.from_defaults(fn=add),
+            FunctionTool.from_defaults(fn=multiply)
+        ]
+
+# Start server - includes streaming, session management, web UI
+create_basic_agent_server(MyAgent, port=8000)
+```
+
+**Required Methods:**
+- `__init__()` - Set unique `agent_id`
+- `get_agent_prompt()` - Return system prompt string
+- `get_agent_tools()` - Return list of tools (can be empty)
+
+**Optional Methods (have default implementations):**
+- `create_fresh_context()` - Create new LlamaIndex Context (default provided)
+- `serialize_context(ctx)` - Serialize context for persistence (default provided)
+- `deserialize_context(state)` - Deserialize context from state (default provided)
+- `initialize_agent()` - Customize agent creation (default: FunctionAgent)
+- `configure_session()` - Add session setup logic
+
+**That's it!** The framework provides default implementations for context management (state persistence), so you only need to implement the three core methods above.
+
+**Run it:**
+```bash
+# Set your API key
+export OPENAI_API_KEY=sk-your-key-here
+
+# Run the agent
+python my_agent.py
+
+# Open http://localhost:8000/ui
+```
+
+## ⚙️ Configure Your Agent
+
+### Environment Setup
+
+Create a `.env` file:
+
+```env
+# Required: At least one API key
+OPENAI_API_KEY=sk-your-openai-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+GEMINI_API_KEY=your-gemini-key
+
+# Model Configuration
+DEFAULT_MODEL=gpt-5-mini
+OPENAI_API_MODEL=gpt-5
+
+# Session Storage (optional)
+SESSION_STORAGE_TYPE=memory  # or "mongodb"
+MONGODB_CONNECTION_STRING=mongodb://localhost:27017
+MONGODB_DATABASE_NAME=agent_sessions
+
+# File Storage (optional)
+LOCAL_STORAGE_PATH=./file_storage
+AWS_S3_BUCKET=my-bucket
+S3_AS_DEFAULT=false
+```
+
+### LlamaIndex Agent Configuration
+
+Control model behavior in your agent:
+
+```python
+class MyAgent(LlamaIndexAgent):
+    def __init__(self):
+        super().__init__()
+        self.agent_id = "my_agent"
+        # Default model config (can be overridden per session)
+        self.default_temperature = 0.7
+        self.default_model = "gpt-5-mini"
+```
+
+**Runtime Configuration:**
+
+Users can override settings per session via the API or web UI:
+- Model selection (gpt-5, claude-4.5-sonnet, gemini-pro)
+- Temperature (0.0 - 1.0)
+- Max tokens
+- System prompt override
+
+## 🛠️ Off-the-Shelf Tools
+
+The framework provides ready-to-use tools for common tasks. Import from `agent_framework.tools`:
+
+### File Management Tools
+
+```python
+from agent_framework.tools import (
+    CreateFileTool,      # Create text files
+    ListFilesTool,       # List stored files
+    ReadFileTool,        # Read file contents
+    GetFilePathTool      # Get file system path
+)
+```
+
+### PDF Generation Tools
+
+```python
+from agent_framework.tools import (
+    CreatePDFFromMarkdownTool,  # Generate PDF from markdown
+    CreatePDFFromHTMLTool,      # Generate PDF from HTML
+    CreatePDFWithImagesTool     # Generate PDF with embedded images
+)
+```
+
+### Chart & Visualization Tools
+
+```python
+from agent_framework.tools import (
+    ChartToImageTool,    # Convert Chart.js config to PNG
+    MermaidToImageTool,  # Convert Mermaid diagram to PNG
+    TableToImageTool     # Convert table data to PNG
+)
+```
+
+### Using Off-the-Shelf Tools
+
+```python
+from agent_framework import LlamaIndexAgent
+from agent_framework.storage.file_system_management import FileStorageFactory
+from agent_framework.tools import CreateFileTool, ListFilesTool, CreatePDFFromMarkdownTool
+
+class MyAgent(LlamaIndexAgent):
+    def __init__(self):
+        super().__init__()
+        self.agent_id = "my_agent"
+        self.file_storage = None
+        
+        # Initialize tools
+        self.tools = [
+            CreateFileTool(),
+            ListFilesTool(),
+            CreatePDFFromMarkdownTool()
+        ]
+    
+    async def _ensure_file_storage(self):
+        if self.file_storage is None:
+            self.file_storage = await FileStorageFactory.create_storage_manager()
+    
+    async def configure_session(self, session_configuration):
+        user_id = session_configuration.get('user_id', 'default_user')
+        session_id = session_configuration.get('session_id')
+        
+        await self._ensure_file_storage()
+        
+        # Inject dependencies into tools
+        for tool in self.tools:
+            tool.set_context(
+                file_storage=self.file_storage,
+                user_id=user_id,
+                session_id=session_id
+            )
+        
+        await super().configure_session(session_configuration)
+    
+    def get_agent_tools(self):
+        return [tool.get_tool_function() for tool in self.tools]
+```
+
+**Key Pattern:**
+1. Instantiate tools in `__init__()`
+2. Initialize file storage in `configure_session()`
+3. Inject context with `tool.set_context()`
+4. Return tool functions in `get_agent_tools()`
+
+## 🔧 Create Custom Tools
+
+Custom tools extend your agent's capabilities. The tool name and docstring are crucial - they tell the agent when and how to use the tool.
+
+### Basic Custom Tool
+
+```python
+from llama_index.core.tools import FunctionTool
+
+def get_weather(city: str) -> str:
+    """Get the current weather for a specific city.
+    
+    Args:
+        city: The name of the city to get weather for
+        
+    Returns:
+        A description of the current weather
+    """
+    # Your implementation here
+    return f"The weather in {city} is sunny, 22°C"
+
+# Add to your agent
+class MyAgent(LlamaIndexAgent):
+    def get_agent_tools(self):
+        return [FunctionTool.from_defaults(fn=get_weather)]
+```
+
+**Important:**
+- **Function name** should be explicit and descriptive (e.g., `get_weather`, not `weather`)
+- **Docstring** is added as the tool description - the agent uses this to understand when to call the tool
+- **Type hints** help the agent understand parameters
+- **Args/Returns documentation** provides additional context
+
+### Custom Tool with Dependencies
+
+For tools that need file storage or other dependencies:
+
+```python
+from agent_framework.tools.base_tool import AgentTool
+
+class MyCustomTool(AgentTool):
+    """Base class handles dependency injection."""
+    
+    def execute(self, param1: str, param2: int) -> str:
+        """Process data and store results.
+        
+        Args:
+            param1: Description of first parameter
+            param2: Description of second parameter
+            
+        Returns:
+            Result description
+        """
+        # Access injected dependencies
+        user_id = self.user_id
+        session_id = self.session_id
+        file_storage = self.file_storage
+        
+        # Your logic here
+        result = f"Processed {param1} with {param2}"
+        
+        # Store file if needed
+        file_id = await file_storage.store_file(
+            user_id=user_id,
+            session_id=session_id,
+            filename="result.txt",
+            content=result.encode()
+        )
+        
+        return f"Result stored with ID: {file_id}"
+
+# Use in your agent
+class MyAgent(LlamaIndexAgent):
+    def __init__(self):
+        super().__init__()
+        self.agent_id = "my_agent"
+        self.custom_tool = MyCustomTool()
+    
+    async def configure_session(self, session_configuration):
+        # Inject dependencies
+        self.custom_tool.set_context(
+            file_storage=self.file_storage,
+            user_id=session_configuration.get('user_id'),
+            session_id=session_configuration.get('session_id')
+        )
+        await super().configure_session(session_configuration)
+    
+    def get_agent_tools(self):
+        return [self.custom_tool.get_tool_function()]
+```
+
+### Tool Naming Best Practices
+
+```python
+# ✅ GOOD - Explicit and clear
+def calculate_mortgage_payment(principal: float, rate: float, years: int) -> float:
+    """Calculate monthly mortgage payment."""
+    pass
+
+def send_email_notification(recipient: str, subject: str, body: str) -> bool:
+    """Send an email notification to a recipient."""
+    pass
+
+# ❌ BAD - Too vague
+def calculate(x: float, y: float) -> float:
+    """Do calculation."""
+    pass
+
+def send(data: str) -> bool:
+    """Send something."""
+    pass
+```
+
+## 🔌 Adding MCP Servers
+
+MCP (Model Context Protocol) allows your agent to connect to external tools and services.
+
+### Basic MCP Setup
+
+```python
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+class MyAgent(LlamaIndexAgent):
+    def __init__(self):
+        super().__init__()
+        self.agent_id = "my_agent"
+        self.mcp_tools = []
+        self._mcp_initialized = False
+    
+    async def _initialize_mcp_tools(self):
+        """Load tools from MCP servers."""
+        if self._mcp_initialized:
+            return
+        
+        # Configure your MCP server
+        mcp_configs = [
+            {
+                "command": "uvx",
+                "args": ["mcp-server-filesystem"],
+                "env": {"FILESYSTEM_ROOT": "/path/to/workspace"}
+            }
+        ]
+        
+        for config in mcp_configs:
+            client = BasicMCPClient(
+                config["command"],
+                args=config["args"],
+                env=config.get("env", {})
+            )
+            
+            # Load tools from the MCP server
+            mcp_tool_spec = McpToolSpec(client=client)
+            tools = await mcp_tool_spec.to_tool_list_async()
+            self.mcp_tools.extend(tools)
+        
+        self._mcp_initialized = True
+    
+    async def initialize_agent(self, model_name, system_prompt, tools, **kwargs):
+        # Load MCP tools before initializing agent
+        await self._initialize_mcp_tools()
+        
+        # Combine with other tools
+        all_tools = self.get_agent_tools()
+        await super().initialize_agent(model_name, system_prompt, all_tools, **kwargs)
+    
+    def get_agent_tools(self):
+        # Return built-in tools + MCP tools
+        return self.mcp_tools
+```
+
+### Multiple MCP Servers
+
+```python
+def _get_mcp_configs(self):
+    """Configure multiple MCP servers."""
+    return [
+        {
+            "name": "filesystem",
+            "command": "uvx",
+            "args": ["mcp-server-filesystem"],
+            "env": {"FILESYSTEM_ROOT": "/workspace"}
+        },
+        {
+            "name": "github",
+            "command": "uvx",
+            "args": ["mcp-server-github"],
+            "env": {
+                "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN")
+            }
+        },
+        {
+            "name": "python",
+            "command": "uvx",
+            "args": ["mcp-run-python", "stdio"]
+        }
+    ]
+```
+
+### Popular MCP Servers
+
+```bash
+# Filesystem operations
+uvx mcp-server-filesystem
+
+# GitHub integration
+uvx mcp-server-github
+
+# Python code execution
+uvx mcp-run-python
+
+# Database access
+uvx mcp-neo4j-cypher
+uvx mcp-server-postgres
+```
+
+**Installation:**
+```bash
+# Install with MCP support
+uv add agent-framework-lib[llamaindex,mcp]
+
+# Or add MCP to existing installation
+uv add agent-framework-lib[mcp]
+
+# MCP servers are run via uvx (no separate install needed)
+```
+
+## 📝 Response Format Support (Required Prompt)
+
+**⚠️ IMPORTANT:** To enable rich response formats (charts, tables, forms, options), you must include specific instructions in your agent's system prompt.
+
+**Note:** This will be deprecated soon and automatically added by the framework.
+
+### Required Prompt Section
+
+Add this to your Prompt in `get_agent_prompt()` return value:
+
+```python
+"""
+   You can generate markdown, mermaid diagrams, charts and code blocks, forms and optionsblocks. 
+    WHEN generating mermaid diagrams, always use the version 10.x definition syntax.
+    ALWAYS include option blocks in your answer especially when asking the user to select an option or continue with the conversation!!! 
+    ALWAYS include options blocks (OK, No Thanks) when saying something like:  Let me know if you want to ... 
+
+    **CRITICAL: Mermaid Diagram Formatting Rules (Version 10.x)**
+    
+    You MUST follow these strict rules when generating Mermaid diagrams:
+    
+    1. **Node Label Syntax**: ALL node labels with special characters MUST use quotes or brackets:
+       - Use `["text with spaces/special chars"]` for square nodes
+       - Use `("text with spaces/special chars")` for rounded nodes
+       - Use `{"text with spaces/special chars"}` for diamond nodes
+       - Use `[("text with spaces/special chars")]` for stadium nodes
+       - Use `[["text with spaces/special chars"]]` for subroutine nodes
+    
+    2. **Edge Label Syntax**: ALL edge labels (text on arrows) with special characters MUST use quotes:
+       - CORRECT: `A -->|"Inconstitutionnel (partiel)"| B`
+       - CORRECT: `A -->|"Client/Server"| B`
+       - CORRECT: `A -->|"Étape 1/3"| B`
+       - WRONG: `A -->|Inconstitutionnel (partiel)| B` ❌
+       - WRONG: `A -->|Client/Server| B` ❌
+       - If edge label has NO special chars, quotes optional: `A -->|Oui| B` or `A -->|"Oui"| B`
+    
+    3. **FORBIDDEN Characters in Unquoted Labels** (both nodes AND edges):
+       - NO forward slashes `/` without quotes
+       - NO backslashes `\` without quotes
+       - NO parentheses `()` without quotes
+       - NO line breaks `\n` - use actual spaces or quotes
+       - NO special characters without proper quoting
+       - NO accented characters without quotes (é, è, à, etc.)
+    
+    4. **Correct Examples**:
+       ```mermaid
+       %%{init: {'theme':'base'}}%%
+       flowchart TD
+           A["Projet de loi (Gouvernement)"]
+           B["Assemblée Nationale"]
+           C{"Amendements acceptés?"}
+           D[("Base de données")]
+           A --> B
+           B --> C
+           C -->|"Oui"| D
+           C -->|"Non"| A
+           C -->|"Inconstitutionnel (partiel)"| A
+       ```
+    
+    5. **WRONG Examples** (DO NOT USE):
+       ```mermaid
+       flowchart TD
+           A[Projet de loi\n(Gouvernement)]  ❌ WRONG: \n and unquoted ()
+           B[Client/Server]  ❌ WRONG: unquoted /
+           C[Test (v2)]  ❌ WRONG: unquoted ()
+           D -->|Inconstitutionnel (partiel)| E  ❌ WRONG: unquoted () in edge label
+           F -->|Étape 1/3| G  ❌ WRONG: unquoted / in edge label
+       ```
+    
+    6. **Safe Node IDs**: Use simple alphanumeric IDs (A, B, C1, Node1, etc.)
+    
+    7. **Always Include**:
+       - Version directive: `%%{init: {'theme':'base'}}%%`
+       - Diagram type: `flowchart TD`, `sequenceDiagram`, `classDiagram`, etc.
+       - Proper closing with triple backticks
+    
+    8. **Complete Valid Example with Edge Labels**:
+       ```mermaid
+       %%{init: {'theme':'base'}}%%
+       flowchart TD
+           A["Projet de loi (Gouvernement)"]
+           B["Assemblée Nationale"]
+           C["Sénat"]
+           D{"Conseil Constitutionnel"}
+           E["Promulgation"]
+           
+           A -->|"Dépôt"| B
+           B -->|"Vote favorable"| C
+           C -->|"Approuvé"| D
+           D -->|"Constitutionnel"| E
+           D -->|"Inconstitutionnel (total ou partiel)"| A
+           B -->|"Rejeté (1ère lecture)"| C
+       ```
+    
+    9. **Sequence Diagram Example**:
+       ```mermaid
+       %%{init: {'theme':'base'}}%%
+       sequenceDiagram
+           participant User as ["Utilisateur"]
+           participant Browser as ["Navigateur Web"]
+           participant Server as ["Serveur API"]
+           User->>Browser: Envoie requête
+           Browser->>Server: HTTP POST /api
+           Server-->>Browser: Réponse JSON
+           Browser-->>User: Affiche résultat
+       ```
+    
+    **MANDATORY**: After generating a Mermaid diagram, ALWAYS offer to save it as an image using the save button.
+    
+    **CRITICAL RULE**: When in doubt, ALWAYS use quotes around ALL labels (nodes and edges). It's safer to over-quote than under-quote.
+    
+    **TESTING CHECKLIST** - Before outputting, mentally verify:
+    - ✓ All node labels with spaces/special chars are in brackets with quotes
+    - ✓ All edge labels with special chars are in quotes: `-->|"text"|`
+    - ✓ No `/`, `\`, `()` in unquoted labels (nodes OR edges)
+    - ✓ No `\n` characters anywhere
+    - ✓ No accented characters without quotes
+    - ✓ Proper init directive included
+    - ✓ Valid diagram type specified 
+
+    **Crucial for Display: Formatting Charts and Tables**
+            To ensure charts are displayed correctly as interactive graphics, you MUST format your chart output using a fenced code block explicitly marked as `chart`. The content of this block must be a JSON object with **EXACTLY** the following top-level structure:
+            ```json
+            {
+            "type": "chartjs",
+            "chartConfig": { /* Your actual Chart.js configuration object goes here */ }
+            }
+            ```
+            Inside the `chartConfig` object, you will then specify the Chart.js `type` (e.g., `bar`, `line`), `data`, and `options`.
+
+            **CRITICAL: NO JAVASCRIPT FUNCTIONS ALLOWED**
+            The `chartConfig` must be PURE JSON - NO JavaScript functions, callbacks, or executable code are allowed. This means:
+            - NO `function(context) { ... }` in tooltip callbacks
+            - NO `function(value, index, values) { ... }` in formatting callbacks
+            - NO arrow functions like `(ctx) => { ... }`
+            - NO executable JavaScript code of any kind
+            
+            Instead, use only Chart.js's built-in configuration options that accept simple values:
+            - For tooltips: Use Chart.js default formatting or simple string templates
+            - For labels: Use static strings or Chart.js built-in formatters
+            - For colors: Use static color arrays or predefined color schemes
+            
+            **Valid Chart.js Options (JSON-only):**
+            ```json
+            "options": {
+            "responsive": true,
+            "maintainAspectRatio": false,
+            "plugins": {
+                "title": {
+                "display": true,
+                "text": "Your Chart Title"
+                },
+                "legend": {
+                "display": true,
+                "position": "top"
+                }
+            },
+            "scales": {
+                "y": {
+                "beginAtZero": true,
+                "title": {
+                    "display": true,
+                    "text": "Y Axis Label"
+                }
+                },
+                "x": {
+                "title": {
+                    "display": true,
+                    "text": "X Axis Label"
+                }
+                }
+            }
+            }
+            ```
+
+            Example of a complete ````chart ```` block:
+            ```chart
+            {
+            "type": "chartjs",
+            "chartConfig": {
+                "type": "bar",
+                "data": {
+                "labels": ["Mon", "Tue", "Wed"],
+                "datasets": [{
+                    "label": "Sales",
+                    "data": [120, 150, 100],
+                    "backgroundColor": ["rgba(255, 99, 132, 0.6)", "rgba(54, 162, 235, 0.6)", "rgba(255, 206, 86, 0.6)"],
+                    "borderColor": ["rgba(255, 99, 132, 1)", "rgba(54, 162, 235, 1)", "rgba(255, 206, 86, 1)"],
+                    "borderWidth": 1
+                }]
+                },
+                "options": {
+                "responsive": true,
+                "plugins": {
+                    "title": {
+                    "display": true,
+                    "text": "Weekly Sales Data"
+                    }
+                }
+                }
+            }
+            }
+            ```
+
+            **When generating `chartConfig` for Chart.js, you MUST use only the following core supported chart types within the `chartConfig.type` field: `bar`, `line`, `pie`, `doughnut`, `polarArea`, `radar`, `scatter`, or `bubble`.**
+            **Do NOT use any other chart types, especially complex ones like `heatmap`, `treemap`, `sankey`, `matrix`, `wordCloud`, `gantt`, or any other type not explicitly listed as supported, as they typically require plugins not available in the environment.**
+            For data that represents counts across two categories (which might seem like a heatmap), a `bar` chart (e.g., a grouped or stacked bar chart) is a more appropriate choice for standard Chart.js.
+
+            **Never** output chart data as plain JSON, or within a code block marked as `json` or any other type if you intend for it to be a graphical chart. Only use the ````chart ```` block.
+            
+            Similarly, to ensure tables are displayed correctly as formatted tables (not just code), you MUST format your table output using a fenced code block explicitly marked as `tabledata`. The content of this block must be the JSON structure for headers and rows as shown.
+            Example:
+            ```tabledata
+            {
+            "caption": "Your Table Title",
+            "headers": ["Column 1", "Column 2"],
+            "rows": [
+                ["Data1A", "Data1B"],
+                ["Data2A", "Data2B"]
+            ]
+            }
+            ```
+            **Never** output table data intended for graphical display within a code block marked as `json` or any other type. Only use the ````tabledata ```` block.
+
+            If you need to present a form to the user to gather structured information,
+            you MUST format your entire response as a single JSON string. 
+            This JSON object should contain a top-level key `"formDefinition"`, and its value should be an object describing the form. 
+
+            The `formDefinition` object should have the following structure:
+            - `title` (optional string): A title for the form.
+            - `description` (optional string): A short description displayed above the form fields.
+            - `fields` (array of objects): Each object represents a field in the form.
+            - `submitButton` (optional object): Customizes the submit button.
+
+            Each `field` object in the `fields` array must have:
+            - `name` (string): A unique identifier for the field (used for data submission).
+            - `label` (string): Text label displayed to the user for this field.
+            - `fieldType` (string): Type of the input field. Supported types include:
+                - `"text"`: Single-line text input.
+                - `"number"`: Input for numerical values.
+                - `"email"`: Input for email addresses.
+                - `"password"`: Password input field (masked).
+                - `"textarea"`: Multi-line text input.
+                - `"select"`: Dropdown list.
+                - `"checkbox"`: A single checkbox.
+                - `"radio"`: Radio buttons (group by `name`).
+                - `"date"`: Date picker.
+            - `placeholder` (optional string): Placeholder text within the input field.
+            - `required` (optional boolean): Set to `true` if the field is mandatory.
+            - `defaultValue` (optional string/boolean/number): A default value for the field.
+
+            Type-specific properties for fields:
+            - For `fieldType: "number"`:
+                - `min` (optional number): Minimum allowed value.
+                - `max` (optional number): Maximum allowed value.
+                - `step` (optional number): Increment step.
+            - For `fieldType: "textarea"`:
+                - `rows` (optional number): Number of visible text lines.
+            - For `fieldType: "select"` or `"radio"`:
+                - `options` (array of objects): Each option object must have:
+                    - `value` (string): The actual value submitted if this option is chosen.
+                    - `text` (string): The display text for the option.
+
+            For `fieldType: "radio"`, all radio buttons intended to be part of the same group MUST share the same `name` attribute.
+
+            The `submitButton` object (optional) can have:
+            - `text` (string): Text for the submit button (e.g., "Submit", "Send").
+            - `id` (optional string): A custom ID for the submit button element.
+
+            Example of a form definition:
+            ```json
+            {
+            "formDefinition": {
+                "title": "User Feedback Form",
+                "description": "Please provide your valuable feedback.",
+                "fields": [
+                {
+                    "name": "user_email",
+                    "label": "Your Email:",
+                    "fieldType": "email",
+                    "placeholder": "name@example.com",
+                    "required": true
+                },
+                {
+                    "name": "rating",
+                    "label": "Overall Rating:",
+                    "fieldType": "select",
+                    "options": [
+                    {"value": "5", "text": "Excellent"},
+                    {"value": "4", "text": "Good"},
+                    {"value": "3", "text": "Average"},
+                    {"value": "2", "text": "Fair"},
+                    {"value": "1", "text": "Poor"}
+                    ],
+                    "required": true
+                },
+                {
+                    "name": "comments",
+                    "label": "Additional Comments:",
+                    "fieldType": "textarea",
+                    "rows": 4,
+                    "placeholder": "Let us know your thoughts..."
+                },
+                {
+                    "name": "subscribe_newsletter",
+                    "label": "Subscribe to our newsletter",
+                    "fieldType": "checkbox",
+                    "defaultValue": true
+                }
+                ],
+                "submitButton": {
+                "text": "Send Feedback"
+                }
+            }
+            }
+            ```
+
+            If you are NOT generating a form, respond with a normal text string (or markdown, etc.) as usual.
+            Only use the `formDefinition` JSON structure when you intend to present a fillable form to the user.
+
+            If you need to ask a single question with a small, fixed set of answers, you can present these as clickable options to the user.
+            
+            **CRITICAL: You MUST use a fenced code block with triple backticks (```) and the language identifier `optionsblock`.**
+            
+            Format: Start with ```optionsblock on its own line, then the JSON object, then ``` to close.
+            The user's selection (the 'value' of the chosen option) will be sent back as their next message.
+            
+            The JSON object must have the following structure:
+            - `question` (string, optional): The question text displayed to the user above the options.
+            - `options` (array of objects): Each object represents a clickable option.
+            - `text` (string): The text displayed on the button for the user.
+            - `value` (string): The actual value that will be sent back to you if this option is chosen. This is what your system should process.
+            - `id` (string, optional): A unique identifier for this set of options (e.g., for context or logging).
+
+            **CRITICAL JSON VALIDITY NOTE**: All JSON generated for `optionsblock` (and `formDefinition`) MUST be strictly valid. A common error is including a trailing comma after the last item in an array or the last property in an object. For example, in an `options` array, the last option object should NOT be followed by a comma.
+
+            **CRITICAL FORMATTING NOTE**: You MUST wrap the optionsblock JSON in a fenced code block with triple backticks. DO NOT output raw JSON without the code block markers.
+
+            Example of a correctly formatted optionsblock (note the triple backticks):
+            ```optionsblock
+            {
+            "question": "Which topic are you interested in?",
+            "options": [
+                {"text": "Weather Updates", "value": "get_weather"},
+                {"text": "Stock Prices", "value": "get_stocks"},
+                {"text": "General Knowledge", "value": "ask_general_knowledge"}
+            ],
+            "id": "topic_selection_dialog_001"
+            }
+            ```
+            This is an alternative to using a full formDefinition for simple, single-question scenarios.
+        Do NOT use this if multiple inputs are needed or if free-form text is expected.
+    """
+```
+
+For the complete format specification (charts, tables, forms, options, mermaid), see the full prompt in `examples/agent_example_multi_skills.py`.
+
+### Format Examples
+
+**Chart:**
+````markdown
+```chart
+{
+  "type": "chartjs",
+  "chartConfig": {
+    "type": "bar",
+    "data": {
+      "labels": ["Mon", "Tue", "Wed"],
+      "datasets": [{
+        "label": "Sales",
+        "data": [120, 150, 100]
+      }]
+    }
+  }
+}
+```
+````
+
+**Options Block:**
+````markdown
+```optionsblock
+{
+  "question": "What would you like to do?",
+  "options": [
+    {"text": "Continue", "value": "continue"},
+    {"text": "Cancel", "value": "cancel"}
+  ]
+}
+```
+````
+
+**Table:**
+````markdown
+```tabledata
+{
+  "caption": "Sales Data",
+  "headers": ["Month", "Revenue"],
+  "rows": [["Jan", "$1000"], ["Feb", "$1200"]]
+}
+```
+````
+
+## 🎯 All Together: Complete Multi-Skills Agent
+
+Here's a complete example combining all features - MCP, off-the-shelf tools, custom tools, and format support:
+
+```python
+import os
+from typing import List, Any, Dict
+from agent_framework import LlamaIndexAgent, create_basic_agent_server
+from agent_framework.storage.file_system_management import FileStorageFactory
+from agent_framework.tools import (
+    CreateFileTool, ListFilesTool, ReadFileTool,
+    CreatePDFFromMarkdownTool, CreatePDFFromHTMLTool,
+    ChartToImageTool, MermaidToImageTool, CreatePDFWithImagesTool, TableToImageTool
+)
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+class MultiSkillsAgent(LlamaIndexAgent):
+    def __init__(self):
+        super().__init__()
+        self.agent_id = "multi_skills_agent_v1"
+        self.file_storage = None
+        self.mcp_tools = []
+        self._mcp_initialized = False
+        
+        # Off-the-shelf tools
+        self.file_tools = [
+            CreateFileTool(),
+            ListFilesTool(),
+            ReadFileTool(),
+            CreatePDFFromMarkdownTool(),
+            CreatePDFFromHTMLTool(),
+            ChartToImageTool(),
+            MermaidToImageTool(),
+            TableToImageTool(),
+            CreatePDFWithImagesTool()
+        ]
+    
+    async def _ensure_file_storage(self):
+        if self.file_storage is None:
+            self.file_storage = await FileStorageFactory.create_storage_manager()
+    
+    async def configure_session(self, session_configuration: Dict[str, Any]):
+        user_id = session_configuration.get('user_id', 'default_user')
+        session_id = session_configuration.get('session_id')
+        
+        await self._ensure_file_storage()
+        
+        # Inject context into file tools
+        for tool in self.file_tools:
+            tool.set_context(
+                file_storage=self.file_storage,
+                user_id=user_id,
+                session_id=session_id
+            )
+        
+        await super().configure_session(session_configuration)
+    
+    async def _initialize_mcp_tools(self):
+        if self._mcp_initialized:
+            return
+        
+        try:
+            from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+        except ImportError:
+            return
+        
+        # Configure MCP servers
+        mcp_configs = [
+            {
+                "command": "uvx",
+                "args": ["mcp-run-python", "stdio"]
+            }
+        ]
+        
+        for config in mcp_configs:
+            try:
+                client = BasicMCPClient(config["command"], args=config["args"])
+                mcp_tool_spec = McpToolSpec(client=client)
+                tools = await mcp_tool_spec.to_tool_list_async()
+                self.mcp_tools.extend(tools)
+            except Exception as e:
+                print(f"MCP initialization failed: {e}")
+        
+        self._mcp_initialized = True
+    
+    def get_agent_prompt(self) -> str:
+        return """You are a helpful assistant with multiple capabilities:
+        
+        - Execute Python code via MCP
+        - Create, read, and list files
+        - Generate PDF documents from markdown or HTML
+        - Create charts, mermaid diagrams, and tables
+        - Present forms and option blocks to users
+        
+        You can generate markdown, mermaid diagrams, charts, code blocks, forms and optionsblocks.
+        ALWAYS include option blocks when asking the user to select an option!
+        
+        ... See the format section above
+        """
+    
+    def get_agent_tools(self) -> List[callable]:
+        # Combine all tools
+        all_tools = []
+        all_tools.extend([tool.get_tool_function() for tool in self.file_tools])
+        all_tools.extend(self.mcp_tools)
+        return all_tools
+    
+    async def initialize_agent(self, model_name, system_prompt, tools, **kwargs):
+        await self._initialize_mcp_tools()
+        all_tools = self.get_agent_tools()
+        await super().initialize_agent(model_name, system_prompt, all_tools, **kwargs)
+
+# Start the server
+if __name__ == "__main__":
+    create_basic_agent_server(MultiSkillsAgent, port=8000)
+```
+
+**Run it:**
+```bash
+export OPENAI_API_KEY=sk-your-key
+python multi_skills_agent.py
+# Open http://localhost:8000/ui
+```
+
+**Full example:** See `examples/agent_example_multi_skills.py` for the complete implementation with full format support prompt.
+
+## 🌐 Web Interface
+
+The framework includes a built-in web UI for testing and interacting with your agent.
+
+**Access:** `http://localhost:8000/ui`
+
+**Features:**
+- 💬 Real-time message streaming
+- 🎨 Rich format rendering (charts, tables, mermaid diagrams)
+- 📁 File upload and management
+- ⚙️ Model and parameter configuration
+- 💾 Session management
+- 📊 Conversation history
+- 🎯 Interactive option blocks and forms
+
+**Quick Test:**
+```bash
+# Start your agent
+python my_agent.py
+
+# Open in browser
+open http://localhost:8000/ui
+```
+
+The UI automatically detects and renders:
+- Chart.js visualizations from `chart` blocks
+- Mermaid diagrams from `mermaid` blocks
+- Tables from `tabledata` blocks
+- Interactive forms from `formDefinition` JSON
+- Clickable options from `optionsblock`
+
+**API Documentation:** `http://localhost:8000/docs` (Swagger UI)
+
+## 📚 Additional Resources
+
+### Documentation
+- **[Installation Guide](docs/installation.md)** - Detailed setup instructions
+- **[API Reference](docs/api-reference.md)** - Complete API documentation
+- **[Architecture](ARCHITECTURE.md)** - System design and principles
+- **[Testing Guide](docs/UV_TESTING_GUIDE.md)** - Testing with pytest and UV
+
+### Examples
+- **[simple_agent.py](examples/simple_agent.py)** - Basic calculator agent
+- **[agent_with_file_storage.py](examples/agent_with_file_storage.py)** - File management
+- **[agent_with_mcp.py](examples/agent_with_mcp.py)** - MCP integration
+- **[agent_example_multi_skills.py](examples/agent_example_multi_skills.py)** - Complete multi-skills agent
+
+### API Endpoints
+
+**Core:**
+- `POST /message` - Send message to agent
+- `POST /init` - Initialize session
+- `POST /end` - End session
+- `GET /sessions` - List sessions
+
+**Files:**
+- `POST /files/upload` - Upload file
+- `GET /files/{file_id}/download` - Download file
+- `GET /files` - List files
+
+**Full API docs:** `http://localhost:8000/docs`
+
+### Authentication
+
+```env
+# API Key Authentication
+REQUIRE_AUTH=true
+API_KEYS=sk-key-1,sk-key-2
+```
+
+```bash
+curl -H "Authorization: Bearer sk-key-1" \
+  http://localhost:8000/message \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Hello!"}'
+```
+
+---
+
+**Quick Links:**
+- 🎨 [Web UI](http://localhost:8000/ui)
+- 📖 [API Docs](http://localhost:8000/docs)
+- ⚙️ [Config Test](http://localhost:8000/config/models)

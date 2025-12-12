@@ -1,0 +1,157 @@
+[project]
+name = "agent-framework-examples"
+version = "0.3.0"
+description = "Examples for the Agent Framework Library"
+authors = [
+    {name = "Agent Framework Team", email = "contact@agentframework.dev"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.13"
+keywords = ["agent", "framework", "examples", "autogen", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    # Core agent framework (will be installed separately)
+    # "agent-framework-lib",  # Comment out for local development
+    # AutoGen dependencies for AI examples
+    # Environment management
+    "python-dotenv>=1.0.0",
+    # Web server for testing
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    # Data handling
+    "pydantic>=2.5.0",
+    # Database support (MongoDB)
+    "pymongo>=4.6.0",
+    "motor>=3.3.0",
+    # Async support
+    "asyncio-mqtt>=0.16.0",
+    # Logging and monitoring
+    "structlog>=23.2.0",
+    # HTTP client for testing
+    "httpx>=0.25.0",
+    "requests>=2.31.0",
+    "agent-framework-lib>=0.1.6",
+    "llama-index-core>=0.12.51",
+    "llama-index>=0.12.52",
+    "markitdown[all,pdf]>=0.1.2",
+    "llama-index-tools-mcp>=0.4.3",
+    "iso-financial-mcp>=0.4.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+]
+
+gemini = [
+    "google-generativeai>=0.3.0"
+]
+
+all = [
+    "agent-framework-examples[dev,gemini]",
+]
+
+[project.urls]
+Homepage = "https://github.com/Cinco-AI/AgentFramework"
+Repository = "https://github.com/Cinco-AI/AgentFramework"
+Documentation = "https://github.com/Cinco-AI/AgentFramework/tree/main/docs"
+Examples = "https://github.com/Cinco-AI/AgentFramework/tree/main/examples"
+
+# Repository can be accessed via HTTPS or SSH:
+# HTTPS: https://github.com/Cinco-AI/AgentFramework.git
+# SSH: git@github.com:Cinco-AI/AgentFramework.git
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*.py"]
+
+# UV-specific configuration
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+]
+
+[tool.uv.sources]
+agent-framework-lib = { path = "../", editable = true }
+
+# Python formatting with Black
+[tool.black]
+line-length = 100
+target-version = ['py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# Import sorting with isort
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+# MyPy type checking
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --tb=short"
+testpaths = [
+    ".",
+]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto" 
