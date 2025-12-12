@@ -1,0 +1,94 @@
+[tool.poetry]
+name = "mogu-sdk"
+version = "0.1.9"
+description = "Official Python SDK for Mogu Workflow Management Platform"
+authors = ["Mogu Team <maaaxcic@gmail.com>"]
+readme = "README.md"
+homepage = "https://github.com/yourusername/mogu-sdk"
+repository = "https://github.com/yourusername/mogu-sdk"
+documentation = "https://mogu-sdk.readthedocs.io"
+keywords = ["mogu", "workflow", "wiki", "sdk", "api-client"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+license = "MIT"
+packages = [{include = "mogu_sdk"}]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+httpx = "^0.28.1"
+pydantic = "^2.12.5"
+pydantic-settings = "^2.12.0"
+python-dotenv = "^1.1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0.0"
+pytest-asyncio = "^0.21.0"
+pytest-httpx = ">=0.35.0"
+black = "^23.0.0"
+mypy = "^1.7.0"
+ruff = "^0.1.0"
+ipython = "^8.18.0"
+pytest-cov = "^4.1.0"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.5.0"
+mkdocs-material = "^9.4.0"
+mkdocstrings = {extras = ["python"], version = "^0.24.0"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=mogu_sdk --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["mogu_sdk"]
+omit = ["tests/*", "examples/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
