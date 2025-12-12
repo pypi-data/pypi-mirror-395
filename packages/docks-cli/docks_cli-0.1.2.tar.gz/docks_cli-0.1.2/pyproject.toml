@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "docks-cli"
+version = "0.1.2"
+description = "CLI for managing Docks evaluation runs, datasets, and prebaked images"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Context Lab", email = "dev@contextlab.io" }
+]
+keywords = ["cli", "evaluation", "swe-bench", "docks"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "typer>=0.9.0",
+    "httpx>=0.25.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "tomli>=2.0.0;python_version<'3.11'",
+    "pyyaml>=6.0.0",
+    "jsonschema>=4.0.0",
+    "tomli-w>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+docks = "docks.cli:app"
+
+[project.urls]
+Homepage = "https://thecontextlab.ai"
+Documentation = "https://thecontextlab.ai/docs"
+Repository = "https://github.com/thecontextlab/docks-cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/docks"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/docks/AGENTS.md" = "docks/AGENTS.md"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/docks/**/*.py",
+    "src/docks/**/*.md",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
