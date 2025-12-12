@@ -1,0 +1,378 @@
+Metadata-Version: 2.4
+Name: aigroup-stata-mcp
+Version: 1.0.9
+Summary: A Stata integration server based on Model Context Protocol (MCP) that allows AI assistants to execute Stata scripts, fetch data information, and run statistical analysis.
+Author-email: jackdark425 <jackdark425@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: ai,data-analysis,mcp,model-context-protocol,stata,statistics
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.11
+Requires-Dist: mcp[cli]>=1.21.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: openpyxl>=3.1.5
+Requires-Dist: pandas>=2.3.0
+Requires-Dist: pathvalidate>=3.3.1
+Requires-Dist: pexpect>=4.9.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: python-dotenv>=1.1.1
+Requires-Dist: requests>=2.31.0
+Provides-Extra: config
+Requires-Dist: tomli-w>=1.0.0; extra == 'config'
+Requires-Dist: tomli>=2.0.1; (python_version < '3.11') and extra == 'config'
+Description-Content-Type: text/markdown
+
+# aigroup-stata-mcp
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![MCP Protocol](https://img.shields.io/badge/MCP-Protocol-blueviolet)](https://spec.modelcontextprotocol.io/)
+[![PyPI version](https://img.shields.io/pypi/v/aigroup-stata-mcp.svg)](https://pypi.org/project/aigroup-stata-mcp/)
+
+一个基于 Model Context Protocol (MCP) 的 Stata 集成服务器，允许 AI 助手执行 Stata 脚本、获取数据信息和运行统计分析。
+
+## 功能特性
+
+### 🚀 核心功能
+- **Stata 脚本执行**: 执行 `.do` 文件并捕获日志输出
+- **数据信息获取**: 支持 `.dta` 和 `.csv` 文件的描述性统计
+- **Stata 命令帮助**: 获取 Stata 内置命令的帮助文档
+- **SSC 包管理**: 从 SSC 仓库安装和管理 Stata 包
+- **文件操作**: 创建、读取和写入 Stata 脚本文件
+
+### 🔧 技术特性
+- **跨平台支持**: Windows、macOS 和 Linux
+- **自动 Stata 检测**: 自动查找系统上的 Stata 安装路径
+- **多传输协议**: 支持 stdio、SSE、HTTP 和 streamable-http
+- **结构化输出**: 使用 Pydantic 模型提供类型安全的响应
+- **多语言支持**: 中英文界面和提示
+- **配置管理**: 支持 TOML 格式的配置文件
+
+### 📊 数据处理
+- **数据格式支持**: Stata (.dta)、CSV (.csv) 文件
+- **统计分析**: 描述性统计、变量分析
+- **URL 数据源**: 支持从 URL 直接读取数据文件
+- **智能编码检测**: 自动检测文件编码和分隔符
+
+## 快速开始
+
+### 系统要求
+
+- **Python**: 3.11 或更高版本
+- **Stata**: 已安装并配置好环境变量
+- **MCP 客户端**: Claude Desktop、通义灵码、roocode、Cherry Studio 或其他兼容 MCP 的客户端
+
+### 安装
+
+```bash
+# 使用 pip 安装
+pip install aigroup-stata-mcp
+
+# 或使用 uv 安装
+uv add aigroup-stata-mcp
+
+# 或使用 uvx 直接运行（无需安装）
+uvx aigroup-stata-mcp
+```
+
+### 配置
+
+#### 配置文件
+
+Stata-MCP 支持使用 TOML 格式的配置文件。配置文件位于项目根目录的 [config.toml](file:///d%3A/aigroup-stata-mcp/config.toml)。
+
+示例配置文件:
+
+```toml
+name = "aigroup-stata-mcp"
+instructions = "Stata-MCP lets you and LLMs run Stata do-files and fetch results"
+website_url = "https://github.com/jackdark425"
+
+# Working directory for the server
+# If not specified, will use default based on OS:
+# - Linux/macOS: ~/Documents
+# - Windows: %USERPROFILE%\Documents
+# working_directory = "/path/to/working/directory"
+
+# Path to Stata CLI executable
+# If not specified, will auto-detect
+# stata_cli = "/usr/local/stata/stata-mp"
+```
+
+你也可以通过 `--config` 参数指定自定义配置文件路径。
+
+#### MCP 客户端配置
+
+在支持 MCP 协议的 AI 客户端配置文件中添加以下内容：
+
+**通用配置格式**:
+```
+{
+  "mcpServers": {
+    "stata-mcp": {
+      "command": "uvx",
+      "args": ["aigroup-stata-mcp"]
+    }
+  }
+}
+```
+
+> **注意**: 系统会自动识别 Stata 安装路径，通常无需手动配置。如果自动识别失败，可以通过设置 `STATA_CLI` 环境变量指定 Stata 可执行文件路径。
+
+不同客户端的配置文件位置可能不同，以下是一些常见客户端的配置文件位置：
+
+- **Claude Desktop**:
+  - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+#### 使用安装器
+
+项目提供了自动安装工具：
+
+```
+# 检查系统兼容性
+stata-mcp --usable
+
+# 自动安装到 Claude Desktop
+stata-mcp --install
+```
+
+## 可用工具
+
+### Stata 工具
+
+#### `stata_do`
+执行 Stata do 文件并返回执行结果。
+
+**参数:**
+- `dofile_path`: do 文件路径
+- `log_file_name`: 日志文件名（可选）
+- `is_read_log`: 是否读取日志内容（默认: true）
+
+**示例:**
+```stata
+regress price mpg weight
+outreg2 using "results", replace
+```
+
+#### `get_data_info`
+获取数据文件的描述性统计信息。
+
+**参数:**
+- `data_path`: 数据文件路径
+- `vars_list`: 变量列表（可选）
+- `encoding`: 文件编码（默认: utf-8）
+- `file_extension`: 文件扩展名（可选）
+- `is_save`: 是否保存结果到文件（默认: true）
+
+**支持格式:**
+- Stata 文件 (.dta)
+- CSV 文件 (.csv, .txt, .tsv)
+
+#### `help`
+获取 Stata 命令的帮助文档。
+
+**参数:**
+- `cmd`: Stata 命令名称
+
+**示例:**
+```stata
+help regress
+help summarize
+```
+
+#### `ssc_install`
+从 SSC 仓库安装 Stata 包。
+
+**参数:**
+- `command`: 包名称
+- `is_replace`: 是否替换已安装版本（默认: true）
+
+### 文件工具
+
+#### `write_dofile`
+创建新的 Stata do 文件。
+
+**参数:**
+- `content`: Stata 代码内容
+- `encoding`: 文件编码（默认: utf-8）
+
+#### `append_dofile`
+向现有 do 文件追加内容或创建新文件。
+
+**参数:**
+- `original_dofile_path`: 原始 do 文件路径
+- `content`: 要追加的 Stata 代码
+- `encoding`: 文件编码（默认: utf-8）
+
+#### `read_file`
+读取文件内容。
+
+**参数:**
+- `file_path`: 文件路径
+- `encoding`: 文件编码（默认: utf-8）
+
+#### `load_figure`
+加载图片文件。
+
+**参数:**
+- `figure_path`: 图片文件路径（支持 png、jpg 格式）
+
+### 核心工具
+
+#### `mk_dir`
+安全创建目录。
+
+**参数:**
+- `path`: 目录路径
+
+## 可用提示
+
+### `stata_assistant_role`
+获取 Stata 助手角色定义提示。
+
+**参数:**
+- `lang`: 语言代码（en/cn，可选）
+
+### `stata_analysis_strategy`
+获取 Stata 分析策略指南。
+
+**参数:**
+- `lang`: 语言代码（en/cn，可选）
+
+### `results_doc_path`
+生成结果文档存储路径。
+
+## 项目结构
+
+```
+stata_mcp/
+├── core/                    # 核心功能模块
+│   ├── data_info/          # 数据信息处理
+│   │   ├── _base.py        # 数据信息基类
+│   │   ├── dta.py          # Stata 文件处理
+│   │   └── csv.py          # CSV 文件处理
+│   └── stata/              # Stata 集成
+│       ├── stata_controller/ # Stata 会话控制
+│       ├── stata_do/       # do 文件执行器
+│       └── stata_finder/   # Stata 路径查找器
+├── server/                 # MCP 服务器实现
+│   ├── tools/              # MCP 工具定义
+│   │   ├── core_tools.py   # 核心工具
+│   │   ├── file_tools.py   # 文件工具
+│   │   └── stata_tools.py  # Stata 工具
+│   ├── prompts/            # MCP 提示定义
+│   └── main.py             # 服务器主程序
+├── utils/                  # 工具类
+│   ├── Installer/          # 安装器
+│   ├── Prompt/             # 提示管理
+│   └── usable.py           # 系统兼容性检查
+└── cli/                    # 命令行接口
+```
+
+## 开发指南
+
+### 环境设置
+
+1. 克隆仓库：
+```bash
+git clone https://github.com/jackdark425/aigroup-stata-mcp.git
+cd aigroup-stata-mcp
+```
+
+2. 安装开发依赖：
+```bash
+pip install -e ".[dev]"
+```
+
+3. 运行测试：
+```bash
+python -m pytest
+```
+
+### 添加新工具
+
+在 `src/stata_mcp/server/tools/` 目录下创建新的工具文件：
+
+```python
+from mcp.server.fastmcp import Context, FastMCP
+from pydantic import BaseModel, Field
+
+class MyToolResult(BaseModel):
+    result: str = Field(description="Tool execution result")
+
+def register_my_tools(server: FastMCP) -> None:
+    @server.tool()
+    def my_tool(ctx: Context, param: str) -> MyToolResult:
+        """Tool description."""
+        # Tool implementation
+        return MyToolResult(result="Success")
+```
+
+然后在 `src/stata_mcp/server/main.py` 中注册新工具。
+
+## 故障排除
+
+### 常见问题
+
+1. **Stata 未找到**
+   - 确保 Stata 已正确安装
+   - 手动设置 `STATA_CLI` 环境变量
+   - 使用 `stata-mcp --usable` 检查配置
+
+2. **权限错误**
+   - 确保对工作目录有读写权限
+   - 检查防火墙设置
+
+3. **编码问题**
+   - 指定正确的文件编码
+   - 使用 UTF-8 编码处理中文数据
+
+### 调试模式
+
+启用详细日志输出：
+
+```bash
+stata-mcp --verbose
+```
+
+## 贡献指南
+
+我们欢迎贡献！请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详细信息。
+
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request
+
+## 许可证
+
+本项目基于 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详细信息。
+
+## 致谢
+
+- [Model Context Protocol](https://spec.modelcontextprotocol.io/) - 提供协议规范
+- [Stata](https://www.stata.com/) - 统计分析软件
+- [FastMCP](https://github.com/modelcontextprotocol/python-sdk) - Python MCP SDK
+
+## 支持
+
+如果您遇到问题或有建议，请：
+
+1. 查看 [问题页面](https://github.com/jackdark425/aigroup-stata-mcp/issues)
+2. 创建新的 issue
+3. 联系维护者: jackdark425@gmail.com
+
+---
+
+**注意**: 本项目与 StataCorp LLC 无关，Stata 是 StataCorp LLC 的注册商标。
