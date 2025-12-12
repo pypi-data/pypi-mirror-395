@@ -1,0 +1,60 @@
+# obj2sig
+
+Use Python objects to define function signatures.
+
+## Why?
+To programmatically encode relationships between function arguments.
+Other benefits follow from treating parameters as object properties such as documentation.
+## How?
+Use objects for encoding relationships between arguments.
+Use a decorator to dynamically create a function.
+
+```python {.marimo}
+from obj2sig import paramize, var_property
+help(paramize)
+```
+
+Takes an object's `property` attributes to be used as function arguments as follows:
+- Function argument order will match the order in which the object properties are defined.
+- Property return values are taken as default values. Ellipsis, `...`, indicates no default value.
+- Property return types are used as parameter types.
+- Use the special property name '_star_' to mark keyword-only arguments.
+- Use `var_property` to mean a variable length argument.
+
+
+```python
+class Params:
+    @property
+    def p(self) -> int: return ...
+    _star_ = ''
+    @property
+    def z(self) -> str: return 'z'
+    @property
+    def a(self): return 'a'
+    @var_property
+    def k(self): return ...
+
+@paramize(Params())
+def f():
+    """sdfsdf"""
+    return
+f
+```
+
+<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>f</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>sdfsdf</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def f(p: int, *, z: str = &#x27;z&#x27;, a=&#x27;a&#x27;, **k):</span></div></div>
+
+
+```python
+class Params1:
+    @var_property
+    def l(self): return ...#[]
+
+@paramize(Params1())
+def f1():
+    """f1"""
+    return
+
+f1
+```
+
+<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>f1</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='color: var(--slate-11); margin: 0 12px 8px 12px; font-size: 0.75rem; font-family: monospace; padding: 0; white-space: pre-wrap;'>f1</div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def f1(*l):</span></div></div>

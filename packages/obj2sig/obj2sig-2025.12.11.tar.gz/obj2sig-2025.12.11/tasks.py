@@ -1,0 +1,62 @@
+from pathlib import Path
+pkg = 'obj2sig'
+
+
+from subprocess import CalledProcessError
+def get_rev():
+    from subprocess import check_output as run
+    return run('git rev-parse --abbrev-ref HEAD', text=True, shell=True).strip()
+try:
+    rev = get_rev()
+except CalledProcessError: # no git in cicd maybe
+    rev = '{NO GIT}' # 
+
+
+def run(cmd, *p, **k):
+    from subprocess import check_call as run
+    from pathlib import Path
+    return run(cmd, *p, cwd=Path(__file__).parent, shell=True, **k)
+
+
+def build(packages=[pkg], update=True, commit=False, ):
+    if update:  
+        increment_ver(packages=packages)
+    if commit:
+        # https://github.com/pre-commit/pre-commit/issues/747#issuecomment-386782080
+        run('git add -u', )
+
+    run(f'uv build')
+    return
+
+
+def increment_ver(packages=[pkg]):
+    run(f'uvx hatchling version {ver(increment=True)}', )
+    for pkg in packages: run(f'uv lock --upgrade-package {pkg}',)
+
+
+def ver(*,increment=False):
+    from datetime import datetime as dt
+    dt = dt.now()
+    mjr = str(dt.year)
+    mnr = str(dt.month)
+    pch = str(ncommits()+(1 if increment else 0))
+    return f"{mjr}.{mnr}.{pch}"
+def ncommits(rev=rev):
+    from subprocess import check_output as run
+    c = run(f'git rev-list --count {rev}', text=True).strip()
+    return int(c)
+
+def chk_ver():
+    from obj2sig import __version__ as v
+    return str(v) == str(ver())
+
+
+def test():
+    raise NotImplementedError
+
+
+
+if __name__ == '__main__':
+    from fire import Fire
+    _ = {f.__name__:f for f in {build, chk_ver, test, ncommits, ver, increment_ver} }
+    Fire(_)
