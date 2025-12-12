@@ -1,0 +1,67 @@
+include:
+  - project: "ghsc/esi/esi-templates"
+    ref: main
+    file:
+      - ".setup_conda.yml"
+      - ".rules.yml"
+      - ".default_rules.yml"
+      - ".deploy_rules.yml"
+      - ".test_deploy_rules.yml"
+      - ".run_tests.yml"
+      - ".deploy_to_pypi_by_tag.yml"
+      - ".deploy_to_testpypi_by_tag.yml"
+
+default:
+  image: code.usgs.gov:5001/devops/images/usgs/python:3.12-build
+  tags:
+    - build
+  before_script:
+    - !reference [.conda, before_script]
+
+stages:
+  - build
+  - test
+  - deploy
+
+Try Installing:
+  rules:
+    - !reference [.default, rules]
+  script:
+    - pip install -e .[dev,test]
+  stage: build
+
+# Run Tests:
+#   rules:
+#     - !reference [.default, rules]
+#   script:
+#     - pip install -e .[dev,test]
+#     - strec_cfg update --datafolder /home/usgs-user/.strec/data --slab --gcmt
+#     - pytest .
+#   stage: test
+
+# Deploy to TestPyPi:
+#   rules:
+#     - !reference [.test_deploy, rules]
+
+#   extends: .deploy-to-testpypi-by-tag
+
+#   stage: deploy
+Deploy to PyPi:
+  rules:
+    - !reference [.deploy, rules]
+
+  script:
+    - pip install .[build]
+    - python -m build
+    - python -m zipfile --list dist/*whl
+    - check-wheel-contents --package src/strec/
+    - |
+      if [ $? -eq 0 ]; then
+        echo "check-wheel-contents has passed, uploading to PyPi ..."
+        python -m twine upload dist/*
+      else
+        echo "check-wheel-contents failed, wheel will not be uploaded to PyPi ..."
+      fi
+
+
+  stage: deploy

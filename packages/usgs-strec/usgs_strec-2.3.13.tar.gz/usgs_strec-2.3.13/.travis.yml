@@ -1,0 +1,28 @@
+language: python
+sudo: false
+python:
+    - "3.6"
+services:
+  - xvfb
+
+install:
+    # Install shakelib and requirements
+    - bash install.sh
+    - . $HOME/miniconda/etc/profile.d/conda.sh
+    - source activate strecenv
+
+before_script:
+    # This is to take care of Invalid DISPLAY variable
+    - "export DISPLAY=:99.0"
+
+script:
+    - export PYTHONPATH="."
+    - conda activate strecenv
+    - py.test --cov=.
+
+after_success:
+    - pip install codecov codacy-coverage
+    - codecov
+    - coverage xml
+    - python-codacy-coverage -r coverage.xml
+    - bash <(curl -s https://codecov.io/bash)
