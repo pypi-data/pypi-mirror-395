@@ -1,0 +1,201 @@
+from venv import logger
+
+import numpy as np
+import pytest
+import torch
+from torch import nn
+
+from tests.rng import set_seed
+from tests.sliding_window_params_cases import (
+    CONV_1D_PARAMS,
+    EDGE_CASES_PARAMS,
+    MOVING_AVERAGE_PARAMS,
+    TRANSPOSED_CONV_1D_PARAMS,
+)
+from torchstream.sequence.sequence import SeqSpec
+from torchstream.sliding_window.dummy_sliding_window_transform import DummySlidingWindowTransform
+from torchstream.sliding_window.sliding_window_params import (
+    SlidingWindowParams,
+)
+from torchstream.sliding_window.sliding_window_params_solver import find_sliding_window_params
+from torchstream.sliding_window.sliding_window_stream import SlidingWindowStream
+from torchstream.stream_equivalence import test_stream_equivalent
+
+
+def _get_streaming_params(sol: SlidingWindowParams):
+    return {
+        "in_out_size": sol.canonical_in_out_size_params,
+        "min_input_size": sol.min_input_size,
+        "out_delays": sol.output_delays,
+        "context_size": sol.streaming_context_size,
+    }
+
+
+def _find_solution_or_equivalent(transform, seq_spec, expected_sol):
+    sols = find_sliding_window_params(transform, seq_spec, debug_ref_params=expected_sol, max_equivalent_sols=1)
+    assert len(sols) == 1, f"Expected exactly one solution, got {len(sols)}: {sols}"
+
+    if expected_sol and expected_sol not in sols:
+        assert any(_get_streaming_params(sol) == _get_streaming_params(expected_sol) for sol in sols)
+        logger.warning("Could not find the expected solution, but found an equivalent one")
+
+    test_stream_equivalent(transform, SlidingWindowStream(transform, sols[0], seq_spec))
+
+
+@pytest.mark.parametrize("sli_params,dilation", CONV_1D_PARAMS[0], ids=CONV_1D_PARAMS[1])
+def test_conv_1d(sli_params: SlidingWindowParams, dilation: int):
+    set_seed(0x5EED)
+
+    conv1d_ki = (sli_params.kernel_size_in - 1) // dilation + 1
+    conv = nn.Conv1d(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=conv1d_ki,
+        stride=sli_params.stride_in,
+        dilation=dilation,
+        # TODO: handle grouping?
+    )
+
+    def transform(x):
+        # TODO: handle different padding modes
+        x = torch.nn.functional.pad(x, (sli_params.left_pad, sli_params.right_pad))
+        x = conv(x)
+        return x
+
+    _find_solution_or_equivalent(transform, SeqSpec(1, 1, -1), sli_params)
+
+
+@pytest.mark.parametrize("sli_params,dilation", TRANSPOSED_CONV_1D_PARAMS[0], ids=TRANSPOSED_CONV_1D_PARAMS[1])
+def test_conv_transpose_1d(sli_params: SlidingWindowParams, dilation: int):
+    set_seed(0x5EED)
+
+    # The torch docs poorly explain the mechanism of transposed convolutions. Here's my take:
+    # Each individual input element multiplies the kernel (element-wise). That output is offset by the stride on each
+    # step, and all resulting vectors are summed.
+    tconv1d_ko = (sli_params.kernel_size_out - 1) // dilation + 1
+    conv = nn.ConvTranspose1d(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=tconv1d_ko,
+        stride=sli_params.stride_out,
+        # "padding" is poorly explained in https://pytorch.org/docs/stable/generated/torch.nn.ConvTranspose1d.html
+        # A better explanation of the parameter is that it trims the output on both sides by the given amount.
+        padding=sli_params.left_out_trim,
+        # "output_padding" increases the output size on the right by the given amount, hence it's the inverse of
+        # right_out_trim. However we already trim on both sides by "padding=sli_params.left_out_trim" (see above),
+        # so we need to counterbalance by re-adding left_out_trim.
+        output_padding=sli_params.left_out_trim - sli_params.right_out_trim,
+        dilation=dilation,
+        # TODO: handle grouping?
+    )
+
+    _find_solution_or_equivalent(conv, SeqSpec(1, 1, -1), sli_params)
+
+
+@pytest.mark.parametrize(
+    "conv_params",
+    [
+        (
+            [
+                {"transposed": False, "kernel_size": 5, "stride": 2, "padding": 1},
+                {"transposed": True, "kernel_size": 4, "stride": 3, "padding": 2},
+            ],
+            SlidingWindowParams(
+                kernel_size_in=5,
+                stride_in=2,
+                left_pad=1,
+                right_pad=1,
+                kernel_size_out=4,
+                stride_out=3,
+                left_out_trim=2,
+                right_out_trim=2,
+            ),
+        ),
+        (
+            [
+                {"transposed": False, "kernel_size": 7, "stride": 1, "padding": 3},
+                {"transposed": True, "kernel_size": 16, "stride": 8, "padding": 4},
+            ],
+            None,
+        ),
+    ],
+)
+def test_conv_mix(conv_params):
+    set_seed(0x5EED)
+
+    conv_params, expected_sol = conv_params
+
+    network = nn.Sequential(
+        *[
+            (nn.ConvTranspose1d if params["transposed"] else nn.Conv1d)(
+                in_channels=1,
+                out_channels=1,
+                kernel_size=params["kernel_size"],
+                stride=params["stride"],
+                padding=params.get("padding", 0),
+                dilation=params.get("dilation", 1),
+            )
+            for params in conv_params
+        ]
+    )
+    _find_solution_or_equivalent(network, SeqSpec(1, 1, -1), expected_sol)
+
+
+@pytest.mark.parametrize("sli_params,dilation", MOVING_AVERAGE_PARAMS[0], ids=MOVING_AVERAGE_PARAMS[1])
+def test_moving_average(sli_params: SlidingWindowParams, dilation: int):
+    tsfm = DummySlidingWindowTransform(sli_params)
+
+    _find_solution_or_equivalent(tsfm, SeqSpec(-1, dtype=float), sli_params)
+
+
+@pytest.mark.parametrize("sli_params,dilation", EDGE_CASES_PARAMS[0], ids=EDGE_CASES_PARAMS[1])
+def test_edge_cases(sli_params: SlidingWindowParams, dilation: int):
+    set_seed(0x5EED)
+
+    transform = DummySlidingWindowTransform(sli_params)
+    _find_solution_or_equivalent(transform, SeqSpec(-1, dtype=float), sli_params)
+
+
+def test_no_receptive_field():
+    """
+    Tests that the solver does not find a solution for a transform that has no receptive field (output is not
+    a function of the input).
+    """
+
+    def transform(x: np.ndarray):
+        return np.full_like(x, fill_value=3.0)
+
+    with pytest.raises(RuntimeError):
+        find_sliding_window_params(transform, SeqSpec(-1, dtype=float))
+
+
+@pytest.mark.parametrize("variant", ["mean", "prefix_mean", "suffix_mean", "mod7"])
+def test_variable_receptive_field(variant: str):
+    """
+    Tests that the solver does not find a solution for a transform that has a non finite receptive field or a receptive
+    field of variable size.
+    """
+
+    def transform(x: np.ndarray):
+        y = np.zeros_like(x)
+
+        if variant == "mean":
+            y[:] = np.mean(x)
+        elif variant == "prefix_mean":
+            for i in range(len(x)):
+                y[i] = np.mean(x[: i + 1])
+        elif variant == "suffix_mean":
+            for i in range(len(x)):
+                y[i] = np.mean(x[i:])
+        elif variant == "mod7":
+            for i in range(len(x)):
+                ksize = (i % 7) + 1
+                y[i] = np.mean(x[i : i + ksize])
+
+        return y
+
+    try:
+        sols = find_sliding_window_params(transform, SeqSpec(-1, dtype=float), max_in_out_seq_size=10_000)
+    except RuntimeError:
+        sols = []
+    assert not sols
