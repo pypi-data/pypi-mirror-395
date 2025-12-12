@@ -1,0 +1,157 @@
+@use "sass:math";
+@import "lib-prefixer";
+
+@mixin clearfix {
+    &:before,
+    &:after {
+        content: " "; /* 1 */
+        display: table; /* 2 */
+    }
+
+    &:after {
+        clear: both;
+    }
+
+    *zoom: 1;
+}
+
+// Media breakpoints
+
+@mixin xprez-breakpoint-up($breakpoint) {
+    @media (min-width: $breakpoint) {
+        @content;
+    }
+}
+
+@mixin xprez-breakpoint-down($breakpoint) {
+    @media (max-width: $breakpoint) {
+        @content;
+    }
+}
+
+// 
+// TYPOGRAPHY
+//
+
+@mixin sans($f: $sans) { font-family:  $f; }
+@mixin serif($f: $serif) { font-family:  $f; }
+@mixin condensed($f: $condensed) { font-family:  $f; }
+
+@mixin type(
+    $fsize:     $basefont,
+    $lheight:   null,
+    $mtop:      null,
+    $mbot:      null
+    ) {
+    @if $fsize { font-size: $fsize};
+    @if $lheight { line-height: $lheight; }
+    @if $mtop { margin-top: $mtop; }
+    @if $mbot { margin-bottom: $mbot; }
+}
+@mixin type-mid(
+    $fsize:     $basefont,
+    $lheight:   null,
+    $mtop:      null,
+    $mbot:      null
+) {
+    @include xprez-breakpoint-down($typo-break-m) {
+        @include type($fsize, $lheight, $mtop, $mbot);
+    }
+}
+
+@mixin type-min(
+    $fsize:     $basefont,
+    $lheight:   null,
+    $mtop:      null,
+    $mbot:      null
+) {
+    @include xprez-breakpoint-down($typo-break-s) {
+        @include type($fsize, $lheight, $mtop, $mbot);
+    }
+}
+
+@mixin type-fluid(
+    $fsize:     $basefont,
+    $lheight:   null,
+    $mtop:      null,
+    $mbot:      null
+) {
+    @if $fsize {
+        font-size: calc(#{$fsize} + 1rem);
+        @include xprez-breakpoint-down(900px) {
+            font-size: calc(#{$fsize} + 1.5vw);
+        }
+    }
+    @if $lheight { line-height: $lheight; }
+    @if $mtop { margin-top: $mtop; }
+    @if $mbot { margin-bottom: $mbot; }
+}
+
+//    @media only screen and (max-width: $typo-break-m) {
+//        font-size: math.div($fsize, $basefont) * 1em;
+//        @if unitless($lheight) {
+//            line-height: $lheight * math.div($g, $fsize) * 1em;
+//        } @else {
+//            line-height: math.div($lheight, $fsize) * 1em;
+//        }
+//        @if unitless($mtop) {
+//            margin-top: $mtop * math.div($g, $fsize) * 1em;
+//        } @else {
+//            margin-top: math.div($mtop, $fsize) * 1em;
+//        }
+//        @if unitless($mbot) {
+//            margin-bottom: $mbot * math.div($g, $fsize) * 1em;
+//        } @else {
+//            margin-bottom: math.div($mbot, $fsize) * 1em;
+//        }
+//    }
+//}
+//@mixin type-min(
+//    $fsize:     $basefont, // px / font-size
+//    $lheight:   2, // grid multiplier or px / line-height
+//    $mtop:      0, // grid multiplier or px / margin-top
+//    $mbot:      0 // grid multiplier or px / margin-bottom
+//    ) {
+//    @media only screen and (max-width: $typo-break-s) {
+//        font-size: math.div($fsize, $basefont) * 1em;
+//        @if unitless($lheight) {
+//            line-height: $lheight * math.div($g, $fsize) * 1em;
+//        } @else {
+//            line-height: math.div($lheight, $fsize) * 1em;
+//        }
+//        @if unitless($mtop) {
+//            margin-top: $mtop * math.div($g, $fsize) * 1em;
+//        } @else {
+//            margin-top: math.div($mtop, $fsize) * 1em;
+//        }
+//        @if unitless($mbot) {
+//            margin-bottom: $mbot * math.div($g, $fsize) * 1em;
+//        } @else {
+//            margin-bottom: math.div($mbot, $fsize) * 1em;
+//        }
+//    }
+//}
+@mixin type-b(
+    $fsize:     $basefont-b, // px / font-size
+    $lheight:   2, // grid multiplier or px / line-height
+    $mtop:      0, // grid multiplier or px / margin-top
+    $mbot:      0 // grid multiplier or px / margin-bottom
+    ) {
+    
+        font-size: $fsize;
+        @if unitless($lheight) { 
+            line-height: $lheight * math.div($g-b, $fsize) * 1em;
+        } @else {
+            line-height: math.div($lheight, $fsize) * 1em;
+        }
+        @if unitless($mtop) { 
+            margin-top: $mtop * math.div($g-b, $fsize) * 1em;
+        } @else {
+            margin-top: math.div($mtop, $fsize) * 1em;
+        }
+        @if unitless($mbot) {
+            margin-bottom: $mbot * math.div($g-b, $fsize) * 1em;
+        } @else {
+            margin-bottom: math.div($mbot, $fsize) * 1em;
+        } 
+}
