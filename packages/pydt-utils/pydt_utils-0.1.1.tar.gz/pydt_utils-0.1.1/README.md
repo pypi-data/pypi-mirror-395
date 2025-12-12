@@ -1,0 +1,204 @@
+# pydt-utils
+
+**Thermal  analysis, validation**
+
+A comprehensive Python library for thermal  analysis, brazing validation, anomaly detection, thermal simulation, and visualization utilities for digital twin applications in manufacturing.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+## Features
+
+### 🔥 Thermal  Analysis
+- **Ramp Rate Calculation**: Compute heating/cooling rates with noise reduction
+- **Data Smoothing**: Savitzky-Golay and moving average filters
+- **Soak Detection**: Identify temperature plateaus automatically
+- ** Segmentation**: Break s into ramp-up, soak, ramp-down, and cooling stages
+
+
+### 🌡️ Thermal Simulation 
+- **Heat Flux Calculations**: Fourier's law implementation
+- **1D Diffusion Solver**: Explicit finite difference method for heat equation
+- **Dimensionless Numbers**: Biot and Fourier number calculations
+- **Cooling Time Estimation**: Lumped capacitance model
+
+### 🔍 Anomaly Detection 
+- **Spike Detection**: Statistical identification of temperature spikes
+- **Overshoot Detection**: Find temperature overshoots beyond targets
+- **Rate Anomalies**: Detect unexpected heating/cooling rate changes
+- **Statistical Methods**: Z-score, IQR, and MAD anomaly detection
+
+### 📊 Visualization
+- **Thermal  Plots**: Professional  visualization with stage annotations
+- **Anomaly Highlighting**: Mark detected anomalies on temperature curves
+- **Temperature Distribution**: Spatial temperature profile plotting
+- ** Comparison**: Compare multiple thermals side-by-side
+
+## Installation
+
+### From Source
+
+```bash
+# Clone or download the repository
+cd pydt-utils
+
+# Install in development mode
+pip install -e .
+
+# Or install with development dependencies
+pip install -e ".[dev]"
+```
+
+### Requirements
+
+- Python >= 3.8
+- numpy >= 1.20.0
+- scipy >= 1.7.0
+- matplotlib >= 3.4.0
+
+## Quick Start
+
+### Example 1: Analyze a Thermal 
+
+```python
+import numpy as np
+from pydt_utils import calculate_ramp_rate, segment_thermal_, plot_thermal_
+
+# Load or generate thermal  data
+time = np.linspace(0, 200, 2000)  # minutes
+temperature = np.piecewise(time,
+    [time < 50, (time >= 50) & (time < 150), time >= 150],
+    [lambda t: 20 + 10*t, 520, lambda t: 520 - 5*(t-150)]
+)
+
+# Calculate ramp rates
+rates = calculate_ramp_rate(time, temperature)
+print(f"Average heating rate: {np.mean(rates[rates > 0]):.2f} °C/min")
+
+# Segment the 
+stages = segment_thermal_(time, temperature)
+for stage in stages:
+    print(f"{stage['stage_type']}: {stage['duration']:.1f} min")
+
+# Visualize
+plot_thermal_(time, temperature, stages=stages, save_path='.png')
+```
+
+### Example 2: Detect Anomalies
+
+```python
+from pydt_utils import (
+    detect_temperature_spikes,
+    detect_overshoot,
+    statistical_anomaly_detection,
+    plot_with_anomalies
+)
+
+# Detect temperature spikes
+spikes = detect_temperature_spikes(time, temperature, threshold_std=3.0)
+print(f"Detected {len(spikes)} temperature spikes")
+
+# Detect overshoots
+overshoots = detect_overshoot(time, temperature, target_temp=600, tolerance=5.0)
+print(f"Detected {len(overshoots)} overshoots")
+
+# Statistical anomaly detection
+anomalies = statistical_anomaly_detection(temperature, method='zscore', threshold=3.0)
+anomaly_indices = np.where(anomalies)[0]
+
+# Visualize anomalies
+plot_with_anomalies(time, temperature, anomaly_indices, anomaly_type="Statistical Anomaly")
+```
+
+### Example 3: Thermal Simulation
+
+```python
+from pydt_utils import (
+    solve_1d_diffusion,
+    calculate_biot_number,
+    estimate_cooling_time,
+    plot_temperature_distribution
+)
+
+# Setup 1D thermal diffusion problem
+x = np.linspace(0, 0.1, 50)  # 10 cm domain
+T_initial = 20 + 580 * np.exp(-((x - 0.05)**2) / 0.001)  # Hot spot in center
+
+# Boundary conditions: fixed at 20°C on both ends
+bc = (('dirichlet', 20), ('dirichlet', 20))
+
+# Solve heat diffusion
+T_history, t_array = solve_1d_diffusion(
+    T_initial, bc,
+    time_steps=1000,
+    dx=0.002,  # m
+    dt=0.01,   # s
+    alpha=4e-6  # m²/s (steel)
+)
+
+# Plot temperature distribution at different times
+plot_temperature_distribution(
+    x,
+    [T_history[0], T_history[500], T_history[-1]],
+    time_labels=['t=0s', 't=5s', 't=10s']
+)
+
+# Estimate cooling time
+cooling_time = estimate_cooling_time(
+    T_initial=600, T_final=100, T_ambient=20,
+    characteristic_length=0.01, alpha=4e-6, h=10, k=15
+)
+print(f"Estimated cooling time: {cooling_time:.1f} seconds")
+
+# Check if lumped capacitance is valid
+Bi = calculate_biot_number(h=10, L=0.01, k=15)
+print(f"Biot number: {Bi:.4f} (< 0.1 means lumped model valid)")
+```
+
+
+
+## Testing
+
+Run the test suite:
+
+```bash
+# Install test dependencies
+pip install pytest pytest-cov
+
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ --cov=pydt_utils --cov-report=term-missing
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Citation
+
+If you use this library in your research, please cite:
+
+```bibtex
+@software{pydt_utils,
+  title = {pydt-utils: Digital Twin + Brazing Utilities},
+  author = {muthuvel vishwa},
+  year = {2025},
+  url = {https://github.com/manthan/pydt-utils}
+}
+```
+
+## Contact
+
+For questions, issues, or suggestions, please open an issue on GitHub.
+
+---
+
+**Made with ❤️ for the manufacturing and digital twin community**
+# pydt-utils
+# pydt-utils
