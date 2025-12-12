@@ -1,0 +1,114 @@
+framework:
+  name: bfcl
+  pkg_name: bfcl
+  full_name: Berkeley Function Calling Leaderboard
+  description: The Berkeley Function Calling Leaderboard V3 (also called Berkeley Tool Calling Leaderboard V3) evaluates the LLM's ability to call functions (aka tools) accurately.
+  url: https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard
+defaults:
+  # --model-mapping oai indicates that the model is going to be hosted through OpenAI - compatible endpoint
+  command: >
+    {%- if config.params.extra.custom_dataset.path is not none and config.params.extra.custom_dataset.format is not none -%}
+    echo "Processing custom dataset..." &&
+    export BFCL_DATA_DIR=$(core-evals-process-custom-dataset \
+      --dataset_format {{config.params.extra.custom_dataset.format}} \
+      --dataset_path {{config.params.extra.custom_dataset.path}} \
+      --test_category {{config.params.task}} \
+      --processing_output_dir {{config.output_dir ~ "/custom_dataset_processing"}} \
+      {% if config.params.extra.custom_dataset.data_template_path %}--data_template_path {{config.params.extra.custom_dataset.data_template_path}}{% endif %}) && \
+    echo "Using custom dataset at ${BFCL_DATA_DIR}" && \
+
+    {% endif -%}
+
+    {% if target.api_endpoint.api_key is not none %}OPENAI_API_KEY=${{target.api_endpoint.api_key}}{% endif %}
+    bfcl generate --model {{target.api_endpoint.model_id}} --test-category {{config.params.task}} --model-mapping oai --result-dir {{config.output_dir}} --model-args base_url={{target.api_endpoint.url}},native_calling={{config.params.extra.native_calling}}  {% if config.params.limit_samples is not none %} --limit {{config.params.limit_samples}}{% endif %} --num-threads  {{config.params.parallelism}} && \
+
+    {% if target.api_endpoint.api_key is not none %}OPENAI_API_KEY=${{target.api_endpoint.api_key}}{% endif %}
+    bfcl evaluate --model {{target.api_endpoint.model_id}} --test-category {{config.params.task}} --model-mapping oai --result-dir {{config.output_dir}} --score-dir {{config.output_dir}} --model-args base_url={{target.api_endpoint.url}},native_calling={{config.params.extra.native_calling}}
+
+  config:
+    params:
+      limit_samples: null
+      parallelism: 10
+      extra:
+        native_calling: false
+        custom_dataset:
+          path: null
+          format: null # 'openai' or 'native'
+          data_template_path: null # Optional: path to the data template JSON file
+  target:
+    api_endpoint: {} # required to add: url, model_id, api_key
+
+evaluations:
+- name: bfclv3
+  description: BFCL v3 with Single-turn and Multi-turn, Live and Non-Live, AST and Exec evaluation. Not using native function calling.
+  defaults:
+    config:
+      type: bfclv3
+      supported_endpoint_types:
+      - chat
+      - vlm
+      params:
+        task: all
+
+- name: bfclv3_ast
+  description: BFCL v3 with Single-turn and Multi-turn, Live and Non-Live, AST evaluation. Uses native function calling.
+  defaults:
+    config:
+      type: bfclv3_ast
+      supported_endpoint_types:
+      - chat
+      - vlm
+      params:
+        task: multi_turn,ast
+        extra:
+          native_calling: true
+
+- name: bfclv3_ast_prompting
+  description: BFCL v3 with Single-turn and Multi-turn, Live and Non-Live, AST evaluation. Not using native function calling.
+  defaults:
+    config:
+      type: bfclv3_ast_prompting
+      supported_endpoint_types:
+      - chat
+      - vlm
+      params:
+        task: multi_turn,ast
+        extra:
+          native_calling: false
+
+- name: bfclv2
+  description: BFCL v2 with Single-turn, Live and Non-Live, AST and Exec evaluation. Not using native function calling.
+  defaults:
+    config:
+      type: bfclv2
+      supported_endpoint_types:
+      - chat
+      - vlm
+      params:
+        task: single_turn
+
+- name: bfclv2_ast
+  description: BFCL v2 with Single-turn, Live and Non-Live, AST evaluation only. Uses native function calling.
+  defaults:
+    config:
+      type: bfclv2_ast
+      supported_endpoint_types:
+      - chat
+      - vlm
+      params:
+        task: ast
+        extra:
+          native_calling: true
+
+- name: bfclv2_ast_prompting
+  description: BFCL v2 with Single-turn, Live and Non-Live, AST evaluation only. Not using native function calling.
+  defaults:
+    config:
+      type: bfclv2_ast_prompting
+      supported_endpoint_types:
+      - chat
+      - vlm
+      params:
+        task: ast
+        extra:
+          native_calling: false

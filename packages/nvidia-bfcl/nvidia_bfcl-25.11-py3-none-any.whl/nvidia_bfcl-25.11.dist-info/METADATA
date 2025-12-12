@@ -1,0 +1,470 @@
+Metadata-Version: 2.4
+Name: nvidia_bfcl
+Version: 25.11
+Summary: Berkeley Function Calling Leaderboard (BFCL) - packaged by NVIDIA
+License: Apache 2.0
+Project-URL: Repository, https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: requests
+Requires-Dist: tqdm
+Requires-Dist: numpy==1.26.4
+Requires-Dist: pandas
+Requires-Dist: huggingface_hub
+Requires-Dist: pydantic>=2.8.2
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: tree_sitter==0.21.3
+Requires-Dist: tree-sitter-java==0.21.0
+Requires-Dist: tree-sitter-javascript==0.21.4
+Requires-Dist: openai>=1.61.0
+Requires-Dist: typer>=0.12.5
+Requires-Dist: tabulate>=0.9.0
+Requires-Dist: datamodel-code-generator==0.25.7
+Requires-Dist: mpmath==1.3.0
+Requires-Dist: tenacity==9.0.0
+Requires-Dist: writer-sdk>=1.2.0
+Requires-Dist: overrides
+Requires-Dist: nemo-evaluator
+Provides-Extra: oss-eval-vllm
+Requires-Dist: vllm==0.6.3; extra == "oss-eval-vllm"
+Provides-Extra: oss-eval-sglang
+Requires-Dist: sglang[all]; extra == "oss-eval-sglang"
+Provides-Extra: wandb
+Requires-Dist: wandb==0.18.5; extra == "wandb"
+
+# NVIDIA NeMo Evaluator
+
+The goal of NVIDIA NeMo Evaluator is to advance and refine state-of-the-art methodologies for model evaluation, and deliver them as modular evaluation packages (evaluation containers and pip wheels) that teams can use as standardized building blocks.
+
+# Quick start guide
+
+NVIDIA NeMo Evaluator provide you with evaluation clients, that are specifically built to evaluate model endpoints using our Standard API.
+
+## Launching an evaluation for an LLM
+
+1. Install the package
+    ```
+    pip install nvidia-bfcl
+    ```
+
+3. (Optional) Set a token to your API endpoint if it's protected
+    ```bash
+    export MY_API_KEY="your_api_key_here"
+    ```
+4. List the available evaluations:
+    ```bash
+    $ nemo-evaluator ls
+    Available tasks:
+    * bfclv2 (in bfcl)
+    * bfclv2_ast (in bfcl)
+    * bfclv3 (in bfcl)
+    * bfclv3_ast (in bfcl)
+    ...
+    ```
+5. Run the evaluation of your choice:
+   ```bash
+   nemo-evaluator run_eval \
+       --eval_type bfclv3_ast \
+       --model_id meta/llama-3.1-70b-instruct \
+       --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+       --model_type chat \
+       --api_key_name MY_API_KEY \
+       --output_dir /workspace/results
+   ```
+6. Gather the results
+    ```bash
+    cat /workspace/results/results.yml
+    ```
+
+# Command-Line Tool
+
+Each package comes pre-installed with a set of command-line tools, designed to simplify the execution of evaluation tasks. Below are the available commands and their usage for the `bfcl` (`bfcl`):
+
+## Commands
+
+### 1. **List Evaluation Types**
+
+```bash
+nemo-evaluator ls
+```
+
+Displays the evaluation types available within the harness.
+
+### 2. **Run an evaluation**
+
+The `nemo-evaluator run_eval` command executes the evaluation process. Below are the flags and their descriptions:
+
+### Required flags
+* `--eval_type <string>`
+The type of evaluation to perform
+* `--model_id <string>`
+The name or identifier of the model to evaluate.
+* `--model_url <url>`
+The API endpoint where the model is accessible.
+* `--model_type <string>`
+The type of the model to evaluate, currently either "chat", "completions", or "vlm".
+* `--output_dir <directory>`
+The directory to use as the working directory for the evaluation. The results, including the results.yml output file, will be saved here.
+
+### Optional flags
+* `--api_key_name <string>`
+The name of the environment variable that stores the Bearer token for the API, if authentication is required.
+* `--run_config <path>`
+Specifies the path to a  YAML file containing the evaluation definition.
+
+### Example
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type bfclv3_ast \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir ./evaluation_results
+```
+
+If the model API requires authentication, set the API key in an environment variable and reference it using the `--api_key_name` flag:
+
+```bash
+export MY_API_KEY="your_api_key_here"
+
+nemo-evaluator run_eval \
+    --eval_type bfclv3_ast \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --api_key_name MY_API_KEY \
+    --output_dir ./evaluation_results
+```
+
+# Configuring evaluations via YAML
+
+Evaluations in NVIDIA NeMo Evaluator are configured using YAML files that define the parameters and settings required for the evaluation process. These configuration files follow a standard API which ensures consistency across evaluations.
+
+Example of a YAML config:
+```yaml
+config:
+  type: bfclv3_ast
+  params:
+    parallelism: 50
+    limit_samples: 20
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+The priority of overrides is as follows:
+1. command line arguments
+2. user config (as seen above)
+3. task defaults (defined per task type)
+4. framework defaults 
+
+`--dry_run` option allows you to print the final run configuration and command without executing the evaluation.
+
+### Example:
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type bfclv3_ast \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir .evaluation_results \
+    --dry_run
+```
+
+Output:
+
+```bash
+Rendered config:
+
+command: '{% if target.api_endpoint.api_key is not none %}OPENAI_API_KEY=${{target.api_endpoint.api_key}}{%
+  endif %} bfcl generate --model {{target.api_endpoint.model_id}} --test-category
+  {{config.params.task}} --model-mapping oai --result-dir {{config.output_dir}} --model-args
+  base_url={{target.api_endpoint.url}}  {% if config.params.limit_samples is not none
+  %} --limit {{config.params.limit_samples}}{% endif %} --num-threads  {{config.params.parallelism}}
+  && {% if target.api_endpoint.api_key is not none %}OPENAI_API_KEY=${{target.api_endpoint.api_key}}{%
+  endif %} bfcl evaluate --model {{target.api_endpoint.model_id}} --test-category
+  {{config.params.task}} --model-mapping oai --result-dir {{config.output_dir}} --score-dir
+  {{config.output_dir}}
+
+  '
+framework_name: bfcl
+pkg_name: bfcl
+config:
+  output_dir: .evaluation_results
+  params:
+    limit_samples: null
+    max_new_tokens: null
+    max_retries: null
+    parallelism: 10
+    task: multi_turn,ast
+    temperature: null
+    timeout: null
+    top_p: null
+    extra: {}
+  supported_endpoint_types:
+  - llm
+  - vlm
+  type: bfclv3_ast
+target:
+  api_endpoint:
+    api_key: null
+    model_id: my_model
+    stream: null
+    type: chat
+    url: http://localhost:8000
+
+
+Rendered command:
+
+ bfcl generate --model my_model --test-category multi_turn,ast --model-mapping oai --result-dir .evaluation_results --model-args base_url=http://localhost:8000   --num-threads  10 &&  bfcl evaluate --model my_model --test-category multi_turn,ast --model-mapping oai --result-dir .evaluation_results --score-dir .evaluation_results
+```
+
+## Custom datasets
+
+To use your own datasets for evaluation, specify custom dataset parameters in your evaluation configuration file under `config.params.extra.custom_dataset`. This feature supports two primary dataset formats: `native` and `openai`.
+
+### Configuration Parameters
+
+* `path`: (string, required)
+  * Specifies the location of your dataset.
+  * If `format` is `native`, this must be the absolute path to a directory containing your dataset files (see 'Native Format' section below for structure).
+  * If `format` is `openai`, this must be the absolute path to your JSONL dataset file.
+* `format`: (string, required)
+  * Defines the format of your custom dataset. Must be either `native` or `openai`.
+* `data_template_path`: (string, optional)
+  * Used only when `format` is `openai`.
+  * Absolute path to a JSON file defining a custom mapping for fields in your OpenAI-format dataset if it deviates from the default structure.
+
+### Processing Workflow
+
+1. **Input**: The system takes the `path`, `format`, and optional `data_template_path`.
+2. **Validation/Conversion**:
+   * If `format` is `native`, the dataset at `path` is validated. The `BFCL_DATA_DIR` environment variable is then set directly to this `path`.
+   * If `format` is `openai`, the dataset file at `path` (using `data_template_path` if provided) is converted into the `native` format within a temporary directory. `BFCL_DATA_DIR` is then set to this temporary directory's path.
+3. **Evaluation**: The `bfcl` evaluation tool uses the `BFCL_DATA_DIR` to find the `questions.jsonl` and `ground_truth.jsonl` files for the evaluation.
+
+### Native Format
+
+The `native` format requires a specific directory structure. The directory specified in `custom_dataset.path` should contain:
+
+* `BFCL_v3_<test_category>.json`: This file, located directly under the `path` directory, should contain the questions or prompts for the LLM. Each line must be a JSON object. Replace `<test_category>` with a valid test category supported by BFCL e.g.: `simple`, `ast`, `executable`, `multi_turn_base`.
+* A subdirectory named `possible_answer`, which in turn contains:
+  * `BFCL_v3_<test_category>.json` (i.e., `path/possible_answer/BFCL_v3_<test_category>.json`). It contains the corresponding ground truth, with each line being a JSON object representing the expected function calls or responses. The `<test_category>` in this filename must match the one in the questions file.
+
+For multi-turn test categories, the native format is more complex and may require an additional `multi_turn_func_doc` directory within your `custom_dataset.path`.
+
+#### Structure of `BFCL_v3_<test_category>.json` (Questions File)
+
+Each line in this JSONL file represents a single question/prompt and should be a JSON object with the following fields:
+
+* `id`: (string) A unique identifier for the test case, typically in the format `<test_category>_<unique_id>`.
+* `question`: (list) A list of conversations, where each conversation is a list of message objects (e.g., `{"role": "user", "content": "..."}`). This follows the standard OpenAI message format.
+* `function`: (list) A list of `Function` objects available for the LLM to call. Each `Function` object should have:
+  * `name`: (string) The name of the function.
+  * `description`: (string) A description of what the function does.
+  * `parameters`: (object) An object describing the function's parameters. This typically follows a JSON Schema-like structure, defining `type` (e.g., "object"), `properties` (a dictionary of parameter names to their schemas, each specifying `type`, `description`, etc.), and `required` (a list of required parameter names).
+
+**Example (`BFCL_v3_simple.json` line):**
+
+```json
+{
+  "id": "simple_0",
+  "question": [
+    [
+      {
+        "role": "user",
+        "content": "Find the area of a triangle with a base of 10 units and height of 5 units."
+      }
+    ]
+  ],
+  "function": [
+    {
+      "name": "calculate_triangle_area",
+      "description": "Calculate the area of a triangle given its base and height.",
+      "parameters": {
+        "type": "dict",
+        "properties": {
+          "base": {
+            "type": "integer",
+            "description": "The base of the triangle."
+          },
+          "height": {
+            "type": "integer",
+            "description": "The height of the triangle."
+          },
+          "unit": {
+            "type": "string",
+            "description": "The unit of measure (defaults to 'units' if not specified)"
+          }
+        },
+        "required": ["base", "height"]
+      }
+    }
+  ]
+}
+```
+
+#### Structure of `possible_answers/BFCL_v3_<test_category>.json` (Ground Truth File)
+
+Each line in this JSONL file corresponds to a question in the questions file and should be a JSON object with the following fields:
+
+* `id`: (string) The unique identifier for the test case, matching the `id` in the corresponding questions file.
+* `ground_truth`: (list) A list of expected tool call objects. Each object typically maps a function name to a dictionary of its arguments and their values.
+
+**Example (`possible_answers/BFCL_v3_simple.json` line):**
+
+```json
+{
+ "id": "simple_0",
+ "ground_truth": [
+   {
+     "calculate_triangle_area": {
+       "base": [10],
+       "height": [5],
+       "unit": ["units", ""]
+     }
+   }
+ ]
+}
+```
+
+**Note on JSONL**: Ensure your files strictly follows the JSON Lines format (one complete JSON object per line). Refer to [jsonlines.org](https://jsonlines.org/) for details.
+
+**Validation**:
+
+Native format datasets undergo validation. While validation errors are displayed, they might not halt the process (to accommodate potential future format changes). Detailed validation failure information is saved to `validation_failure_details.json` in the evaluation output directory. It's recommended to ensure your native data adheres to the expected structure.
+
+#### Native Dataset Example
+
+```yaml
+config:
+  type: bfclv3
+  params:
+    task: simple
+    extra:
+      custom_dataset:
+        path: /path/to/your/native_data_directory
+        format: native
+```
+
+### OpenAI Format
+
+The `openai` format allows you to provide your dataset as a single JSONL file. Each line in this file must be a valid JSON object.
+
+**Structure of each JSON object**:
+
+Each JSON object in the JSONL file should typically contain the following fields:
+
+* `messages`: A list of conversations, where each conversation is a list of message objects (e.g., `{"role": "user", "content": "..."}`).
+* `tools`: A list of `Tool` objects. Each `Tool` object must have a `type` (e.g., "function") and a `function` object. The `function` object, in turn, contains `name`, `description`, and `parameters` (which defines the schema for the function's arguments).
+* `tool_calls_ground_truth`: A list of expected tool call objects.
+
+**Example of a single JSON object in the OpenAI format JSONL file**:
+
+```json
+{
+  "messages": [
+    [
+      {
+        "role": "user",
+        "content": "Calculate the factorial of 5 using math functions."
+      }
+    ]
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "math.factorial",
+        "description": "Calculate the factorial of a given number.",
+        "parameters": {
+          "type": "dict",
+          "properties": {
+            "number": {
+              "type": "integer",
+              "description": "The number for which factorial needs to be calculated."
+            }
+          },
+          "required": ["number"]
+        }
+      }
+    }
+  ],
+  "tool_calls_ground_truth": [
+    {
+      "math.factorial": {
+        "number": [5]
+      }
+    }
+  ]
+}
+```
+
+**Using data templates with OpenAI format**:
+
+If your OpenAI-formatted JSONL file uses a custom structure, specify a data template JSON file via `custom_dataset.data_template_path` to map custom fields to the expected format. This template file uses a jinja2 templating language to define these mappings. E.g.:
+
+```json
+{
+  "messages": "{{ item.user_input | tojson }}",
+  "tools": "{{ item.function | tojson }}",
+  "tool_calls_ground_truth": "{{ item.reference | tojson }}"
+}
+```
+
+**Limitations of the OpenAI format**:
+
+* It is not supported for multi-turn test categories (`multi_turn_base`, `multi_turn_miss_func`, `multi_turn_miss_param`, and `multi_turn_long_context`). Use native format for these test categories.
+* It is not supported for running multiple test categories. Use native format for running multiple test categories.
+
+#### OpenAI Dataset with Custom Data Template Example
+
+```yaml
+config:
+  type: bfclv3
+  params:
+    task: simple
+    extra:
+      custom_dataset:
+        path: /path/to/your/data.jsonl
+        format: openai
+        data_template_path: /path/to/your/data_template.json
+```
+
+## FAQ
+
+### BFCL only - API Keys for Executable Test Categories
+
+If you want to run executable test categories, you must provide API keys. Add the keys to your `.env` file, so that the placeholder values used in questions/params/answers can be replaced with real data.
+There are 4 API keys to include:
+
+1. RAPID-API Key: <https://rapidapi.com/hub>
+
+   - Yahoo Finance: <https://rapidapi.com/sparior/api/yahoo-finance15>
+   - Real Time Amazon Data : <https://rapidapi.com/letscrape-6bRBa3QguO5/api/real-time-amazon-data>
+   - Urban Dictionary: <https://rapidapi.com/community/api/urban-dictionary>
+   - Covid 19: <https://rapidapi.com/api-sports/api/covid-193>
+   - Time zone by Location: <https://rapidapi.com/BertoldVdb/api/timezone-by-location>
+
+   All the Rapid APIs we use have free tier usage. You need to **subscribe** to those API providers in order to have the executable test environment setup but it will be _free of charge_!
+
+2. Exchange Rate API: <https://www.exchangerate-api.com>
+3. OMDB API: <http://www.omdbapi.com/apikey.aspx>
+4. Geocode API: <https://geocode.maps.co/>
+
+### Deploying a model as an endpoint
+
+NVIDIA NeMo Evaluator utilize a client-server communication architecture to interact with the model. As a prerequisite, the **model must be deployed as an endpoint with a NIM-compatible API**.
+
+Users have the flexibility to deploy their model using their own infrastructure and tooling.
+
+Servers with APIs that conform to the OpenAI/NIM API standard are expected to work seamlessly out of the box.
