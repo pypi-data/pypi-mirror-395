@@ -1,0 +1,71 @@
+Metadata-Version: 2.4
+Name: innoscheduleapi
+Version: 0.1.1
+Summary: Parser and analytics library for Innopolis University schedule
+Author: Dreaght
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: google-api-python-client
+Requires-Dist: google-auth
+
+# Innopolis Schedule API
+
+Parser and analytics helpers for Innopolis University schedules. It wraps a Google Sheets reader with a small parser and filter helpers.
+
+## Install / Package
+- Install locally for development: `pip install -e .`
+- Build artifacts pip understands (sdist + wheel): `python -m pip install --upgrade build` then `python -m build`. Packages land in `dist/` and can be installed with `pip install dist/innoscheduleapi-0.1.0-py3-none-any.whl`.
+- Publish to a private index/PyPI using the generated wheel or sdist (`twine upload dist/*` if desired).
+
+## Credentials
+The library expects a Google service account JSON key. Point to it explicitly or via `GOOGLE_APPLICATION_CREDENTIALS`.
+
+## Examples
+### Fetch and parse a sheet
+```python
+import os
+from innosched.sheets_client import SheetsClient
+from core.parser import ScheduleParser
+
+credentials = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]  # or a hardcoded path
+spreadsheet_id = "your-spreadsheet-id"
+sheet_name = "Fall 2024"
+
+client = SheetsClient(credentials, spreadsheet_id, use_cache=True)
+raw_values = client.get_sheet_data(sheet_name)
+schedule = ScheduleParser().parse(sheet_name, raw_values)
+
+for day in schedule.days:
+    print(day.name)
+    for lesson in day.lessons:
+        print(" ", lesson.time, lesson.groups)
+```
+
+### Filter lessons by teacher
+```python
+import os
+from innosched.sheets_client import SheetsClient
+from core.parser import ScheduleParser
+from analytics.filters import filter_by_teacher
+
+creds = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+sheet_id = "your-spreadsheet-id"
+sheet_name = "Fall 2024"
+
+client = SheetsClient(creds, sheet_id)
+parsed = ScheduleParser().parse(sheet_name, client.get_sheet_data(sheet_name))
+
+for day, time, group, data in filter_by_teacher(parsed, "Doe"):
+    print(f"{day} {time} {group}: {data.subject} @ {data.room}")
+```
+
+### Use an explicit cache location
+```python
+from innosched.cache import Cache
+from innosched.sheets_client import SheetsClient
+
+cache = Cache(db_path="/tmp/innosched_cache.db")
+client = SheetsClient("credentials.json", "your-spreadsheet-id", use_cache=False)
+client.cache = cache  # plug in your own cache instance
+values = client.get_sheet_data("Fall 2024")
+```
