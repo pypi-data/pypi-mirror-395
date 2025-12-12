@@ -1,0 +1,48 @@
+{% load json_date %}
+{% load parse_date %}
+{% load tz %}
+
+<div class="result-line-main-container" name="result">
+    <div class="result-line-title-container">
+        <div class="data-info-left-container">
+            <input data-template-id="{{result.template_info.id}}"
+                   data-template-hash="{{result.template_info.hash}}"
+                   type="checkbox" value="{{ result.access_data_url }}"
+                   class="exporter-checkbox{% if not exporter_app %} hidden{% endif %}"/>
+            <span class="expand" onclick="showhideResult(event);"></span>
+            <span class="result-title">
+                {% if result.detail_url %}
+                <a href="{{ result.detail_url }}">{{ result.title }}</a>
+                {% else %}
+                {{ result.title }}
+                {% endif %}
+            </span>
+            {% if result.blob_url %}
+            <a href="{{ result.blob_url }}" class="badge rounded-pill bg-secondary">
+            file
+            </a>
+            {% endif %}
+            <span class="template-info-name">{{result.template_info.name}}</span>
+            <input class="data-template-format" type="hidden" value="{{result.template_info.format}}">
+            {% if result.permission_url and display_edit_button %}
+                <input class="input-permission-url" type="hidden" value="{{result.permission_url}}">
+                <a class="permissions-link-open mx-2" href="#" {% if BOOTSTRAP_VERSION|first == "4" %}data-toggle{% elif BOOTSTRAP_VERSION|first == "5" %}data-bs-toggle{% endif %}="tooltip" title="Open in text editor">
+                    <i class="fas fa-code" aria-hidden="true"></i>
+                </a>
+                <a class="permissions-link mx-2" href="#" {% if BOOTSTRAP_VERSION|first == "4" %}data-toggle{% elif BOOTSTRAP_VERSION|first == "5" %}data-bs-toggle{% endif %}="tooltip" title="Edit">
+                    <i class="fas fa-pencil-alt permissions-icon edit" aria-hidden="true"></i>
+                </a>
+            {% endif %}
+            <div title="Last modification date" class="data-info-right-container">
+                {{result.last_modification_date|parse_date|localtime|json_date:"N d Y g:iA"}}
+            </div>
+        </div>
+    </div>
+    <div class="content-result highlight-content" readonly='true'>
+        {% if result.template_info.format == 'XSD' %}
+        {{ html_string }}
+        {% else %}
+            <pre><code>{{html_string}}</code></pre>
+        {% endif %}
+    </div>
+</div>
