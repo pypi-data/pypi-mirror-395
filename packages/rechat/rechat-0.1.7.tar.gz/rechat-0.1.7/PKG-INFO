@@ -1,0 +1,169 @@
+Metadata-Version: 2.4
+Name: rechat
+Version: 0.1.7
+Summary: Caching and replaying man-in-the-middle proxy for OpenAI APIs
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: mitmproxy
+Requires-Dist: tqdm
+Requires-Dist: md2term
+
+# Rechat
+
+Rechat is a caching and replaying man-in-the-middle proxy for OpenAI's APIs, it provides inspection and debugging layer, particularly useful for quick inspection of interactions of existing clients, developing multi-request workflows, and benchmarks.
+
+Rechat is for you, if you ever wanted to:
+- speed up your code that makes repeated calls to OpenAI APIs
+- quickly inspect what is being sent to OpenAI APIs
+- emulate an endpoint with pre-recorded (or pre-defined) responses
+
+
+
+## Quickstart
+
+1. `pip install rechat`   (dev: `pip install git+https://gitlab-master.nvidia.com/dchichkov/rechat.git`)
+2. Run `rechat`, it will listen on eight-nine-ten port (http://localhost:8910/v1) and use OpenAI's endpoint by default as upstream.
+3. Configure your OpenAI client to use it `export OPENAI_BASE_URL=http://localhost:8910/v1` and run your requests as usual.
+
+You can specify a different upstream endpoint by providing it as an argument, e.g. `rechat https://api.openai.com/v1`.
+
+By default, rechat outputs intercepted chat content onto the console:
+
+![Rechat Console](docs/rechat.jpg)
+
+
+And it records the session to `flows_<timestamp>.dump` file in the current directory. During subsequent runs, if a `-f/--flow [dump_file]` argument is provided, rechat would attempt to load `flows_[timestamp].dump` files, or the specified dump file. It always tries to use cached responses for any matching requests.
+
+
+## Inspection
+
+Rechat provides `http://localhost:8910` web UI for inspecting the current session, with search and filtering capabilities. By default, rechat will output chat content to the console. Use `--quiet` flag to reduce verbosity. 
+
+Additionally, a `--diff` mode would search for similar requests on cache misses and print difference between the current request and the closest cached request. This is useful for ensuring that different clients or implementations of the same functionality produce the same requests.
+
+![Rechat Console](docs/diff.jpg)
+
+
+## Recording and Replaying
+
+Any markdown editor, for example VSCode or GitHub/GitLab web UI, can be used to view and edit the logs, and these modified logs can be loaded into rechat, to emulate model's responses.
+
+## Architecture
+
+![Architecture Diagram](docs/arch.jpg)
+<details>
+```mermaid
+flowchart TB
+    subgraph Client["Client Application"]
+        direction TB
+        APP[["OpenAI SDK / HTTP Client"]]
+    end
+
+    subgraph Rechat["Rechat Proxy (MITM)"]
+        direction TB
+        PROXY["Proxy Server"]
+        INTERCEPT["Request Interceptor"]
+        
+        subgraph CacheLookup["Cache Lookup"]
+            direction TB
+            EXACT["Exact Match?"]
+            FUZZY["Fuzzy Match\n(similarity search)"]
+            CACHE[("Cache Storage")]
+        end
+        
+        REPLAY["Replay Cached Response"]
+        DIFF["Print Diff 📋"]
+        STORE["Record Response"]
+    end
+
+    subgraph OpenAI["OpenAI API"]
+        direction TB
+        API[["api.openai.com"]]
+    end
+
+    %% Force vertical ordering
+    Client ~~~ Rechat
+    Rechat ~~~ OpenAI
+
+    %% Main flow - top to bottom
+    APP --> PROXY
+    PROXY --> INTERCEPT
+    INTERCEPT --> EXACT
+    
+    %% Cache lookup flow
+    EXACT -->|"yes"| REPLAY
+    EXACT -->|"no"| FUZZY
+    
+    FUZZY -->|"similar"| DIFF
+    FUZZY -->|"no match"| FORWARD
+    DIFF --> FORWARD
+    
+    %% Cache connections
+    CACHE <--> EXACT
+    CACHE <--> FUZZY
+    
+    %% Forward to API
+    FORWARD["Forward Request"] --> API
+    
+    %% Response flow
+    API --> STORE
+    STORE --> CACHE
+    STORE --> RETURN["Return Response"]
+    REPLAY --> RETURN
+    RETURN --> APP
+
+    %% Styling
+    style Rechat fill:#1a1a2e,stroke:#16213e,color:#eee
+    style CacheLookup fill:#0f3460,stroke:#16213e,color:#eee
+    style CACHE fill:#e94560,stroke:#16213e,color:#fff
+    style PROXY fill:#533483,stroke:#16213e,color:#fff
+    style DIFF fill:#f9a825,stroke:#16213e,color:#000
+    style REPLAY fill:#4caf50,stroke:#16213e,color:#fff
+```
+
+
+## Rechat Markdown Format
+Example markdown snippet, in markdown format. Note `<blockquote>` tags. See more details in [sample.md](docs/sample.md).
+```markdown
+### user
+<blockquote>
+What is the capital of France?
+</blockquote>
+
+### assistant
+<blockquote>
+Paris.
+</blockquote>
+```
+</details>
+
+## Intercepting traffic to existing OpenAI endpoints
+
+Rechat can intercept traffic to existing endpoints, without changing the client code or configuring `OPENAI_BASE_URL`, by using `mitmproxy` as a transparent proxy. For example, to use mitmproxy `local` proxy mode and intercept traffic from a python script (for example `python scripts/query.py`), use the following command to intercept the traffic from python:
+
+```bash
+rechat --mode local:python
+```
+
+And run the python script as follows, specifying mitmproxy's CA certificate for SSL interception:
+
+```bash
+SSL_CERT_FILE=~/.mitmproxy/mitmproxy-ca-cert.pem python scripts/query.py
+```
+
+Note: `SSL_CERT_FILE` environment variable is required for Python clients to trust mitmproxy's root CA certificate. Please refer to mitmproxy's [documentation](https://docs.mitmproxy.org/stable/concepts-certificates/) for more details on installing and trusting mitmproxy's root CA certificate on your system.
+
+
+
+
+## Routing and Load Balancing
+
+TODO: Rechat supports multiple endpoints, using `<endpoint>:[local_port]:[model_name]` arguments, e.g. `https://api.openai.com/v1:8910:gpt-5`. It would route the requests to the appropriate endpoint based on the model name in the request, and it'd balance the load between endpoints for the same model.
+
+
+## Miscellaneous
+
+* Replaying queries against an endpoint
+* Multiple responses for the same request
+
+
