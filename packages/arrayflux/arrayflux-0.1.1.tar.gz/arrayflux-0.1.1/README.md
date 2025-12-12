@@ -1,0 +1,48 @@
+# arrayflux
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white" alt="NumPy">
+  <img src="https://img.shields.io/badge/SciPy-8CAAE6?style=for-the-badge&logo=scipy&logoColor=white" alt="SciPy">
+  <img src="https://img.shields.io/badge/PyTest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white" alt="PyTest">
+  <img src="https://img.shields.io/badge/Accelerated-Rolling%20Windows-FF9F00?style=for-the-badge&logo=python&logoColor=white" alt="Rolling">
+  <img src="https://img.shields.io/badge/Subclassed%20ndarray-C7253E?style=for-the-badge&logo=python&logoColor=white" alt="Subclass">
+</p>
+
+<p align="center">
+  <i>Tired of not having rolling method on NumPy arrays I created arrayflux!</i>
+</p>
+
+---
+
+`arrayflux` is a lightweight, production-ready Python library that extends
+`numpy.ndarray` with efficient rolling-window operations, fully compatible with
+NumPy semantics, slicing, memory model, and ufunc system.
+
+### 📦 Installation (PyPI Package)
+
+```bash
+pip install arrayflux
+```
+
+### ⚙️ Usage Example
+
+```python
+from arrayflux import arrayflux
+
+x = arrayflux([1, 2, 3, 4, 5, 6])
+r = x.rolling(3)
+
+print(r.mean())  # [nan nan 2. 3. 4. 5.]
+```
+
+### 💡 How it works
+I was tired of not having a native rolling method on NumPy arrays, and since I didn’t want to use pandas for this specific need, I created arrayflux.
+The idea is simple: extend NumPy’s ndarray with a clean and intuitive .rolling() API while keeping full NumPy compatibility and behavior.
+
+Under the hood, the user interacts only with a small public API exposed in api.py, which provides a function that accepts any iterable and returns an ArrayFlux object. The ArrayFlux class itself lives in core.py, where the __new__ method converts the input iterable into a NumPy array and applies .view(ArrayFlux) so that the object keeps all ndarray properties. The same class implements the .rolling(window) method, which performs a lazy import of the Rolling class and instantiates it using the desired window size. The Rolling class, defined in rolling.py, builds the actual rolling-window representation using numpy.lib.stride_tricks.sliding_window_view. All rolling operations (mean, std, var, skew, kurtosis, covariance, correlation, etc.) operate directly on this windowed view, and results are padded with leading NaN values to preserve the original array length.
+
+The goal of arrayflux is to provide a lightweight, NumPy-native rolling system that is easy to use, easy to integrate, and fast to compute, without relying on heavier dependencies or abandoning the ndarray model.
+
+### 🪪 License
+MIT © 2025 — Developed with ❤️ by Lorenzo Santarsieri
