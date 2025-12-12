@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{{ title }}</title>
+
+    {# Plotly: load once. Use CDN for small file, or supply inline JS via plotly_js_inline. #}
+    {% if use_plotly_cdn %}
+        <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+    {% else %}
+        {{ plotly_js_inline | safe }}
+    {% endif %}
+
+    <style>
+        :root {
+            --bg: #0f1115;
+            --bg-elev: #161a22;
+            --bg-elev-2: #1b2130;
+            --text: #e6e6e6;
+            --text-muted: #a8b3cf;
+            --border: #2b3245;
+            --accent: #7aa2f7;
+            --accent-2: #9ece6a;
+            --danger: #f7768e;
+            --warning: #e0af68;
+            --code-bg: #0b0d12;
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --maxw: 1200px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                color-scheme: dark;
+            }
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: var(--maxw);
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header.report-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .title {
+            font-size: clamp(22px, 3vw, 32px);
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* TOC */
+        .toc {
+            background: var(--bg-elev);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin: 12px 0 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .toc h2 {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .toc a {
+            color: var(--text);
+            text-decoration: none;
+            opacity: 0.9;
+        }
+
+        .toc a:hover {
+            color: var(--accent);
+        }
+
+        .toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            columns: 2;
+            column-gap: 24px;
+        }
+
+        @media (max-width: 720px) {
+            .toc ul {
+                columns: 1;
+            }
+        }
+
+        .toc li {
+            padding: 4px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+        }
+
+        /* Section cards */
+        section.card {
+            background: var(--bg-elev);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            margin: 18px 0;
+            box-shadow: var(--shadow);
+        }
+
+        section.card h2 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            letter-spacing: 0.2px;
+        }
+
+        .muted {
+            color: var(--text-muted);
+        }
+
+        /* Grid helper for multi-block layouts */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+
+        .col-12 {
+            grid-column: span 12;
+        }
+
+        .col-6 {
+            grid-column: span 6;
+        }
+
+        .col-4 {
+            grid-column: span 4;
+        }
+
+        .col-8 {
+            grid-column: span 8;
+        }
+
+        @media (max-width: 960px) {
+            .col-6, .col-4, .col-8 {
+                grid-column: span 12;
+            }
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+            background: var(--bg-elev-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        thead th {
+            background: linear-gradient(180deg, #222a3a, #1b2130);
+            color: var(--text);
+            font-weight: 600;
+            font-size: 13px;
+            text-align: left;
+            padding: 10px 12px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        tbody td {
+            padding: 10px 12px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        tbody tr:nth-child(odd) td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tbody tr:hover td {
+            background: rgba(122, 162, 247, 0.08);
+        }
+
+        .numeric {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Images / Figures */
+        .img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-elev-2);
+            box-shadow: var(--shadow);
+        }
+
+        .figure {
+            margin: 10px 0;
+        }
+
+        .caption {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Code blocks */
+        pre, code, .code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            background: var(--code-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+
+        pre {
+            padding: 12px;
+            overflow: auto;
+        }
+
+        code {
+            padding: 2px 6px;
+            font-size: 13px;
+        }
+
+        /* Badges and alerts */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-elev-2);
+            color: var(--text-muted);
+        }
+
+        .alert {
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(122, 162, 247, 0.10), rgba(122, 162, 247, 0.03));
+            color: var(--text);
+        }
+
+        .alert.warn {
+            background: linear-gradient(180deg, rgba(224, 175, 104, 0.15), rgba(224, 175, 104, 0.04));
+            border-color: #5a4a2b;
+        }
+
+        .alert.danger {
+            background: linear-gradient(180deg, rgba(247, 118, 142, 0.15), rgba(247, 118, 142, 0.04));
+            border-color: #5a2c36;
+        }
+
+        /* Links */
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        footer {
+            margin: 24px 0 12px;
+            color: var(--text-muted);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <header class="report-header">
+        <div class="title">{{ title }}</div>
+        <div class="subtitle">Generated: {{ generated_at }}</div>
+    </header>
+
+    {# Optional intro HTML #}
+    {% if intro_html %}
+        <section class="card">
+            {{ intro_html | safe }}
+        </section>
+    {% endif %}
+
+    {# Table of contents (auto from sections) #}
+    {% if sections and sections|length > 0 %}
+        <nav class="toc">
+            <h2>Contents</h2>
+            <ul>
+                {% for sec in sections %}
+                    <li><a href="#sec-{{ loop.index }}">{{ sec.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </nav>
+    {% endif %}
+
+    {# Sections #}
+    {% for sec in sections %}
+        <section id="sec-{{ loop.index }}" class="card">
+            <h2>{{ sec.title }}</h2>
+            {# Each block is an HTML snippet (table, Plotly div, <img>, etc.) #}
+            {% for block in sec.blocks %}
+                <div style="margin: 12px 0;">
+                    {{ block | safe }}
+                </div>
+            {% endfor %}
+        </section>
+    {% endfor %}
+
+    <footer>
+        <div>Report generated by Repyter</div>
+        <div class="badge">Dark theme</div>
+    </footer>
+</div>
+</body>
+</html>
