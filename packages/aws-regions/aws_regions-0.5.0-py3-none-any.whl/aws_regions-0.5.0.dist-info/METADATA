@@ -1,0 +1,123 @@
+Metadata-Version: 2.4
+Name: aws-regions
+Version: 0.5.0
+Summary: Provides functions to get up-to-date AWS regions lists.
+Home-page: https://github.com/SUSE-Enceladus/aws-regions
+Author: SUSE
+Author-email: public-cloud-dev@susecloud.net
+License: MIT
+Keywords: aws-regions aws_regions
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests
+Requires-Dist: dataclasses~=0.8; python_version < "3.7"
+Provides-Extra: dev
+Requires-Dist: coverage; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: vcrpy; extra == "dev"
+Requires-Dist: bumpversion; extra == "dev"
+Provides-Extra: test
+Requires-Dist: coverage; extra == "test"
+Requires-Dist: flake8; extra == "test"
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-cov; extra == "test"
+Requires-Dist: vcrpy; extra == "test"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+[![Continuous testing & Linting](https://github.com/SUSE-Enceladus/aws-regions/actions/workflows/ci.yml/badge.svg)](https://github.com/SUSE-Enceladus/aws-regions/actions/workflows/ci.yml)
+
+Overview
+========
+
+This package provides a very simple API for retrieving the most up-to-date
+region list. The region info is pulled from the botocore Github project so
+this requires a network connection. The advantage to using botocore directly
+is that the region list is not reliant on the botocore version which is
+installed. This can be an issue if you are using system packages for example,
+which may get updates very infrequently and thus may be missing new regions.
+
+
+Requirements
+============
+
+- requests
+
+Installation
+============
+
+```shell
+pip install aws-regions
+```
+
+Usage
+=====
+
+There are two main functions in aws-regions. The first function will provide
+a list of regions based on the AWS partition. By default this is this public
+AWS partition:
+
+```python
+from aws_regions.endpoints import get_regions
+
+
+# Defaults to "aws" partition
+regions = get_regions()
+
+# "aws-cn" partition
+cn_region = get_regions(partition='aws-cn')
+```
+
+The second function will return a list of all regions from all three
+partitions:
+
+```python
+from aws_regions.endpoints import get_all_regions
+
+all_regions = get_all_regions()  # From aws, aws-cn and aws-us-gov
+```
+
+Issues/Enhancements
+===================
+
+Please submit issues and requests to
+[Github](https://github.com/SUSE-Enceladus/aws-regions/issues).
+
+Contributing
+============
+
+Contributions to **aws-regions** are welcome and encouraged. See
+[CONTRIBUTING](https://github.com/SUSE-Enceladus/aws-regions/blob/master/CONTRIBUTING.md)
+for info on getting started.
+
+License
+=======
+
+Copyright (c) 2021 SUSE LLC.
+
+Distributed under the terms of MIT license, see
+[LICENSE](https://github.com/SUSE-Enceladus/aws-regions/blob/master/LICENSE)
+for details.
