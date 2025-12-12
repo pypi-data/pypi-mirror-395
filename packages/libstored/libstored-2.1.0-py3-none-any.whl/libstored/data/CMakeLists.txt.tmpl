@@ -1,0 +1,18 @@
+{#
+# vim:filetype=cmake
+-#}
+# SPDX-FileCopyrightText: 2020-2023 Jochem Rutgers
+#
+# SPDX-License-Identifier: MPL-2.0
+
+cmake_minimum_required(VERSION 3.10)
+project({{libprefix}}libstored)
+
+set(PYTHON_EXECUTABLE "{{python_executable|escapebs}}")
+
+file(TO_CMAKE_PATH "{{libstored_dir|escapebs}}" LIBSTORED_SOURCE_DIR)
+list(APPEND CMAKE_MODULE_PATH ${LIBSTORED_SOURCE_DIR}/cmake)
+include(libstored)
+libstored_lib(TARGET {{libprefix}}libstored DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}
+	STORES{% for m in models %} {{m}}{% endfor %}
+)

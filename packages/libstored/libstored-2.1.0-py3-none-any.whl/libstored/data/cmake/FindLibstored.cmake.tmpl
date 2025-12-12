@@ -1,0 +1,51 @@
+{#
+# vim:filetype=cmake
+-#}
+# SPDX-FileCopyrightText: 2020-2025 Jochem Rutgers
+#
+# SPDX-License-Identifier: MPL-2.0
+
+cmake_policy(VERSION 3.10)
+include(FindPackageHandleStandardArgs)
+
+set(PYTHON_EXECUTABLE "{{python_executable|escapebs}}")
+{%- for k, v in defines.items() %}
+set({{k}} "{{v|escapestr}}")
+{%- endfor %}
+
+file(TO_CMAKE_PATH "{{libstored_dir|escapebs}}" LIBSTORED_SOURCE_DIR)
+
+if(EXISTS ${LIBSTORED_SOURCE_DIR}/cmake/libstored.cmake)
+	message(STATUS "Using libstored from ${LIBSTORED_SOURCE_DIR}")
+
+	list(APPEND CMAKE_MODULE_PATH ${LIBSTORED_SOURCE_DIR}/dist/common)
+
+	foreach(c IN LISTS Libstored_FIND_COMPONENTS)
+		set(_req)
+
+		if(${Libstored_FIND_REQUIRED_${c}})
+			set(_req "REQUIRED")
+		endif()
+
+		if("${c}" STREQUAL "ZeroMQ")
+			find_package(ZeroMQ ${_req})
+			set(LIBSTORED_HAVE_LIBZMQ ON CACHE INTERNAL "Enable ZeroMQ" FORCE)
+		elseif("${c}" STREQUAL "Zth")
+			find_package(Zth ${_req})
+			set(LIBSTORED_HAVE_ZTH ON CACHE INTERNAL "Enable Zth" FORCE)
+		elseif("${c}" STREQUAL "Heatshrink")
+			find_package(Heatshrink ${_req})
+			set(LIBSTORED_HAVE_HEATSHRINK ON CACHE INTERNAL "Enable heatshrink" FORCE)
+		elseif("${c}" STREQUAL "AES")
+			find_package(TinyAES ${_req})
+			set(LIBSTORED_HAVE_AES ON CACHE INTERNAL "Enable AES" FORCE)
+		endif()
+	endforeach()
+
+	include(${LIBSTORED_SOURCE_DIR}/cmake/libstored.cmake REQUIRED)
+	find_package_handle_standard_args(
+		Libstored
+		REQUIRED_VARS LIBSTORED_SOURCE_DIR
+		VERSION_VAR LIBSTORED_VERSION_BASE
+	)
+endif()
