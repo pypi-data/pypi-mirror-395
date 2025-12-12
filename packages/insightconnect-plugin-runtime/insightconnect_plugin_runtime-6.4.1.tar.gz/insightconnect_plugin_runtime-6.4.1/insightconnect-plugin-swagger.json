@@ -1,0 +1,755 @@
+{
+  "paths": {
+    "/api/v1/api": {
+      "get": {
+        "summary": "Get API spec details",
+        "description": "Get Swagger v2.0 API Specification",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "type": "string",
+            "description": "Format to return swagger spec; defaults to JSON",
+            "enum": [
+              "json",
+              "yaml"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Swagger Specification to be returned",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "422": {
+            "description": "The specified format is not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/info": {
+      "get": {
+        "summary": "Get plugin details",
+        "description": "Get InsightConnect plugin details",
+        "responses": {
+          "200": {
+            "description": "InsightConnect Plugin Information to be returned",
+            "schema": {
+              "$ref": "#/definitions/PluginInfo"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/spec": {
+      "get": {
+        "summary": "Get plugin spec details",
+        "description": "Get plugin specification",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "type": "string",
+            "description": "Format to return plugin spec; defaults to JSON",
+            "enum": [
+              "json",
+              "yaml"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plugin specification to be returned",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "422": {
+            "description": "The specified format is not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/actions": {
+      "get": {
+        "summary": "Get list of plugin actions",
+        "description": "Get InsightConnect plugin all actions",
+        "responses": {
+          "200": {
+            "description": "InsightConnect Plugin actions list to be returned",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/triggers": {
+      "get": {
+        "summary": "Get list of plugin triggers",
+        "description": "Get InsightConnect plugin all triggers",
+        "responses": {
+          "200": {
+            "description": "InsightConnect Plugin triggers list to be returned",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "summary": "Get list of plugin tasks",
+        "description": "Get InsightConnect plugin all tasks",
+        "responses": {
+          "200": {
+            "description": "InsightConnect Plugin tasks list to be returned",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "summary": "Get web service status",
+        "description": "Get web service status",
+        "responses": {
+          "200": {
+            "description": "Status to be returned",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actions/{name}": {
+      "post": {
+        "summary": "Run an action",
+        "description": "Run an action",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the action",
+            "type": "string",
+            "required": true
+          },
+          {
+            "in": "body",
+            "required": true,
+            "name": "Action Input",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerInput"
+            },
+            "description": "Input to run an action"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action output to be returned",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerOutput"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Unexpected error"
+          }
+        }
+      },
+      "get": {
+        "summary": "Retrieve action details",
+        "description": "Retrieve action details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the action",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action details to be returned",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerDetails"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{name}": {
+      "post": {
+        "summary": "Run a task",
+        "description": "Run a task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the task",
+            "type": "string",
+            "required": true
+          },
+          {
+            "in": "body",
+            "required": true,
+            "name": "Task Input",
+            "schema": {
+              "$ref": "#/definitions/TaskInput"
+            },
+            "description": "Input to run a task"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task output to be returned",
+            "schema": {
+              "$ref": "#/definitions/TaskOutput"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Unexpected error"
+          }
+        }
+      },
+      "get": {
+        "summary": "Retrieve task details",
+        "description": "Retrieve task details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the task",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task details to be returned",
+            "schema": {
+              "$ref": "#/definitions/TaskDetails"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/api/v1/actions/{name}/test": {
+      "post": {
+        "summary": "Run action test",
+        "description": "Run action test",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the action",
+            "type": "string",
+            "required": true
+          },
+          {
+            "in": "body",
+            "required": true,
+            "name": "Action Input",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerInput"
+            },
+            "description": "Input to run an action"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action test output to be returned",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerOutput"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Unexpected error"
+          }
+        }
+      }
+    },
+    "/api/v1/triggers/{name}/test": {
+      "post": {
+        "summary": "Run trigger test",
+        "description": "Run trigger test",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the trigger",
+            "type": "string",
+            "required": true
+          },
+          {
+            "in": "body",
+            "required": true,
+            "name": "Trigger Input",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerInput"
+            },
+            "description": "Input to run a trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trigger test output to be returned",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerOutput"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Unexpected error"
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{name}/test": {
+      "post": {
+        "summary": "Run task test",
+        "description": "Run task test",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the task",
+            "type": "string",
+            "required": true
+          },
+          {
+            "in": "body",
+            "required": true,
+            "name": "Task Input",
+            "schema": {
+              "$ref": "#/definitions/TaskInput"
+            },
+            "description": "Input to run a task"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task test output to be returned",
+            "schema": {
+              "$ref": "#/definitions/TaskOutput"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Unexpected error"
+          }
+        }
+      }
+    },
+    "/api/v1/triggers/{name}": {
+      "get": {
+        "summary": "Retrieve trigger details",
+        "description": "Retrieve trigger details",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "Name of the trigger",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trigger details to be returned",
+            "schema": {
+              "$ref": "#/definitions/ActionTriggerDetails"
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/api/v1/connection": {
+      "get": {
+        "summary": "Get plugin connection details",
+        "description": "Get InsightConnect plugin connection details",
+        "responses": {
+          "200": {
+            "description": "InsightConnect plugin connection details to be returned",
+            "schema": {
+              "$ref": "#/definitions/ConnectionDetails"
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/connection/{connection_test_type}": {
+      "post": {
+        "summary": "Run connection test",
+        "description": "Run InsightConnect plugin connection test",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_test_type",
+            "description": "Type of connection test to be run",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connection test output to be returned",
+            "schema": {
+              "$ref": "#/definitions/ConnectionTestOutput"
+            }
+          },
+          "204": {
+            "description": "The server successfully processed the request and is not returning any content"
+          },
+          "400": {
+            "description": "A ConnectionTestException has occurred"
+          },
+          "500": {
+            "description": "Internal server error"
+          },
+          "501": {
+            "description": "The connection test() is not implmented"
+          }
+        }
+      }
+    }
+  },
+  "info": {
+    "title": "InsightConnect Plugin Runtime API",
+    "version": "1.0"
+  },
+  "swagger": "2.0",
+  "definitions": {
+    "PluginInfo": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "vendor": {
+          "type": "string"
+        },
+        "plugin_spec_version": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "version": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "support": {
+          "type": "string"
+        },
+        "enable_cache": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "number_of_workers": {
+          "type": "integer"
+        },
+        "threads": {
+          "type": "integer"
+        },
+        "sdk_version": {
+          "type": "string"
+        }
+      }
+    },
+    "ActionTriggerOutputBody": {
+      "type": "object",
+      "properties": {
+        "log": {
+          "type": "string"
+        },
+        "meta": {
+          "type": "object"
+        },
+        "output": {
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "log",
+        "meta",
+        "output",
+        "status"
+      ]
+    },
+    "ActionTriggerOutput": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "$ref": "#/definitions/ActionTriggerOutputBody"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "action_event",
+            "trigger_event"
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "type",
+        "version"
+      ]
+    },
+    "TaskOutputBody": {
+      "type": "object",
+      "properties": {
+        "log": {
+          "type": "string"
+        },
+        "meta": {
+          "type": "object"
+        },
+        "output": {
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "state": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "log",
+        "meta",
+        "output",
+        "state",
+        "status"
+      ]
+    },
+    "TaskOutput": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "$ref": "#/definitions/TaskOutputBody"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "task_event"
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "type",
+        "version"
+      ]
+    },
+    "ActionTriggerInputBody": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "connection": {
+          "type": "object"
+        },
+        "input": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "action",
+        "connection",
+        "input"
+      ]
+    },
+    "ActionTriggerInput": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "$ref": "#/definitions/ActionTriggerInputBody"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "action_event",
+            "trigger_event"
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "type",
+        "version"
+      ]
+    },
+    "TaskInputBody": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "type": "string"
+        },
+        "connection": {
+          "type": "object"
+        },
+        "input": {
+          "type": "object"
+        },
+        "state": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "connection",
+        "input",
+        "state",
+        "task"
+      ]
+    },
+    "TaskInput": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "$ref": "#/definitions/TaskInputBody"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "task_event"
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "type",
+        "version"
+      ]
+    },
+    "ActionTriggerDetails": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object"
+        },
+        "output": {
+          "type": "object"
+        }
+      }
+    },
+    "ConnectionDetails": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "type": "object"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "ConnectionTestOutput": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "object"
+        }
+      }
+    },
+    "TaskDetails": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object"
+        },
+        "output": {
+          "type": "object"
+        },
+        "schedule": {
+          "type": "object"
+        },
+        "state": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}
