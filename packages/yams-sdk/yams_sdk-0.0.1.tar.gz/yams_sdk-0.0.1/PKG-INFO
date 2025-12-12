@@ -1,0 +1,93 @@
+Metadata-Version: 2.4
+Name: yams-sdk
+Version: 0.0.1
+Summary: Python SDK for YAMS (Yet Another Memory System) - Build plugins and clients
+Project-URL: Homepage, https://sr.ht/~trvon/yams/
+Project-URL: Repository, https://git.sr.ht/~trvon/yams-sdk
+Project-URL: Documentation, https://git.sr.ht/~trvon/yams-sdk/tree/main/item/README.md
+Project-URL: Issues, https://todo.sr.ht/~trvon/yams
+Author: YAMS Project
+License: GPL-3.0-only
+License-File: LICENSE
+Keywords: embeddings,indexing,json-rpc,memory,plugin,sdk,search,yams
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Database :: Database Engines/Servers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Text Processing :: Indexing
+Requires-Python: >=3.9
+Requires-Dist: jsonschema>=4.0.0
+Description-Content-Type: text/markdown
+
+# yams-sdk
+
+[![builds.sr.ht status](https://builds.sr.ht/~trvon/yams-sdk.svg)](https://builds.sr.ht/~trvon/yams-sdk)
+[![PyPI](https://img.shields.io/pypi/v/yams-sdk)](https://pypi.org/project/yams-sdk/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+Python SDK for building [YAMS](https://sr.ht/~trvon/yams/) plugins.
+
+## Installation
+
+```bash
+pip install yams-sdk
+```
+
+## Quick Start
+
+Create a plugin:
+
+```python
+from yams_sdk import BasePlugin, rpc
+
+class MyPlugin(BasePlugin):
+    def manifest(self):
+        return {
+            "name": "my_plugin",
+            "version": "1.0.0",
+            "interfaces": ["content_extractor_v1"]
+        }
+
+    @rpc("extractor.extract")
+    def extract(self, source: dict) -> dict:
+        return {"text": "extracted content", "metadata": {}}
+
+if __name__ == "__main__":
+    MyPlugin().run()
+```
+
+Test it:
+
+```bash
+echo '{"id":1,"method":"handshake.manifest"}' | python my_plugin.py
+```
+
+## Use with YAMS
+
+```bash
+# Trust your plugin
+yams plugin trust add /path/to/my_plugin.py
+
+# Load it
+yams plugin load my_plugin.py
+
+# Verify
+yams plugin list
+```
+
+## Documentation
+
+- [Developer Guide](docs/development.md) - Testing, contributing, publishing
+- [API Reference](docs/api.md) - Module and interface documentation
+- [Examples](https://git.sr.ht/~trvon/yams/tree/main/item/plugins/) - Real plugin implementations
+
+## License
+
+GPL-3.0-only
