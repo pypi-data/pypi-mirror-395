@@ -1,0 +1,71 @@
+[build-system]
+requires = ["scikit-build-core>=0.8.1"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "deepwave"
+version = "0.0.24"
+dependencies = [
+    "torch",
+    "setuptools"
+]
+authors = [{name = "Alan Richardson", email = "alan@ausargeo.com"}]
+description = "Wave propagation modules for PyTorch"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://github.com/ar4/deepwave"
+"Bug Tracker" = "https://github.com/ar4/deepwave/issues"
+
+[tool.scikit-build]
+wheel.py-api = "py3"
+cmake.version = ">=3.18"
+#cmake.build-type = "Debug"
+
+[tool.cibuildwheel]
+# Only build for one python version, as the wheel is python-independent
+build = "cp311-*"
+skip = ["*musllinux*"]
+
+# Use an older manylinux image for better compatibility
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+build-verbosity = 1
+
+archs = ["auto64"]
+
+# Test configuration
+test-requires = "pytest scipy torch ninja"
+test-sources = "tests"
+
+[tool.cibuildwheel.linux]
+test-command = "pytest tests"
+# Don't bundle CUDA libraries with the wheel
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel} --exclude libcuda.so.1 --exclude 'libcudart.so.*'"
+before-test = "pip install torch --index-url https://download.pytorch.org/whl/cpu"
+
+[tool.cibuildwheel.windows]
+test-command = "pytest tests/test_scalar.py"
+
+[tool.cibuildwheel.macos]
+test-command = "pytest tests/test_scalar.py"
+
+[tool.scikit-build.sdist]
+exclude = [
+    "tests/*",
+    "docs/*",
+    ".github/*",
+    ".gitignore",
+    "src/deepwave/*.so",
+    "dist/*",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
