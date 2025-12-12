@@ -1,0 +1,147 @@
+Metadata-Version: 2.4
+Name: RawHandler
+Version: 0.0.3
+Summary: A basic library to handle camera raw files for use in machine learning. Built on rawpy and cv2.
+Author: Ryan Mueller
+License: MIT License
+        
+        Copyright (c) 2025 rymuelle
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/rymuelle/RawHandler
+Project-URL: Bug Tracker, https://github.com/rymuelle/RawHandler/issues
+Keywords: python,Machine Learning,Camera Raw
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: rawpy>=0.24.0
+Requires-Dist: colour_demosaicing>=0.2.6
+Requires-Dist: exifread>=3.3.1
+Provides-Extra: torch
+Requires-Dist: torch>=2.7.0; extra == "torch"
+Provides-Extra: example
+Requires-Dist: requests>=2.32.3; extra == "example"
+Dynamic: license-file
+
+
+# RawHandler
+
+[![PyPI version](https://img.shields.io/pypi/v/RawHandler.svg)](https://pypi.org/project/RawHandler/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python version](https://img.shields.io/pypi/pyversions/RawHandler.svg)](https://pypi.org/project/RawHandler/)
+
+**RawHandler** is a lightweight wrapper around [rawpy](https://github.com/letmaik/rawpy) that provides convenient tools for working with raw sensor data, particularly for training neural networks on raw images.
+
+---
+
+## Features
+
+RawHandler can:
+
+1. **Open and convert** most camera raw files into numpy arrays.
+2. **Apply black and white point correction** automatically.
+3. **Provide multiple representations** of the underlying sensor data:
+
+   * Mono Bayer representation
+   * 3-channel sparse representation
+   * 4-channel RGGB representation
+4. **Demosaic Bayer data** using [colour-demosaicing](https://pypi.org/project/colour-demosaicing/), supporting:
+
+   * Bilinear interpolation
+   * Malvar–He–Cutler (2004)
+   * DDFAPD – Menon et al. (2007)
+5. **Convert color spaces** from the camera’s native space to standard targets such as XYZ, sRGB, AdobeRGB, or linear Rec.2020 — all available for every representation.
+6. **Crop, resize, and generate thumbnails** while preserving Bayer pattern alignment.
+7. **Read EXIF/metadata information** (ISO, shutter speed, orientation, etc.) and return it as a convenient Python dictionary.
+
+**Currently supported:** Bayer raw images
+**In progress:** Fujifilm X-Trans support
+
+---
+
+## Installation
+
+You can install RawHandler directly from PyPI:
+
+```bash
+pip install RawHandler
+```
+
+Or install locally from source:
+
+```bash
+# Clone the repository
+git clone https://github.com/rymuelle/RawHandler.git
+cd RawHandler
+
+# Editable/development install
+pip install -e .
+
+# Standard local install
+pip install .
+```
+
+---
+
+## Example
+
+A simple demo notebook is available:
+
+```text
+examples/simple_demosaicing.ipynb
+```
+
+This example downloads a raw image and demonstrates the basic functionality of RawHandler.
+
+---
+
+## License
+
+This project is released under the **MIT License**.
+
+---
+
+## Acknowledgments
+
+Special thanks to the authors of **RawNIND**:
+
+> Brummer, Benoit; De Vleeschouwer, Christophe, 2025.
+> *Raw Natural Image Noise Dataset.*
+> [https://doi.org/10.14428/DVN/DEQCIM](https://doi.org/10.14428/DVN/DEQCIM), Open Data @ UCLouvain, V1.
+
+
+
+----
+
+## Updating
+
+# 1. Update version in pyproject.toml
+# 2. Clean old builds
+rm -rf dist build *.egg-info
+# 3. Build
+python -m build
+# 4. Check
+twine check dist/*
+# 5. Upload
+twine upload --repository testpypi dist/*
