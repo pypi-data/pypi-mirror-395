@@ -1,0 +1,516 @@
+from typing import Literal
+
+import matplotlib.pyplot as plt
+import torch
+from matplotlib.patches import Rectangle
+
+from cheetah.accelerator.element import Element
+from cheetah.particles import Beam, ParticleBeam, Species
+from cheetah.track_methods import base_rmatrix, base_ttensor, rotation_matrix
+from cheetah.utils import UniqueNameGenerator, bmadx, cache_transfer_map
+from cheetah.utils.autograd import sqrta2minusbdiva
+
+generate_unique_name = UniqueNameGenerator(prefix="unnamed_element")
+
+
+class Dipole(Element):
+    """
+    Dipole magnet (by default a sector bending magnet).
+
+    :param length: Length in meters.
+    :param angle: Deflection angle in rad.
+    :param k1: Focussing strength in 1/m^-2. Only used with `"linear"` tracking method.
+    :param dipole_e1: The angle of inclination of the entrance face in rad.
+    :param dipole_e2: The angle of inclination of the exit face in rad.
+    :param tilt: Tilt of the magnet in x-y plane [rad].
+    :param gap: The magnet gap in meters. Note that in MAD and ELEGANT: HGAP = gap/2.
+    :param gap_exit: The magnet gap at the exit in meters. Note that in MAD and
+        ELEGANT: HGAP = gap/2. Only set if different from `gap`. Only used with
+        `"drift_kick_drift"` tracking method.
+    :param fringe_integral: Fringe field integral (of the enterance face).
+    :param fringe_integral_exit: Fringe field integral of the exit face. Only set if
+        different from `fringe_integral`. Only used with `"drift_kick_drift"` tracking
+        method.
+    :param fringe_at: Where to apply the fringe fields for `"drift_kick_drift"`
+        tracking. The available options are:
+        - "neither": Do not apply fringe fields.
+        - "entrance": Apply fringe fields at the entrance end.
+        - "exit": Apply fringe fields at the exit end.
+        - "both": Apply fringe fields at both ends.
+    :param fringe_type: Type of fringe field for `"drift_kick_drift"` tracking.
+        Currently only supports `"linear_edge"`.
+    :param tracking_method: Method to use for tracking through the element.
+    :param name: Unique identifier of the element.
+    :param sanitize_name: Whether to sanitise the name to be a valid Python variable
+        name. This is needed if you want to use the `segment.element_name` syntax to
+        access the element in a segment.
+    """
+
+    supported_tracking_methods = ["linear", "second_order", "drift_kick_drift"]
+
+    def __init__(
+        self,
+        length: torch.Tensor,
+        angle: torch.Tensor | None = None,
+        k1: torch.Tensor | None = None,
+        dipole_e1: torch.Tensor | None = None,
+        dipole_e2: torch.Tensor | None = None,
+        tilt: torch.Tensor | None = None,
+        gap: torch.Tensor | None = None,
+        gap_exit: torch.Tensor | None = None,
+        fringe_integral: torch.Tensor | None = None,
+        fringe_integral_exit: torch.Tensor | None = None,
+        fringe_at: Literal["neither", "entrance", "exit", "both"] = "both",
+        fringe_type: Literal["linear_edge"] = "linear_edge",
+        tracking_method: Literal[
+            "linear", "second_order", "drift_kick_drift"
+        ] = "linear",
+        name: str | None = None,
+        sanitize_name: bool = False,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        factory_kwargs = {"device": device, "dtype": dtype}
+        super().__init__(name=name, sanitize_name=sanitize_name, **factory_kwargs)
+
+        self.length = length
+
+        self.register_buffer_or_parameter(
+            "angle", angle if angle is not None else torch.tensor(0.0, **factory_kwargs)
+        )
+        self.register_buffer_or_parameter(
+            "k1", k1 if k1 is not None else torch.tensor(0.0, **factory_kwargs)
+        )
+        self.register_buffer_or_parameter(
+            "_e1",
+            dipole_e1 if dipole_e1 is not None else torch.tensor(0.0, **factory_kwargs),
+        )
+        self.register_buffer_or_parameter(
+            "_e2",
+            dipole_e2 if dipole_e2 is not None else torch.tensor(0.0, **factory_kwargs),
+        )
+        self.register_buffer_or_parameter(
+            "fringe_integral",
+            (
+                fringe_integral
+                if fringe_integral is not None
+                else torch.tensor(0.0, **factory_kwargs)
+            ),
+        )
+        self.register_buffer_or_parameter(
+            "fringe_integral_exit",
+            (
+                fringe_integral_exit
+                if fringe_integral_exit is not None
+                else self.fringe_integral
+            ),
+        )
+
+        self.register_buffer_or_parameter(
+            "gap", gap if gap is not None else torch.tensor(0.0, **factory_kwargs)
+        )
+        self.register_buffer_or_parameter(
+            "gap_exit", gap_exit if gap_exit is not None else self.gap
+        )
+        self.register_buffer_or_parameter(
+            "tilt", tilt if tilt is not None else torch.tensor(0.0, **factory_kwargs)
+        )
+
+        self.fringe_at = fringe_at
+        self.fringe_type = fringe_type
+        self.tracking_method = tracking_method
+
+    @property
+    def hx(self) -> torch.Tensor:
+        return self.angle / self.length  # Zero length not caught because not physical
+
+    @property
+    def dipole_e1(self) -> torch.Tensor:
+        return self._e1
+
+    @dipole_e1.setter
+    def dipole_e1(self, value: torch.Tensor):
+        self._e1 = value
+
+    @property
+    def dipole_e2(self) -> torch.Tensor:
+        return self._e2
+
+    @dipole_e2.setter
+    def dipole_e2(self, value: torch.Tensor):
+        self._e2 = value
+
+    @property
+    def is_skippable(self) -> bool:
+        return self.tracking_method == "linear"
+
+    @property
+    def is_active(self) -> bool:
+        return (self.angle != 0).any().item()
+
+    def track(self, incoming: Beam) -> Beam:
+        """
+        Track particles through the dipole element.
+
+        :param incoming: Beam entering the element.
+        :return: Beam exiting the element.
+        """
+        if self.tracking_method == "linear":
+            return super()._track_first_order(incoming)
+        elif self.tracking_method == "second_order":
+            return super()._track_second_order(incoming)
+        elif self.tracking_method == "drift_kick_drift":
+            return self._track_drift_kick_drift(incoming)
+        else:
+            raise ValueError(
+                f"Invalid tracking method {self.tracking_method}. For element of type "
+                f"{self.__class__.__name__}, supported methods are "
+                f"{self.supported_tracking_methods}. NOTE: 'cheetah' and 'bmadx'"
+                " tracking methods have been deprecated and are no longer supported."
+                "Replace them with 'linear' and 'drift_kick_drift', respectively."
+            )
+
+    def _track_drift_kick_drift(self, incoming: ParticleBeam) -> ParticleBeam:
+        """
+        Track particles through the quadrupole element using the Drift_kick_drift
+            tracking method.
+
+        :param incoming: Beam entering the element. Currently only supports
+            `ParticleBeam`.
+        :return: Beam exiting the element.
+        """
+        assert isinstance(
+            incoming, ParticleBeam
+        ), "Drift-kick-drift tracking is currently only supported for `ParticleBeam`."
+
+        # TODO: The renaming of the components of `incoming` to just the component name
+        # makes things hard to read. The reuse and overwriting of those component names
+        # throughout the function makes it even harder, is bad practice and should
+        # really be fixed!
+
+        # Zero constant for later use to save on tensor allocations
+        zero = self.tilt.new_zeros(())
+
+        # Compute Bmad coordinates and p0c
+        x = incoming.x
+        px = incoming.px
+        y = incoming.y
+        py = incoming.py
+        tau = incoming.tau
+        delta = incoming.p
+        mc2 = incoming.species.mass_eV
+
+        z, pz, p0c = bmadx.cheetah_to_bmad_z_pz(tau, delta, incoming.energy, mc2)
+
+        # Begin Bmad-X tracking
+        x, px, y, py = bmadx.offset_particle_set(zero, zero, self.tilt, x, px, y, py)
+
+        if self.fringe_at == "entrance" or self.fringe_at == "both":
+            px, py = self._bmadx_fringe_linear("entrance", x, px, y, py)
+        x, px, y, py, z, pz = self._bmadx_body(x, px, y, py, z, pz, p0c, mc2)
+        if self.fringe_at == "exit" or self.fringe_at == "both":
+            px, py = self._bmadx_fringe_linear("exit", x, px, y, py)
+
+        x, px, y, py = bmadx.offset_particle_unset(zero, zero, self.tilt, x, px, y, py)
+        # End of Bmad-X tracking
+
+        # Convert back to Cheetah coordinates
+        tau, delta, ref_energy = bmadx.bmad_to_cheetah_z_pz(z, pz, p0c, mc2)
+
+        # Broadcast to align their shapes so that they can be stacked
+        x, px, y, py, tau, delta = torch.broadcast_tensors(x, px, y, py, tau, delta)
+
+        outgoing_beam = ParticleBeam(
+            particles=torch.stack(
+                (x, px, y, py, tau, delta, torch.ones_like(x)), dim=-1
+            ),
+            energy=ref_energy,
+            particle_charges=incoming.particle_charges,
+            survival_probabilities=incoming.survival_probabilities,
+            s=incoming.s + self.length,
+            species=incoming.species,
+        )
+        return outgoing_beam
+
+    def _bmadx_body(
+        self,
+        x: torch.Tensor,
+        px: torch.Tensor,
+        y: torch.Tensor,
+        py: torch.Tensor,
+        z: torch.Tensor,
+        pz: torch.Tensor,
+        p0c: torch.Tensor,
+        mc2: float,
+    ) -> list[torch.Tensor]:
+        """
+        Track particle coordinates through bend body.
+
+        :param x: Initial x coordinate [m].
+        :param px: Initial Bmad cannonical px coordinate.
+        :param y: Initial y coordinate [m].
+        :param py: Initial Bmad cannonical py coordinate.
+        :param z: Initial Bmad cannonical z coordinate [m].
+        :param pz: Initial Bmad cannonical pz coordinate.
+        :param p0c: Reference momentum [eV/c].
+        :param mc2: Particle mass [eV/c^2].
+        :return: x, px, y, py, z, pz final Bmad cannonical coordinates.
+        """
+        px_norm = ((1 + pz).square() - py.square()).sqrt()  # For simplicity
+        phi1 = (px / px_norm).arcsin()
+        g = self.angle / self.length
+        gp = g.unsqueeze(-1) / px_norm
+
+        alpha = (
+            2
+            * (1 + g.unsqueeze(-1) * x)
+            * (self.angle.unsqueeze(-1) + phi1).sin()
+            * self.length.unsqueeze(-1)
+            * bmadx.sinc(self.angle).unsqueeze(-1)
+            - gp
+            * (
+                (1 + g.unsqueeze(-1) * x)
+                * self.length.unsqueeze(-1)
+                * bmadx.sinc(self.angle).unsqueeze(-1)
+            ).square()
+        )
+
+        x2_t1 = x * self.angle.cos().unsqueeze(-1) + self.length.unsqueeze(
+            -1
+        ).square() * g.unsqueeze(-1) * bmadx.cosc(self.angle.unsqueeze(-1))
+
+        x2_t2 = (((self.angle.unsqueeze(-1) + phi1).cos().square()) + gp * alpha).sqrt()
+        x2_t3 = (self.angle.unsqueeze(-1) + phi1).cos()
+
+        c1 = x2_t1 + alpha / (x2_t2 + x2_t3)
+        c2 = x2_t1 + alpha * sqrta2minusbdiva(x2_t3, gp * alpha)
+        temp = (self.angle.unsqueeze(-1) + phi1).abs()
+        x2 = c1.where(
+            temp < torch.pi / 2, c2
+        )  # Branch allowed because both sides contain the same inputs
+
+        Lcu = (
+            x2
+            - self.length.square().unsqueeze(-1)
+            * g.unsqueeze(-1)
+            * bmadx.cosc(self.angle.unsqueeze(-1))
+            - x * (self.angle.cos().unsqueeze(-1))
+        )
+
+        Lcv = -self.length.unsqueeze(-1) * bmadx.sinc(self.angle.unsqueeze(-1)) - x * (
+            self.angle.sin().unsqueeze(-1)
+        )
+
+        theta_p = 2 * (
+            self.angle.unsqueeze(-1) + phi1 - torch.pi / 2 - torch.arctan2(Lcv, Lcu)
+        )
+
+        Lc = (Lcu.square() + Lcv.square()).sqrt()
+        Lp = Lc / bmadx.sinc(theta_p / 2)
+
+        P = p0c.unsqueeze(-1) * (1 + pz)  # In eV
+        E = (P.square() + mc2.square()).sqrt()  # In eV
+        E0 = (p0c.square() + mc2.square()).sqrt()  # In eV
+        beta = P / E
+        beta0 = p0c / E0
+
+        x_f = x2
+        px_f = px_norm * (self.angle.unsqueeze(-1) + phi1 - theta_p).sin()
+        y_f = y + py * Lp / px_norm
+        z_f = (
+            z
+            + (beta * self.length.unsqueeze(-1) / beta0.unsqueeze(-1))
+            - ((1 + pz) * Lp / px_norm)
+        )
+
+        return x_f, px_f, y_f, py, z_f, pz
+
+    def _bmadx_fringe_linear(
+        self,
+        location: Literal["entrance", "exit"],
+        x: torch.Tensor,
+        px: torch.Tensor,
+        y: torch.Tensor,
+        py: torch.Tensor,
+    ) -> list[torch.Tensor]:
+        """
+        Tracks linear fringe.
+
+        :param location: "entrance" or "exit".
+        :param x: Initial x coordinate [m].
+        :param px: Initial Bmad cannonical px coordinate.
+        :param y: Initial y coordinate [m].
+        :param py: Initial Bmad cannonical py coordinate.
+        :return: px, py final Bmad cannonical coordinates.
+        """
+        g = self.angle / self.length
+        e = self._e1 * (location == "entrance") + self._e2 * (location == "exit")
+        f_int = self.fringe_integral * (
+            location == "entrance"
+        ) + self.fringe_integral_exit * (location == "exit")
+        h_gap = 0.5 * (
+            self.gap * (location == "entrance") + self.gap_exit * (location == "exit")
+        )
+
+        hx = g * e.tan()
+        hy = -g * (e - 2 * f_int * h_gap * g * (1 + e.sin().square()) / e.cos()).tan()
+        px_f = px + x * hx.unsqueeze(-1)
+        py_f = py + y * hy.unsqueeze(-1)
+
+        return px_f, py_f
+
+    @cache_transfer_map
+    def first_order_transfer_map(
+        self, energy: torch.Tensor, species: Species
+    ) -> torch.Tensor:
+        R_enter = self._transfer_map_enter()
+        R_exit = self._transfer_map_exit()
+
+        R = base_rmatrix(
+            length=self.length,
+            k1=self.k1,
+            hx=self.hx,
+            species=species,
+            energy=energy,
+        )  # Tilt is applied after adding edges
+
+        # Apply fringe fields
+        R = R_exit @ R @ R_enter
+
+        # Apply rotation for tilted magnets
+        rotation = rotation_matrix(self.tilt)
+        R = rotation.mT @ R @ rotation
+
+        return R
+
+    @cache_transfer_map
+    def second_order_transfer_map(
+        self, energy: torch.Tensor, species: Species
+    ) -> torch.Tensor:
+        R_enter = self._transfer_map_enter()
+        R_exit = self._transfer_map_exit()
+
+        T = base_ttensor(
+            length=self.length,
+            k1=self.k1,
+            k2=self.length.new_zeros(()),
+            hx=self.hx,
+            species=species,
+            energy=energy,
+        )
+
+        # Fill the first-order transfer map into the second-order transfer map
+        T[..., :, 6, :] = base_rmatrix(
+            length=self.length, k1=self.k1, hx=self.hx, species=species, energy=energy
+        )
+
+        # Apply fringe fields
+        T = torch.einsum(
+            "...ij,...jkl,...kn,...lm->...inm", R_exit, T, R_enter, R_enter
+        )
+
+        # Apply rotation for tilted magnets
+        rotation = rotation_matrix(self.tilt)
+        T = torch.einsum(
+            "...ji,...jkl,...kn,...lm->...inm", rotation, T, rotation, rotation
+        )
+
+        return T
+
+    def _transfer_map_enter(self) -> torch.Tensor:
+        """Linear transfer map for the entrance face of the dipole magnet."""
+        factory_kwargs = {"device": self.length.device, "dtype": self.length.dtype}
+
+        sec_e = self._e1.cos().reciprocal()
+        phi = (
+            self.fringe_integral
+            * self.hx
+            * self.gap
+            * sec_e
+            * (1 + self._e1.sin().square())
+        )
+
+        tm = torch.eye(7, **factory_kwargs).repeat(*phi.shape, 1, 1)
+        tm[..., 1, 0] = self.hx * self._e1.tan()
+        tm[..., 3, 2] = -self.hx * (self._e1 - phi).tan()
+
+        return tm
+
+    def _transfer_map_exit(self) -> torch.Tensor:
+        """Linear transfer map for the exit face of the dipole magnet."""
+        factory_kwargs = {"device": self.length.device, "dtype": self.length.dtype}
+
+        sec_e = self._e2.cos().reciprocal()
+        phi = (
+            self.fringe_integral_exit
+            * self.hx
+            * self.gap
+            * sec_e
+            * (1 + self._e2.sin().square())
+        )
+
+        tm = torch.eye(7, **factory_kwargs).repeat(*phi.shape, 1, 1)
+        tm[..., 1, 0] = self.hx * self._e2.tan()
+        tm[..., 3, 2] = -self.hx * (self._e2 - phi).tan()
+
+        return tm
+
+    def plot(
+        self, s: float, vector_idx: tuple | None = None, ax: plt.Axes | None = None
+    ) -> plt.Axes:
+        ax = ax or plt.subplot(111)
+
+        plot_s = s[vector_idx] if s.dim() > 0 else s
+        plot_length = self.length[vector_idx] if self.length.dim() > 0 else self.length
+        plot_angle = self.angle[vector_idx] if self.angle.dim() > 0 else self.angle
+
+        alpha = 1 if self.is_active else 0.2
+        height = 0.8 * (plot_angle.sign() if self.is_active else 1)
+
+        patch = Rectangle(
+            (plot_s, 0), plot_length, height, color="tab:green", alpha=alpha, zorder=2
+        )
+        ax.add_patch(patch)
+
+    def to_mesh(
+        self, cuteness: float | dict = 1.0, show_download_progress: bool = True
+    ) -> "tuple[trimesh.Trimesh | None, np.ndarray]":  # noqa: F821 # type: ignore
+        # Import only here because most people will not need it
+        import trimesh
+
+        mesh, output_transform = super().to_mesh(
+            cuteness=cuteness, show_download_progress=show_download_progress
+        )
+
+        # Rotate the mesh by half the bending angle
+        mesh_rotation = trimesh.transformations.rotation_matrix(
+            self.angle.item() / 2.0, [0, 1, 0], [0, 0, 0]
+        )
+        mesh.apply_transform(mesh_rotation)
+
+        # Rotate the output transform by the full bending angle
+        output_transform = (
+            trimesh.transformations.rotation_matrix(
+                self.angle.item(), [0, 1, 0], [0, 0, 0]
+            )
+            @ output_transform
+        )
+
+        return mesh, output_transform
+
+    @property
+    def defining_features(self) -> list[str]:
+        return super().defining_features + [
+            "length",
+            "angle",
+            "k1",
+            "dipole_e1",
+            "dipole_e2",
+            "tilt",
+            "gap",
+            "gap_exit",
+            "fringe_integral",
+            "fringe_integral_exit",
+            "fringe_at",
+            "fringe_type",
+        ]
