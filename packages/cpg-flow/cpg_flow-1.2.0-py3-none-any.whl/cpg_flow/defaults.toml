@@ -1,0 +1,136 @@
+[workflow]
+# Only print the final merged config and a list of stages to be submitted.
+# Will skip any communication with Metamist, Hail Batch, and Cloud Storage, so
+# the code can be run without permissions.
+#dry_run = true
+
+# Show a workflow graph locally or save to web bucket.
+# Default is false, set to true to show the workflow graph.
+#show_workflow = true
+
+# Cohorts to use as inputs.
+#input_cohorts = []
+
+# Datasets to load inputs. If not provided, datasets will be determined
+
+# Skip these stages:
+#skip_stages = []
+
+# Skip all other stages:
+#only_stages = []
+
+# Start from this stage:
+#first_stages = []
+
+# Finish at this stage:
+#last_stages = []
+
+# Force stage rerun
+#force_stages = []
+
+# Name of the workflow (to prefix output paths)
+#name =
+
+# Description of the workflow (to display in the Batch GUI)
+#description =
+
+# Suffix the workflow outputs location (`get_workflow().prefix`) with this string.
+# By default, the hash of all input paths will be used.
+#output_version = "0.1"
+
+# Limit to data of this sequencing type
+#sequencing_type = 'genome'
+
+# Check input file existence. When they are missing,
+# the `skip_sgs_with_missing_input` option controls whether such
+# sequencing groups should be ignored, or it should raise an error.
+check_inputs = true
+
+# For the first (not-skipped) stage, if the input for a target does
+# not exist, just skip this target instead of failing. E.g. if the first
+# stage is Align, and `sequencing_group.alignment_input` for a sequencing group do not exist,
+# remove this sequencing group, instead of failing. In other words, ignore sequencing groups
+# that are missing results from skipped stages.
+skip_sgs_with_missing_input = false
+
+# Within jobs, check all in-job intermediate files for possible reuse.
+# If set to False, will overwrite all intermediates. Used by `utils.can_reuse(path)`.
+check_intermediates = true
+
+# Before running a stage, check if input (i.e. expected outputs from required stages)
+# already exist. If it exists, do not submit stage jobs.
+check_expected_outputs = true
+
+# Calling intervals (defauls to whole genome intervals)
+# TODO: Remove from cpg_flow and move to cpg_utils, then remove from defaults.toml
+#intervals_path =
+
+# Map of stages to lists of sequencing groups, to skip for specific stages
+# [workflow.skip_stages_for_sgs]
+#CramQC = ['CPGaaa']
+
+# Opt-in to populate assays and meta
+populate_assays = false
+
+[hail]
+
+# This is different from the cpg_flow Workflow dry_run option.
+# This will create Hail Batch jobs, but will enable Hail Batch's dry_run option.
+dry_run = false
+
+# Delete temporary directories with intermediate files.
+delete_scratch_on_exit = false
+
+[resource_overrides]
+# Override default resource requirements for unusually large seq data without
+# demanding higher resources for all operations as standard. Examples below
+
+# The value should be an int representing the memory in GB
+# This is true for both memory and storage overrides
+# job_mem_override = 50
+
+# Other common overrides could be for number of cpus or GBs of storage
+# job_cpu_override = 4
+# job_storage_override = 100
+
+# To use this override in the job python file do something like this:
+# def my_job(
+#     b: hb.Batch,
+#     input_file: hb.ResourceFile,
+#     job_attrs: dict | None = None,
+#     output_path: Path | None = None,
+#     second_output_path: Path | None = None,
+#     fasta_reference: hb.ResourceGroup | None = None,
+#     overwrite: bool = False,
+# ) -> Job | None:
+#     """
+#     My super awesome custom job
+#     """
+#     job = b.new_job(job_name, job_attrs)
+#     ...
+#
+#     # check for a memory override for this job
+#     memory_override = get_config()['resource_overrides'].get('job_mem_override')
+#     assert isinstance(memory_override, (int, type(None)))
+#
+#     resource = HIGHMEM.request_resources(ncpu=4, mem_gb=memory_override)
+#     # Any other resource logic or modifications...
+#
+#     # This line sets the resource for the job created above
+#     resource.set_to_job(j)
+#     ....
+#
+#     return job
+
+# Adding custom options for workflow stages and jobs
+# You are more than welcome to add your own custom options, however they should not
+# live in the defaults.toml file. Instead, create a new toml file in the same directory
+# That you pass to the analysis runner. Any options you create following the toml syntax
+# will be available to you in the workflow and job python files.
+# For example, if you create a file called custom_options.toml with the following content:
+
+# [custom]
+# my_custom_option = "my_custom_value"
+
+# You can access this value in your workflow or job python file like this:
+# get_config().get('custom', {}).get('my_custom_option')
