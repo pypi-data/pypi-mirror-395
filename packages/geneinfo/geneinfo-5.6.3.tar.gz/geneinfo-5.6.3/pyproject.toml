@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools >= 65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geneinfo"
+version = "5.6.3"
+description = "..."
+requires-python = ">=3.9"
+authors = [{name = "Kasper Munch", email = "kaspermunch@birc.au.dk"}]
+
+dependencies = [
+    'jupyter',
+    'ipython',
+    'matplotlib>=3.0',
+    'seaborn',
+    'numpy>=1.1',
+    'requests',
+    'biopython',
+    'goatools>=1.2',
+    'tables',
+    'wget',
+    'pydot',
+    'statsmodels',
+    'rapidfuzz',
+    'tqdm',
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+geneinfo = ["data/*.txt", "data/*.csv", "data/*.pickle"]
+
+
+[project.urls]
+Homepage = "https://munch-group.org/geneinfo"
+Documentation = "https://munch-group.org/geneinfo"
+Repository = "https://github.com/munch-group/geneinfo.git"
+Issues = "https://github.com/munch-group/geneinfo/issues"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64"]
+
+[tool.pixi.pypi-dependencies]
+geneinfo = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+tqdm = ">=4.67.1,<5"
+rapidfuzz = ">=3.13.0,<4"
+pip = ">=25.2,<26"
+pytables = ">=3.10.2,<4"
+quartodoc = ">=0.11.1,<0.12"
+
+[tool.pixi.tasks.bump-version]
+args = [
+  { "arg" = "kind", "default" = "patch" },  # can be patch, minor, major
+  { "arg" = "flag", "default" = "" },     # can be --pre, --release
+]
+cmd = "./.scripts/bump_version.py --{{ kind }} {{ flag }} &&  git add -u &&  git commit -m '{{ kind }} {{ flag }} version bump' && git push" 
+description = "Bump version patch and build/release conda packages"
+
+[tool.pixi.tasks.bump-changelog]
+cmd = "./.scripts/bump_changelog.py --yes"
+description = "Bump version patch and build/release conda packages"
+
+[tool.pixi.tasks.acp]
+args = [
+  { "arg" = "message", "default" = "update" },  # can be --patch, --minor, --major
+]
+cmd = "git add -u ; git commit -m '{{ message }}' ; git push"
+description = "git add commit push of tracked files with optional message"
+
+[tool.pixi.tasks.github-release]
+cmd = "./.scripts/release-tag.sh"
+description = "Release latest version on Github"
+
