@@ -1,0 +1,29 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [released]
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - uses: astral-sh/setup-uv@v7
+      with:
+        python-version: "3.10"
+
+    # NOTE: This also serves as a test for the action.
+    - name: Build and Publish Docs
+      uses: ./
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
