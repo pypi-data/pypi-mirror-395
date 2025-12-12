@@ -1,0 +1,77 @@
+[project]
+name = "dl-pipeline-connector"
+version = "0.1.0"
+description = "HubSpot to BigQuery ETL pipeline using dlt and Dagster"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Saqib", email = "saqibashraf268@gmail.com"}
+]
+keywords = ["etl", "hubspot", "bigquery", "dagster", "dlt", "data-pipeline"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "dlt[bigquery]",
+    "dagster",
+    "dagster-embedded-elt",
+    "dagster-webserver",
+    "dagster-slack",
+    "requests",
+    "python-dotenv",
+]
+
+[project.urls]
+Homepage = "https://github.com/datumlabsio/dl-pipeline-connector"
+Repository = "https://github.com/datumlabsio/dl-pipeline-connector"
+Documentation = "https://github.com/datumlabsio/dl-pipeline-connector#readme"
+Issues = "https://github.com/datumlabsio/dl-pipeline-connector/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.dagster]
+module_name = "src.dagster.definitions"
+code_location_name = "src"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src --cov-report=term-missing"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
