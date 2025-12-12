@@ -1,0 +1,15 @@
+image: {{ PRINT_COURSE_CERTIFICATES_DOCKER_IMAGE }}
+restart: unless-stopped
+volumes:
+    - ../../env/plugins/print-course-certificates/apps/config.yml:/app/config.yml:ro
+{% if PRINT_COURSE_CERTIFICATES_CERTIFICATE_P12_PATH %}
+    - ../../env/plugins/print-course-certificates/apps/file.p12:/app/digital_signature/file.p12:ro
+{% endif %}
+healthcheck:
+  test: ["CMD", "echo", "''", ">", "/dev/tcp/127.0.0.1/5000", "||", "exit", "1"]
+  start_period: 60s
+  retries: 10
+  interval: 90s
+  timeout: 90s
+environment:
+  UWSGI_WORKERS: {{ PRINT_COURSE_CERTIFICATES_UWSGI_WORKERS }}
