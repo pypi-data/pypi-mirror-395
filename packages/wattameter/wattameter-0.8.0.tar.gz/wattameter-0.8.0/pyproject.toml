@@ -1,0 +1,103 @@
+[build-system]
+requires = [
+    "pdm-backend",
+]
+build-backend = "pdm.backend"
+
+[project]
+name = "wattameter"
+dynamic = []
+description = "Python package for monitoring and recording power usage, energy consumption, and performance metrics from hardware components such as GPUs and CPUs"
+authors = [
+    { name = "Weslley da Silva Pereira", email = "wdasilv@nrel.gov" },
+]
+dependencies = [
+    "nvidia-ml-py",
+]
+requires-python = ">=3.9"
+readme = "README.md"
+keywords = [
+    "power-monitoring",
+    "energy-tracking",
+    "gpu-monitoring",
+    "cpu-monitoring",
+    "nvidia-ml",
+    "rapl",
+    "hpc",
+    "performance-monitoring",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Monitoring",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: Console",
+]
+version = "0.8.0"
+
+[project.license]
+text = "BSD-3-Clause"
+
+[project.urls]
+Homepage = "https://github.com/NREL/WattAMeter"
+Documentation = "https://github.com/NREL/WattAMeter#readme"
+"Bug Reports" = "https://github.com/NREL/WattAMeter/issues"
+Changelog = "https://github.com/NREL/WattAMeter/releases"
+
+[project.scripts]
+wattameter = "wattameter.cli.main:main"
+wattameter_powerlog_filename = "wattameter.cli.utils:print_powerlog_filename"
+wattameter_benchmark_dt = "wattameter.benchmark.update_time:run_benchmark"
+wattameter_benchmark_overhead = "wattameter.benchmark.overhead:run_benchmark"
+
+[project.optional-dependencies]
+postprocessing = [
+    "pandas",
+]
+
+[dependency-groups]
+example = [
+    "jupyter",
+    "ipykernel",
+    "matplotlib",
+    "pandas",
+    "marimo",
+    "numpy",
+]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "numpy",
+]
+
+[tool.pdm]
+distribution = true
+package-dir = "src"
+includes = [
+    "src/wattameter/utils/*.sh",
+]
+
+[tool.pdm.scripts.devwattameter]
+call = "wattameter.cli.main:main"
+
+[tool.pdm.version]
+source = "scm"
+tag_filter = "v[0-9]*"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests requiring actual hardware",
+]
+testpaths = [
+    "tests",
+]
