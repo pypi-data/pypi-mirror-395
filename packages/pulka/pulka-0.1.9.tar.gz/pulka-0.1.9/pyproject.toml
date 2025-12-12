@@ -1,0 +1,141 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pulka"
+version = "0.1.9"
+description = "A tiny, fast VisiData-like tabular viewer for Polars."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Pulka developers" }]
+keywords = ["polars", "dataframe", "tui", "visualization", "analytics"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Database",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Utilities",
+]
+dependencies = [
+  "polars>=1.16.0",
+  "prompt-toolkit>=3.0.48",
+  "rich>=13.7.1",
+  "pyarrow>=16.0.0",
+  "pyyaml>=6.0",
+  "zstandard>=0.22.0",
+  "xlsxwriter>=3.2.9",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.4",
+  "pytest-randomly>=4.0.1",
+]
+dev = [
+  "pytest>=8.4",
+  "pytest-randomly>=4.0.1",
+  "ruff>=0.6.0",
+  "prek>=0.1.0",
+  "import-linter>=2.0",
+  "mypy>=1.11",
+  "build>=1.2.2",
+  "twine>=5.1",
+]
+
+[project.scripts]
+pulka = "pulka.cli:main"
+pk = "pulka.cli:main"
+
+[project.entry-points."pulka.plugins"]
+pulka-summary = "pulka_builtin_plugins.summary.plugin:register"
+pulka-freq = "pulka_builtin_plugins.freq.plugin:register"
+pulka-transpose = "pulka_builtin_plugins.transpose.plugin:register"
+
+[project.urls]
+Homepage = "https://github.com/pulka-dev/pulka"
+Documentation = "https://github.com/pulka-dev/pulka#readme"
+Issues = "https://github.com/pulka-dev/pulka/issues"
+
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.4",
+    "pytest-randomly>=4.0.1",
+    "ruff>=0.6.0",
+    "prek>=0.1.0",
+    "import-linter>=2.0",
+    "mypy>=1.11",
+    "build>=1.2.2",
+    "twine>=5.1",
+]
+
+[tool.uv.sources]
+pulka = { workspace = true }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pulka*"]
+
+[tool.setuptools.package-data]
+"pulka.cli" = ["default_generate_presets.toml"]
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Enable common rules
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "I",   # isort
+    "N",   # pep8-naming
+    "C4",  # flake8-comprehensions
+    "PTH", # flake8-use-pathlib
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports (restricted modules)
+]
+
+ignore = [
+    "E402",    # Module level import not at top of file (for conftest.py and benchmarks)
+    "TID252",  # Allow relative imports inside the package hierarchy
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow E402 for specific test/benchmark files where sys.path manipulation is needed
+"tests/conftest.py" = ["E402"]
+"benchmarks/*.py" = ["E402"]
+"src/pulka/tui/**/*.py" = ["TID251"]
+"src/pulka/theme.py" = ["TID251"]
+"src/pulka_builtin_plugins/**/*.py" = ["TID251"]
+"tests/**/*.py" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"prompt_toolkit" = { msg = "Strict Layering / Headless Core: prompt_toolkit lives in pulka.tui. Use pulka.utils.lazy_imports.prompt_toolkit_* helpers." }
+"rich" = { msg = "Headless Core / Non-Blocking UI: Rich rendering must go through pulka.render wrappers. Use pulka.utils.lazy_imports.rich_* helpers." }
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

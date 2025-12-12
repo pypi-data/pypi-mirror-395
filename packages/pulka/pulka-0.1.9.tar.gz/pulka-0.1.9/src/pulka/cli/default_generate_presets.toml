@@ -1,0 +1,17 @@
+[presets]
+themartian = '549r/sol=sequence()!;earth_datetime=@(pl.datetime(2035,1,1,12,0,0)+pl.col("sol")*pl.duration(hours=24,minutes=39,seconds=35));potato_tubers=weibull(3,2.5)?1;seed_bank_variation=laplace(0,1.4);potato_mass=lognormal(8.6,0.27)|log+noise normal(0,0.08);habitat_zone=enum[HabAlpha,HabBeta,Greenhouse,Command,Airlock];greenhouse_temp=normal(293,4)~clip(285,303)+noise normal(0,0.3);weather_roll=beta(3,7);weather_regime=@(pl.when(pl.col("weather_roll")<0.45).then(pl.lit("ClearSkies")).when(pl.col("weather_roll")<0.65).then(pl.lit("DustStorm")).when(pl.col("weather_roll")<0.85).then(pl.lit("RegolithDrift")).when(pl.col("weather_roll")<0.95).then(pl.lit("NightOps")).otherwise(pl.lit("SolarFlare")));signal=ts(daily,2035-01-01,trend=0.04,season=30:1.2+90:0.5,noise=normal(0,0.12));air_quality_index=@(94+0.2*pl.col("greenhouse_temp")-5*pl.col("weather_roll"));potato_yield_score=@(0.55*pl.col("potato_mass")+0.35*pl.col("potato_tubers")+0.1*pl.col("air_quality_index"));storm_alert=@(pl.when(pl.col("weather_regime")==pl.lit("DustStorm")).then(pl.lit("ALERT")).otherwise(pl.lit("CLEAR")))'
+hailmary = '''
+720r/log_index=sequence()!;
+mission_phase=enum[Hibernate,Spin,Classroom,Engineering,Bridge,TauCetiApproach,AdrianOrbit];
+sol_ts=@(pl.datetime(2040,10,5,6,0,0)+pl.col("log_index")*pl.duration(minutes=20));
+astrophage_density=lognormal(5.2,0.45)|log+noise normal(0,0.08);
+fuel_mass=normal(120000,800)|abs~clip(50000,180000);
+tau_ceti_flux=ts(hourly,2040-10-05,trend=-0.08,season=48:0.5+192:1.2,noise=normal(0,0.03));
+grace_power=enum[DiscoPotato,GraceHopperDrive,RockyBoost,StrattOverride];
+sleep_cycle=enum[AwakeStream,RockySleep,RylandSleep,CommsBlackout];
+probe_event=@(pl.when(pl.col("log_index")%97==0).then(pl.lit("AstrophageSample")).when(pl.col("log_index")%173==0).then(pl.lit("BeetleLaunch")).otherwise(pl.lit("None")));
+rocky_grams=normal(42,6)~clip(0,60);
+language_delta=@(pl.when(pl.col("sleep_cycle")==pl.lit("RockySleep")).then(pl.lit("Petrova-grammar")).otherwise(pl.lit("Human-short")));
+success_probability=@(0.45*pl.col("fuel_mass")/180000+0.35*pl.col("rocky_grams")/60+0.2*(pl.col("log_index")/42).sin());
+hailmary_status=@(pl.when(pl.col("success_probability")>0.85).then(pl.lit("GREEN")).when(pl.col("success_probability")>0.65).then(pl.lit("YELLOW")).otherwise(pl.lit("RED")))
+'''
