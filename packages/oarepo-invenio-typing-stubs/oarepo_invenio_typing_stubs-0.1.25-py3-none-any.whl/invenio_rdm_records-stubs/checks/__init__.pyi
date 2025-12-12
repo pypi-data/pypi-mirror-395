@@ -1,0 +1,1 @@
+# Invenio-Checks integration stubs
