@@ -1,0 +1,120 @@
+Metadata-Version: 2.4
+Name: pybrother
+Version: 0.1.1
+Summary: Universal Brother Label Printer with PNG and labelprinterkit modes
+Project-URL: Homepage, https://github.com/example/pybrother
+Project-URL: Repository, https://github.com/example/pybrother.git
+Project-URL: Issues, https://github.com/example/pybrother/issues
+Author: Brother Label Printer Team
+License: MIT License
+        
+        Copyright (c) 2024 Brother Label Printer Team
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+        THE SOFTWARE.
+License-File: LICENSE
+Keywords: cli,label-printer,printing,pybrother,uvx
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Requires-Dist: aiozeroconf>=0.1.8
+Requires-Dist: inline-snapshot>=0.23.2
+Requires-Dist: pillow<10.0.0,>=9.5.0
+Requires-Dist: pyipp>=0.15.0
+Requires-Dist: zeroconf>=0.147.0
+Provides-Extra: dev
+Requires-Dist: flake8>=6.0.0; extra == 'dev'
+Requires-Dist: inline-snapshot>=0.12.0; extra == 'dev'
+Requires-Dist: isort>=5.12.0; extra == 'dev'
+Requires-Dist: labelprinterkit>=0.6.0; extra == 'dev'
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: zeroconf>=0.47.0; extra == 'dev'
+Provides-Extra: discovery
+Requires-Dist: zeroconf>=0.47.0; extra == 'discovery'
+Provides-Extra: labelprinterkit
+Requires-Dist: labelprinterkit>=0.6.0; extra == 'labelprinterkit'
+Provides-Extra: test
+Requires-Dist: inline-snapshot>=0.12.0; extra == 'test'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'test'
+Requires-Dist: pytest>=7.0.0; extra == 'test'
+Description-Content-Type: text/markdown
+
+# pybrother
+
+A Python CLI and helper library for printing labels on networked Brother P‑touch printers using their raster command set. 
+
+## Quick Start
+
+### Run without installing
+
+```bash
+# Show help
+uvx pybrother -- --help
+
+# Print a label
+uvx pybrother -- "Hello World" --printer 192.168.1.100
+```
+
+`uvx` will download the package, create an isolated environment, and run the `pybrother` console entry point (an alias named `brother-printer` remains for compatibility).
+
+### Install from PyPI
+
+```bash
+pip install pybrother
+
+# Then use the CLI directly
+pybrother "Hello World" --printer 192.168.1.100
+```
+
+## Command Options
+
+The CLI supports the following useful switches:
+
+- `text` – Label text (wrap in quotes for spaces)
+- `--font` – Font size in dots (default: auto size per tape)
+- `--tape` – Tape size (`W3_5`, `W6`, `W9`, `W12`, `W18`, `W24`)
+- `--margin` – Left/right margin in pixels (default: `10`)
+- `--copies` – Number of copies to print (default: `1`)
+- `--printer` – Printer IP address (required unless discovered or from env var)
+- `--listen` – Passively listen for printers via mDNS (requires `zeroconf`)
+- `--listen-timeout` – Seconds to wait when listening (default: `70`)
+- `--no-auto-detect` – Skip automatic tape detection
+
+Set `BROTHER_PRINTER_IP` to avoid providing `--printer` each invocation.
+
+## Development
+
+```bash
+# Install dependencies (including dev extras)
+uv sync --extra dev
+
+# Run the test suite
+uv run pytest
+
+# Build a wheel and sdist
+uv run hatch build
+```
