@@ -1,0 +1,447 @@
+Metadata-Version: 2.4
+Name: brvmpy
+Version: 0.1.0
+Summary: Scrape financial data from BRVM (Bourse Régionale des Valeurs Mobilières)
+Home-page: https://github.com/idrissbado/BRVMpy
+Author: Idriss Badolivier
+Author-email: Idriss Badolivier <idrissbadoolivier@gmail.com>
+Project-URL: Homepage, https://github.com/idrissbado/BRVMpy
+Project-URL: Bug Reports, https://github.com/idrissbado/BRVMpy/issues
+Project-URL: Source, https://github.com/idrissbado/BRVMpy
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: Topic :: Office/Business :: Financial :: Investment
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: selenium>=4.15.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: webdriver-manager>=4.0.0
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# BRVMpy 🇨🇮📈
+
+[![PyPI version](https://badge.fury.io/py/brvmpy.svg)](https://badge.fury.io/py/brvmpy)
+[![Python](https://img.shields.io/pypi/pyversions/brvmpy.svg)](https://pypi.org/project/brvmpy/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Scrape financial data from BRVM (Bourse Régionale des Valeurs Mobilières) with ease!**
+
+BRVMpy is a Python package that scrapes real-time financial data from the BRVM website and returns clean Pandas DataFrames ready for analysis.
+
+---
+
+## 🌍 About BRVM
+
+The **BRVM (Bourse Régionale des Valeurs Mobilières)** is the regional stock exchange serving 8 West African countries:
+- 🇧🇯 Benin
+- 🇧🇫 Burkina Faso
+- 🇨🇮 Côte d'Ivoire
+- 🇬🇼 Guinea-Bissau
+- 🇲🇱 Mali
+- 🇳🇪 Niger
+- 🇸🇳 Senegal
+- 🇹🇬 Togo
+
+Website: https://www.brvm.org
+
+---
+
+## ✨ Features
+
+- 📊 **Actions (Stocks)**: Get real-time stock prices, volumes, and changes
+- 💰 **Obligations (Bonds)**: Scrape bond market data
+- 📈 **Indices**: Fetch market indices (BRVM 10, BRVM Composite, etc.)
+- 📉 **Volumes**: Get trading volume data
+- 🐼 **Pandas Ready**: All data returned as clean DataFrames
+- 🚀 **Easy to Use**: Simple, intuitive API
+- 🔄 **Auto-Updated**: Always scrapes the latest data from BRVM website
+- 🤖 **Selenium Powered**: Reliable web scraping with headless Chrome
+
+---
+
+## 📦 Installation
+
+```bash
+pip install brvmpy
+```
+
+**Requirements:**
+- Python 3.8+
+- Chrome browser (for Selenium)
+
+---
+
+## 🚀 Quick Start
+
+### Get Stock Market Data
+
+```python
+import brvmpy
+
+# Get all stocks (actions)
+stocks = brvmpy.get('actions')
+print(stocks.head())
+```
+
+**Output:**
+```
+  SYMBOL                NAME  VOLUME  PREVIOUS_PRICE  OPENING_PRICE  CLOSING_PRICE  CHANGE_PERCENT UPDATE_DATE              ID
+0   BOAB   Bank of Africa      5420           6750           6800           6850            1.48  2025-12-04  BOAB-2025-12-04
+1   SGBC   Société Générale    2130           8500           8500           8600            1.18  2025-12-04  SGBC-2025-12-04
+...
+```
+
+### Get Market Indices
+
+```python
+# Get market indices
+indices = brvmpy.get('indices')
+print(indices)
+```
+
+**Output:**
+```
+      INDEX_NAME     VALUE  CHANGE  CHANGE_PERCENT UPDATE_DATE                     ID
+0  BRVM Composite  210.45    2.34            1.12  2025-12-04  BRVM_Composite-2025-12-04
+1       BRVM 10   165.78    1.89            1.15  2025-12-04       BRVM_10-2025-12-04
+...
+```
+
+### Get All Data at Once
+
+```python
+# Get everything in one call
+all_data = brvmpy.get_all()
+
+print(f"Stocks: {len(all_data['actions'])}")
+print(f"Bonds: {len(all_data['obligations'])}")
+print(f"Indices: {len(all_data['indices'])}")
+print(f"Volumes: {len(all_data['volumes'])}")
+```
+
+---
+
+## 📖 API Reference
+
+### `get(data_type)`
+
+Main entry point for scraping BRVM data.
+
+**Parameters:**
+- `data_type` (str): Type of data to scrape
+  - `'actions'`: Stock market data
+  - `'obligations'`: Bonds data
+  - `'indices'`: Market indices
+  - `'volumes'`: Trading volumes
+
+**Returns:**
+- `pandas.DataFrame`: Scraped and cleaned data
+
+**Example:**
+```python
+import brvmpy
+
+# Get stocks
+stocks = brvmpy.get('actions')
+
+# Get bonds
+bonds = brvmpy.get('obligations')
+
+# Get indices
+indices = brvmpy.get('indices')
+
+# Get volumes
+volumes = brvmpy.get('volumes')
+```
+
+---
+
+### `get_all()`
+
+Get all data types in a single call.
+
+**Returns:**
+- `dict`: Dictionary with keys `'actions'`, `'obligations'`, `'indices'`, `'volumes'`
+
+**Example:**
+```python
+data = brvmpy.get_all()
+stocks_df = data['actions']
+indices_df = data['indices']
+```
+
+---
+
+### Direct Functions
+
+You can also import and use the scraping functions directly:
+
+```python
+from brvmpy import get_actions, get_obligations, get_indices, get_volumes
+
+# Same as brvmpy.get('actions')
+stocks = get_actions()
+
+# Same as brvmpy.get('indices')
+indices = get_indices()
+```
+
+---
+
+## 📊 Data Structure
+
+### Actions (Stocks)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `SYMBOL` | str | Stock ticker symbol |
+| `NAME` | str | Company name |
+| `VOLUME` | float | Trading volume |
+| `PREVIOUS_PRICE` | float | Previous closing price (FCFA) |
+| `OPENING_PRICE` | float | Opening price (FCFA) |
+| `CLOSING_PRICE` | float | Current/closing price (FCFA) |
+| `CHANGE_PERCENT` | float | Percentage change |
+| `UPDATE_DATE` | str | Date of data extraction (YYYY-MM-DD) |
+| `ID` | str | Unique identifier (SYMBOL-DATE) |
+
+### Indices
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `INDEX_NAME` | str | Name of the index |
+| `VALUE` | float | Current index value |
+| `CHANGE` | float | Point change |
+| `CHANGE_PERCENT` | float | Percentage change |
+| `UPDATE_DATE` | str | Date of extraction |
+| `ID` | str | Unique identifier |
+
+### Volumes
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `SYMBOL` | str | Stock symbol |
+| `NAME` | str | Company name |
+| `VOLUME` | float | Trading volume |
+| `VALUE` | float | Total value traded (FCFA) |
+| `TRANSACTIONS` | float | Number of transactions |
+| `UPDATE_DATE` | str | Date of extraction |
+| `ID` | str | Unique identifier |
+
+---
+
+## 🎯 Use Cases
+
+### Financial Analysis
+
+```python
+import brvmpy
+import pandas as pd
+
+# Get stocks
+stocks = brvmpy.get('actions')
+
+# Find top gainers
+top_gainers = stocks.nlargest(5, 'CHANGE_PERCENT')
+print("📈 Top 5 Gainers:")
+print(top_gainers[['SYMBOL', 'NAME', 'CHANGE_PERCENT']])
+
+# Find most traded
+most_traded = stocks.nlargest(5, 'VOLUME')
+print("\n💹 Most Traded:")
+print(most_traded[['SYMBOL', 'NAME', 'VOLUME']])
+```
+
+### Data Export
+
+```python
+import brvmpy
+
+# Scrape data
+stocks = brvmpy.get('actions')
+
+# Export to CSV
+stocks.to_csv('brvm_stocks.csv', index=False)
+
+# Export to Excel
+stocks.to_excel('brvm_stocks.xlsx', index=False)
+
+# Export to JSON
+stocks.to_json('brvm_stocks.json', orient='records')
+```
+
+### Database Integration
+
+```python
+import brvmpy
+from sqlalchemy import create_engine
+
+# Get data
+stocks = brvmpy.get('actions')
+
+# Save to database
+engine = create_engine('postgresql://user:pass@localhost:5432/finance')
+stocks.to_sql('brvm_stocks', engine, if_exists='append', index=False)
+```
+
+### Automated Monitoring
+
+```python
+import brvmpy
+import schedule
+import time
+
+def monitor_brvm():
+    """Monitor BRVM stocks every hour"""
+    stocks = brvmpy.get('actions')
+    
+    # Check for significant changes
+    big_movers = stocks[abs(stocks['CHANGE_PERCENT']) > 5]
+    
+    if not big_movers.empty:
+        print(f"🚨 Alert: {len(big_movers)} stocks moved >5%")
+        print(big_movers[['SYMBOL', 'NAME', 'CHANGE_PERCENT']])
+
+# Schedule monitoring
+schedule.every().hour.do(monitor_brvm)
+
+while True:
+    schedule.run_pending()
+    time.sleep(60)
+```
+
+---
+
+## 🛠️ Advanced Usage
+
+### Custom Scraping
+
+If you need more control, use the `BRVMScraper` class directly:
+
+```python
+from brvmpy.scraper import BRVMScraper
+
+with BRVMScraper() as scraper:
+    # Load custom page
+    scraper.load_page("https://www.brvm.org/custom-page")
+    
+    # Extract table with custom selector
+    data = scraper.extract_table("div.custom-table tbody tr")
+    
+    # Process data
+    print(f"Found {len(data)} rows")
+```
+
+---
+
+## 🔧 Requirements
+
+- **Python**: 3.8 or higher
+- **Chrome**: Latest version (auto-downloaded by webdriver-manager)
+- **Dependencies**:
+  - `selenium>=4.15.0`
+  - `pandas>=2.0.0`
+  - `webdriver-manager>=4.0.0`
+
+---
+
+## 🐛 Troubleshooting
+
+### Chrome/ChromeDriver Issues
+
+If you encounter Chrome driver issues:
+
+```python
+# The package automatically manages ChromeDriver
+# If issues persist, update Chrome browser to latest version
+```
+
+### Timeout Errors
+
+If scraping times out:
+
+```python
+# The scraper waits 5 seconds by default
+# For slow connections, modify load_page timeout in custom scraping
+```
+
+### No Data Returned
+
+If empty DataFrames are returned:
+- Check your internet connection
+- Verify BRVM website is accessible: https://www.brvm.org
+- The website structure may have changed (open an issue on GitHub)
+
+---
+
+## 📝 Notes
+
+- **Data Source**: All data is scraped from https://www.brvm.org
+- **Real-time**: Data is as current as the BRVM website
+- **No Official API**: BRVM doesn't provide an official API, so web scraping is used
+- **Rate Limiting**: Be respectful - don't spam requests
+- **Disclaimer**: This is an unofficial package. Use at your own risk.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👨‍💻 Author
+
+**Idriss Badolivier**
+- Email: idrissbadoolivier@gmail.com
+- GitHub: [@idrissbado](https://github.com/idrissbado)
+
+---
+
+## 🙏 Acknowledgments
+
+- BRVM for providing financial data
+- The Selenium project for web scraping capabilities
+- The Pandas project for data manipulation
+
+---
+
+## 📈 Package Status
+
+- **Version**: 0.1.0
+- **Status**: Beta
+- **PyPI**: https://pypi.org/project/brvmpy/
+- **GitHub**: https://github.com/idrissbado/BRVMpy
+
+---
+
+## 🌟 Star History
+
+If you find this package useful, please consider giving it a star on GitHub! ⭐
+
+---
+
+**Happy Scraping! 🚀📊**
