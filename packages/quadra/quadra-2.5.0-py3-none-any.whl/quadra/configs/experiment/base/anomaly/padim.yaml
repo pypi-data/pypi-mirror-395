@@ -1,0 +1,37 @@
+# @package _global_
+
+defaults:
+  - override /datamodule: base/anomaly
+  - override /model: anomalib/padim
+  - override /optimizer: null
+  - override /scheduler: null
+  - override /transforms: default_resize
+  - override /loss: null
+  - override /task: anomalib/padim
+  - override /backbone: null
+  - override /trainer: lightning_gpu
+  - override /callbacks: default_anomalib
+  - _self_
+
+datamodule:
+  num_workers: 12
+  train_batch_size: 32
+  test_batch_size: 32
+  task: ${model.dataset.task}
+  category:
+  phase: train
+
+core:
+  tag: "run"
+  name: padim_${model.model.backbone}_${trainer.max_epochs}
+  test_after_training: true
+
+logger:
+  mlflow:
+    experiment_name:
+    run_name: ${core.name}
+
+trainer:
+  devices: [2]
+  check_val_every_n_epoch: ${trainer.max_epochs} # Don't validate before extracting features.
+  max_epochs: 1

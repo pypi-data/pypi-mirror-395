@@ -1,0 +1,43 @@
+# @package _global_
+
+defaults:
+  - override /datamodule: base/anomaly
+  - override /model: anomalib/efficient_ad
+  - override /optimizer: null
+  - override /scheduler: null
+  - override /transforms: default_resize
+  - override /loss: null
+  - override /task: anomalib/efficient_ad
+  - override /backbone: null
+  - override /trainer: lightning_gpu
+  - override /callbacks: default_anomalib
+  - _self_
+
+datamodule:
+  num_workers: 12
+  train_batch_size: 32
+  test_batch_size: 32
+  task: ${model.dataset.task}
+  category:
+  phase: train
+
+core:
+  tag: "run"
+  name: efficient_ad_${model.model.model_size}_${trainer.max_epochs}
+  test_after_training: true
+
+logger:
+  mlflow:
+    experiment_name:
+    run_name: ${core.name}
+
+trainer:
+  devices: [2]
+  check_val_every_n_epoch: ${trainer.max_epochs}
+  max_epochs: 20
+  max_steps: 20000
+  val_check_interval: 1.0 # Don't validate before extracting features.
+  # This will avoid issues with ModelSignatureWrapper
+  # As the default forward for EfficientAD is performed with a None attribute
+  # Which we currently can't handle
+  num_sanity_val_steps: 0

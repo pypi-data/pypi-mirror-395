@@ -1,0 +1,46 @@
+# @package _global_
+
+defaults:
+  - override /datamodule: base/anomaly
+  - override /model: anomalib/fastflow
+  - override /optimizer: null
+  - override /scheduler: null
+  - override /transforms: default_resize
+  - override /loss: null
+  - override /task: anomalib/fastflow
+  - override /backbone: null
+  - override /trainer: lightning_gpu
+  - override /callbacks: default_anomalib
+  - _self_
+
+datamodule:
+  num_workers: 12
+  train_batch_size: 32
+  test_batch_size: 32
+  task: ${model.dataset.task}
+  category:
+
+callbacks:
+  early_stopping:
+    patience: 3
+    monitor: validation_image_F1
+
+print_config: false
+
+core:
+  tag: "run"
+  name: fastflow_${model.model.backbone}_${trainer.max_epochs}
+  test_after_training: true
+
+logger:
+  mlflow:
+    experiment_name:
+    run_name: ${core.name}
+
+trainer:
+  devices: [0]
+  gradient_clip_val: 0
+  gradient_clip_algorithm: norm
+  check_val_every_n_epoch: 1 # Don't validate before extracting features.
+  val_check_interval: 1.0 # Don't validate before extracting features.
+  max_epochs: 500
