@@ -1,0 +1,234 @@
+[project]
+name = "matterwave"
+
+# You can get the current version via 'pixi run -e dev hatch version'
+# It does not get updated automatically in editable installs.
+# A workaround can be found under https://github.com/maresb/hatch-vcs-footgun-example
+# But currently we do not have a usage where this was important.
+dynamic = [
+    "version"
+]
+authors = [
+    { name="Stefan Seckmeyer"},
+    { name="Gabriel Müller"},
+    { name="Christian Struckmann"},
+]
+description = "A library for matter wave propagation built on top of fftarray."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    'Typing :: Typed',
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy>=2.0",
+    "scipy",
+    "fftarray>=0.5",
+]
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling", "hatch-vcs"]
+
+[project.urls]
+Homepage = "https://github.com/QSTheory/matterwave"
+Documentation = "https://qstheory.github.io/matterwave/main"
+Repository = "https://github.com/QSTheory/matterwave"
+Issues = "https://github.com/QSTheory/matterwave/issues"
+Changelog = "https://qstheory.github.io/matterwave/main/changelog.html"
+
+[dependency-groups]
+"jax" = [
+    "jax>=0.4.33",
+]
+
+"plotting" = [
+    "panel",
+    "bokeh",
+    "pandas",
+    "xarray",
+    "holoviews",
+    "hvplot",
+    "colorcet",
+    "datashader",
+]
+
+"dashboards" = [
+    "fftarray[dimsolver]",
+    "ipython",
+    "ipykernel",
+    {include-group = "plotting"},
+]
+
+"dev" = [
+    "fftarray[dimsolver]",
+    {include-group = "check"},
+    {include-group = "dashboards"},
+    {include-group = "deploy"},
+    {include-group = "doc"},
+    {include-group = "jax"},
+    {include-group = "plotting"},
+]
+
+"deploy" = [
+    "hatch",
+    "twine",
+]
+
+
+"check" = [
+    "fftarray[dimsolver]",
+    "array-api-compat>=1.9.1",
+    "ipython",
+    "mypy>=0.910",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist[psutil]",
+    "pytest-split",
+    "array-api-strict>=2.3.0",
+    "ruff",
+    {include-group = "jax"},
+    {include-group = "plotting"},
+]
+
+"doc" = [
+    "fftarray[dimsolver]",
+    "sphinx>=6.1",
+    "sphinx-book-theme>=1.0.1",
+    "sphinx-design",
+    "sphinx-copybutton",
+    "lxml_html_clean",
+    "nbsphinx",
+    "nbsphinx-link",
+    "myst-nb",
+    "m2r2",
+    "matplotlib",
+    {include-group = "jax"},
+    {include-group = "plotting"},
+]
+
+"build_pip_deps" = [
+    "pip"
+]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "B",
+    "E4",
+    "E7",
+    "E9",
+    "F",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "_version.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pixi.tasks]
+# Test snippets in documentation doc-strings.
+test_src_docstrings = { cmd = ["python", "-m", "pytest", "src/*", "--doctest-modules"]}
+# Run all tests
+test = { cmd = ["python", "-m", "pytest", "-n", "auto"], depends-on = ["test_src_docstrings"]}
+
+test_group = { cmd = ["python", "-m", "pytest", "--splitting-algorithm", "least_duration", "--splits", "$N_GROUPS", "--group", "$GROUP_ID"]}
+# These durations are used to estimate the best split of tests when parallelizing.
+# This only needs to be run when tests changed significantly.
+# If the timings are out of date it just makes the split a bit less optimal.
+store_test_durations = { cmd = ["python", "-m", "pytest", "--store-durations"]}
+
+ruff_all = { cmd = ["ruff", "check", "tests", "src/matterwave"]}
+mypy = { cmd = ["mypy", "src/matterwave", "tests"]}
+check = { depends-on = ["mypy", "ruff_all", "test"]}
+cov_html = { cmd = ["python", "-m", "pytest", "--cov=./src", "--cov-report=html"]}
+cov_xml = { cmd = ["python", "-m", "pytest", "--cov=./src", "--cov-report=xml"]}
+doc_all_versions = { cmd = ["make", "all_versions"], "cwd" = "docs" }
+doc_local = { cmd = ["make", "local"], "cwd" = "docs" }
+# TODO: Currently only tested on macOS. Would be nice to make it an --open option like in cargo.
+doc_open = { cmd = ["open", "docs/build/html/local/index.html"], depends-on = ["doc_local"] }
+
+# Build the release artifacts.
+clean_dist_dir = { cmd = ["rm", "-rf", "dist/"] }
+build_wheel = { cmd = ["hatch", "build"], depends-on = ["clean_dist_dir"] }
+
+
+# Commands to recreate the requirements.txt file from the current state of pypi
+
+clean_build_pip_deps = { cmd = ["pixi", "clean", "-e", "build-pip-deps"] }
+install_pip_check_deps = { cmd = [
+    "python", "-m",
+    "pip", "install", "-e", ".", "--group", "check",
+] }
+create_requirements_txt = { cmd = ["python", "-m", "pip", "freeze", "--exclude", "matterwave", ">", "requirements.txt"] }
+
+[tool.pixi.tasks.update_requirements_txt]
+depends-on = [
+    { task = "clean_build_pip_deps" },
+    { task = "install_pip_check_deps", environment = "build-pip-deps" },
+    { task = "create_requirements_txt", environment = "build-pip-deps" },
+]
+
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+matterwave = { path = ".", editable = true }
+
+[tool.pixi.feature.jaxcuda]
+# Needs to be disabled as workaround Part 1 for https://github.com/prefix-dev/pixi/issues/1051
+# platforms = ["linux-64"]
+system-requirements = {cuda = "12"}
+
+# List jax cuda depdency here as linux-64 specific as workaround Part 2 for https://github.com/prefix-dev/pixi/issues/1051
+[tool.pixi.feature.jaxcuda.target.linux-64.pypi-dependencies]
+"matterwave" = {version="*", extras=["jax"]}
+"jax" = {version=">=0.4.33", extras=["cuda12"]}
+
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+# array-api-strict 2.4.0 does not support NumPy interoperability with Python 3.11.
+# Therefore we need to stay on 2.3.1 for Python 3.11.
+array-api-strict = "==2.3.1"
+# pixi fails to solve with for numba without this bound.
+numpy = "==2.2"
+
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
+[tool.pixi.feature.py313.dependencies]
+python = "3.13.*"
+
+[tool.pixi.environments]
+# As of 3 Dec 2025 numba prevents a solution for CPython 3.14.
+devcuda = ["py313", "dev", "jaxcuda"]
+dev = ["py313", "dev"]
+doc = ["py313", "doc"]
+deploy = ["py313", "deploy"]
+check = ["py313", "check"]
+check311 = ["py311", "check"]
+check312 = ["py312", "check"]
+check313 = ["py313", "check"]
+
+# Environment to create the requirements.txt used in the pip CI test
+build-pip-deps = ["py313", "build_pip_deps"]
+
+[tool.pixi.feature.doc.dependencies]
+pandoc = ">=3.5,<4"
