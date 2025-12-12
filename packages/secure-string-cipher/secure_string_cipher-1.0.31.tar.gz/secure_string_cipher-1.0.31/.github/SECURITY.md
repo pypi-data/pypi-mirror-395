@@ -1,0 +1,240 @@
+# Security Policy
+
+## Supported Versions
+
+We actively support the following versions with security updates:
+
+| Version | Supported          | Python Requirements |
+| ------- | ------------------ | ------------------- |
+| 1.0.20+ | :white_check_mark: | 3.12+              |
+| < 1.0.20| :x:                | 3.10+              |
+
+**Note**: Version 1.0.20+ uses Argon2id KDF and key commitment. Files encrypted with older versions are not compatible.
+
+## Python Version Support Policy
+
+We follow Python's official support timeline and drop support for versions that have reached end-of-life or are in security-only mode:
+
+- **Python 3.10**: EOL October 2026 (no longer supported by this project)
+- **Python 3.11**: EOL October 2027 (no longer supported by this project)
+- **Python 3.12**: EOL October 2028 ✅
+- **Python 3.13**: EOL October 2029 ✅
+- **Python 3.14**: EOL October 2030 ✅
+
+## Reporting a Vulnerability
+
+We take security bugs seriously. Thanks for helping us keep this project secure.
+
+### How to Report
+
+**Choose one of these methods:**
+
+1. **GitHub Security Advisories** (preferred)
+   - Go to [Security Advisories](https://github.com/TheRedTower/secure-string-cipher/security/advisories)
+   - Click "Report a vulnerability"
+   - Fill out the private form
+
+2. **Email**
+   - Send to: **<security@avondenecloud.uk>**
+   - Don't create a public GitHub issue for vulnerabilities
+
+### What to Include
+
+- What's vulnerable and how it works
+- Steps to reproduce the issue
+- Potential impact
+- Ideas for a fix (if you have them)
+
+### What to Expect
+
+1. **Initial response:** Within 24 hours
+2. **Status updates:** At least every 72 hours
+3. **Fix timeline:**
+   - We'll publish a security advisory within 72 hours
+   - Develop and test a fix within 1-2 weeks
+   - Public disclosure after the fix is released (typically within 90 days)
+
+## Security Features
+
+This project implements multiple layers of security:
+
+### 1. Cryptography
+
+| Component | Implementation | Configuration |
+|-----------|---------------|---------------|
+| **Encryption** | AES-256-GCM | 256-bit key, 96-bit nonce, 128-bit tag |
+| **Key Derivation** | Argon2id | 64MB memory, 3 iterations, parallelism 4 |
+| **Key Commitment** | HMAC-SHA256 | Prevents partitioning oracle attacks |
+| **Random Generation** | `secrets` module | OS-level CSPRNG |
+
+**Argon2id parameters exceed OWASP 2024 recommendations** (minimum: 19MB memory, 2 iterations).
+
+### 2. Password Protection
+
+- **Minimum length**: 12 characters
+- **Complexity requirements**: Mixed case, numbers, symbols
+- **Common password detection**: Blocks known weak passwords
+- **Constant-time comparison**: Prevents timing attacks
+- **Rate limiting**: Exponential backoff after failed attempts (5 attempts → 30s lockout)
+
+### 3. File Security
+
+- **100 MB file size limit** - Prevents DoS attacks
+- **Atomic file writes** - No partial writes on failure
+- **Secure permissions** - `chmod 600` (owner-only read/write)
+- **Path validation** - Blocks path traversal (`../`, symlinks)
+- **Filename sanitization** - Prevents Unicode attacks, null bytes
+
+### 4. Vault Integrity
+
+- **HMAC-SHA256 verification** - Detects tampering before decryption
+- **Automatic backups** - Last 5 backups in `~/.secure-cipher/backups/`
+- **Backup on modification** - Backup created before any vault change
+
+### 5. Runtime Protection
+
+- **Secure memory wiping** - `sodium_memzero()` via libsodium (PyNaCl)
+- **SecureString/SecureBytes classes** - Auto-zero on deletion
+- **Timing jitter** - Adds random delay to security operations
+- **Input sanitization** - All user input validated
+- **Audit logging** - Security events logged with timestamps
+
+### 6. Audit Logging
+
+Security-sensitive operations are logged to `~/.secure-cipher/audit.log`:
+
+- Authentication successes/failures
+- Rate limit triggers
+- Encryption/decryption operations
+- Vault access events
+- Sensitive data automatically redacted
+
+## For Contributors
+
+When contributing:
+
+1. **Dependencies**
+   - Use latest stable versions
+   - Check for security updates regularly
+   - Run `pip-audit` for vulnerability scanning
+
+2. **Code Review**
+   - Security-focused reviews
+   - Static analysis with Ruff and mypy
+   - Test security edge cases
+
+3. **Testing**
+   - Write tests for security-critical code
+   - Property-based tests with Hypothesis
+   - Test edge cases and error conditions
+   - Verify input validation
+
+4. **Documentation**
+   - Document security considerations
+   - Include usage warnings where appropriate
+   - Follow best practices
+
+## User Security Guide
+
+### Installing Safely
+
+1. **Install from the official source**
+
+   ```bash
+   pip install secure-string-cipher
+   ```
+
+2. **Verify the package**
+   - Official PyPI: <https://pypi.org/project/secure-string-cipher/>
+   - Maintainer: TheRedTower
+   - Source code: <https://github.com/TheRedTower/secure-string-cipher>
+
+3. **Check dependencies**
+
+   ```bash
+   pip show secure-string-cipher
+   ```
+
+### Using it Securely
+
+1. **Passphrases**
+   - Use strong, unique passphrases (12+ characters, mixed case, numbers, symbols)
+   - Use `/gen` at password prompts to generate secure passphrases
+   - Don't reuse passphrases across different files
+   - Store passphrases in a password manager or the built-in vault
+   - Never share passphrases over insecure channels
+
+2. **File Handling**
+   - Store encrypted files in secure locations
+   - Keep backups of encrypted files (but not with their passphrases)
+   - Test decryption before deleting original files
+   - Original files aren't automatically deleted after encryption
+
+3. **Environment**
+   - Use the tool on trusted, malware-free systems
+   - Avoid shared or public computers
+   - Clear your terminal history if it contains sensitive commands
+   - Keep the software updated
+
+## Supply Chain
+
+### Dependencies
+
+1. **What we depend on**
+   - `cryptography` - Industry-standard cryptographic library (AES-GCM)
+   - `argon2-cffi` - Argon2 implementation for key derivation
+   - `pynacl` - libsodium bindings for secure memory
+   - `pyperclip` - Clipboard support
+   - `wcwidth` - Unicode width calculation
+   - All from trusted, well-maintained sources
+
+2. **How we vet dependencies**
+   - Review dependencies for security issues
+   - Run `pip-audit` for vulnerability scanning
+   - Update promptly to address vulnerabilities
+
+3. **Automated checks**
+   - Pre-commit hooks with `detect-secrets` (prevents credential leaks)
+   - CI/CD pipeline runs security checks on every commit
+   - `pip-audit` scans for known vulnerabilities
+
+### Software Bill of Materials
+
+Generate an SBOM:
+
+```bash
+pip install cyclonedx-bom
+cyclonedx-py -r --format json -o sbom.json
+```
+
+Or view the dependency tree:
+
+```bash
+pip install pipdeptree
+pipdeptree -p secure-string-cipher
+```
+
+## Audit History
+
+| Date       | Type       | Auditor  | Status    | Notes                   |
+|------------|------------|----------|-----------|-------------------------|
+| 2025-11-06 | Self-Audit | Internal | Completed | Initial security review |
+| 2025-12-02 | Self-Audit | Internal | Completed | Argon2id, key commitment, rate limiting |
+
+## Third-Party Audit
+
+This project maintains audit documentation for third-party security reviews:
+
+- **[CRYPTOGRAPHY.md](.github/CRYPTOGRAPHY.md)** - Detailed cryptographic design and threat model
+- **[AUDIT_CHECKLIST.md](.github/AUDIT_CHECKLIST.md)** - Checklist for security auditors
+
+## Contact
+
+- **Security issues:** <security@avondenecloud.uk>
+- **GitHub Security Advisories:** <https://github.com/TheRedTower/secure-string-cipher/security/advisories>
+- **General support:** Open a GitHub issue (non-security only)
+
+---
+
+**Last updated:** December 5, 2025
+**Version:** 2.1
