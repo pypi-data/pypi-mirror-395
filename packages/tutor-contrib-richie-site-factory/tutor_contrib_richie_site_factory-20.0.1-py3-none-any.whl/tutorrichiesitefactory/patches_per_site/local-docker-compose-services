@@ -1,0 +1,21 @@
+richie-{{site}}:
+  image: {{ RICHIE_{{site}}_DOCKER_IMAGE }}
+  restart: unless-stopped
+  user: "1000:1000"
+  env_file:
+    - ../plugins/richie-{{site}}/apps/env.d/production
+  volumes:
+    - ../plugins/richie-{{site}}/apps/settings/tutor.py:/app/richie/sandbox/tutor.py:ro
+    - ../../data/richie-{{site}}/media:/data/media
+  depends_on:
+    - richie-{{site}}-permissions
+    - lms
+    {% if RUN_ELASTICSEARCH %}- elasticsearch{% endif %}
+    {% if RUN_MYSQL %}- mysql{% endif %}
+
+richie-{{site}}-permissions:
+  image: {{ DOCKER_IMAGE_PERMISSIONS }}
+  command: ["1000", "/data/richie-{{site}}"]
+  restart: on-failure
+  volumes:
+    - ../../data/richie-{{site}}/media:/data/richie-{{site}}

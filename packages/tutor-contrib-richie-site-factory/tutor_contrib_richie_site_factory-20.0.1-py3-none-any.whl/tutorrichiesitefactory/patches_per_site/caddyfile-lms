@@ -1,0 +1,10 @@
+# On LMS, redirect the path "/richie_{{site}}" to the corresponding Richie site instance
+@richie_{{site}} {
+    path /richie-{{site}}/*
+}
+handle @richie_{{site}} {
+    route {
+        uri strip_prefix /richie-{{site}}
+        redir {% if ENABLE_HTTPS %}https{% else %}http{% endif %}://{{ RICHIE_{{site}}_HOST }}{uri}
+    }
+}

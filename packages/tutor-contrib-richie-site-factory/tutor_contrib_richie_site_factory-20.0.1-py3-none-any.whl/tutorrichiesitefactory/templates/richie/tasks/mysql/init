@@ -1,0 +1,6 @@
+{%- if RICHIE_{{site}}_MYSQL_INIT -%}
+mysql -u {{ RICHIE_{{site}}_MYSQL_ROOT_USERNAME }} --password="{{ RICHIE_{{site}}_MYSQL_ROOT_PASSWORD }}" --host "{{ RICHIE_{{site}}_DB_HOST }}" --port {{ RICHIE_{{site}}_DB_PORT }} -e 'CREATE DATABASE IF NOT EXISTS {{ RICHIE_{{site}}_DB_NAME }};'
+mysql -u {{ RICHIE_{{site}}_MYSQL_ROOT_USERNAME }} --password="{{ RICHIE_{{site}}_MYSQL_ROOT_PASSWORD }}" --host "{{ RICHIE_{{site}}_DB_HOST }}" --port {{ RICHIE_{{site}}_DB_PORT }} -e "CREATE USER IF NOT EXISTS '{{ RICHIE_{{site}}_DB_USER }}';"
+mysql -u {{ RICHIE_{{site}}_MYSQL_ROOT_USERNAME }} --password="{{ RICHIE_{{site}}_MYSQL_ROOT_PASSWORD }}" --host "{{ RICHIE_{{site}}_DB_HOST }}" --port {{ RICHIE_{{site}}_DB_PORT }} -e "ALTER USER '{{ RICHIE_{{site}}_DB_USER }}'@'%' IDENTIFIED BY '{{ RICHIE_{{site}}_DB_PASSWORD }}';"
+mysql -u {{ RICHIE_{{site}}_MYSQL_ROOT_USERNAME }} --password="{{ RICHIE_{{site}}_MYSQL_ROOT_PASSWORD }}" --host "{{ RICHIE_{{site}}_DB_HOST }}" --port {{ RICHIE_{{site}}_DB_PORT }} -e "GRANT ALL ON {{ RICHIE_{{site}}_DB_NAME }}.* TO '{{ RICHIE_{{site}}_DB_USER }}'@'%';"
+{% endif %}

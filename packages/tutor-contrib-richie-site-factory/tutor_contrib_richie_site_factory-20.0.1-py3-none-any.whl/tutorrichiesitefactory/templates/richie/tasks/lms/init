@@ -1,0 +1,20 @@
+# Initialize Richie {{site}} SSO on Open edX LMS
+{%- if RICHIE_{{site}}_OAUTH2_CLIENT_AUTHORIZED_PATH %}
+./manage.py lms manage_user richie-{{site}} richie-{{site}}@openedx --unusable-password
+./manage.py lms create_dot_application \
+    --grant-type authorization-code \
+    --redirect-uris "{% if ENABLE_HTTPS %}https{% else %}http{% endif %}://{{ RICHIE_{{site}}_HOST }}{{ RICHIE_{{site}}_OAUTH2_CLIENT_AUTHORIZED_PATH }}" \
+    --client-id {{ RICHIE_{{site}}_OAUTH2_CLIENT_ID }} \
+    --client-secret {{ RICHIE_{{site}}_OAUTH2_CLIENT_SECRET }} \
+    --scopes user_id \
+    --skip-authorization \
+    --update richie-{{site}}-sso richie-{{site}}
+./manage.py lms create_dot_application \
+    --grant-type authorization-code \
+    --redirect-uris "http://{{ RICHIE_{{site}}_HOST }}{{ RICHIE_{{site}}_OAUTH2_CLIENT_AUTHORIZED_PATH }}" \
+    --client-id {{ RICHIE_{{site}}_OAUTH2_CLIENT_ID_DEV }} \
+    --client-secret {{ RICHIE_{{site}}_OAUTH2_CLIENT_SECRET }} \
+    --scopes user_id \
+    --skip-authorization \
+    --update richie-{{site}}-sso-dev richie-{{site}}
+{%- endif %}
