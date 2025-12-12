@@ -1,0 +1,1177 @@
+import nested_pandas as npd
+import numpy as np
+import pandas as pd
+import pyarrow as pa
+import pytest
+from nested_pandas import NestedDtype, NestedFrame, read_parquet
+from nested_pandas.datasets import generate_data
+from nested_pandas.series.ext_array import NestedExtensionArray
+from nested_pandas.series.nestedseries import NestedSeries
+from nested_pandas.series.packer import pack_flat, pack_seq
+from numpy.testing import assert_array_equal
+from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
+
+
+def test_registered():
+    """Test that the series accessor .nest is registered."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([np.array([4, 5, 6]), np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+    nestedseries = NestedSeries(series)
+
+    _accessor = series.nest
+    _accessor = nestedseries.nest
+
+
+@pytest.mark.parametrize(
+    "series",
+    [
+        pd.Series([1, 2, 3]),
+        pd.Series([1.0, 2.0, 3.0], dtype=pd.ArrowDtype(pa.float64())),
+        pd.Series(
+            [{"a": [1, 2]}, {"a": [3, 4]}],
+            dtype=pd.ArrowDtype(pa.struct([pa.field("a", pa.list_(pa.int64()))])),
+        ),
+    ],
+)
+def test_does_not_work_for_non_nested_series(series):
+    """Test that the .nest accessor does not work for non-nested series."""
+    with pytest.raises(AttributeError):
+        _ = series.nest
+
+
+def test_to_lists():
+    """Test that the .nest.to_lists() method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
+            pa.array([np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    lists = series.nest.to_lists()
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])],
+                dtype=pd.ArrowDtype(pa.list_(pa.float64())),
+                index=[0, 1],
+            ),
+            "b": pd.Series(
+                data=[np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])],
+                dtype=pd.ArrowDtype(pa.list_(pa.float64())),
+                index=[0, 1],
+            ),
+        },
+    )
+    assert_frame_equal(lists, desired)
+
+
+def test_to_lists_for_chunked_array():
+    """ ""Test that the .nest.to_lists() when underlying array is chunked"""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            [np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])],
+            [np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])],
+        ],
+        names=["a", "b"],
+    )
+    chunked_array = pa.chunked_array([struct_array] * 3)
+    assert chunked_array.length() == 6
+    series = pd.Series(chunked_array, dtype=NestedDtype(chunked_array.type), index=[0, 1, 2, 3, 4, 5])
+    assert series.array.num_chunks == 3
+
+    lists = series.nest.to_lists()
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])] * 3,
+                dtype=pd.ArrowDtype(pa.list_(pa.float64())),
+                index=[0, 1, 2, 3, 4, 5],
+            ),
+            "b": pd.Series(
+                data=[np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])] * 3,
+                dtype=pd.ArrowDtype(pa.list_(pa.float64())),
+                index=[0, 1, 2, 3, 4, 5],
+            ),
+        },
+    )
+    assert_frame_equal(lists, desired)
+
+
+def test_to_lists_with_columns():
+    """Test that the .nest.to_lists(columns=...) method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
+            pa.array([np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    lists = series.nest.to_lists(columns=["a"])
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])],
+                dtype=pd.ArrowDtype(pa.list_(pa.float64())),
+                index=[0, 1],
+            ),
+        },
+    )
+    assert_frame_equal(lists, desired)
+
+
+def test_to_lists_fails_for_empty_input():
+    """Test that the .nest.to_lists([]) fails when no columns are provided."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([]), np.array([])]),
+            pa.array([np.array([]), np.array([])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    with pytest.raises(ValueError):
+        _ = series.nest.to_lists([])
+
+
+def test_to_flat():
+    """Test that the .nest.to_flat() method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+
+    series = pd.Series(
+        struct_array, dtype=NestedDtype(struct_array.type), index=pd.Series([0, 1], name="idx")
+    )
+
+    flat = series.nest.to_flat()
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[1.0, 2.0, 3.0, 1.0, 2.0, 1.0],
+                index=[0, 0, 0, 1, 1, 1],
+                name="a",
+                copy=False,
+                dtype=pd.ArrowDtype(pa.float64()),
+            ),
+            "b": pd.Series(
+                data=[-4.0, -5.0, -6.0, -3.0, -4.0, -5.0],
+                index=[0, 0, 0, 1, 1, 1],
+                name="b",
+                copy=False,
+                dtype=pd.ArrowDtype(pa.float64()),
+            ),
+        },
+        index=pd.Index([0, 0, 0, 1, 1, 1], name="idx"),
+    )
+
+    assert_array_equal(flat.dtypes, desired.dtypes)
+    assert_array_equal(flat.index, desired.index)
+    assert flat.index.name == desired.index.name
+
+    for column in flat.columns:
+        assert_array_equal(flat[column], desired[column])
+
+
+def test_to_flat_for_chunked_array():
+    """Test that the .nest.to_flat() when underlying array is pa.ChunkedArray."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            [np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])],
+            [np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])],
+        ],
+        names=["a", "b"],
+    )
+    chunked_array = pa.chunked_array([struct_array] * 3)
+    assert chunked_array.length() == 6
+    series = pd.Series(chunked_array, dtype=NestedDtype(chunked_array.type), index=[0, 1, 2, 3, 4, 5])
+    assert series.array.num_chunks == 3
+
+    flat = series.nest.to_flat()
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[1.0, 2.0, 3.0, -1.0, -2.0, -1.0] * 3,
+                name="a",
+                index=np.repeat([0, 1, 2, 3, 4, 5], 3),
+                dtype=pd.ArrowDtype(pa.float64()),
+            ),
+            "b": pd.Series(
+                data=[4.0, 5.0, 6.0, -3.0, -4.0, -5.0] * 3,
+                name="b",
+                index=np.repeat([0, 1, 2, 3, 4, 5], 3),
+                dtype=pd.ArrowDtype(pa.float64()),
+            ),
+        },
+        index=pd.Index(np.repeat([0, 1, 2, 3, 4, 5], 3)),
+    )
+
+    assert_frame_equal(flat, desired)
+
+
+def test_to_flat_with_columns():
+    """Test that the .nest.to_flat(columns=...) method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    flat = series.nest.to_flat(columns=["a"])
+
+    desired = pd.DataFrame(
+        data={
+            "a": pd.Series(
+                data=[1.0, 2.0, 3.0, 1.0, 2.0, 1.0],
+                index=[0, 0, 0, 1, 1, 1],
+                name="a",
+                copy=False,
+                dtype=pd.ArrowDtype(pa.float64()),
+            ),
+        },
+    )
+
+    assert_array_equal(flat.dtypes, desired.dtypes)
+    assert_array_equal(flat.index, desired.index)
+
+    for column in flat.columns:
+        assert_array_equal(flat[column], desired[column])
+
+
+def test_to_flat_multiple_nesting():
+    """Test that the .nest.to_flat() method works well with inner nested columns."""
+    nf = generate_data(10, 2)
+    nf["a"] = nf["a"].astype(pd.ArrowDtype(pa.float64()))
+    nf["b"] = nf["b"].astype(pd.ArrowDtype(pa.float64()))
+    nf = nf.rename(columns={"nested": "inner"})
+    index = pd.Index(np.repeat(np.r_[0:5], 2), name="id")
+    nf = nf.assign(id=index)
+    nnf = NestedFrame.from_flat(nf, base_columns=[], on="id", name="outer")
+
+    actual = nnf["outer"].nest.to_flat()
+    desired = nf.set_index("id")
+    assert_frame_equal(desired, actual)
+
+
+def test_to_flat_fails_for_empty_input():
+    """Test that the .nest.to_flat([]) fails when no columns are provided."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([]), np.array([])]),
+            pa.array([np.array([]), np.array([])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    with pytest.raises(ValueError):
+        _ = series.nest.to_flat([])
+
+
+def test_columns():
+    """Test that the .nest.columns attribute works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    assert_array_equal(series.nest.columns, ["a", "b"])
+
+
+def test_list_lengths():
+    """Test that the .nest.list_lengths attribute works."""
+    series = pack_seq(
+        [
+            pd.DataFrame({"a": [1, 2, 3], "b": [1.0, 5.0, 6.0], "c": ["a", "b", "c"]}),
+            None,
+            pd.DataFrame({"a": [1, 2], "b": [None, 0.0], "c": ["a", "b"]}),
+        ]
+    )
+    assert series.shape == (3,)
+    assert_array_equal(series.nest.list_lengths, [3, 0, 2])
+
+
+def test_flat_length():
+    """Test that the .nest.flat_length attribute works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    assert series.nest.flat_length == 6
+
+
+def test_set_flat_column():
+    """Test that the .nest.set_flat_column() method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    new_series = series.nest.set_flat_column("a", np.array(["a", "b", "c", "d", "e", "f"]))
+
+    assert_series_equal(
+        new_series.nest["a"],
+        pd.Series(
+            data=["a", "b", "c", "d", "e", "f"],
+            index=[0, 0, 0, 1, 1, 1],
+            name="a",
+            dtype=pd.ArrowDtype(pa.string()),
+        ),
+    )
+
+
+def test_set_column():
+    """Test that .nest.set_column is just an alias to .nest.set_flat_column."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+    assert_series_equal(
+        series.nest.set_column("a", np.array(["a", "b", "c", "d", "e", "f"])),
+        series.nest.set_flat_column("a", np.array(["a", "b", "c", "d", "e", "f"])),
+    )
+
+
+def test_set_list_column():
+    """Test that the .nest.set_list_column() method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    new_series = series.nest.set_list_column("c", [["a", "b", "c"], ["d", "e", "f"]])
+
+    assert_series_equal(
+        new_series.nest["c"],
+        pd.Series(
+            data=["a", "b", "c", "d", "e", "f"],
+            index=[0, 0, 0, 1, 1, 1],
+            name="c",
+            dtype=pd.ArrowDtype(pa.string()),
+        ),
+    )
+
+
+def test_set_filled_column():
+    """Test .nest.set_filled_column("column", value)"""
+    series = pack_seq(
+        [
+            pd.DataFrame({"a": [1, 2, 3], "b": [1.0, 5.0, 6.0]}),
+            pd.DataFrame({"a": [1, 2], "b": [None, 0.0]}),
+        ]
+    )
+    new_series = series.nest.set_filled_column(
+        "a",
+        [0, 100],
+    ).nest.set_filled_column(
+        "c",
+        ["abc", "xyz"],
+    )
+
+    desired = pack_seq(
+        [
+            pd.DataFrame({"a": [0, 0, 0], "b": [1.0, 5.0, 6.0], "c": ["abc", "abc", "abc"]}),
+            pd.DataFrame({"a": [100, 100], "b": [None, 0.0], "c": ["xyz", "xyz"]}),
+        ]
+    )
+
+    assert_series_equal(new_series.nest["a"], desired.nest["a"])
+    assert_series_equal(new_series.nest["c"], desired.nest["c"])
+
+
+def test_drop_single_column():
+    """Test .nest.drop("column")"""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([4, 5, 6])]),
+            pa.array([np.array([6, 4, 2]), np.array([1, 2, 3])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    new_series = series.nest.drop("a")
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([6, 4, 2]), np.array([1, 2, 3])]),
+        ],
+        names=["b"],
+    )
+    desired = NestedSeries(desired_struct_array, dtype=NestedDtype(desired_struct_array.type), index=[5, 7])
+
+    assert_series_equal(new_series, desired)
+
+
+def test_drop_multiple_columns():
+    """Test .nest.drop(["col1", "col2"])"""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([4, 5, 6])]),
+            pa.array([np.array([6, 4, 2]), np.array([1, 2, 3])]),
+            pa.array([["a", "b", "c"], ["d", "e", "f"]]),
+        ],
+        names=["a", "b", "c"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    new_series = series.nest.drop(["a", "b"])
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([["a", "b", "c"], ["d", "e", "f"]]),
+        ],
+        names=["c"],
+    )
+    desired = NestedSeries(desired_struct_array, dtype=NestedDtype(desired_struct_array.type), index=[5, 7])
+
+    assert_series_equal(new_series, desired)
+
+
+def test_drop_raises_for_missing_column():
+    """Test .nest.drop("column") raises for missing column."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([4, 5, 6])]),
+            pa.array([np.array([6, 4, 2]), np.array([1, 2, 3])]),
+            pa.array([["a", "b", "c"], ["d", "e", "f"]]),
+        ],
+        names=["a", "b", "c"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    with pytest.raises(ValueError):
+        _ = series.nest.drop("d")
+
+
+def test_drop_raises_for_missing_columns():
+    """Test .nest.drop(["col1", "col2"]) raises for missing columns."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([4, 5, 6])]),
+            pa.array([np.array([6, 4, 2]), np.array([1, 2, 3])]),
+            pa.array([["a", "b", "c"], ["d", "e", "f"]]),
+        ],
+        names=["a", "b", "c"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    with pytest.raises(ValueError):
+        _ = series.nest.drop(["a", "d"])
+
+
+def test_query_1():
+    """Test that the .nest.query() method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]),
+            pa.array([np.array([6.0, 4.0, 2.0]), np.array([1.0, 2.0, 3.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    filtered = series.nest.query("a + b >= 7.0")
+
+    desired_struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0]), np.array([5.0, 6.0])]),
+            pa.array([np.array([6.0]), np.array([2.0, 3.0])]),
+        ],
+        names=["a", "b"],
+    )
+    desired = NestedSeries(desired_struct_array, dtype=NestedDtype(desired_struct_array.type), index=[5, 7])
+
+    assert_series_equal(filtered, desired)
+
+
+# Currently we remove empty rows from the output series
+def test_query_empty_rows():
+    """Test that the .nest.query() method works as expected for empty rows."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]),
+            pa.array([np.array([6.0, 4.0, 2.0]), np.array([1.0, 2.0, 3.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    filtered = series.nest.query("a > 1000.0")
+    desired = NestedSeries([], dtype=series.dtype)
+
+    assert_series_equal(filtered, desired)
+
+
+def test_query_with_empty_result():
+    """Make sure the index is properly set for empty result cases"""
+    base = npd.NestedFrame({"a": []}, index=pd.Index([], dtype=np.float64))
+    nested = npd.NestedFrame({"b": []}, index=pd.Index([], dtype=np.float64))
+
+    ndf = base.join_nested(nested, "nested")
+
+    res = ndf.nested.nest.query("b > 2")
+    assert res.index.dtype == np.float64
+
+
+@pytest.mark.parametrize(
+    "df",
+    [
+        pd.DataFrame({"a": [1] * 10}, index=[1, 2, 2, 3, 3, 3, 4, 4, 4, 4]),
+        pd.DataFrame(
+            {"a": [1] * 10},
+            index=pd.MultiIndex.from_arrays(([1, 1, 1, 1, 1, 1, 2, 2, 2, 2], [0, 1, 1, 2, 2, 2, 1, 1, 0, 0])),
+        ),
+        pd.DataFrame({"a": [1] * 10}, index=[1, 0, 0, 3, 3, 3, 0, 0, 0, 0]),
+        pd.DataFrame(
+            {"a": [1] * 6}, index=pd.MultiIndex.from_arrays(([0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 2]))
+        ),
+    ],
+)
+def test_flat_index(df):
+    """Test .nest.flat_index returns the index of the original flat df"""
+    series = pack_flat(df)
+    assert_index_equal(series.nest.flat_index, df.index.sort_values())
+
+
+def test_get_list_series():
+    """Test that the .nest.get_list_series() method works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1, 2, 3]), np.array([4, 5, 6])]),
+            pa.array([np.array([6, 4, 2]), np.array([1, 2, 3])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    lists = series.nest.to_lists()["a"]
+
+    assert_series_equal(
+        lists,
+        pd.Series(
+            data=[np.array([1, 2, 3]), np.array([4, 5, 6])],
+            dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+            index=[5, 7],
+            name="a",
+        ),
+    )
+
+
+def test_get_list_series_multiple_chunks():
+    """Test that .nest.get_list_series() works when underlying array is chunked"""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            [np.array([1, 2, 3]), np.array([4, 5, 6])],
+            [np.array([6, 4, 2]), np.array([1, 2, 3])],
+        ],
+        names=["a", "b"],
+    )
+    chunked_array = pa.chunked_array([struct_array] * 3)
+    series = pd.Series(chunked_array, dtype=NestedDtype(chunked_array.type), index=[5, 7, 9, 11, 13, 15])
+    assert series.array.num_chunks == 3
+
+    lists = series.nest.to_lists()["a"]
+
+    assert_series_equal(
+        lists,
+        pd.Series(
+            data=[np.array([1, 2, 3]), np.array([4, 5, 6])] * 3,
+            dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+            index=[5, 7, 9, 11, 13, 15],
+            name="a",
+        ),
+    )
+
+
+def test_get():
+    """Test .nest.get() which is implemented by the base class"""
+    series = pack_seq(
+        [
+            pd.DataFrame({"a": [1, 2, 3], "b": [1.0, 5.0, 6.0]}),
+            pd.DataFrame({"a": [1, 2], "b": [None, 0.0]}),
+            None,
+        ]
+    )
+    assert_series_equal(series.nest.get("a"), series.nest.to_flat()["a"])
+    assert_series_equal(series.nest.get("b"), series.nest.to_flat()["b"])
+    assert series.nest.get("c", "default_value") == "default_value"
+
+
+def test___getitem___single_column():
+    """Test that the .nest["column"] works for a single column."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    assert_series_equal(
+        series.nest["a"],
+        pd.Series(
+            np.array([1.0, 2.0, 3.0, 1.0, 2.0, 1.0]),
+            dtype=pd.ArrowDtype(pa.float64()),
+            index=[0, 0, 0, 1, 1, 1],
+            name="a",
+        ),
+    )
+    assert_series_equal(
+        series.nest["b"],
+        pd.Series(
+            -np.array([4.0, 5.0, 6.0, 3.0, 4.0, 5.0]),
+            dtype=pd.ArrowDtype(pa.float64()),
+            index=[0, 0, 0, 1, 1, 1],
+            name="b",
+        ),
+    )
+
+
+def test___getitem___nested_column():
+    """Test that the .nest["column"] works for an inner nested column."""
+    nf = generate_data(10, 2)
+    nf = nf.assign(id=np.repeat(np.r_[0:5], 2))
+    nf = nf.rename(columns={"nested": "inner"})
+    nnf = NestedFrame.from_flat(nf, base_columns=[], on="id", name="outer")
+
+    assert_series_equal(nnf["outer"].nest["inner"], nf["inner"], check_index=False)
+
+
+def test___getitem___single_column_multiple_chunks():
+    """Reproduces issue 142
+
+    https://github.com/lincc-frameworks/nested-pandas/issues/142
+    """
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            [np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])],
+            [np.array([4.0, 5.0, 6.0]), np.array([3.0, 4.0, 5.0])],
+        ],
+        names=["a", "b"],
+    )
+    chunked_array = pa.chunked_array([struct_array] * 3)
+    series = pd.Series(chunked_array, dtype=NestedDtype(chunked_array.type), index=[0, 1, 2, 3, 4, 5])
+    assert series.array.num_chunks == 3
+
+    assert_series_equal(
+        series.nest["a"],
+        pd.Series(
+            np.array([1.0, 2.0, 3.0, 1.0, 2.0, 1.0] * 3),
+            dtype=pd.ArrowDtype(pa.float64()),
+            index=[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5],
+            name="a",
+        ),
+    )
+
+
+def test___getitem___multiple_columns():
+    """Test that the .nest[["b", "a"]] works for multiple columns."""
+    arrays = [
+        pa.array([np.array([1.0, 2.0, 3.0]), -np.array([1.0, 2.0, 1.0])]),
+        pa.array([np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+    ]
+    series = NestedSeries(
+        NestedExtensionArray(
+            pa.StructArray.from_arrays(
+                arrays=arrays,
+                names=["a", "b"],
+            )
+        ),
+        index=[0, 1],
+    )
+
+    assert_series_equal(
+        series.nest[["b", "a"]],
+        NestedSeries(
+            NestedExtensionArray(
+                pa.StructArray.from_arrays(
+                    arrays=arrays[::-1],
+                    names=["b", "a"],
+                )
+            ),
+            index=[0, 1],
+        ),
+    )
+
+
+def test___getitem___series_masking():
+    """Test that series masking works through the accessor."""
+    nf = generate_data(5, 5, seed=1)
+    nf["nested.flag"] = True  # Add an additional boolean column
+
+    # Test a simple mask
+    result = nf["nested"].nest[nf["nested.t"] < 5.0]
+    new_nf = nf.copy()
+    new_nf["nested"] = result
+
+    expected = nf["nested"].nest.to_flat().query("t < 5.0")
+
+    assert_frame_equal(new_nf["nested"].nest.to_flat(), expected)
+
+    # Test a two column mask
+    result = nf["nested"].nest[(nf["nested.t"] < 5.0) & (nf["nested.flag"])]
+    new_nf = nf.copy()
+    new_nf["nested"] = result
+
+    expected = nf["nested"].nest.to_flat().query("t < 5.0 and flag == True")
+
+    assert_frame_equal(new_nf["nested"].nest.to_flat(), expected)
+
+    # Test for misaligned index ValueError
+    with pytest.raises(ValueError):
+        mask = nf["nested.t"] < 5.0
+        _ = nf["nested"].nest[mask[0:23]]
+
+
+def test___setitem__():
+    """Test that the .nest["column"] = ... works for a single column."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    series.nest["a"] = np.arange(6, 0, -1)
+
+    assert_series_equal(
+        series.nest["a"],
+        pd.Series(
+            data=[6, 5, 4, 3, 2, 1],
+            index=[0, 0, 0, 1, 1, 1],
+            name="a",
+            dtype=pd.ArrowDtype(pa.float64()),
+        ),
+    )
+
+
+def test___setitem___with_series_with_index():
+    """Test that the .nest["column"] = pd.Series(...) works for a single column."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    flat_series = pd.Series(
+        data=np.arange(6, 0, -1),
+        index=[0, 0, 0, 1, 1, 1],
+        name="a",
+        dtype=pd.ArrowDtype(pa.float32()),
+    )
+
+    series.nest["a"] = flat_series
+
+    assert_series_equal(
+        series.nest["a"],
+        flat_series.astype(pd.ArrowDtype(pa.float64())),
+    )
+    assert_series_equal(
+        series.nest.to_lists()["a"],
+        pd.Series(
+            data=[np.array([6, 5, 4]), np.array([3, 2, 1])],
+            dtype=pd.ArrowDtype(pa.list_(pa.float64())),
+            index=[0, 1],
+            name="a",
+        ),
+    )
+
+
+def test___setitem___empty_series():
+    """Test that series.nest["column"] = [] does nothing for empty series."""
+    empty_series = pd.Series([], dtype=NestedDtype.from_columns({"a": pa.float64()}))
+    empty_series.nest["a"] = []
+    assert len(empty_series) == 0
+
+
+def test___setitem___with_single_value():
+    """Test series.nest["column"] = const"""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0])
+
+    series.nest["a"] = -1.0
+
+    assert_series_equal(
+        series.nest["a"],
+        pd.Series(
+            data=[-1.0, -1.0, -1.0],
+            index=[0, 0, 0],
+            name="a",
+            dtype=pd.ArrowDtype(pa.float64()),
+        ),
+    )
+
+
+def test___setitem___raises_for_wrong_dtype():
+    """Test that the .nest["column"] = ... raises for a wrong dtype."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    with pytest.raises(TypeError):
+        series.nest["a"] = np.array(["a", "b", "c", "d", "e", "f"])
+
+
+def test___setitem___raises_for_wrong_length():
+    """Test that the .nest["column"] = ... raises for a wrong length."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    with pytest.raises(ValueError):
+        series.nest["a"] = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+
+
+def test___setitem___raises_for_wrong_index():
+    """Test that the .nest["column"] = ... raises for a wrong index."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = NestedSeries(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    flat_series = pd.Series(
+        data=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        index=[0, 1, 1, 1, 1, 1],
+        name="a",
+        dtype=pd.ArrowDtype(pa.float64()),
+    )
+
+    with pytest.raises(ValueError):
+        series.nest["a"] = flat_series
+
+
+def test___setitem___raises_for_new_column():
+    """Test that series.nest["column"] = ... raises for a new column."""
+    series = pack_seq([{"a": [1, 2, 3]}, {"a": [4, None]}])
+    with pytest.raises(ValueError):
+        series.nest["b"] = series.nest["a"] - 1
+
+
+def test___delitem___raises():
+    """Test that the `del .nest["column"]` is not implemented."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    with pytest.raises(AttributeError):
+        del series.nest["a"]
+
+
+def test___iter__():
+    """Test that the iter(.nest) works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    assert_array_equal(list(series.nest), ["a", "b"])
+
+
+def test___len__():
+    """Test that the len(.nest) works."""
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 1.0])]),
+            pa.array([-np.array([4.0, 5.0, 6.0]), -np.array([3.0, 4.0, 5.0])]),
+        ],
+        names=["a", "b"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[0, 1])
+
+    assert len(series.nest) == 2
+
+
+def test_to_flat_dropna():
+    """Test that to_flat() gives a valid dataframe, based on GH22
+
+    https://github.com/lincc-frameworks/nested-pandas/issues/22
+    """
+
+    flat = pd.DataFrame(
+        data={"c": [0, 2, 4, 1, np.nan, 3, 1, 4, 1], "d": [5, 4, 7, 5, 3, 1, 9, 3, 4]},
+        index=[0, 0, 0, 1, 1, 1, 2, 2, 2],
+    )
+    nested = pack_flat(flat, name="nested")
+
+    new_flat = nested.nest.to_flat()
+    # .dropna() was failing in the issue report
+    filtered = new_flat.dropna(subset="c")
+
+    assert_frame_equal(
+        filtered,
+        pd.DataFrame(
+            data={"c": [0.0, 2, 4, 1, 3, 1, 4, 1], "d": [5, 4, 7, 5, 1, 9, 3, 4]},
+            index=[0, 0, 0, 1, 1, 2, 2, 2],
+        ),
+        check_dtype=False,  # filtered's Series are pd.ArrowDtype
+    )
+
+
+def test___contains__():
+    """Test that the `"column" in .nest` works.
+
+    We haven't implemented it, but base class does
+    """
+    series = pack_seq([pd.DataFrame({"a": [1, 2, 3]})])
+    assert "a" in series.nest
+    assert "x" not in series.nest
+
+
+def test___eq__():
+    """Test that one.nest == other.nest works."""
+
+    series1 = pack_seq([pd.DataFrame({"a": [1, 2, 3]})])
+    series2 = pack_seq([pd.DataFrame({"b": [1, 2, 3]})])
+    series3 = pack_seq([pd.DataFrame({"a": [1, 2, 3, 4]})])
+    series4 = pack_seq([pd.DataFrame({"a": [1, 2, 3], "b": [3, 2, 1]})])
+
+    assert series1.nest == series1.nest
+
+    assert series2.nest == series2.nest
+    assert series1.nest != series2.nest
+
+    assert series3.nest == series3.nest
+    assert series1.nest != series3.nest
+
+    assert series4.nest == series4.nest
+    assert series1.nest != series4.nest
+
+
+def test___eq___false_for_different_types():
+    """Test that one.nest == other.nest is False for different types."""
+    seq = [{"a": [1, 2, 3]}, {"a": [4, None]}]
+    series = pack_seq(seq)
+    assert series.nest != NestedSeries(seq, dtype=pd.ArrowDtype(pa.struct([("a", pa.list_(pa.int64()))])))
+
+
+def test_clear_raises():
+    """Test that .nest.clear() raises - we cannot handle nested series with no columns"""
+    series = pack_seq([pd.DataFrame({"a": [1, 2, 3], "b": [3, 2, 1]}), None])
+    with pytest.raises(NotImplementedError):
+        series.nest.clear()
+
+
+def test_popitem_raises():
+    """Test .nest.popitem() raises"""
+    series = pack_seq(
+        [pd.DataFrame({"a": [1, 2, 3], "b": [3, 2, 1]}), pd.DataFrame({"a": [1, 2], "b": [2.0, None]}), None]
+    )
+
+    with pytest.raises(AttributeError):
+        _ = series.nest.popitem()
+
+
+def test_setdefault_raises():
+    """Test .nest.setdefault() is not implemented"""
+    series = pack_seq([{"a": [1, 2, 3]}, {"a": [4, None]}])
+    with pytest.raises(AttributeError):
+        series.nest.setdefault("b", series.nest["a"] * 2.0)
+
+
+def test_update_raises():
+    """test series.nest.update(other.nest) is not implemented"""
+    series1 = pack_seq([{"a": [1, 2, 3], "b": [4, 5, 6]}, {"a": [4, None], "b": [7, 8]}])
+    series2 = pack_seq(
+        [
+            {"b": ["x", "y", "z"], "c": [-2.0, -3.0, -4.0]},
+            {"b": ["!", "?"], "c": [-5.0, -6.0]},
+        ]
+    )
+    with pytest.raises(AttributeError):
+        series1.nest.update(series2.nest)
+
+
+def test_items():
+    """Test series.nest.items() implemented by the base class"""
+    series = pack_seq([{"a": [1, 2, 3], "b": [3, 2, 1]}, {"a": [4, None], "b": [7, 8]}])
+    for key, value in series.nest.items():
+        assert_series_equal(value, series.nest[key])
+
+
+def test_keys():
+    """Test series.nest.keys() implemented by the base class"""
+    series = pack_seq([{"a": [1, 2, 3], "b": [3, 2, 1]}, {"a": [4, None], "b": [7, 8]}])
+    assert_array_equal(list(series.nest.keys()), ["a", "b"])
+
+
+def test_values():
+    """Test series.nest.values() implemented by the base class"""
+    series = pack_seq([{"a": [1, 2, 3], "b": [3, 2, 1]}, {"a": [4, None], "b": [7, 8]}])
+    for value in series.nest.values():
+        assert_series_equal(value, series.nest[value.name])
+
+
+def test_get_list_index():
+    """Test that the get_list_index() method works."""
+    # First check that an empty NestedSeries returns an empty list index.
+    empty_struct_array = pa.StructArray.from_arrays(
+        arrays=[pa.array([], type=pa.list_(pa.float64()))], names=["a"]
+    )
+    empty_series = pd.Series(empty_struct_array, dtype=NestedDtype(empty_struct_array.type), index=[])
+    assert len(empty_series) == 0
+    assert len(empty_series.array.get_list_index()) == 0
+
+    # Create a NestedType series
+    struct_array = pa.StructArray.from_arrays(
+        arrays=[
+            pa.array([np.array([0, 1, 2, 3]), np.array([4, 5, 6, 7])]),
+            pa.array([np.array([7, 6, 4, 2]), np.array([0, 1, 2, 3])]),
+            pa.array([np.array([8, 9, 1, 9]), np.array([0, 0, 2, 3])]),
+        ],
+        names=["a", "b", "c"],
+    )
+    series = pd.Series(struct_array, dtype=NestedDtype(struct_array.type), index=[5, 7])
+
+    # Validate the generation of a flat length ordinal array
+    list_index = series.array.get_list_index()
+    assert len(list_index) == series.nest.flat_length
+    assert np.equal(list_index, [0, 0, 0, 0, 1, 1, 1, 1]).all()
+
+
+def test_to_flatten_inner():
+    """Test .nest.to_flatten_inner()"""
+    nf = generate_data(10, 2)
+    # Assign repeated index to make it harder
+    nf["a"] = nf["a"].astype(pd.ArrowDtype(pa.float64()))
+    nf["b"] = nf["b"].astype(pd.ArrowDtype(pa.float64()))
+    nf = nf.assign(id=np.repeat(np.r_[0:5], 2))
+    nf = nf.rename(columns={"nested": "inner"})
+    nnf = NestedFrame.from_flat(nf, base_columns=[], on="id", name="outer")
+    nnf.index = ["a", "a", "b", "b", "c"]
+
+    actual = nnf["outer"].nest.to_flatten_inner("inner")
+
+    desired_dfs = []
+    for nested_df in nnf["outer"]:
+        nested_df = NestedFrame(nested_df)
+        desired_df = nested_df.drop("inner", axis=1)
+        desired_df = desired_df.join(nested_df["inner"].nest.to_flat())
+        desired_dfs.append(desired_df)
+    desired = pack_seq(desired_dfs, index=["a", "a", "b", "b", "c"])
+
+    assert actual.shape == desired.shape
+    assert_frame_equal(actual.nest.to_flat(), desired.nest.to_flat(), check_like=True)
+
+
+def test_to_flatten_inner_empty_inner():
+    """Test .nest.to_flatten_inner for the case when inner frames are empty"""
+    nf = generate_data(10, 2)
+    nf["nested"][2:4] = [pd.DataFrame({"t": [], "flux": [], "band": []})] * 2
+    nf = nf.assign(id=np.repeat(np.r_[0:5], 2))
+    nf = nf.rename(columns={"nested": "inner"})
+    nnf = NestedFrame.from_flat(nf, base_columns=[], on="id", name="outer")
+
+    _actual = nnf["outer"].nest.to_flatten_inner("inner")
+
+
+def test_to_flatten_inner_none_nested():
+    """Test .nest.to_flatten_inner with vsx-x-ztfdr22_lc-m31.parquet file"""
+    nnf = read_parquet("tests/test_data/vsx-x-ztfdr22_lc-m31.parquet")
+    _actual = nnf["ztf"].nest.to_flatten_inner("lc")
+
+
+def test_to_flatten_inner_wrong_column():
+    """Test an exception is raised when .nest.to_flatten_inner() called for a wrong column."""
+    nf = generate_data(10, 2)
+    with pytest.raises(ValueError):
+        nf.nested.nest.to_flatten_inner("t")
+
+
+def test_issue266():
+    """Test .nest.to_flatten_inner() with empty series.
+
+    https://github.com/lincc-frameworks/nested-pandas/issues/266
+    """
+
+    nf = generate_data(10, 2)
+    nf = nf.assign(id=np.repeat(np.r_[0:5], 2))
+    nf = nf.rename(columns={"nested": "inner"})
+    nnf = NestedFrame.from_flat(nf, base_columns=[], on="id", name="outer")
+
+    empty_nnf = nnf.iloc[0:0]
+
+    empty_outer_flatten = empty_nnf["outer"].nest.to_flatten_inner("inner")
+
+    assert empty_outer_flatten.dtype == NestedDtype.from_columns(
+        {"a": pa.float64(), "b": pa.float64(), "t": pa.float64(), "flux": pa.float64(), "band": pa.string()}
+    )

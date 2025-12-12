@@ -1,0 +1,475 @@
+import io
+import os
+import tempfile
+from pathlib import Path
+
+import fsspec.implementations.http
+import fsspec.implementations.local
+import pandas as pd
+import pyarrow as pa
+import pyarrow.fs
+import pyarrow.parquet as pq
+import pytest
+from nested_pandas import NestedFrame, read_parquet
+from nested_pandas.datasets import generate_data
+from nested_pandas.nestedframe.io import (
+    FSSPEC_BLOCK_SIZE,
+    _get_storage_options,
+    _transform_read_parquet_data_arg,
+    from_pyarrow,
+)
+from pandas.testing import assert_frame_equal
+from upath import UPath
+
+
+def test_read_parquet():
+    """Test reading a parquet file with no columns specified"""
+    # Load in the example file
+    nf = read_parquet("tests/test_data/nested.parquet")
+
+    # Check the columns
+    assert nf.columns.tolist() == ["a", "flux", "nested", "lincc"]
+
+    # Make sure nested columns were recognized
+    assert nf.nested_columns == ["nested", "lincc"]
+
+    # Check the nested columns
+    assert nf.nested.nest.columns == ["t", "flux", "band"]
+    assert nf.lincc.nest.columns == ["band", "frameworks"]
+
+
+def test_read_parquet_list():
+    """Test reading a parquet file with no columns specified"""
+    # Load in the example files
+    single_file_nf = read_parquet("tests/test_data/nested.parquet")
+    nf = read_parquet(["tests/test_data/nested.parquet", "tests/test_data/nested.parquet"])
+
+    # Check the columns
+    assert nf.columns.tolist() == ["a", "flux", "nested", "lincc"]
+
+    # Make sure nested columns were recognized
+    assert nf.nested_columns == ["nested", "lincc"]
+
+    # Check the nested columns
+    assert nf.nested.nest.columns == ["t", "flux", "band"]
+    assert nf.lincc.nest.columns == ["band", "frameworks"]
+
+    # Check loading list works correctly
+    assert len(nf) == 2 * len(single_file_nf)
+
+
+def test_read_parquet_directory():
+    """Test reading a parquet file with no columns specified"""
+    # Load in the example file
+    nf = read_parquet("tests/test_data")
+
+    # Check the columns
+    assert nf.columns.tolist() == ["a", "flux", "nested", "lincc"]
+
+    # Make sure nested columns were recognized
+    assert nf.nested_columns == ["nested", "lincc"]
+
+    # Check the nested columns
+    assert nf.nested.nest.columns == ["t", "flux", "band"]
+    assert nf.lincc.nest.columns == ["band", "frameworks"]
+
+
+def test_read_parquet_directory_with_filesystem():
+    """Test reading a parquet file with no columns specified"""
+    # Load in the example file
+    path = UPath("tests/test_data")
+    nf = read_parquet(path.path, filesystem=path.fs)
+
+    # Check the columns
+    assert nf.columns.tolist() == ["a", "flux", "nested", "lincc"]
+
+    # Make sure nested columns were recognized
+    assert nf.nested_columns == ["nested", "lincc"]
+
+    # Check the nested columns
+    assert nf.nested.nest.columns == ["t", "flux", "band"]
+    assert nf.lincc.nest.columns == ["band", "frameworks"]
+
+
+def test_file_object_read_parquet():
+    """Test reading parquet from a file-object"""
+    with open("tests/test_data/nested.parquet", "rb") as f:
+        nf = read_parquet(f)
+    # Check the columns
+    assert nf.columns.tolist() == ["a", "flux", "nested", "lincc"]
+    # Make sure nested columns were recognized
+    assert nf.nested_columns == ["nested", "lincc"]
+    # Check the nested columns
+    assert nf.nested.nest.columns == ["t", "flux", "band"]
+    assert nf.lincc.nest.columns == ["band", "frameworks"]
+
+
+@pytest.mark.parametrize(
+    "columns",
+    [
+        ["a", "flux"],
+        ["flux", "nested", "lincc"],
+        ["nested.flux", "nested.band"],
+        ["flux", "nested.flux"],
+        ["nested.band", "lincc.band"],
+    ],
+)
+def test_read_parquet_column_selection(columns):
+    """Test reading a parquet file with column selection"""
+    # Load in the example file
+    nf = read_parquet("tests/test_data/nested.parquet", columns=columns)
+
+    # Output expectations
+    if columns == ["a", "flux"]:
+        expected_columns = ["a", "flux"]
+    elif columns == ["flux", "nested", "lincc"]:
+        expected_columns = ["flux", "nested", "lincc"]
+    elif columns == ["nested.flux", "nested.band"]:
+        expected_columns = ["nested"]
+    elif columns == ["flux", "nested.flux"]:
+        expected_columns = ["flux", "nested"]
+    elif columns == ["nested.band", "lincc.band"]:
+        expected_columns = ["nested", "lincc"]
+
+    # Check the columns
+    assert nf.columns.tolist() == expected_columns
+
+    # Check nested columns
+    if columns == ["nested.flux", "nested.t"]:
+        assert nf.nested.nest.columns == ["flux", "t"]
+    elif columns == ["nested.band", "lincc.band"]:
+        assert nf.nested.nest.columns == ["band"]
+        assert nf.lincc.nest.columns == ["band"]
+
+
+@pytest.mark.parametrize("reject", [["nested"], "nested"])
+def test_read_parquet_reject_nesting(reject):
+    """Test reading a parquet file with column selection"""
+    # Load in the example file
+    nf = read_parquet("tests/test_data/nested.parquet", columns=["a", "nested"], reject_nesting=reject)
+
+    # Check the columns
+    assert nf.columns.tolist() == ["a", "nested"]
+
+    # Make sure "nested" was not recognized as a nested column
+    assert nf.nested_columns == []
+
+    assert pa.types.is_struct(nf["nested"].dtype.pyarrow_dtype)
+
+
+def test_read_parquet_reject_nesting_partial_loading():
+    """Test reading a parquet file with column selection"""
+    # Load in the example file
+    nf = read_parquet("tests/test_data/nested.parquet", columns=["a", "nested.t"], reject_nesting=["nested"])
+
+    # Check the columns
+    assert nf.columns.tolist() == ["a", "t"]
+
+
+def test_read_parquet_catch_full_and_partial():
+    """Test reading a parquet file with column selection"""
+    # Load in the example file
+    with pytest.raises(ValueError):
+        read_parquet("tests/test_data/nested.parquet", columns=["a", "nested.t", "nested"])
+
+
+def test_read_parquet_catch_failed_cast():
+    """Test reading a parquet file with column selection"""
+    # Load in the example file
+    with pytest.raises(ValueError):
+        read_parquet("tests/test_data/not_nestable.parquet")
+
+
+def test_read_parquet_test_mixed_struct():
+    """Test reading a parquet file with mixed struct types"""
+    # Create the pure-list StructArray
+    field1 = pa.array([[1, 2], [3, 4], [5, 6]])
+    field2 = pa.array([["a", "b"], ["b", "c"], ["c", "d"]])
+    field3 = pa.array([[True, False], [True, False], [True, False]])
+    struct_array_list = pa.StructArray.from_arrays([field1, field2, field3], ["list1", "list2", "list3"])
+
+    # Create the value StructArray
+    field1 = pa.array([1, 2, 3])
+    field2 = pa.array(["a", "b", "c"])
+    field3 = pa.array([True, False, True])
+    struct_array_val = pa.StructArray.from_arrays([field1, field2, field3], ["val1", "va12", "val3"])
+
+    # Create the mixed-list StructArray
+    field1 = pa.array([1, 2, 3])
+    field2 = pa.array(["a", "b", "c"])
+    field3 = pa.array([[True, False], [True, False], [True, False]])
+    struct_array_mix = pa.StructArray.from_arrays([field1, field2, field3], ["val1", "va12", "list3"])
+
+    # Create a PyArrow Table with the StructArray as one of the columns
+    table = pa.table(
+        {
+            "id": pa.array([100, 101, 102]),  # Another column
+            "struct_list": struct_array_list,  # Struct column
+            "struct_value": struct_array_val,
+            "struct_mix": struct_array_mix,
+        }
+    )
+
+    # Write to a temporary file
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pq.write_table(table, os.path.join(tmpdir, "structs.parquet"))
+
+        # Test full read
+        nf = read_parquet(os.path.join(tmpdir, "structs.parquet"))
+        assert nf.columns.tolist() == ["id", "struct_list", "struct_value", "struct_mix"]
+        assert nf.nested_columns == ["struct_list"]
+
+        # Test partial read
+        nf = read_parquet(os.path.join(tmpdir, "structs.parquet"), columns=["id", "struct_mix.list3"])
+        assert nf.columns.tolist() == ["id", "struct_mix"]
+        assert nf.nested_columns == ["struct_mix"]
+
+        # Test partial read with ordering to force reject pops
+        nf = read_parquet(
+            os.path.join(tmpdir, "structs.parquet"), columns=["id", "struct_mix.list3", "struct_mix.val1"]
+        )
+        assert nf.columns.tolist() == ["id", "list3", "val1"]
+        assert len(nf.nested_columns) == 0
+
+
+def test_from_pyarrow_test_mixed_struct():
+    """Test reading a pyarrow table with mixed struct types"""
+    # Create the pure-list StructArray
+    field1 = pa.array([[1, 2], [3, 4], [5, 6]])
+    field2 = pa.array([["a", "b"], ["b", "c"], ["c", "d"]])
+    field3 = pa.array([[True, False], [True, False], [True, False]])
+    struct_array_list = pa.StructArray.from_arrays([field1, field2, field3], ["list1", "list2", "list3"])
+
+    # Create the value StructArray
+    field1 = pa.array([1, 2, 3])
+    field2 = pa.array(["a", "b", "c"])
+    field3 = pa.array([True, False, True])
+    struct_array_val = pa.StructArray.from_arrays([field1, field2, field3], ["val1", "va12", "val3"])
+
+    # Create the mixed-list StructArray
+    field1 = pa.array([1, 2, 3])
+    field2 = pa.array(["a", "b", "c"])
+    field3 = pa.array([[True, False], [True, False], [True, False]])
+    struct_array_mix = pa.StructArray.from_arrays([field1, field2, field3], ["val1", "va12", "list3"])
+
+    # Create a PyArrow Table with the StructArray as one of the columns
+    table = pa.table(
+        {
+            "id": pa.array([100, 101, 102]),  # Another column
+            "struct_list": struct_array_list,  # Struct column
+            "struct_value": struct_array_val,
+            "struct_mix": struct_array_mix,
+        }
+    )
+
+    # Test full read
+    nf = from_pyarrow(table)
+    assert nf.columns.tolist() == ["id", "struct_list", "struct_value", "struct_mix"]
+    assert nf.nested_columns == ["struct_list"]
+
+
+def test_to_parquet():
+    """Test writing a parquet file with no columns specified"""
+    # Load in the example file
+    nf = read_parquet("tests/test_data/nested.parquet")
+
+    # Write to a temporary file
+    with tempfile.TemporaryDirectory() as tmpdir:
+        nf.to_parquet(os.path.join(tmpdir, "nested.parquet"))
+
+        # Read the file back in
+        nf2 = read_parquet(os.path.join(tmpdir, "nested.parquet"))
+
+        # Check the columns
+        assert nf.columns.tolist() == nf2.columns.tolist()
+
+        # Check the nested columns
+        assert nf.nested_columns == nf2.nested_columns
+
+        # Check the data
+        assert_frame_equal(nf, nf2)
+
+
+def test_pandas_read_parquet():
+    """Test that pandas can read our serialized files"""
+
+    nf = generate_data(10, 100, seed=1)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        nf.to_parquet(os.path.join(tmpdir, "nested_for_pd.parquet"))
+        # Load in the example file
+        df = pd.read_parquet(os.path.join(tmpdir, "nested_for_pd.parquet"))
+
+        # Check the columns
+        assert df.columns.tolist() == ["a", "b", "nested"]
+
+
+def test_read_empty_parquet():
+    """Test that we can read empty parquet files"""
+    orig_nf = generate_data(1, 2).iloc[:0]
+
+    with tempfile.NamedTemporaryFile("wb", suffix=".parquet") as tmpfile:
+        tmpfile.close()
+        orig_nf.to_parquet(tmpfile.name)
+        # All columns
+        # Do not check dtype because of:
+        # https://github.com/lincc-frameworks/nested-pandas/issues/252
+        assert_frame_equal(read_parquet(tmpfile.name), orig_nf, check_dtype=False)
+        # Few columns
+        assert_frame_equal(
+            read_parquet(
+                tmpfile.name,
+                columns=[
+                    "a",
+                    "nested.flux",
+                    "nested.band",
+                ],
+            ),
+            orig_nf.drop(["b", "nested.t"], axis=1),
+            check_dtype=False,
+        )
+
+
+def test_read_parquet_list_autocast():
+    """Test reading a parquet file with list autocasting"""
+    list_nf = NestedFrame(
+        {
+            "a": ["cat", "dog", "bird"],
+            "b": [1, 2, 3],
+            "c": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            "d": [[10, 20, 30], [40, 50, 60], [70, 80, 90]],
+        }
+    )
+    with tempfile.NamedTemporaryFile("wb", suffix=".parquet") as tmpfile:
+        tmpfile.close()
+        list_nf.to_parquet(tmpfile.name)
+
+        nf = read_parquet(tmpfile.name, autocast_list=True)
+
+        assert nf.nested_columns == ["c", "d"]
+        assert nf["c"].nest.columns == ["c"]
+        assert len(nf["c"].nest.to_flat()) == 9
+        assert nf["d"].nest.columns == ["d"]
+        assert len(nf["d"].nest.to_flat()) == 9
+
+
+def test__transform_read_parquet_data_arg():
+    """Testing _transform_read_parquet_data_arg"""
+    with open("tests/test_data/nested.parquet", "rb") as f:
+        bytes = f.read()
+    io_bytes = io.BytesIO(bytes)
+    assert _transform_read_parquet_data_arg(io_bytes) == (io_bytes, None)
+
+    local_path = "tests/test_data/nested.parquet"
+    with open(local_path, "rb") as f:
+        assert _transform_read_parquet_data_arg(f) == (f, None)
+    with open(Path(local_path), "rb") as f:
+        assert _transform_read_parquet_data_arg(f) == (f, None)
+    with Path(local_path).open("rb") as f:
+        assert _transform_read_parquet_data_arg(f) == (f, None)
+    with UPath(local_path).open("rb") as f:
+        assert _transform_read_parquet_data_arg(f) == (f, None)
+
+    assert _transform_read_parquet_data_arg(local_path) == (local_path, None)
+
+    assert _transform_read_parquet_data_arg(Path(local_path)) == (Path(local_path), None)
+
+    local_upath = UPath(local_path)
+    assert _transform_read_parquet_data_arg(local_upath) == (local_path, local_upath.fs)
+
+    s3_path = "s3://nasa-irsa-euclid-q1/contributed/q1/merged_objects/hats/euclid_q1_merged_objects-hats/dataset/Norder=3/Dir=0/Npix=334/part0.snappy.parquet"
+    path, fs = _transform_read_parquet_data_arg(s3_path)
+    assert f"s3://{path}" == s3_path
+    assert isinstance(fs, pa.fs.S3FileSystem)
+
+    https_path = "https://data.lsdb.io/hats/gaia_dr3/gaia/dataset/Norder=2/Dir=0/Npix=0.parquet"
+    path, fs = _transform_read_parquet_data_arg(https_path)
+    assert path == https_path
+    assert isinstance(fs, fsspec.implementations.http.HTTPFileSystem)
+
+    with pytest.raises(TypeError):
+        _transform_read_parquet_data_arg(123)
+
+    local_paths = list(Path("tests/test_data").glob("*.parquet"))
+    assert _transform_read_parquet_data_arg(local_paths) == (local_paths, None)
+
+    local_upaths = list(UPath("tests/test_data").glob("*.parquet"))
+    paths, fs = _transform_read_parquet_data_arg(local_upaths)
+    assert paths == [up.path for up in local_upaths]
+    assert isinstance(fs, fsspec.implementations.local.LocalFileSystem)
+
+    with pytest.raises(ValueError):
+        _transform_read_parquet_data_arg(
+            [
+                "tests/test_data",
+                "https://data.lsdb.io/hats/gaia_dr3/gaia/dataset/Norder=2/Dir=0/Npix=0.parquet",
+            ]
+        )
+
+
+def test_read_parquet_with_fsspec_optimization():
+    """Test that read_parquet automatically uses fsspec optimization for remote files."""
+    # Test with local file (should not use fsspec optimization)
+    local_path = "tests/test_data/nested.parquet"
+
+    # Test basic reading - local files should work as before
+    nf1 = read_parquet(local_path)
+
+    # Test with additional kwargs
+    nf2 = read_parquet(local_path, columns=["a", "nested.flux"], use_threads=True)
+
+    assert len(nf2) <= len(nf1)  # filtered columns
+    assert "a" in nf2.columns
+    assert "nested" in nf2.columns
+
+
+def test_docstring_includes_fsspec_notes():
+    """Test that the docstring mentions the automatic fsspec optimization."""
+    docstring = read_parquet.__doc__
+    assert "fsspec" in docstring
+    assert "remote" in docstring.lower()
+
+
+def test__get_storage_options():
+    """Test _get_storage_options function with various input types."""
+    local_path = "tests/test_data/nested.parquet"
+
+    # Test with UPath objects (local files)
+    local_upath = UPath(local_path)
+    storage_opts = _get_storage_options(local_upath)
+    assert storage_opts is None  # Local UPath should have no storage options
+
+    # Test with UPath objects (HTTP)
+    http_url = "http://example.com/data.parquet"
+    http_upath = UPath(http_url)
+    storage_opts = _get_storage_options(http_upath)
+    assert storage_opts is not None
+    assert storage_opts.get("block_size") == FSSPEC_BLOCK_SIZE
+
+    # Test with UPath objects (HTTPS)
+    https_url = "https://example.com/data.parquet"
+    https_upath = UPath(https_url)
+    storage_opts = _get_storage_options(https_upath)
+    assert storage_opts is not None
+    assert storage_opts.get("block_size") == FSSPEC_BLOCK_SIZE
+
+    # Test with UPath objects (S3)
+    s3_url = "s3://bucket/path/data.parquet"
+    s3_upath = UPath(s3_url)
+    storage_opts = _get_storage_options(s3_upath)
+    assert storage_opts is not None
+    # S3 should NOT have the block_size override (only HTTP/HTTPS)
+    assert storage_opts.get("block_size") != FSSPEC_BLOCK_SIZE
+
+
+def test_list_struct_partial_loading_error():
+    """Test that attempting to partially load a list-struct raises an error."""
+    # Load in the example file
+    with pytest.raises(ValueError):
+        read_parquet("tests/list_struct_data/list_struct.parquet", columns=["lightcurve.hmjd"])
+
+
+def test_normal_loading_error():
+    """Test that making a normal naming mistake raises the normal pyarrow error."""
+    # Load in the example file
+    with pytest.raises(ValueError, match="No match for*"):
+        read_parquet("tests/test_data/nested.parquet", columns=["not_a_column"])
