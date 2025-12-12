@@ -1,0 +1,49 @@
+[project]
+name = "configlite"
+description = "Lightweight self-healing config manager"
+readme = "README.md"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+    "pyyaml>=6.0.3",
+]
+dynamic = ['version']
+keywords = [
+    "config",
+    "configuration",
+    "yaml",
+    "defaults",
+    "self-healing",
+    "lightweight",
+    "python",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = 'configlite.__version__'}
+
+[tool.bumpver]
+current_version = "0.1.2"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "[clean] bump version {old_version} -> {new_version}"
+commit = true
+tag = false
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+]
+"configlite/__init__.py" = [
+    '^__version__ = "{version}"'
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=configlite --cov-report term-missing --cov-report xml:coverage.xml --cov-report lcov:coverage.lcov --cov-append"
