@@ -1,0 +1,142 @@
+Metadata-Version: 2.4
+Name: isoring
+Version: 0.0.2
+Summary: A structure for data security and a cracking environment.
+Home-page: https://github.com/Changissnz/isoring
+Author: Richard Pham
+Author-email: Richard Pham <phamrichard45@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/changissnz/isoring
+Project-URL: Issues, https://github.com/changissnz/isoring/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+
+# isoring
+a component from the terminated project, puissec. 
+
+A structure called the `IsoRingedChain` is supposed to guard a big secret, comprised of a sequence 
+of arbitrarily-lengthed vectors (secrets). 
+
+# What is a Secret? 
+
+Who knows, really?  
+
+In this computer program, a secret is represented by a finitely lengthed vector. The `Sec` structure contains this vector of 
+length `n`, as well as `k` additional vectors in the same dimension of `n`. These `k+1` vectors are the local optima of 
+`n`-space in real numbers. Every one of those vectors has an associated probability value, the probability values adding up 
+to one. These probability values can be arbitrary, meaning the actual secret (vector) of `Sec` may have any probability 
+value in `[0,1.]`. Design of `Sec` is based on the common machine-learning problem of choosing local optima over the best 
+solution. 
+
+The `IsoRing` structure contains the secret, a vector in finite space. It contains that secret in one `Sec` instance. 
+`IsoRing` also holds an additional `j` `Sec` instances, each of these `Sec` instances in a unique finite vector 
+dimension. These `j` instances serve as buffers to third-party acquisition of the actual `Sec` instance. In effect, 
+`IsoRing` has two primary layers of defenses: the `j` `Sec` instances and the `r_j >= 1` alternative local optima to 
+the actual vector of some `Sec`. 
+
+At any point in program run, outward representative of `IsoRing` is exactly one `Sec` instance, the isomorphic 
+representation (iso-repr). 
+
+In order for a third-party to interact with an `IsoRing` for information, third-party will have to interact with 
+feedback function of `IsoRing`. For an `IsoRing` in iso-repr vector dimension `q`, feedback function provides a 
+`q`-vector of distance scores. Distance scores are conventionally euclidean point distances. However, there are 
+alternative feedback functions that provide distorted distance scores via pseudo-random number generator. 
+
+For a sequence of arbitrarily-lengthed vectors (secrets), an `IsoRingedChain` is used to cover it and this structure 
+is, in turn, composed of a number of `IsoRing`s equal to the number of those vectors (secrets). 
+
+# What is an Isomorphic Ringed Chain? 
+
+An `IsoRingedChain` guards a sequence of vectors (secrets). Any of the `IsoRing`s in an `IsoRingedChain` may be in 
+an isomorphic representation not of the same dimension of the actual secret. Additionally, every `IsoRing` in an 
+`IsoRingedChain` has dependencies and co-dependencies in order for third-party access to it. Dependencies are the 
+`IsoRing`s that must have been "cracked" by the third-party before getting to it, and co-dependencies are the 
+`IsoRing`s that must be "cracked" alongside it. Cracking cannot proceed by an ordering of the `IsoRing`s that 
+violate the specified dependencies and co-dependencies linking these structures together for the `IsoRingedChain`. 
+
+# What is Cracking? 
+
+In this program, the `Cracker` structure is responsible for determining all the secrets of an `IsoRingedChain`. This 
+process of determination is "cracking". The `Cracker` must attempt cracking in the order specified by all of the 
+contained `IsoRing`s' dependencies and co-dependencies. Otherwise, program will halt `Cracker` midway, resulting in 
+its failure. 
+
+`Cracker` is given background information, `BackgroundInfo`, on the target `IsoRingedChain`.  
+
+NOTE: There are deficits to this map design of background information. However, it was chosen because it avoids the 
+      Curse of Dimensionality, one of a few major problems that plagued successful complete development of the 
+      program `puissec`, found at `github.com/changissnz/puissec`. Program `puissec` was the predecessor of this 
+      program `isoring`. Program `isoring` is, in fact, a simpler version of only part of the problems in the 
+      conceptualization of `puissec`. 
+
+`BackgroundInfo` has three main components.  
+1. Hypothesis map,  
+    `<Isoring> identifier -> <Sec> index -> <HypStruct>`.  
+2. Suspected `IsoRing`-to-`Sec` map,  
+    `<Isoring> identifier -> <Sec> index`.  
+3. Order of cracking, a sequence with each element  
+    `{set of co-dependent IsoRing identifiers}`.  
+
+One deficit about design of this `BackgroundInfo` is the hypothesis map. Every `Sec` instance can have at 
+most one hypothesis on it. And the `HypStruct` is focused on exactly one local optimum. 
+
+`HypStruct` represents a hypothesis on a `Sec`, of vector dimension `k`, and has these attributes.  
+1. Suspected optima index `i` of the `Sec`.  
+2. Bounds (a `k x 2` matrix) suspected to contain optima `i`.  
+3. Hop size `h`, an integer, uniformly partitioning the bounds into `k x h` points.  
+4. Probability marker `P`, used to cross-reference with probability output value `P'` from a 
+   cracked `Sec`.  
+
+The probability values in this program are meant to be reference values for a `Cracker`. If a `Cracker` 
+uses a `HypStruct` to crack `Sec`, and the output probability from `Sec` differs from that of the 
+`HypStruct` used, then the `Cracker` does not accept the cracking vector as the actual secret. 
+
+NOTE: these are information games, broadly speaking.  
+
+For every `IsoRing` being targeted by a `Cracker`, `Cracker` uses one `Crackling` at any one time, in 
+order to attempt to crack the `IsoRing` for the vector (secret) of the `IsoRing`'s suspected `Sec`. A 
+`Cracker` will attempt to use as many `Crackling`s, in re-cracking sessions, for an `IsoRing` as program 
+permits until `Cracker` cracks its wanted local optimum from the suspected `Sec` of said `IsoRing`. 
+
+A structure called a `SearchSpaceIterator` is employed by every `Crackling` to execute brute-force 
+cracking attempts on an `IsoRing`'s isomorphic representation. `SearchSpaceIterator` outputs `k x h` 
+points that uniformly cover the input bounds of matrix `k x 2`. 
+
+If the `Cracker` does not a `HypStruct` for the `IsoRing`'s isomorphic representation (the second 
+layer in the three-layer hypothesis map), program halts `Cracker` midway. If the `Crackling` is 
+successful in cracking the isomorphic representation, `IsoRing` has to switch its isomorphic representation 
+to an uncracked `Sec`. If there are none that have not been cracked, `IsoRing` stops switching its 
+isomorphic representation due to the `Cracker` no longer being interested in cracking it anymore. 
+
+If a `Crackling` does not produce any (vector, associated probability value) on a `Sec`, `Cracker` cannot 
+proceed to attempting to crack any `IsoRing`s dependent on the `IsoRing`, pertaining to said `Sec`, being 
+cracked. In most cases, `Cracker` would be halted. 
+
+# The Brute-Force Environment 
+
+There Are Rules To The Game. The rules are enforced in the environment `BruteForceEnv`, where a `Cracker` 
+attempts to crack an `IsoRingedChain`. A `Cracker` is granted some arbitrary amount of energy, a real number. 
+If the energy falls to zero or below, program halts `Cracker`. A `Cracker` can use only `t` number of 
+`Crackling`s at once. If there are co-dependent `IsoRing` sets in `IsoRingedChain` that are greater in size 
+than `t`, successfully cracking the `IsoRingedChain` is impossible for the `Cracker`. 
+
+# What is Successful Cracking? Complete Execution or Complete Acquisition of Actual? 
+
+The complete execution of cracking all the `IsoRing`s in an `IsoRingedChain` can be known by a `Cracker` by 
+the time the program halts `Cracker`. However, the `BackgroundInfo` of a `Cracker` is what allows it to verify 
+on what the actual vectors from `IsoRingedChain` are. 
+
+# Additional Features 
+
+Generative methods, found in this program, can be used to produce the relevant data structures. These 
+methods do come in handy since there are a lot of variables to type up by hand.  
+
+# An Example On the User Interface 
+
+![Screenshot](screeshantaya.png) 
