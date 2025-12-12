@@ -1,0 +1,100 @@
+name: Integration tests
+run-name: Integration tests
+
+on:
+  schedule:
+    - cron: '0 5 * * *'  # every day at 5 AM UTC
+  workflow_dispatch:      # allow manual triggering too
+
+jobs:
+  test-testpypi:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        PIPE_API_URL: [ "https://antibody-dev.com", "https://pipebio.dev-engteam1.dev.bnch.services/" ]
+
+    env:
+      PIPE_API_URL: ${{ matrix.PIPE_API_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          uv-version: latest
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pipebio from PyPi
+        run: |
+          uv pip install pipebio[dev] pytest
+
+      - name: Set PIPE_API_KEY based on PIPE_API_URL
+        run: |
+          if [[ "${PIPE_API_URL}" == "https://antibody-dev.com" ]]; then
+            echo "PIPE_API_KEY=${{ secrets.ANTIBODY_DEV_API_KEY }}" >> $GITHUB_ENV
+          elif [[ "${PIPE_API_URL}" == "https://pipebio.dev-engteam1.dev.bnch.services/" ]]; then
+            echo "PIPE_API_KEY=${{ secrets.ENGTEAM1_API_KEY }}" >> $GITHUB_ENV
+          else
+            echo "Unknown PIPE_API_URL: ${PIPE_API_URL}" >&2
+            exit 1
+          fi
+
+      - name: Run tests
+        run: |
+          pytest -v tests/integration/
+
+
+  test-pypi:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12", "3.13" ]
+        PIPE_API_URL: [ "https://antibody-dev.com", "https://pipebio.dev-engteam1.dev.bnch.services/" ]
+
+    env:
+      PIPE_API_URL: ${{ matrix.PIPE_API_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          uv-version: latest
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pipebio from PyPi
+        run: |
+          uv pip install pipebio[dev] pytest
+
+      - name: Set PIPE_API_KEY based on PIPE_API_URL
+        run: |
+          if [[ "${PIPE_API_URL}" == "https://antibody-dev.com" ]]; then
+            echo "PIPE_API_KEY=${{ secrets.ANTIBODY_DEV_API_KEY }}" >> $GITHUB_ENV
+          elif [[ "${PIPE_API_URL}" == "https://pipebio.dev-engteam1.dev.bnch.services/" ]]; then
+            echo "PIPE_API_KEY=${{ secrets.ENGTEAM1_API_KEY }}" >> $GITHUB_ENV
+          else
+            echo "Unknown PIPE_API_URL: ${PIPE_API_URL}" >&2
+            exit 1
+          fi
+
+      - name: Run tests
+        run: |
+          pytest -v tests/integration/
