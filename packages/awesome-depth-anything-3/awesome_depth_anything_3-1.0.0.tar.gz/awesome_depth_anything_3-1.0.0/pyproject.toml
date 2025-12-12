@@ -1,0 +1,142 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "awesome-depth-anything-3"
+version = "1.0.0"
+description = "Optimized wrapper for Depth Anything 3 - Metric depth, point clouds, camera poses and novel views from any images"
+readme = "README.md"
+requires-python = ">=3.10, <=3.13"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Delanoe Pirard", email = "delanoe.pirard.pro@gmail.com" }]
+keywords = [
+    "depth-estimation",
+    "3d-reconstruction",
+    "computer-vision",
+    "pytorch",
+    "monocular-depth",
+    "multi-view",
+    "pose-estimation",
+    "point-cloud",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+dependencies = [
+    "torch>=2",
+    "torchvision",
+    "kornia>=0.7.0",
+    "einops",
+    "huggingface_hub",
+    "imageio",
+    "numpy<2",
+    "opencv-python",
+    "open3d",
+    "fastapi",
+    "uvicorn",
+    "requests",
+    "typer>=0.12.0",
+    "pillow",
+    "omegaconf",
+    "evo",
+    "e3nn",
+    "moviepy==1.0.3",
+    "trimesh",
+    "plyfile",
+    "pillow_heif",
+    "safetensors",
+    "pycolmap",
+]
+
+[project.optional-dependencies]
+app = ["gradio>=5.50.0,<6.0", "huggingface_hub>=0.33.5,<2.0", "pillow>=9.0"]
+dev = ["pre-commit", "pytest", "ruff"]
+# CUDA acceleration packages (may require manual install steps)
+xformers = ["xformers; platform_system!='Darwin'"]
+gs = ["gsplat>=1.0.0; platform_system!='Darwin'"]
+# Note: flash-attn package is optional. PyTorch >= 2.2 includes Flash Attention
+# natively via F.scaled_dot_product_attention(). Only install flash-attn if you
+# need the absolute latest optimizations:
+#   pip install flash-attn --no-build-isolation  (requires CUDA toolkit)
+# Convenience bundles
+cuda = ["awesome-depth-anything-3[xformers,gs]"]
+all = ["awesome-depth-anything-3[app,cuda]"]
+
+
+[project.scripts]
+da3 = "depth_anything_3.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/Aedelon/awesome-depth-anything-3"
+Repository = "https://github.com/Aedelon/awesome-depth-anything-3"
+Documentation = "https://github.com/Aedelon/awesome-depth-anything-3#readme"
+Issues = "https://github.com/Aedelon/awesome-depth-anything-3/issues"
+Changelog = "https://github.com/Aedelon/awesome-depth-anything-3/blob/main/CHANGELOG.md"
+Upstream = "https://github.com/ByteDance-Seed/Depth-Anything-3"
+
+# Version managed manually in [project] section
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/depth_anything_3"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/README.md",
+  "/pyproject.toml",
+  "/src/depth_anything_3",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.mypy]
+plugins = ["jaxtyping.mypy_plugin"]
+
+[tool.black]
+line-length = 99
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+  | \.git
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+known_third_party = ["bson","cruise","cv2","dataloader","diffusers","omegaconf","tensorflow","torch","torchvision","transformers","gsplat"]
+known_first_party = ["common", "data", "models", "projects", "depth_anything_3"]
+sections = ["FUTURE","STDLIB","THIRDPARTY","FIRSTPARTY","LOCALFOLDER"]
+skip_gitignore = true
+line_length = 99
+no_lines_before="THIRDPARTY"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.ruff]
+line-length = 99
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]  # Line too long (handled by formatter)
