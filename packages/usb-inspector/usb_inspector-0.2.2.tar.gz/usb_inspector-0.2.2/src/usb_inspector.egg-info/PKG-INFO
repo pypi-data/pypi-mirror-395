@@ -1,0 +1,142 @@
+Metadata-Version: 2.4
+Name: usb-inspector
+Version: 0.2.2
+Summary: A cross-platform tool to monitor and inspect USB devices connected to the host system.
+Author-email: Tim Santor <tsantor@xstudios.com>
+Project-URL: Repository, https://bitbucket.org/xstudios/usb-inspector.git
+Project-URL: Issues, https://bitbucket.org/xstudios/usb-inspector/issues
+Project-URL: Changelog, https://bitbucket.org/xstudios/usb-inspector/blob/master/HISTORY.md
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+License-File: AUTHORS.md
+Requires-Dist: chardet>=5.2.0
+Requires-Dist: click>=8.3.0
+Requires-Dist: numpy==2.3.3
+Requires-Dist: pandas==2.3.3
+Requires-Dist: platformdirs>=4.5.0
+Requires-Dist: pyusb>=1.3.1
+Requires-Dist: requests>=2.32.5
+Requires-Dist: tabulate>=0.9.0
+Dynamic: license-file
+
+# USB Inspector
+
+![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)
+
+## Overview
+
+A simple package that leverages `pyusb` and allows you to lookup USB vendor and device IDs and get back a human readable vendor and device name.
+It includes ability to manually update the USB DB without installing a new version of `usb-inspector`.
+
+## Installation
+
+```bash
+uv add usb-inspector
+# via pip
+python3 -m pip install usb-inspector
+```
+
+**IMPORTANT**: On Windows ensure you have `libusb-1.0.dll` (64bit) in `C:\Windows\System32` or you will get a `NoBackendError`. You can get it from [here](https://libusb.info/).
+
+## Example Usage
+
+Command Line:
+```bash
+usb-inspector lookup --vendor-id 1A40
+usb-inspector lookup --vendor-id 1A40 --device-id 0801
+
+# To manually update the USB DB
+usb-inspector delete-data
+usb-inspector update-db
+```
+
+```python
+from usb_inspector.monitor import USBDeviceMonitor
+
+usb_monitor = USBDeviceMonitor(poll_interval=1.0)
+usb_monitor.monitor()
+# Do stuff
+...
+usb_monitor.stop()
+```
+
+## Issues
+
+If you experience any issues, please create an [issue](https://bitbucket.org/xstudios/usb-inspector/issues) on Bitbucket.
+
+
+## Development
+
+To get a list of all commands with descriptions simply run `make`.
+
+```bash
+make env
+make pip_install_editable
+```
+
+## Testing
+
+```bash
+make pytest
+make coverage
+make open_coverage
+```
+
+# History
+
+All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
+
+## 0.2.2 (2025-12-04)
+- ADDED tox and more test coverage
+
+## 0.2.1 (2025-11-21)
+- ADDED `port` to the device info
+- CHANGED cleaned up logging on connect/disconnect descriptions
+
+## 0.2.0 (2025-11-21)
+- FIXED Connecting/Disconnecting the same physical device to the same port now correctly identifies the device as the same device on Windows/Linux.
+
+## 0.1.9 (2025-11-21)
+- FIXED Cached sql db lookup so it occurs only once.
+
+## 0.1.8 (2025-11-20)
+- FIXED turned default packaged logging to `ERROR`. Was `INFO`...Sorry!
+
+## 0.1.7 (2025-11-13)
+- FIXED `is_connected` bug introduced in last patch.
+- ADDED improved tracking of devices allowing multiple of the same vendor/device ID to be connected.
+
+## 0.1.6 (2025-11-13)
+- FIXED `last_seen` timestamp for each device, only updates when connected/disonnected.
+
+## 0.1.5 (2025-11-05)
+- Locked `pandas` to version 2.3.3 for Raspberry Pi compatability (it pulls the pre-built wheel from piwheels.org)
+
+## 0.1.4 (2025-11-05)
+- Added `last_seen` timestamp for each device.
+
+## 0.1.4 (2025-10-31)
+
+- `update-db` cli command only adds new Vendors and Devices to the existing DB rather than requiring deletion and recreation of the DB.
+- Track which devices are connected/disconnected.
+
+## 0.1.2 (2025-10-30)
+
+- Fix lookup error
+
+## 0.1.1 (2025-10-30)
+
+- Added `start` as an alias for `monitor`.
+
+## 0.1.0 (2025-10-30)
+
+- First release
