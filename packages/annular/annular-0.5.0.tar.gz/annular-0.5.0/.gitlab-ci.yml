@@ -1,0 +1,119 @@
+# Using uv's provided image for faster environment management
+# and package installation.
+# https://docs.astral.sh/uv/guides/integration/gitlab/
+variables:
+  PYTHON_VERSION: ""
+  BASE_LAYER: bookworm-slim
+  # GitLab CI creates a separate mountpoint for the build directory,
+  # so we need to copy instead of using hard links.
+  UV_LINK_MODE: copy
+  UV_CACHE_DIR: .uv-cache
+  # Specify cache location for pre-commit's environments
+  PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
+
+default:
+  image: ghcr.io/astral-sh/uv:$BASE_LAYER
+  cache:
+    paths:
+      - ${UV_CACHE_DIR}
+      - ${PRE_COMMIT_HOME}
+
+workflow:
+  rules:
+    # Always run on the main branch ...
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # ... and for merge requests ...
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # ... but not if it's a draft MR.
+    - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
+      when: never
+
+linting:
+  stage: test
+  before_script:
+    # For pre-commit to run, it needs 'git' and https certificates installed.
+    # https://forum.gitlab.com/t/gitlab-runner-server-certificate-verification-failed/59450/9
+    # yamllint disable-line rule:line-length
+    - apt update && apt install -y --no-install-recommends git ca-certificates apt-transport-https
+    - update-ca-certificates
+  script:
+    # Skip the "don't commit to main" and "pytest" checks
+    - SKIP=no-commit-to-branch,pytest-check uvx pre-commit run --all-files
+  interruptible: true
+
+test-with-coverage:
+  stage: test
+  image: ghcr.io/astral-sh/uv:python3.13-$BASE_LAYER
+  rules:
+    # Only run if pyproject.toml, or files in src/ or tests/ have changed.
+    - changes:
+        - src/
+        - tests/
+        - pyproject.toml
+  before_script:
+    - uv venv
+    - source .venv/bin/activate
+  script:
+    - uv pip install -e ".[dev]" # editable install is needed to enable coverage
+    - python -m pytest --cov --junitxml=report.xml
+    - uv cache prune --ci
+  coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+  interruptible: true
+
+test-older-python-versions:
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    # Only run if pyproject.toml, or files in src/ or tests/ have changed.
+    - changes:
+        - src/
+        - tests/
+        - pyproject.toml
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ['3.10', '3.11', '3.12'] # test on older python versions
+  image: ghcr.io/astral-sh/uv:python$PYTHON_VERSION-$BASE_LAYER
+  before_script:
+    - uv venv
+    - source .venv/bin/activate
+  script:
+    - uv pip install ".[dev]"
+    - python -m pytest
+    - uv cache prune --ci
+  interruptible: true
+
+build-package:
+  stage: test
+  script:
+    # run the `pyproject-build` command from the `build` package,
+    # using `uv` as the installer for the venv that the build process needs,
+    # as recommended by build: https://pypi.org/project/build/
+    - uvx --from build pyproject-build --installer uv
+  artifacts:
+    paths:
+      - dist/
+  rules:
+    - if: $CI_COMMIT_TAG
+  interruptible: true
+
+publish-test:
+  stage: deploy
+  script:
+    # yamllint disable-line rule:line-length
+    - TWINE_PASSWORD=${TEST_PYPI_TOKEN} TWINE_USERNAME=__token__ uvx twine upload --repository testpypi dist/*
+  rules:
+    - if: $CI_COMMIT_TAG
+
+publish:
+  stage: deploy
+  needs:
+    - publish-test
+  script:
+    # yamllint disable-line rule:line-length
+    - TWINE_PASSWORD=${PYPI_TOKEN} TWINE_USERNAME=__token__ uvx twine upload dist/*
+  rules:
+    - if: $CI_COMMIT_TAG

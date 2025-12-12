@@ -1,0 +1,169 @@
+# see documentation, e.g.
+# - https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
+# - https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+# - https://www.python.org/dev/peps/pep-0621/
+
+[build-system]
+requires = ["setuptools>=64.0.0", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+authors = [
+    { name = "Christian Doh Dinga", email = "c.dohdinga@tudelft.nl"},
+    { name = "Sander van Rijn", email = "s.vanrijn@esciencecenter.nl" },
+]
+description = "model coupling for demoses"
+dependencies = [
+    "cronian>=0.3.2",
+    "gurobipy",
+    "more_itertools",
+    "muscle3",
+    "numpy",
+    "pandas",
+    "Pyomo",
+]
+keywords = [
+    "energy transition",
+    "flexibility",
+]
+license = {file = "LICENSE"}
+name = "annular"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.10"
+version = "0.5.0"
+
+[project.optional-dependencies]
+dev = [
+    "build",  # build is not only used in publishing (below), but also in the template's test suite
+    "bump-my-version",
+    "coverage [toml]",
+    "highspy",
+    "jupyter",
+    "parse",
+    "pre-commit",
+    "pyprojroot",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "ruff",
+    "tox",
+]
+docs = [
+    "myst_parser",
+    "sphinx",
+    "sphinx_copybutton",
+    "sphinx_rtd_theme",
+    "sphinx-autoapi",
+]
+publishing = [
+    "build",
+    "twine",
+    "wheel",
+]
+
+[project.scripts]
+annular = "annular:cli.cli_main"
+
+[project.urls]
+Repository = "https://gitlab.tudelft.nl/demoses/annular"
+Issues = "https://gitlab.tudelft.nl/demoses/annular/issues"
+Changelog = "https://gitlab.tudelft.nl/demoses/annular/CHANGELOG.md"
+Documentation = "https://annular.readthedocs.io/en/latest/"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: (slow) test of high-level function without mocking (deselect with '-m \"not integration\"')",
+    "gurobi: hardcoded to rely on the proprietary Gurobi solver, needs valid license (deselect with '-m \"not gurobi\"')",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/annular"]
+command_line = "-m pytest"
+
+[tool.ruff]
+# Enable Pyflakes `E` and `F` codes by default.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    ".venv",
+    "scripts",
+]
+
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "F",  # Pyflakes
+    "E",  # pycodestyle (error)
+    "W",    # pycodestyle (warning)
+    "I",    # isort
+    "D",    # pydocstyle
+]
+ignore = [
+    'D100',  # Missing module docstring
+    'D101',  # Missing public class docstring
+    'D104',  # Missing public package docstring
+    # The following list excludes rules irrelevant to the Google style
+    'D203',
+    'D204',
+    'D213',
+    'D215',
+    'D400',
+    'D401',
+    'D404',
+    'D406',
+    'D407',
+    'D408',
+    'D409',
+    'D413',
+]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["A", "B", "C", "D", "E", "F", "I"]
+unfixable = []
+
+per-file-ignores = {}
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.isort]
+known-first-party = ["annular"]
+no-lines-before = ["future", "local-folder"]
+
+[tool.bumpversion]
+current_version = "0.5.0"
+
+[[tool.bumpversion.files]]
+filename = "src/annular/__init__.py"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
+
+[[tool.bumpversion.files]]
+filename = "docs/conf.py"
+
+[[tool.bumpversion.files]]
+filename = "README.md"
