@@ -1,0 +1,108 @@
+[project]
+name = "barndoor"
+dynamic = ["version"]
+description = "Official Python SDK for the Barndoor API."
+authors = [{ name = "Barndoor AI, Inc." }]
+keywords = ["barndoor", "mcp", "ai", "sdk"]
+license = { text = "MIT" }
+
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "httpx[http2]>=0.27.2",
+    "pydantic>=2.10.6",
+    "python-dotenv>=1.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "typing-extensions>=4.12.2",
+]
+
+[project.scripts]
+barndoor-login = "barndoor.sdk.cli_login:main"
+
+[project.optional-dependencies]
+examples = [
+    "crewai>=0.30.0",
+    "crewai_tools>=0.1.0",
+    "langchain-openai",
+    "langchain-mcp-adapters",
+    "langgraph>=0.5.3",
+    "llama-index",
+    "llama-index-tools-mcp",
+    "openai>=1.61.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.1.1",
+    "pytest-asyncio>=0.23.5",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "pytest-env>=1.1.3",
+    "ruff>=0.6.8",
+    "pre-commit>=3.8.0",
+    "crewai>=0.30.0",
+    "crewai_tools>=0.1.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = [
+    "examples",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "UP", # pyupgrade
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"barndoor/sdk/quickstart.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["barndoor"]
+split-on-trailing-comma = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+line-ending = "lf"
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["barndoor"]
+
+# Exclude non-package artefacts from all build targets
+[tool.hatch.build]
+exclude = [
+    "examples/**",
+    "env.*.example",
+]
+
+# Enable editable install
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# Use uv-dynamic-versioning as version source (reads from VCS tags)
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+# Package discovery configuration
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["barndoor*"]
