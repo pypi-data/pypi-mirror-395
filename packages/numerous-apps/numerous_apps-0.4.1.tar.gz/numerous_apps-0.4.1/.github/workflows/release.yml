@@ -1,0 +1,153 @@
+name: release
+env:
+  PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #TWINE_USERNAME: __token__
+  #TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+on:
+  push:
+    paths:
+      - "**"
+      - ".github/workflows/release.yml"
+
+defaults:
+  run:
+    working-directory: ./
+permissions:
+  id-token: write
+  contents: write
+jobs:
+  #lint:
+  #  name: Lint
+  #  timeout-minutes: 5
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - uses: actions/checkout@v4
+  #    - uses: actions/setup-python@v5
+  #      with:
+  #        python-version: '3.12' 
+  #        cache: 'pip'
+  #    - run: pip install -e .[dev]
+  #    - run: python -m ruff .
+  #    - run: python -m mypy --strict .
+  test:
+    name: Unit tests
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: run tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' 
+          cache: 'pip'
+      - run: pip install -e .[dev]
+      - run: coverage run -m pytest -vv tests/
+      - run: coverage report | grep 'TOTAL' | awk '{print "COVERAGE_PCT=" $4}' >> $GITHUB_ENV
+      # TODO: publish coverage report
+  js_test:
+    name: JavaScript tests
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install --no-package-lock
+      - name: Run JavaScript tests
+        run: npm test
+      - name: Generate JavaScript coverage report
+        run: npm test -- --coverage
+      - name: Archive JavaScript coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-coverage-report
+          path: js-coverage/
+          retention-days: 5
+  end_to_end_test:
+    name: End-to-end test
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: run tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' 
+          cache: 'pip'
+      - run: pip install -e .[dev]
+      - run: python e-e-test/e-e-test-script.py
+  build:
+    needs: [test, js_test, end_to_end_test]
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    name: Build package
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - uses: actions/setup-go@v5
+        with:
+          cache: false
+      - run: python3 -m pip install python-semantic-release==9.6.0 build>=1.2.1
+      - run: semantic-release version --no-commit --no-tag --no-push --no-changelog  # update version locally to build new version
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: ./dist/*
+  release:
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    name: Release
+    environment: release
+    needs: 
+      #- lint
+      - test
+      - js_test
+      - build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - uses: actions/download-artifact@v4
+        id: download
+        with:
+          name: package
+          path: ./dist
+      - run: pip install python-semantic-release==9.6.0
+      - id: check-version
+        run: |
+          # Run version check and store output (capture both stdout and stderr)
+          OUTPUT=$(semantic-release version --no-commit --no-tag --no-push --no-changelog 2>&1)
+          if echo "$OUTPUT" | grep -q "No release will be made"; then
+            echo "VERSION_CHANGED=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION_CHANGED=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Debug output
+        run: |
+          echo "Version changed? ${{ steps.check-version.outputs.VERSION_CHANGED }}"
+          echo "Raw output was:"
+          echo "${{ steps.check-version.outputs.VERSION_CHANGED }}"
+      - name: Create release
+        if: ${{ steps.check-version.outputs.VERSION_CHANGED == 'true' }}
+        run: |
+          semantic-release version --commit --tag --push
+          semantic-release publish
+      - name: Publish package distributions to PyPI
+        if: ${{ steps.check-version.outputs.VERSION_CHANGED == 'true' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
