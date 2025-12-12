@@ -1,0 +1,228 @@
+Metadata-Version: 2.4
+Name: lionpride
+Version: 1.0.0a5
+Summary: The kernel layer for production AI agents - protocol-based, type-safe, zero framework lock-in
+Project-URL: Homepage, https://github.com/khive-ai/lionpride
+Project-URL: Documentation, https://github.com/khive-ai/lionpride/blob/main/README.md
+Project-URL: Repository, https://github.com/khive-ai/lionpride
+Project-URL: Issues, https://github.com/khive-ai/lionpride/issues
+Project-URL: Changelog, https://github.com/khive-ai/lionpride/blob/main/CHANGELOG.md
+Author-email: HaiyangLi <quantocean.li@gmail.com>
+License: Apache-2.0
+License-File: LICENSE
+Keywords: agents,ai,async,llm,multi-agent,orchestration,protocols,type-safety
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.11
+Requires-Dist: anyio>=4.7.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydapter>=1.2.0
+Requires-Dist: python-dotenv>=1.2.1
+Requires-Dist: tiktoken>=0.8.0
+Provides-Extra: all
+Requires-Dist: aioboto3>=12.0.0; extra == 'all'
+Requires-Dist: aiosqlite>=0.19.0; extra == 'all'
+Requires-Dist: asyncpg>=0.29.0; extra == 'all'
+Requires-Dist: datamodel-code-generator>=0.25.0; extra == 'all'
+Requires-Dist: fastmcp>=2.13.0; extra == 'all'
+Requires-Dist: sqlalchemy[asyncio]>=2.0.0; extra == 'all'
+Provides-Extra: log-all
+Requires-Dist: aioboto3>=12.0.0; extra == 'log-all'
+Requires-Dist: aiosqlite>=0.19.0; extra == 'log-all'
+Requires-Dist: asyncpg>=0.29.0; extra == 'log-all'
+Requires-Dist: sqlalchemy[asyncio]>=2.0.0; extra == 'log-all'
+Provides-Extra: log-postgres
+Requires-Dist: asyncpg>=0.29.0; extra == 'log-postgres'
+Requires-Dist: sqlalchemy[asyncio]>=2.0.0; extra == 'log-postgres'
+Provides-Extra: log-s3
+Requires-Dist: aioboto3>=12.0.0; extra == 'log-s3'
+Provides-Extra: log-sqlite
+Requires-Dist: aiosqlite>=0.19.0; extra == 'log-sqlite'
+Provides-Extra: mcp
+Requires-Dist: fastmcp>=2.13.0; extra == 'mcp'
+Provides-Extra: schema-gen
+Requires-Dist: datamodel-code-generator>=0.25.0; extra == 'schema-gen'
+Description-Content-Type: text/markdown
+
+# lionpride
+
+[![PyPI version](https://img.shields.io/pypi/v/lionpride.svg)](https://pypi.org/project/lionpride/)
+[![Python](https://img.shields.io/pypi/pyversions/lionpride.svg)](https://pypi.org/project/lionpride/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/khive-ai/lionpride/blob/main/LICENSE)
+[![CI](https://github.com/khive-ai/lionpride/actions/workflows/ci.yml/badge.svg)](https://github.com/khive-ai/lionpride/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/github/khive-ai/lionpride/graph/badge.svg?token=FAE47FY26T)](https://app.codecov.io/github/khive-ai/lionpride)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
+**Production-ready primitives for multi-agent workflow orchestration.**
+
+> ⚠️ **Alpha/Experimental** - API unstable. For research and development use. Originated from [lionagi](https://github.com/khive-ai/lionagi) v0.
+
+## Features
+
+- **Model Agnostic** - Built-in providers for OpenAI-compatible APIs, Anthropic, Gemini
+- **Declarative Workflows** - Report/Form system for multi-step agent pipelines
+- **Async Native** - Operation graph building, dependency-aware execution
+- **Modular Architecture** - Protocol-based composition, zero framework lock-in
+- **99%+ Test Coverage** - Production-hardened with comprehensive test suites
+
+## Installation
+
+```bash
+pip install lionpride
+```
+
+## Quick Start
+
+```python
+import asyncio
+from lionpride import Session, iModel
+from lionpride.operations.operate import generate, GenerateParams
+
+# Create model and session
+model = iModel(provider="openai", model="gpt-4o-mini")
+session = Session(default_generate_model=model)
+branch = session.create_branch(name="main", resources={model.name})
+
+async def main():
+    # Simple text generation
+    result = await generate(
+        session, branch,
+        params=GenerateParams(instruction="What is 2 + 2?", return_as="text"),
+    )
+    print(result)  # "4" or similar
+
+asyncio.run(main())
+```
+
+## Core Concepts
+
+### Session & Branch
+
+`Session` orchestrates messages, services, and operations. `Branch` is a named conversation thread with capability-based access control.
+
+```python
+from lionpride import Session, iModel
+
+# Session with default model
+model = iModel(provider="openai", model="gpt-4o-mini")
+session = Session(default_generate_model=model)
+
+# Branch with capability and resource restrictions
+branch = session.create_branch(
+    name="restricted",
+    capabilities={"AnalysisModel"},  # Only these output types allowed
+    resources={"gpt-4o-mini"},        # Only these services allowed
+)
+```
+
+### Operations
+
+Operations are composable building blocks for agent workflows:
+
+```python
+from pydantic import BaseModel
+from lionpride.operations.operate import operate, OperateParams, GenerateParams
+
+class Insights(BaseModel):
+    summary: str
+    score: float
+
+# Branch must have capability for output field
+branch = session.create_branch(capabilities={"insights"}, resources={model.name})
+
+# Structured output with validation
+params = OperateParams(
+    generate=GenerateParams(
+        instruction="Analyze this data",
+        request_model=Insights,
+    ),
+    capabilities={"insights"},  # Explicit capability declaration
+)
+
+result = await operate(session, branch, params)
+print(result.insights)  # Insights(summary="...", score=0.85)
+```
+
+### Services
+
+`ServiceRegistry` manages models and tools with O(1) name lookup:
+
+```python
+from lionpride import Session, iModel, ServiceRegistry
+
+# Register multiple models
+registry = ServiceRegistry()
+registry.register(iModel(provider="openai", model="gpt-4o", name="gpt4"))
+registry.register(iModel(provider="anthropic", model="claude-3-5-sonnet", name="claude"))
+
+session = Session(services=registry)
+branch = session.create_branch(resources={"gpt4", "claude"})  # Access to both
+```
+
+### Declarative Workflows
+
+`Report` and `Form` enable multi-step agent pipelines with automatic dependency resolution. Model docstrings serve as agent instructions:
+
+```python
+from pydantic import BaseModel
+from lionpride.work import Report, flow_report
+
+class Analysis(BaseModel):
+    '''Analyze the topic and provide insights.
+    Focus on actionable recommendations.'''
+    summary: str
+    recommendations: list[str]
+
+class MyReport(Report):
+    analysis: Analysis | None = None  # Schema attribute (docstring = instruction)
+
+    assignment: str = "topic -> analysis"
+    form_assignments: list[str] = ["topic -> analysis"]
+
+report = MyReport()
+report.initialize(topic="AI coding assistants")
+result = await flow_report(session, report, branch=branch)
+```
+
+## Architecture
+
+```text
+lionpride/
+├── core/           # Primitives: Element, Pile, Flow, Graph, Event
+├── session/        # Session, Branch, Message management
+├── services/       # iModel, Tool, ServiceRegistry, MCP integration
+├── operations/     # operate, react, communicate, generate, parse
+├── work/           # Declarative workflows: Report, Form, flow_report
+├── rules/          # Validation rules and auto-correction
+├── types/          # Spec, Operable, type system
+└── ln/             # Utility functions
+```
+
+## Documentation
+
+- [API Reference](docs/api/) - Comprehensive API docs
+  - [Session](docs/api/session/) - Session, Branch, Message
+  - [Services](docs/api/services/) - iModel, ServiceRegistry, Tool
+  - [Operations](docs/api/operations/) - operate, react, communicate
+  - [Rules](docs/api/rules/) - Validation and auto-correction
+  - [Work](docs/api/work/) - Report, Form, flow_report
+- [notebooks/](notebooks/) - Example notebooks
+
+## Roadmap
+
+- Formal mathematical framework for agent composition
+- Rust core for performance-critical paths
+- Enhanced MCP (Model Context Protocol) support
+
+## License
+
+Apache-2.0
