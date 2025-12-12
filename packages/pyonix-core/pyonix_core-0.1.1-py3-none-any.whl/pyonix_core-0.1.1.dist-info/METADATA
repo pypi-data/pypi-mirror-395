@@ -1,0 +1,172 @@
+Metadata-Version: 2.4
+Name: pyonix-core
+Version: 0.1.1
+Summary: A robust, secure, and maintainable ONIX 3.x Python library using xsdata.
+License-File: LICENSE
+Requires-Python: >=3.11
+Requires-Dist: lxml>=5.0.0
+Requires-Dist: xsdata[cli,lxml]
+Provides-Extra: text
+Requires-Dist: bleach; extra == 'text'
+Requires-Dist: html2text; extra == 'text'
+Description-Content-Type: text/markdown
+
+# pyonix-core
+
+A high-performance, type-safe, and secure Python library for processing ONIX 3.0 XML feeds. Built on top of `xsdata` and `lxml`, `pyonix-core` provides a robust foundation for bibliographic data exchange in the publishing industry.
+
+## Overview
+
+ONIX for Books is the international standard for representing and communicating book industry product information in electronic form. `pyonix-core` simplifies the complexity of the ONIX 3.0 standard by providing:
+
+*   **Strict Type Safety**: Fully typed Python dataclasses generated directly from EDItEUR's official XSD schemas.
+*   **Memory Efficiency**: Iterative, streaming parsing capabilities designed to handle multi-gigabyte ONIX files with minimal memory footprint.
+*   **Security First**: Hardened XML parsing configuration to prevent XXE (XML External Entity) attacks and other common XML vulnerabilities.
+*   **Developer Friendly**: A high-level "Facade" pattern to abstract away the deeply nested structure of raw ONIX messages, providing simple access to common fields like ISBNs, titles, and prices.
+
+## Installation
+
+Requires Python 3.11 or higher.
+
+```bash
+pip install pyonix-core
+```
+
+## Quick Start
+
+### Parsing an ONIX File
+
+The core entry point is `parse_onix_stream`, which yields product records one by one. This allows you to process massive files without loading the entire document into memory.
+
+```python
+from pyonix_core.parsing.parser import parse_onix_stream
+from pyonix_core.facade.product import ProductFacade
+
+file_path = "path/to/onix_feed.xml"
+
+# parse_onix_stream automatically detects Reference vs Short tags
+for product in parse_onix_stream(file_path):
+    # Wrap the raw data model in a Facade for easier access
+    facade = ProductFacade(product)
+    
+    print(f"Title: {facade.title}")
+    print(f"ISBN-13: {facade.isbn13}")
+    print(f"Price: {facade.price_amount} {facade.price_currency}")
+    print("-" * 20)
+```
+
+### Working with the Facade
+
+The `ProductFacade` simplifies data extraction. Instead of navigating complex nested objects, you can access properties directly.
+
+```python
+# Example of accessing data via Facade
+print(f"Record Reference: {facade.record_reference}")
+print(f"Contributors: {', '.join(facade.contributors)}")
+```
+
+## Architecture
+
+### Data Models
+The data models in `pyonix_core.models` are auto-generated using `xsdata` from the official ONIX 3.0 schemas. This ensures 100% compliance with the standard and provides excellent IDE support (autocompletion, type checking).
+
+### Security
+XML parsing is handled by `lxml` with strict security settings:
+*   `resolve_entities=False`: Prevents XXE attacks.
+*   `no_network=True`: Blocks remote resource fetching.
+*   `load_dtd=False`: Disables DTD processing.
+
+## Development
+
+### Running Tests
+
+```bash
+python -m unittest discover tests
+```
+
+### Regenerating Models
+
+If the schemas change, you can regenerate the data models:
+
+```bash
+python scripts/generate_models.py
+```
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+*Note: This project is currently in active development.*
+
+## Recent Features
+
+The following high-value features were recently added to `pyonix-core`. Each one is implemented to integrate cleanly with the existing facade and parsing architecture.
+
+1) Short Tag to Reference Tag Normalizer
+- Module: `pyonix_core.parsing.normalization`
+- Description: Uses an XSLT transform (bundleable EDItEUR XSLT) to convert ONIX Short Tags into Reference Tags before parsing. This lets the parser and generated dataclasses work consistently regardless of input tag style. For very large files, a streaming/SAX-based fallback is planned.
+- Quick usage:
+
+```python
+from pyonix_core.parsing.normalization import TagNormalizer
+from pyonix_core.parsing.parser import parse_onix_stream
+
+norm = TagNormalizer()
+with open('short_tag_onix.xml', 'rb') as fh:
+    normalized_stream = norm.normalize_stream(fh)
+    for product in parse_onix_stream(normalized_stream):
+        ...
+```
+
+2) Data Flattener (Pandas/CSV ready)
+- Module: `pyonix_core.utils.flatten`
+- Description: `ProductFlattener` converts a `ProductFacade` into a flat dictionary using a configurable `SerializationProfile`. Useful for creating CSV rows or constructing Pandas DataFrames without manually traversing the ONIX model.
+- Quick usage:
+
+```python
+from pyonix_core.utils.flatten import ProductFlattener
+from pyonix_core.facade.product import ProductFacade
+
+f = ProductFlattener()
+row = f.flatten(ProductFacade(product_model))
+```
+
+3) HTML Sanitizer & Extractor
+- Module: `pyonix_core.utils.text`
+- Description: Safe extraction and sanitization of HTML-like content found in ONIX `TextContent` composites. Uses `bleach` to sanitize and `html2text` to produce Markdown. These are optional dependencies under the `text` extra in `pyproject.toml`.
+- Quick usage:
+
+```python
+from pyonix_core.utils.text import clean_html, to_markdown
+
+safe_html = clean_html(raw_html)
+md = to_markdown(raw_html)
+```
+
+4) ISBN Tools (10/13 converter)
+- Module: `pyonix_core.utils.identifiers`
+- Description: Pure-Python `ISBN` utility for cleaning, validating, and converting ISBN-10 to ISBN-13. `ProductFacade.isbn13` now prefers an explicit ISBN-13 but will auto-convert valid ISBN-10 values when necessary.
+- Quick usage:
+
+```python
+from pyonix_core.utils.identifiers import ISBN
+
+ISBN.clean('0-306-40615-2')
+ISBN.validate('9780306406157')
+ISBN.to_13('0-306-40615-2')
+```
+
+5) Media Asset Helper
+- Module: `pyonix_core.facade.assets`
+- Description: `AssetHelper` simplifies locating front cover images and other collateral assets within the `CollateralDetail` composite and exposes a `helper` property on `ProductFacade`.
+- Quick usage:
+
+```python
+from pyonix_core.facade.product import ProductFacade
+
+facade = ProductFacade(product_model)
+cover_url = facade.helper.get_cover_image()
+```
+
+All of these features are exercised in the test-suite (excluding extremely large-file performance tests). Optional dependencies are declared under `[project.optional-dependencies]` in `pyproject.toml` (see the `text` extra for HTML utilities).
