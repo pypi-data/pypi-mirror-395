@@ -1,0 +1,158 @@
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[project]
+name = "kabukit"
+version = "0.18.0"
+description = "A Python toolkit for Japanese financial market data, supporting J-Quants and EDINET APIs."
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = [
+  "J-Quants",
+  "EDINET",
+  "financial data",
+  "stock market",
+  "investment",
+  "toolkit",
+  "finance",
+  "trading",
+  "data analysis",
+  "polars",
+]
+authors = [{ name = "daizutabi", email = "daizutabi@gmail.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Intended Audience :: Science/Research",
+  "Topic :: Office/Business :: Financial",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Utilities",
+]
+requires-python = ">=3.12"
+dependencies = [
+  "async-typer>=0.1.0,<1.0",
+  "beautifulsoup4>=4.0",
+  "httpx>=0.28.0,<1.0",
+  "ixbrlparse>=0.11.1",
+  "lxml>=6.0",
+  "platformdirs>=4.0",
+  "polars>=1.32.3",
+  "pypdf>=6.1.3",
+  "rich>=12.0",
+  "tenacity>=9.0",
+  "toml>=0.10.2,<1.0",
+  "tqdm>=4.48",
+  "typer>=0.19.0,<1.0",
+  "tzdata; sys_platform == 'win32'",
+]
+
+[project.scripts]
+kabu = "kabukit.cli.app:app"
+
+[project.urls]
+Changelog = "https://github.com/daizutabi/kabukit/releases"
+Documentation = "https://daizutabi.github.io/kabukit/"
+Homepage = "https://daizutabi.github.io/kabukit/"
+Issues = "https://github.com/daizutabi/kabukit/issues"
+Source = "https://github.com/daizutabi/kabukit"
+
+[dependency-groups]
+dev = [
+  "altair @ git+https://github.com/vega/altair.git@main",
+  "basedpyright>=1.31.7",
+  "marimo[lsp,mcp]>=0.16.5",
+  "prek>=0.2.10",
+  "pytest-asyncio>=1.2.0",
+  "pytest-clarity>=1.0.1",
+  "pytest-cov>=7.0.0",
+  "pytest-mock>=3.15.1",
+  "pytest-randomly>=4.0.1",
+  "pytest-xdist>=3.8.0",
+  "ruff>=0.14.0",
+  "scipy>=1.16.2",
+  "ty>=0.0.1a32",
+  "vegafusion-python-embed>=1.6.9",
+  "vegafusion>=2.0.3",
+  "vl-convert-python>=1.8.0",
+]
+docs = [
+  "ipykernel>=7.0.0",
+  "mkapi>=4.5.0",
+  "mkdocs-material>=9.6.21",
+  "mkdocs-nbsync>=0.2.2",
+  "nbconvert>=7.16.6",
+  "pymdownx-cjk-autojoin>=0.2.1",
+]
+
+[tool.pytest.ini_options]
+addopts = ["--cov=kabukit", "--cov-report=lcov:lcov.info", "--doctest-modules"]
+testpaths = ["tests"]
+markers = [
+  "integration: marks tests as integration tests",
+  "system: marks tests as system tests",
+  "unit: marks tests as unit tests",
+  "validation: marks tests as data validation tests",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "raise NotImplementedError", "if TYPE_CHECKING:"]
+skip_covered = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+include = ["src/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+unfixable = ["F401"]
+ignore = [
+  "A002",
+  "ANN401",
+  "D",
+  "ERA001",
+  "FBT001",
+  "N802",
+  "PGH003",
+  "PLC0415",
+  "PLR0913",
+  "PLR2004",
+  "RUF001",
+  "RUF002",
+  "RUF003",
+  "S603",
+  "SIM102",
+  "SIM108",
+  "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN", "FBT", "S101", "S105", "S607", "PLC2401"]
+"columns.py" = ["E501"]
+"notebooks/**/*.py" = ["F704", "PLE1142"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.pyright]
+include = ["src", "tests"]
+reportAny = false
+reportExplicitAny = false
+reportIncompatibleVariableOverride = false
+reportPrivateUsage = false
+reportUnusedCallResult = false
+reportUnusedImport = false
+
+[tool.ty.src]
+include = ["src", "tests"]
