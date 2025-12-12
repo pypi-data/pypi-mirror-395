@@ -1,0 +1,249 @@
+Metadata-Version: 2.4
+Name: triform-cli
+Version: 0.1.0
+Summary: CLI tool to sync and execute Triform projects
+Home-page: https://github.com/triform/triform-cli
+Author: Triform
+Author-email: Triform <support@triform.ai>
+License: MIT
+Project-URL: Homepage, https://triform.ai
+Project-URL: Repository, https://github.com/triform/triform-cli
+Project-URL: Documentation, https://docs.triform.ai/cli
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click>=8.0
+Requires-Dist: rich>=13.0
+Requires-Dist: pydantic>=2.0
+Provides-Extra: dev
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Requires-Dist: build>=1.0; extra == "dev"
+Requires-Dist: twine>=4.0; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# Triform CLI
+
+A command-line tool to sync and execute Triform projects locally. Perfect for integrating with Cursor or any IDE.
+
+## Installation
+
+### From PyPI (Recommended)
+
+```bash
+pip install triform-cli
+```
+
+Or using pipx (isolated environment):
+
+```bash
+pipx install triform-cli
+```
+
+### From GitHub
+
+```bash
+pip install git+https://github.com/triform/triform-cli.git
+```
+
+### Development Install
+
+```bash
+git clone https://github.com/triform/triform-cli.git
+cd triform-cli
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### 1. Authenticate
+
+```bash
+# Login with your session token from the browser
+triform auth login --token YOUR_SESSION_TOKEN
+```
+
+To get your session token:
+1. Login to https://app.triform.ai
+2. Open browser DevTools (F12)
+3. Go to Application > Cookies
+4. Copy the value of `__Secure-better-auth.session_token`
+
+### 2. Pull a Project
+
+```bash
+# List your projects
+triform projects list
+
+# Pull a project to local files
+triform projects pull <project-id>
+```
+
+This creates a local directory structure:
+
+```
+Triform/                        # Root directory
+└── OrgName/                    # Organization
+    └── my-project/             # Project
+        ├── .triform/
+        │   ├── config.json     # Project & org ID mapping
+        │   └── state.json      # Sync state
+        ├── project.json        # Project metadata & environment
+        ├── requirements.json   # Project requirements
+        ├── actions/
+        │   └── my-action/
+        │       ├── source.py       # Action code
+        │       ├── meta.json       # Component metadata
+        │       ├── requirements.txt
+        │       ├── requirements.json  # Component requirements
+        │       └── readme.md
+        ├── flows/
+        │   └── my-flow/
+        │       ├── flow.json       # Flow definition
+        │       ├── meta.json
+        │       ├── requirements.json
+        │       └── readme.md
+        └── agents/
+            └── my-agent/
+                ├── agent.json      # Agent configuration
+                ├── meta.json
+                ├── requirements.json
+                └── readme.md
+```
+
+Options:
+- `--flat` - Skip the `Triform/Org` structure
+- `--dir <path>` - Specify a custom directory
+
+### 3. Edit Locally
+
+Edit your action code in `actions/my-action/source.py` or any other files.
+
+### 4. Push Changes
+
+```bash
+# Push changes back to Triform
+triform projects push
+
+# Or watch for changes and auto-sync
+triform projects watch
+```
+
+### 5. Execute Components
+
+```bash
+# Execute by component ID
+triform execute <component-id> --payload '{"input": "value"}'
+
+# Execute from local project by node key
+triform execute my-action --payload '{"input": "value"}'
+
+# Execute with real-time tracing
+triform execute my-action --trace
+
+# Execute by project path
+triform execute <project-id>/my-action --payload '{}'
+```
+
+## Commands
+
+### Authentication
+
+```bash
+triform auth login              # Login with session token
+triform auth logout             # Clear authentication
+triform auth status             # Check auth status
+triform auth whoami             # Show user & organization info
+```
+
+### Projects
+
+```bash
+triform projects list           # List all projects
+triform projects pull <id>      # Pull project to local
+triform projects push           # Push local changes
+triform projects watch          # Watch and auto-sync
+triform projects deploy         # Deploy project
+triform projects status         # Show sync status
+```
+
+### Components
+
+```bash
+triform component get <id>      # Get component details
+triform component build <id>    # Build action dependencies
+```
+
+### Execution
+
+```bash
+triform execute <target>        # Execute a component
+triform executions              # List recent executions
+```
+
+### Utilities
+
+```bash
+triform diff                    # Show local vs remote changes
+```
+
+## Local Development Workflow
+
+1. **Pull** your project: `triform projects pull <id>`
+2. **Open** in Cursor/VS Code
+3. **Edit** action code locally
+4. **Watch** for auto-sync: `triform projects watch`
+5. **Execute** to test: `triform execute my-action --trace`
+6. **Deploy** when ready: `triform projects deploy`
+
+## Environment Variables
+
+You can also configure authentication via environment variables:
+
+```bash
+export TRIFORM_AUTH_TOKEN="your-session-token"
+export TRIFORM_API_URL="https://app.triform.ai/api"
+```
+
+## File Structure Details
+
+### Actions
+
+- `source.py` - Main Python code
+- `requirements.txt` - pip dependencies
+- `meta.json` - Name, intention, runtime, I/O schemas
+- `readme.md` - Documentation
+
+### Flows
+
+- `flow.json` - Nodes, connections, I/O
+- `meta.json` - Name, intention
+- `readme.md` - Documentation
+- `components/` - Resolved nested components (read-only)
+
+### Agents
+
+- `agent.json` - Model, prompts, settings, tools
+- `meta.json` - Name, intention
+- `readme.md` - Documentation
+- `components/` - Resolved nested components (read-only)
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT
