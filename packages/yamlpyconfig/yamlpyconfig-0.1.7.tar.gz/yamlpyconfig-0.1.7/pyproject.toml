@@ -1,0 +1,77 @@
+[project]
+name = "yamlpyconfig"
+dynamic = ["version"]
+description = "A unified YAML configuration manager supporting local files and dynamic Nacos configuration with hot-reloading, environment variable substitution, and built-in encryption (SM2/SM4) support."
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=46.0.3",
+    "gmssl>=3.2.2",
+    "pydantic>=2.12.4",
+    "pyyaml>=6.0.3",
+]
+
+# 协议信息
+license = "Apache-2.0 OR MIT"
+authors = [
+  { name = "ferdinand", email = "gongjpa@gmail.com" },
+]
+# 关键字方便快速检索
+keywords = [
+  "yaml", "config", "nacos", "aio", "application", "profile"
+]
+readme = "README.md"
+
+# 可以到网站https://pypi.org/classifiers/查找合适的classifiers
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+
+[project.optional-dependencies]
+nacos = [
+    "nacos-sdk-python>=2.0.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "pytest-asyncio>=1.3.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+# === 关键配置: 指定包的位置 ===
+# 告诉 hatchling，真正得包代码在 src 目录下
+[tool.hatch.build.targets.wheel]
+packages = ["src/yamlpyconfig"]
+
+[tool.hatch.build.targets.sdist]
+# 明确指定 sdist 只包含 src 目录，排除 test 目录等其他根目录文件
+include = [
+    "src",
+    # 建议也包含 README 和 LICENSE，否则 pip 安装有时会发出警告
+    "README.md",
+    "pyproject.toml"
+]
+
+[tool.hatch.version]
+path = "src/yamlpyconfig/__init__.py"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
