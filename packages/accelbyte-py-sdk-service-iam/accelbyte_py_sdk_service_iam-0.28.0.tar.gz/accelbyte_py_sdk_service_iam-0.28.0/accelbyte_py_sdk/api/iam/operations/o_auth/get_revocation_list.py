@@ -1,0 +1,274 @@
+# Copyright (c) 2021 AccelByte Inc. All Rights Reserved.
+# This is licensed software from AccelByte Inc, for limitations
+# and restrictions contact your company contract manager.
+#
+# Code generated. DO NOT EDIT!
+
+# template file: operation.j2
+
+# pylint: disable=duplicate-code
+# pylint: disable=line-too-long
+# pylint: disable=missing-function-docstring
+# pylint: disable=missing-module-docstring
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-lines
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-statements
+# pylint: disable=unused-import
+
+# AccelByte Gaming Services Iam Service
+
+from __future__ import annotations
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from accelbyte_py_sdk.core import ApiError, ApiResponse
+from accelbyte_py_sdk.core import Operation
+from accelbyte_py_sdk.core import HeaderStr
+from accelbyte_py_sdk.core import HttpResponse
+from accelbyte_py_sdk.core import deprecated
+
+from ...models import OauthapiRevocationList
+
+
+class GetRevocationList(Operation):
+    """[DEPRECATED] OAuth2 revocation list API (GetRevocationList)
+
+    ## The endpoint is going to be deprecated
+    This endpoint will return a list of revoked users and revoked tokens. List of revoked tokens in bloom filter format. This endpoint requires all requests to have Authorization header set with Basic access authentication constructed from client id and client secret.
+    The bloom filter uses MurmurHash3 algorithm for hashing the values
+
+    ### Endpoint migration guide
+    - **Substitute endpoint: _/iam/v3/oauth/revocationlist [GET]_**
+
+    Properties:
+        url: /iam/oauth/revocationlist
+
+        method: GET
+
+        tags: ["OAuth"]
+
+        consumes: [""]
+
+        produces: ["application/json"]
+
+        securities: [BASIC_AUTH]
+
+    Responses:
+        200: OK - OauthapiRevocationList (revocation list returned)
+
+        401: Unauthorized - (Invalid basic auth header)
+    """
+
+    # region fields
+
+    _url: str = "/iam/oauth/revocationlist"
+    _path: str = "/iam/oauth/revocationlist"
+    _base_path: str = ""
+    _method: str = "GET"
+    _consumes: List[str] = [""]
+    _produces: List[str] = ["application/json"]
+    _securities: List[List[str]] = [["BASIC_AUTH"]]
+    _location_query: str = None
+
+    service_name: Optional[str] = "iam"
+
+    # endregion fields
+
+    # region properties
+
+    @property
+    def url(self) -> str:
+        return self._url
+
+    @property
+    def path(self) -> str:
+        return self._path
+
+    @property
+    def base_path(self) -> str:
+        return self._base_path
+
+    @property
+    def method(self) -> str:
+        return self._method
+
+    @property
+    def consumes(self) -> List[str]:
+        return self._consumes
+
+    @property
+    def produces(self) -> List[str]:
+        return self._produces
+
+    @property
+    def securities(self) -> List[List[str]]:
+        return self._securities
+
+    @property
+    def location_query(self) -> str:
+        return self._location_query
+
+    # endregion properties
+
+    # region get methods
+
+    # endregion get methods
+
+    # region get_x_params methods
+
+    def get_all_params(self) -> dict:
+        return {}
+
+    # endregion get_x_params methods
+
+    # region is/has methods
+
+    # endregion is/has methods
+
+    # region with_x methods
+
+    # endregion with_x methods
+
+    # region to methods
+
+    def to_dict(self, include_empty: bool = False) -> dict:
+        result: dict = {}
+        return result
+
+    # endregion to methods
+
+    # region response methods
+
+    class Response(ApiResponse):
+        data_200: Optional[OauthapiRevocationList] = None
+        error_401: Optional[HttpResponse] = None
+
+        def ok(self) -> GetRevocationList.Response:
+            if self.error_401 is not None:
+                err = ApiError.create_from_http_response(self.error_401)
+                exc = err.to_exception()
+                if exc is not None:
+                    raise exc  # pylint: disable=raising-bad-type
+            return self
+
+        def __iter__(self):
+            if self.data_200 is not None:
+                yield self.data_200
+                yield None
+            elif self.error_401 is not None:
+                yield None
+                yield self.error_401
+            else:
+                yield None
+                yield self.error
+
+    # noinspection PyMethodMayBeStatic
+    def parse_response(self, code: int, content_type: str, content: Any) -> Response:
+        """Parse the given response.
+
+        200: OK - OauthapiRevocationList (revocation list returned)
+
+        401: Unauthorized - (Invalid basic auth header)
+
+        ---: HttpResponse (Undocumented Response)
+
+        ---: HttpResponse (Unexpected Content-Type Error)
+
+        ---: HttpResponse (Unhandled Error)
+        """
+        result = GetRevocationList.Response()
+
+        pre_processed_response, error = self.pre_process_response(
+            code=code, content_type=content_type, content=content
+        )
+
+        if error is not None:
+            if not error.is_no_content():
+                result.error = ApiError.create_from_http_response(error)
+        else:
+            code, content_type, content = pre_processed_response
+
+            if code == 200:
+                result.data_200 = OauthapiRevocationList.create_from_dict(content)
+            elif code == 401:
+                result.error_401 = HttpResponse.create(code, content)
+                result.error = ApiError.create_from_http_response(result.error_401)
+            else:
+                result.error = ApiError.create_from_http_response(
+                    HttpResponse.create_undocumented_response(
+                        code=code, content_type=content_type, content=content
+                    )
+                )
+
+        result.status_code = str(code)
+        result.content_type = content_type
+
+        if 400 <= code <= 599 or result.error is not None:
+            result.is_success = False
+
+        return result
+
+    # noinspection PyMethodMayBeStatic
+    @deprecated
+    def parse_response_x(
+        self, code: int, content_type: str, content: Any
+    ) -> Tuple[Union[None, OauthapiRevocationList], Union[None, HttpResponse]]:
+        """Parse the given response.
+
+        200: OK - OauthapiRevocationList (revocation list returned)
+
+        401: Unauthorized - (Invalid basic auth header)
+
+        ---: HttpResponse (Undocumented Response)
+
+        ---: HttpResponse (Unexpected Content-Type Error)
+
+        ---: HttpResponse (Unhandled Error)
+        """
+        pre_processed_response, error = self.pre_process_response(
+            code=code, content_type=content_type, content=content
+        )
+        if error is not None:
+            return None, None if error.is_no_content() else error
+        code, content_type, content = pre_processed_response
+
+        if code == 200:
+            return OauthapiRevocationList.create_from_dict(content), None
+        if code == 401:
+            return None, HttpResponse.create(code, "Unauthorized")
+
+        return self.handle_undocumented_response(
+            code=code, content_type=content_type, content=content
+        )
+
+    # endregion response methods
+
+    # region static methods
+
+    @classmethod
+    def create(cls, **kwargs) -> GetRevocationList:
+        instance = cls()
+        if x_flight_id := kwargs.get("x_flight_id", None):
+            instance.x_flight_id = x_flight_id
+        return instance
+
+    @classmethod
+    def create_from_dict(
+        cls, dict_: dict, include_empty: bool = False
+    ) -> GetRevocationList:
+        instance = cls()
+        return instance
+
+    @staticmethod
+    def get_field_info() -> Dict[str, str]:
+        return {}
+
+    @staticmethod
+    def get_required_map() -> Dict[str, bool]:
+        return {}
+
+    # endregion static methods
