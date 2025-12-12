@@ -1,0 +1,97 @@
+#!/bin/env python
+
+import numpy as np
+import pytest
+from test_data import snap_data
+import hdfstream
+
+@pytest.mark.vcr
+def test_dataset_attributes(eagle_snap_file):
+
+    # Open a HDF5 dataset and check its attributes:
+    # Here we compare values decoded from the mock http response to pickled
+    # test data which was extracted from the snapshot with h5py.
+    dataset = eagle_snap_file()["/PartType1/Coordinates"]
+    assert isinstance(dataset, hdfstream.RemoteDataset)
+    assert len(dataset.attrs.keys()) > 0
+    assert set(dataset.attrs.keys()) == set(snap_data["ptype1_pos_attrs"].keys())
+    for name in dataset.attrs.keys():
+        assert np.all(dataset.attrs[name] == snap_data["ptype1_pos_attrs"][name])
+
+@pytest.mark.vcr
+def test_dataset_slice(eagle_snap_file):
+
+    # Open a HDF5 dataset
+    dataset = eagle_snap_file()["/PartType1/Coordinates"]
+    assert isinstance(dataset, hdfstream.RemoteDataset)
+
+    # Locate the test data: this contains the coordinates of the first n particles
+    expected_pos = snap_data["ptype1_pos"]
+    n = expected_pos.shape[0]
+
+    # Try slicing the dataset and check the result against the test data
+    for start, stop in ((0,   1000),
+                        (500, 501),
+                        (910, 920),):
+        slice_data = dataset[start:stop,:]
+        assert np.all(slice_data == expected_pos[start:stop,:])
+
+    # Try using the read_direct() method to read the same data
+    for start, stop in ((0,   1000),
+                        (500, 501),
+                        (910, 920),):
+        slice_data = np.ndarray((stop-start,3), dtype=dataset.dtype)
+        dataset.read_direct(slice_data, source_sel=np.s_[start:stop,:], dest_sel=np.s_[...])
+        assert np.all(slice_data == expected_pos[start:stop,:])
+
+@pytest.mark.vcr
+def test_dataset_multi_slice(eagle_snap_file):
+
+    # Open a HDF5 dataset
+    dataset = eagle_snap_file()["/PartType1/Coordinates"]
+    assert isinstance(dataset, hdfstream.RemoteDataset)
+
+    # Locate the test data: this contains the coordinates of the first n particles
+    expected_pos = snap_data["ptype1_pos"]
+    n = expected_pos.shape[0]
+
+    # Request multiple slices
+    all_slices = [
+        (np.s_[0:500,:], np.s_[500:1000,:],),
+        (np.s_[300:400,:], np.s_[600:700,:],),
+    ]
+    for slices in all_slices:
+
+        # Request data as a new array
+        slice_data = dataset.request_slices(slices)
+        assert np.all(slice_data == np.concatenate([expected_pos[s] for s in slices], axis=0))
+
+        # Request data into an existing buffer
+        buf = np.zeros_like(slice_data)
+        dataset.request_slices(slices, dest=buf)
+        assert np.all(buf == np.concatenate([expected_pos[s] for s in slices], axis=0))
+        assert np.all(slice_data == buf)
+
+# Try indexing a dataset with an array in the first dimension
+index = [
+    np.s_[np.arange(1000),:],
+    np.s_[np.arange(1000),1],
+    np.s_[np.arange(1000)[::-1],:],
+    np.s_[np.arange(1000)[::-1],2],
+    np.s_[[5,5,5,6,7,7,8,8,8,8,100,101,102,103,19,20,17], :],
+]
+@pytest.mark.vcr
+@pytest.mark.parametrize("index", index)
+def test_dataset_index_with_array(eagle_snap_file, index):
+
+    # Open a HDF5 dataset
+    dataset = eagle_snap_file()["/PartType1/Coordinates"]
+    assert isinstance(dataset, hdfstream.RemoteDataset)
+
+    # Locate the test data: this contains the coordinates of the first n particles
+    expected_pos = snap_data["ptype1_pos"]
+    n = expected_pos.shape[0]
+
+    # Try slicing the dataset and check the result against the test data
+    slice_data = dataset[index]
+    assert np.all(slice_data == expected_pos[index])
