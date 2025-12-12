@@ -1,0 +1,720 @@
+"""
+Core encryption functionality for secure-string-cipher
+
+This module provides AES-256-GCM encryption with:
+- Argon2id key derivation (memory-hard, GPU-resistant)
+- Key commitment (HMAC-SHA256) to prevent invisible salamanders attacks
+- File metadata storage for original filename restoration
+"""
+
+from __future__ import annotations
+
+import base64
+import io
+import json
+import os
+import secrets
+from dataclasses import dataclass, field
+from typing import BinaryIO
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.ciphers import (
+    Cipher,
+    algorithms,
+    modes,
+)
+
+from .config import (
+    ARGON2_HASH_LENGTH,
+    ARGON2_MEMORY_COST,
+    ARGON2_PARALLELISM,
+    ARGON2_TIME_COST,
+    CHUNK_SIZE,
+    FILENAME_MAX_LENGTH,
+    KEY_COMMITMENT_CONTEXT,
+    MAX_FILE_SIZE,
+    METADATA_MAGIC,
+    METADATA_VERSION,
+    NONCE_SIZE,
+    SALT_SIZE,
+    TAG_SIZE,
+)
+from .utils import CryptoError, ProgressBar
+
+__all__ = [
+    "StreamProcessor",
+    "CryptoError",
+    "derive_key",
+    "compute_key_commitment",
+    "verify_key_commitment",
+    "encrypt_text",
+    "decrypt_text",
+    "encrypt_file",
+    "decrypt_file",
+    "FileMetadata",
+]
+
+
+class InMemoryStreamProcessor:
+    """Stream processor for in-memory data like strings."""
+
+    def __init__(self, stream: io.BytesIO, mode: str):
+        """Initialize with a BytesIO stream."""
+        self.stream = stream
+        self.mode = mode
+
+    def read(self, size: int = -1) -> bytes:
+        return self.stream.read(size)
+
+    def write(self, data: bytes) -> int:
+        return self.stream.write(data)
+
+    def tell(self) -> int:
+        return self.stream.tell()
+
+    def seek(self, pos: int, whence: int = 0) -> int:
+        return self.stream.seek(pos, whence)
+
+
+class StreamProcessor:
+    """Context manager for secure file operations with progress tracking."""
+
+    def __init__(self, path: str, mode: str):
+        """
+        Initialize a secure file stream processor.
+
+        Args:
+            path: Path to the file to process
+            mode: File mode ('rb' for read, 'wb' for write)
+
+        Raises:
+            CryptoError: If file operations fail or security checks fail
+        """
+        self.path = path
+        self.mode = mode
+        self.file: BinaryIO | None = None
+        self._progress: ProgressBar | None = None
+        self.bytes_processed = 0
+
+        if isinstance(path, (str, bytes, os.PathLike)):
+            # Security check for large files
+            if mode == "rb" and os.path.exists(path):
+                size = os.path.getsize(path)
+                if size > MAX_FILE_SIZE:
+                    raise CryptoError(
+                        f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024):.1f} MB"
+                    )
+
+    def _check_path(self) -> None:
+        """
+        Validate file path and prevent unsafe operations.
+
+        Raises:
+            CryptoError: If path is unsafe or permissions are incorrect
+        """
+        if self.mode == "wb":
+            if os.path.exists(self.path):
+                ans = input(
+                    f"\nWarning: {self.path} exists. Overwrite? [y/N]: "
+                ).lower()
+                if ans not in ("y", "yes"):
+                    raise CryptoError("Operation cancelled")
+
+            try:
+                directory = os.path.dirname(self.path) or "."
+                test_file = os.path.join(directory, ".write_test")
+                with open(test_file, "wb") as f:
+                    f.write(b"test")
+                os.unlink(test_file)
+            except OSError as e:
+                raise CryptoError(f"Cannot write to directory: {e}") from e
+
+    def __enter__(self) -> StreamProcessor:
+        """
+        Open file and setup progress tracking.
+
+        Returns:
+            Self for context manager use
+
+        Raises:
+            CryptoError: If file operations fail
+        """
+        if isinstance(self.path, (str, bytes, os.PathLike)):
+            self._check_path()
+            try:
+                self.file = open(self.path, self.mode)  # type: ignore[assignment]
+            except OSError as e:
+                raise CryptoError(f"Failed to open file: {e}") from e
+
+            # Setup progress bar for reading
+            if self.mode == "rb":
+                try:
+                    size = os.path.getsize(self.path)
+                    self._progress = ProgressBar(size)
+                except OSError:
+                    pass  # Skip progress if we can't get file size
+        else:
+            self.file = self.path
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Clean up file handle."""
+        if self.file:
+            self.file.close()
+
+    def read(self, size: int = -1) -> bytes:
+        """
+        Read with progress tracking.
+
+        Args:
+            size: Number of bytes to read, -1 for all
+
+        Returns:
+            Bytes read from file
+
+        Raises:
+            CryptoError: If read fails
+        """
+        if not self.file:
+            raise CryptoError("File not open")
+        data = self.file.read(size)
+        self.bytes_processed += len(data)
+        if self._progress:
+            self._progress.update(self.bytes_processed)
+        return data
+
+    def write(self, data: bytes) -> int:
+        """
+        Write with progress tracking.
+
+        Args:
+            data: Bytes to write
+
+        Returns:
+            Number of bytes written
+
+        Raises:
+            CryptoError: If write fails
+        """
+        if not self.file:
+            raise CryptoError("File not open")
+        try:
+            n = self.file.write(data)
+            self.bytes_processed += n
+            return n
+        except OSError as e:
+            raise CryptoError(f"Write failed: {e}") from e
+
+
+def derive_key(passphrase: str, salt: bytes) -> bytes:
+    """
+    Derive encryption key using Argon2id (memory-hard KDF).
+
+    Argon2id is the recommended KDF for password hashing. It is:
+    - Memory-hard: Resistant to GPU/ASIC attacks
+    - Side-channel resistant: Hybrid of Argon2i and Argon2d
+    - Password Hashing Competition winner
+
+    Args:
+        passphrase: User-provided password
+        salt: Random salt for key derivation (16+ bytes recommended)
+
+    Returns:
+        32-byte key suitable for AES-256
+
+    Raises:
+        CryptoError: If key derivation fails
+    """
+    from .secure_memory import SecureBytes, SecureString
+
+    try:
+        from argon2.low_level import Type, hash_secret_raw
+    except ImportError as e:
+        raise CryptoError(
+            "Argon2 support requires argon2-cffi. Install with: pip install argon2-cffi"
+        ) from e
+
+    try:
+        with SecureString(passphrase) as secure_pass:
+            with SecureBytes(secure_pass.string.encode()) as secure_bytes:
+                key = hash_secret_raw(
+                    secret=bytes(secure_bytes.data),
+                    salt=salt,
+                    time_cost=ARGON2_TIME_COST,
+                    memory_cost=ARGON2_MEMORY_COST,
+                    parallelism=ARGON2_PARALLELISM,
+                    hash_len=ARGON2_HASH_LENGTH,
+                    type=Type.ID,  # Argon2id
+                )
+                return key
+    except Exception as e:
+        raise CryptoError(f"Argon2id key derivation failed: {e}") from e
+
+
+# =============================================================================
+# Key Commitment Functions
+# =============================================================================
+# Key commitment prevents "invisible salamanders" attacks where an attacker
+# crafts a ciphertext that decrypts to different plaintexts under different keys.
+# We compute HMAC-SHA256(key, context) and store it with the ciphertext.
+# =============================================================================
+
+
+def compute_key_commitment(key: bytes) -> bytes:
+    """
+    Compute a key commitment value using HMAC-SHA256.
+
+    The commitment binds the ciphertext to a specific key, preventing
+    attacks where a ciphertext could decrypt to different plaintexts
+    under different keys.
+
+    Args:
+        key: The derived encryption key (32 bytes)
+
+    Returns:
+        32-byte commitment value
+
+    Raises:
+        CryptoError: If commitment computation fails
+    """
+    try:
+        h = hmac.HMAC(key, hashes.SHA256(), backend=default_backend())
+        h.update(KEY_COMMITMENT_CONTEXT)
+        return h.finalize()
+    except Exception as e:
+        raise CryptoError(f"Key commitment computation failed: {e}") from e
+
+
+def verify_key_commitment(key: bytes, expected_commitment: bytes) -> bool:
+    """
+    Verify that a key matches the expected commitment.
+
+    Uses constant-time comparison to prevent timing attacks.
+
+    Args:
+        key: The derived encryption key (32 bytes)
+        expected_commitment: The commitment stored with the ciphertext
+
+    Returns:
+        True if the commitment matches, False otherwise
+    """
+    try:
+        # Use HMAC verify which does constant-time comparison internally
+        h = hmac.HMAC(key, hashes.SHA256(), backend=default_backend())
+        h.update(KEY_COMMITMENT_CONTEXT)
+        try:
+            h.verify(expected_commitment)
+            return True
+        except Exception:
+            return False
+    except CryptoError:
+        return False
+
+
+# =============================================================================
+# File Metadata
+# =============================================================================
+#
+# Format: MAGIC(5) + META_LEN(2 big-endian) + META_JSON + SALT(16) + NONCE(12) + CIPHERTEXT + TAG(16)
+#
+# The metadata JSON contains:
+#   - original_filename: The original filename before encryption
+#   - version: Metadata format version (always 4 for current implementation)
+#   - key_commitment: Base64-encoded HMAC-SHA256 commitment binding ciphertext to key
+# =============================================================================
+
+
+@dataclass
+class FileMetadata:
+    """Metadata stored with encrypted files."""
+
+    original_filename: str | None = None
+    version: int = field(default=METADATA_VERSION)
+    key_commitment: str | None = None  # Base64-encoded HMAC commitment
+
+    def to_bytes(self) -> bytes:
+        """Serialize metadata to JSON bytes."""
+        data: dict[str, str | int] = {
+            "version": self.version,
+        }
+        if self.original_filename:
+            # Truncate filename if too long
+            data["original_filename"] = self.original_filename[:FILENAME_MAX_LENGTH]
+        if self.key_commitment:
+            data["key_commitment"] = self.key_commitment
+        return json.dumps(data, separators=(",", ":")).encode("utf-8")
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> FileMetadata:
+        """Deserialize metadata from JSON bytes."""
+        try:
+            obj = json.loads(data.decode("utf-8"))
+            version = obj.get("version", METADATA_VERSION)
+            key_commitment = obj.get("key_commitment")
+            return cls(
+                original_filename=obj.get("original_filename"),
+                version=version,
+                key_commitment=key_commitment,
+            )
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise CryptoError(f"Invalid metadata format: {e}") from e
+
+
+# =============================================================================
+# Text Encryption/Decryption
+# =============================================================================
+
+
+def _encrypt_data(data: bytes, passphrase: str) -> bytes:
+    """
+    Encrypt data using AES-256-GCM with Argon2id and key commitment.
+
+    Internal function used by encrypt_text.
+
+    Args:
+        data: Data to encrypt
+        passphrase: Encryption password
+
+    Returns:
+        Encrypted data with salt, nonce, and tag
+
+    Raises:
+        CryptoError: If encryption fails
+    """
+    from .secure_memory import SecureBytes
+    from .timing_safe import add_timing_jitter
+
+    try:
+        salt = secrets.token_bytes(SALT_SIZE)
+        nonce = secrets.token_bytes(NONCE_SIZE)
+
+        with SecureBytes(derive_key(passphrase, salt)) as secure_key:
+            # Compute key commitment
+            commitment = compute_key_commitment(secure_key.data)
+
+            encryptor = Cipher(
+                algorithms.AES(secure_key.data),
+                modes.GCM(nonce),
+                backend=default_backend(),
+            ).encryptor()
+
+            add_timing_jitter()
+            ciphertext = encryptor.update(data) + encryptor.finalize()
+            tag = encryptor.tag
+
+            # Format: salt + nonce + commitment + ciphertext + tag
+            return salt + nonce + commitment + ciphertext + tag
+    except Exception as e:
+        raise CryptoError(f"Encryption failed: {e}") from e
+
+
+def _decrypt_data(encrypted: bytes, passphrase: str) -> bytes:
+    """
+    Decrypt data using AES-256-GCM with Argon2id and key commitment verification.
+
+    Internal function used by decrypt_text.
+
+    Args:
+        encrypted: Encrypted data with salt, nonce, commitment, ciphertext, and tag
+        passphrase: Decryption password
+
+    Returns:
+        Decrypted data
+
+    Raises:
+        CryptoError: If decryption fails or key commitment verification fails
+    """
+    try:
+        # Format: salt(16) + nonce(12) + commitment(32) + ciphertext + tag(16)
+        min_len = SALT_SIZE + NONCE_SIZE + 32 + TAG_SIZE
+        if len(encrypted) < min_len:
+            raise CryptoError("Invalid encrypted data format")
+
+        salt = encrypted[:SALT_SIZE]
+        nonce = encrypted[SALT_SIZE : SALT_SIZE + NONCE_SIZE]
+        commitment = encrypted[SALT_SIZE + NONCE_SIZE : SALT_SIZE + NONCE_SIZE + 32]
+        ciphertext_with_tag = encrypted[SALT_SIZE + NONCE_SIZE + 32 :]
+
+        if len(ciphertext_with_tag) < TAG_SIZE:
+            raise CryptoError("Data too short - not valid encrypted data")
+
+        tag = ciphertext_with_tag[-TAG_SIZE:]
+        ciphertext = ciphertext_with_tag[:-TAG_SIZE]
+
+        # Wrap key in SecureBytes to ensure it's wiped after use
+        from .secure_memory import SecureBytes
+
+        with SecureBytes(derive_key(passphrase, salt)) as secure_key:
+            # Verify key commitment
+            if not verify_key_commitment(bytes(secure_key.data), commitment):
+                raise CryptoError(
+                    "Key commitment verification failed - wrong password or tampered data"
+                )
+
+            decryptor = Cipher(
+                algorithms.AES(secure_key.data),
+                modes.GCM(nonce, tag),
+                backend=default_backend(),
+            ).decryptor()
+
+            return decryptor.update(ciphertext) + decryptor.finalize()
+    except CryptoError:
+        raise
+    except Exception as e:
+        raise CryptoError(f"Decryption failed: {e}") from e
+
+
+def encrypt_text(text: str, passphrase: str) -> str:
+    """
+    Encrypt text using AES-256-GCM with Argon2id and key commitment.
+
+    Args:
+        text: Text to encrypt
+        passphrase: Encryption password
+
+    Returns:
+        Base64-encoded encrypted text
+
+    Raises:
+        CryptoError: If encryption fails
+    """
+    try:
+        encrypted = _encrypt_data(text.encode("utf-8"), passphrase)
+        return base64.b64encode(encrypted).decode("ascii")
+    except CryptoError:
+        raise
+    except Exception as e:
+        raise CryptoError(f"Text encryption failed: {e}") from e
+
+
+def decrypt_text(token: str, passphrase: str) -> str:
+    """
+    Decrypt text using AES-256-GCM with Argon2id and key commitment verification.
+
+    Args:
+        token: Base64-encoded encrypted text
+        passphrase: Decryption password
+
+    Returns:
+        Decrypted text
+
+    Raises:
+        CryptoError: If decryption fails or key commitment verification fails
+    """
+    try:
+        encrypted = base64.b64decode(token)
+    except ValueError:
+        raise CryptoError("Text decryption failed: invalid base64") from None
+
+    try:
+        decrypted = _decrypt_data(encrypted, passphrase)
+        return decrypted.decode("utf-8", "ignore")
+    except CryptoError:
+        raise
+    except Exception as e:
+        raise CryptoError(f"Text decryption failed: {e}") from e
+
+
+# =============================================================================
+# File Encryption/Decryption
+# =============================================================================
+
+
+def encrypt_file(
+    input_path: str,
+    output_path: str,
+    passphrase: str,
+    *,
+    store_filename: bool = True,
+) -> None:
+    """
+    Encrypt a file using AES-256-GCM with Argon2id and key commitment.
+
+    The file format stores metadata including the original filename
+    and a key commitment to prevent invisible salamanders attacks.
+
+    Args:
+        input_path: Path to file to encrypt
+        output_path: Path for encrypted output
+        passphrase: Encryption password
+        store_filename: If True, store original filename in metadata
+
+    Raises:
+        CryptoError: If encryption fails
+    """
+    from .secure_memory import SecureBytes
+    from .timing_safe import add_timing_jitter
+
+    try:
+        salt = secrets.token_bytes(SALT_SIZE)
+        nonce = secrets.token_bytes(NONCE_SIZE)
+
+        with SecureBytes(derive_key(passphrase, salt)) as secure_key:
+            # Compute key commitment to bind ciphertext to this specific key
+            commitment = compute_key_commitment(secure_key.data)
+            commitment_b64 = base64.b64encode(commitment).decode("ascii")
+
+            # Build metadata with key commitment
+            metadata = FileMetadata(
+                original_filename=os.path.basename(input_path)
+                if store_filename
+                else None,
+                version=METADATA_VERSION,
+                key_commitment=commitment_b64,
+            )
+            meta_bytes = metadata.to_bytes()
+
+            if len(meta_bytes) > 65535:
+                raise CryptoError("Metadata too large")
+
+            with (
+                StreamProcessor(input_path, "rb") as r,
+                StreamProcessor(output_path, "wb") as w,
+            ):
+                # Write header: MAGIC + metadata length (2 bytes big-endian) + metadata
+                w.write(METADATA_MAGIC)
+                w.write(len(meta_bytes).to_bytes(2, "big"))
+                w.write(meta_bytes)
+
+                # Write encryption header
+                w.write(salt + nonce)
+
+                # Encrypt data
+                encryptor = Cipher(
+                    algorithms.AES(secure_key.data),
+                    modes.GCM(nonce),
+                    backend=default_backend(),
+                ).encryptor()
+
+                for chunk in iter(lambda: r.read(CHUNK_SIZE), b""):
+                    w.write(encryptor.update(chunk))
+                    add_timing_jitter()
+
+                w.write(encryptor.finalize() + encryptor.tag)
+    except CryptoError:
+        raise
+    except Exception as e:
+        raise CryptoError(f"Encryption failed: {e}") from e
+
+
+def decrypt_file(
+    input_path: str,
+    output_path: str | None,
+    passphrase: str,
+    *,
+    restore_filename: bool = True,
+) -> tuple[str, FileMetadata | None]:
+    """
+    Decrypt a file using AES-256-GCM with Argon2id and key commitment verification.
+
+    Args:
+        input_path: Path to encrypted file
+        output_path: Path for decrypted output (if None, uses original filename or input_path + ".dec")
+        passphrase: Decryption password
+        restore_filename: If True and output_path is None, attempt to restore original filename
+
+    Returns:
+        Tuple of (actual_output_path, metadata)
+
+    Raises:
+        CryptoError: If decryption fails or key commitment verification fails
+    """
+    from .security import sanitize_filename
+
+    try:
+        with open(input_path, "rb") as f:
+            # Check for magic header
+            magic = f.read(len(METADATA_MAGIC))
+
+            if magic != METADATA_MAGIC:
+                raise CryptoError(
+                    "Invalid file format: missing magic header. "
+                    "This file may have been encrypted with an older version."
+                )
+
+            # Read metadata
+            meta_len_bytes = f.read(2)
+            if len(meta_len_bytes) != 2:
+                raise CryptoError("Invalid file: truncated metadata length")
+            meta_len = int.from_bytes(meta_len_bytes, "big")
+
+            if meta_len > 65535:
+                raise CryptoError("Invalid file: metadata too large")
+
+            meta_bytes = f.read(meta_len)
+            if len(meta_bytes) != meta_len:
+                raise CryptoError("Invalid file: truncated metadata")
+
+            metadata = FileMetadata.from_bytes(meta_bytes)
+
+            # Read encryption header
+            header = f.read(SALT_SIZE + NONCE_SIZE)
+            if len(header) != SALT_SIZE + NONCE_SIZE:
+                raise CryptoError("Invalid encrypted file format")
+
+            salt, nonce = header[:SALT_SIZE], header[SALT_SIZE:]
+            encrypted_data = f.read()
+
+        # Determine output path
+        if output_path is None:
+            if restore_filename and metadata and metadata.original_filename:
+                # Sanitize the stored filename for security
+                safe_name = sanitize_filename(metadata.original_filename)
+                # Use sanitized name if it's valid (not empty after sanitization)
+                if safe_name:
+                    # Use the sanitized original filename in the same directory as input
+                    output_dir = os.path.dirname(input_path) or "."
+                    output_path = os.path.join(output_dir, safe_name)
+                else:
+                    # Fallback if filename is empty after sanitization
+                    output_path = input_path + ".dec"
+            else:
+                output_path = input_path + ".dec"
+
+        # Decrypt
+        if len(encrypted_data) < TAG_SIZE:
+            raise CryptoError("File too short - not a valid encrypted file")
+
+        tag = encrypted_data[-TAG_SIZE:]
+        ciphertext = encrypted_data[:-TAG_SIZE]
+
+        # Wrap key in SecureBytes to ensure it's wiped after use
+        from .secure_memory import SecureBytes
+
+        with SecureBytes(derive_key(passphrase, salt)) as secure_key:
+            # Verify key commitment
+            if metadata.key_commitment is not None:
+                try:
+                    expected_commitment = base64.b64decode(metadata.key_commitment)
+                    if not verify_key_commitment(
+                        bytes(secure_key.data), expected_commitment
+                    ):
+                        raise CryptoError(
+                            "Key commitment verification failed - wrong password or tampered file"
+                        )
+                except (ValueError, TypeError) as e:
+                    raise CryptoError(f"Invalid key commitment format: {e}") from e
+            else:
+                raise CryptoError(
+                    "File missing key commitment - may have been tampered with"
+                )
+
+            decryptor = Cipher(
+                algorithms.AES(secure_key.data),
+                modes.GCM(nonce, tag),
+                backend=default_backend(),
+            ).decryptor()
+
+            plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+
+        with StreamProcessor(output_path, "wb") as w:
+            w.write(plaintext)
+
+        return output_path, metadata
+
+    except CryptoError:
+        raise
+    except Exception as e:
+        raise CryptoError(f"Decryption failed: {e}") from e
