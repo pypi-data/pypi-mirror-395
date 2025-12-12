@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "livecaption"
+version = "1.0.1"
+description = "Real-time audio transcription for video streaming with Firefox browser integration"
+authors = [{name = "b-tok"}]
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+keywords = ["transcription", "whisper", "japanese", "subtitles", "firefox", "streaming"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.36.0",
+    "accelerate>=0.25.0",
+    "sounddevice>=0.4.6",
+    "numpy>=1.24.0",
+    "silero-vad>=5.0.0",
+]
+
+[project.optional-dependencies]
+faster-whisper = [
+    "faster-whisper>=0.10.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+livecaption = "livecaption.main:main"
+livecaption-setup = "livecaption.installer:main"
+livecaption-uninstall = "livecaption.uninstaller:main"
+livecaption-host = "livecaption.native_host:main"
+
+[project.urls]
+Homepage = "https://github.com/b-tok/LiveCaption"
+Issues = "https://github.com/b-tok/LiveCaption/issues"
+Documentation = "https://github.com/b-tok/LiveCaption#readme"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+livecaption = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311']
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
