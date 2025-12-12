@@ -1,0 +1,255 @@
+"""
+initProjectRules prompt 生成器
+initProjectRules prompt generator
+負責將模板和參數組合成最終的 prompt
+Responsible for combining templates and parameters into the final prompt
+"""
+
+from typing import Optional, Dict, Any
+from dataclasses import dataclass
+import asyncio
+from aicoding_backend.utils.loader import load_prompt
+
+
+@dataclass
+class InitProjectRulesPromptParams:
+    """
+    initProjectRules prompt 參數類
+    initProjectRules prompt parameters class
+    """
+    # 目前没有额外参数，未来可按需扩展
+    # Currently no additional parameters, can be expanded as needed in the future
+    pass
+
+
+async def get_init_project_rules_prompt(
+    params: Optional[InitProjectRulesPromptParams] = None
+) -> str:
+    """
+    獲取 initProjectRules 的完整 prompt
+    Get the complete prompt for initProjectRules
+    
+    Args:
+        params: prompt 參數（可選）/ prompt parameters (optional)
+        
+    Returns:
+        str: 生成的 prompt / generated prompt
+    """
+    
+    index_template = """
+请用 「process_thought」 工具思考以下问题
+
+# 项目规范初始化指南
+
+## 目的
+
+**此文件专为 AI Agent 设计，非一般开发者文档。**
+**必须生成一个专属于 AI Agent 操作使用的项目规范文件(ProjectInfo.md)。**
+
+**必须专注于以下关键目标：**
+
+- 明确项目特定规则与限制，禁止包含通用开发知识
+- 提供 AI 执行任务时所需的项目特定信息
+- 为 AI 决策过程提供明确指导
+
+**强制规定：**
+
+- 完成的规范必须使 AI Agent 能立即理解哪些文件必须参考或修改
+- 明确指示多文件联动修改要求（例如修改 README.md 时必须同步修改 /docs/zh/README.md）
+- 使用命令式语言定义规则，避免解释性内容
+- 不要进行项目的功能解释，而是如何修改功能或增加功能
+- 请提供范例什么事可以做的，什么事不可以做的
+- 必须**递归**检查所有文件夹与文件
+
+**严重禁止：**
+
+- 禁止包含通用开发知识
+- 禁止包含 LLM 已知的通用开发知识
+- 进行项目功能解释
+
+## 建议结构
+
+请使用以下结构建立规范文件：
+```markdown
+# 开发守则
+
+## 标题
+
+### 副标题
+
+- 规则一
+- 规则二
+
+```
+
+## 内容指南
+
+规范文件应包含但不限于以下内容：
+
+1. **项目概述** - 简要描述项目的目的、技术栈和核心功能
+2. **项目架构** - 说明主要目录结构和模块划分
+3. **代码规范** - 包括命名规范、格式要求、注释规则等
+4. **功能实现规范** - 主要解释如何实现功能及应该注意事项
+5. **框架/插件/第三方库使用规范** - 外部依赖的使用规范
+6. **工作流程规范** - 工作流程指南，包含工作流程图或资料流
+7. **关键文件交互规范** - 关键文件的交互规范，修改哪些文件需要同步修改
+8. **AI 决策规范** - 提供处理模糊情况的决策树和优先级判断标准
+9. **禁止事项** - 明确列出哪些做法是禁止的
+
+## 注意事项
+
+1. **面向 AI 优化** - 文件将作为 prompt 提供给 Coding Agent AI，应对 prompt 最佳化
+2. **专注于开发指导** - 提供持续开发的规则，而非使用教学
+3. **具体示例** - 尽可能提供「应该做什么」和「不应该做什么」的具体示例
+4. **使用命令式语言** - 必须使用直接指令而非描述性语言，减少解释内容
+5. **结构化呈现** - 所有内容必须以列表、表格等结构化形式呈现，便于 AI 解析
+6. **突出重点标记** - 使用粗体、警告标记等突出关键规则和禁忌
+7. **移除通用知识** - 禁止包含 LLM 已知的通用开发知识，仅包含项目特定规则
+
+## 更新模式指南
+
+1. **最小变动** - 当用户要求更新项目规则时，除非必要否则你应该保持现有规则，以最小变更为原则的修改
+2. **时效性** - 你应该检查有的规则的是否有还效益或过时，因为用户可能已经修改或移除相关程序，你必须修正或移除相应规则
+3. **完整性** - 你应该检查现有项目的所有文件夹及文件内容，因为用户可能已经有新增或修改相关程序，你必须补充相应的规则
+4. **自主处理模糊请求**：当收到如「更新规则」等未指定具体内容的模糊指令时，AI **必须**首先尝试自主分析当前程序代码库、近期变更（如果可用）以及现有的 ProjectInfo.md 内容，以推断可能的更新点。在 「process_thought」阶段列出这些推断点及其理由，然后再提出具体修改建议。在执行此自主分析之前，**严格禁止**就模糊的更新请求向用户寻求澄清。
+
+请根据以上指南，创建一个名为 ProjectInfo.md 的文件并存放于根目录下「.joycode/rules」目录
+
+**[AI Agent Action]**现在开始呼叫 「process_thought」 工具思考如何撰写出教导 Coding Agent 规范文件
+**[AI Agent Action]**思考完毕后请立即编辑 ProjectInfo.md 文件，禁止呼叫任何工具
+**[AI Agent Action]**严禁不呼叫工具。AI 必须自主完成从接收指令到执行修改的完整流程，除非遇到技术错误或无法解决的依赖冲突，否则不应中断流程寻求用户输入。  
+"""
+
+    # 加载可能的自定义 prompt (通过环境变量覆盖或追加)
+    # Load possible custom prompt (override or append via environment variables)
+    return load_prompt(index_template, "INIT_PROJECT_RULES")
+
+
+def get_init_project_rules_prompt_sync(
+    params: Optional[InitProjectRulesPromptParams] = None
+) -> str:
+    """
+    同步版本的 prompt 获取函数
+    Synchronous version of the prompt retrieval function
+    
+    Args:
+        params: prompt 參數（可選）/ prompt parameters (optional)
+        
+    Returns:
+        str: 生成的 prompt / generated prompt
+    """
+    try:
+        # 尝试获取当前事件循环
+        # Try to get current event loop
+        loop = asyncio.get_running_loop()
+        # 如果已经在事件循环中，直接同步执行
+        # If already in event loop, execute synchronously
+        return _get_prompt_sync_internal(params)
+    except RuntimeError:
+        # 如果没有运行的事件循环，使用 asyncio.run
+        # If no running event loop, use asyncio.run
+        return asyncio.run(get_init_project_rules_prompt(params))
+
+
+def _get_prompt_sync_internal(params: Optional[InitProjectRulesPromptParams] = None) -> str:
+    """
+    内部同步实现，避免事件循环冲突
+    Internal sync implementation to avoid event loop conflicts
+    """
+    index_template = """
+请用 「process_thought」 工具思考以下问题
+
+# 项目规范初始化指南
+
+## 目的
+
+**此文件专为 AI Agent 设计，非一般开发者文档。**
+**必须生成一个专属于 AI Agent 操作使用的项目规范文件(ProjectInfo.md)。**
+
+**必须专注于以下关键目标：**
+
+- 明确项目特定规则与限制，禁止包含通用开发知识
+- 提供 AI 执行任务时所需的项目特定信息
+- 为 AI 决策过程提供明确指导
+
+**强制规定：**
+
+- 完成的规范必须使 AI Agent 能立即理解哪些文件必须参考或修改
+- 明确指示多文件联动修改要求（例如修改 README.md 时必须同步修改 /docs/zh/README.md）
+- 使用命令式语言定义规则，避免解释性内容
+- 不要进行项目的功能解释，而是如何修改功能或增加功能
+- 请提供范例什么事可以做的，什么事不可以做的
+- 必须**递归**检查所有文件夹与文件
+
+**严重禁止：**
+
+- 禁止包含通用开发知识
+- 禁止包含 LLM 已知的通用开发知识
+- 进行项目功能解释
+
+## 建议结构
+
+请使用以下结构建立规范文件：
+```markdown
+# 开发守则
+
+## 标题
+
+### 副标题
+
+- 规则一
+- 规则二
+
+```
+
+## 内容指南
+
+规范文件应包含但不限于以下内容：
+
+1. **项目概述** - 简要描述项目的目的、技术栈和核心功能
+2. **项目架构** - 说明主要目录结构和模块划分
+3. **代码规范** - 包括命名规范、格式要求、注释规则等
+4. **功能实现规范** - 主要解释如何实现功能及应该注意事项
+5. **框架/插件/第三方库使用规范** - 外部依赖的使用规范
+6. **工作流程规范** - 工作流程指南，包含工作流程图或资料流
+7. **关键文件交互规范** - 关键文件的交互规范，修改哪些文件需要同步修改
+8. **AI 决策规范** - 提供处理模糊情况的决策树和优先级判断标准
+9. **禁止事项** - 明确列出哪些做法是禁止的
+
+## 注意事项
+
+1. **面向 AI 优化** - 文件将作为 prompt 提供给 Coding Agent AI，应对 prompt 最佳化
+2. **专注于开发指导** - 提供持续开发的规则，而非使用教学
+3. **具体示例** - 尽可能提供「应该做什么」和「不应该做什么」的具体示例
+4. **使用命令式语言** - 必须使用直接指令而非描述性语言，减少解释内容
+5. **结构化呈现** - 所有内容必须以列表、表格等结构化形式呈现，便于 AI 解析
+6. **突出重点标记** - 使用粗体、警告标记等突出关键规则和禁忌
+7. **移除通用知识** - 禁止包含 LLM 已知的通用开发知识，仅包含项目特定规则
+
+## 更新模式指南
+
+1. **最小变动** - 当用户要求更新项目规则时，除非必要否则你应该保持现有规则，以最小变更为原则的修改
+2. **时效性** - 你应该检查有的规则的是否有还效益或过时，因为用户可能已经修改或移除相关程序，你必须修正或移除相应规则
+3. **完整性** - 你应该检查现有项目的所有文件夹及文件内容，因为用户可能已经有新增或修改相关程序，你必须补充相应的规则
+4. **自主处理模糊请求**：当收到如「更新规则」等未指定具体内容的模糊指令时，AI **必须**首先尝试自主分析当前程序代码库、近期变更（如果可用）以及现有的 ProjectInfo.md 内容，以推断可能的更新点。在 「process_thought」阶段列出这些推断点及其理由，然后再提出具体修改建议。在执行此自主分析之前，**严格禁止**就模糊的更新请求向用户寻求澄清。
+
+请根据以上指南，创建一个名为 ProjectInfo.md 的文件并存放于根目录下「.joycode/rules」目录
+
+**[AI Agent Action]**现在开始呼叫 「process_thought」 工具思考如何撰写出教导 Coding Agent 规范文件
+**[AI Agent Action]**思考完毕后请立即编辑 ProjectInfo.md 文件，禁止呼叫任何工具
+**[AI Agent Action]**严禁不呼叫工具。AI 必须自主完成从接收指令到执行修改的完整流程，除非遇到技术错误或无法解决的依赖冲突，否则不应中断流程寻求用户输入。
+"""
+
+    # 加载可能的自定义 prompt (通过环境变量覆盖或追加)
+    # Load possible custom prompt (override or append via environment variables)
+    return load_prompt(index_template, "INIT_PROJECT_RULES")
+
+
+# 为了兼容性，提供一个简化的函数名
+# For compatibility, provide a simplified function name
+async def get_prompt(params: Optional[InitProjectRulesPromptParams] = None) -> str:
+    """
+    简化的 prompt 获取函数
+    Simplified prompt retrieval function
+    """
+    return await get_init_project_rules_prompt(params)
