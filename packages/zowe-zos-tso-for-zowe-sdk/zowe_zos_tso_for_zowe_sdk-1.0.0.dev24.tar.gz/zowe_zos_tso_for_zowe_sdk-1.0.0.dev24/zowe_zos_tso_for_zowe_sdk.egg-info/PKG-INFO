@@ -1,0 +1,62 @@
+Metadata-Version: 2.4
+Name: zowe_zos_tso_for_zowe_sdk
+Version: 1.0.0.dev24
+Summary: Zowe Python SDK - z/OS TSO package
+Home-page: https://github.com/zowe/zowe-client-python-sdk
+Author: Zowe
+Author-email: zowe.robot@gmail.com
+License: EPL-2.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: License :: OSI Approved :: Eclipse Public License 2.0 (EPL-2.0)
+Description-Content-Type: text/markdown
+Requires-Dist: zowe.core_for_zowe_sdk~=1.0.0-dev24
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: requires-dist
+Dynamic: summary
+
+z/OS TSO Package
+=================
+
+Contains APIs to interact with TSO on z/OS (using z/OSMF TSO REST endpoints).
+
+Examples
+------------
+
+<strong>Issue the TSO command "status" to display information about jobs for your user ID</strong>  
+
+```
+from zowe.core_for_zowe_sdk import ProfileManager
+from zowe.zos_tso_for_zowe_sdk import Tso
+
+profile = ProfileManager().load(profile_name="zosmf")
+
+with Tso(profile) as tso_info:
+    started_tso_session = tso_info.start_tso_session()
+
+    issue_command = tso_info.send_tso_message(started_tso_session, message="status")
+    print(issue_command)
+```
+
+<strong>Demonstrate starting, pinging, and stopping a TSO address space</strong>  
+
+```
+from zowe.core_for_zowe_sdk import ProfileManager
+from zowe.zos_tso_for_zowe_sdk import Tso
+
+profile = ProfileManager().load(profile_name="zosmf")
+
+with Tso(profile) as tso_info:
+    started_tso_session = tso_info.start_tso_session()
+    print(started_tso_session)
+
+    print(tso_info.ping_tso_session(started_tso_session))
+
+    print(tso_info.end_tso_session(started_tso_session))
+```
