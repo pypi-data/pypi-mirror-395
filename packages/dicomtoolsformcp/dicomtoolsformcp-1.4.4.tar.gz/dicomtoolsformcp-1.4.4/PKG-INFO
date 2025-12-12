@@ -1,0 +1,105 @@
+Metadata-Version: 2.4
+Name: dicomtoolsformcp
+Version: 1.4.4
+Summary: 基于 MCP (Model Context Protocol) 的 DICOM 医学影像文件分析工具
+Project-URL: Homepage, https://github.com/yourusername/dicom-tools-mcp
+Project-URL: Repository, https://github.com/yourusername/dicom-tools-mcp
+Project-URL: Issues, https://github.com/yourusername/dicom-tools-mcp/issues
+Author-email: jiancong Zhang <1316795665@qq.com>
+License: MIT
+Keywords: dicom,mcp,medical-imaging,model-context-protocol,orthanc
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Healthcare Industry
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Medical Science Apps.
+Requires-Python: >=3.10
+Requires-Dist: mcp>=0.9.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pydicom>=2.4.0
+Requires-Dist: pyorthanc
+Requires-Dist: requests>=2.31.0
+Requires-Dist: sympy
+Requires-Dist: tqdm>=4.66.0
+Description-Content-Type: text/markdown
+
+# DicomToolsForMCP
+
+基于 MCP (Model Context Protocol) 的 DICOM 医学影像文件分析工具。
+
+## 安装
+
+```bash
+pip install dicomtoolsformcp
+```
+
+## MCP Server 配置
+
+在 MCP 客户端配置文件中添加以下配置：
+
+```json
+{
+  "mcpServers": {
+    "dicom-tools-python": {
+      "command": "uvx",
+      "args": [
+        "dicomtoolsformcp"
+      ],
+      "env": {
+        "base_url": "https://your-server.com",
+        "name": "your_username",
+        "password": "your_password",
+        "tel": "your_phone"
+      }
+    }
+  }
+}
+```
+
+**环境变量说明：**
+- `base_url`: 服务器基础URL（必需）
+- `name`: 用户名（可选，用于自动登录）
+- `password`: 密码（可选，用于自动登录）
+- `tel`: 手机号（可选，用于自动登录）
+
+## 工具说明
+
+### 1. scan-dicom-directory
+扫描指定目录下所有可读的 .dcm 文件，汇总患者数、序列数、文件数和总字节数，返回 JSON 文本。
+
+**参数：**
+- `directory_path` (string): 待扫描的本地目录路径，绝对路径，必须存在且可读
+
+### 2. parse-dicom-file
+解析单个 DICOM 文件，提取 PatientID、PatientName、SeriesInstanceUID、SeriesDescription 等元数据，返回结构化 JSON。
+
+**参数：**
+- `file_path` (string): 待解析的本地 DICOM 文件路径，需指向实际存在的 .dcm 文件
+
+### 3. analyze-dicom-directory
+扫描目录中的 DICOM 序列，按 series_type 选择分析流程并上传到预配置的远端分析服务，返回上传结果及访问 URL。
+
+**参数：**
+- `directory_path` (string): 包含待分析 DICOM 序列的本地目录路径，必须存在且具备读取权限
+- `series_type` (string): 分析流程类型，`1`=主动脉分析，`9`=二尖瓣分析
+
+### 4. separate-dicom-files
+按患者和序列拆分目录下的 DICOM 文件，生成新的子目录结构，并以 JSON 返回整理后的统计结果。
+
+**参数：**
+- `directory_path` (string): 待整理的顶层目录路径，执行过程中会在同级创建输出目录
+
+### 5. get-analysis-result
+根据 study_uid 查询分析结果，如果没有分析结果，需要进行 analyze-dicom-directory 工具上传分析，返回测量结果的 URL。
+
+**参数：**
+- `study_uid` (string): DICOM序列的 study_uid，用于查询分析结果
+
+### 6. export-measurement-csv
+导出账号下指定 StudyInstanceUID 数组的测量数值 CSV 文件，返回下载 URL。
+
+**参数：**
+- `studyInstanceUids` (array): StudyInstanceUID 数组，用于导出对应的测量数值 CSV 文件
