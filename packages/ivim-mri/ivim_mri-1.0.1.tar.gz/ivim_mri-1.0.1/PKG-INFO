@@ -1,0 +1,96 @@
+Metadata-Version: 2.4
+Name: ivim-mri
+Version: 1.0.1
+Summary: Tools related to Intravoxel Incoherent Motion (IVIM) modeling of diffusion MRI data
+Project-URL: Homepage, https://ivim.readthedocs.io/
+Author-email: Oscar Jalnefjord <oscar.jalnefjord@gu.se>
+License: BSD 3-Clause License
+        
+        Copyright (c) 2023, Oscar Jalnefjord
+        
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+        
+        1. Redistributions of source code must retain the above copyright notice, this
+           list of conditions and the following disclaimer.
+        
+        2. Redistributions in binary form must reproduce the above copyright notice,
+           this list of conditions and the following disclaimer in the documentation
+           and/or other materials provided with the distribution.
+        
+        3. Neither the name of the copyright holder nor the names of its
+           contributors may be used to endorse or promote products derived from
+           this software without specific prior written permission.
+        
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+        FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+        DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+        SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+        CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+        OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+        OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+License-File: LICENSE
+Keywords: IVIM,MRI,diffusion,intravoxel incoherent motion,perfusion,python
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.10
+Requires-Dist: nibabel
+Requires-Dist: numpy<2
+Requires-Dist: scipy
+Provides-Extra: docs
+Requires-Dist: ipykernel; extra == 'docs'
+Requires-Dist: matplotlib; extra == 'docs'
+Requires-Dist: nbsphinx; extra == 'docs'
+Requires-Dist: pandoc; extra == 'docs'
+Requires-Dist: sphinx; extra == 'docs'
+Requires-Dist: sphinx-copybutton; extra == 'docs'
+Requires-Dist: sphinx-rtd-theme; extra == 'docs'
+Provides-Extra: tests
+Requires-Dist: pytest; extra == 'tests'
+Description-Content-Type: text/markdown
+
+# `ivim` - An end-to-end python package for intravoxel incoherent motion (IVIM) analysis of diffusion MRI data
+
+[![tests passing](https://github.com/oscarjalnefjord/ivim/actions/workflows/tests.yml/badge.svg)](https://github.com/oscarjalnefjord/ivim/actions)
+[![codecov](https://codecov.io/gh/oscarjalnefjord/ivim/graph/badge.svg?token=V7LGUH6ZVP)](https://codecov.io/gh/oscarjalnefjord/ivim)
+[![Documentation Status](https://readthedocs.org/projects/ivim/badge/?version=latest)](https://ivim.readthedocs.io/en/latest/?badge=latest)
+
+The `ivim` python package provides functionality for the main steps associated with IVIM analysis of diffusion MRI data including:
+- Methods for IVIM parameter estimation / model fitting
+- Simulation of MRI data based on IVIM models
+- Optimization of b-values 
+- Preprocessing, both basic operations like extracting image data with a specific b-value or averaging of diffusion encoding directions, and specific methods like correction for signal drift
+
+The file formats used are the ones used by [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSL), i.e. .nii.gz for image data, .bval for b-values and .bvec for diffusion encoding directions. File with ending .cval is also used for c-values in analogy to .bval for b-values to describe flow encoding.
+
+## Dependencies
+The `ivim` python package relies heavly on numpy for numerical operations, uses nibabel for reading and writing nifti file, and uses scipy for some specific minimization/optimization tasks. A python version >= 3.10 is required.
+
+## How to install
+The suggested way to install is to first prepare an environment suitable for the `ivim` package using e.g. venv with a compatible python version (>= 3.10):
+
+    python3 -m venv .ivim
+
+Activate the environment:
+
+    source .ivim/bin/activate 
+
+To install the package, run:
+
+    python3 -m pip install ivim-mri
+
+## References
+The following work describe some of the algorithms implemented in the package.
+
+1. Jalnefjord et al. Comparison of methods for estimation of the intravoxel incoherent motion (IVIM) diffusion coefficient (D) and perfusion fraction (f). Magnetic Resonance Materials in Physics, Biology and Medicine 2018; 31(6):715-723. https://doi.org/10.1007/s10334-018-0697-5
+
+2. Gustafsson et al. Impact of prior distributions and central tendency measures on Bayesian intravoxel incoherent motion model fitting. Magnetic Resonance in Medicine 2018; 79(3):1674-1683. https://doi.org/10.1002/mrm.26783 
+
+3. Jalnefjord et al. Optimization of b‐value schemes for estimation of the diffusion coefficient and the perfusion fraction with segmented intravoxel incoherent motion model fitting. Magnetic Resonance in Medicine 2019; 82(4):1541-1552. https://doi.org/10.1002/mrm.27826 
