@@ -1,0 +1,147 @@
+[project]
+name = "docnote_extract"
+description = "The build-time companion package to docnote"
+authors = []
+dynamic = []
+requires-python = ">= 3.12"
+readme = "README.md"
+dependencies = [
+    "docnote>=2025.12.4.0",
+]
+version = "2025.12.4.0"
+
+[dependency-groups]
+test = [
+    "docnote_extract_testutils",
+    "docnote_extract_testpkg",
+    "pytest>=8.4.1",
+    "templatey>=2025.11.13.0",
+    "finnr>=2025.9.5.0",
+]
+lint = [
+    "ruff >= 0.3.3",
+]
+repl = [
+    "wat-inspector >= 0.3.2",
+    "docnote_extract_testpkg_factory",
+    "httpx>=0.28.1",
+]
+
+[tool.uv]
+default-groups = [
+    "test",
+    "lint",
+    "repl",
+]
+
+[tool.uv.sources.docnote_extract_testutils]
+workspace = true
+
+[tool.uv.sources.docnote_extract_testpkg]
+workspace = true
+
+[tool.uv.sources.docnote_extract_testpkg_factory]
+workspace = true
+
+[tool.uv.workspace]
+members = [
+    "sidecars_py/*",
+]
+
+[tool.pdm.version]
+source = "scm"
+fallback_version = "0.0.0.dev"
+
+[tool.pdm.build]
+package-dir = "src_py"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = [
+    "tests_py",
+]
+addopts = "--import-mode=importlib"
+cache_dir = "/tmp/pytest_cache"
+python_files = "*.test.py"
+
+[tool.ruff]
+line-length = 79
+extend-exclude = [
+    "sidecars_py/docnote_extract_testpkg",
+]
+
+[tool.ruff.lint]
+dummy-variable-rgx = "^_{1,2}$"
+select = [
+    "F",
+    "E",
+    "W",
+    "C90",
+    "B",
+    "I",
+    "N",
+    "YTT",
+    "S",
+    "A",
+    "C4",
+    "ICN",
+    "Q003",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "RUF",
+]
+ignore = [
+    "S610",
+    "N818",
+    "PLR5501",
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+default-section = "third-party"
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+    "sidecars",
+]
+known-first-party = [
+    "docnote_extract",
+]
+
+[tool.ruff.lint.isort.sections]
+sidecars = [
+    "docnote_extract_testutils",
+    "docnote_extract_testpkg",
+    "docnote_extract_testpkg_factory",
+]
+
+[tool.ruff.lint.pylint]
+max-args = 7
+
+[tool.ruff.lint.per-file-ignores]
+"tests_py/**" = [
+    "S101",
+    "PLR2004",
+    "N999",
+    "PLC0415",
+]
+
+[tool.pyright]
+pythonVersion = "3.13"
+pythonPlatform = "Linux"
+reportUnknownVariableType = "information"
+reportUnknownMemberType = "information"
+ignore = [
+    "sidecars_py/docnote_extract_testpkg/**/*",
+]
+
+[build-system]
+requires = [
+    "pdm-backend",
+]
+build-backend = "pdm.backend"
