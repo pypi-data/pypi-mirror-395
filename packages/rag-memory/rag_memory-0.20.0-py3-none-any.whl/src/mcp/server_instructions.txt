@@ -1,0 +1,359 @@
+# RAG Memory - AI Agent Usage Guide
+
+## System Overview
+
+**IMPORTANT:** Ingestion operations have cost (they process your content). Query operations are free (they search existing knowledge).
+
+---
+
+## 1. COLLECTION DISCIPLINE (CRITICAL)
+
+**MUST review collections before ingesting ANY content:**
+
+1. `list_collections()` - See available collections
+2. `get_collection_info(name)` - Review purpose, domain, metadata schema
+3. Choose collection matching content's domain/topic
+4. If no good match: `create_collection()` with clear domain/purpose
+
+**Why:** Collections partition BOTH vector search AND knowledge graph. Poor collection choices degrade knowledge quality and search relevance.
+
+**Never:**
+- Dump unrelated content into same collection
+- Ignore collection descriptions when choosing where to ingest
+- Create collections without clear, focused domain/purpose
+- Ingest before reviewing what collections already exist
+
+**Pattern:**
+```
+list_collections()
+  → review purposes/domains
+  → choose best fit OR create new
+  → ingest_*(collection_name=chosen)
+```
+
+---
+
+## 2. SEARCH: USE FULL QUESTIONS (NOT KEYWORDS)
+
+**Semantic search matches MEANING, not exact words.**
+
+✅ Good: "How do I configure authentication in the system?"
+❌ Bad: "authentication configuration"
+
+Applies to: `search_documents`, `query_relationships`, `query_temporal`
+
+---
+
+## 3. INGESTION WORKFLOWS
+
+### Duplicate Detection & Reingest
+
+**AUTOMATIC DUPLICATE DETECTION:**
+All ingest tools automatically detect duplicates when using mode='ingest' (default).
+If content already exists, you'll receive a clear error with the duplicate's ID and a suggestion to use mode='reingest'.
+
+**How It Works:**
+- **ingest_text**: Checks for existing document with same title in collection
+- **ingest_file**: Checks for existing file_path metadata in collection
+- **ingest_directory**: Checks all files' file_path metadata in collection
+- **ingest_url**: Checks for existing crawl_root_url metadata in collection
+
+**Workflow:**
+```
+# STEP 1: Try ingesting (mode='ingest' is default)
+ingest_*(content, collection_name)
+
+# STEP 2: If duplicate error occurs, decide:
+  → Content unchanged? SKIP (no action needed)
+  → Content updated? Use mode='reingest' (deletes old, ingests new)
+  → Minor edit only? Use update_document() (no re-chunking)
+```
+
+**Reingest vs Update:**
+- **mode='reingest'**: Deletes old document completely, re-ingests fresh content
+  - **When:** Content changed significantly, need fresh chunking/embeddings/graph
+  - **Result:** Complete replacement with new document ID
+  - **Tools:** ingest_text, ingest_file, ingest_directory, ingest_url
+
+- **update_document()**: Updates existing document in-place
+  - **When:** Minor metadata changes, small content tweaks
+  - **Result:** Same document ID, only specified fields updated
+  - **Note:** Content updates trigger re-chunking (same cost as reingest)
+
+### Analyze Before Multi-Page Ingests (REQUIRED)
+```
+# STEP 1: Analyze website structure
+analysis = analyze_website(url, include_url_lists=True)
+  → Returns: total_urls, pattern_stats, elapsed_seconds
+  → Note: May take up to 50 seconds for large sites
+
+# STEP 2: Review scope and plan strategy
+  → If total_urls <= 20: Single targeted ingest
+  → If total_urls > 20: Multiple targeted ingests (max_pages=20 per ingest)
+  → Review pattern_stats to identify sections (/api, /guides, /reference)
+
+# STEP 3: Execute ingest(s)
+ingest_url(
+    url=target_url,
+    follow_links=True,
+    max_pages=20  # default=10, max=20
+)
+```
+
+**Why:**
+- Helps plan targeted ingests vs full-site ingestion
+- max_pages=20 hard limit requires multiple ingests for large sites
+- Pattern stats show actual site structure for informed decisions
+
+**Website Analysis:**
+analyze_website() discovers publicly accessible URL patterns:
+- Works with sites that have sitemaps
+- Also discovers URLs from sites without sitemaps
+- Returns up to 150 URLs grouped by path pattern
+- 50-second timeout (very large sites may time out - try analyzing subsections instead)
+Example: "https://docs.example.com/api" → discovers /api section structure
+
+### Dry Run for Topic-Focused Ingestion (RECOMMENDED)
+
+When you have a specific topic in mind, use `dry_run=True` to preview what pages
+would be ingested and get relevance scores before committing.
+
+```
+# STEP 1: Dry run with topic
+preview = ingest_url(
+    url="https://docs.example.com/tutorials",
+    collection_name="example-docs",
+    follow_links=True,
+    max_pages=20,
+    dry_run=True,
+    topic="authentication and OAuth"  # REQUIRED with dry_run
+)
+# Returns: pages with relevance_score (0-1) and recommendation
+
+# STEP 2: Review results with user
+  → pages_recommended: pages scoring >= 0.5
+  → pages_to_skip: pages scoring < 0.5
+  → Each page shows: url, title, relevance_score, relevance_summary
+
+# STEP 3: Ingest only relevant pages, OR proceed with full ingest
+for page in preview["pages"]:
+    if page["recommendation"] == "ingest":
+        ingest_url(url=page["url"], collection_name="example-docs")
+```
+
+**Why:**
+- Websites link to many unrelated pages (navigation, footers, related articles)
+- A "Getting Started" page might link to 50 unrelated pages in the docs
+- Dry run uses LLM to score each page's relevance to YOUR specific topic
+- Prevents polluting knowledge base with off-topic content
+- Small cost (~$0.01-0.05 for 20 pages via GPT-4o-mini)
+
+**When to use dry_run:**
+- When follow_links=True (multi-page crawls)
+- When user has a specific topic they care about
+- When unsure what content the crawl will discover
+
+**When to skip dry_run:**
+- Single page ingests (follow_links=False)
+- When user wants ALL pages from a section regardless of topic
+- When site structure is well understood
+
+### Explore Local Directories Before Ingesting (RECOMMENDED)
+
+When ingesting local files, use `list_directory()` to explore contents first:
+
+```
+# STEP 1: Explore directory contents
+files = list_directory(
+    directory_path="/docs/engineering",
+    file_extensions=[".md", ".txt"],
+    recursive=True,
+    include_preview=True  # Get first 500 chars for assessment
+)
+# Returns: file metadata, sizes, previews, extension summary
+
+# STEP 2: Review and present findings to user
+  → extensions_found shows content types: {".md": 12, ".txt": 3}
+  → files list shows names, sizes, and previews
+  → Agent assesses relevance based on filenames and content previews
+
+# STEP 3: Get user approval for specific files
+
+# STEP 4: Ingest approved files
+for file in approved_files:
+    ingest_file(file_path=file["path"], collection_name="my-docs")
+```
+
+**Why:**
+- Prevents blind ingestion of irrelevant files
+- Users can review what's available before committing
+- Previews help assess content relevance without full ingestion
+- FREE operation (no AI models, just filesystem access)
+
+**When to use list_directory:**
+- Before calling ingest_file() or ingest_directory()
+- When user says "look at this folder" or "check my documents"
+- When agent needs to assess what local content is available
+
+**When to skip list_directory:**
+- If you already know the exact file path to ingest
+- If user explicitly wants ALL files from a directory ingested
+
+### Use Reingest for Website Updates
+```
+Instead of: delete_document() + ingest_url()
+Use: ingest_url(url, mode="reingest", ...)
+```
+
+**Why:** Safer, maintains metadata tracking, cleaner knowledge base.
+
+---
+
+## 4. QUERY STRATEGIES
+
+**Use `search_documents` for:**
+- Finding content by meaning/topic
+- "What does knowledge base say about X?"
+- Returns relevant documents and sections
+
+**Use `query_relationships` for:**
+- Discovering how concepts connect
+- "What is related to X?" or "How are A and B connected?"
+- Returns connections and relationships
+
+**Use `query_temporal` for:**
+- Tracking how information changes over time
+- "How has X changed since 2023?"
+- Returns evolution and timeline of knowledge
+
+**Pro tip:** Combine multiple query types for comprehensive research.
+
+---
+
+## 5. EFFICIENCY & COST AWARENESS
+
+**Ingestion operations have cost:**
+- Every `ingest_*` call processes your content
+- Cost varies by document size and complexity
+
+**CRITICAL - INGESTION TIMING & TIMEOUT HANDLING:**
+
+Processing time is non-deterministic and varies significantly. Examples observed:
+- Single document: ~30 seconds to several minutes
+- Directory: several minutes to extended processing time
+- Website crawl: several minutes to extended processing time
+
+Assess the scope of your specific request to estimate duration:
+- Content size and complexity
+- Number of files/documents/pages
+- Crawl parameters (follow_links, max_depth, recursion)
+
+**If client times out:** The operation CONTINUES on the server. Use
+list_documents(collection_name, include_details=True) to verify completion
+after waiting appropriate time based on your scope assessment.
+
+Progress notifications track long-running operations for supporting clients.
+
+**DUPLICATE REQUEST PROTECTION:**
+
+If you submit the same ingestion request while one is already processing, you will receive:
+```json
+{"error": "This exact request is already processing (started Xs ago).
+           Please wait for the current operation to complete.",
+ "status": "duplicate_request"}
+```
+
+This prevents data corruption from concurrent identical operations. **If you see this error:**
+1. **WAIT** - The original request is still processing on the server
+2. **DO NOT retry immediately** - You'll get the same duplicate error
+3. **Verify completion** using `list_documents(collection_name, include_details=True)`
+4. **Only retry** after confirming the original request completed or failed
+
+**Why this matters:** After a timeout, some MCP bridges (like OpenAI's) automatically retry with a new session. The duplicate protection catches this and prevents double-ingestion, which would corrupt your knowledge base with redundant data.
+
+**Query and exploration operations are FREE:**
+- `search_documents`
+- `query_relationships`
+- `query_temporal`
+- `list_directory` (explore local files)
+- All list/view operations
+
+**Best practices for efficiency:**
+- Let automatic duplicate detection catch duplicates (see #3)
+- Use mode='reingest' for updated content (complete replacement)
+- Use `update_document()` only for minor edits (in-place updates)
+- Analyze large ingests before proceeding (see #3)
+- Use reingest mode for website updates (see #3)
+
+---
+
+## 6. COMMON PATTERNS
+
+**Documentation Ingestion (Single Section):**
+```
+1. analyze_website(url) - understand scope and structure
+2. Review total_urls and pattern_stats
+3. create_collection(name, domain, description) - organize by source
+4. ingest_url(url, follow_links=True, max_pages=20)
+5. get_collection_info(name) - verify completion
+```
+
+**Documentation Ingestion (Multiple Sections):**
+```
+1. analyze_website("https://docs.example.com") - understand site structure
+   → Shows: /api (45 pages), /guides (30 pages), /reference (25 pages)
+2. create_collection(name, domain, description)
+
+# Execute multiple targeted ingests based on pattern analysis
+3. ingest_url("https://docs.example.com/api", follow_links=True, max_pages=20)
+4. ingest_url("https://docs.example.com/guides", follow_links=True, max_pages=20)
+5. ingest_url("https://docs.example.com/reference", follow_links=True, max_pages=20)
+
+# Each ingest is independent - plan based on pattern_stats from analyze_website()
+```
+
+**Local File Ingestion:**
+```
+1. list_directory(path, file_extensions=[".md", ".txt"], include_preview=True)
+   → Review files, sizes, and content previews
+   → extensions_found shows: {".md": 12, ".txt": 3}
+2. Present findings to user, get approval for specific files
+3. create_collection(name, domain, description) - if needed
+4. For each approved file:
+   ingest_file(file_path=file["path"], collection_name=name)
+```
+
+**Research Query:**
+```
+1. search_documents(query, collection) - find relevant content
+2. query_relationships(query, collection) - find connections
+3. Synthesize findings from both sources
+```
+
+**Maintenance:**
+```
+1. list_documents(collection) - identify stale docs
+2. Refresh changed content:
+   - For websites: ingest_url(url, mode="reingest")
+   - For files: ingest_file(path, mode="reingest")
+   - For text: ingest_text(content, mode="reingest")
+   - For minor edits: update_document(id, content/metadata)
+```
+
+---
+
+## 7. KEY IMPERATIVES
+
+- **MUST** review collections before ingesting (see #1)
+- **MUST** use full questions for search, not keywords (see #2)
+- **MUST** use mode='reingest' to update existing content (automatic duplicate detection will guide you) (see #3)
+- **MUST** run analyze_website() before multi-page ingests (see #3)
+- **MUST** limit max_pages to 20 per ingest for large sites
+- **SHOULD** use dry_run=True with topic when user wants focused URL ingestion (see #3)
+- **SHOULD** use list_directory() before ingesting local files to assess content (see #3)
+- **SHOULD** present scope to user for large operations and get confirmation
+- **SHOULD** use mode='reingest' for content updates instead of delete+ingest (see #3)
+- **SHOULD** combine semantic + relationship queries for comprehensive research (see #4)
+- **SHOULD** use pattern_stats from analyze_website() to plan targeted ingests
+
+**For tool-specific details:** See individual tool docstrings.
