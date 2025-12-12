@@ -1,0 +1,101 @@
+Metadata-Version: 2.4
+Name: gopro-sdk-py
+Version: 1.0.3
+Summary: A Python SDK for controlling GoPro cameras, optimized for multi-camera COHN scenarios
+Project-URL: Homepage, https://github.com/sean2077/gopro-sdk-py
+Project-URL: Repository, https://github.com/sean2077/gopro-sdk-py.git
+Project-URL: Issues, https://github.com/sean2077/gopro-sdk-py/issues
+Project-URL: Changelog, https://github.com/sean2077/gopro-sdk-py/blob/main/CHANGELOG.md
+Project-URL: Documentation, https://sean2077.github.io/gopro-sdk-py/
+Author-email: sean2077 <sean2077@users.noreply.github.com>
+Maintainer-email: sean2077 <sean2077@users.noreply.github.com>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: ble,bluetooth,camera,cohn,gopro,multi-camera,sdk
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.12
+Requires-Dist: aiohttp>=3.13
+Requires-Dist: bleak>=0.22
+Requires-Dist: construct>=2.10
+Requires-Dist: open-gopro>=0.22
+Requires-Dist: rich>=14.0
+Requires-Dist: tinydb>=4.8
+Description-Content-Type: text/markdown
+
+# GoPro SDK for Python
+
+[![CI](https://github.com/sean2077/gopro-sdk-py/actions/workflows/ci.yml/badge.svg)](https://github.com/sean2077/gopro-sdk-py/actions/workflows/ci.yml)
+[![Documentation](https://github.com/sean2077/gopro-sdk-py/actions/workflows/docs.yml/badge.svg)](https://sean2077.github.io/gopro-sdk-py/)
+[![PyPI version](https://img.shields.io/pypi/v/gopro-sdk-py.svg)](https://pypi.org/project/gopro-sdk-py/)
+[![Python versions](https://img.shields.io/pypi/pyversions/gopro-sdk-py.svg)](https://pypi.org/project/gopro-sdk-py/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A production-ready Python SDK for controlling GoPro cameras, specifically designed and optimized for multi-camera COHN (Camera on Home Network) scenarios.
+
+## Features
+
+- **Multi-Camera Support**: Efficient concurrent control of multiple GoPro cameras
+- **Persistent COHN Configuration**: Save and restore COHN settings without reconfiguration
+- **Optimized Connection Management**: Eliminate unnecessary connection cycles and resource waste
+- **Robust State Tracking**: Accurate connection state management for COHN mode
+- **Production-Ready Error Handling**: Comprehensive exception handling and recovery mechanisms
+
+See [Why This SDK?](https://sean2077.github.io/gopro-sdk-py/why-this-sdk/) for detailed rationale and comparison with OpenGoPro.
+
+## Quick Start
+
+```bash
+uv add gopro-sdk-py
+# Or use pip
+pip install gopro-sdk-py
+```
+
+```python
+import asyncio
+from gopro_sdk import GoProClient
+
+async def main():
+    client = GoProClient(identifier="GoPro 1234")
+    await client.open_ble()
+    await client.configure_cohn(ssid="your-wifi", password="password")
+    await client.set_shutter(on=True)
+    await client.close()
+
+asyncio.run(main())
+```
+
+## Documentation
+
+📖 **[Full Documentation](https://sean2077.github.io/gopro-sdk-py/)**
+
+- [Quick Start Guide](https://sean2077.github.io/gopro-sdk-py/quickstart/) - Installation and basic usage
+- [API Reference](https://sean2077.github.io/gopro-sdk-py/api/overview/) - Complete API documentation
+- [Development Guide](https://sean2077.github.io/gopro-sdk-py/development/) - Setup, testing, and contribution guidelines
+
+## Contributing
+
+Contributions are welcome! Please check out our [documentation](https://sean2077.github.io/gopro-sdk-py/development/) for development setup and guidelines.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- [GitHub Issues](https://github.com/sean2077/gopro-sdk-py/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/sean2077/gopro-sdk-py/discussions) - Questions and community discussion
+
+## Related Projects
+
+- [OpenGoPro](https://github.com/gopro/OpenGoPro) - Official GoPro Open SDK and protocol specifications
+- [OpenGoPro Python SDK](https://gopro.github.io/OpenGoPro/python_sdk/) - Official Python implementation
+
+**Note**: This SDK builds upon OpenGoPro's protocol specifications and reuses its protobuf definitions, BLE UUIDs, and command constants. We acknowledge and appreciate GoPro's excellent work in documenting and open-sourcing the camera control protocol.
