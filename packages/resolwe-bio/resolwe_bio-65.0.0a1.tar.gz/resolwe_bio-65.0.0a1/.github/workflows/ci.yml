@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+# Disable image map due to authentication issues.
+env:
+  RESOLWE_CONTAINER_IMAGE_MAP: '{}'
+
+jobs:
+  test:
+    runs-on: public-docker-runner
+    timeout-minutes: 120
+
+    env:
+      RESOLWE_POSTGRESQL_PORT: 55433
+      RESOLWE_REDIS_PORT: 56380
+      RESOLWE_TEST_ONLY_CHANGES_TO: "origin/master"
+      TOX_COMMAND: "tox --skip-missing-interpreters false"
+
+    strategy:
+      matrix:
+        toxenv: ["py314"]
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16
+        ports:
+          - 55433:5432
+        env:
+          POSTGRES_USER: resolwe
+          POSTGRES_DB: resolwe-bio
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: public.ecr.aws/docker/library/redis:7-alpine
+        ports:
+          - 56380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Use pre-releases except for production tags
+        run: |
+          if ! [[ ${{ github.ref }} =~ ^refs/tags/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "UV_PRERELEASE=allow" >> $GITHUB_ENV;
+          fi
+
+      - name: Assert PR is up-to-date
+        if: github.event_name == 'pull_request'
+        run: |
+          git_change_target_merge_base=$(git merge-base HEAD origin/${{ github.base_ref }})
+          git_change_target_sha=$(git rev-parse origin/${{ github.base_ref }})
+
+          if [[ "${git_change_target_merge_base}" != "${git_change_target_sha}" ]]; then
+            echo "Pull request is not up-to-date!"
+            echo "Please, rebase your pull request on top of '${{ github.base_ref }}' (commit: ${git_change_target_sha})."
+            exit 1
+          fi
+
+      - name: Documentation
+        run: |
+          ${{ env.TOX_COMMAND }} -e docs
+
+      - name: Linters
+        run: |
+          ${{ env.TOX_COMMAND }} -e linters
+
+      - name: Packaging
+        run: |
+          ${{ env.TOX_COMMAND }} -e packaging
+
+      - name: Extras
+        run: |
+          ${{ env.TOX_COMMAND }} -e extra
+
+      - name: Migrations
+        run: |
+          ${{ env.TOX_COMMAND }} -e migrations
+
+      - name: Run entire test suite
+        if: github.event_name != 'pull_request'
+        timeout-minutes: 120
+        run: |
+          ${{ env.TOX_COMMAND }} -e ${{ matrix.toxenv }}
+
+      - name: Unit partial test suite on pull request
+        if: github.event_name == 'pull_request'
+        timeout-minutes: 120
+        run: |
+          ${{ env.TOX_COMMAND }} -e ${{ matrix.toxenv }}-partial
+
+      - name: List files in test data directory
+        if: always()
+        run: |
+          mkdir -p ${{ github.workspace }}/tests/.test_data
+          ls -a -R ${{ github.workspace }}/tests/.test_data
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{ github.workspace }}/tests/.test_data/*
+          retention-days: 1
+          name: test_files
+          include-hidden-files: true
+
+  build:
+    runs-on: public-docker-runner
+    needs: test
+
+    permissions:
+      id-token: write
+      contents: read
+
+    if: startsWith(github.ref, 'refs/tags')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build a binary wheel and a source tarball
+        run: uv build
+
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

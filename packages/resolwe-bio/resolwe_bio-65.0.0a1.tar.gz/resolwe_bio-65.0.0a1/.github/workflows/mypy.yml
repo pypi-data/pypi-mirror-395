@@ -1,0 +1,29 @@
+name: Type checking
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  type_check:
+    name: Type check
+    runs-on: public-docker-runner
+    timeout-minutes: 30
+
+    env:
+      TOX_COMMAND: "tox --skip-missing-interpreters false"
+
+    strategy:
+      matrix:
+        toxenv: ["py311", "py312"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mypy
+        run: |
+          ${{ env.TOX_COMMAND }} -e mypy
