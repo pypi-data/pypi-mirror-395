@@ -1,0 +1,666 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Trellix Endpoint Security HX",
+            "group": "Trellix",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources.html"
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "host_sets": {
+                "type": "text"
+            },
+            "progress_threshold": {
+                "default": 50,
+                "min": 10,
+                "max": 100,
+                "type": "number",
+                "optional": true
+            },
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 10000000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "batch_size": {
+                "default": 2000,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "optional": true,
+                "hidden": true
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 3600,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "config_map": {
+                        "int_supported_fields": [
+                            "Size in bytes",
+                            "Local Port",
+                            "Remote Port"
+                        ],
+                        "hash_supported_fields": [
+                            "File MD5 Hash"
+                        ],
+                        "ip_supported_fields": [
+                            "Local IP Address",
+                            "Remote IP Address"
+                        ]
+                    },
+                    "to_stix_map": {
+                        "Event Type": {
+                            "key": "x-oca-event.action",
+                            "object": "event"
+                        },
+                        "Timestamp - Last Run": {
+                            "key": "x-oca-event.x_last_run",
+                            "object": "event"
+                        },
+                        "Host Set": {
+                            "key": "x-oca-asset.x_host_set",
+                            "object": "asset"
+                        },
+                        "Timestamp - Started": {
+                            "key": "x-oca-event.start",
+                            "object": "event"
+                        },
+                        "Timestamp - Accessed": {
+                            "key": "x-oca-event.x_accessed_time",
+                            "object": "event"
+                        },
+                        "Timestamp - Modified": {
+                            "key": "x-oca-event.modified",
+                            "object": "event"
+                        },
+                        "Timestamp - Event": [
+                            {
+                                "key": "first_observed"
+                            },
+                            {
+                                "key": "last_observed"
+                            },
+                            {
+                                "key": "x-oca-event.created",
+                                "object": "event"
+                            }
+                        ],
+                        "Hostname": [
+                            {
+                                "key": "x-oca-asset.hostname",
+                                "object": "asset"
+                            },
+                            {
+                                "key": "x-oca-event.host_ref",
+                                "object": "event",
+                                "references": "asset"
+                            }
+                        ],
+                        "Host ID": {
+                            "key": "x-oca-asset.device_id",
+                            "object": "asset"
+                        },
+                        "Username": [
+                            {
+                                "key": "user-account.user_id",
+                                "object": "user"
+                            },
+                            {
+                                "key": "process.creator_user_ref",
+                                "object": "process",
+                                "references": "user"
+                            },
+                            {
+                                "key": "x-oca-event.user_ref",
+                                "object": "event",
+                                "references": "user"
+                            }
+                        ],
+                        "Local IP Address": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "network-traffic.src_ref",
+                                "object": "nt",
+                                "references": "src_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "x-oca-asset.ip_refs",
+                                "object": "asset",
+                                "references": [
+                                    "src_ip"
+                                ]
+                            },
+                            {
+                                "key": "x-oca-event.ip_refs",
+                                "object": "event",
+                                "references": [
+                                    "src_ip"
+                                ],
+                                "group": true
+                            }
+                        ],
+                        "Remote IP Address": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "network-traffic.dst_ref",
+                                "object": "nt",
+                                "references": "dst_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "x-oca-event.ip_refs",
+                                "object": "event",
+                                "references": [
+                                    "dst_ip"
+                                ],
+                                "group": true
+                            }
+                        ],
+                        "Remote Port": [
+                            {
+                                "key": "network-traffic.dst_port",
+                                "object": "nt",
+                                "transformer": "ToInteger"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "nt"
+                            }
+                        ],
+                        "Local Port": [
+                            {
+                                "key": "network-traffic.src_port",
+                                "object": "nt",
+                                "transformer": "ToInteger"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "nt"
+                            }
+                        ],
+                        "Port Protocol": [
+                            {
+                                "key": "network-traffic.protocols",
+                                "object": "nt",
+                                "transformer": "ToLowercaseArray"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "nt"
+                            }
+                        ],
+                        "HTTP Header": {
+                            "key": "network-traffic.extensions.http-request-ext.request_header",
+                            "object": "nt"
+                        },
+                        "URL": {
+                            "key": "network-traffic.extensions.http-request-ext.request_value",
+                            "object": "nt"
+                        },
+                        "HTTP Method": {
+                            "key": "network-traffic.extensions.http-request-ext.request_method",
+                            "object": "nt"
+                        },
+                        "File Name": [
+                            {
+                                "key": "file.name",
+                                "object": "file"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "process",
+                                "references": "file"
+                            }
+                        ],
+                        "Parent File Name": [
+                            {
+                                "key": "file.name",
+                                "object": "p_file"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "parent_process",
+                                "references": "p_file"
+                            }
+                        ],
+                        "File MD5 Hash": {
+                            "key": "file.hashes.MD5",
+                            "object": "file"
+                        },
+                        "Size in bytes": {
+                            "key": "file.size",
+                            "object": "file",
+                            "transformer": "ToInteger"
+                        },
+                        "File Bytes Written": {
+                            "key": "file.x_bytes_written",
+                            "object": "file",
+                            "transformer": "ToInteger"
+                        },
+                        "File Full Path": [
+                            {
+                                "key": "file.x_path",
+                                "object": "file"
+                            },
+                            {
+                                "key": "directory.path",
+                                "object": "dir",
+                                "transformer": "ToDirectoryPath"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "file",
+                                "references": "dir"
+                            }
+                        ],
+                        "Parent Process Path": [
+                            {
+                                "key": "process.cwd",
+                                "object": "parent_process",
+                                "transformer": "ToDirectoryPath"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent_process"
+                            },
+                            {
+                                "key": "x-oca-event.parent_process_ref",
+                                "object": "event",
+                                "references": "parent_process"
+                            }
+                        ],
+                        "Registry Key Full Path": [
+                            {
+                                "key": "windows-registry-key.key",
+                                "object": "registry"
+                            },
+                            {
+                                "key": "x-oca-event.registry_ref",
+                                "object": "event",
+                                "references": "registry"
+                            }
+                        ],
+                        "Registry Key Values": {
+                            "key": "windows-registry-key.values",
+                            "object": "registry"
+                        },
+                        "DNS Hostname": [
+                            {
+                                "key": "domain-name.value",
+                                "object": "domain"
+                            },
+                            {
+                                "key": "x-oca-event.domain_ref",
+                                "object": "event",
+                                "references": "domain"
+                            }
+                        ],
+                        "Process Name": [
+                            {
+                                "key": "process.name",
+                                "object": "process"
+                            },
+                            {
+                                "key": "x-oca-event.process_ref",
+                                "object": "event",
+                                "references": "process"
+                            }
+                        ],
+                        "Parent Process Name": [
+                            {
+                                "key": "process.name",
+                                "object": "parent_process"
+                            },
+                            {
+                                "key": "x-oca-event.parent_process_ref",
+                                "object": "event",
+                                "references": "parent_process"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent_process"
+                            }
+                        ],
+                        "Process ID": {
+                            "key": "process.pid",
+                            "object": "process",
+                            "transformer": "ToInteger"
+                        },
+                        "Process Event Type": {
+                            "key": "process.x_event_type",
+                            "object": "process"
+                        },
+                        "Process Arguments": {
+                            "key": "process.command_line",
+                            "object": "process"
+                        },
+                        "Write Event File Name": [
+                            {
+                                "key": "file.name",
+                                "object": "file_write"
+                            },
+                            {
+                                "key": "x-oca-event.file_ref",
+                                "object": "event",
+                                "references": "file_write"
+                            }
+                        ],
+                        "Write Event File Full Path": [
+                            {
+                                "key": "file.x_path",
+                                "object": "file_write"
+                            },
+                            {
+                                "key": "directory.path",
+                                "object": "dir1",
+                                "transformer": "ToDirectoryPath"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "file_write",
+                                "references": "dir1"
+                            }
+                        ],
+                        "Write Event File Text Written": [
+                            {
+                                "key": "artifact.payload_bin",
+                                "object": "artifact",
+                                "transformer": "ToBase64"
+                            },
+                            {
+                                "key": "file.content_ref",
+                                "object": "file_write",
+                                "references": "artifact"
+                            }
+                        ],
+                        "Write Event File Bytes Written": {
+                            "key": "file.x_bytes_written",
+                            "object": "file_write",
+                            "transformer": "ToInteger"
+                        },
+                        "Write Event File MD5 Hash": {
+                            "key": "file.hashes.MD5",
+                            "object": "file_write"
+                        },
+                        "Write Event Size in bytes": {
+                            "key": "file.size",
+                            "object": "file_write",
+                            "transformer": "ToInteger"
+                        }
+                    },
+                    "from_stix_map": {
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "Local IP Address",
+                                    "Remote IP Address"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "fields": {
+                                "value": [
+                                    "Local IP Address",
+                                    "Remote IP Address"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "fields": {
+                                "src_port": [
+                                    "Local Port"
+                                ],
+                                "dst_port": [
+                                    "Remote Port"
+                                ],
+                                "src_ref.value": [
+                                    "Local IP Address"
+                                ],
+                                "dst_ref.value": [
+                                    "Remote IP Address"
+                                ],
+                                "extensions.'http-request-ext'.request_header.'Accept-Encoding'": [
+                                    "HTTP Header"
+                                ],
+                                "extensions.'http-request-ext'.request_header.'User-Agent'": [
+                                    "HTTP Header"
+                                ],
+                                "extensions.'http-request-ext'.request_header.Host": [
+                                    "HTTP Header"
+                                ],
+                                "extensions.'http-request-ext'.request_value": [
+                                    "URL"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "user_id": [
+                                    "Username"
+                                ]
+                            }
+                        },
+                        "windows-registry-key": {
+                            "fields": {
+                                "key": [
+                                    "Registry Key Full Path"
+                                ],
+                                "values[*].name": [
+                                    "Registry Key Value Name"
+                                ],
+                                "values[*].data": [
+                                    "Registry Key Value Text"
+                                ]
+                            }
+                        },
+                        "domain-name": {
+                            "fields": {
+                                "value": [
+                                    "DNS Hostname"
+                                ]
+                            }
+                        },
+                        "file": {
+                            "fields": {
+                                "name": [
+                                    "File Name"
+                                ],
+                                "size": [
+                                    "Size in bytes"
+                                ],
+                                "hashes.MD5": [
+                                    "File MD5 Hash"
+                                ],
+                                "parent_directory_ref.path": [
+                                    "File Full Path"
+                                ],
+                                "x_path": [
+                                    "File Full Path"
+                                ]
+                            }
+                        },
+                        "directory": {
+                            "fields": {
+                                "path": [
+                                    "File Full Path"
+                                ]
+                            }
+                        },
+                        "process": {
+                            "fields": {
+                                "name": [
+                                    "Process Name",
+                                    "Parent Process Name"
+                                ],
+                                "command_line": [
+                                    "Process Arguments"
+                                ],
+                                "creator_user_ref.user_id": [
+                                    "Username"
+                                ],
+                                "binary_ref.name": [
+                                    "File Name"
+                                ],
+                                "parent_ref.name": [
+                                    "Parent Process Name"
+                                ],
+                                "parent_ref.cwd": [
+                                    "Parent Process Path"
+                                ]
+                            }
+                        },
+                        "x-oca-event": {
+                            "fields": {
+                                "file_ref.name": [
+                                    "File Name"
+                                ],
+                                "process_ref.name": [
+                                    "Process Name",
+                                    "Parent Process Name"
+                                ],
+                                "parent_process_ref.name": [
+                                    "Parent Process Name"
+                                ],
+                                "domain_ref.value": [
+                                    "DNS Hostname"
+                                ],
+                                "registry_ref.key": [
+                                    "Registry Key Full Path"
+                                ],
+                                "network_ref.src_port": [
+                                    "Local Port"
+                                ],
+                                "ip_refs[*].value": [
+                                    "Local IP Address",
+                                    "Remote IP Address"
+                                ],
+                                "user_ref.user_id": [
+                                    "Username"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "and",
+                        "ComparisonExpressionOperators.Or": "or",
+                        "ComparisonComparators.GreaterThan": "greater than",
+                        "ComparisonComparators.LessThan": "less than",
+                        "ComparisonComparators.Equal": "equals",
+                        "ComparisonComparators.NotEqual": "not equals",
+                        "ComparisonComparators.Like": "contains",
+                        "ComparisonComparators.In": "equals",
+                        "ComparisonComparators.Matches": "contains",
+                        "ObservationOperators.Or": "or",
+                        "ObservationOperators.And": "or"
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "password"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
