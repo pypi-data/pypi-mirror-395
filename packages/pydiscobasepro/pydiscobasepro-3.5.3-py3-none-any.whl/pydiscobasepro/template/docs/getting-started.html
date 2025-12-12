@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - PyDiscoBasePro</title>
+    <link rel="stylesheet" href="../style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="nav-container">
+                <div class="logo">
+                    <h1><i class="fab fa-discord"></i> PyDiscoBasePro</h1>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api.html">API</a></li>
+                    <li><a href="configuration.html">Configuration</a></li>
+                    <li><a href="deployment.html">Deployment</a></li>
+                    <li><a href="https://github.com/code-xon/pydiscobasepro" target="_blank">GitHub</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="doc-content">
+            <div class="container">
+                <h1><i class="fas fa-rocket"></i> Getting Started with PyDiscoBasePro</h1>
+
+                <div class="doc-section">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                        <li>Python 3.11 or higher</li>
+                        <li>A Discord bot token (from <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a>)</li>
+                        <li>MongoDB instance (local or cloud)</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Installation</h2>
+                    <pre><code>pip install pydiscobasepro</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Create Your First Bot</h2>
+                    <pre><code>pydisco create MyFirstBot
+cd MyFirstBot
+pip install -r requirements.txt</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Configuration</h2>
+                    <p>Edit <code>config/config.json</code>:</p>
+                    <pre><code>{
+  "token": "YOUR_BOT_TOKEN_HERE",
+  "prefix": "!",
+  "intents": {
+    "guilds": true,
+    "members": true,
+    "messages": true,
+    "message_content": true
+  },
+  "mongodb": {
+    "uri": "mongodb://localhost:27017",
+    "database": "myfirstbot"
+  }
+}</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Run Your Bot</h2>
+                    <pre><code>python bot.py</code></pre>
+                    <p>Your bot should now be online! Invite it to your server using the OAuth2 URL from the Discord Developer Portal.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Add Your First Command</h2>
+                    <p>Create <code>commands/hello.py</code>:</p>
+                    <pre><code>import discord
+from discord import app_commands
+
+class Hello:
+    def __init__(self, bot, database):
+        self.bot = bot
+        self.database = database
+        self.name = "hello"
+        self.description = "Say hello!"
+
+        self.slash_command = app_commands.Command(
+            name=self.name,
+            description=self.description,
+            callback=self.run
+        )
+
+    async def run(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Hello, World! 🌍")
+
+# The framework will automatically load this command!</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Next Steps</h2>
+                    <ul>
+                        <li>Explore the <a href="api.html">API documentation</a></li>
+                        <li>Learn about <a href="configuration.html">advanced configuration</a></li>
+                        <li>Check out <a href="deployment.html">deployment options</a></li>
+                        <li>Join our <a href="https://discord.gg/pydiscobasepro" target="_blank">Discord community</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 PyDiscoBasePro. Made with ❤️ by Code-Xon.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../script.js"></script>
+</body>
+</html>
