@@ -1,0 +1,1 @@
+from fenn.logging.logger import Logger
