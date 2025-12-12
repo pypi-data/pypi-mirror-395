@@ -1,0 +1,178 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "prueba1 API",
+    "description": "API para pruebas",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://sandbox.example.com",
+      "description": "Sandbox / QA"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Eco para testeo del api",
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseTemplates": {
+                "application/json": "{\"message\":\"prueba1 Integration API\"}"
+              }
+            }
+          },
+          "requestTemplates": {
+            "application/json": "{\"statusCode\": 200}"
+          },
+          "passthroughBehavior": "when_no_match",
+          "type": "mock"
+        }
+      }
+    },
+    "definition": {
+      "/hello-world": {
+        "get": {
+          "summary": "A hello world example.",
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "in": "header",
+              "required": true,
+              "type": "string"
+            }
+          ],
+          "consumes": [
+            "application/json"
+          ],
+          "produces": [
+            "application/json"
+          ],
+          "responses": {
+            "200": {
+              "description": "200 response",
+              "schema": {
+                "$ref": "#/definitions/Empty"
+              },
+              "headers": {
+                "Access-Control-Allow-Origin": {
+                  "type": "string"
+                },
+                "Access-Control-Allow-Methods": {
+                  "type": "string"
+                },
+                "Access-Control-Allow-Headers": {
+                  "type": "string"
+                }
+              }
+            },
+            "401": {
+              "description": "401 Unauthorized response",
+              "schema": {
+                "$ref": "#/responses/Unauthorized"
+              }
+            }
+          },
+          "security": [
+            {
+              "api_key": []
+            }
+          ],
+          "x-amazon-apigateway-request-validator": "Validate query string parameters and headers",
+          "x-amazon-apigateway-integration": {
+            "uri": "{uri-integration}",
+            "credentials": "{credentials-integration}",
+            "responses": {
+              "default": {
+                "statusCode": "200",
+                "responseParameters": {
+                  "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'",
+                  "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                  "method.response.header.Access-Control-Allow-Origin": "'*'"
+                }
+              }
+            },
+            "passthroughBehavior": "when_no_templates",
+            "httpMethod": "POST",
+            "contentHandling": "CONVERT_TO_TEXT",
+            "type": "aws_proxy"
+          }
+        },
+        "options": {
+          "consumes": [
+            "application/json"
+          ],
+          "produces": [
+            "application/json"
+          ],
+          "responses": {
+            "200": {
+              "description": "200 response",
+              "schema": {
+                "$ref": "#/definitions/Empty"
+              },
+              "headers": {
+                "Access-Control-Allow-Origin": {
+                  "type": "string"
+                },
+                "Access-Control-Allow-Methods": {
+                  "type": "string"
+                },
+                "Access-Control-Allow-Headers": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "x-amazon-apigateway-integration": {
+            "responses": {
+              "default": {
+                "statusCode": "200",
+                "responseParameters": {
+                  "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'",
+                  "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                  "method.response.header.Access-Control-Allow-Origin": "'*'"
+                }
+              }
+            },
+            "passthroughBehavior": "when_no_match",
+            "requestTemplates": {
+              "application/json": "{\"statusCode\": 200}"
+            },
+            "type": "mock"
+          }
+        }
+      }
+    },
+    "name": "hello_world"
+  },
+  "components": {
+    "schemas": {
+      "Empty": {
+        "type": "object",
+        "title": "Empty Schema"
+      }
+    },
+    "securitySchemes": {
+      "api_key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
+      }
+    }
+  }
+}
