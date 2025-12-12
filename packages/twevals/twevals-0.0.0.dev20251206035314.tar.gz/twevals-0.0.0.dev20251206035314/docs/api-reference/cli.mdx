@@ -1,0 +1,377 @@
+---
+title: CLI Reference
+description: Command-line interface for running evaluations
+---
+
+## Commands
+
+Twevals has two main commands:
+
+- `twevals serve` - Start the web UI to browse and run evaluations interactively
+- `twevals run` - Run evaluations headlessly (for CI/CD pipelines)
+
+## twevals serve
+
+Start the web UI to discover and run evaluations interactively.
+
+```bash
+twevals serve PATH [OPTIONS]
+```
+
+Where `PATH` can be:
+- A directory: `twevals serve evals/`
+- A file: `twevals serve evals/customer_service.py`
+- A specific function: `twevals serve evals.py::test_refund`
+
+The UI opens automatically in your browser. Evaluations are discovered and displayed but not run until you click the Run button.
+
+### Options
+
+<ParamField path="-d, --dataset" type="string" default="all">
+  Filter evaluations by dataset.
+</ParamField>
+
+```bash
+twevals serve evals/ --dataset customer_service
+```
+
+<ParamField path="-l, --label" type="string" default="all">
+  Filter evaluations by label. Can be specified multiple times.
+</ParamField>
+
+```bash
+twevals serve evals/ --label production -l critical
+```
+
+<ParamField path="--results-dir" type="string" default=".twevals/runs">
+  Directory for JSON results storage.
+</ParamField>
+
+```bash
+twevals serve evals/ --results-dir ./my-results
+```
+
+<ParamField path="--port" type="integer" default="8000">
+  Port for web UI server.
+</ParamField>
+
+```bash
+twevals serve evals/ --port 3000
+```
+
+<ParamField path="--session" type="string">
+  Name for this evaluation session. Groups related runs together.
+</ParamField>
+
+```bash
+twevals serve evals/ --session model-comparison
+```
+
+<ParamField path="--run" type="flag">
+  Automatically run all evaluations on startup. Same as clicking the Run button immediately.
+</ParamField>
+
+```bash
+twevals serve evals/ --run
+```
+
+## twevals run
+
+Run evaluations headlessly. Outputs minimal text by default (optimized for LLM agents). Use `--visual` for rich table output.
+
+```bash
+twevals run PATH [OPTIONS]
+```
+
+Where `PATH` can be:
+- A directory: `twevals run evals/`
+- A file: `twevals run evals/customer_service.py`
+- A specific function: `twevals run evals.py::test_refund`
+- A parametrized variant: `twevals run evals.py::test_math[2-3-5]`
+
+### Filtering Options
+
+<ParamField path="-d, --dataset" type="string" default="all">
+  Filter evaluations by dataset. Can be specified multiple times.
+</ParamField>
+
+```bash
+twevals run evals/ --dataset customer_service
+twevals run evals/ -d customer_service -d technical_support
+```
+
+<ParamField path="-l, --label" type="string" default="all">
+  Filter evaluations by label. Can be specified multiple times.
+</ParamField>
+
+```bash
+twevals run evals/ --label production
+twevals run evals/ -l production -l critical
+```
+
+<ParamField path="--limit" type="integer">
+  Limit the number of evaluations to run.
+</ParamField>
+
+```bash
+twevals run evals/ --limit 10
+```
+
+### Execution Options
+
+<ParamField path="-c, --concurrency" type="integer" default="1">
+  Number of concurrent evaluations. `1` means sequential execution.
+</ParamField>
+
+```bash
+# Run 4 evaluations in parallel
+twevals run evals/ --concurrency 4
+twevals run evals/ -c 4
+```
+
+<ParamField path="--timeout" type="float">
+  Global timeout in seconds for all evaluations.
+</ParamField>
+
+```bash
+twevals run evals/ --timeout 30.0
+```
+
+### Output Options
+
+<ParamField path="-v, --verbose" type="flag">
+  Show stdout from eval functions (print statements, logs).
+</ParamField>
+
+```bash
+twevals run evals/ --verbose
+twevals run evals/ -v
+```
+
+<ParamField path="--visual" type="flag">
+  Show rich progress dots, results table, and summary. Without this flag, output is minimal.
+</ParamField>
+
+```bash
+twevals run evals/ --visual
+```
+
+<ParamField path="-o, --output" type="string">
+  Override the default results path. When specified, results are saved only to this path (not to `.twevals/runs/`).
+</ParamField>
+
+```bash
+twevals run evals/ --output results.json
+twevals run evals/ -o results.json
+```
+
+<ParamField path="--no-save" type="flag">
+  Skip saving results to file. Outputs JSON to stdout instead.
+</ParamField>
+
+```bash
+# Get results as JSON without writing to disk
+twevals run evals/ --no-save | jq '.passed'
+```
+
+### Session Options
+
+<ParamField path="--session" type="string">
+  Name for this evaluation session. Groups related runs together.
+</ParamField>
+
+```bash
+twevals run evals/ --session model-comparison
+```
+
+<ParamField path="--run-name" type="string">
+  Name for this specific run. Used as file prefix.
+</ParamField>
+
+```bash
+twevals run evals/ --session model-comparison --run-name gpt4-baseline
+```
+
+## Examples
+
+### Start the Web UI
+
+```bash
+# Discover evals in a directory and open the UI
+twevals serve evals/
+
+# Start UI on a custom port
+twevals serve evals/ --port 8080
+
+# Filter what's shown in the UI
+twevals serve evals/ --dataset qa --label production
+```
+
+### Run All Evaluations
+
+```bash
+twevals run evals/
+```
+
+### Run Specific File
+
+```bash
+twevals run evals/customer_service.py
+```
+
+### Run Specific Function
+
+```bash
+twevals run evals/customer_service.py::test_refund
+```
+
+### Run Parametrized Variant
+
+```bash
+twevals run evals/math.py::test_addition[2-3-5]
+```
+
+### Filter by Dataset and Label
+
+```bash
+twevals run evals/ --dataset qa --label production
+```
+
+### Run with Concurrency and Timeout
+
+```bash
+twevals run evals/ -c 8 --timeout 60.0
+```
+
+### Export Results
+
+```bash
+# Results auto-save to .twevals/runs/ by default
+twevals run evals/
+
+# Override output path
+twevals run evals/ -o results.json
+```
+
+### Verbose Debug Run
+
+```bash
+# Show eval stdout and rich output
+twevals run evals/ -v --visual --limit 5
+```
+
+### Production CI Pipeline
+
+```bash
+# Minimal output for LLM agents/CI
+twevals run evals/ -c 16 --timeout 120
+```
+
+### Session Tracking
+
+```bash
+# Group runs under a session
+twevals run evals/ --session model-comparison --run-name baseline
+
+# Continue the session with another run
+twevals run evals/ --session model-comparison --run-name improved
+```
+
+## Configuration File
+
+Twevals supports a `twevals.json` config file for persisting default CLI options. The file is auto-generated in your project root on first run.
+
+### Default Config
+
+```json
+{
+  "concurrency": 1,
+  "results_dir": ".twevals/runs"
+}
+```
+
+### Supported Options
+
+| Option | Type | Description | Used by |
+|--------|------|-------------|---------|
+| `concurrency` | integer | Number of concurrent evaluations | `run` |
+| `timeout` | float | Global timeout in seconds | `run` |
+| `verbose` | boolean | Show stdout from eval functions | `run` |
+| `results_dir` | string | Directory for results storage | `serve` |
+| `port` | integer | Web UI server port | `serve` |
+
+### Precedence
+
+CLI flags always override config values:
+
+```bash
+# Config has concurrency: 1, but this uses 4
+twevals run evals/ -c 4
+```
+
+### Editing via UI
+
+Click the settings icon in the web UI header to view and edit config values. Changes are saved to `twevals.json`.
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Evaluations completed (regardless of pass/fail) |
+| Non-zero | Error during execution (bad path, exceptions, etc.) |
+
+<Note>
+The CLI does not currently set non-zero exit codes for failed evaluations—only for execution errors. Check the JSON output or summary for pass/fail status.
+</Note>
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `TWEVALS_CONCURRENCY` | Default concurrency level |
+| `TWEVALS_TIMEOUT` | Default timeout in seconds |
+
+## Output Format
+
+### Minimal Output (Default)
+
+By default, `twevals run` outputs minimal text optimized for LLM agents and CI pipelines:
+
+```
+Running...
+Results saved to .twevals/runs/swift-falcon_2024-01-15T10-30-00Z.json
+```
+
+### Visual Output (--visual)
+
+Use `--visual` for rich progress dots, results table, and summary:
+
+```
+Running...
+customer_service.py ..F
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                     customer_service                           ┃
+┣━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┫
+┃ Name                ┃ Status   ┃ Score    ┃ Latency           ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│ test_refund         │ ✓ passed │ 1.0      │ 0.23s             │
+│ test_complaint      │ ✗ failed │ 0.0      │ 0.45s             │
+└─────────────────────┴──────────┴──────────┴───────────────────┘
+
+Summary: 1/2 passed (50.0%)
+```
+
+### JSON File Output
+
+Results are always saved as JSON to `.twevals/runs/` (or custom path via `-o`):
+
+```json
+{
+  "run_id": "2024-01-15T10-30-00Z",
+  "total": 2,
+  "passed": 1,
+  "failed": 1,
+  "results": [...]
+}
+```

@@ -1,0 +1,87 @@
+---
+title: Web UI
+description: Run evals and review results in your browser
+---
+
+Start the web UI with `twevals serve`:
+
+```bash
+twevals serve evals.py
+```
+
+<img
+  className="block dark:hidden"
+  src="/assets/ui-screenshot-light.png"
+  alt="Twevals Web UI"
+/>
+<img
+  className="hidden dark:block"
+  src="/assets/ui-screenshot-dark.png"
+  alt="Twevals Web UI"
+/>
+
+## How It Works
+
+The UI discovers all `@eval` decorated functions in your file but doesn't run them until you click **Run**. Results stream in real-time as each evaluation completes.
+
+Results are saved to `.twevals/runs/` as JSON files. The UI loads from `latest.json` by default, which is a copy of the most recent run.
+
+## Results Storage
+
+```
+.twevals/
+├── runs/
+│   ├── gpt5-baseline_2024-01-15T10-30-00Z.json
+│   ├── swift-falcon_2024-01-15T14-45-00Z.json
+│   └── latest.json
+└── twevals.json  # Configuration
+```
+
+Each run file includes session metadata:
+
+```json
+{
+  "session_name": "model-upgrade",
+  "run_name": "gpt5-baseline",
+  "run_id": "2024-01-15T10-30-00Z",
+  "total_evaluations": 50,
+  "total_passed": 45,
+  "results": [...]
+}
+```
+
+## Run Controls
+
+- **Run Selected**: Check rows, then click play to rerun only those evaluations
+- **Run All**: With nothing selected, click play to rerun everything
+- **Stop**: Cancel pending and running evaluations mid-run
+
+## Detail Page
+
+Click a function name to open the full-page detail view with its own URL (`/runs/{run_id}/results/{index}`). Navigate between results with arrow keys (↑/↓) or press Escape to return to the table.
+
+## Inline Editing
+
+In the detail page, you can edit:
+- **Dataset**: Reassign to different dataset
+- **Labels**: Add or remove labels
+- **Scores**: Adjust scores or add new ones
+- **Annotations**: Add notes for review
+
+Changes are saved to the results file.
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `r` | Refresh results |
+| `e` | Export menu |
+| `f` | Focus filter |
+| `↑/↓` | Navigate results (detail page) |
+| `Esc` | Back to table |
+
+## Custom Port
+
+```bash
+twevals serve evals.py --port 3000
+```
