@@ -1,0 +1,94 @@
+Metadata-Version: 2.4
+Name: forestly
+Version: 0.1.2
+Summary: InteractiveForest Plot
+Project-URL: Repository, https://github.com/elong0527/py-forestly
+Project-URL: Documentation, https://github.com/elong0527/py-forestly#readme
+License: MIT
+License-File: LICENSE
+Keywords: clinical-trials,forest-plot,plotly,polars,reactable,visualization
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Healthcare Industry
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Requires-Python: >=3.10
+Requires-Dist: jinja2>=3.1.6
+Requires-Dist: pandas>=2.3.1
+Requires-Dist: plotly>=6.3.0
+Requires-Dist: polars>=1.32.3
+Requires-Dist: pyarrow>=21.0.0
+Requires-Dist: pydantic>=2.11.7
+Requires-Dist: reactable>=0.1.5
+Description-Content-Type: text/markdown
+
+# Forestly
+
+[![Python Versions](https://img.shields.io/pypi/pyversions/forestly.svg)](https://pypi.org/project/forestly/)
+[![PyPI](https://img.shields.io/pypi/v/forestly)](https://pypi.org/project/forestly/)
+[![License](https://img.shields.io/github/license/elong0527/py-forestly)](https://github.com/elong0527/py-forestly/blob/main/LICENSE)
+[![CI Build](https://github.com/elong0527/py-forestly/actions/workflows/ci.yml/badge.svg)](https://github.com/elong0527/py-forestly/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/elong0527/py-forestly/graph/badge.svg)](https://codecov.io/gh/elong0527/py-forestly)
+
+A production-ready forest plot system for clinical trials with interactive Reactable tables, supporting nested listings and drill-down capabilities.
+
+## Installation
+
+```bash
+pip install -e .
+```
+
+## Quick Start
+
+```python
+from forestly import ForestPlot, TextPanel, SparklinePanel, Config
+import polars as pl
+
+# Create forest plot
+forest = ForestPlot(
+    data=efficacy_data,
+    panels=[
+        TextPanel(variables="subgroup"),
+        SparklinePanel(
+            variables="hazard_ratio",
+            lower="hr_ci_lower",
+            upper="hr_ci_upper",
+            reference_line=1.0
+        ),
+        TextPanel(variables="p_value", title="P-value")
+    ]
+)
+
+# Export to interactive Reactable
+forest.to_reactable()
+```
+
+## Features
+
+- Panel-based architecture for flexible layouts
+- Interactive Reactable tables with drill-down capabilities
+- Multiple export formats (RTF, static plots)
+- Pydantic validation for data integrity
+- Support for hierarchical data structures
+
+## Development
+
+```bash
+# Install development dependencies
+uv add --dev pytest pytest-cov ruff mypy hypothesis
+
+# Run tests
+pytest
+
+# Format code
+ruff format .
+
+# Type check
+mypy src/
+```
