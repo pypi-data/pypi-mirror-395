@@ -1,0 +1,132 @@
+# PatX - Pattern eXtraction for Time Series and Spatial Data
+
+[![PyPI version](https://badge.fury.io/py/patx.svg)](https://badge.fury.io/py/patx)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+PatX bridges the gap between the automatic pattern learning of CNNs and interpretability requirements of biomedical applications. Like CNNs, PatX automatically discovers discriminative patterns from input data; unlike CNNs, these patterns are explicit, human-readable B-spline templates that can be visualized and validated.
+
+## How It Works
+
+<p align="center">
+  <img src="flowchart.pdf" alt="PatX Pipeline" width="700"/>
+</p>
+
+PatX follows a multi-stage pipeline:
+
+### 1. Input Data
+Accepts time series, spatial, or multi-channel data with shape `(n_samples, n_channels, n_timepoints)`. Single-channel data `(n_samples, n_timepoints)` is also supported.
+
+### 2. Transform Selection
+Rather than operating solely on raw signals, PatX precomputes **21 signal transformations** including:
+- **Time domain**: Raw, Derivative, Second Derivative, Cumsum, Diff
+- **Frequency domain**: FFT Power, DCT
+- **Wavelets**: db4, sym4, coif1, haar
+- **Others**: Log, Abs, Tanh, Autocorrelation, Reciprocal
+
+For each transform, aggregate statistics are computed and a LightGBM model is trained with 3-fold CV. The **top-5 transforms** by CV score are selected for pattern search.
+
+### 3. Joint Pattern Optimization
+PatX uses **NSGA-II** (a multi-objective genetic algorithm) to jointly optimize **15 patterns** simultaneously. Each pattern is defined by:
+- **B-spline control points**: Shape of the pattern template
+- **Position & width**: Where to look in the signal
+- **Channel**: Which input channel to match
+- **Transform**: Which signal representation to use
+
+This joint optimization discovers complementary patterns that work well together as a feature set.
+
+### 4. Backward Elimination
+Starting with 15 optimized patterns, PatX iteratively removes the least useful pattern (one whose removal doesn't hurt CV performance) until further removal degrades results. This yields a **compact final pattern set** (typically 5-12 patterns).
+
+### 5. Final Output
+- List of extracted patterns with metadata
+- Trained LightGBM model
+- Train/test feature matrices (RMSE distance to each pattern)
+
+## Installation
+
+```bash
+pip install patx
+```
+
+## Quick Start
+
+```python
+import numpy as np
+import pandas as pd
+from patx import feature_extraction
+from patx.data import load_remc_data
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+
+# Load included REMC epigenomics dataset
+remc = load_remc_data(series=("H3K4me3", "H3K4me1"))
+input_series = remc['X_list']
+y = remc['y']
+
+# Split data
+idx = np.arange(len(y))
+train_idx, test_idx = train_test_split(idx, test_size=0.2, random_state=42, stratify=y)
+y_train, y_test = y[train_idx], y[test_idx]
+
+# Prepare input as list of arrays (one per channel)
+input_series_train = [X[train_idx] for X in input_series]
+input_series_test = [X[test_idx] for X in input_series]
+
+# Extract patterns
+result = feature_extraction(
+    input_series_train=input_series_train, 
+    y_train=y_train, 
+    input_series_test=input_series_test, 
+    n_trials=50, 
+    show_progress=True
+)
+
+# Evaluate
+probs = result['model'].predict_proba(result['test_features'])
+auc = roc_auc_score(y_test, probs)
+print(f"AUC: {auc:.4f}, Patterns: {len(result['patterns'])}")
+```
+
+## Regression
+
+```python
+result = feature_extraction(
+    input_series_train=input_series_train, 
+    y_train=y_train_continuous, 
+    input_series_test=input_series_test, 
+    metric='rmse',
+    n_trials=50
+)
+```
+
+## API Reference
+
+```python
+feature_extraction(
+    input_series_train,      # Training data: array, DataFrame, or list of them
+    y_train,                 # Target labels or values
+    input_series_test=None,  # Optional test data
+    initial_features=None,   # Optional (train_features, test_features) tuple
+    model=None,              # Custom estimator (default: LightGBM)
+    metric='auc',            # 'auc', 'accuracy', or 'rmse'
+    n_trials=300,            # Optimization trials
+    n_patterns=15,           # Patterns to optimize jointly
+    n_control_points=3,      # B-spline control points per pattern
+    n_transforms=5,          # Signal transformations to select
+    backward_elimination=True # Remove redundant patterns
+)
+```
+
+**Returns:** `dict` with `patterns`, `train_features`, `test_features`, `model`
+
+## Citation
+
+```bibtex
+@software{patx,
+  title={PatX: Pattern eXtraction for Time Series and Spatial Data},
+  author={Wolber, J.},
+  year={2025},
+  url={https://github.com/Prgrmmrjns/patX}
+}
+```
