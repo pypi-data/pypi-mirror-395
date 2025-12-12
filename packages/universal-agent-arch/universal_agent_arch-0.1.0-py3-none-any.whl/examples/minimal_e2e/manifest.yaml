@@ -1,0 +1,52 @@
+name: "e2e-demo-universe"
+version: "1.0.0"
+
+# 1. The Global Law
+policies:
+  - name: "safety-rails"
+    rules:
+      - action: "require_approval"
+        target: ["tool:delete_resource"]
+        description: "Prevent deletion without human eyes."
+
+# 2. The Task Definition
+tasks:
+  - name: "cleanup-job"
+    graph: { name: "cleanup-workflow" }
+    default_context_profile: "standard"
+
+# 3. The Flow
+graphs:
+  - name: "cleanup-workflow"
+    entry_node: "scan"
+    nodes:
+      - id: "scan"
+        kind: "tool"
+        tool: { name: "scanner" }
+      - id: "decide"
+        kind: "router"
+        router: { name: "manager" }
+      - id: "act"
+        kind: "tool"
+        tool: { name: "delete_resource" } # Triggers policy!
+    edges:
+      - from_node: "scan"
+        to_node: "decide"
+      - from_node: "decide"
+        to_node: "act"
+        condition: { trigger: "success", expression: "context.get('found_garbage')" }
+
+# 4. The Capabilities
+tools:
+  - name: "scanner"
+    protocol: "local"
+  - name: "delete_resource"
+    protocol: "local"
+    policy: { name: "safety-rails" }
+
+# 5. The Brain
+routers:
+  - name: "manager"
+    strategy: "llm"
+    system_message: "You are a cleanup manager."
+
