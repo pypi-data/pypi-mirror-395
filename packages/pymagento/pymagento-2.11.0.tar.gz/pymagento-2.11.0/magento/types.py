@@ -1,0 +1,244 @@
+import sys
+from typing import Union, TypedDict, Literal, List, Any, Dict
+
+from api_session import JSONDict
+
+if sys.version_info >= (3, 11):
+    from typing import NotRequired
+else:
+    # noinspection PyUnreachableCode
+    from typing_extensions import NotRequired
+
+__all__ = (
+    'AttributeStoreLabel',
+    'AttributeOption',
+    'BasePrice',
+    'Category',
+    'Customer',
+    'CustomAttributeDict',
+    'DeleteCouponsResponseDict',
+    'MagentoEntity',
+    'MediaGalleryEntry',
+    'MediaGalleryEntryContent',
+    'Order',
+    'PathId',
+    'ErrorDict',
+    'PriceUpdateResultDict',
+    'Product',
+    'ShippingAddress',
+    'Sku',
+    'SourceItem',
+    'SourceItemIn',
+    'WithExtensionAttributesDict',
+)
+
+MagentoEntity = JSONDict
+
+PathId = Union[int, str]
+Sku = str
+
+
+class WithExtensionAttributesDict(TypedDict):
+    """A dict with an extension_attributes key."""
+    extension_attributes: Dict[str, Any]
+
+
+class CustomAttributeDict(TypedDict):
+    """A custom attribute dict, as found on products."""
+    attribute_code: str
+    value: Union[str, List[str], None]
+    """A string value or a list of strings. This can be ``None`` to delete a custom attribute,
+    but it will never be ``None`` in a Magento response.
+    """
+
+
+class AttributeStoreLabel(TypedDict):
+    """A store label for a select attribute."""
+    store_id: int
+    label: str
+
+
+class AttributeOption(TypedDict):
+    """Option for a select attribute."""
+    label: str
+    value: str
+    sort_order: NotRequired[int]
+    is_default: NotRequired[bool]
+    store_labels: NotRequired[List[AttributeStoreLabel]]
+
+
+# Products
+# ========
+
+class MediaGalleryEntryContent(TypedDict):
+    """Content of a media gallery entry."""
+    base64_encoded_data: str
+    type: str
+    name: str
+
+
+class MediaGalleryEntry(WithExtensionAttributesDict):
+    """A media gallery entry."""
+    id: NotRequired[int]
+    media_type: str
+    label: str
+    position: int
+    disabled: bool
+    types: List[str]
+    file: str
+    content: MediaGalleryEntryContent
+
+
+class ProductLink(WithExtensionAttributesDict):
+    """A product link."""
+    sku: str
+    link_type: str
+    linked_product_sku: str
+    linked_product_type: str
+    position: int
+
+
+class Product(WithExtensionAttributesDict):
+    """A product."""
+    id: int
+    sku: str
+    name: str
+    status: int
+    attribute_set_id: int
+    created_at: str
+    updated_at: str
+    custom_attributes: List[CustomAttributeDict]
+    media_gallery_entries: List[MediaGalleryEntry]
+    options: List[Any]
+    price: float
+    product_links: List[ProductLink]
+    tier_prices: List[Any]
+    type_id: str
+    visibility: int
+    weight: NotRequired[float]
+
+
+# Categories
+# ==========
+
+class Category(WithExtensionAttributesDict):
+    """A category."""
+    id: int
+    parent_id: int
+    name: str
+    is_active: bool
+    position: int
+    level: int
+    children: str
+    created_at: str
+    updated_at: str
+    path: str
+    available_sort_by: List[str]
+    include_in_menu: bool
+    custom_attributes: List[CustomAttributeDict]
+
+
+# Source items
+# ============
+# See https://developer.adobe.com/commerce/webapi/rest/inventory/manage-source-items/
+
+class SourceItemIn(TypedDict):
+    """Input source item."""
+    sku: Sku
+    source_code: str
+    quantity: NotRequired[int]
+    status: NotRequired[int]
+
+
+class SourceItem(TypedDict):
+    """Source item as returned by Magento."""
+    sku: Sku
+    source_code: str
+    quantity: int
+    status: int
+
+
+# Prices
+# ======
+
+class BasePrice(TypedDict):
+    """Base price dict."""
+    price: Union[int, float]
+    store_id: int
+    sku: Sku
+
+
+# Orders
+# ======
+
+class ShippingAddress(TypedDict):
+    """Shipping address dict."""
+    address_type: Literal["shipping"]
+    entity_id: int
+    parent_id: int
+    firstname: str
+    lastname: str
+    email: str
+    street: List[str]
+    city: str
+    postcode: str
+    region: NotRequired[str]
+    region_code: str
+    region_id: int
+    country_id: str
+    telephone: str
+    company: NotRequired[str]
+
+
+# TODO: proper TypedDict
+Order = MagentoEntity
+
+
+# Customers
+# =========
+
+class Customer(WithExtensionAttributesDict):
+    """A customer."""
+    # Unclear what's really always present here
+    id: NotRequired[int]
+    group_id: NotRequired[int]
+    default_billing: NotRequired[str]
+    default_shipping: NotRequired[str]
+    confirmation: NotRequired[str]
+    created_at: str
+    updated_at: str
+    created_in: NotRequired[str]
+    dob: NotRequired[str]
+    email: str
+    firstname: str
+    lastname: str
+    middlename: NotRequired[str]
+    prefix: NotRequired[str]
+    suffix: NotRequired[str]
+    gender: NotRequired[int]
+    store_id: NotRequired[int]
+    taxvat: NotRequired[str]
+    website_id: NotRequired[int]
+    addresses: NotRequired[List[Any]]  # TODO typing
+    disable_auto_group_change: NotRequired[int]
+    custom_attributes: List[CustomAttributeDict]
+
+
+# Other types
+# ===========
+
+class DeleteCouponsResponseDict(TypedDict):
+    """Response from the `coupons/deleteByIds` endpoint."""
+    failed_items: List[Any]
+    missing_items: List[Any]
+
+
+class ErrorDict(TypedDict):
+    """Error dict."""
+    message: str
+    parameters: List[str]
+
+
+class PriceUpdateResultDict(ErrorDict, WithExtensionAttributesDict):
+    """Response from the `products/base-prices` endpoint."""
+    pass
