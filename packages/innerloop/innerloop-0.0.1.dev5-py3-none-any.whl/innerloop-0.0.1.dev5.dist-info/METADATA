@@ -1,0 +1,138 @@
+Metadata-Version: 2.4
+Name: innerloop
+Version: 0.0.1.dev5
+Summary: LLM in a loop with tools, MCP, sessions, and structured outputs.
+Project-URL: Homepage, https://github.com/botassembly/innerloop
+Project-URL: Documentation, https://botassembly.org/innerloop
+Project-URL: Repository, https://github.com/botassembly/innerloop
+Project-URL: Issues, https://github.com/botassembly/innerloop/issues
+Project-URL: Changelog, https://botassembly.org/innerloop/changelog/
+Author-email: Ian Maurer <imaurer@gmail.com>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: agent,ai,anthropic,automation,claude,codex,devtool,gemini,llm,openai,sdk
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Requires-Dist: anthropic>=0.40.0
+Requires-Dist: genai-prices>=0.0.47
+Requires-Dist: google-generativeai>=0.8.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: openai>=1.50.0
+Requires-Dist: pydantic>=2.10.0
+Requires-Dist: typer>=0.20.0
+Provides-Extra: dev
+Requires-Dist: mypy>=1.8.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.11.0; extra == 'dev'
+Requires-Dist: pytest>=7.4.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# InnerLoop
+
+[![PyPI](https://img.shields.io/pypi/v/innerloop.svg)](https://pypi.org/project/innerloop/)
+[![Python](https://img.shields.io/pypi/pyversions/innerloop.svg)](https://pypi.org/project/innerloop/)
+[![License](https://img.shields.io/github/license/botassembly/innerloop.svg)](LICENSE)
+
+**Agents are just LLMs in a loop. InnerLoop makes that loop simple, typed, and secure.**
+
+Pure Python SDK for building LLM agent loops with tools, sessions, and structured outputs.
+
+## Features
+
+- **Pure Python** - No subprocesses, no external CLI dependencies
+- **Tool Calling** - `@tool` decorator for custom Python functions
+- **Structured Output** - Pydantic model validation with automatic retry
+- **Sessions** - Multi-turn conversations with JSONL persistence
+- **Streaming** - Sync and async event streaming
+- **Multiple Providers** - OpenRouter, Anthropic, OpenAI, Google, Ollama, LM Studio
+- **Security** - Zone-based tool isolation with CWD jailing
+
+## Install
+
+```bash
+uv pip install innerloop
+```
+
+## Quick Start
+
+```python
+from innerloop import Loop, tool
+from pydantic import BaseModel
+
+# Custom tool
+@tool
+def calculate(expression: str) -> str:
+    """Evaluate a math expression."""
+    return str(eval(expression))
+
+# Create loop
+loop = Loop(
+    model="openrouter/z-ai/glm-4.5-air",  # Free model
+    tools=[calculate],
+)
+
+# Run with tool calling
+response = loop.run("What is (15 * 7) + 23?")
+print(response.text)  # "The result is 128"
+
+# Structured output
+class MathResult(BaseModel):
+    expression: str
+    result: float
+
+response = loop.run(
+    "Calculate 15 * 7",
+    response_format=MathResult,
+)
+print(response.output.result)  # 105.0
+```
+
+## Configuration
+
+```bash
+export OPENROUTER_API_KEY="sk-or-..."  # OpenRouter (free models available)
+export ANTHROPIC_API_KEY="sk-ant-..."  # Anthropic
+export OPENAI_API_KEY="sk-..."         # OpenAI
+```
+
+## Documentation
+
+**[Read the full documentation](https://botassembly.org/innerloop)**
+
+- [Getting Started](https://botassembly.org/innerloop/getting-started) - Installation and first steps
+- [Tools & Functions](https://botassembly.org/innerloop/guides/core-concepts/tools) - Creating custom tools
+- [Structured Outputs](https://botassembly.org/innerloop/guides/advanced/structured-outputs) - Type-safe responses
+- [Sessions](https://botassembly.org/innerloop/guides/core-concepts/sessions) - Multi-turn conversations
+- [Streaming](https://botassembly.org/innerloop/guides/core-concepts/events) - Real-time event streaming
+- [Providers](https://botassembly.org/innerloop/guides/advanced/providers) - OpenRouter, Anthropic, OpenAI, etc.
+- [Local Models](https://botassembly.org/innerloop/guides/advanced/local-models) - Ollama and LM Studio
+- [Security](https://botassembly.org/innerloop/guides/advanced/security) - Zones and sandboxing
+- [Recipes](https://botassembly.org/innerloop/guides/recipes) - Common patterns
+- [API Reference](https://botassembly.org/innerloop/reference/api) - Complete API docs
+
+## Development
+
+```bash
+uv sync --all-extras
+make check  # Lint, format, type check
+make test   # Run tests
+```
+
+## License
+
+MIT
