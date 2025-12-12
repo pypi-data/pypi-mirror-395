@@ -1,0 +1,62 @@
+##############################################################################
+# Copyright 2019 IBM Corp.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##############################################################################
+
+import pytest
+import responses
+
+from pyds8k.client.ds8k.v1.client import Client
+from pyds8k.resources.ds8k.v1.common.types import DS8K_SYSTEM, DS8K_VOLUME
+from pyds8k.resources.ds8k.v1.volumes import Volume
+from pyds8k.test.base import TestCaseWithConnect
+from pyds8k.test.data import (
+    get_response_list_data_by_type,
+    get_response_list_json_by_type,
+)
+
+system_list_response_json = get_response_list_json_by_type(DS8K_SYSTEM)
+volume_list_response_json = get_response_list_json_by_type(DS8K_VOLUME)
+volume_list_response = get_response_list_data_by_type(DS8K_VOLUME)
+
+
+class TestClient(TestCaseWithConnect):
+    def setUp(self):
+        super().setUp()
+        self.rest_client = Client('https://localhost:8088/api/', 'admin', 'admin')
+
+    @responses.activate
+    def test_get_array_method(self):
+        domain = self.client.domain
+        vol_url = '/volumes'
+        sys_url = '/systems'
+        responses.get(
+            domain + self.base_url + vol_url,
+            body=volume_list_response_json,
+            content_type='application/json',
+        )
+
+        responses.get(
+            domain + self.base_url + sys_url,
+            body=system_list_response_json,
+            content_type='application/json',
+        )
+
+        vol_list = self.rest_client.get_volumes()
+        assert isinstance(vol_list, list)
+        assert isinstance(vol_list[0], Volume)
+        assert len(vol_list) == len(volume_list_response['data']['volumes'])
+        with pytest.raises(AttributeError):
+            # 'base_url' is an attr from System, not a method
+            self.rest_client.base_url  # noqa: B018 Testing only that exception raised
