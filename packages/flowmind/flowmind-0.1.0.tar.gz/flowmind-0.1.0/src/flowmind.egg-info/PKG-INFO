@@ -1,0 +1,366 @@
+Metadata-Version: 2.4
+Name: flowmind
+Version: 0.1.0
+Summary: A lightweight multi-agent automation platform for enterprise tasks
+Home-page: https://github.com/idrissbado/flowmind
+Author: Idriss Bado
+Author-email: Idriss Bado <idrissbado@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/idrissbado/flowmind
+Project-URL: Repository, https://github.com/idrissbado/flowmind
+Project-URL: Documentation, https://github.com/idrissbado/flowmind#readme
+Project-URL: Bug Tracker, https://github.com/idrissbado/flowmind/issues
+Keywords: automation,workflow,agent,tasks,enterprise,no-code
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Office/Business :: Office Suites
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: full
+Requires-Dist: PyPDF2>=3.0.0; extra == "full"
+Requires-Dist: scikit-learn>=1.0.0; extra == "full"
+Requires-Dist: beautifulsoup4>=4.12.0; extra == "full"
+Requires-Dist: requests>=2.31.0; extra == "full"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# 🚀 FlowMind
+
+**A Lightweight Multi-Agent Automation Platform for Enterprise Tasks**
+
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-green.svg)](https://pypi.org/project/flowmind/)
+
+FlowMind is a native Python automation framework that makes building workflows **simple** without the complexity of LangChain, Airflow, or enterprise tools.
+
+## ✨ Features
+
+- **🎯 Zero Complexity** - Simple task-based API, no abstractions
+- **⚡ Zero Dependencies** - Core package works offline, no external deps
+- **🔌 Plugin Architecture** - Extend with custom tasks
+- **📦 Built-in Tasks** - 7+ ready-to-use task types
+- **🔄 Smart Context** - Tasks share data seamlessly
+- **⏰ Scheduler** - Cron-like periodic execution
+- **🐍 Pure Python** - No Docker, K8s, or containers needed
+
+## 🎯 Why FlowMind?
+
+| Feature | FlowMind | LangChain | Airflow | n8n |
+|---------|----------|-----------|---------|-----|
+| **Simplicity** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
+| **Offline** | ✅ | ❌ | ✅ | ❌ |
+| **Pure Python** | ✅ | ⚠️ | ⚠️ | ❌ |
+| **No Dependencies** | ✅ (core) | ❌ | ❌ | ❌ |
+| **Learning Curve** | 5 min | 2 days | 1 week | 1 day |
+
+## 📦 Installation
+
+```bash
+# Install core (zero dependencies)
+pip install flowmind
+
+# Install with optional features
+pip install flowmind[full]
+```
+
+## 🚀 Quick Start
+
+### Example 1: Simple Data Pipeline
+
+```python
+from flowmind import FlowAgent
+
+# Create an agent
+agent = FlowAgent("data_processor")
+
+# Add tasks
+agent.add_task("file", operation="read", file_path="data.json", name="load")
+agent.add_task("data", operation="filter", input="${load.output}", condition="price > 100", name="filter")
+agent.add_task("file", operation="write", file_path="results.json", content="${filter.output}", as_json=True)
+
+# Run workflow
+results = agent.run()
+print(f"✅ Processed {len(results)} tasks")
+```
+
+### Example 2: Web Scraping & Email
+
+```python
+from flowmind import FlowAgent
+
+agent = FlowAgent("price_monitor")
+
+# Scrape website
+agent.add_task("web", operation="get", url="https://api.example.com/price", name="fetch")
+
+# Check condition
+agent.add_task("data", operation="transform", input="${fetch.content}", name="check")
+
+# Send email if price dropped
+agent.add_task("email",
+    operation="send",
+    to="admin@example.com",
+    subject="Price Alert!",
+    body="Price dropped to ${fetch.content.price}",
+    if_condition="${fetch.content.price} < 100",
+    name="notify"
+)
+
+# Schedule to run every hour
+agent.schedule(every="1h")
+agent.start()
+```
+
+### Example 3: ML Pipeline
+
+```python
+from flowmind import FlowAgent
+
+agent = FlowAgent("ml_pipeline")
+
+# Load data
+agent.add_task("file", operation="read", file_path="data.csv", name="load")
+
+# Train model
+agent.add_task("ml",
+    operation="train",
+    model="random_forest",
+    data="${load.output}",
+    target="price",
+    name="train"
+)
+
+# Make predictions
+agent.add_task("ml",
+    operation="predict",
+    model="${train.model}",
+    data="test.csv",
+    name="predict"
+)
+
+# Save results
+agent.add_task("file",
+    operation="write",
+    file_path="predictions.json",
+    content="${predict.output}",
+    as_json=True
+)
+
+agent.run()
+```
+
+## 📚 Built-in Tasks
+
+### 1. **FileTask** - File Operations
+```python
+agent.add_task("file", operation="read", file_path="data.json")
+agent.add_task("file", operation="write", file_path="output.txt", content="Hello")
+agent.add_task("file", operation="copy", source="a.txt", destination="b.txt")
+agent.add_task("file", operation="delete", file_path="temp.txt")
+agent.add_task("file", operation="list", directory=".", pattern="*.py")
+```
+
+### 2. **WebTask** - HTTP & Scraping
+```python
+agent.add_task("web", operation="get", url="https://api.example.com/data")
+agent.add_task("web", operation="post", url="https://api.example.com", data={"key": "value"})
+agent.add_task("web", operation="download", url="https://example.com/file.pdf", output="file.pdf")
+```
+
+### 3. **DataTask** - Data Transformation
+```python
+agent.add_task("data", operation="filter", input="${load.output}", condition="price > 100")
+agent.add_task("data", operation="aggregate", input="${data}", agg_type="sum", field="amount")
+agent.add_task("data", operation="sort", input="${data}", key="price", reverse=True)
+```
+
+### 4. **EmailTask** - Email Operations
+```python
+agent.add_task("email", operation="send", to="user@example.com", subject="Alert", body="Message")
+agent.add_task("email", operation="classify", content="${email_text}", categories=["urgent", "spam", "normal"])
+```
+
+### 5. **PDFTask** - PDF Extraction
+```python
+agent.add_task("pdf", operation="extract", file_path="invoice.pdf", extract=["text", "tables"])
+```
+
+### 6. **MLTask** - Machine Learning
+```python
+agent.add_task("ml", operation="train", model="random_forest", target="price")
+agent.add_task("ml", operation="predict", model="${train.model}", data="test.csv")
+```
+
+### 7. **ShellTask** - Shell Commands
+```python
+agent.add_task("shell", command="ls -la", name="list")
+agent.add_task("shell", command="python script.py", timeout=60)
+```
+
+## 🔌 Plugin System
+
+Create custom tasks:
+
+```python
+from flowmind import BaseTask, TaskResult, TaskStatus, register_task
+
+@register_task("my_custom_task")
+class MyCustomTask(BaseTask):
+    def execute(self, context):
+        # Your logic here
+        result = do_something()
+        return TaskResult(
+            status=TaskStatus.SUCCESS,
+            output=result
+        )
+
+# Use it
+agent.add_task("my_custom_task", name="custom", param1="value1")
+```
+
+## 🎯 Variable Substitution
+
+Tasks can reference each other's outputs:
+
+```python
+agent.add_task("file", operation="read", file_path="data.json", name="load")
+agent.add_task("data", operation="filter", input="${load.output}", condition="price > 100")
+agent.add_task("file", operation="write", content="${filter.output}", file_path="result.json")
+```
+
+## ⏰ Scheduling
+
+Run workflows periodically:
+
+```python
+agent = FlowAgent("scheduled_job")
+agent.add_task("shell", command="python backup.py")
+agent.schedule(every="1h")  # Run every hour
+agent.start()
+
+# Supported intervals: "30s", "5m", "1h", "1d"
+```
+
+## 🎨 Conditional Execution
+
+Run tasks based on conditions:
+
+```python
+agent.add_task("web", operation="get", url="https://api.example.com/status", name="check")
+agent.add_task("email",
+    operation="send",
+    to="admin@example.com",
+    subject="System Down!",
+    if_condition="${check.status_code} != 200",  # Only run if check failed
+    name="alert"
+)
+```
+
+## 📖 Documentation
+
+### FlowAgent API
+
+```python
+agent = FlowAgent(name="workflow", verbose=True)
+agent.add_task(task_type, name=None, **config)
+agent.run(stop_on_error=True)
+agent.schedule(every="5m")
+agent.start()
+agent.stop()
+agent.get_result(task_name)
+agent.clear()
+```
+
+### Task Configuration
+
+Every task supports:
+- `name`: Optional task name (auto-generated if not provided)
+- `if_condition`: Conditional execution (e.g., `"${prev.status} == 200"`)
+- Task-specific parameters (see Built-in Tasks section)
+
+## 🌟 Use Cases
+
+- **Data Pipelines** - ETL, data cleaning, transformation
+- **Web Automation** - Scraping, API integration, monitoring
+- **File Processing** - Batch processing, format conversion
+- **Email Automation** - Alerts, notifications, classification
+- **ML Workflows** - Train, predict, deploy models
+- **DevOps Tasks** - Deployment, monitoring, backups
+- **Business Automation** - Invoice processing, reporting
+
+## 🎯 Target Audience
+
+- **Python Developers** - Need simple automation
+- **Data Scientists** - Build ML pipelines
+- **DevOps Engineers** - Automate workflows
+- **Small Businesses** - No budget for enterprise tools
+- **Students** - Learn automation concepts
+
+## 🚀 Why Not LangChain?
+
+LangChain is powerful but **complex**:
+- Steep learning curve
+- Heavy dependencies
+- LLM-focused (not general automation)
+- Requires cloud services
+
+**FlowMind is:**
+- Simple & intuitive
+- Zero dependencies (core)
+- General-purpose automation
+- Works offline
+
+## 📊 Performance
+
+- **Lightweight**: ~50KB core package
+- **Fast**: Minimal overhead, pure Python
+- **Efficient**: No unnecessary abstractions
+
+## 🤝 Contributing
+
+Contributions welcome! Please check issues or submit PRs.
+
+```bash
+git clone https://github.com/idrissbado/flowmind.git
+cd flowmind
+pip install -e ".[full]"
+```
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+Built with ❤️ for developers who value simplicity.
+
+## 🔗 Links
+
+- **GitHub**: https://github.com/idrissbado/flowmind
+- **PyPI**: https://pypi.org/project/flowmind/
+- **Documentation**: https://github.com/idrissbado/flowmind#readme
+- **Issues**: https://github.com/idrissbado/flowmind/issues
+
+## 📧 Contact
+
+**Idriss Bado**
+- GitHub: [@idrissbado](https://github.com/idrissbado)
+- Email: idrissbado@gmail.com
+
+---
+
+**Made with 🚀 by Idriss Bado**
+
+*"From Complex AI Agents to Simple Python Workflows"*
