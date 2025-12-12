@@ -1,0 +1,98 @@
+# kicad-pycbnew - Python Library for KiCad PCB Creation from Scratch
+
+kicad-pycbnew is a Python library that provides a programmatic interface for creating and manipulating KiCad PCB designs.
+kicad-pycbnew works without requiring KiCad to be installed.
+It allows you to generate complex PCB layouts using Python code, making it easier to create parametric designs, 
+automate repetitive tasks, and integrate PCB design into your Python workflows.
+
+## Features
+
+- Create KiCad PCB projects programmatically
+- Define, place and manipulate PCB elements:
+  - Footprints and pads
+  - Nets and logical connections between footprint pads
+  - Traces and vias
+  - Zones and keepout areas
+  - Graphic elements (lines, text, polygons)
+- Geometric utilities for PCB design
+- Support for S-expressions (KiCad's file format)
+- Integration with KiCad CLI
+
+## Installation
+
+```bash
+pip install kicad-pycbnew
+```
+
+## Project Structure
+
+The library is organized into three main packages:
+
+### Primitives
+
+Basic building blocks for KiCad PCB elements:
+
+- `kicad.py`: Base classes and utilities
+- `project.py`: Project management
+- `footprint.py`: Footprint and pad handling
+- `layer.py`: Layer definitions
+- `net.py`: Net management
+- `segment.py`: Track segments and arcs
+- `via.py`: Via definitions
+- `zone.py`: Copper zones
+- `gr_elements.py`: Graphic elements (text, lines, arcs, rectangles)
+- `sexpressions.py`: some convenient S-expression utilities
+
+### Composites
+
+Higher-level constructs built from primitives:
+
+- `abstract_path.py`: Base path class
+- `gr_line_path.py`: Paths with graphic lines and arcs
+- `segment_path.py`: Paths with track segments and arcs
+
+### Utils
+
+Utility functions and geometric classes:
+
+- `geometry.py`: Point, Vector, Arc, Rectangle, Polygon classes
+- `bernstein.py`: Bernstein polynomial functions
+
+## Usage Example
+
+```python
+from pycbnew.primitives.project import KProject
+from pycbnew.primitives.footprint import KFootprint
+from pycbnew.primitives.net import KNet
+from pycbnew.utils.geometry import Point
+
+# Create a new KiCadObject project
+project = KProject(filename="my_project.kicad_pcb", copper_layers=2)
+
+# Create a net
+gnd_net = KNet(1, "GND")
+project.add(gnd_net)
+
+# Add a footprint
+footprint = KFootprint("Resistor_SMD:R_0805_2012Metric",
+                       at=Point(100, 100),
+                       side=KFootprint.Side.Front,
+                       default_net=gnd_net)
+project.add(footprint)
+
+# Save the project
+project.save()
+```
+
+
+## Advanced usage
+
+See the [examples](https://gitlab.com/vinraspa/kicad-pycbnew/-/tree/main/examples) directory.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](https://gitlab.com/vinraspa/kicad-pycbnew/-/tree/main/LICENSE) file for details.
