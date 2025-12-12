@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>FlowMeta Tutorial</title>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; color: #1f1f1f; }
+h1, h2, h3 { color: #1a4d8f; }
+code { background: #f5f5f5; padding: 2px 4px; border-radius: 3px; }
+pre { background: #f5f5f5; padding: 12px; overflow-x: auto; border-radius: 4px; }
+table { border-collapse: collapse; margin: 18px 0; width: 100%; }
+th, td { border: 1px solid #d0d0d0; padding: 8px 10px; vertical-align: top; }
+.tip { background: #edf6ff; border-left: 4px solid #1a4d8f; padding: 10px 14px; margin: 12px 0; }
+.section { margin-bottom: 48px; }
+</style>
+</head>
+<body>
+<h1>🌌 FlowMeta Tutorial</h1>
+<p><strong>Title:</strong> FlowMeta: Automated End-to-End Metagenomic Profiling Pipeline<br />
+<strong>Repository:</strong> <a href="https://github.com/SkinMicrobe/FlowMeta" target="_blank" rel="noopener">https://github.com/SkinMicrobe/FlowMeta</a><br />
+<strong>Author:</strong> Dongqiang Zeng<br />
+<strong>Email:</strong> <a href="mailto:interlaken@smu.edu.cn">interlaken@smu.edu.cn</a></p>
+
+<p>🚀 Welcome! This guide walks through installing, configuring, and running <strong>FlowMeta</strong>, the 10-stage metagenomic pipeline that links fastp → Bowtie2 → Kraken2/Bracken → host filtering → multi-format reporting. Use it to replicate Shotgun workflows on Linux servers, HPC clusters, or WSL.</p>
+
+<div class="section">
+  <h2>🧰 1. Prerequisites</h2>
+  <ol>
+    <li><strong>Platform:</strong> Linux or WSL (Windows Subsystem for Linux). SSD/NVMe storage keeps Bowtie2 and Kraken2 fast.</li>
+    <li><strong>Python (≥3.8):</strong> Recreate the recommended environment with Conda or mamba: 
+      <pre><code>conda env create -f environment.yml
+conda activate meta
+# or
+mamba env create -f environment.yml
+mamba activate meta</code></pre>
+      Prefer an isolated virtual environment? 
+      <pre><code>python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\activate
+pip install -r docs/quickstart-requirements.txt  # tailor as needed</code></pre>
+    </li>
+    <li><strong>External tools:</strong> fastp, bowtie2, samtools, kraken2, bracken, pigz, seqkit. Ensure each command resolves from <code>$PATH</code>.</li>
+    <li><strong>Reference assets:</strong> 
+      <ul>
+        <li>Bowtie2 index prefix (e.g. <code>/mnt/db/GRCh38_noalt_as/GRCh38_noalt_as</code>).</li>
+        <li>Kraken2 database directory containing <code>hash.k2d</code>, <code>opts.k2d</code>, <code>taxo.k2d</code>, and optional Bracken taxonomy tables.</li>
+      </ul>
+    </li>
+  </ol>
+</div>
+
+<div class="section">
+  <h2>📦 2. Installation Options</h2>
+  <h3>2.1 🌐 PyPI (preferred)</h3>
+  <pre><code>pip install flowmeta</code></pre>
+  <p>Ideal once the package is published publicly; every user can install directly.</p>
+
+  <h3>2.2 💾 Local wheel</h3>
+  <pre><code>pip install dist/flowmeta-0.1.0-py3-none-any.whl</code></pre>
+  <p>Use when sharing a pre-built artifact inside secure networks.</p>
+
+  <h3>2.3 🔧 Build from source</h3>
+  <pre><code>pip install build
+
+python -m build --wheel --sdist
+pip install dist/flowmeta-0.1.0-py3-none-any.whl</code></pre>
+  <p>Confirm <code>README.md</code>, <code>README.zh.md</code>, and <code>docs/tutorial.html</code> stay bundled in the sdist so downstream installs ship with documentation.</p>
+
+  <div class="tip">
+    <strong>Packaging check:</strong> <code>tar -tf dist/flowmeta-0.1.0.tar.gz</code> (sdist) and <code>python -m zipfile -l dist/flowmeta-0.1.0-py3-none-any.whl</code> (wheel) quickly reveal missing files. ✅
+  </div>
+</div>
+
+<div class="section">
+  <h2>🧬 3. Database Preparation</h2>
+  <h3>3.1 🪐 Kraken2 reference libraries</h3>
+  <ol>
+    <li>Visit <a href="https://benlangmead.github.io/aws-indexes/k2" target="_blank" rel="noopener">https://benlangmead.github.io/aws-indexes/k2</a>.</li>
+    <li>Download and extract the desired database (e.g. <code>k2_standard_20240112</code>) to <code>/mnt/db/k2ppf</code>.</li>
+    <li>Double-check the directory contains <code>hash.k2d</code>, <code>opts.k2d</code>, <code>taxo.k2d</code>, <code>library_report.tsv</code>, and related files.</li>
+    <li>Optional performance boost: pass <code>--shm_path /dev/shm/k2ppf</code> so FlowMeta caches the DB in RAM.</li>
+  </ol>
+
+  <h3>3.2 🧠 Bowtie2 host index (GRCh38 example)</h3>
+  <pre><code># fetch the genome
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.28_GRCh38.p13/GCA_000001405.28_GRCh38.p13_genomic.fna.gz
+
+# optional: remove alternative contigs
+seqkit grep -rvp "alt|PATCH" GCA_000001405.28_GRCh38.p13_genomic.fna.gz > GRCh38_noalt.fna
+
+# build Bowtie2 index
+mkdir -p /mnt/db/GRCh38_noalt_as
+bowtie2-build GRCh38_noalt.fna /mnt/db/GRCh38_noalt_as/GRCh38_noalt_as
+
+# FlowMeta configuration
+flowmeta_base ... --db_bowtie2 /mnt/db/GRCh38_noalt_as/GRCh38_noalt_as</code></pre>
+  <p>🔁 Swap the download URL and filtering logic to index other host species.</p>
+</div>
+
+<div class="section">
+  <h2>🚀 4. Quick Command Overview</h2>
+  <h3>4.1 ⚡ Fast start</h3>
+  <pre><code>flowmeta_base \
+  --input_dir /mnt/data/flowmeta/01-raw \
+  --output_dir /mnt/data/flowmeta/flowmeta-out \
+  --db_bowtie2 /mnt/db/GRCh38_noalt_as/GRCh38_noalt_as \
+  --db_kraken /mnt/db/k2ppf \
+  --threads 32 \
+  --project_prefix GLOBAL-</code></pre>
+  <p>The pipeline auto-detects paired FASTQ files, writes outputs to the specified workspace, and drops <code>.task.complete</code> flags for safe restarts.</p>
+
+  <h3>4.2 🛠️ Flag cheat sheet</h3>
+  <table>
+    <thead>
+      <tr><th>Flag</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>--input_dir</code></td><td>Raw FASTQ directory (default: `01-raw`, expecting `_1/_2` suffixes).</td></tr>
+      <tr><td><code>--output_dir</code></td><td>Pipeline workspace; creates `02-qc` through `09-mpa`.</td></tr>
+      <tr><td><code>--db_bowtie2</code></td><td>Bowtie2 index prefix used for host filtering.</td></tr>
+      <tr><td><code>--db_kraken</code></td><td>Kraken2 database directory.</td></tr>
+      <tr><td><code>--threads</code></td><td>Total threads per sample.</td></tr>
+      <tr><td><code>--batch</code></td><td>Concurrent samples processed in fastp/Kraken2.</td></tr>
+      <tr><td><code>--se</code></td><td>Toggle single-end mode.</td></tr>
+      <tr><td><code>--suffix1</code>, <code>--suffix2</code></td><td>Override FASTQ suffixes when naming schemes differ.</td></tr>
+      <tr><td><code>--min_count</code></td><td>Bracken minimum count threshold (host filtering).</td></tr>
+      <tr><td><code>--check_result</code></td><td>Enable integrity checks in Steps 2 and 4 (off by default to save time).</td></tr>
+      <tr><td><code>--step</code></td><td>Resume from a logical pipeline step (1–10).</td></tr>
+      <tr><td><code>--force</code></td><td>Re-run work from the specified step even if flags exist.</td></tr>
+      <tr><td><code>--skip_host_extract</code></td><td>Skip exporting host reads in Step 5.</td></tr>
+      <tr><td><code>--no_shm</code>, <code>--shm_path</code></td><td>Control shared-memory staging of Kraken2 databases.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 🎯 Common scenarios</h3>
+  <ul>
+    <li>🔁 Resume classification: <code>flowmeta_base ... --step 6</code></li>
+    <li>🧹 Force rebuild from Bowtie2: <code>flowmeta_base ... --step 3 --force</code></li>
+    <li>🎯 Single-end reads: <code>flowmeta_base ... --se --suffix1 _R.fastq.gz</code></li>
+    <li>🚫 Skip host FASTQ export: <code>flowmeta_base ... --skip_host_extract</code></li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>📂 5. Output Layout</h2>
+  <pre><code>02-qc/       fastp reports + trimmed reads
+03-hr/       Host-depleted FASTQ files
+04-bam/      Bowtie2 BAM and index files
+05-host/     Optional host FASTQ exports
+06-ku/       Kraken2 reports (first pass)
+07-bracken/  Bracken abundance tables
+08-ku2/      Host-filtered rerun outputs
+09-mpa/      Final merged OTU / MPA matrices</code></pre>
+  <p>🧩 Each directory stores per-sample <code>.task.complete</code> files so you can resume safely after interruptions.</p>
+</div>
+
+<div class="section">
+  <h2>🧭 6. Step-by-Step Logic</h2>
+  <p>ℹ️ Integrity checks in Steps 2 and 4 run only when you supply <code>--check_result</code> (default is off to save time). At startup the CLI also prints a concise path overview for all step directories.</p>
+  <ol>
+    <li>fastp quality control.</li>
+    <li>fastp integrity verification (requires <code>--check_result</code>).</li>
+    <li>Bowtie2 host filtering (FASTQ + BAM outputs).</li>
+    <li>Host-removed FASTQ validation (requires <code>--check_result</code>).</li>
+    <li>Optional host read export (samtools fastq).</li>
+    <li>Kraken2 database staging (shared memory).</li>
+    <li>Kraken2 + Bracken classification.</li>
+    <li>Kraken report validation.</li>
+    <li>Host-taxid filtering and Bracken rerun.</li>
+    <li>Final OTU/MPA/Bracken matrix merges.</li>
+  </ol>
+  <p>🔄 Steps map to functions in <code>flowmeta/steps/</code> for advanced customization and can be resumed with <code>--step</code>.</p>
+  <table>
+    <thead>
+      <tr><th>Step</th><th>Purpose</th><th>Files counted when announced</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>fastp trimming/QC.</td><td>FASTQ pairs in <code>01-raw</code> matching <code>suffix1</code>.</td></tr>
+      <tr><td>2</td><td>fastp integrity verification (requires <code>--check_result</code>).</td><td><code>.task.complete</code> or <code>_fastp.json</code> in <code>02-qc</code>.</td></tr>
+      <tr><td>3</td><td>Bowtie2 host depletion + BAM creation.</td><td><code>.task.complete</code> in <code>02-qc</code>.</td></tr>
+      <tr><td>4</td><td>Host-removed FASTQ validation (requires <code>--check_result</code>).</td><td><code>_host_remove_R1.fastq.gz</code> in <code>03-hr</code>.</td></tr>
+      <tr><td>5</td><td>Optional samtools host-read export.</td><td><code>.bam</code> files in <code>04-bam</code>.</td></tr>
+      <tr><td>6</td><td>Stage Kraken2 DB in shared memory (if enabled).</td><td>N/A</td></tr>
+      <tr><td>7</td><td>Kraken2/Bracken classification.</td><td><code>_host_remove_R1.fastq.gz</code> in <code>03-hr</code>.</td></tr>
+      <tr><td>8</td><td>Kraken report validation.</td><td><code>.kraken.report.std.txt</code> in <code>06-ku</code>.</td></tr>
+      <tr><td>9</td><td>Host-taxid filtering + Bracken rerun.</td><td><code>.kraken.report.std.txt</code> in <code>06-ku</code>.</td></tr>
+      <tr><td>10</td><td>Merge OTU/MPA/Bracken outputs.</td><td><code>.nohuman.kraken.mpa.std.txt</code> (08-ku2) + <code>.bracken</code> tables (07-bracken).</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>🛡️ 7. Logging & Troubleshooting</h2>
+  <ul>
+    <li>Each stage prints a <code>STEP n</code> banner; unrecoverable errors raise <code>FlowMetaError</code>.</li>
+    <li>Remove a stale <code>.task.complete</code> file to re-run a specific sample.</li>
+    <li>Adjust <code>--fastp_retries</code>, <code>--host_retries</code>, or <code>--kraken_retries</code> after transient failures.</li>
+    <li>For slow Kraken2 runs, avoid <code>--no_shm</code> and copy databases to SSD/RAM using <code>--shm_path</code>.</li>
+    <li>Detailed stdout/stderr for external tools lives beside step outputs.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>❓ 8. FAQ</h2>
+  <ol>
+    <li><strong>How do I rebuild after a database update?</strong><br />Use <code>--step 3 --force</code> (Bowtie2) or a later step depending on the scope.</li>
+    <li><strong>Can I add new samples incrementally?</strong><br />Drop FASTQ files into <code>01-raw</code>; FlowMeta processes only the samples lacking <code>.task.complete</code> markers.</li>
+    <li><strong>Where are the fastp QC reports?</strong><br />Check <code>02-qc</code> for both HTML reports and logs; ensure disk space is sufficient.</li>
+    <li><strong>CLI help?</strong><br /><code>flowmeta_base -h</code> prints the entire argument list.</li>
+  </ol>
+</div>
+
+<div class="section">
+  <h2>🤝 9. Support & Citation</h2>
+  <p>Maintainer: <strong>Dongqiang Zeng</strong> · Southern Medical University · <a href="mailto:interlaken@smu.edu.cn">interlaken@smu.edu.cn</a></p>
+  <p>Please cite the GitHub repository if FlowMeta contributes to your research: <a href="https://github.com/SkinMicrobe/FlowMeta" target="_blank" rel="noopener">https://github.com/SkinMicrobe/FlowMeta</a>.</p>
+  <p>🎉 Happy sequencing!</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,154 @@
+Metadata-Version: 2.4
+Name: flowmeta
+Version: 0.1.4
+Summary: Integrated metagenomic workflow orchestration
+Author-email: Dongqiang Zeng <interlaken@smu.edu.cn>
+License: Proprietary
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.21
+Requires-Dist: pandas>=1.5
+Dynamic: license-file
+
+# FlowMeta: Automated End-to-End Metagenomic Profiling Pipeline 🚀
+
+
+**FlowMeta** packages a 10-step, end-to-end metagenomic workflow into a single Python command that can be deployed on any Linux/WSL environment. Each processing phase writes `*.task.complete` flags so you can resume or re-run individual stages with confidence across microbiome, environmental, or any shotgun metagenomic study.
+
+## ✨ Highlights
+- End-to-end orchestration (`flowmeta_base`) covering fastp ➜ Bowtie2 ➜ Kraken2/Bracken ➜ host-taxid filtering ➜ final OTU/MPA matrix merge.
+- Smart checkpointing with `.task.complete` for incremental runs.
+- Shared-memory (optional) caching for Kraken2 databases.
+- Configurable project prefix (e.g. `SMOOTH-`) applied to Step 6 outputs.
+- Detailed per-step logs stored alongside generated data.
+
+## 🎨 Graphical Abstract
+![Graphical Abstract](docs/flowmeta.png)
+
+## 📦 Installation
+
+```bash
+
+conda create -n flowmeta python=3.8 -y
+conda activate flowmeta  # or any Python >= 3.8 environment
+# Dependance
+conda install -c bioconda fastp bowtie2 samtools kraken2 bracken -y
+conda install -c conda-forge scipy pandas -y
+
+# Install from PyPi: https://pypi.org/project/flowmeta/0.1.0/
+pip install flowmeta
+
+# Validate the installation
+flowmeta_base -h
+```
+
+External executables (not installed by `pip install flowmeta`): fastp, bowtie2, samtools, kraken2, bracken, pigz, seqkit. Make sure they are on your `PATH` (e.g., `conda install -c conda-forge pigz`, `apt-get install pigz`, or `brew install pigz`) before running the pipeline.
+
+Tip: the auxiliary YAML file [`environment.yml`](environment.yml) captures the recommended Conda environment, including Python, pandas/numpy, and the `build` toolchain. Alternative setup paths (Conda, mamba, pip) are described in `docs/tutorial.html` so you can pick the package manager that matches your infrastructure. When using an internal build, install the local wheel via `pip install dist/flowmeta-0.1.0-py3-none-any.whl`.
+
+## 🏁 Quick Start
+
+```bash
+flowmeta_base \
+    --input_dir /mnt/data/01-raw \
+    --output_dir /mnt/data/flowmeta-out \
+    --db_bowtie2 /mnt/db/GRCh38_noalt_as/GRCh38_noalt_as \
+    --db_kraken /mnt/db/k2ppf \
+    --threads 8 \
+    --project_prefix SMOOTH-
+```
+
+All downstream folders (`02-qc` … `09-mpa`) are created automatically inside `--output_dir`. Existing results are reused unless `--force` is specified.
+
+## 🧭 CLI Cheatsheet
+
+| Flag | Description |
+| --- | --- |
+| `--input_dir` | Directory containing raw FASTQ files (defaults to paired `_1.fastq.gz`/`_2.fastq.gz`). |
+| `--output_dir` | Target workspace; the pipeline creates `02-qc` … `09-mpa` here. |
+| `--db_bowtie2` | Path prefix of the host Bowtie2 index. |
+| `--db_kraken` | Kraken2 database directory (must include `hash.k2d`, `opts.k2d`, `taxo.k2d`). |
+| `--threads` | Worker threads per sample. |
+| `--batch` | Number of samples processed in parallel (fastp/Kraken). |
+| `--min_count` | Bracken minimum count threshold during host-taxid filtering (Step 5). |
+| `--check_result` | Enable integrity checks (Steps 2 and 4); off by default to save time. |
+| `--project_prefix` | Optional label prepended to Step 6 merged assets (e.g. `SMOOTH-`). |
+| `--force` | Recompute even if `.task.complete` exists for the step. |
+| `--step` | Resume from a specific logical step (1–10). Leave unset to run the entire workflow. |
+| `--skip_host_extract` | Skip samtools-based host FASTQ extraction (Step 5). |
+| `--no_shm`/`--shm_path` | Control Kraken2 shared-memory caching. |
+
+Full parameter descriptions and advanced scenarios are documented in `docs/tutorial.html`.
+
+## 🔟 Step Map & Resuming
+
+Use `--step N` to start from the desired checkpoint (defaults to `--step 1`, i.e. run everything). The CLI prints a per-step banner that includes the task description and how many samples/files are ready (a path overview is printed up front). `--force` can be combined with any step to ignore existing `.task.complete` markers. Integrity checks in Steps 2 and 4 only run when `--check_result` is provided.
+
+| Step | Purpose | Files counted when announced |
+| --- | --- | --- |
+| 1 | fastp trimming and QC reporting. | FASTQ pairs in `01-raw` matching `suffix1`. |
+| 2 | fastp integrity verification (requires `--check_result`). | `.task.complete` (or `_fastp.json`) in `02-qc`. |
+| 3 | Bowtie2 host depletion (FASTQ + BAM generation). | `.task.complete` in `02-qc`. |
+| 4 | Host-removed FASTQ integrity check (requires `--check_result`). | `_host_remove_R1.fastq.gz` in `03-hr`. |
+| 5 | Optional samtools host-read export. | `.bam` in `04-bam`. |
+| 6 | Stage Kraken2 DB to shared memory (`--no_shm` disables). | N/A. |
+| 7 | Kraken2/Bracken classification. | `_host_remove_R1.fastq.gz` in `03-hr`. |
+| 8 | Kraken report validation. | `.kraken.report.std.txt` in `06-ku`. |
+| 9 | Remove host taxa + rerun Bracken. | `.kraken.report.std.txt` in `06-ku`. |
+| 10 | Merge OTU/MPA/Bracken matrices. | `.nohuman.kraken.mpa.std.txt` (08-ku2) + `.bracken` tables (07-bracken). |
+
+### Kraken2 Reference Databases
+
+- 🔗 Download pre-built Kraken2 libraries directly from the official mirror: <https://benlangmead.github.io/aws-indexes/k2>
+- 📦 After downloading, extract the archive and point `--db_kraken` to the directory containing `hash.k2d`, `opts.k2d`, and `taxo.k2d`.
+- 💾 Consider staging the database on fast SSD or RAM disk when processing large cohorts.
+
+### Bowtie2 Host Reference (Human Example)
+
+1. 📥 Fetch the GRCh38 primary assembly FASTA from the NCBI FTP mirror:
+	```bash
+	wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.28_GRCh38.p13/GCA_000001405.28_GRCh38.p13_genomic.fna.gz
+	gunzip GCA_000001405.28_GRCh38.p13_genomic.fna.gz
+	```
+2. 🧹 Optionally remove alternative contigs if you prefer the `noalt` subset:
+	```bash
+	seqkit grep -rvp 'alt|PATCH' GCA_000001405.28_GRCh38.p13_genomic.fna > GRCh38_noalt.fna
+	```
+3. 🧱 Build the Bowtie2 index:
+	```bash
+	bowtie2-build GRCh38_noalt.fna GRCh38_noalt_as/GRCh38_noalt_as
+	```
+4. 📁 Supply the resulting prefix directory to `--db_bowtie2` (e.g. `--db_bowtie2 /mnt/db/GRCh38_noalt_as/GRCh38_noalt_as`).
+
+## 📂 Output Layout
+
+```
+01-raw/           # user-supplied FASTQ (read-only)
+02-qc/            # fastp outputs + integrity checks
+03-hr/            # host-removed FASTQ
+04-bam/           # Bowtie2 BAM/indices
+05-host/          # optional host reads (samtools)
+06-ku/            # Kraken2 reports/outputs
+07-bracken/       # Bracken abundance tables
+08-ku2/           # Host-filtered rerun (reports + diversity metrics)
+09-mpa/           # Merge matrices, count tables, final summaries
+```
+
+Every folder contains per-sample `*.task.complete` markers to enable resumable runs.
+
+
+## 📚 Documentation
+
+- Companion README (operations cheat sheet): [`README.zh.md`](README.zh.md)
+- HTML tutorial: [`docs/tutorial.html`](docs/tutorial.html)
+- Quick validation script: `docs/quickstart.md`
+
+## 🤝 Support
+
+For bug reports or integration questions please reach out directly:
+
+**Dongqiang Zeng** · 📧 interlaken@smu.edu.cn
+
+GitHub project: <https://github.com/SkinMicrobe/FlowMeta>
+
