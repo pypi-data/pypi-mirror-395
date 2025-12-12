@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "steer-core"
+dynamic = ["version"]
+description = "Modelling energy storage from cell to site - STEER OpenCell Design"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Nicholas Siemons", email = "nsiemons@stanford.edu"},
+]
+maintainers = [
+    {name = "Nicholas Siemons", email = "nsiemons@stanford.edu"},
+]
+keywords = ["energy", "storage", "battery", "modeling", "simulation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "pandas==2.1.4",
+    "numpy==1.26.4",
+    "datetime==5.5",
+    "plotly==6.2.0",
+    "scipy==1.15.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/nicholas9182/steer-core/"
+Repository = "https://github.com/nicholas9182/steer-core/"
+Issues = "https://github.com/nicholas9182/steer-core/issues"
+Documentation = "https://github.com/nicholas9182/steer-core/"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+    "isort",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["steer_core*"]
+
+[tool.setuptools.package-data]
+"steer_core.Data" = ["database.db"]
+
+[tool.setuptools.dynamic]
+version = {attr = "steer_core.__version__"}
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["steer_core"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
