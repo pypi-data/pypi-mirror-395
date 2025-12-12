@@ -1,0 +1,1 @@
+"""Cross-adapter translation helpers."""
