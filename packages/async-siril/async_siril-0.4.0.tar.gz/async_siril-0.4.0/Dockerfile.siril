@@ -1,0 +1,54 @@
+# syntax = docker/dockerfile:1.4
+FROM ghcr.io/astral-sh/uv:debian-slim as base-image
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    git \
+    cmake \
+    at-spi2-core \
+    build-essential \
+    desktop-file-utils \
+    hicolor-icon-theme \
+    intltool \
+    libgtk-3-dev \
+    libcfitsio-dev \
+    libopencv-dev \
+    libfftw3-dev \
+    libgsl-dev \
+    libjpeg-dev \
+    libtiff5-dev \
+    libpng-dev \
+    wcslib-dev \
+    libjson-glib-dev \
+    gcovr \
+    gnuplot \
+    libcurl4-gnutls-dev \
+    wget \
+    tree \
+    meson \
+    liblcms2-dev \
+    libgtksourceview-4-dev
+
+# RUN uv pip install --system --upgrade meson
+WORKDIR /
+
+# https://gitlab.com/free-astro/siril/-/tree/1.4.0-beta3
+RUN git clone https://gitlab.com/free-astro/siril.git siril-src
+WORKDIR /siril-src
+
+# Checkout the 1.4.0-beta3 tag (can update to something else later)
+RUN git checkout 1.4.0-beta3 && \
+    git submodule sync --recursive && \
+    git submodule update --init --recursive
+# Install the build artifact to the system
+RUN ./autogen.sh && make all install
+
+
+WORKDIR /async-siril
+COPY . /async-siril
+RUN uv sync --locked --all-extras --dev
+
+SHELL ["/bin/bash", "-c"]
+
+# Example: change this entrypoint to run your own script
+ENTRYPOINT ["uv", "run", "./examples/test_siril.py"]

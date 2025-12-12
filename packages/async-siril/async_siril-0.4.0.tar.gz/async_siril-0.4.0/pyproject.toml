@@ -1,0 +1,76 @@
+[project]
+name = "async-siril"
+version = "0.4.0"
+description = "Python async wrapper around Siril astrophotography software."
+readme = "README.md"
+authors = [
+    { name = "Kyle LeNeau" }
+]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: BSD License",
+]
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "asyncio>=3.4.3",
+    "psutil>=7.0.0",
+    "structlog>=25.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/KyleLeNeau/async-siril"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+  "/packages/siril-command-src",
+  "/tests",
+]
+
+[dependency-groups]
+dev = [
+    "astropy>=7.1.0",
+    "cappa>=0.28.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.12.2",
+    "streamlit>=1.46.1",
+    "ty>=0.0.1a30",
+]
+
+[tool.uv.workspace]
+members = [
+    "packages/siril-command-src",
+]
+
+[tool.ruff]
+# Allow lines to be as long as 120.
+line-length = 120
+extend-exclude = ["**/generated/*"]
+
+[tool.ty.src]
+exclude = [
+    "**/generated/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::RuntimeWarning:unittest.mock",
+    "ignore:coroutine.*was never awaited:RuntimeWarning",
+]
