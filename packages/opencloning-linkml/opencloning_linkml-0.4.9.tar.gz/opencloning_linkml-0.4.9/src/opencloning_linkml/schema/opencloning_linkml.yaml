@@ -1,0 +1,915 @@
+---
+id: https://opencloning.github.io/OpenCloning_LinkML
+name: OpenCloning_LinkML
+title: OpenCloning_LinkML
+description: |-
+  A LinkML data model for OpenCloning
+license: MIT
+see_also:
+  - https://pypi.org/project/opencloning-linkml/
+
+prefixes:
+  opencloning_linkml: https://opencloning.github.io/OpenCloning_LinkML/
+  linkml: https://w3id.org/linkml/
+  biolink: https://w3id.org/biolink/
+  schema: http://schema.org/
+  bioschemas: https://bioschemas.org/
+  PATO: http://purl.obolibrary.org/obo/PATO_
+  example: https://example.org/
+  OBI: http://purl.obolibrary.org/obo/OBI_
+  NCIT: http://purl.obolibrary.org/obo/NCIT_
+  IAO: http://purl.obolibrary.org/obo/IAO_
+  GENO: http://purl.obolibrary.org/obo/GENO_
+default_prefix: opencloning_linkml
+default_range: string
+
+imports:
+  - linkml:types
+
+types:
+  version_number:
+    typeof: string
+    description: >-
+      A version number
+    exact_mappings:
+      - IAO:0000129
+  sequence_range:
+    typeof: string
+    description: >-
+      A sequence range defined using genbank syntax (e.g. 1..100), note that 1..100 in genbank is equivalent to 0:100 in python
+    exact_mappings:
+      - GENO:0000965
+    pattern: ^(\d+)\.\.(\d+)$
+  simple_sequence_location:
+    typeof: string
+    description: >-
+      A simple sequence location defined using genbank syntax (e.g. 1..100 or complement(1..100)), note that 1..100 in genbank is equivalent to 0:100 in python
+    exact_mappings:
+      - GENO:0000965
+    pattern: ^((\d+)\.\.(\d+)|complement\((\d+)\.\.(\d+)\))$
+
+
+classes:
+  NamedThing:
+    slots:
+      - id
+    class_uri: schema:Thing
+
+  Sequence:
+    is_a: NamedThing
+    abstract: true
+    class_uri: bioschemas:DNA
+    description: >-
+      Represents a sequence
+    slots:
+      - id
+      - type
+
+  TemplateSequence:
+    is_a: Sequence
+    description: >-
+      Represents a sequence that is part of a template, where the actual sequence
+      content will be determined by the user's actions
+    attributes:
+      circular:
+        range: boolean
+        description: >-
+          Whether the sequence is circular or linear
+        required: false
+      primer_design:
+        range: string
+        description: >-
+          Can be used to indicate the intended primer design for this sequence in the template
+        required: false
+
+  TextFileSequence:
+    is_a: Sequence
+    description: A sequence (may have features) defined by the content of a text file
+    slots:
+      - sequence_file_format
+      - overhang_crick_3prime
+      - overhang_watson_3prime
+    attributes:
+      - file_content:
+          range: string
+    slot_usage:
+      sequence_file_format:
+        required: true
+      overhang_crick_3prime:
+        ifabsent: int(0)
+      overhang_watson_3prime:
+        ifabsent: int(0)
+
+  ManuallyTypedSequence:
+    is_a: Sequence
+    description: >-
+      Represents a sequence that is manually typed by the user
+    slots:
+      - overhang_crick_3prime
+      - overhang_watson_3prime
+    attributes:
+      - sequence:
+          range: string
+          pattern: ^[acgtACGT]+$
+          description: >-
+            The sequence of the manually typed sequence
+          required: true
+      - circular:
+          range: boolean
+          description: >-
+            Whether the sequence is circular or linear
+          required: false
+          ifabsent: boolean(false)
+    slot_usage:
+      overhang_crick_3prime:
+        ifabsent: int(0)
+      overhang_watson_3prime:
+        ifabsent: int(0)
+
+  Primer:
+    is_a: Sequence
+    description: >-
+      An oligonucleotide or primer
+    slots:
+      - name
+      - database_id
+    attributes:
+      - sequence:
+          range: string
+          pattern: ^[acgtACGT]+$
+
+  SourceInput:
+    class_uri: schema:Role
+    represents_relationship: true
+    description: >-
+      Represents an input to a source
+    slots:
+      - type
+    attributes:
+      - sequence:
+          range: Sequence
+          description: >-
+            The input sequence
+          required: true
+
+  SequenceCut:
+    description: >-
+      Represents a cut in a DNA sequence
+    attributes:
+      - cut_watson:
+          range: integer
+          description: >-
+            The position of the cut in the watson strand.
+            The cut is made before the base at this position (zero-based),
+            so that cut position 1 cuts after the first base.
+          required: true
+      - overhang:
+          range: integer
+          description: >-
+            The length of the overhang that is left after the cut. It can be
+            negative, same meaning as in pydna's `dseq::ovhg` and biopython's
+            `Bio.Restriction.RestrictionType.ovhg`.
+          required: true
+
+  RestrictionSequenceCut:
+    is_a: SequenceCut
+    description: >-
+      Represents a cut in a DNA sequence that is made by a restriction enzyme
+    slots:
+      - restriction_enzyme
+    slot_usage:
+      restriction_enzyme:
+        required: true
+
+  Source:
+    is_a: NamedThing
+    class_uri: schema:CreateAction
+    abstract: true
+    description: >-
+      Represents the source of a sequence
+    slots:
+      - type
+      - output_name
+      - database_id
+    attributes:
+      - input:
+          range: SourceInput
+          slot_uri: schema:object
+          description: >-
+            The inputs to this source.
+            If the source represents external import of a sequence, it's empty.
+          required: false
+          multivalued: true
+          inlined_as_list: true
+
+  DatabaseSource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is identified by a database id
+    slots:
+      - database_id
+    slot_usage:
+      database_id:
+        required: true
+
+  CollectionSource:
+    is_a: Source
+    description: >-
+      Represents a collection of possible sources in a template
+    attributes:
+      - category_id:
+          range: string
+          description: >-
+            The identifier of the category of the part in the template
+          required: false
+      - title:
+          range: string
+          description: >-
+            The title of the category
+          required: true
+      - description:
+          range: string
+          description: >-
+            A description of the category
+          required: false
+      - image:
+          range: string
+          description: >-
+            URL and size of the image representing this category. For images with size specification,
+            this is a list with two elements: [url, size].
+          multivalued: true
+          required: false
+      - options:
+          range: CollectionOption
+          description: >-
+            The options available in this category.
+          required: false
+          multivalued: true
+          inlined_as_list: true
+
+  CollectionOption:
+    description: >-
+      Represents an option in a collection
+    slots:
+      - name
+    slot_usage:
+      name:
+        required: true
+    attributes:
+      - source:
+          range: Source
+          description: >-
+            The source of the sequence for this option
+          required: true
+          inlined: true
+      - info:
+          range: CollectionOptionInfo
+          description: >-
+            Additional information about this option
+          required: false
+          inlined: true
+
+  CollectionOptionInfo:
+    description: >-
+      Additional information about a collection option
+    slots:
+      - name
+    slot_usage:
+      name:
+        required: false
+    attributes:
+      - description:
+          range: string
+          description: >-
+            A description of the option
+          required: false
+      - type:
+          range: CollectionOptionType
+          description: >-
+            The type of the option, this is redundant with the type of the source, and could be removed.
+          required: false
+      - resistance:
+          range: string
+          description: >-
+            The antibiotic resistance of the plasmid
+          required: false
+      - well:
+          range: string
+          description: >-
+            The well position in the kit plate
+          required: false
+
+  ManuallyTypedSource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is manually typed by the user
+
+  UploadedFileSource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is uploaded as a file
+    slots:
+      - sequence_file_format
+    attributes:
+      - file_name:
+          range: string
+          description: >-
+            The name of the file
+      - index_in_file:
+          range: integer
+          description: >-
+            The index of the sequence in the file
+      # TODO: should raise an error if the format is not FASTA
+      - circularize:
+          range: boolean
+          description: >-
+            Whether the sequence should be circularized (FASTA only)
+      - coordinates:
+          range: sequence_range
+          description: >-
+            If provided, coordinates within the sequence of the file to extract a subsequence
+          required: false
+
+    slot_usage:
+      sequence_file_format:
+        required: true
+
+  RepositoryIdSource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is identified by a repository id
+    slots:
+      - repository_id
+
+  AddgeneIdSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence that is identified by an Addgene id
+    attributes:
+      - addgene_sequence_type:
+          range: AddgeneSequenceType
+    slots:
+      - sequence_file_url
+
+  WekWikGeneIdSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence that is identified by a WeKwikGene id
+    slot_usage:
+      repository_id:
+        description: >-
+          The id of the gene in the WeKwikGene database
+        pattern: ^\d+$
+    slots:
+      - sequence_file_url
+
+  SEVASource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence that is identified by a SEVA id
+    slots:
+      - sequence_file_url
+    slot_usage:
+      repository_id:
+        description: >-
+          The SEVA plasmid name
+        pattern: ^pSEVA\d+.*$
+      sequence_file_url:
+        description: >-
+          The URL of the sequence file, which can refer to a a gb file hosted on the SEVA website or an
+          entry in the NCBI.
+
+  BenchlingUrlSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence that is identified by a Benchling URL
+    slot_usage:
+      repository_id:
+        description: >-
+          The url of the gb file associated with the sequence
+        pattern: ^https:\/\/benchling\.com\/.+\.gb$
+
+  SnapGenePlasmidSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence from the SnapGene plasmid library
+      identified by a SnapGene subpath of https://www.snapgene.com/plasmids/
+    slot_usage:
+      repository_id:
+        description: >-
+          The subpath of the plasmid in the SnapGene plasmid library. Requesting the plasmid
+          is possible with https://www.snapgene.com/local/fetch.php?set={category_path}&plasmid={plasmid['subpath']}
+          where category_path is the left part of the subpath before the first / and plasmid is the subpath after the /.
+        pattern: ^[^\/]+\/[^\/]+$
+
+  EuroscarfSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence from the Euroscarf plasmid library
+    slot_usage:
+      repository_id:
+        description: >-
+          The id of the plasmid in the Euroscarf plasmid library
+        pattern: ^P\d+$
+
+  IGEMSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence from an iGEM collection
+    slots:
+      - sequence_file_url
+    slot_usage:
+      repository_id:
+        description: >-
+          The unique identifier of the sequence in the iGEM collection (for now, {part_id}-{plasmid_backbone})
+          pattern: ^[^-]+-[^-]+$
+      sequence_file_url:
+        required: true
+        description: >-
+          The URL of the sequence file, for now github repository
+        pattern: ^.*.gb$
+
+  OpenDNACollectionsSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence from the Open DNA collections
+    slots:
+      - sequence_file_url
+    slot_usage:
+      repository_id:
+        description: >-
+          Subpath of the sequence in the Open DNA collections repository
+        pattern: ^[^\/]+\/[^\/]+$
+
+  NCBISequenceSource:
+    is_a: RepositoryIdSource
+    description: >-
+      Represents the source of a sequence that is identified by an NCBI sequence accession
+    slot_usage:
+      repository_id:
+        description: >-
+          The sequence accession (e.g. X60065.1)
+    attributes:
+      - coordinates:
+          range: simple_sequence_location
+          description: >-
+            If provided, represents the location of a subsequence within the sequence identified by
+            the sequence accession.
+          required: false
+
+  GenomeCoordinatesSource:
+    is_a: NCBISequenceSource
+    description: >-
+      Represents the source of a sequence that is identified by genome coordinates, requested from NCBI
+    attributes:
+      - assembly_accession:
+          range: string
+          description: >-
+            The accession of the assembly
+          required: false
+      - locus_tag:
+          range: string
+          description: >-
+            The locus tag of the sequence
+          required: false
+      - gene_id:
+          range: integer
+          description: >-
+            The gene id of the sequence
+          required: false
+    slot_usage:
+      location:
+        required: true
+
+
+  SequenceCutSource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is a subfragment of another sequence,
+      generated by sequence cutting.
+    attributes:
+      - left_edge:
+          range: SequenceCut
+          required: false # Empty means left end of linear sequence
+          inlined: true
+      - right_edge:
+          range: SequenceCut
+          required: false # Empty means right end of linear sequence
+          inlined: true
+
+  RestrictionEnzymeDigestionSource:
+    is_a: SequenceCutSource
+    description: >-
+      Represents the source of a sequence that is a subfragment of another sequence,
+      generated by sequence cutting using restriction enzymes.
+    attributes:
+      - left_edge:
+          range: RestrictionSequenceCut
+          required: false # Empty means left end of linear sequence
+          inlined: true
+      - right_edge:
+          range: RestrictionSequenceCut
+          required: false # Empty means right end of linear sequence
+          inlined: true
+
+    # TODO: Validation, at least one of them exists
+
+  AssemblyFragment:
+    is_a: SourceInput
+    description: >-
+      Represents a fragment in an assembly
+    attributes:
+      - left_location:
+          range: sequence_range
+      - right_location:
+          range: sequence_range
+      - reverse_complemented:
+          range: boolean
+          description: >-
+            Whether the sequence is reverse complemented in the assembly
+          required: true
+
+  AssemblySource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is an assembly of other sequences
+    attributes:
+      - circular:
+          range: boolean
+          description: >-
+            Whether the assembly is circular or not
+
+  PCRSource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by PCR
+    attributes:
+      - add_primer_features:
+          range: boolean
+          description: >-
+            Whether to add primer features to the PCR product
+          ifabsent: boolean(false)
+
+  LigationSource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by ligation with sticky or
+      blunt ends.
+
+  HomologousRecombinationSource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by homologous recombination
+
+  GibsonAssemblySource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by Gibson assembly
+
+  InFusionSource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by In-Fusion cloning by Takara Bio
+
+  OverlapExtensionPCRLigationSource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by ligation of PCR products as part of overlap extension PCR.
+      Algorithmically equivalent to Gibson assembly.
+
+  InVivoAssemblySource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by in vivo assembly. Algorithmically equivalent to Gibson assembly.
+
+  RestrictionAndLigationSource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by restriction and ligation
+    slots:
+      - restriction_enzymes
+    slot_usage:
+      restriction_enzymes:
+        required: true
+
+  GatewaySource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by Gateway cloning
+    attributes:
+      - reaction_type:
+          range: GatewayReactionType
+          required: true
+      - greedy:
+          range: boolean
+          description: >-
+            Whether to use a greedy consensus sequence for att sites (see https://github.com/manulera/GateWayMine)
+          ifabsent: boolean(false)
+
+  CreLoxRecombinationSource:
+    is_a: AssemblySource
+    description: >-
+      Represents the source of a sequence that is generated by Cre - Lox recombination
+
+  CRISPRSource:
+    is_a: HomologousRecombinationSource
+    description: >-
+      Represents the source of a sequence that is generated by CRISPR
+
+  OligoHybridizationSource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is generated by oligo hybridization
+    slots:
+      - overhang_crick_3prime
+
+  PolymeraseExtensionSource:
+    is_a: Source
+    description: >-
+      Represents the source of a sequence that is generated by polymerase extension
+    # TODO:
+    # - Constrain to one input
+    # - Constrain to having overhangs that can be filled
+
+  CloningStrategy:
+    description: >-
+      Represents a cloning strategy
+
+    attributes:
+      - sequences:
+          range: Sequence
+          description: >-
+            The sequences that are used in the cloning strategy
+          required: true
+          multivalued: true
+          inlined_as_list: true
+      - sources:
+          range: Source
+          description: >-
+            The sources of the sequences that are used in the cloning strategy
+          required: true
+          multivalued: true
+          inlined_as_list: true
+      - primers:
+          range: Primer
+          description: >-
+            The primers that are used in the cloning strategy
+          required: false
+          multivalued: true
+          inlined_as_list: true
+      - description:
+          range: string
+          description: >-
+            A description of the cloning strategy
+          required: false
+      - files:
+          range: AssociatedFile
+          description: >-
+            Files associated with this cloning strategy
+          required: false
+          multivalued: true
+          inlined_as_list: true
+      - schema_version:
+          range: version_number
+          description: >-
+            The version of the schema that was used to generate this cloning strategy
+          required: false
+      - backend_version:
+          range: version_number
+          description: >-
+            The version of the backend that was used to generate this cloning strategy
+          required: false
+      - frontend_version:
+          range: version_number
+          description: >-
+            The version of the frontend that was used to generate this cloning strategy
+          required: false
+
+  AnnotationReport:
+    description: >-
+      Represents a report of an annotation step
+    slots:
+      - type
+
+  PlannotateAnnotationReport:
+    is_a: AnnotationReport
+    description: >-
+      Represents a report of an annotation step using Plannotate
+    attributes:
+      sseqid:
+        range: string
+      start_location:
+        range: integer
+      end_location:
+        range: integer
+      strand:
+        range: integer
+      percent_identity:
+        range: float
+      full_length_of_feature_in_db:
+        range: integer
+      length_of_found_feature:
+        range: integer
+      percent_match_length:
+        range: float
+      fragment:
+        range: boolean
+      database:
+        range: string
+      Feature:
+        range: string
+      Type:
+        range: string
+      Description:
+        range: string
+      sequence:
+        range: string
+
+  AnnotationSource:
+    is_a: Source
+    description: >-
+      Represents a computational step in which sequence features are annotated in a sequence
+    attributes:
+      - annotation_tool:
+          range: AnnotationTool
+          required: true
+      - annotation_tool_version:
+          range: string
+          description: >-
+            The version of the annotation tool
+      - annotation_report:
+          range: AnnotationReport
+          inlined_as_list: true
+          multivalued: true
+
+  ReverseComplementSource:
+    is_a: Source
+    description: >-
+      Represents the in-silico transformation of a sequence into its reverse complement
+
+  AssociatedFile:
+    description: >-
+      Represents a file associated with a sequence
+    slots:
+      - type
+    attributes:
+      - sequence_id:
+          range: Sequence
+          description: >-
+            The sequence this file is associated with
+          required: true
+      - file_name:
+          range: string
+          description: >-
+            The name of the file
+          required: true
+      - file_type:
+          range: AssociatedFileType
+          description: >-
+            The type of file
+          required: true
+
+  SequencingFile:
+    is_a: AssociatedFile
+    description: >-
+      Represents a sequencing file and its alignment to a sequence
+    attributes:
+      - alignment:
+          range: string
+          description: >-
+            The alignment of the sequencing read to the sequence.
+            List of strings representing aligned sequences.
+          required: true
+          multivalued: true
+
+slots:
+  id:
+    identifier: true
+    slot_uri: schema:identifier
+    range: integer
+    description: A unique identifier for a thing
+
+  database_id:
+    slot_uri: schema:identifier
+    range: integer
+    description: >-
+      The id of an entity in a database
+    required: false
+
+  name:
+    slot_uri: schema:name
+    description: A human-readable name for a thing
+    range: string
+
+  restriction_enzyme:
+    exact_mappings:
+      - OBI:0000732
+    range: string
+
+  #TODO: can it be combined with previous?
+  restriction_enzymes:
+    exact_mappings:
+      - OBI:0000732
+    range: string
+    multivalued: true
+
+  output_name:
+    required: false
+    description: >-
+      Used to specify the name of the output sequence
+    range: string
+  type:
+    description: >-
+      Designates the class
+    designates_type: true
+    range: string
+
+  sequence_file_format:
+    range: SequenceFileFormat
+    description: >-
+      The format of a sequence file
+
+  overhang_crick_3prime:
+    range: integer
+    description: >-
+      Taken from pydna's `dseq::ovhg`An integer describing
+      the length of the crick strand overhang in the 5'
+      of the molecule, or 3' of the crick strand
+
+  overhang_watson_3prime:
+    range: integer
+    description: >-
+      The equivalent of `overhang_crick_3prime` but for the
+      watson strand
+    ifabsent: int(0)
+
+  sequence_file_url:
+    range: string
+    description: >-
+      The URL of a sequence file
+    pattern: ^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$
+
+  repository_id:
+    range: string
+    description: >-
+      The id of the sequence in the repository
+    required: true
+
+enums:
+
+  Collection:
+    permissible_values:
+      AddgenePlasmid:
+        description: >-
+          A plasmid from Addgene
+      OligoPair:
+        description: >-
+          A pair of oligonucleotides for hybridization
+
+  SequenceFileFormat:
+    permissible_values:
+      fasta:
+      genbank:
+      snapgene:
+      embl:
+
+  # TODO:
+  # Full list is 'depositor-full', 'depositor-partial', 'addgene-full', 'addgene-partial'
+  # Only the first two should be accepted in the id, but it would be good to list them all
+  AddgeneSequenceType:
+    permissible_values:
+      depositor-full:
+        description: >-
+          Full sequence of the plasmid submitted by the depositor
+      addgene-full:
+        description: >-
+          Full sequence of the plasmid performed by Addgene
+
+  GatewayReactionType:
+    permissible_values:
+      LR:
+        description: >-
+          LR reaction
+      BP:
+        description: >-
+          BP reaction
+
+  AnnotationTool:
+    permissible_values:
+      plannotate:
+
+  AssociatedFileType:
+    permissible_values:
+      "Sequencing file":
+        description: >-
+          A file containing sequencing data
+        meaning: NCIT:C171177
+
+  CollectionOptionType:
+    permissible_values:
+      OligoPair:
+        description: >-
+          A pair of oligonucleotides for hybridization
+      AddgenePlasmid:
+        description: >-
+          A plasmid from Addgene

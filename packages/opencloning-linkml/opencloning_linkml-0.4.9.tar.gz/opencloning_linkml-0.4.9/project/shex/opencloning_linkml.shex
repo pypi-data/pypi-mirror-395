@@ -1,0 +1,591 @@
+# metamodel_version: 1.7.0
+BASE <https://opencloning.github.io/OpenCloning_LinkML/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX linkml: <https://w3id.org/linkml/>
+PREFIX schema1: <http://schema.org/>
+PREFIX bioschemas: <https://bioschemas.org/>
+
+
+<VersionNumber> xsd:string
+
+<SequenceRange> xsd:string
+
+<SimpleSequenceLocation> xsd:string
+
+linkml:String xsd:string
+
+linkml:Integer xsd:integer
+
+linkml:Boolean xsd:boolean
+
+linkml:Float xsd:float
+
+linkml:Double xsd:double
+
+linkml:Decimal xsd:decimal
+
+linkml:Time xsd:time
+
+linkml:Date xsd:date
+
+linkml:Datetime xsd:dateTime
+
+linkml:DateOrDatetime linkml:DateOrDatetime
+
+linkml:Uriorcurie IRI
+
+linkml:Curie xsd:string
+
+linkml:Uri IRI
+
+linkml:Ncname xsd:string
+
+linkml:Objectidentifier IRI
+
+linkml:Nodeidentifier NONLITERAL
+
+linkml:Jsonpointer xsd:string
+
+linkml:Jsonpath xsd:string
+
+linkml:Sparqlpath xsd:string
+
+<AddgeneIdSource> CLOSED {
+    (  $<AddgeneIdSource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <sequence_file_url> @linkml:String ? ;
+          <addgene_sequence_type> [ <https://opencloning.github.io/OpenCloning_LinkML/AddgeneSequenceType#depositor-full>
+             <https://opencloning.github.io/OpenCloning_LinkML/AddgeneSequenceType#addgene-full> ] ?
+       ) ;
+       rdf:type [ <AddgeneIdSource> ]
+    )
+}
+
+<AnnotationReport>  (
+    CLOSED {
+       (  $<AnnotationReport_tes> <type> @linkml:String ? ;
+          rdf:type [ <AnnotationReport> ] ?
+       )
+    } OR @<PlannotateAnnotationReport>
+)
+
+<AnnotationSource> CLOSED {
+    (  $<AnnotationSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ? ;
+          <annotation_tool> [ <https://opencloning.github.io/OpenCloning_LinkML/AnnotationTool#plannotate> ] ;
+          <annotation_tool_version> @linkml:String ? ;
+          <annotation_report> @<AnnotationReport> *
+       ) ;
+       rdf:type [ <AnnotationSource> ]
+    )
+}
+
+<AssemblyFragment> CLOSED {
+    (  $<AssemblyFragment_tes> (  &<SourceInput_tes> ;
+          rdf:type [ schema1:Role ] ? ;
+          <left_location> @<SequenceRange> ? ;
+          <right_location> @<SequenceRange> ? ;
+          <reverse_complemented> @linkml:Boolean
+       ) ;
+       rdf:type [ <AssemblyFragment> ] ?
+    )
+}
+
+<AssemblySource>  (
+    CLOSED {
+       (  $<AssemblySource_tes> (  &<Source_tes> ;
+             rdf:type [ schema1:CreateAction ] ? ;
+             <circular> @linkml:Boolean ?
+          ) ;
+          rdf:type [ <AssemblySource> ]
+       )
+    } OR @<CreLoxRecombinationSource> OR @<GatewaySource> OR @<GibsonAssemblySource> OR @<HomologousRecombinationSource> OR
+    @<InFusionSource> OR @<InVivoAssemblySource> OR @<LigationSource> OR @<OverlapExtensionPCRLigationSource> OR @<PCRSource> OR
+    @<RestrictionAndLigationSource>
+)
+
+<AssociatedFile>  (
+    CLOSED {
+       (  $<AssociatedFile_tes> (  <type> @linkml:String ? ;
+             <sequence_id> @<Sequence> ;
+             <file_name> @linkml:String ;
+             <file_type> [ <http://purl.obolibrary.org/obo/NCIT_C171177> ]
+          ) ;
+          rdf:type [ <AssociatedFile> ] ?
+       )
+    } OR @<SequencingFile>
+)
+
+<BenchlingUrlSource> CLOSED {
+    (  $<BenchlingUrlSource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <repository_id> @linkml:String
+       ) ;
+       rdf:type [ <BenchlingUrlSource> ]
+    )
+}
+
+<CloningStrategy> CLOSED {
+    (  $<CloningStrategy_tes> (  <sequences> @<Sequence> + ;
+          <sources> @<Source> + ;
+          <primers> @<Primer> * ;
+          <description> @linkml:String ? ;
+          <files> @<AssociatedFile> * ;
+          <schema_version> @<VersionNumber> ? ;
+          <backend_version> @<VersionNumber> ? ;
+          <frontend_version> @<VersionNumber> ?
+       ) ;
+       rdf:type [ <CloningStrategy> ] ?
+    )
+}
+
+<CollectionOption> CLOSED {
+    (  $<CollectionOption_tes> (  schema1:name @linkml:String ;
+          <source> @<Source> ;
+          <info> @<CollectionOptionInfo> ?
+       ) ;
+       rdf:type [ <CollectionOption> ] ?
+    )
+}
+
+<CollectionOptionInfo> CLOSED {
+    (  $<CollectionOptionInfo_tes> (  schema1:name @linkml:String ? ;
+          <description> @linkml:String ? ;
+          <type> [ <https://opencloning.github.io/OpenCloning_LinkML/CollectionOptionType#OligoPair>
+             <https://opencloning.github.io/OpenCloning_LinkML/CollectionOptionType#AddgenePlasmid> ] ? ;
+          <resistance> @linkml:String ? ;
+          <well> @linkml:String ?
+       ) ;
+       rdf:type [ <CollectionOptionInfo> ] ?
+    )
+}
+
+<CollectionSource> CLOSED {
+    (  $<CollectionSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ? ;
+          <category_id> @linkml:String ? ;
+          <title> @linkml:String ;
+          <description> @linkml:String ? ;
+          <image> @linkml:String * ;
+          <options> @<CollectionOption> *
+       ) ;
+       rdf:type [ <CollectionSource> ]
+    )
+}
+
+<CreLoxRecombinationSource> CLOSED {
+    (  $<CreLoxRecombinationSource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ?
+       ) ;
+       rdf:type [ <CreLoxRecombinationSource> ]
+    )
+}
+
+<CRISPRSource> CLOSED {
+    (  $<CRISPRSource_tes> (  &<HomologousRecombinationSource_tes> ;
+          rdf:type [ <HomologousRecombinationSource> ] ?
+       ) ;
+       rdf:type [ <CRISPRSource> ]
+    )
+}
+
+<DatabaseSource> CLOSED {
+    (  $<DatabaseSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ? ;
+          schema1:identifier @linkml:Integer
+       ) ;
+       rdf:type [ <DatabaseSource> ]
+    )
+}
+
+<EuroscarfSource> CLOSED {
+    (  $<EuroscarfSource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <repository_id> @linkml:String
+       ) ;
+       rdf:type [ <EuroscarfSource> ]
+    )
+}
+
+<GatewaySource> CLOSED {
+    (  $<GatewaySource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ? ;
+          <reaction_type> [ <https://opencloning.github.io/OpenCloning_LinkML/GatewayReactionType#LR>
+             <https://opencloning.github.io/OpenCloning_LinkML/GatewayReactionType#BP> ] ;
+          <greedy> @linkml:Boolean ?
+       ) ;
+       rdf:type [ <GatewaySource> ]
+    )
+}
+
+<GenomeCoordinatesSource> CLOSED {
+    (  $<GenomeCoordinatesSource_tes> (  &<NCBISequenceSource_tes> ;
+          rdf:type [ <NCBISequenceSource> ] ? ;
+          <assembly_accession> @linkml:String ? ;
+          <locus_tag> @linkml:String ? ;
+          <gene_id> @linkml:Integer ? ;
+          <location> @linkml:String
+       ) ;
+       rdf:type [ <GenomeCoordinatesSource> ]
+    )
+}
+
+<GibsonAssemblySource> CLOSED {
+    (  $<GibsonAssemblySource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ?
+       ) ;
+       rdf:type [ <GibsonAssemblySource> ]
+    )
+}
+
+<HomologousRecombinationSource>  (
+    CLOSED {
+       (  $<HomologousRecombinationSource_tes> (  &<AssemblySource_tes> ;
+             rdf:type [ <AssemblySource> ] ?
+          ) ;
+          rdf:type [ <HomologousRecombinationSource> ]
+       )
+    } OR @<CRISPRSource>
+)
+
+<IGEMSource> CLOSED {
+    (  $<IGEMSource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <sequence_file_url> @linkml:String ;
+          <repository_id> @linkml:String
+       ) ;
+       rdf:type [ <IGEMSource> ]
+    )
+}
+
+<InFusionSource> CLOSED {
+    (  $<InFusionSource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ?
+       ) ;
+       rdf:type [ <InFusionSource> ]
+    )
+}
+
+<InVivoAssemblySource> CLOSED {
+    (  $<InVivoAssemblySource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ?
+       ) ;
+       rdf:type [ <InVivoAssemblySource> ]
+    )
+}
+
+<LigationSource> CLOSED {
+    (  $<LigationSource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ?
+       ) ;
+       rdf:type [ <LigationSource> ]
+    )
+}
+
+<ManuallyTypedSequence> CLOSED {
+    (  $<ManuallyTypedSequence_tes> (  &<Sequence_tes> ;
+          rdf:type [ bioschemas:DNA ] ? ;
+          <overhang_crick_3prime> @linkml:Integer ? ;
+          <overhang_watson_3prime> @linkml:Integer ? ;
+          <sequence> @linkml:String ;
+          <circular> @linkml:Boolean ?
+       ) ;
+       rdf:type [ <ManuallyTypedSequence> ]
+    )
+}
+
+<ManuallyTypedSource> CLOSED {
+    (  $<ManuallyTypedSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ?
+       ) ;
+       rdf:type [ <ManuallyTypedSource> ]
+    )
+}
+
+<NamedThing>  (
+    CLOSED {
+       (  $<NamedThing_tes> rdf:type . * ;
+          rdf:type [ schema1:Thing ]
+       )
+    } OR @<Sequence> OR @<Source>
+)
+
+<NCBISequenceSource>  (
+    CLOSED {
+       (  $<NCBISequenceSource_tes> (  &<RepositoryIdSource_tes> ;
+             rdf:type [ <RepositoryIdSource> ] ? ;
+             <coordinates> @<SimpleSequenceLocation> ? ;
+             <repository_id> @linkml:String
+          ) ;
+          rdf:type [ <NCBISequenceSource> ]
+       )
+    } OR @<GenomeCoordinatesSource>
+)
+
+<OligoHybridizationSource> CLOSED {
+    (  $<OligoHybridizationSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ? ;
+          <overhang_crick_3prime> @linkml:Integer ?
+       ) ;
+       rdf:type [ <OligoHybridizationSource> ]
+    )
+}
+
+<OpenDNACollectionsSource> CLOSED {
+    (  $<OpenDNACollectionsSource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <sequence_file_url> @linkml:String ? ;
+          <repository_id> @linkml:String
+       ) ;
+       rdf:type [ <OpenDNACollectionsSource> ]
+    )
+}
+
+<OverlapExtensionPCRLigationSource> CLOSED {
+    (  $<OverlapExtensionPCRLigationSource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ?
+       ) ;
+       rdf:type [ <OverlapExtensionPCRLigationSource> ]
+    )
+}
+
+<PCRSource> CLOSED {
+    (  $<PCRSource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ? ;
+          <add_primer_features> @linkml:Boolean ?
+       ) ;
+       rdf:type [ <PCRSource> ]
+    )
+}
+
+<PlannotateAnnotationReport> CLOSED {
+    (  $<PlannotateAnnotationReport_tes> (  &<AnnotationReport_tes> ;
+          rdf:type [ <AnnotationReport> ] ? ;
+          <sseqid> @linkml:String ? ;
+          <start_location> @linkml:Integer ? ;
+          <end_location> @linkml:Integer ? ;
+          <strand> @linkml:Integer ? ;
+          <percent_identity> @linkml:Float ? ;
+          <full_length_of_feature_in_db> @linkml:Integer ? ;
+          <length_of_found_feature> @linkml:Integer ? ;
+          <percent_match_length> @linkml:Float ? ;
+          <fragment> @linkml:Boolean ? ;
+          <database> @linkml:String ? ;
+          <Feature> @linkml:String ? ;
+          <Type> @linkml:String ? ;
+          <Description> @linkml:String ? ;
+          <sequence> @linkml:String ?
+       ) ;
+       rdf:type [ <PlannotateAnnotationReport> ] ?
+    )
+}
+
+<PolymeraseExtensionSource> CLOSED {
+    (  $<PolymeraseExtensionSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ?
+       ) ;
+       rdf:type [ <PolymeraseExtensionSource> ]
+    )
+}
+
+<Primer> CLOSED {
+    (  $<Primer_tes> (  &<Sequence_tes> ;
+          rdf:type [ bioschemas:DNA ] ? ;
+          schema1:name @linkml:String ? ;
+          schema1:identifier @linkml:Integer ? ;
+          <sequence> @linkml:String ?
+       ) ;
+       rdf:type [ <Primer> ]
+    )
+}
+
+<RepositoryIdSource>  (
+    CLOSED {
+       (  $<RepositoryIdSource_tes> (  &<Source_tes> ;
+             rdf:type [ schema1:CreateAction ] ? ;
+             <repository_id> @linkml:String
+          ) ;
+          rdf:type [ <RepositoryIdSource> ]
+       )
+    } OR @<AddgeneIdSource> OR @<BenchlingUrlSource> OR @<EuroscarfSource> OR @<IGEMSource> OR @<NCBISequenceSource> OR
+    @<OpenDNACollectionsSource> OR @<SEVASource> OR @<SnapGenePlasmidSource> OR @<WekWikGeneIdSource>
+)
+
+<RestrictionAndLigationSource> CLOSED {
+    (  $<RestrictionAndLigationSource_tes> (  &<AssemblySource_tes> ;
+          rdf:type [ <AssemblySource> ] ? ;
+          <restriction_enzymes> @linkml:String +
+       ) ;
+       rdf:type [ <RestrictionAndLigationSource> ]
+    )
+}
+
+<RestrictionEnzymeDigestionSource> CLOSED {
+    (  $<RestrictionEnzymeDigestionSource_tes> (  &<SequenceCutSource_tes> ;
+          rdf:type [ <SequenceCutSource> ] ? ;
+          <left_edge> @<RestrictionSequenceCut> ? ;
+          <right_edge> @<RestrictionSequenceCut> ?
+       ) ;
+       rdf:type [ <RestrictionEnzymeDigestionSource> ]
+    )
+}
+
+<RestrictionSequenceCut> CLOSED {
+    (  $<RestrictionSequenceCut_tes> (  &<SequenceCut_tes> ;
+          rdf:type [ <SequenceCut> ] ? ;
+          <restriction_enzyme> @linkml:String
+       ) ;
+       rdf:type [ <RestrictionSequenceCut> ] ?
+    )
+}
+
+<ReverseComplementSource> CLOSED {
+    (  $<ReverseComplementSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ?
+       ) ;
+       rdf:type [ <ReverseComplementSource> ]
+    )
+}
+
+<Sequence>  (
+    @<ManuallyTypedSequence> OR @<Primer> OR @<TemplateSequence> OR @<TextFileSequence>
+)
+
+<Sequence_struct> {
+    (  $<Sequence_tes> (  &<NamedThing_tes> ;
+          rdf:type [ schema1:Thing ] ? ;
+          <type> @linkml:String ?
+       ) ;
+       rdf:type [ bioschemas:DNA ]
+    )
+}
+
+<SequenceCut>  (
+    CLOSED {
+       (  $<SequenceCut_tes> (  <cut_watson> @linkml:Integer ;
+             <overhang> @linkml:Integer
+          ) ;
+          rdf:type [ <SequenceCut> ] ?
+       )
+    } OR @<RestrictionSequenceCut>
+)
+
+<SequenceCutSource>  (
+    CLOSED {
+       (  $<SequenceCutSource_tes> (  &<Source_tes> ;
+             rdf:type [ schema1:CreateAction ] ? ;
+             <left_edge> @<SequenceCut> ? ;
+             <right_edge> @<SequenceCut> ?
+          ) ;
+          rdf:type [ <SequenceCutSource> ]
+       )
+    } OR @<RestrictionEnzymeDigestionSource>
+)
+
+<SequencingFile> CLOSED {
+    (  $<SequencingFile_tes> (  &<AssociatedFile_tes> ;
+          rdf:type [ <AssociatedFile> ] ? ;
+          <alignment> @linkml:String +
+       ) ;
+       rdf:type [ <SequencingFile> ] ?
+    )
+}
+
+<SEVASource> CLOSED {
+    (  $<SEVASource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <sequence_file_url> @linkml:String ? ;
+          <repository_id> @linkml:String
+       ) ;
+       rdf:type [ <SEVASource> ]
+    )
+}
+
+<SnapGenePlasmidSource> CLOSED {
+    (  $<SnapGenePlasmidSource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <repository_id> @linkml:String
+       ) ;
+       rdf:type [ <SnapGenePlasmidSource> ]
+    )
+}
+
+<Source>  (
+    @<AnnotationSource> OR @<AssemblySource> OR @<CollectionSource> OR @<DatabaseSource> OR @<ManuallyTypedSource> OR
+    @<OligoHybridizationSource> OR @<PolymeraseExtensionSource> OR @<RepositoryIdSource> OR @<ReverseComplementSource> OR
+    @<SequenceCutSource> OR @<UploadedFileSource>
+)
+
+<Source_struct> {
+    (  $<Source_tes> (  &<NamedThing_tes> ;
+          rdf:type [ schema1:Thing ] ? ;
+          <type> @linkml:String ? ;
+          <output_name> @linkml:String ? ;
+          schema1:identifier @linkml:Integer ? ;
+          schema1:object @<SourceInput> *
+       ) ;
+       rdf:type [ schema1:CreateAction ]
+    )
+}
+
+<SourceInput>  (
+    CLOSED {
+       (  $<SourceInput_tes> (  <type> @linkml:String ? ;
+             <sequence> @<Sequence>
+          ) ;
+          rdf:type [ schema1:Role ] ?
+       )
+    } OR @<AssemblyFragment>
+)
+
+<TemplateSequence> CLOSED {
+    (  $<TemplateSequence_tes> (  &<Sequence_tes> ;
+          rdf:type [ bioschemas:DNA ] ? ;
+          <circular> @linkml:Boolean ? ;
+          <primer_design> @linkml:String ?
+       ) ;
+       rdf:type [ <TemplateSequence> ]
+    )
+}
+
+<TextFileSequence> CLOSED {
+    (  $<TextFileSequence_tes> (  &<Sequence_tes> ;
+          rdf:type [ bioschemas:DNA ] ? ;
+          <sequence_file_format> [ <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#fasta>
+             <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#genbank>
+             <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#snapgene>
+             <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#embl> ] ;
+          <overhang_crick_3prime> @linkml:Integer ? ;
+          <overhang_watson_3prime> @linkml:Integer ? ;
+          <file_content> @linkml:String ?
+       ) ;
+       rdf:type [ <TextFileSequence> ]
+    )
+}
+
+<UploadedFileSource> CLOSED {
+    (  $<UploadedFileSource_tes> (  &<Source_tes> ;
+          rdf:type [ schema1:CreateAction ] ? ;
+          <sequence_file_format> [ <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#fasta>
+             <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#genbank>
+             <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#snapgene>
+             <https://opencloning.github.io/OpenCloning_LinkML/SequenceFileFormat#embl> ] ;
+          <file_name> @linkml:String ? ;
+          <index_in_file> @linkml:Integer ? ;
+          <circularize> @linkml:Boolean ? ;
+          <coordinates> @<SequenceRange> ?
+       ) ;
+       rdf:type [ <UploadedFileSource> ]
+    )
+}
+
+<WekWikGeneIdSource> CLOSED {
+    (  $<WekWikGeneIdSource_tes> (  &<RepositoryIdSource_tes> ;
+          rdf:type [ <RepositoryIdSource> ] ? ;
+          <sequence_file_url> @linkml:String ? ;
+          <repository_id> @linkml:String
+       ) ;
+       rdf:type [ <WekWikGeneIdSource> ]
+    )
+}
