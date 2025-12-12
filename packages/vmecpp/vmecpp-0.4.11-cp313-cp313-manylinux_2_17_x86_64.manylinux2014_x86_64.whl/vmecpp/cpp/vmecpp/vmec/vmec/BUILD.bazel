@@ -1,0 +1,64 @@
+# SPDX-FileCopyrightText: 2024-present Proxima Fusion GmbH <info@proximafusion.com>
+#
+# SPDX-License-Identifier: MIT
+cc_library(
+    name = "vmec",
+    srcs = ["vmec.cc"],
+    hdrs = ["vmec.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@abseil-cpp//absl/log",
+        "//vmecpp/common/util",
+        "//vmecpp/common/sizes",
+        "//vmecpp/common/vmec_indata",
+        "//vmecpp/common/makegrid_lib",
+        "//vmecpp/vmec/boundaries",
+        "//vmecpp/vmec/vmec_constants",
+        "//vmecpp/vmec/profile_parameterization_data",
+        "//vmecpp/vmec/fourier_geometry",
+        "//vmecpp/vmec/fourier_forces",
+        "//vmecpp/vmec/fourier_velocity",
+        "//vmecpp/vmec/radial_profiles",
+        "//vmecpp/vmec/ideal_mhd_model",
+        "//vmecpp/vmec/handover_storage",
+        "//vmecpp/vmec/radial_partitioning",
+        "//vmecpp/vmec/output_quantities",
+        "//vmecpp/free_boundary/free_boundary_base",
+        "//vmecpp/free_boundary/nestor",
+    ],
+)
+
+cc_test(
+    name = "vmec_test",
+    srcs = ["vmec_test.cc"],
+    data = [
+        "//vmecpp/test_data:solovev",
+        "//vmecpp/test_data:solovev_no_axis",
+        "//vmecpp/test_data:cth_like_fixed_bdy",
+        "//vmecpp/test_data:cth_like_fixed_bdy_nzeta_37",
+        "//vmecpp/test_data:cma",
+        "//vmecpp/test_data:cth_like_free_bdy",
+    ],
+    deps = [
+        "//vmecpp/vmec/vmec",
+        "@googletest//:gtest_main",
+        "//util/file_io:file_io",
+        "//util/testing:numerical_comparison_lib",
+    ],
+    size = "small",
+)
+
+cc_test(
+    name = "vmec_in_memory_mgrid_test",
+    srcs = ["vmec_in_memory_mgrid_test.cc"],
+    data = [
+        "//vmecpp/test_data:cth_like_free_bdy",
+    ],
+    deps = [
+        "@googletest//:gtest_main",
+        "//util/file_io:file_io",
+        "//util/testing:numerical_comparison_lib",
+        "//vmecpp/vmec/vmec",
+    ],
+    size = "small",
+)
