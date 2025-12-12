@@ -1,0 +1,97 @@
+{%- extends "basic/layout.html" %}
+
+{%- block extrahead %}
+<link rel="stylesheet" type="text/css" src="{{ pathto('_static/bootstrap/bootstrap.css', 1) }}" />
+<script src="{{ pathto('_static/bootstrap/bootstrap.bundle.min.js', 1) }}"></script>
+<script src="{{ pathto('_static/js/conestack.js', 1) }}"></script>
+<script src="{{ pathto('_static/js/colortoggle.js', 1) }}"></script>
+{% endblock %}
+
+{% block relbar1 %}{% endblock %}
+
+{% block content %}
+
+  <noscript>
+    <style type="text/css">
+      #searchbox,
+      #searchdesc {
+        display: none;
+      }
+      @media (max-width: 768px) {
+        #navbar-toggle {
+          display: none;
+        }
+        #cs-mobile-menu {
+          display: block;
+        }
+        #cs-layout {
+          margin-top: 12rem;
+        }
+        #cs-ext-links {
+          margin-right: 2rem!important;
+        }
+      }
+    </style>
+  </noscript>
+
+  {% block header_navbar %}
+  <header class="navbar navbar-expand-md sticky-top" id="header">
+    <nav class="container-xxl flex-wrap flex-md-nowrap p-0" id="cs-nav">
+      {%- include "logo.html" %}
+
+      {% block searchbox %}
+        {%- include "searchbox.html" %}
+      {% endblock %}
+
+      {%- include "external.html" %}
+
+      <div id="colortoggler-wrapper">
+        <div id="colortoggler"
+             class="nav-item dropdown align-items-center h-100 p-0 form-check form-switch me-4">
+          <i class="bi-sun-fill me-2"></i>
+          <div class="form-check form-switch m-0 d-inline-block">
+            <input class="form-check-input" type="checkbox" id="colortoggle-switch">
+          </div>
+          <i class="bi-moon-fill"></i>
+        </div>
+      </div>
+
+      <button id="navbar-toggle" class="navbar-toggler p-0 me-4" type="button" data-bs-toggle="collapse" data-bs-target="#cs-mobile-menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" class="bi" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 11.5A.5.5 0 0 1 3 11h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 3 7h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 3 3h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"></path></svg>
+      </button>
+
+      <div class="collapse container-fluid m-0 p-3" id="cs-mobile-menu">
+        {%- include "mobiletoc.html" %}
+      </div>
+    </nav>
+  </header>
+  {% endblock %}
+
+  <div class="container-xxl my-md-4" id="cs-layout">
+    {% block sidebar %}
+      {%- include "sidebar.html" %}
+    {% endblock %}
+
+    {% if theme_sidebar_right %}
+      <main class="document cs-main order-1" role="main">
+    {% else %}
+      <main class="document cs-main d-block overflow-auto order-1" role="main">
+    {% endif %}
+      {%- block document %}
+      <div class="ps-lg-4 mt-3 cs-content">
+        {% block body %}{% endblock %}
+      </div>
+      {%- endblock %}
+
+    {% if theme_sidebar_right %}
+      {%- include "localtoc.html" %}
+    {% endif %}
+    </main>
+  </div>
+{%- endblock %}
+
+{% block footer %}
+  {%- include "footer.html" %}
+{% endblock %}
+
+{%- block relbar2 %}{% endblock %}
