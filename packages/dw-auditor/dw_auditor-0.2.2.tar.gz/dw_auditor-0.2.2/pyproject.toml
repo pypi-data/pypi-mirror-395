@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dw-auditor"
+version = "0.2.2"
+description = "High-performance data quality auditing for BigQuery, Snowflake & Databricks"
+requires-python = ">=3.10"
+readme = "README.md"
+license =  "MIT"
+authors = [{name = "Valentin Cathelain", email = "valentin.cathelain.data@gmail.com"}]
+keywords = ["data-quality", "data engineering", "bigquery", "snowflake", "databricks", "audit", "ibis"]
+dependencies = [
+    "polars>=0.20.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0.0",
+    "ibis-framework[duckdb]>=9.0.0",
+    "ibis-framework[bigquery]>=9.0.0",
+    "ibis-framework[snowflake]>=9.0.0",
+    "ibis-framework[databricks]>=9.0.0",
+    "google-cloud-bigquery>=3.0.0",
+    "snowflake-connector-python>=3.0.0",
+    "platformdirs>=3.0.0",
+    "sqlglot>=20.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/v-cth/database_audit"
+Repository = "https://github.com/v-cth/database_audit"
+Issues = "https://github.com/v-cth/database_audit/issues"
+
+[project.scripts]
+dw_auditor = "dw_auditor.__main__:main"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "hypothesis>=6.0",
+]
+
+[tool.setuptools]
+packages = {find = {where = ["."], include = ["dw_auditor*"]}}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+
+[tool.coverage.run]
+source = ["dw_auditor"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
