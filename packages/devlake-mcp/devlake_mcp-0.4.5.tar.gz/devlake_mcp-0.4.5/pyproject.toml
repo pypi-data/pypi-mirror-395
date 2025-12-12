@@ -1,0 +1,127 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devlake-mcp"
+version = "0.4.5"
+description = "AI programming data collection tool - supports Hooks (Claude Code/Cursor) and MCP server modes"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "wangzhong", email = "wangzhong@g7.com.cn" }
+]
+license = "MIT"
+keywords = ["mcp", "devlake", "model-context-protocol", "ai", "llm", "claude-code", "cursor", "hooks", "ai-programming", "code-assistant"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+# 项目依赖（核心依赖，支持 Python 3.9+）
+dependencies = [
+    "requests>=2.31.0",  # hooks 需要用于 API 调用
+]
+
+# 可选依赖
+[project.optional-dependencies]
+# MCP 功能（需要 Python 3.10+）
+mcp = [
+    "fastmcp~=2.13.0; python_version>='3.10'",
+]
+
+# 完整功能（包含 MCP）
+full = [
+    "devlake-mcp[mcp]",
+]
+
+# 开发依赖
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",        # 测试覆盖率
+    "pytest-mock>=3.12.0",      # Mock 增强
+    "pytest-timeout>=2.2.0",    # 测试超时控制
+    "pytest-xdist>=3.5.0",      # 并行测试
+    "responses>=0.24.0",        # HTTP Mock
+    "freezegun>=1.4.0",         # 时间 Mock
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+# 命令行入口点 - 这是 pipx 安装所需的关键配置
+[project.scripts]
+devlake-mcp = "devlake_mcp.cli:main"  # CLI 工具入口（包含 init 命令）
+devlake-mcp-server = "devlake_mcp.server:main"  # MCP 服务器入口（向后兼容）
+
+[project.urls]
+Homepage = "https://git.chinawayltd.com/engineering-efficiency/devlake-mcp"
+Repository = "https://git.chinawayltd.com/engineering-efficiency/devlake-mcp"
+Issues = "https://git.chinawayltd.com/engineering-efficiency/devlake-mcp"
+
+[tool.setuptools]
+# 自动查找所有包
+packages = ["devlake_mcp", "devlake_mcp.hooks"]
+package-dir = {"" = "src"}
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+
+# 添加详细配置
+addopts = """
+    --verbose
+    --strict-markers
+    --tb=short
+    --cov=src/devlake_mcp
+    --cov-report=term-missing:skip-covered
+    --cov-report=html
+    --cov-report=xml
+"""
+
+# 标记定义
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "slow: Slow tests (> 1s)",
+    "no_mock_api: Disable automatic DevLake API mocking for this test",
+]
+
+# 覆盖率配置
+[tool.coverage.run]
+source = ["src/devlake_mcp"]
+parallel = false  # 禁用并行模式，避免 @run_async fork 导致大量 coverage 文件
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
