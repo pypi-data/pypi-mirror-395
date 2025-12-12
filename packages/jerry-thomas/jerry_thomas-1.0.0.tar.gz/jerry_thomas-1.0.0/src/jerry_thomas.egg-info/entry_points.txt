@@ -1,0 +1,40 @@
+[console_scripts]
+jerry = datapipeline.cli.app:main
+
+[datapipeline.loaders]
+core.io = datapipeline.sources.factory:build_loader
+core.synthetic.ticks = datapipeline.sources.synthetic.time.loader:make_time_loader
+
+[datapipeline.mappers]
+encode_time = datapipeline.mappers.synthetic.time:encode
+identity = datapipeline.mappers.noop:identity
+time.synthetic = datapipeline.mappers.noop:identity
+
+[datapipeline.parsers]
+core.synthetic.ticks = datapipeline.sources.synthetic.time.parser:TimeRowParser
+identity = datapipeline.parsers.identity:IdentityParser
+
+[datapipeline.transforms.debug]
+identity = datapipeline.transforms.debug.identity:IdentityGuardTransform
+lint = datapipeline.transforms.debug.lint:StreamLint
+
+[datapipeline.transforms.feature]
+scale = datapipeline.transforms.feature.scaler:StandardScalerTransform
+sequence = datapipeline.transforms.sequence:WindowTransformer
+
+[datapipeline.transforms.record]
+filter = datapipeline.transforms.filter:filter
+floor_time = datapipeline.transforms.record.floor_time:floor_time
+lag = datapipeline.transforms.record.lag:apply_lag
+
+[datapipeline.transforms.stream]
+dedupe = datapipeline.transforms.stream.dedupe:FeatureDeduplicateTransform
+ensure_cadence = datapipeline.transforms.stream.ensure_ticks:ensure_cadence
+fill = datapipeline.transforms.stream.fill:FillTransformer
+granularity = datapipeline.transforms.stream.granularity:FeatureGranularityTransform
+lint = datapipeline.transforms.stream.lint:StreamLint
+
+[datapipeline.transforms.vector]
+drop = datapipeline.transforms.vector:VectorDropTransform
+fill = datapipeline.transforms.vector:VectorFillTransform
+replace = datapipeline.transforms.vector:VectorReplaceTransform
