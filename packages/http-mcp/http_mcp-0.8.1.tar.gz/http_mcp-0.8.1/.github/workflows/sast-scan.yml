@@ -1,0 +1,16 @@
+name: SAST Security Scan
+on: [push]
+
+jobs:
+  sast-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@c2d88d3ecc89a9ef08eebf45d9637801dcee7eb5
+
+      - name: Run SAST Scanner
+        # NOFLUID: use always the latest version  
+        uses: docker://docker.io/fluidattacks/sast:latest
+        with:
+          args: sast scan fluidattacks_sast_config.yaml
+
