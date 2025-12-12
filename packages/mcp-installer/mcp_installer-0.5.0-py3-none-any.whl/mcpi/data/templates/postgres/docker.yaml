@@ -1,0 +1,70 @@
+name: docker
+description: "PostgreSQL running in Docker container"
+server_id: postgres
+scope: user-mcp
+priority: high
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-postgres"
+  env: {}
+
+prompts:
+  - name: POSTGRES_DATABASE
+    description: "Database name to connect to (e.g., 'myapp_dev')"
+    type: string
+    required: true
+    default: "postgres"
+    validation_pattern: "^[a-zA-Z0-9_]+$"
+
+  - name: POSTGRES_PASSWORD
+    description: "Database password (default Docker postgres password)"
+    type: secret
+    required: true
+    default: "postgres"
+
+  - name: POSTGRES_USER
+    description: "Database username (Docker default is 'postgres')"
+    type: string
+    required: true
+    default: "postgres"
+    validation_pattern: "^[a-zA-Z0-9_]+$"
+
+  - name: POSTGRES_PORT
+    description: "Database port (Docker default is 5432)"
+    type: port
+    required: true
+    default: "5432"
+
+# Template discovery metadata
+best_for:
+  - docker
+  - docker-compose
+  - containers
+  - containerized-databases
+
+keywords:
+  - docker
+  - compose
+  - postgresql
+  - database
+  - containers
+
+notes: |
+  This template creates a PostgreSQL connection URL for Docker containers.
+
+  Connection URL format: postgresql://user:password@localhost:port/database
+
+  Default Docker PostgreSQL configuration:
+    - Username: postgres
+    - Password: postgres (or your custom password)
+    - Port: 5432 (or your mapped port)
+
+  If you're running PostgreSQL in Docker, you typically start it with:
+    docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:latest
+
+  Examples:
+    - postgresql://postgres:postgres@localhost:5432/myapp_dev
+    - postgresql://postgres:mypassword@localhost:5433/production_db

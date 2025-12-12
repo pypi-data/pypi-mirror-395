@@ -1,0 +1,89 @@
+name: custom-directories
+description: "Access to multiple custom directories (advanced)"
+server_id: filesystem
+scope: user-mcp
+priority: low
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-filesystem"
+  env: {}
+
+prompts:
+  - name: DIRECTORY_1
+    description: "First directory path (absolute path required)"
+    type: path
+    required: true
+    validation_pattern: "^(/|~/).*"
+
+  - name: DIRECTORY_2
+    description: "Second directory path (leave empty if not needed)"
+    type: path
+    required: false
+    validation_pattern: "^(/|~/).*"
+
+  - name: DIRECTORY_3
+    description: "Third directory path (leave empty if not needed)"
+    type: path
+    required: false
+    validation_pattern: "^(/|~/).*"
+
+notes: |
+  This template allows access to multiple custom directories.
+
+  Security considerations:
+    - ⚠️  More complex access control
+    - ⚠️  AI can access all specified directories
+    - ⚠️  Carefully consider which directories to include
+    - ✓  More flexible than single-directory templates
+    - ✓  Good for multi-project workflows
+
+  Path requirements:
+    - Must be absolute paths (start with / or ~/)
+    - Tilde (~) expands to your home directory
+    - Paths are validated but may not exist yet
+
+  Example use cases:
+    - Multiple project directories:
+        /Users/username/work/project1
+        /Users/username/work/project2
+        /Users/username/personal/blog
+
+    - Separate code and documents:
+        ~/Code
+        ~/Documents/specs
+        ~/Desktop/notes
+
+    - Development and testing:
+        /var/www/dev
+        /var/www/staging
+        /var/log/app
+
+  Implementation note:
+    The filesystem server accepts multiple directory arguments.
+    When this template is processed, all non-empty directory paths
+    will be added to the server's args array.
+
+  What the AI can do:
+    - Read/write files in any specified directory
+    - Navigate all subdirectories
+    - Create/delete files and folders
+    - Full access within each directory
+
+  What the AI cannot do:
+    - Access directories not specified
+    - Access parent directories
+    - Access system files outside allowed paths
+
+  Best practices:
+    - Only include directories you trust the AI to access
+    - Use project-specific templates when possible
+    - Consider separate templates for different use cases
+    - Document why each directory is included
+
+  Alternative templates:
+    - project-files: Single project directory (safest)
+    - user-documents: Standard Documents directory
+    - custom-directories (this): Multiple directories (most flexible)

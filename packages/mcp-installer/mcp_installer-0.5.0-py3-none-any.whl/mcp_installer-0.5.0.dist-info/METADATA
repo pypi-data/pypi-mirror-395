@@ -1,0 +1,1050 @@
+Metadata-Version: 2.4
+Name: mcp-installer
+Version: 0.5.0
+Summary: CLI Interface for MCP
+Author-email: Brandon Fryslie <nunya@hotmail.com>
+License-Expression: MIT
+Keywords: mcp,model-context-protocol,claude-code,cli,server-management
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click>=8.1.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: httpx>=0.24.0
+Requires-Dist: toml>=0.10.0
+Requires-Dist: jsonschema>=4.0.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: platformdirs>=3.0.0
+Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: markdownify>=0.11.0
+Requires-Dist: typer>=0.20.0
+Requires-Dist: referencing<0.37.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: types-toml; extra == "dev"
+Requires-Dist: types-pyyaml; extra == "dev"
+Requires-Dist: pre-commit>=3.0.0; extra == "dev"
+Dynamic: license-file
+
+# MCP Manager (mcpi)
+
+[![Test](https://github.com/user/mcpi/actions/workflows/test.yml/badge.svg)](https://github.com/user/mcpi/actions/workflows/test.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A command-line tool for managing Model Context Protocol (MCP) servers across different MCP-compatible clients. Discover, install, and configure MCP servers for Claude Code and other compatible tools with ease.
+
+## Features
+
+- **Comprehensive Registry**: Catalog of known MCP servers with metadata
+- **Configuration Templates**: Interactive setup with guided prompts for common servers
+- **Multi-Catalog Support**: Official catalog + your local custom catalog
+- **Scope-Based Configuration**: Manage servers across multiple configuration scopes (project-level, user-level)
+- **Multi-Client Support**: Works with Claude Code, Cursor, VS Code, and other MCP clients
+- **CLI Interface**: Intuitive command-line interface with shell tab completion
+- **Plugin Architecture**: Extensible client plugin system for supporting new MCP clients
+
+## Installation
+
+### Using uvx (Recommended)
+```bash
+uvx mcpi
+```
+
+### Using uv
+```bash
+uv tool install mcpi
+```
+
+### Development Installation
+```bash
+git clone https://github.com/user/mcpi
+cd mcpi
+uv sync
+source .venv/bin/activate
+```
+
+**Note for macOS iCloud Drive users**: If your project is in iCloud Drive, use `.venv.nosync` to avoid intermittent import issues. See [Troubleshooting](#troubleshooting) for details.
+
+## Quick Start
+
+### Discover MCP Servers
+```bash
+# Search for specific functionality
+mcpi search --query filesystem
+
+# Get detailed information about a server (shows registry + install status)
+mcpi info filesystem
+```
+
+## Configuration Templates
+
+MCPI v0.5.0+ includes configuration templates that guide you through server setup with interactive prompts, reducing configuration time from 15-30 minutes to 2-3 minutes.
+
+### Quick Start with Templates
+
+```bash
+# List available templates for a server
+mcpi add postgres --list-templates
+
+# Use a template interactively
+mcpi add postgres --template local-development
+Database name to connect to [postgres]: myapp_dev
+Database username (leave empty for peer authentication) []:
+✓ Server 'postgres' added successfully
+```
+
+### Available Templates
+
+**PostgreSQL** (3 templates):
+- `local-development`: Local PostgreSQL database for development
+- `docker`: PostgreSQL running in Docker container
+- `production`: Production database with full connection details
+
+**GitHub** (3 templates):
+- `personal-full-access`: Full access to private and public repositories
+- `read-only`: Read-only access to repositories
+- `public-repos`: Public repositories only (no token required)
+
+**Filesystem** (3 templates):
+- `project-files`: Access to current project directory
+- `user-documents`: Access to ~/Documents directory
+- `custom-directories`: Custom directory access with multiple paths
+
+**Slack** (2 templates):
+- `bot-token`: Slack bot for automated actions
+- `limited-channels`: Bot restricted to specific channels
+
+**Brave Search** (1 template):
+- `api-key`: Brave Search API with your API key
+
+### Template Features
+
+- **Interactive Prompts**: Step-by-step guided setup with validation
+- **Secret Masking**: Passwords and API keys hidden during input (e.g., ********)
+- **Smart Defaults**: Common values pre-filled for faster setup
+- **Real-time Validation**: Input validation with helpful error messages
+- **Setup Notes**: Each template includes detailed instructions and examples
+- **Security Built-in**: Format checking for tokens, keys, and URLs
+
+### Template Examples
+
+**Example 1: PostgreSQL Local Development**
+```bash
+$ mcpi add postgres --template local-development
+
+Using template 'local-development' for server 'postgres'
+Scope: user-global
+
+Template Notes:
+  This template creates a PostgreSQL connection URL for local development.
+
+  Connection URL format: postgresql://[user@]localhost/database
+
+  If you leave the username empty, PostgreSQL will use peer authentication
+  (your OS username). This is common for local development on macOS/Linux.
+
+Database name to connect to (e.g., 'myapp_dev') [postgres]: myapp_dev
+Database username (leave empty for peer authentication) []:
+
+✓ Server 'postgres' added to user-global scope
+```
+
+**Example 2: GitHub with Personal Access Token**
+```bash
+$ mcpi add github --template personal-full-access
+
+Using template 'personal-full-access' for server 'github'
+Scope: user-global
+
+GitHub Personal Access Token: ****************************************
+
+✓ Server 'github' added to user-global scope
+```
+
+**Example 3: Filesystem Access**
+```bash
+$ mcpi add filesystem --template project-files
+
+Using template 'project-files' for server 'filesystem'
+Scope: project-mcp
+
+Project root directory [/Users/alice/projects/myapp]:
+
+✓ Server 'filesystem' added to project-mcp scope
+```
+
+## Multiple Catalogs
+
+MCPI v0.4.0+ supports multiple catalogs for organizing MCP servers:
+
+### View Available Catalogs
+
+```bash
+# List all catalogs
+mcpi catalog list
+
+# View catalog details
+mcpi catalog info official
+mcpi catalog info local
+```
+
+### Search Across Catalogs
+
+```bash
+# Search official catalog (default)
+mcpi search --query filesystem
+
+# Search local catalog
+mcpi search --query myserver --catalog local
+
+# Search specific catalog explicitly
+mcpi search --query database --catalog official
+```
+
+### Use Your Local Catalog
+
+Add custom servers to your local catalog at `~/.mcpi/catalogs/local/catalog.json`:
+
+```bash
+# Add a server definition to local catalog
+# Then use it with --catalog local flag
+mcpi add myserver --catalog local --scope user-global
+```
+
+Your local catalog is separate from the official catalog, so your customizations won't be affected by updates.
+
+### FAQ
+
+**Q: Where is my local catalog stored?**
+A: `~/.mcpi/catalogs/local/catalog.json` (created automatically on first use)
+
+**Q: Can I have more than 2 catalogs?**
+A: Not in v0.4.0 (Phase 1). Phase 2 will add git-based remote catalogs.
+
+**Q: Do my existing commands still work?**
+A: Yes! 100% backward compatible. The --catalog flag is optional.
+
+### Manage Installed Servers
+```bash
+# List currently installed servers
+mcpi list
+
+# List servers in a specific scope
+mcpi list --scope user-global
+
+# List servers for a specific client
+mcpi list --client claude-code
+
+# Add a server (interactive scope selection)
+mcpi add filesystem
+
+# Add a server to a specific scope
+mcpi add filesystem --scope project-mcp
+
+# Remove a server
+mcpi remove filesystem
+
+# Check system status
+mcpi status
+```
+
+### Scope Management
+```bash
+# List available scopes for the default client
+mcpi scope list
+
+# List scopes for a specific client
+mcpi scope list --client claude-code
+
+# Consolidate a server to a specific scope (removes from all other scopes)
+mcpi rescope filesystem --to user-global
+```
+
+### Client Management
+```bash
+# List detected MCP clients
+mcpi client list
+
+# Get information about a specific client
+mcpi client info claude-code
+
+# Set the default client
+mcpi client set-default claude-code
+```
+
+### Shell Tab Completion
+```bash
+# Enable tab completion for bash
+mcpi completion --shell bash
+
+# Enable tab completion for zsh
+mcpi completion --shell zsh
+
+# Enable tab completion for fish
+mcpi completion --shell fish
+```
+
+## Architecture
+
+MCPI uses a **scope-based configuration system** with a **plugin architecture** for supporting multiple MCP clients.
+
+### Scope-Based Configuration
+
+Instead of traditional profile-based configuration, mcpi uses **scopes** which are hierarchical configuration levels with different priorities. Each MCP client defines its own scopes.
+
+#### Example Scopes (Claude Code)
+
+| Scope Name | Type | Priority | Description |
+|------------|------|----------|-------------|
+| `project-mcp` | Project | 10 | Project-level `.mcp.json` (highest priority) |
+| `project-local` | Project | 20 | Project-local `.claude/settings.local.json` |
+| `project-internal` | Project | 30 | Project-internal `.claude/settings.json` |
+| `user-internal` | User | 40 | User-internal `~/.claude/settings.json` |
+| `user-global` | User | 50 | User-global `~/.config/claude/settings.json` |
+| `user-local` | User | 60 | User-local `~/.claude/settings.local.json` (lowest priority) |
+
+**Priority System**: Lower priority numbers override higher priority numbers. Project-level scopes override user-level scopes.
+
+### Plugin Architecture
+
+Each MCP client (Claude Code, Cursor, VS Code) is implemented as a **plugin** that conforms to the `MCPClientPlugin` protocol:
+
+- **Client Detection**: Automatically detects installed clients
+- **Scope Handlers**: Each scope is managed by a handler that knows how to read/write that specific configuration file
+- **Schema Validation**: Configuration changes are validated against client-specific schemas
+- **Extensible**: Easy to add support for new MCP clients
+
+## CLI Commands
+
+### Catalog Management Commands
+
+#### `mcpi catalog list`
+List all available catalogs.
+
+```bash
+mcpi catalog list
+```
+
+#### `mcpi catalog info <name>`
+Show detailed information about a catalog.
+
+```bash
+mcpi catalog info official
+mcpi catalog info local
+```
+
+### Discovery Commands
+
+#### `mcpi search --query <query>`
+Search for servers by name or description in the registry.
+
+**Options:**
+- `--query, -q TEXT`: Search query (required)
+- `--catalog TEXT`: Search specific catalog (official or local, default: official)
+
+```bash
+mcpi search --query filesystem
+mcpi search -q database --catalog local
+mcpi search --query git --catalog official
+```
+
+**Note**: v0.4.0 changed search syntax from positional to --query flag for compatibility with multi-catalog features.
+
+#### `mcpi info <server-id>`
+Show detailed information about a server, including registry info and local installation status.
+
+**Options:**
+- `--catalog TEXT`: Look up server in specific catalog
+
+```bash
+mcpi info filesystem
+mcpi info brave-search
+mcpi info my-server --catalog local
+```
+
+### Interactive Interface
+
+#### `mcpi fzf`
+Launch an interactive fuzzy finder interface for managing MCP servers.
+
+**Features:**
+- Browse all servers from the registry with fuzzy search
+- Installed servers shown at top (green=enabled, yellow=disabled)
+- Interactive operations without exiting (add, remove, enable, disable)
+- Preview pane shows server details
+- List refreshes after operations to show updated status
+
+**Keyboard Shortcuts:**
+- `ctrl-a`: Add server to configuration
+- `ctrl-r`: Remove server from configuration
+- `ctrl-e`: Enable server
+- `ctrl-d`: Disable server
+- `ctrl-i` / `enter`: Show detailed info
+- `esc` / `ctrl-c`: Exit
+
+**Requirements:**
+- Requires `fzf` to be installed (`brew install fzf` on macOS, `apt install fzf` on Ubuntu)
+
+**Example:**
+```bash
+# Launch interactive interface
+mcpi fzf
+```
+
+### Server Management Commands
+
+#### `mcpi list [OPTIONS]`
+List installed MCP servers.
+
+**Options:**
+- `--client TEXT`: Filter by client (uses default if not specified)
+- `--scope TEXT`: Filter by scope (available scopes depend on client)
+- `--state TEXT`: Filter by state (enabled, disabled, not_installed)
+- `--verbose, -v`: Show detailed information
+
+**Examples:**
+```bash
+# List all installed servers
+mcpi list
+
+# List servers in a specific scope
+mcpi list --scope user-global
+
+# List servers for a specific client
+mcpi list --client claude-code
+
+# List only enabled servers
+mcpi list --state enabled
+
+# Show detailed information
+mcpi list --verbose
+```
+
+#### `mcpi add <server-id> [OPTIONS]`
+Add an MCP server from the registry.
+
+**Options:**
+- `--client TEXT`: Target client (uses default if not specified)
+- `--scope TEXT`: Target scope (interactive selection if not specified)
+- `--catalog TEXT`: Source catalog (official or local)
+- `--template TEXT`: Use configuration template for guided setup
+- `--list-templates`: Show available templates for this server
+- `--dry-run`: Show what would be done without making changes
+
+**Examples:**
+```bash
+# Add a server (interactive scope selection)
+mcpi add filesystem
+
+# List available templates for a server
+mcpi add postgres --list-templates
+
+# Add server using a template (interactive prompts)
+mcpi add postgres --template local-development
+
+# Add to a specific scope
+mcpi add filesystem --scope project-mcp
+
+# Add from local catalog
+mcpi add myserver --catalog local --scope user-global
+
+# Preview without making changes
+mcpi add filesystem --dry-run
+```
+
+#### `mcpi remove <server-id> [OPTIONS]`
+Remove an MCP server.
+
+**Options:**
+- `--client TEXT`: Target client (uses default if not specified)
+- `--scope TEXT`: Source scope (auto-detected if not specified)
+- `--dry-run`: Show what would be done without making changes
+
+**Examples:**
+```bash
+# Remove a server (prompts for confirmation)
+mcpi remove filesystem
+
+# Remove from a specific scope
+mcpi remove filesystem --scope project-mcp
+```
+
+#### `mcpi enable <server-id> [OPTIONS]`
+Enable a disabled MCP server.
+
+**Options:**
+- `--client TEXT`: Target client (uses default if not specified)
+- `--dry-run`: Show what would be done without making changes
+
+**Examples:**
+```bash
+mcpi enable filesystem
+```
+
+#### `mcpi disable <server-id> [OPTIONS]`
+Disable an enabled MCP server.
+
+**Options:**
+- `--client TEXT`: Target client (uses default if not specified)
+- `--dry-run`: Show what would be done without making changes
+
+**Examples:**
+```bash
+mcpi disable filesystem
+```
+
+#### `mcpi rescope <server-name> --to <scope> [OPTIONS]`
+Consolidate an MCP server configuration to a specific scope, automatically removing it from all other scopes.
+
+**Options:**
+- `--to TEXT`: Target scope (required)
+- `--client TEXT`: MCP client to use (auto-detected if not specified)
+- `--dry-run`: Show what would happen without making changes
+
+**Examples:**
+```bash
+# Consolidate server to user-global scope (removes from all other scopes)
+mcpi rescope filesystem --to user-global
+
+# Preview the operation
+mcpi rescope filesystem --to user-global --dry-run
+
+# Specify a client explicitly
+mcpi rescope filesystem --to user-global --client claude-code
+```
+
+**How it works:**
+1. Automatically detects ALL scopes where the server is currently configured
+2. Adds the server to the target scope (preserving existing config if already present)
+3. Removes the server from all other scopes
+4. Operation is atomic: adds to target first, then removes from sources (prevents data loss)
+
+**Notes:**
+- **Idempotent**: Safe to run multiple times - consolidates to target scope regardless of current state
+- **Automatic detection**: No need to specify source scope(s) - automatically finds them all
+- **Safety**: If server already in target scope, preserves target config and cleans up other scopes
+- **Multi-scope cleanup**: If server scattered across multiple scopes, consolidates to single target scope
+
+#### `mcpi info [server-id] [OPTIONS]`
+Show detailed information about a server or system status.
+
+**Options:**
+- `--client TEXT`: Target client (uses default if not specified)
+- `--catalog TEXT`: Look up server in specific catalog
+
+**Examples:**
+```bash
+# Show system status
+mcpi info
+
+# Show server information
+mcpi info filesystem
+
+# Show server from local catalog
+mcpi info myserver --catalog local
+```
+
+### Scope Management Commands
+
+#### `mcpi scope list [OPTIONS]`
+List available configuration scopes.
+
+**Options:**
+- `--client TEXT`: Filter by client (uses default if not specified)
+
+**Examples:**
+```bash
+# List scopes for default client
+mcpi scope list
+
+# List scopes for a specific client
+mcpi scope list --client claude-code
+```
+
+### Client Management Commands
+
+#### `mcpi client list`
+List available MCP clients.
+
+```bash
+mcpi client list
+```
+
+#### `mcpi client info [client-name]`
+Show detailed information about a client.
+
+```bash
+# Show default client info
+mcpi client info
+
+# Show specific client info
+mcpi client info claude-code
+```
+
+#### `mcpi client set-default <client-name>`
+Set the default client for MCPI operations.
+
+```bash
+mcpi client set-default claude-code
+```
+
+### System Commands
+
+#### `mcpi status`
+Show system status and summary information.
+
+```bash
+mcpi status
+```
+
+#### `mcpi completion --shell <shell>`
+Generate shell completion script for mcpi.
+
+**Tab completion provides intelligent suggestions for:**
+- Command names (list, add, remove, etc.)
+- Option flags (--client, --scope, --help)
+- Client names (based on detected MCP clients)
+- Scope names (filtered by selected client)
+- Server IDs (from the registry)
+
+**Options:**
+- `--shell TEXT`: Shell type (bash, zsh, fish) - auto-detects if not specified
+
+**Examples:**
+```bash
+# Auto-detect shell and show instructions
+mcpi completion
+
+# Generate bash completion
+mcpi completion --shell bash
+
+# Generate zsh completion
+mcpi completion --shell zsh
+
+# Generate fish completion
+mcpi completion --shell fish
+```
+
+**Installation:**
+
+For **bash**, add to `~/.bashrc`:
+```bash
+eval "$(_MCPI_COMPLETE=bash_source mcpi)"
+```
+
+For **zsh**, add to `~/.zshrc`:
+```bash
+eval "$(_MCPI_COMPLETE=zsh_source mcpi)"
+```
+
+For **fish**, add to `~/.config/fish/config.fish`:
+```bash
+eval (env _MCPI_COMPLETE=fish_source mcpi)
+```
+
+## MCP Server Registry
+
+The registry contains information about available MCP servers, including:
+
+- **Basic Information**: Name, description, repository
+- **Installation Details**: Command and arguments needed to run the server
+- **Categories**: Classification for easy discovery (when populated)
+
+### Registry Format
+
+The registry is stored in `data/registry.json` with the following structure:
+
+```json
+{
+  "server-id": {
+    "description": "Brief description of server functionality",
+    "command": "npx",
+    "args": ["-y", "@package/mcp-server"],
+    "repository": "https://github.com/org/repo",
+    "categories": ["category1", "category2"]
+  }
+}
+```
+
+### Adding Servers to Registry
+
+To add a new MCP server to the registry:
+
+1. Edit `data/registry.json`
+2. Add a new entry with the server details
+3. Ensure the command and args are correct
+4. Optionally add categories for classification
+5. Submit a pull request
+
+## Supported MCP Servers
+
+### Core Servers (Anthropic)
+- **filesystem**: Local filesystem operations
+- **sqlite**: SQLite database operations
+- **brave-search**: Web search via Brave Search API
+- **fetch**: Make HTTP requests and fetch web content
+- **github**: Interact with GitHub repositories, issues, and pull requests
+
+### Community Servers
+The registry contains additional community-contributed servers. Use `mcpi search` to find available servers.
+
+## Integration with Claude Code
+
+mcpi provides seamless integration with Claude Code:
+
+**Automatic Detection**: mcpi automatically detects Claude Code installations and configures MCP servers appropriately.
+
+**Multiple Configuration Scopes**: Claude Code supports 6 different configuration scopes, from project-level to user-level.
+
+**Configuration Management**: Updates Claude Code's configuration files directly with proper validation.
+
+**Example Claude Code Integration:**
+```bash
+# Add filesystem server to project scope
+mcpi add filesystem --scope project-mcp
+
+# This updates .mcp.json in your project:
+# {
+#   "mcpServers": {
+#     "filesystem": {
+#       "command": "npx",
+#       "args": ["-y", "@anthropic/mcp-server-filesystem"]
+#     }
+#   }
+# }
+```
+
+## Development
+
+### Project Structure
+```
+mcpi/
+├── src/mcpi/              # Source code
+│   ├── cli.py            # CLI interface
+│   ├── clients/          # Client plugins
+│   │   ├── base.py       # Base protocols and types
+│   │   ├── manager.py    # MCPManager orchestration
+│   │   ├── claude_code.py # Claude Code plugin
+│   │   └── file_based.py # File-based scope implementations
+│   ├── registry/         # Server registry
+│   │   ├── catalog.py    # Server catalog and models
+│   │   └── catalog_manager.py # Multi-catalog management
+│   └── templates/        # Configuration templates
+│       ├── models.py     # Template data models
+│       ├── template_manager.py # Template loading
+│       └── prompt_handler.py # Interactive prompts
+├── data/                 # Registry data
+│   ├── catalog.json      # Server definitions
+│   └── templates/        # Template YAML files
+│       ├── postgres/
+│       ├── github/
+│       ├── filesystem/
+│       ├── slack/
+│       └── brave-search/
+└── tests/                # Test suite
+```
+
+### Development Setup
+```bash
+git clone https://github.com/user/mcpi
+cd mcpi
+uv sync --dev
+source .venv/bin/activate
+```
+
+### Running Tests
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/mcpi
+
+# Run specific test file
+pytest tests/test_registry_categories.py
+
+# Validate registry data
+pytest tests/test_registry_integration.py -v
+```
+
+### Code Quality
+```bash
+# Format code
+black src/ tests/
+
+# Lint code
+ruff check src/ tests/ --fix
+
+# Type checking
+mypy src/
+```
+
+## Contributing
+
+### Contributing to the Registry
+To add a new MCP server to the registry:
+
+1. Fork the repository
+2. Add server details to `data/registry.json`
+3. Test the server entry: `mcpi info <your-server-id>`
+4. Submit a pull request
+
+### Server Entry Format
+```json
+{
+  "your-server-id": {
+    "description": "Brief description of functionality",
+    "command": "npx",
+    "args": ["-y", "@package/your-mcp-server"],
+    "repository": "https://github.com/user/repo",
+    "categories": ["category1", "category2"]
+  }
+}
+```
+
+### Contributing Templates
+
+To add a configuration template:
+
+1. Create a YAML file in `data/templates/<server-id>/<template-name>.yaml`
+2. Follow the template structure (see `docs/TEMPLATE_AUTHORING_GUIDE.md`)
+3. Test the template: `mcpi add <server-id> --template <template-name>`
+4. Submit a pull request
+
+See `docs/TEMPLATE_AUTHORING_GUIDE.md` for detailed template authoring guidelines.
+
+### Development Guidelines
+- Follow PEP 8 style guidelines
+- Add type hints to all functions
+- Write tests for new features
+- Update documentation for new features
+- Use semantic versioning
+
+## Python API
+
+MCPI can be used as a Python library for programmatic MCP server management.
+
+### Basic Usage
+
+```python
+from mcpi.registry.catalog_manager import create_default_catalog_manager
+from mcpi.clients.manager import create_default_manager
+
+# Create catalog manager to browse available servers
+catalog_manager = create_default_catalog_manager()
+official_catalog = catalog_manager.get_catalog("official")
+official_catalog.load_registry()
+
+# Search for servers
+results = official_catalog.search_servers("filesystem")
+for server_id, server in results:
+    print(f"{server_id}: {server.description}")
+
+# Create manager for server operations
+manager = create_default_manager()
+
+# List installed servers
+servers = manager.list_servers()
+for server_id, info in servers.items():
+    print(f"{server_id}: {info.state}")
+
+# Add a server
+result = manager.add_server(
+    "filesystem",
+    config={"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem"]},
+    scope="user-global"
+)
+print(result.message)
+```
+
+### Factory Functions (Recommended)
+
+For production use, use factory functions that handle default initialization:
+
+```python
+from mcpi.registry.catalog_manager import (
+    create_default_catalog_manager,
+    create_test_catalog_manager
+)
+from mcpi.clients.manager import create_default_manager, create_test_manager
+
+# Production: Use defaults
+catalog_manager = create_default_catalog_manager()  # Uses data/catalog.json
+manager = create_default_manager()  # Auto-detects clients
+
+# Testing: Inject dependencies
+from pathlib import Path
+test_catalog_manager = create_test_catalog_manager(
+    official_path=Path("/tmp/official.json"),
+    local_path=Path("/tmp/local.json")
+)
+test_manager = create_test_manager(mock_registry)
+```
+
+### Breaking Changes (v2.0)
+
+**Important**: MCPI v2.0 introduced dependency injection for better testability:
+
+```python
+# OLD API (no longer works):
+from mcpi.registry.catalog import ServerCatalog
+from mcpi.clients.manager import MCPManager
+catalog = ServerCatalog()  # TypeError: missing required argument 'registry_path'
+manager = MCPManager()      # TypeError: missing required argument 'registry'
+
+# NEW API (use factory functions):
+from mcpi.registry.catalog import create_default_catalog
+from mcpi.clients.manager import create_default_manager
+catalog = create_default_catalog()  # Provides default path
+manager = create_default_manager()  # Creates default registry
+
+# NEW API (explicit injection for advanced use):
+from mcpi.registry.catalog import ServerCatalog
+from mcpi.clients.manager import MCPManager
+from mcpi.clients.registry import ClientRegistry
+from pathlib import Path
+
+catalog = ServerCatalog(registry_path=Path("custom/registry.json"))
+manager = MCPManager(registry=ClientRegistry())
+```
+
+**Migration Guide**:
+- Replace `ServerCatalog()` with `create_default_catalog()`
+- Replace `MCPManager()` with `create_default_manager()`
+- For testing, use `create_test_catalog(path)` and `create_test_manager(registry)`
+- For advanced use, pass required parameters explicitly
+
+**Why this change?** Dependency Inversion Principle (DIP) enables:
+- True unit testing without file system access
+- Component isolation and modularity
+- Easier mocking in tests
+- Better adherence to SOLID principles
+
+### Breaking Changes (v0.4.0)
+
+**Search command syntax**: Changed from positional to --query flag:
+
+```bash
+# OLD (v0.3.0)
+mcpi search filesystem
+
+# NEW (v0.4.0)
+mcpi search --query filesystem
+# or
+mcpi search -q filesystem
+```
+
+All other commands remain unchanged.
+
+## Troubleshooting
+
+### Common Issues
+
+**Server not showing up after adding:**
+```bash
+# Check if server was added successfully
+mcpi list --verbose
+
+# Check specific scope
+mcpi list --scope project-mcp
+```
+
+**Cannot find default client:**
+```bash
+# List available clients
+mcpi client list
+
+# Set default client manually
+mcpi client set-default claude-code
+```
+
+**Scope not found:**
+```bash
+# List available scopes
+mcpi scope list
+
+# Check scope existence in current directory
+mcpi scope list --client claude-code
+```
+
+**Tab completion not working:**
+```bash
+# Re-run the completion setup
+mcpi completion --shell bash
+
+# Make sure to source your shell config
+source ~/.bashrc  # or ~/.zshrc for zsh
+```
+
+**ImportError in development (macOS iCloud Drive):**
+
+If developing in iCloud Drive, you may encounter intermittent `ModuleNotFoundError: No module named 'mcpi'` due to iCloud setting hidden flags on `.pth` files.
+
+**Solution 1: Use .venv.nosync (Recommended for Development)**
+```bash
+cd ~/path/to/mcpi
+
+# Remove existing venv
+rm -rf .venv
+
+# Create .venv.nosync (excluded from iCloud sync)
+python -m venv .venv.nosync
+ln -s .venv.nosync .venv
+
+# Install in editable mode
+source .venv/bin/activate
+pip install -e .
+```
+
+The `.nosync` suffix tells iCloud to exclude the directory from sync, preventing hidden flag issues.
+
+**Solution 2: Use UV Tool Install (Recommended for CLI Usage)**
+```bash
+# Install as UV tool (stored in ~/.local/, not in iCloud)
+uv tool install --editable ~/path/to/mcpi
+
+# Use from anywhere without venv activation
+mcpi --help
+
+# For testing
+cd ~/path/to/mcpi
+pytest  # Uses pythonpath from pyproject.toml
+```
+
+**Emergency fix (temporary):**
+```bash
+# Remove hidden flags manually
+./scripts/fix-pth-flags.sh
+
+# Or manually:
+cd ~/path/to/mcpi
+chflags nohidden .venv/lib/python3.*/site-packages/*.pth
+```
+
+See `.agent_planning/ICLOUD-COMPATIBLE-FIX-2025-10-30.md` for technical details.
+
+### Getting Help
+
+- **GitHub Issues**: [Report bugs and request features](https://github.com/user/mcpi/issues)
+- **Documentation**: See CLAUDE.md in the repository for development documentation
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Anthropic](https://anthropic.com) for the Model Context Protocol
+- [Claude Code](https://claude.ai/code) integration
+- Community contributors to the MCP server registry
+
+---
+
+**Note**: This tool manages MCP server configurations. It does not install the underlying npm/pip packages - those are installed automatically when the MCP client (like Claude Code) first uses the server.

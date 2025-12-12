@@ -1,0 +1,54 @@
+name: read-only
+description: "Read-only access to GitHub repositories"
+server_id: github
+scope: user-mcp
+priority: medium
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-github"
+  env: {}
+
+prompts:
+  - name: GITHUB_PERSONAL_ACCESS_TOKEN
+    description: "GitHub Personal Access Token with 'public_repo' and 'read:org' scopes (get from https://github.com/settings/tokens)"
+    type: secret
+    required: true
+    validation_pattern: "^(ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{82})$"
+
+notes: |
+  This template provides read-only access to GitHub repositories.
+
+  To create a read-only Personal Access Token:
+    1. Go to: https://github.com/settings/tokens
+    2. Click "Generate new token" → "Generate new token (classic)"
+    3. Give it a descriptive name (e.g., "MCP Read-Only Access")
+    4. Select minimal scopes:
+       - ✓ public_repo (Access public repositories)
+       - ✓ read:org (Read org and team membership)
+    5. Click "Generate token" and copy it immediately
+
+  What you CAN do with read-only access:
+    - Browse code in public repositories
+    - Read issues and pull requests
+    - View repository information
+    - Search repositories
+    - Read organization membership
+
+  What you CANNOT do:
+    - Modify files or create commits
+    - Create/update/delete issues or PRs
+    - Fork repositories
+    - Modify repository settings
+    - Write to any repository
+
+  Security benefits:
+    - Limits potential damage if token is compromised
+    - Safe for code browsing and research
+    - Good for learning and exploration
+    - Prevents accidental modifications
+
+  Use case: When you want to browse code and issues without risk of
+  accidentally modifying repositories.

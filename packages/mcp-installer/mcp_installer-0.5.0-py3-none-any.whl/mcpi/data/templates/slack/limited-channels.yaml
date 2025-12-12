@@ -1,0 +1,78 @@
+name: limited-channels
+description: "Slack bot with access restricted to specific channels"
+server_id: slack
+scope: user-mcp
+priority: medium
+
+config:
+  command: npx
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-slack"
+  env: {}
+
+prompts:
+  - name: SLACK_BOT_TOKEN
+    description: "Slack Bot User OAuth Token (starts with 'xoxb-')"
+    type: secret
+    required: true
+    validation_pattern: "^xoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+$"
+
+  - name: SLACK_TEAM_ID
+    description: "Slack Team/Workspace ID (starts with 'T', found in workspace settings)"
+    type: string
+    required: true
+    validation_pattern: "^T[A-Z0-9]+$"
+
+  - name: SLACK_CHANNEL_IDS
+    description: "Comma-separated channel IDs to restrict access (e.g., 'C01234567,C76543210')"
+    type: string
+    required: true
+    validation_pattern: "^C[A-Z0-9]+(,C[A-Z0-9]+)*$"
+
+notes: |
+  This template creates a Slack bot with access to specific channels only.
+
+  To set up a Slack bot (same as bot-token template):
+    1. Go to: https://api.slack.com/apps
+    2. Create a new app or select existing one
+    3. Add Bot Token Scopes:
+       - channels:history, channels:read, chat:write
+       - reactions:write, users:read, users.profile:read
+    4. Install to workspace and copy Bot Token (xoxb-...)
+
+  To find Channel IDs:
+    Method 1 - From Slack client:
+      1. Open the channel in Slack
+      2. Click the channel name at the top
+      3. Scroll down in the About tab
+      4. The Channel ID is shown (starts with C)
+
+    Method 2 - From URL:
+      1. Open the channel in web browser
+      2. The URL contains the channel ID:
+         https://app.slack.com/client/T.../C01234567
+                                              ^^^^^^^^^ channel ID
+
+  Channel ID format:
+    - Public channels: C01234567
+    - Private channels: G01234567
+    - DMs: D01234567
+
+  Multiple channels:
+    - Separate with commas (no spaces)
+    - Example: C01234567,C76543210,C11111111
+
+  Security benefits:
+    - Bot can only access specified channels
+    - Prevents access to sensitive channels
+    - Good for departmental or project-specific bots
+    - Reduces risk of information leakage
+
+  Use cases:
+    - Bot for specific project channels only
+    - Department-specific automation
+    - Testing in controlled channels
+    - Compliance and data security requirements
+
+  Note: The bot must still be invited to each channel to interact with it.
