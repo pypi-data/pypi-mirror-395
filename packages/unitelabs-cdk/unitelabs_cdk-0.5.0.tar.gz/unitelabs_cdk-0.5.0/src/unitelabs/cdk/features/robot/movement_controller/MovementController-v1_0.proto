@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+import "SiLAFramework.proto";
+
+package sila2.io.unitelabs.robot.movementcontroller.v1;
+
+/* This Feature provides control over the movement of devices. It specifies a set of predefined positions the device can be moved to, e.g. a robot arm can be moved to positioned taught earlier to the robot. */
+service MovementController {
+  /* Move the device to the specified position. */
+  rpc MoveTo (sila2.io.unitelabs.robot.movementcontroller.v1.MoveTo_Parameters) returns (sila2.org.silastandard.CommandConfirmation) {}
+  /* Monitor the state of MoveTo */
+  rpc MoveTo_Info (sila2.org.silastandard.CommandExecutionUUID) returns (stream sila2.org.silastandard.ExecutionInfo) {}
+  /* Retrieve result of MoveTo */
+  rpc MoveTo_Result(sila2.org.silastandard.CommandExecutionUUID) returns (sila2.io.unitelabs.robot.movementcontroller.v1.MoveTo_Responses) {}
+  /* All positions of the device including the number of sub-positions. */
+  rpc Get_AvailablePositions (sila2.io.unitelabs.robot.movementcontroller.v1.Get_AvailablePositions_Parameters) returns (sila2.io.unitelabs.robot.movementcontroller.v1.Get_AvailablePositions_Responses) {}
+  /* The current position of the device. */
+  rpc Get_CurrentPosition (sila2.io.unitelabs.robot.movementcontroller.v1.Get_CurrentPosition_Parameters) returns (sila2.io.unitelabs.robot.movementcontroller.v1.Get_CurrentPosition_Responses) {}
+}
+
+/* Specifies a position via an index number, starting at 1. */
+message DataType_PositionIndex {
+  sila2.org.silastandard.Integer PositionIndex = 1;  /* Specifies a position via an index number, starting at 1. */
+}
+
+/*
+ * Specifies one of the possible positions of a device where the device can move to. Can contain a sub-position, e.g. for specifying a position in a rack.
+ */
+message DataType_TargetPosition {
+  message TargetPosition_Struct {
+    sila2.org.silastandard.String Position = 1;  /* The name of the target position (must be unique within the device). */
+    sila2.io.unitelabs.robot.movementcontroller.v1.DataType_PositionIndex SubPosition = 2;  /* The index of a sub-position within a target position or the number of sub-positions respectively, e.g. for a rack. */
+  }
+  sila2.io.unitelabs.robot.movementcontroller.v1.DataType_TargetPosition.TargetPosition_Struct TargetPosition = 1;  /* Specifies one of the possible positions of a device where the device can move to. Can contain a sub-position, e.g. for specifying a position in a rack. */
+}
+
+/* Parameters for MoveTo */
+message MoveTo_Parameters {
+  sila2.io.unitelabs.robot.movementcontroller.v1.DataType_TargetPosition TargetPosition = 1;  /* Indicates the position where the device will be moved to. */
+}
+
+/* Responses of MoveTo */
+message MoveTo_Responses {
+}
+
+/* Parameters for AvailablePositions */
+message Get_AvailablePositions_Parameters {
+}
+
+/* Responses of AvailablePositions */
+message Get_AvailablePositions_Responses {
+  repeated sila2.io.unitelabs.robot.movementcontroller.v1.DataType_TargetPosition AvailablePositions = 1;  /* All positions of the device including the number of sub-positions. */
+}
+
+/* Parameters for CurrentPosition */
+message Get_CurrentPosition_Parameters {
+}
+
+/* Responses of CurrentPosition */
+message Get_CurrentPosition_Responses {
+  sila2.io.unitelabs.robot.movementcontroller.v1.DataType_TargetPosition CurrentPosition = 1;  /* The current position of the device. */
+}

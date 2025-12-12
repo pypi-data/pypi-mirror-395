@@ -1,0 +1,284 @@
+stages:
+  - validate
+  - build
+  - test
+  - rc-release
+  - release
+
+variables:
+  PYTHON_VERSION: 3.13
+  GITLAB_TOKEN: $CI_JOB_TOKEN
+  UV_INDEX_UNITELABS_USERNAME: gitlab-ci-token
+  UV_INDEX_UNITELABS_PASSWORD: "${CI_JOB_TOKEN}"
+cache:
+  paths:
+    - .cache/pip
+    - .venv/
+
+.standard_rules:
+  image: "python:${PYTHON_VERSION}-slim"
+  before_script:
+    - pip install hatch==1.15
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+.validate_package_version: &validate_package_version |
+  echo "Validating PACKAGE_VERSION=${PACKAGE_VERSION}"
+  if [[ ! "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.([0-9]+)(\+([a-z0-9]{8})+)?)?$ ]]; then
+    echo "PACKAGE_VERSION must be a valid semantic version (e.g., 1.0.0, 1.0.0-alpha|beta|rc.1{+xxxxyyyy}, etc. )"
+    exit 1
+  fi
+
+.check_package_version_has_not_changed: &check_package_version_has_not_changed |
+  echo "Checking that package version has not changed in pyproject.toml"
+  git fetch origin main
+  if git diff origin/main -- pyproject.toml | grep -E "^[+-]version = "; then
+    echo "✗ Version was modified! Please revert the version change in pyproject.toml"
+    exit 1
+  else
+    echo "✓ Version has not been modified in pyproject.toml"
+  fi
+
+.validate_gitlab_mr_title: &validate_gitlab_mr_title |
+  echo "Validating GitLab MR Title format"
+  if [[ "$CI_MERGE_REQUEST_DRAFT" == "true" ]]; then
+    echo "MR is a draft, skipping title validation." && exit 0
+  else
+    echo "MR is not a draft, proceeding with title validation."
+    if [[ -n "$CI_MERGE_REQUEST_TITLE" ]]; then
+    echo "GitLab MR Title is set to '$CI_MERGE_REQUEST_TITLE'"
+    if [[ "$CI_MERGE_REQUEST_TITLE" =~ ^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([a-zA-Z0-9_\-]+\))?:\ .+ ]]; then
+      echo '✓ MR Title format is acceptable.'
+    else
+      echo '✗ MR Title format is NOT acceptable! It must follow Conventional Commits format (e.g., feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert(scope): description).' && exit 1
+    fi
+    else
+     echo 'GitLab MR Title is not set. Please set the MR title to follow Conventional Commits format. (e.g., feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert(scope): description).' && exit 1
+    fi
+  fi
+
+# Shared Jobs
+validate:gitlab:mr:title:
+  stage: validate
+  image: "python:${PYTHON_VERSION}-slim"
+  script:
+    - *validate_gitlab_mr_title
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: always
+
+compile:
+  stage: build
+  extends:
+    - .standard_rules
+  needs:
+    - job: validate:gitlab:mr:title
+      optional: true
+  script:
+    - apt-get update -qq && apt-get install -y -qq git && echo "Installed git"
+    - export OLD_PACKAGE_VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+    - echo "Discovered old package version:${OLD_PACKAGE_VERSION}"
+    - *check_package_version_has_not_changed
+    - export PACKAGE_NAME=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["name"])')
+    - echo "Discovered package name:${PACKAGE_NAME}"
+    - echo "PACKAGE_NAME=${PACKAGE_NAME}" >> variables.env
+    - export PACKAGE_IMPORT_NAME=${PACKAGE_NAME//-/_}
+    - export PACKAGE_IMPORT_NAME=${PACKAGE_IMPORT_NAME/_/.}
+    - echo "Derived package import name:${PACKAGE_IMPORT_NAME}"
+    - echo "PACKAGE_IMPORT_NAME=${PACKAGE_IMPORT_NAME}" >> variables.env
+    - hatch build
+  artifacts:
+    reports:
+      dotenv: variables.env
+    expire_in: 1 hour
+    paths:
+      - "dist/"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "pipeline"
+
+format:
+  stage: test
+  extends:
+    - .standard_rules
+  needs:
+    - job: compile
+      artifacts: true
+  script:
+    - hatch run ruff format --check src
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "pipeline"
+
+lint:
+  stage: test
+  extends:
+    - .standard_rules
+  needs:
+    - job: compile
+      artifacts: true
+  script:
+    - hatch run lint-ci
+  artifacts:
+    reports:
+      codequality: $CI_PROJECT_DIR/code-quality-report.json
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "pipeline"
+
+test:
+  stage: test
+  extends:
+    - .standard_rules
+  needs:
+    - job: compile
+      artifacts: true
+  script:
+    - hatch -v test --all --cov=src --cov-report=term --cov-report=xml --junit-xml=junit.xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+      junit:
+        - junit.xml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "pipeline"
+# END of Shared Jobs
+
+# Development
+dev:package:
+  stage: rc-release
+  extends:
+    - .standard_rules
+  needs:
+    - job: compile
+      artifacts: true
+    - job: test
+  variables:
+    HATCH_INDEX_REPO: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
+    HATCH_INDEX_USER: gitlab-ci-token
+    HATCH_INDEX_AUTH: "${CI_JOB_TOKEN}"
+  script:
+    - apt-get update -qq && apt-get install -y -qq git && echo "Installed git for cz"
+    - export NEW_VERSION=$(hatch run cz bump --prerelease rc --dry-run --get-next --yes)+$CI_COMMIT_SHORT_SHA
+    - export PACKAGE_VERSION=${NEW_VERSION}
+    - *validate_package_version
+    - echo "New version to be set:${PACKAGE_VERSION}"
+    - echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> variables.env
+    - |
+      sed -i "s/^version = .*/version = \"${PACKAGE_VERSION}\"/" pyproject.toml
+    - rm -rf dist && hatch build
+    - hatch publish
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: manual
+      allow_failure: true
+  artifacts:
+    reports:
+      dotenv: variables.env
+    expire_in: 1 hour
+# END of Development
+
+# Production and Release
+prod:package:
+  stage: release
+  extends:
+    - .standard_rules
+  needs:
+    - job: compile
+      artifacts: true
+    - job: test
+  variables:
+    HATCH_INDEX_REPO: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
+    HATCH_INDEX_USER: gitlab-ci-token
+    HATCH_INDEX_AUTH: "${CI_JOB_TOKEN}"
+  script:
+    - apt-get update -qq && apt-get install -y -qq git && echo "Installed git for cz"
+    - export NEW_VERSION=$(hatch run cz bump --dry-run --get-next --yes)
+    - export PACKAGE_VERSION=${NEW_VERSION}
+    - *validate_package_version
+    - echo "New version to be set:${PACKAGE_VERSION}"
+    - echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> variables.env
+    - |
+      sed -i "s/^version = .*/version = \"${PACKAGE_VERSION}\"/" pyproject.toml
+    - rm -rf dist && hatch build
+    - hatch publish
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "pipeline"
+      when: manual
+  artifacts:
+    reports:
+      dotenv: variables.env
+    expire_in: 1 hour
+
+prod:package:pypi:
+  stage: release
+  extends:
+    - .standard_rules
+  needs:
+    - job: compile
+      artifacts: true
+    - job: test
+    - job: prod:package
+      artifacts: true
+  variables:
+    HATCH_INDEX_REPO: https://upload.pypi.org/legacy/
+    HATCH_INDEX_USER: __token__
+    HATCH_INDEX_AUTH: "${PYPI_TOKEN}"
+  script:
+    - |
+      sed -i "s/^version = .*/version = \"${PACKAGE_VERSION}\"/" pyproject.toml
+    - rm -rf dist && hatch build
+    - hatch publish
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "pipeline"
+
+prod:release:
+  stage: release
+  needs:
+    - job: compile
+      artifacts: true
+    - job: prod:package
+      artifacts: true
+    - job: prod:package:pypi
+  image: registry.gitlab.com/gitlab-org/cli:latest
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: 0
+    GIT_CLONE_EXTRA_FLAGS: --filter=blob:none
+  script:
+    - echo "Setting up git for release"
+    - echo "UNITELABS_CI_RELEASER_EMAIL=$UNITELABS_CI_RELEASER_EMAIL"
+    - echo "UNITELABS_CI_RELEASER_USERNAME=$UNITELABS_CI_RELEASER_USERNAME"
+    - git config --global user.email "${UNITELABS_CI_RELEASER_EMAIL}"
+    - git config --global user.name "${UNITELABS_CI_RELEASER_USERNAME}"
+    - git config --global credential.helper store
+    - echo "https://${UNITELABS_CI_RELEASER_USERNAME}:${UNITELABS_CI_RELEASER_TOKEN}@gitlab.com" > ~/.git-credentials
+    - git remote set-url origin "${CI_PROJECT_URL}.git"
+    - apk add --no-cache python3 py3-pip pipx curl
+    - export SHELL=/bin/sh
+    - pipx ensurepath --global
+    - export PATH="$PATH:/root/.local/bin"
+    - pipx install hatch==1.15
+    - echo "New Release $PACKAGE_VERSION for $PACKAGE_NAME"
+    - git fetch --tags origin
+    - git branch --list
+    - git tag --list
+    - git checkout main
+    - export RELEASE_DESCRIPTION=$(hatch run docs:release-desc)
+    - echo "Bumping release to version $PACKAGE_VERSION"
+    - hatch run cz bump $PACKAGE_VERSION --yes
+    - glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
+    - |
+      glab release create v$PACKAGE_VERSION --name "Release v$PACKAGE_VERSION" --notes "$RELEASE_DESCRIPTION"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "pipeline"
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - CHANGELOG.md
+# END of Production and Release

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Feature SiLA2Version="1.0" FeatureVersion="1.0" MaturityLevel="Draft" Originator="io.unitelabs" Category="robot"
+         xmlns="http://www.sila-standard.org"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>MovementController</Identifier>
+  <DisplayName>Movement Controller</DisplayName>
+  <Description>
+    This Feature provides control over the movement of devices.
+
+    It specifies a set of predefined positions the device can be moved to, e.g. a robot arm can be moved to positioned
+    taught earlier to the robot.
+  </Description>
+  <Command>
+    <Identifier>MoveTo</Identifier>
+    <DisplayName>Move To</DisplayName>
+    <Description>Move the device to the specified position.</Description>
+    <Observable>Yes</Observable>
+    <Parameter>
+      <Identifier>TargetPosition</Identifier>
+      <DisplayName>Target Position</DisplayName>
+      <Description>Indicates the position where the device will be moved to.</Description>
+      <DataType>
+        <DataTypeIdentifier>TargetPosition</DataTypeIdentifier>
+      </DataType>
+    </Parameter>
+  </Command>
+  <Property>
+    <Identifier>AvailablePositions</Identifier>
+    <DisplayName>Available Positions</DisplayName>
+    <Description>All positions of the device including the number of sub-positions.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <List>
+        <DataType>
+          <DataTypeIdentifier>TargetPosition</DataTypeIdentifier>
+        </DataType>
+      </List>
+    </DataType>
+  </Property>
+  <Property>
+    <Identifier>CurrentPosition</Identifier>
+    <DisplayName>Current Position</DisplayName>
+    <Description>The current position of the device.</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <DataTypeIdentifier>TargetPosition</DataTypeIdentifier>
+    </DataType>
+  </Property>
+  <DataTypeDefinition>
+    <Identifier>PositionIndex</Identifier>
+    <DisplayName>Position Index</DisplayName>
+    <Description>Specifies a position via an index number, starting at 1.</Description>
+    <DataType>
+      <Constrained>
+        <DataType>
+          <Basic>Integer</Basic>
+        </DataType>
+        <Constraints>
+          <MinimalInclusive>1</MinimalInclusive>
+        </Constraints>
+      </Constrained>
+    </DataType>
+  </DataTypeDefinition>
+  <DataTypeDefinition>
+    <Identifier>TargetPosition</Identifier>
+    <DisplayName>Target Position</DisplayName>
+    <Description>
+      Specifies one of the possible positions of a device where the device can move to. Can contain a sub-position, e.g. for specifying a position in a rack.
+    </Description>
+    <DataType>
+      <Structure>
+        <Element>
+          <Identifier>Position</Identifier>
+          <DisplayName>Position</DisplayName>
+          <Description>The name of the target position (must be unique within the device).</Description>
+          <DataType>
+            <Basic>String</Basic>
+          </DataType>
+        </Element>
+        <Element>
+          <Identifier>SubPosition</Identifier>
+          <DisplayName>Sub Position</DisplayName>
+          <Description>
+            The index of a sub-position within a target position or the number of sub-positions respectively, e.g. for a rack.
+          </Description>
+          <DataType>
+            <DataTypeIdentifier>PositionIndex</DataTypeIdentifier>
+          </DataType>
+        </Element>
+      </Structure>
+    </DataType>
+  </DataTypeDefinition>
+</Feature>
