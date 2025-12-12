@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import signal
+from collections.abc import Callable
+
+
+# use a more readable process name if specified:
+if len(sys.argv) > 1:
+    argstr = " ".join(sys.argv)
+    name = "xpra_signal_listener"
+    pos = argstr.find(name)
+    if pos >= 0:
+        from xpra.util.system import set_proc_title
+    set_proc_title(argstr[pos+len(name):].strip())
+
+
+def cb(signame: str):
+    sys.stdout.write("%s\n" % signame)
+    sys.stdout.flush()
+
+
+def addsignalhandler(signame: str, callback: Callable):
+    sigval = getattr(signal, signame, None)
+    if not sigval:
+        return
+
+    def scb(*_args):
+        callback(signame)
+    signal.signal(sigval, scb)
+
+
+WINDOW_SIGNALS = os.environ.get("XPRA_WINDOW_SIGNALS",
+                                "SIGINT,SIGTERM,SIGQUIT,SIGCONT,SIGUSR1,SIGUSR2").split(",")
+for x in WINDOW_SIGNALS:
+    addsignalhandler(x, cb)
+
+
+def sig_exit(signame):
+    cb(signame)
+    sys.exit(1)
+
+
+addsignalhandler("SIGPIPE", sig_exit)
+addsignalhandler("SIGHUP", sig_exit)
+
+sys.stdin.readline()

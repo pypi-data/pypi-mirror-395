@@ -1,0 +1,113 @@
+########################################################################
+# Server Options:
+
+# Directory for server log files:
+#log-dir = /run/user/$UID
+#log-dir = ~/.xpra
+#log-dir = /tmp
+#log-dir = ${XPRA_SESSION_DIR}
+log-dir = %(log_dir)s
+
+# Log file:
+log-file = server.log
+
+# Delegate "seamless" and "desktop" subcommands to the system-wide proxy server instance
+#start-via-proxy = auto
+start-via-proxy = no
+
+# Scripts that can modify the environment of the server:
+#source = /etc/xpra/server.env
+%(source)s
+
+# Scripts that can modify the environment of the commands started by the server
+# This one is useful for avoiding delays when running gnome applications:
+#source-start = gnome-keyring-daemon --start
+
+# Environment variables for children started
+# with 'start-child' or 'start':
+# (can be specified multiple times)
+#start-env = HOME=/home/alt
+#start-env = GDK_DEBUG=dnd
+%(start_env)s
+
+# Commands to start by default
+#  (may be specified more than once):
+# examples:
+#start-child = /usr/bin/xterm
+#start-child = /usr/bin/xeyes
+#start=/bin/true
+#
+# Xsession can take care of initializing dbus, keyring-daemon,
+# gpg-agent or whatever else might be usually started together with X
+#start = /etc/X11/Xsession true
+# Or you can specify individual actions:
+#xrdb -merge /etc/X11/Xresources
+#xrdb -merge ~/.Xresources
+#
+# The difference between start and start-child is only relevant
+# when using exit-with-children.
+# This causes the server to terminate when the last child has exited:
+exit-with-children = no
+
+# Commands to start immediately after the first client has connected:
+# (see above for the start vs start-child distinction)
+#start-after-connect = touch ~/.xpra/connect
+#start-child-after-connect = xterm
+
+# Commands to every time a client connects:
+# (see above for the start vs start-child distinction)
+#start-on-connect = touch ~/.xpra/login
+#start-child-on-connect = xterm
+
+# Commands to run when the last client exits:
+#start-on-last-client-exit = xterm
+#start-child-on-last-client-exit = xterm
+
+
+# Start a dbus-daemon:
+# dbus-launch =
+# dbus-launch = /usr/bin/dbus-launch --close-stderr
+dbus-launch = dbus-launch --sh-syntax --close-stderr
+
+# Start a dbus server which can be used to interact with the server process:
+#dbus-control = no
+dbus-control = %(dbus_control)s
+
+# A wrapper for executing all sub-commands:
+# exec-wrapper = vglrun --
+# exec-wrapper = vglrun -d :1 --
+
+# Allows clients to start new commands in the server context:
+#start-new-commands = no
+start-new-commands = yes
+
+# Start a pulseaudio server with each session:
+pulseaudio = %(pulseaudio)s
+
+# pulseaudio server start command:
+#pulseaudio-command = %(pulseaudio_command)s
+#pulseaudio-command = pulseaudio --start -n --daemonize=false --system=false --exit-idle-time=-1 \
+#     --load=module-suspend-on-idle \
+#     '--load=module-null-sink sink_name=Xpra-Speaker sink_properties=device.description="Xpra\ Speaker"' \
+#     '--load=module-null-sink sink_name=Xpra-Microphone sink_properties=device.description="Xpra\ Microphone"' \
+#     '--load=module-remap-source source_name=Xpra-Mic-Source source_properties=device.description="Xpra\ Mic\ Source" master=Xpra-Microphone.monitor channels=1' \
+#     '--load=module-native-protocol-unix socket=$XPRA_PULSE_SERVER' \
+#     '--load=module-dbus-protocol' '--load=module-x11-publish' --log-level=2 --log-target=stderr --enable-memfd=no
+# Note: only uncomment the above setting if you want to adjust the
+# pulseaudio command string, so the actual default value can depend on
+# the XPRA_PULSEAUDIO_* environment variables.
+
+# commands used to configure the pulseaudio server:
+# pactl set-source-volume SomeSource 20%%
+pulseaudio-configure-commands = %(pulseaudio_configure_commands)s
+
+
+# Systemd specific options:
+# Wrap server start commands with systemd-run:
+#systemd-run = no
+#systemd-run = auto
+systemd-run = %(systemd_run)s
+
+# Command line arguments passed to systemd-run:
+#systemd-run-args = -p MemoryAccounting=true -p MemoryHigh=384M -p MemoryLimit=512M
+#systemd-run-args = -p CPUAccounting=true -p CPUQuota=25%%

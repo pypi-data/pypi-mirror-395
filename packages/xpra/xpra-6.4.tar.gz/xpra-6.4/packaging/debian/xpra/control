@@ -1,0 +1,395 @@
+Source: xpra
+Section: x11
+Priority: optional
+Maintainer: Antoine Martin <antoine@xpra.org>
+X-Python3-Version: >= 3.6
+Build-Depends: debhelper (>= 8)
+              ,pkgconf
+              ,xz-utils
+              ,lsb-release
+              ,xserver-xorg-video-dummy
+              ,libx11-dev
+              ,libxcomposite-dev
+              ,libxdamage-dev
+              ,libxpresent-dev
+              ,libxtst-dev
+              ,libxkbfile-dev
+              ,libxres-dev
+              ,libnvidia-fbc1 [amd64]
+# very few Debian or Ubuntu distros have this library
+# so we can't rely on it and we use the one that comes with CUDA instead:
+#              ,libnvjpeg10 [amd64]
+              ,libdrm-dev
+# even unstable ships an oudated version!
+# (hopefully this can be enabled some day)
+#              ,libevdi0-dev
+              ,libavif-dev
+              ,libyuv-dev
+              ,libvpx-dev
+              ,libx264-dev
+              ,libopenh264-dev
+              ,libwebp-dev
+              ,libturbojpeg-dev
+              ,libdav1d-dev
+              ,libaom-dev
+#noble:              ,libspng-dev
+#oracular:              ,libspng-dev
+#plucky:              ,libspng-dev
+#bookworm:              ,libspng-dev
+#trixie:              ,libspng-dev
+#forky:              ,libspng-dev
+#sid:              ,libspng-dev
+              ,libgtk-3-dev
+              ,python3-dev (>= 3.10)
+              ,python3-setuptools
+              ,python3-cairo-dev
+              ,python-gi-dev
+              ,gcc
+# only needed for building the CUDA kernels instead of gcc >= 14:
+#oracular:              ,clang-19
+#trixie:              ,clang-19
+#forky:              ,clang-19
+#sid:              ,clang-19
+              ,dh-python
+              ,libsystemd-dev
+              ,libpam0g-dev
+              ,libproc2-dev | libprocps-dev
+              ,liblz4-dev
+              ,libbrotli-dev
+              ,libxxhash-dev
+              ,libqrencode-dev
+              ,libwayland-dev
+              ,pandoc
+Standards-Version: 3.9.3
+Homepage: https://xpra.org/
+Vcs-Git: https://github.com/Xpra-org/xpra
+Vcs-Browser: https://github.com/Xpra-org/xpra
+
+
+Package: xpra
+Architecture: any
+Depends: xpra-client (= ${binary:Version})
+         ,xpra-client-gtk3 (= ${binary:Version})
+         ,xpra-server (= ${binary:Version})
+         ,xpra-codecs (= ${binary:Version})
+Recommends: xpra-audio (= ${binary:Version})
+            ,xpra-x11 (= ${binary:Version})
+            ,xpra-codecs-extras (= ${binary:Version})
+Suggests:  xpra-codecs-nvidia (= ${binary:Version})
+         ,xpra-codecs-amd (= ${binary:Version})
+Description: tool to detach/reattach running X programs
+ Xpra gives you the functionality of GNU Screen for X applications.
+ .
+ It allows the user to view remote X applications on their local machine, and
+ disconnect and reconnect from the remote machine without losing the state of
+ the running applications.
+ .
+ Unlike VNC, these applications are "rootless".  They appear as individual
+ windows inside your window manager rather than being contained within a single
+ window.
+
+
+Package: xpra-x11
+Architecture: any
+Depends: ${misc:Depends}, ${python3:Depends}, ${shlibs:Depends}, ${x11:Depends}
+        ,python3-cairo
+        ,python3-gi
+Recommends: python3-lxml
+        ,${x11:Depends}
+Description: tool to detach/reattach running X programs,
+ this package contains the X11 bindings
+ used by both the server and client under X11
+
+
+Package: xpra-common
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< ${binary:Version})
+Architecture: any
+Depends: ${misc:Depends}, ${python3:Depends}, ${shlibs:Depends}
+        ,python3-gi
+        ,gir1.2-glib-2.0
+        ,libxxhash0
+# generate QR codes for authentication and connection URLs:
+Recommends: ${qrcode:Depends}
+# text packet compression:
+        ,${brotli:Depends}
+# ssh transport:
+        ,python3-paramiko
+        ,python3-dnspython
+# AES encryption:
+        ,python3-cryptography
+# see sessions using mDNS:
+        ,python3-zeroconf
+# query network interfaces:
+        ,python3-netifaces
+# printer forwarding:
+        ,python3-cups
+Suggests: openssh-server
+        ,libwayland-client0
+# yaml connections:
+        ,python3-yaml
+Description: tool to detach/reattach running X programs,
+ this is the common components for all xpra sub-packages
+
+
+Package: xpra-server
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Depends: xpra-common (= ${binary:Version})
+        ,${python3:Depends}
+        ,python3-cairo
+        ,python3-pil
+# ssl (generate cert), wss:
+        ,openssl
+# we need a vfb: either Xdummy or Xvfb
+# (but Xdummy is broken on Debian, so stick with Xvfb)
+#        ,xserver-xorg-video-dummy
+        ,xvfb
+        ,keyboard-configuration
+# addgroup:
+        ,adduser
+Recommends: xpra-codecs (= ${binary:Version})
+        ,xpra-audio-server
+        ,xpra-codecs-extras (= ${binary:Version})
+        ,xpra-x11 (= ${binary:Version})
+        ,xpra-html5
+# sync-xvfb:
+        ,python3-gi-cairo
+# socket activation:
+        ,libsystemd
+# query parent pid:
+        ,${proc:Depends}
+# control server sessions, access client desktop environment settings and properties:
+        ,python3-dbus
+# the server uses "dbus-launch" to enable dbus for its sessions:
+        ,dbus-x11
+# preferred input method:
+        ,ibus
+# set process name of the proxy server:
+        ,python3-setproctitle
+# start menu and start-session GUI:
+        ,python3-xdg
+        ,python3-watchdog
+# to be able to resize large svg icons:
+        ,gir1.2-rsvg-2.0
+# keyboard mapping:
+        ,gir1.2-ibus-1.0
+# printer forwarding:
+        ,cups-filters
+        ,cups-common
+        ,cups-pdf
+        ,cups-daemon
+# most of the examples use an xterm:
+        ,xterm
+Suggests: xpra-codecs-nvidia (= ${binary:Version})
+        ,xpra-codecs-amd (= ${binary:Version})
+        ,openssh-server
+        ,python3-opengl
+        ,gir1.2-gtk-3.0
+# authentication:
+        ,python3-kerberos
+        ,python3-gssapi
+# keycloak authentication:
+        ,python3-oauthlib
+Description: tool to detach/reattach running X programs,
+ this is server component allowing you to start sessions
+
+
+Package: xpra-client
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Depends: xpra-common (= ${binary:Version})
+        ,${python3:Depends}
+Recommends: python3-socks
+            ,gir1.2-nm-1.0
+            ,gir1.2-notify-0.7
+            ,xpra-client-gtk3 (= ${binary:Version})
+Suggests: python-psutil
+# external ssh transport:
+        ,openssh-client
+# using SSH passwords with openssh-client:
+        ,sshpass
+#better debug output:
+#        ,python3-cpuinfo
+Description: tool to detach/reattach running X programs,
+ this is the client component without the GUI part
+
+
+Package: xpra-client-gtk3
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Depends: xpra-client (= ${binary:Version})
+        ,${python3:Depends}
+        ,gir1.2-gtk-3.0
+        ,python3-cairo
+        ,python3-gi-cairo
+        ,python3-pil
+Recommends: xpra-codecs (= ${binary:Version})
+        ,xpra-audio (= ${binary:Version})
+        ,xpra-codecs-extras (= ${binary:Version})
+        ,xpra-x11 (= ${binary:Version})
+# client opengl acceleration:)
+        ,python3-opengl
+# hope that this will allow our status icon to be shown:
+        ,gir1.2-ayatanaappindicator3-0.1
+# keyboard mapping:
+        ,gir1.2-ibus-1.0
+Suggests: xpra-codecs-nvidia (= ${binary:Version})
+# for CPU percentage in "xpra top"
+        ,python-psutil
+# webcam support:
+        ,python3-opencv
+        ,xpra-client-gnome
+# password prompts:
+        ,pinentry-gnome3
+Description: tool to detach/reattach running X programs,
+ this is the xpra client user interface using GTK3
+
+
+Package: xpra-client-qt6
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Depends: xpra-client (= ${binary:Version})
+        ,${python3:Depends}
+        ,python3-pil
+        ,python3-pyqt6
+Description: tool to detach/reattach running X programs,
+ this is the xpra client user interface using PyQt6
+
+
+Package: xpra-client-gnome
+Architecture: any
+Depends: xpra-client-gtk3 (= ${binary:Version})
+        ,gnome-shell-extension-top-icons-plus
+        ,gnome-shell-extension-appindicator
+Description: This package installs the GNOME Shell extensions
+ that can help in restoring the system tray functionality.
+ It also includes the input-source-manager@xpra_org extension which
+ is required for querying and activating keyboard input sources.
+
+
+Package: xpra-audio
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Depends: xpra-common (= ${binary:Version})
+        ,${python3:Depends}
+        ,python3-gst-1.0
+        ,gstreamer1.0-plugins-base
+#                 ^^ vorbis ^^
+Recommends: gstreamer1.0-tools
+        ,gstreamer1.0-alsa
+        ,gstreamer1.0-plugins-good
+#                  ^^ wavpack, wav, flac, speex ^^
+        ,gstreamer1.0-plugins-bad
+#                  ^^ removesilence
+        ,gstreamer1.0-plugins-ugly
+#                  ^^ mp3 ^^
+Suggests: xpra-audio-server
+Description: Components required for xpra audio forwarding,
+ used by both client and servers.
+
+
+Package: xpra-audio-server
+Architecture: any
+Depends: xpra-audio (= ${binary:Version})
+        ,pulseaudio
+        ,gstreamer1.0-pulseaudio
+        ,pulseaudio-utils
+Description: Components required for xpra audio forwarding,
+ on the server side.
+
+
+Package: xpra-codecs
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Depends: xpra-common (= ${binary:Version})
+        ,${codecs:Depends}
+        ,${python3:Depends}
+        ,libyuv0
+#jammy:              ,libopenh264-6
+#noble:              ,libopenh264-7
+#oracular:              ,libopenh264-7
+#plucky:              ,libopenh264-8
+#bookworm:              ,libopenh264-7
+#trixie:              ,libopenh264-8
+#forky:              ,libopenh264-8
+#sid:              ,libopenh264-8
+#noble:              ,libdav1d7
+#oracular:              ,libdav1d7
+#plucky:              ,libdav1d7
+#bookworm:              ,libdav1d6
+#trixie:              ,libdav1d7
+#forky:              ,libdav1d7
+#sid:              ,libdav1d7
+              ,libaom3
+#noble:              ,libspng0
+#oracular:              ,libspng0
+#plucky:              ,libspng0
+#bookworm:              ,libspng0
+#trixie:              ,libspng0
+#forky:              ,libspng0
+#sid:              ,libspng0
+Suggests: v4l2loopback-dkms
+          ,xpra-codecs-nvidia (= ${binary:Version})
+          ,xpra-codecs-amd (= ${binary:Version})
+          ,python3-opencv
+Description: Picture and video codecs
+ for the xpra server and client.
+
+
+Package: xpra-codecs-extras
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5), xpra-codecs (<< 6)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Enhances: xpra-codecs (= ${binary:Version})
+Depends: xpra-codecs (= ${binary:Version})
+        ,${codecsextras:Depends}
+        ,${python3:Depends}
+#jammy:              ,libavif13
+#noble:              ,libavif16
+#oracular:              ,libavif16
+#plucky:              ,libavif16
+#bookworm:              ,libavif15
+#trixie:              ,libavif16
+#forky:              ,libavif16
+#sid:              ,libavif16
+Recommends:
+        ,gstreamer-plugins-ugly
+        ,gstreamer1.0-vaapi
+        ,gstreamer1.0-pipewire
+        ,python3-gst-1.0
+Description: Extra picture and video codecs
+ for the xpra server and client.
+
+
+Package: xpra-codecs-amd
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5), xpra-codecs (<< 6)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Enhances: xpra-codecs (= ${binary:Version})
+Depends: xpra-codecs (= ${binary:Version})
+        ,${python3:Depends}
+        ,amf-amdgpu-pro
+Description: Proprietary AMD video codecs
+ for the xpra server and client.
+
+
+Package: xpra-codecs-nvidia
+Architecture: any
+Conflicts: python2-xpra, python3-xpra, xpra (<< 5), xpra-codecs (<< 6)
+Breaks: python2-xpra (<< 5), python3-xpra (<< 5), xpra (<< 5)
+Enhances: xpra-codecs (= ${binary:Version})
+Depends: xpra-codecs (= ${binary:Version})
+        ,${python3:Depends}
+Recommends: python3-pycuda
+        ,libnvidia-encode1
+        ,libnvjpeg
+        ,libnvidia-fbc1 [amd64]
+Description: Proprietary nvidia picture and video codecs
+ for the xpra server and client: nvfbc, nvjpeg and nvenc.

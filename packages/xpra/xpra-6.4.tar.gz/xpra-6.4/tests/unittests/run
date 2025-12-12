@@ -1,0 +1,83 @@
+#!/usr/bin/bash
+set -e
+
+die() { echo "$*" 1>&2 ; exit 1; }
+
+#don't use tty prompts:
+export XPRA_NOTTY=1
+#don't use GUI dialogs (ie: password prompts):
+export XPRA_SKIP_UI=1
+[ "${GITHUB_RUN_ATTEMPT}" == "1" ] && DEFAULT_DEBUG=0 || DEFAULT_DEBUG=1
+export XPRA_UTIL_DEBUG=${XPRA_UTIL_DEBUG:-$DEFAULT_DEBUG}
+export XPRA_TEST_DEBUG=${XPRA_TEST_DEBUG:-$DEFAULT_DEBUG}
+export XPRA_HIDE_SUBPROCESS_OUTPUT=${XPRA_HIDE_SUBPROCESS_OUTPUT:-1}
+export XPRA_TEST_COVERAGE=${XPRA_TEST_COVERAGE:-1}
+export PYTHON=${PYTHON:-python3}
+#Ubuntu will spew far too many warnings without this:
+export NO_AT_BRIDGE=1
+#SAVED_PYTHONPATH=$PYTHONPATH
+
+UNITTESTS_DIR=`dirname $(readlink -f $0)`
+TESTS_DIR=`dirname $UNITTESTS_DIR`
+SRC_DIR=`dirname $TESTS_DIR`
+
+PYTHON_VERSION=`$PYTHON --version | awk '{print $2}' | awk -F. '{print $1"."$2}'`
+
+
+INSTALL_ROOT="$SRC_DIR/dist/python${PYTHON_VERSION}"
+rm -fr $INSTALL_ROOT
+pushd $SRC_DIR
+$PYTHON ./setup.py install --without-nvidia --without-printing --without-docs --with-scripts --without-cython_tracing --${CYTHONIZE_MORE:-without}-cythonize_more --prefix=/usr --root=$INSTALL_ROOT $EXTRA_ARGS || die "failed to build"
+popd
+
+# workaround for the prefix not being honoured:
+if [ -d "$INSTALL_ROOT/usr/local" ]; then
+    mv $INSTALL_ROOT/usr/local/* $INSTALL_ROOT/usr/
+    rmdir "$INSTALL_ROOT/usr/local"
+fi
+
+if [ `uname` == "Linux" ]; then
+	export "GDK_BACKEND=x11"
+fi
+#why is every workaround for setuptools so cumbersome?
+
+export XPRA_MODULE_DIR=`find $INSTALL_ROOT -name xpra -type d -wholename "*/site-packages/xpra"`
+if [ -z "${XPRA_MODULE_DIR}" ]; then
+	export XPRA_MODULE_DIR=`find $INSTALL_ROOT -name xpra -type d | egrep -v "etc/xpra|libexec/xpra|share/xpra" | head -n 1 | tr -d '\n'`
+fi
+export PYTHONPATH=".:`dirname $XPRA_MODULE_DIR`"
+echo "PYTHONPATH=${PYTHONPATH}"
+export PATH=$INSTALL_ROOT/bin:$PATH
+export XPRA_COMMAND=${XPRA_COMMAND:-$INSTALL_ROOT/usr/bin/xpra}
+export XPRA_SIGNAL_WATCHER_COMMAND=${XPRA_SIGNAL_WATCHER_COMMAND:-$INSTALL_ROOT/usr/libexec/xpra/xpra_signal_listener}
+export XPRA_CONF_DIR=${XPRA_CONF_DIR:-$INSTALL_ROOT/etc/xpra/}
+export XPRA_APP_DIR=${XPRA_APP_DIR:-$INSTALL_ROOT/usr/share/xpra/}
+#create a fake html5 client directory:
+mkdir -p ${XPRA_APP_DIR}/www >& /dev/null
+echo "<html><head><title>fake html client</title></head><body>nothing here</body></html>" > ${XPRA_APP_DIR}/www/index.html
+
+
+pushd $UNITTESTS_DIR
+if [ "${XPRA_TEST_COVERAGE}" == "1" ]; then
+    COVERAGE=`which coverage || which python3-coverage`
+    if [ -z "${COVERAGE}" ]; then
+      echo "python3-coverage is not installed, turning off coverage report"
+      XPRA_TEST_COVERAGE=0
+    fi
+fi
+if [ "${XPRA_TEST_COVERAGE}" == "1" ]; then
+	${COVERAGE} erase
+fi
+
+$PYTHON ./unit/run.py "$@"
+
+if [ "${XPRA_TEST_COVERAGE}" == "1" ]; then
+	ls -la
+	${COVERAGE} combine
+	ls -la
+	${COVERAGE} report -m
+	ls -la
+	${COVERAGE} html
+	[ "$GITHUB_ACTIONS" ] || xdg-open ./htmlcov/index.html
+fi
+popd

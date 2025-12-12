@@ -1,0 +1,3 @@
+build = {'user': 'antoine', 'on': 'fedora', 'date': '2025-12-04', 'time': '16:51', 'machine': 'x86_64', 'cpu': 'Intel(R) Core(TM) i7-6700K CPU @ 4.00GHz', 'bit': '64bit', 'os': 'Linux Fedora 42', 'type': '', 'python': '3.13.9', 'cython': '3.2.2', 'compiler': 'gcc (GCC) 15.2.1 20251111 (Red Hat 15.2.1-4)', 'nvcc': '', 'linker': 'GNU ld version 2.44-12.fc42'}
+libs = {'vpx': '1.15.0', 'x264': '0.164.3108', 'nvenc': '12', 'nvfbc': '8.0', 'x11': '1.8.12', 'xrandr': '1.5.4', 'xtst': '1.2.5', 'xfixes': '6.0.1', 'xkbfile': '1.1.3', 'xcomposite': '0.4.6', 'xdamage': '1.1.6', 'xext': '1.3.6', 'gobject-introspection-1.0': '1.84.0', 'gtk+-3.0': '3.24.49', 'py3cairo': '1.20.1', 'pygobject-3.0': '3.42.2', 'gtk+-x11-3.0': '3.24.49', 'python3': '3.13'}
+python_libs = {}
