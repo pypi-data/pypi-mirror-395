@@ -1,0 +1,25 @@
+# GPT_Helper
+
+A lightweight Python helper library that simplifies interacting with **ChatGPT (OpenAI API)**.  
+It provides a clean interface for sending prompts, formatting responses, summarizing text, and maintaining simple conversation history.
+
+---
+
+## 🚀 Features
+
+- **ChatGPTClient** — send prompts easily using the official OpenAI Chat Completions API.
+- **summarize_text()** — generate a neat summary of long text.
+- **format_response()** — clean & normalize ChatGPT output.
+- **ConversationHistory** — minimal in-memory storage for prompts & responses.
+- Fully documented & ready for PyPI packaging.
+
+---
+
+## 📦 Installation
+
+### Local development install
+
+From the project root:
+
+```bash
+pip install -e .
