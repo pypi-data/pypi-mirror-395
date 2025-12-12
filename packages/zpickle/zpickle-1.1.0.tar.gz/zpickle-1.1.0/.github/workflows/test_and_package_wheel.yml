@@ -1,0 +1,138 @@
+name: Test and Package zpickle
+
+on:
+  push:
+    branches: ["main"]
+    tags: 
+      - "v*"
+
+jobs:
+  test_sdist:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build pytest pytest-cov
+
+      - name: Build source distribution
+        run: |
+          python -m build --sdist --outdir dist/
+          echo "Built source distribution:"
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            dir dist
+          else
+            ls -la dist/
+          fi
+        shell: bash
+
+      - name: Install sdist with dependencies
+        run: |
+          python -m pip install dist/*.tar.gz
+          
+          # Verify package is installed correctly
+          python -c "import zpickle; print(f'Installed zpickle version: {zpickle.__version__}')"
+        shell: bash
+
+      - name: Run tests against installed package
+        run: |
+          # Delete the source folder to ensure we are testing the installed package
+          rm -rf zpickle
+          python -m pytest --cov=zpickle tests/
+        shell: bash
+
+  build_distributions:
+    needs: test_sdist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
+
+      - name: Set Version from Tag for Wheels
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "Setting exact version $VERSION for tag build"
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel
+
+      - name: Build distributions
+        run: |
+          python -m build --sdist --wheel --outdir dist/
+          echo "Built distributions:"
+          ls -la dist/
+
+      - name: Store distributions as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zpickle-dist
+          path: dist/*
+          retention-days: 5
+  
+  publish_to_pypi:
+    needs: [build_distributions]
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    permissions:
+      id-token: write
+      contents: write
+    
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: zpickle-dist
+          path: dist
+          
+      - name: Display structure of downloaded files
+        run: ls -la dist/
+          
+      - name: Create release archive
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}  # Strip the 'v' prefix if present
+          echo "Creating archive for version $VERSION"
+          zip -r zpickle-${VERSION}-dist.zip dist/
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            zpickle-${{ env.RELEASE_VERSION }}-dist.zip
+          generate_release_notes: true
+          draft: false
+          tag_name: ${{ github.ref_name }}
+          
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true
