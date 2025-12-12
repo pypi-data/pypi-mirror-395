@@ -1,0 +1,64 @@
+Nx5d - Data Analysis Done Right
+===============================
+
+`nx5d` is a scientific data analysis framework aiming
+at a high degree of automation. It is centered around the
+[Spice Concept](#./doc/concepts.md#the-spice-concept),
+a management mechanism for defaults and customization
+of analysis settings.
+
+Although originates from the KMC3-XPP beamline of BESSY-II
+and was built around pump-probe X-ray diffraction requirements,
+it's actually intended as an application-agnostic
+framework suitable for any scan-oriented data anlysis
+workflows. If you come from a different background
+and wish to dip your toes in Nx5d, the authors will love
+to hear about it.
+
+
+Why Yet Another Analysis Framework?...
+--------------------------------------
+
+In short: because people should be free to do "people things".
+
+The main motivation behind Nx5d is to use computers at what
+they're good for -- doing menial, stupid, repeptitive work.
+Instead of being wasted on managing boilerplate code for data
+transformation, a scientist's cognitive potential should be used
+for the things that a computer *can't* do:
+understanding things and creating insight.
+
+
+Can I use it right away?
+------------------------
+
+Probably not today.
+
+As of now, september 2025, 
+it's still very much work-in-progress where it's really
+just the basic concepts that have barely settled. It has lots
+of sharp edges, and to add insult to injury, it *severly* lacks
+in the [documentation](https://nx5d.readthedocs.io/) department.
+
+Having said that, it's in a *kind-of-usable* state,
+being used on a daily basis at the author's home beamline.
+The current main focus is indeed documenting and cleaning
+up the basic tools and APIs, and they're getting better suited
+for a broader audience by the day.
+
+If you consider yourself the adventurous, slightly impatient type,
+and still insist on dipping your does in *right now*, by all
+means... go ahead!
+You are strongly encouraged to get in contact with the authors for
+a closer collaboration and support.
+
+
+Caveats & Bugs
+--------------
+
+Not enough code to call them "bugs" yet. We call them "gaping, deep,
+dark holes." :-p
+
+Also, most of Nx5d is being developed and tested primarily on Linux.
+But we'd love to see it perform more robustly on Windows, if we
+receive help by testing and quality patches.

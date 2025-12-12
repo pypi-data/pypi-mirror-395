@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nx5d"
+authors = [
+    { name = "Matthias Rössle", email = "matthias.roessle@helmholtz-berlin.de" },
+    { name = "Florin Boariu", email = "florin.pt@rootshell.ro" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering"
+]
+dependencies = [
+    "numpy",
+    "h5py",
+    "xarray",
+    "silx",
+    "xarray",
+    "tifffile",
+    "pathlib",
+    "cachetools",
+    "scipy",
+    "dask",
+    "parse",
+    "camagick>=0.3",
+    "more_itertools",
+    "caproto",
+]
+dynamic = ["version"]
+description = "NX5 Duct Tape"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = []
+
+[project.urls]
+"Source Code" = "https://gitlab.com/codedump2/nx5d/"
+"Bug Tracker" = "https://gitlab.com/codedump2/nx5d/-/issues"
+"Documentation" = "https://nx5d.readthedocs.io/"
+
+[project.optional-dependencies]
+all = [
+    "nx5d[test,doc,xrd,xfel,scratch,kmc3]"
+]
+
+test = [
+    "pytest",
+    "pytest-cov",
+    "nx5d[doc,xrd,xfel,scratch,kmc3]",
+    "tqdm",
+    "schema"
+]
+
+doc = [
+    "mkdocs",
+    "mkdocstrings[python]",
+    "mkdocs-jupyter"
+]
+
+xrd = [
+    "xrayutilities"
+]
+
+scratch = [
+    "fabio"
+]
+
+xfel = [
+     "extra_data"
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -m 'not xfel'"
+log_cli = true
+testpaths = [
+    "tests",
+]
+markers = [
+    "xfel: test extra_data-based data access (only possible on XFEL clusters)"
+]
+
+[tool.setuptools_scm]
+write_to = "src/nx5d/_version.py"
+
+[project.scripts]
+slim = "nx5d.slim:main"
+kmc3-from-pilatus = "nx5d.xrd.kmc3:kmc3_from_pilatus"

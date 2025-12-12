@@ -1,0 +1,81 @@
+#+TITLE: Evaluating PyMCA / Good Tool Data Analysis?
+
+* What I need to do
+** Point and scroll / rapid data viewing (read-only)
+
+- Scenario 1: Spend time at the beamline on a measurement session,
+  setting up equipment and/or measuring data (e.g. during a
+  "beamtime"). Generally, the data may be 1D or 2D, but in my
+  case, it's mostly 2D data from a surface detector / CCD cam.
+
+  There is need to:
+
+  - Scroll up/down through data as it's being recorded
+    (more-or-less live, near-realtime, latency few seconds
+    to 1-2 minutes max.)
+
+  - Jump fast from one data run to another (i.e. single-click,
+    or preferrably scrolling up/down using arrow keys or
+    mouse wheel)
+
+  - Rapidly adjust settings for image display (ROI, colormap,
+    zoom level) once and keep them the same for subsequent
+    images, e.g. upon scrolling
+   
+  - Rapid access to _very_simple_ processing methods, e.g.
+    select row/column from image to display as 1D data,
+    or integrate over a ROI to display rows and/or columns
+    as 1D data; settings should persist when scrolling through
+    a stack of (recent/live) images, i.e. once set up, I
+    see the same integrated ROI/area for each image I scroll
+    up/down to.
+
+    
+- Scenario 2: Receive an "unknown" data set, or start analysis
+  of an "unsorted" data set (e.g. upon returning home form a
+  "beamtime").
+  
+  - Same as in "Scenario 1"
+
+  - Additionally: ability to compare and/or structure data
+    (open more than 1 data view window, more than 1 data tree
+    window, all on the same data basis).
+
+
+** Slightly more advanced data processing (read-only, possibly read-write)
+
+- Scenario: Same "beamtime" scenario, but this time data takes
+  slightly more difficult processing (i.e. 
+  
+  
+    possible mechanisms: tagging (e.g. "reference sample" vs.
+    "calibration" vs. "temperature run #1" vs. "energy ramp"
+    vs "..."), moving out of way (i.e. copy/paste 
+    
+
+    
+** Currently cumbersome
+- Through ROI image tool
+  - Only works properly from TIFF files,
+    loading from HDF5 fails at reshaping
+  - Main "Stack" window doesn't allow (?) simple iteration,
+    need to click on "Image browser with Median Filter"
+- Throug main PyMCA interface
+  - PyMCA very opinionated about where / how to find data,
+    only really possible in a "flat" NXentr/NXdata hierarchy
+  - To display images, need to select axes (X, Y) and signal
+    (explicitly, even if the H5-file has proper @signal property set)
+  - To switch to different image within the same batch/scan
+    - unclick previous dataset/signal
+    - click new signal
+    - click REPLACE (no Auto-REPLACE in 2D mode)
+  - To switch to different batch/scan
+    - Click on different scan shows same axes/image (ok)
+    - Possibly needing to re-select signal axis
+    
+
+* Stack processing / image conversion
+- Coordinate transformation q/k space: through plugins / "ROI Imaging" tool?
+  
+* Stack processing / data analysis
+- Integration / ROI analysis / peak position plots
