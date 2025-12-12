@@ -1,0 +1,145 @@
+[project]
+name = "libera_utils"
+version = "5.2.2"
+description = "Utility package for Libera Science Data Processing and the Libera Science Data Center. Copyright 2022 University of Colorado."
+authors = [  # Alphabetical
+    { name = "Stephane Beland" },
+    { name = "Heather Cronk" },
+    { name = "Kim Kokkonen" },
+    { name = "Gavin Medley" },
+    { name = "Laura Sandoval" },
+    { name = "Matt Watwood" },
+    { name = "Brandon Stone" }
+]
+maintainers = [
+    { name = "Gavin Medley" },
+    { name = "Matt Watwood" },
+    { name = "Libera Science Data Center", email = "libera.sdp.support@lists.lasp.colorado.edu"}
+]
+license = { text = "BSD-3-Clause" }
+readme = "README.md"
+requires-python = ">=3.11,<4"
+keywords = [
+    "libera",
+    "earth science",
+    "radiation budget",
+    "lasp",
+    "university of colorado"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: BSD License"
+]
+# These are the dependencies used in the package metadata when building the project
+dependencies = [
+    "cloudpathlib[s3]>=0.14.0,<1.0",
+    "lasp-curryer>=0.2.0",
+    "h5netcdf>=1.0.0,<2.0.0",  # h5netcdf engine support for xarray
+    "netCDF4>=1.7.0,<2.0.0,!=1.7.3",  # netcdf4 engine support for xarray
+    "numpy>=1.21",  # Numpy 2.0 is up for release very soon
+    "pydantic>2.0.3",
+    "requests>=2.27.0,<3.0",
+    "setuptools>=69.0.0",
+    "space-packet-parser==6.0.0",
+    "spiceypy>=5.0.0",
+    "urllib3<2.0",  # This pin speeds up solving boto dependencies, which require urllib3<2.0
+    "watchtower>=3.0.0,<4.0",
+    "xarray>=2023.1.0",
+    "botocore",
+    "docker>=7.1.0,<8",
+    "importlib-metadata>=4.8.1,<5",
+    "python-ulid>=2.4.0,<3",
+    "pyyaml>=6.0.2,<7",
+    "pandas (>=2.3.2,<3.0.0)",
+]
+
+[project.urls]
+documentation = "https://libera-utils.readthedocs.io"
+
+[project.scripts]
+libera-utils = 'libera_utils.cli:main'
+
+[tool.poetry]
+packages = [
+    { include = "libera_utils" }
+]
+include = [
+    "LICENSE.txt",
+    "README.md"
+]
+
+[tool.poetry.group.dev.dependencies]
+# These specs are totally open because they are only needed for developers
+bandit = "*"
+cfchecker = "*"
+matplotlib = "*"
+memory-profiler = "*"
+moto = {extras = ["s3"], version = "*"}
+pre-commit = "*"
+psutil = "*"  # Speeds up memory-profiler
+pytest-cov = "*"
+pytest-profiling = "*"
+pytest-randomly = "*"
+pytest-subprocess = "*"
+responses = "*"
+ruff = "*"
+snakeviz = "*"  # Visualization for time profiling
+
+[tool.poetry.group.docgen.dependencies]
+# These are listed as a group rather than an extra because no end user will need them
+# The specs are totally open because no user will need them
+myst-parser = "*"  # Parses markdown for sphinx
+numpydoc = "*"  # Parses Numpy style docstrings
+pydata-sphinx-theme = "*"
+sphinx = "*"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: mark a test as an integration test. Skip these tests with `pytest -m 'not integration' tests`"
+]
+addopts = [
+    "-s"  # Don't capture output (print it)
+]
+minversion = "6.0"
+xfail_strict = true
+
+[build-system]
+requires = ["poetry-core>=2.0.1"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 120  # Target line length. ruff format "does its best" to respect this.
+extend-include = [
+    "libera_utils/**/*.py",
+    "tests/**/*.py"
+]
+extend-exclude = [
+    "tests/test_data/**",
+    "libera_utils/data/**"
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort import sorting
+    "S",  # flake8-bandit security
+    "PT",  # flake8-pytest-style
+    "UP"  # pyupgrade syntax upgrader
+]
+per-file-ignores = { "tests/*" = ["S"] }
+ignore = [
+    "E501", # Ignore line length errors, as we trust ruff format to handle this.
+    "F541" # Allow f strings as docstrings
+]
+
+[tool.codespell]
+ignore-words-list = "ANC"
+
