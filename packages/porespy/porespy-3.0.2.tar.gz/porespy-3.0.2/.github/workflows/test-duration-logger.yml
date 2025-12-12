@@ -1,0 +1,42 @@
+name: Test Duration Logger
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 * *" # First day of every month
+
+jobs:
+  log-durations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+          token: ${{ secrets.PAT }}
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --group test --extra extras
+
+      - name: Run tests
+        run: |
+          rm test/fixtures/.test_durations*
+          uv run pytest --nbval-lax examples/ --store-durations --durations-path test/fixtures/.test_durations_examples
+          uv run pytest test/ --store-durations --durations-path test/fixtures/.test_durations_unit
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+      - name: Commit and push
+        run: |
+          git add test/fixtures/.test_durations*
+          git commit -m "test: Update test duration log [no ci]"
+          git push
