@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "etl_utilities"
+dynamic = ["version"]
+description = 'This repository provides a collection of utility functions and classes for data cleaning, SQL query generation, and data analysis. The code is written in Python and uses libraries such as `pandas`, `numpy`, and `dateutil`.'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = ["etl", "pandas", "cleaning", "etl-utilities", "utilities", "database", "dataframe", "spark"]
+authors = [
+    { name = "Jesse", email = "magicjedi90@aim.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = ["numpy", "pandas", "polars", "python_dateutil", "SQLAlchemy", "rich", "psycopg2-binary", "pyspark"]
+
+[project.urls]
+Documentation = "https://github.com/magicjedi90/etl_utilities#readme"
+Issues = "https://github.com/magicjedi90/etl_utilities/issues"
+Source = "https://github.com/magicjedi90/etl_utilities"
+
+[tool.hatch.version]
+path = "src/etl/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/etl"]
+[tool.hatch.envs.types]
+extra-dependencies = [
+    "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/etl tests}"
+
+[tool.coverage.run]
+source_pkgs = ["etl", "tests"]
+branch = true
+parallel = true
+omit = [
+    "src/etl/__about__.py",
+]
+
+[tool.coverage.paths]
+etl = ["src/etl", "*/etl/src/etl"]
+tests = ["tests", "*/etl/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "no cov",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
