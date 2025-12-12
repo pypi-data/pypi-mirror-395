@@ -1,0 +1,59 @@
+# ISIS default settings and attributes
+#
+---
+area: "49.0001"
+type: level-2
+instance: Gandalf
+transform_after: [ vlan, vrf ]
+config_after: [ vlan, dhcp, routing ]
+attributes:
+  global:
+    af:
+      _list_to_dict: True
+      _alt_types: [ NoneType ]
+      ipv4: bool
+      ipv6: bool
+    area: net
+    type: { type: str, valid_values: [ level-1, level-2, level-1-2 ] }
+    bfd:
+      ipv4: bool
+      ipv6: bool
+      _alt_types: [ bool ]
+    instance: str
+  node:
+    af:
+    area:
+    bfd:
+    import: _r_import
+    instance:
+    net: net
+    type:
+  vrf:
+    active: bool
+    af: { copy: global }
+  link:
+    metric: { type: int, min_value: 1, max_value: 16777215 }
+    cost: { type: int, min_value: 1, max_value: 16777215 }
+    type: { type: str, valid_values: [ level-1, level-2, level-1-2 ] }
+    bfd:
+      ipv4: bool
+      ipv6: bool
+      _alt_types: [ bool ]
+    network_type:
+      type: str
+      valid_values: [ point-to-point ]
+      _alt_types: [ bool ]
+    passive: bool
+  loopback:
+    type: { copy: link }
+    metric: { copy: link }
+    cost: { copy: link }
+features:
+  unnumbered:
+    ipv4: IPv4 unnumbered interfaces
+    ipv6: IPv6 unnumbered interfaces
+    network: multi-access unnumbered links
+  import: Route redistribution
+  circuit_type: Circuit type
+warnings:
+  inactive: True

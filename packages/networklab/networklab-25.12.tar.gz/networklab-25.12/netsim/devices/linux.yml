@@ -1,0 +1,68 @@
+description: Generic Linux host
+interface_name: eth{ifindex}
+lag_interface_name: "bond{lag.ifindex}"
+loopback_interface_name: lo{ifindex if ifindex else ""}
+mgmt_if: eth0
+role: host
+features:
+  lag:
+    passive: False
+  routing:
+    static: true
+  initial:
+    ipv4:
+      unnumbered: peer
+    ipv6:
+      lla: true
+      use_ra: true
+    roles: [ host ]
+libvirt:
+  image: bento/ubuntu-24.04
+  group_vars:
+    netlab_linux_distro: ubuntu
+  features:
+    dhcp:
+      client:
+        ipv4: true
+        ipv6: true
+      server: true
+      relay:
+        ipv4: true
+virtualbox:
+  image: bento/ubuntu-24.04
+  group_vars:
+    netlab_linux_distro: ubuntu
+group_vars:
+  ansible_network_os: linux
+  ansible_connection: paramiko
+  ansible_user: vagrant
+  ansible_ssh_pass: vagrant
+  docker_shell: sh -il
+  ansible_python_interpreter: auto_silent
+  netlab_lldp_enable: False
+  netlab_net_tools: False
+clab:
+  features:
+    initial:
+      roles: [ host, bridge ]
+      generate_mac: [ svi ]
+    vlan:
+      mixed_trunk: true
+      model: router
+      native_routed: true
+      subif_name: '{ifname}.{vlan.access_id}'
+      svi_interface_name: vlan{vlan}
+  image: python:3.13-alpine
+  mtu: 1500
+  kmods:
+  node:
+    kind: linux
+    config_templates:
+      hosts: /etc/hosts:shared
+  group_vars:
+    ansible_connection: docker
+    ansible_user: root
+    netlab_linux_distro: vanilla
+external:
+  image: none
+graphite.icon: server

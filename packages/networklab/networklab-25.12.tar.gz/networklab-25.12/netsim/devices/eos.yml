@@ -1,0 +1,168 @@
+---
+description: Arista vEOS VM or cEOS container
+interface_name: Ethernet{ifindex}
+mgmt_if: Management1
+loopback_interface_name: Loopback{ifindex}
+tunnel_interface_name: Tunnel{ifindex}
+lag_interface_name: "port-channel{lag.ifindex}"
+role: router
+virtualbox:
+  image: arista/veos
+group_vars:
+  ansible_user: vagrant
+  ansible_ssh_pass: vagrant
+  ansible_network_os: eos
+  ansible_connection: network_cli
+  netlab_config_remove:
+  - no lldp transmit
+  - no lldp receive
+features:
+  initial:
+    system_mtu: true
+    ipv4:
+      unnumbered: true
+    ipv6:
+      lla: true
+      use_ra: true
+    max_mtu: 9194
+    min_mtu: 68
+    ra: true
+    roles: [ host, router, bridge ]
+    mgmt_vrf: true
+    generate_mac: [ ethernet ]
+  bfd: true
+  bgp:
+    activate_af: true
+    ipv6_lla: true
+    local_as: true
+    local_as_ibgp: true
+    vrf_local_as: true
+    import: [ ospf, isis, ripv2, connected, static, vrf ]
+    community:
+      standard: [ standard, large ]
+      large: [ large ]
+      extended: [ extended ]
+      2octet: [ standard ]
+    confederation: True
+  dhcp:
+    client:
+      ipv4: true
+    relay: true
+    vrf: true
+    server: true
+  evpn:
+    asymmetrical_irb: true
+    bundle: [ vlan_aware ]
+    irb: true
+  gateway:
+    protocol: [ anycast, vrrp ]
+  isis:
+    circuit_type: true
+    import: [ bgp, ospf, ripv2, connected, static, vrf ]
+    unnumbered:
+      ipv4: true
+      ipv6: true
+      network: true
+  lag:
+    mlag:
+      peer:
+        vlan: 4094              # Use this vlan
+        ifindex: 4094           # Use this port-channel
+        ip: 169.254.127.0/31    # Use this subnet
+    passive: True
+  mpls:
+    6pe: true
+    bgp: true
+    ldp: true
+    vpn: true
+  ospf:
+    unnumbered: true
+    import: [ bgp, isis, ripv2, connected, static, vrf ]
+    default.policy: true
+    password: true
+    priority: true
+    timers: true
+  ripv2:
+    ipv4: true
+    ipv6: false
+    passive: false
+  routing:
+    policy:
+      set: [ locpref, med, weight, prepend, community ]
+      match:
+        prefix: True
+        nexthop: True
+        aspath: True
+        community:
+          standard: True
+          large: True
+      delete:
+        community: True
+    prefix: True
+    aspath: True
+    community:
+      standard: True
+      large: True
+    static:
+      vrf: True
+      inter_vrf: True
+      discard: True
+  sr: true
+  stp:
+    # See https://www.arista.com/assets/data/pdf/Whitepapers/STPInteroperabilitywithCisco.pdf
+    supported_protocols: [ stp, rstp, mstp, pvrst ]
+    enable_per_port: True
+    port_type: True
+  vlan:
+    model: l3-switch
+    native_routed: true
+    subif_name: '{ifname}.{subif_index}'
+    svi_interface_name: Vlan{vlan}
+  vrf:
+    ospfv2: True
+    ospfv3: True
+    bgp: True
+    isis: True
+  vxlan:
+    vtep6: true
+clab:
+  build: https://netlab.tools/labs/ceos/
+  features:
+    dhcp.client:
+      ipv4: False
+      ipv6: False
+  interface:
+    name: et{ifindex}
+  node:
+    kind: ceos
+    env:
+      INTFTYPE: et
+      CLAB_MGMT_VRF: management
+  mgmt_if: Management0
+  image: ceos:4.34.2F
+  group_vars:
+    ansible_user: admin
+    ansible_ssh_pass: admin
+    ansible_become: yes
+    ansible_become_method: enable
+    netlab_ready: [ ssh ]
+libvirt:
+  build: https://netlab.tools/labs/eos/
+  image: arista/veos
+  create_template: eos.xml.j2
+# create: |
+#   virt-install --connect=qemu:///system --name=vm_box --os-type=linux
+#     --arch=x86_64 --cpu host --vcpus=2 --hvm
+#     --ram=2048 --disk path=vm.qcow2,bus=ide,format=qcow2
+#     --network=network:vagrant-libvirt,model=virtio --graphics none --import
+external:
+  image: none
+graphite.icon: switch
+bgp._cprop_order: [ standard, extended, large, link-bandwidth ]
+
+# Define custom device-specific attributes
+attributes:
+  node:
+    eos:
+      serialnumber: str           # Referenced in ceos-config.j2 template
+      systemmacaddr: mac          # Probably shouldn't be multicast

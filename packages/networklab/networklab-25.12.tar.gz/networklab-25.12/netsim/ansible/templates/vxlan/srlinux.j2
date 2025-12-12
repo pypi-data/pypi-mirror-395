@@ -1,0 +1,59 @@
+{% macro vxlan_interface(vrf,index,type,vni,evi,rd,rts,bundle=False) %}
+- path: /tunnel-interface[name=vxlan0]/vxlan-interface[index={{index}}]
+  value:
+   type: {{ type }}
+   ingress:
+    vni: {{ vni }}
+   egress:
+    source-ip: use-system-ipv4-address
+
+- path: /network-instance[name={{vrf}}]
+  value:
+   type: {{ 'mac-vrf' if type=='bridged' else 'ip-vrf' }}
+   vxlan-interface:
+   - name: vxlan0.{{ index }}
+   protocols:
+    bgp-vpn:
+     bgp-instance:
+     - id: 1
+       # route-distinguisher:
+       # rd: "{{ rd }}"
+       _annotate: "RD left as <auto> for EVPN services and ECMP to work as expected, not '{{ rd }}'"
+       route-target:
+        _annotate: "For compatibility with frr, override auto-derived RT based on EVI {{evi}} with VNI {{vni}}"
+        import-rt: "target:{{ rts.import[0] if rts.import|length else '0:0' }}"
+        export-rt: "target:{{ rts.export[0] if rts.export|length else '0:0' }}"
+    bgp-evpn:
+     bgp-instance:
+     - id: 1
+       evi: {{ evi }}
+       ecmp: 8
+       vxlan-interface: vxlan0.{{ index }}
+{%     if bundle %}
+       routes:
+        bridge-table:
+         vlan-aware-bundle-eth-tag: {{ index }}
+{%     endif %}
+{% endmacro %}
+
+updates:
+{% if vlans is defined and vxlan.vlans is defined %}
+{%   for vname in vxlan.vlans if vlans[vname].vni is defined %}
+{%     set vlan = vlans[vname] %}
+{%     if vlan.vrf is defined and vrfs[vlan.vrf].evpn.vlans is defined %}
+{%      set vrf = vrfs[vlan.vrf] %}
+{# Netlab models a bundle as 1 EVPN instance, SR Linux considers it as individual services with unique EVI/RD but common RT #}
+{# Use VLAN ID as EVI, and assign each an auto-generated RD #}
+{{ vxlan_interface('vlan'+vlan.id|string,vlan.id,'bridged',vlan.vni,vlan.id,vrf.rd,vrf,bundle=True) }}
+{%     elif 'evpn' in vlan %}
+{{ vxlan_interface('vlan'+vlan.id|string,vlan.id,'bridged',vlan.vni,vlan.evpn.evi,vlan.evpn.rd,vlan.evpn) }}
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+{# Symmetric IRB interfaces, note using VRF ID as transit EVI value #}
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() if 'evpn' in vdata and 'transit_vni' in vdata.evpn %}
+{{ vxlan_interface(vname,vdata.vrfidx,'routed',vdata.evpn.transit_vni,vdata.vrfidx,vdata.rd,vdata) }}
+{% endfor %}
+{% endif %}

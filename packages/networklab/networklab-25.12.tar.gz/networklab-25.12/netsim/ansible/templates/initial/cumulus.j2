@@ -1,0 +1,167 @@
+#!/bin/bash
+#
+set -e
+#
+# Create bash profile script
+#
+cat <<SCRIPT >/root/.bash_profile
+#!/bin/bash
+#
+export PS1="\h(bash)#"
+echo "Use vtysh to connect to FRR daemon"
+echo
+SCRIPT
+#
+# Build hosts file
+#
+echo "INIT: setting hostname"
+{% set v_hostname = inventory_hostname.replace("_","-") %}
+hostname {{ v_hostname }}
+#
+{% if clab.kind is not defined %}
+{% include 'linux/hosts.j2' +%}
+{# no need to create hosts file or disable ZTP in a container #}
+#
+# Disable ZTP
+#
+ztp --disable
+{% endif %}
+#
+#
+
+{% if mtu is defined %}
+echo "INIT: Configuring system wide default MTU policy"
+cat > /etc/network/ifupdown2/policy.d/mtu.json <<CONFIG
+{ "address": { "defaults": { "mtu": "{{ mtu }}" } } }
+CONFIG
+{% endif %}
+#
+echo "INIT: creating loopback interface"
+#
+# Create loopback interface entry
+#
+{%- macro loopback_interface(name,data,create) %}
+auto {{ name }}
+{% if create %}
+iface {{ name }}
+  pre-up ip link add {{ name }} type dummy
+{% endif %}
+{% if data.ipv4 is defined %}
+iface {{ name }} inet loopback
+  address {{ data.ipv4 }}
+{% endif %}
+{% if data.ipv6 is defined %}
+iface {{ name }} inet6 loopback
+  address {{ data.ipv6 }}
+{% endif %}
+{% endmacro %}
+
+cat >/etc/network/interfaces.d/10-loopback.intf <<CONFIG
+{% if loopback is defined %}
+{{ loopback_interface(loopback.ifname,loopback,False) }}
+{% endif %}
+{% for l in interfaces if l.type == 'loopback' %}
+{{ loopback_interface(l.ifname,l,True) }}
+{% endfor %}
+CONFIG
+#
+until ifreload -a; do
+  sleep 1
+done
+#
+echo "INIT: creating other interface"
+cat >/etc/network/interfaces.d/11-physical.intf <<CONFIG
+{% for l in interfaces if l.type != 'loopback' %}
+auto {{ l.ifname }}
+{%   if l.ipv4 is defined %}
+
+iface {{ l.ifname }} inet static
+{%     if l.mtu is defined %}
+  mtu {{ l.mtu }}
+{%     endif %}
+{%     if l.ipv4 == True %}
+{%       if l._parent_ipv4 is defined %}
+  address {{ l._parent_ipv4 }}
+{%       endif %}
+{%     else %}
+  address {{ l.ipv4 }}
+{%     endif %}
+{%   endif %}
+{%   if l.ipv6 is defined and l.ipv6 is true %}
+
+iface {{ l.ifname }} inet6
+{%     if l.mtu is defined %}
+  mtu {{ l.mtu }}
+{%     endif %}
+{%   endif %}
+{%   if l.ipv6 is defined and l.ipv6 is string %}
+
+iface {{ l.ifname }} inet6 static
+{%     if l.mtu is defined %}
+  mtu {{ l.mtu }}
+{%     endif %}
+  address {{ l.ipv6 }}
+{%   endif %}
+{%   if l.mtu is defined and node_provider == 'clab' %}
+
+iface {{ l.ifname }}
+  mtu {{ l.mtu }}
+{%     endif %}
+{% endfor %}
+CONFIG
+#
+echo "INIT: executing ifreload"
+until ifreload -a; do
+  sleep 1
+done
+#
+# For whatever crazy reason, I had to enable IPv6 in containers
+#
+{% for l in interfaces if l.type in ['lan','p2p','stub','lag','loopback'] and (l.ipv6 is defined or 'external' in l.role|default('')) %}
+sysctl -qw net.ipv6.conf.{{ l.ifname }}.disable_ipv6=0
+{% endfor %}
+#
+# Enable FRR modules for {{ module|default('none') }}
+#
+{% include 'frr/daemons.j2' +%}
+systemctl enable frr.service
+systemctl start frr.service
+systemctl reload frr.service
+#
+# Rest of initial configuration done through VTYSH
+#
+cat >/tmp/config <<CONFIG
+{% if af.ipv6 is defined %}
+ipv6 forwarding
+{% endif %}
+!
+{% for l in interfaces %}
+interface {{ l.ifname }}
+! no shutdown
+{% if l.name is defined %}
+ description {{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}
+{% elif l.type|default("") == "stub" %}
+ description Stub interface
+{% endif %}
+{% if l.ipv6 is defined and l.type != 'loopback' and 'ipv6' not in l.dhcp.client|default({}) %}
+ ipv6 nd ra-interval 5
+ no ipv6 nd suppress-ra
+{% endif %}
+{% if l.bandwidth is defined %}
+ bandwidth {{ l.bandwidth  }}
+{% endif %}
+!
+{% endfor %}
+do write
+CONFIG
+vtysh -f /tmp/config
+#
+# Enable LLDP
+#
+echo "INIT: enabling LLDP"
+cat <<CONFIG >/etc/lldpd.d/system.conf
+configure lldp tx-interval 30
+configure lldp tx-hold 3
+configure system interface pattern *,!eth0,swp*
+CONFIG
+service lldpd restart

@@ -1,0 +1,79 @@
+!
+router bgp {{ bgp.as }}
+!
+{% for n in bgp.neighbors if n.ipv4 is defined and n.evpn|default(False) %}
+{%   set peer = n.ipv4 if n.ipv4 is string else 'interface ' + n.local_if|default('?') %}
+  neighbor {{ peer }}
+    address-family l2vpn evpn
+      activate
+
+{%   if bgp.rr|default('') and not n.rr|default('') and n.type == 'ibgp' %}
+      route-reflector-client
+{%   endif %}
+
+    exit
+{% endfor %}
+
+{% if vlans is defined %}
+evpn
+{%   for v in vlans.values() if v.evpn.evi is defined and v.vni is defined %}
+{%     set import_target = v.evpn.import|join(' ') -%}
+{%     set export_target = v.evpn.export|join(' ') -%}
+  evi {{ v.evpn.evi }}
+    vni {{ v.vni }}
+    rd {{ v.evpn.rd }}
+    route-target {{ v.evpn.import|join(' ') }} import
+    route-target {{ v.evpn.export|join(' ') }} export
+{%     if import_target == export_target %}
+    route-target {{ v.evpn.export|join(' ') }} both
+{%     endif %}
+
+{%   endfor %}
+{% endif %}
+
+
+{% if vrfs is defined %}
+{%   for n,v in vrfs.items() if v.af is defined %}
+{%     set import_target = v.import|join(' ') -%}
+{%     set export_target = v.export|join(' ') -%}
+
+evpn
+  no arp-nd-suppression disable
+  vrf {{ n }}
+    rd {{ bgp.router_id }}:{{ v.vrfidx }}
+    route-target {{ v.import|join(' ') }} import
+    route-target {{ v.export|join(' ') }} export
+{%     if import_target == export_target %}
+    route-target {{ v.export|join(' ') }} both
+{%     endif %}
+{%     if v.evpn.transit_vni is defined %} 
+    vni {{ v.evpn.transit_vni }}
+{%     endif %}
+
+{%     if v.af.ipv4|default(false) %}
+    advertise ipv4 connected
+    advertise ipv4 static
+    advertise ipv4 ospf
+    advertise ipv4 bgp
+{%     endif %}
+{%     if v.af.ipv6|default(false) %}
+    advertise ipv6 connected
+    advertise ipv6 static
+    advertise ipv6 ospf
+    advertise ipv6 bgp
+{%     endif %}
+
+!
+router bgp {{ bgp.as }}
+  vrf {{ n }}
+{%     if v.af.ipv4|default(false) %}
+    address-family ipv4 unicast
+      redistribute l2vpn evpn
+{%     endif %}
+{%     if v.af.ipv6|default(false) %}
+    address-family ipv6 unicast
+      redistribute l2vpn evpn
+{%     endif %}
+!
+{%   endfor %}
+{% endif %}

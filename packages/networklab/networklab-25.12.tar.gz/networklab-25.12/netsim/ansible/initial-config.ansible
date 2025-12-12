@@ -1,0 +1,83 @@
+#!/usr/bin/env ansible-playbook
+---
+- name: Deploy initial device configuration
+  hosts: all:!unprovisioned
+  strategy: "{{ netlab_strategy|default('linear') }}"
+  gather_facts: false
+  tasks:
+  - name: Set variables that cannot be set with VARS
+    set_fact:
+      netlab_device_type: "{{ netlab_device_type|default(ansible_network_os) }}"
+      netlab_interfaces: "{{ ([ loopback ] if loopback is defined else []) + interfaces|default([]) }}"
+      search_path: "{{ paths_templates.dirs }}"
+      node_provider: "{{ provider|default(netlab_provider) }}"
+    tags: [ always ]
+
+  - import_tasks: tasks/wait-for-ready.yml
+  - import_tasks: tasks/initial-config.yml
+
+#
+# Deploy module-specific configurations
+#
+# Input parameters:
+#
+# * The "modules" group contains all nodes with "module" attribute
+# * The global list of modules sorted in proper config order is defined in netlab_module
+#   variable in "modules" group.
+# * Optional "modlist" variable defines the modules to be configured (set with -e flag)
+#
+# Hints to understand the spaghetti code the follows:
+#
+# * We need to configure modules defined in "netlab_module" limited by the list specified
+#   in "modlist" -- an intersection of the two lists. "modlist" might not be defined, in that
+#   case we take "netlab_module" as default value, and the intersection will be the whole
+#   "netlab_module" list
+#
+- name: Deploy module-specific configurations
+  hosts: modules:!unprovisioned
+  strategy: "{{ netlab_strategy|default('linear') }}"
+  tags: [ module,test ]
+  tasks:
+  - name: Set variables that cannot be set with VARS
+    set_fact:
+      mod_select: "{{ modlist.split(',') if modlist is defined else netlab_module }}"
+  - name: Deploy individual configuration modules
+    include_tasks: "tasks/deploy-module.yml"
+    args:
+      apply:
+        vars:
+          paths: "{{ search_path }}"
+        tags: [ always ]
+    loop: "{{ netlab_module }}"
+    when: config_module in mod_select
+    loop_control:
+      loop_var: config_module
+
+#
+# Deploy custom configuration templates
+#
+# Input parameters:
+#
+# * The "custom_configs" group contains all nodes with "config" attribute
+# * The "netlab_custom_config" variable in "custom_config" group contains ordered list
+#   of all custom configs used by lab devices
+#
+# See the "deploy modules" comments to understand the weird code that follows
+#
+- name: Deploy custom deployment templates
+  hosts: custom_configs:!unprovisioned
+  strategy: "{{ netlab_strategy|default('linear') }}"
+  tags: [ custom,test ]
+  tasks:
+  - name: Run custom configuration deployment scripts
+    include_tasks: "tasks/deploy-custom-config.yml"
+    args:
+      apply:
+        tags: [ always ]
+    when: >
+      custom_config in config and 
+      custom_config not in _daemon_config|default({}) and
+      custom_config.replace('.','@') not in _daemon_config|default({})
+    loop: "{{ netlab_custom_config }}"
+    loop_control:
+      loop_var: custom_config

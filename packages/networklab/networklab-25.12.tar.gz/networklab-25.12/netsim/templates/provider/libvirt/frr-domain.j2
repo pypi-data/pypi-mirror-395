@@ -1,0 +1,41 @@
+{% if _vagrant_scripts.frr is not defined %}
+{%   set _vagrant_scripts.frr = True %}
+
+    $frr_install_script = <<-SCRIPT
+set -e
+if which /usr/lib/frr/frrinit.sh; then
+  echo "FRR already installed, skipping installation"
+else
+  export DEBIAN_FRONTEND=noninteractive
+  echo "Installing GPG, curl, and iproute2"
+  apt-get update -qq >/dev/null
+  apt-get install -qq curl gnupg iproute2 >/dev/null
+  echo "Installing FRR -- set 'netlab_quick_start' node variable to True to skip this step"
+  curl -s https://deb.frrouting.org/frr/keys.asc >/etc/apt/trusted.gpg.d/frr.asc
+  FRRVER="frr-stable"
+  echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) $FRRVER > /etc/apt/sources.list.d/frr.list
+  apt-get update -qq >/dev/null
+  apt-get install -qq frr frr-pythontools bridge-utils ethtool >/dev/null
+  echo "Installation complete"
+fi
+    SCRIPT
+{% endif %}
+    {{ name }}.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+
+    {{ name }}.vm.provider :libvirt do |domain|
+      domain.cpus = 1
+      domain.memory = 1024
+    end
+
+    # Run debian-specific provisioning script.
+    #
+    # Password change has to be inline as the password might be different for each VM
+    #
+    $frr_password = <<-SCRIPT
+{% if n.ansible_ssh_pass|default(False) %}
+{%   include '_debian_vagrant_password.j2' +%}
+{% endif +%}
+    SCRIPT
+
+    {{ name }}.vm.provision :shell, :inline => $frr_password{%
+      if not (n.netlab_quick_start|default(False)) %} + $frr_install_script {% endif +%}

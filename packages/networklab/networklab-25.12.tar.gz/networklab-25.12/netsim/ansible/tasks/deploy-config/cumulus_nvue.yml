@@ -1,0 +1,16 @@
+- set_fact:
+    nvue_config_file: "/tmp/nvue_config_{{ netsim_action }}.yaml"
+- name: "copy the cumulus nvue YAML {{ netsim_action }} config file to switch (generated from {{ config_template }})"
+  template:
+    src: "{{ config_template }}"
+    dest: "{{ nvue_config_file }}"
+    mode: 0644
+
+- name: "execute on cumulus: 'nv config patch' for {{ netsim_action }} config"
+  command: nv config patch {{ nvue_config_file }}
+
+- name: "execute on cumulus: 'nv config apply -y' for {{ netsim_action }} config"
+  command: nv config apply -y
+  tags: [ print_action, always ]
+  register: nv_config_apply
+  failed_when: "'failed' in nv_config_apply.stdout or 'Invalid config' in nv_config_apply.stderr"

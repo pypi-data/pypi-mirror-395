@@ -1,0 +1,27 @@
+{# TODO: Refactor, move bgp-evpn macro to evpn module, import here and pass vxlan macro #}
+{% macro vxlan_interface(vname,vdata) %}
+- path: configure/service/vpls[service-name={{ vname }}]
+  val:
+{# May get created for first time here, when not referenced from any interfaces #}
+    customer: '1'
+    admin-state: enable
+    service-id: {{ vdata.id|int + 10000 }}
+    vxlan:
+      instance:
+      - vxlan-instance: 1
+        vni: {{ vdata.vni }}
+{%   for vtep in vdata.vtep_list|default([]) %}
+{%     if loop.first %}
+        egress-vtep:
+{%     endif %}
+        - ip-address: "{{ vtep }}"
+{%   endfor %}
+{% endmacro %}
+
+updates:
+{% if vlans is defined and vxlan.vlans is defined %}
+{%   for vname in vxlan.vlans if vlans[vname].vni is defined %}
+{%     set vlan = vlans[vname] %}
+{{     vxlan_interface('vlan'+vlan.id|string,vlan) }}
+{%   endfor %}
+{% endif %}

@@ -1,0 +1,50 @@
+{% import "templates/routing/_default.ios.j2" as ospf_default %}
+{% import "templates/routing/_redistribute.frr.j2" as redistribute with context %}
+!
+router ospf6
+ ospf6 router-id {{ ospf.router_id }}
+ timers lsa min-arrival 100
+ timers throttle spf 10 50 500
+{% if ospf.reference_bandwidth is defined %}
+ auto-cost reference-bandwidth {{ ospf.reference_bandwidth }}
+{% endif %}
+{{ redistribute.config(ospf,af='ipv6') }}
+{{ ospf_default.config(ospf,'ipv6') }}
+{% if 'ipv6' in loopback %}
+ interface {{ loopback.ifname }} area {{ ospf.area }}
+{% endif %}
+{% for l in interfaces|default([]) if 'ospf' in l and ('ipv6' in l or 'ipv6' in l.dhcp.client|default({})) %}
+ interface {{ l.ifname }} area {{ l.ospf.area }}
+{% endfor %}
+!
+{% for l in interfaces|default([]) if 'ospf' in l and ('ipv6' in l or 'ipv6' in l.dhcp.client|default({})) %}
+interface {{ l.ifname }}
+! {{ l.name|default("") }}
+{%   if l.ospf.network_type is defined %}
+ ipv6 ospf6 network {{ l.ospf.network_type }}
+{%   endif %}
+{%   if l.ospf.cost is defined %}
+ ipv6 ospf6 cost {{ l.ospf.cost }}
+{%   endif %}
+{%   if l.ospf.passive|default(False) %}
+ ipv6 ospf6 passive
+{%   endif %}
+{%   if l.ospf.bfd|default(False) %}
+{%     set link_bfd = l.bfd|default({}) %}
+ ipv6 ospf6 bfd {{
+   link_bfd.multiplier|default(bfd.multiplier)|default(3)
+   }} {{ 
+   link_bfd.min_rx|default(bfd.min_rx)|default(500) }} {{ 
+   link_bfd.min_tx|default(bfd.min_tx)|default(500) }}
+{%   endif %}
+{%   if l.ospf.timers.hello is defined %}
+ ipv6 ospf6 hello-interval {{ l.ospf.timers.hello }}
+{%   endif %}
+{%   if l.ospf.timers.dead is defined %}
+ ipv6 ospf6 dead-interval {{ l.ospf.timers.dead }}
+{%   endif %}
+{%   if l.ospf.priority is defined %}
+ ipv6 ospf6 priority {{ l.ospf.priority }}
+{%   endif %}
+!
+{% endfor %}

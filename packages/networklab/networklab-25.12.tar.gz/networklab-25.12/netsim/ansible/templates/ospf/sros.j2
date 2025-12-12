@@ -1,0 +1,90 @@
+{% from "templates/initial/sros.j2" import if_name, declare_router, configure_router with context %}
+{% from 'templates/routing/_redistribute.sros.j2' import import_protocols with context %}
+
+{% macro ospf_export_policy(ospf,vrf) %}
+- path: configure/policy-options/policy-statement[name=ospf_{{vrf}}_export]
+  val:
+    default-action:
+      action-type: reject
+    entry:
+{{  import_protocols(ospf.import|default([])) | indent(4,first=True) }}
+{% endmacro %}
+
+{% macro ospf_interface(l) %}
+      - interface-name: "{{ if_name(l,l.ifname) }}"
+{%  if l.ospf.passive|default(False) %}
+        passive: True
+{%  endif %}
+{%  if l.ospf.bfd|default(False) %}
+        bfd-liveness: {% if not ospf.strict_bfd|default(False) %}{ }
+{%     else +%}
+          strict: True
+{%      if ospf.strict_bfd_delay|default(0) > 0 %}
+          strict-mode-holddown: {{ ospf.strict_bfd_delay }}
+{%      endif %}
+{%     endif %}
+{%  endif %}
+{%  if l.ospf.network_type|default("") in ["broadcast","non-broadcast","point-to-point","point-to-multipoint"] %}
+        interface-type: "{{ 'p2mp-nbma' if l.ospf.network_type=='point-to-multipoint' else l.ospf.network_type }}"
+{%  endif %}
+{%  if l.ospf.cost is defined %}
+        metric: {{ l.ospf.cost }}
+{%  endif %}
+{% endmacro %}
+
+{% macro ospf_config(af,ospf,vrf_interfaces,vrf_name='') %}
+{%   set vname = vrf_name or 'default' %}
+{%   set pid = ospf.process|default(0) %}
+{%   set ospfv = 'ospf3' if af=='ipv6' else 'ospf' %}
+{%   if ospf.import is defined %}
+{{     ospf_export_policy(ospf,vname) }}
+{%   endif %}
+{{   configure_router(vrf_name,sub_path="/"+ospfv+"[ospf-instance="+pid|string + "]") }}
+  val:
+{%   if ospf.import is defined %}
+    export-policy: [ ospf_{{ vname }}_export ]
+{%     if vname == 'default' %}
+    asbr: {}
+{%     endif %}
+{%   endif %}
+{%   if ospf.reference_bandwidth is defined %}
+    reference-bandwidth: {{ ospf.reference_bandwidth * 1000 }} # in kbps
+{%   endif %}
+    admin-state: enable
+    router-id: {{ ospf.router_id }}
+{#
+   SR OS configures interfaces within areas, so we need a list of areas. netlab
+   does not provide that directly, so we're reverse-engineering it from the
+   interface data:
+
+   * Select all interfaces with the desired AF
+   * Extract 'ospf.area' attribute from those interfaces
+   * This will result in multiple definitions of the same area, so make the
+     list unique
+   * While we're stacking filters, sort the list just to make it look nicer
+
+   Please note that we'll probably have an empty string in the list (default value),
+   so we have to check for that when looping over the areas.
+#}
+{%   set areas = vrf_interfaces|selectattr(af,'defined')|map(attribute='ospf.area',default='')|unique|sort %}
+{%   for area in areas if area %}{# Now iterate over all areas we found (skipping the empty string #}
+{%     if loop.first %}{#           For the first area, we have to start the 'area' dictionary #}
+    area:
+{%     endif %}
+    - area-id: "{{ area }}"
+{%     for intf in vrf_interfaces if intf.ospf.area|default('') == area and af in intf %}
+{%       if loop.first %}{#         For the first interface in an area, we have to start the 'interface' dict #}
+      interface:
+{%       endif %}
+{{       ospf_interface(intf) }}{#  And finally, add OSPF interface data #}
+{%     endfor %}
+{%   endfor %}
+{% endmacro %}
+
+updates:
+{% if ospf.af.ipv4|default(False) %}
+{{   ospf_config('ipv4',ospf,netlab_interfaces) }}
+{% endif %}
+{% if ospf.af.ipv6|default(False) %}
+{{   ospf_config('ipv6',ospf,netlab_interfaces) }}
+{% endif %}

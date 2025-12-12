@@ -1,0 +1,47 @@
+---
+description: Cisco ASAv
+support:
+  level: minimal
+interface_name: GigabitEthernet0/{ifindex}
+ifindex_offset: 0
+mgmt_if: Management0/0
+group_vars:
+  ansible_user: vagrant
+  ansible_ssh_pass: vagrant1
+  ansible_become_method: enable
+  ansible_become_password: vagrant1
+  ansible_network_os: asa
+  ansible_connection: network_cli
+  # yamllint disable-line rule:line-length
+  netlab_ssh_args: "-o KexAlgorithms=+diffie-hellman-group14-sha1 -o PubkeyAcceptedKeyTypes=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa"
+  netlab_check_retries: 50
+external:
+  image: none
+features:
+  bgp: True
+  isis:
+    circuit_type: True
+libvirt:
+  image: cisco/asav
+  create_template: asav.xml.j2
+  build: https://netlab.tools/labs/asav/
+  #  create:
+  #    virt-install --connect=qemu:///system --network network=vagrant-libvirt,model=virtio --name=vm_box
+  #      --cpu host --arch=x86_64 --machine=pc-1.0 --vcpus=1 --ram=2048 --os-type=linux --noacpi
+  #      --virt-type=kvm --watchdog i6300esb,action=reset
+  #      --disk path=vm.qcow2,format=qcow2,device=disk,bus=virtio,cache=writethrough
+  #      --disk path=bootstrap.iso,format=iso,device=cdrom --graphics none --import
+  create_iso: asav
+clab:
+  image: vrnetlab/cisco_asav:9-16-4-57
+  node:
+    kind: cisco_asav
+#  interface.name: eth{ifindex}
+  build: https://containerlab.dev/manual/kinds/cisco_asav/
+  group_vars:
+    ansible_ssh_pass: CiscoAsa1!
+    ansible_become_password: CiscoAsa1!
+    ansible_user: admin
+    netlab_ready: [ ssh ]
+    netlab_check_command: |
+      exit

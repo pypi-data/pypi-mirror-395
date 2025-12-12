@@ -1,0 +1,20 @@
+Creating initial configuration for RouterOS 7
+=============================================
+
+* Wait for the 'login' prompt
+* Login as 'admin' (no password)
+* Set the new 'admin' password as 'admin'
+  (do not use a different password, this is what netlab expects)
+* Copy-paste the following configuration
+
+=============================================
+
+/interface ethernet set 0 name=temp
+
+/system scheduler
+add name="boot" on-event=":delay 00:00:10 \r\n/ip dhcp-client set 0 interface=[/interface ethernet get 0 name]" start-time=startup interval=0s disabled=no
+
+=============================================
+
+* Poweroff the VM with `/system/shutdown`
+

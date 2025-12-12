@@ -1,0 +1,56 @@
+{% import "vyos.macro.j2" as bgpcfg %}
+
+set protocols bgp system-as {{ bgp.as }}
+
+{% if bgp.router_id|ipv4 %}
+set protocols bgp parameters router-id {{ bgp.router_id }}
+{% endif %}
+{% if bgp.rr|default(False) and bgp.rr_cluster_id|default(False) %}
+set protocols bgp parameters cluster-id {{ bgp.rr_cluster_id }}
+{% endif %}
+
+{% for n in bgp.neighbors %}
+{%   for af in ['ipv4','ipv6'] if n[af] is defined %}
+{{     bgpcfg.neighbor(n,n[af],bgp,af) }}
+{%   endfor %}
+{% endfor %}
+
+{# Activate address families #}
+{% for af in ['ipv4','ipv6'] %}
+{%   if bgp[af] is defined %}
+
+# Work on Family {{ af }}
+
+{% if bgp.import is defined %}
+{%   for s_proto,s_data in bgp.import.items() %}
+set protocols bgp address-family {{ af }}-unicast redistribute {{ s_proto }}{%
+    if s_proto == 'ospf' and af == 'ipv6' %}v3{% endif %}{%
+    if 'policy' in s_data %} route-map {{ s_data.policy }}-{{ af }}{% endif +%}
+{%   endfor %}
+{% endif %}
+
+{%     if loopback[af] is defined and bgp.advertise_loopback %}
+{{       bgpcfg.bgp_network(af,loopback[af]) }}
+{%     endif %}
+
+{%     for l in interfaces|default([]) if l.bgp.advertise|default("") and l[af] is defined and not 'vrf' in l %}
+{{       bgpcfg.bgp_network(af,l[af]) }}
+{%     endfor %}
+
+{%     for pfx in bgp.originate|default([]) if af == 'ipv4' %}
+{{       bgpcfg.bgp_network(af,pfx) }}
+{%     endfor %}
+
+{%     for n in bgp.neighbors if n[af] is defined and n.activate[af] is defined and n.activate[af] %}
+{{       bgpcfg.neighbor_af(n,n[af],bgp,af) }}
+{%     endfor %}
+
+{%   endif %}
+{% endfor %}
+
+{#
+  Add extra IPv4 prefixes
+#}
+{% for pfx in bgp.originate|default([]) %}
+set protocols static route {{ pfx|ipaddr('0') }} blackhole
+{% endfor %}
