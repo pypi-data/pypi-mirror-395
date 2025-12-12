@@ -1,0 +1,38 @@
+# EVPN default settings and attributes
+#
+requires: [ bgp ]
+no_propagate: [ start_transit_vni, transport, vlan_bundle_service, as ]
+transform_after: [ vlan, vxlan, vrf ]
+config_after: [ vlan, vxlan, vrf ]
+session: [ ibgp ]
+start_transit_vni: 200000
+attributes:
+  global:
+    session: [ ibgp, ebgp ]
+    start_transit_vni: { type: int, min_value: 1, max_value: 16777215 }
+    transport: { type: str, valid_values: [ vxlan, mpls ] }
+    vlans: list
+    vrfs: list
+    as: asn
+  bundle: [ vlan_aware, vlan, port, port_vlan ]
+  node:
+    session:
+    vlans:
+    vrfs:
+    domain: str
+  vlan:
+    evi: rd
+    rd: rd
+    import: list
+    export: list
+  node_vlan:
+    import: { copy: vlan }
+    export: { copy: vlan }
+  vrf:
+    transit_vni: { type: int, min_value: 1, max_value: 16777215, _alt_types: [ str, bool ] }
+    bundle: { type: str, valid_values: [ vlan_aware, vlan, port, port_vlan ]}
+features:
+  irb: Supports symmetrical IRB (routing on ingress and egress)
+  asymmetrical_irb: Support asymmetrical IRB (routing on ingress, bridging on egress)
+  bundle: EVPN bundle service support
+  multi_rt: Multiple import/export route targets

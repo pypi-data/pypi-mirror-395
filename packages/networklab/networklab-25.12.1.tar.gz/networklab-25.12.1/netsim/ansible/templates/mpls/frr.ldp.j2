@@ -1,0 +1,21 @@
+!
+mpls ldp
+  router-id {{ ldp.router_id }}
+{% if not 'ipv6' in loopback %}
+  dual-stack transport-connection prefer ipv4
+{% endif %}
+{% for af in ['ipv4','ipv6'] if ldp.af[af] is defined %}
+  address-family {{ af }}
+{%   if loopback[af] is defined %}
+    discovery transport-address {{ loopback[af]|ipaddr('address') }}
+{%   endif %}
+{%   if ldp.explicit_null|default(False) %}
+    label local advertise explicit-null
+{%   endif %}
+{%   for l in interfaces if ('ldp' in l) and (af in l) and not l.ldp.passive %}
+    interface {{ l.ifname }}
+    exit
+{%   endfor %}
+  exit
+{% endfor %}
+!

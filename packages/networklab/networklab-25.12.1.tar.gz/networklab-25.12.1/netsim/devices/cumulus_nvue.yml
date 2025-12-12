@@ -1,0 +1,101 @@
+description: Cumulus VX 5.x configured with NVUE
+support:
+  level: minimal
+  caveats:
+  - The new Cumulus 5.x releases run only on NVIDIA air. The last public release was 5.10.0 from September 2024
+interface_name: swp{ifindex}
+lag_interface_name: "bond{lag.ifindex}"
+#
+# Can assign multiple IPs to 'lo' interface, ifindex ignored by template
+loopback_interface_name: lo{ifindex if ifindex else ""}
+mgmt_if: eth0
+#
+# Set the same default MTU for all providers
+mtu: 1500
+libvirt:
+  #
+  # Latest as of November 2024, supports PVRST+ on single vlan-aware bridge
+  image: CumulusCommunity/cumulus-vx:5.10.0
+  caveats:
+  - >-
+    The Vagrant account on public Cumulus 5.x Vagrant boxes has expired password
+    (details in https://netlab.tools/labs/cumulus_nvue/#changing-the-password-expiration-policy)
+  - Newer Cumulus 5.x releases run only on NVIDIA Air
+virtualbox:
+  image: CumulusCommunity/cumulus-vx:5.10.0
+group_vars:
+  ansible_user: cumulus
+  ansible_ssh_pass: GetLost1!
+  ansible_network_os: cumulus_nvue
+  ansible_connection: paramiko
+  ansible_python_interpreter: auto_silent
+features:
+  initial:
+    system_mtu: True
+    ipv4:
+      unnumbered: True
+    ipv6:
+      lla: True
+  bgp:
+    activate_af: True
+    import: [ connected, ospf, static, vrf ]
+    ipv6_lla: True
+    rfc8950: true
+    local_as: True
+    local_as_ibgp: True
+    vrf_local_as: True
+  evpn:
+    irb: True
+    asymmetrical_irb: True
+  gateway:
+    protocol: [ anycast, vrrp ]
+  lag:
+    passive: False
+    mlag:
+      peer:
+        global: True              # Use global node level settings for peerlink
+        mac: 44:38:39:ff:00:00    # Base to generate a virtual MAC. NVidia reserved range
+        vlan: 4094                # Use this vlan
+        ip: linklocal             # Use this IP subnet
+        backup_ip: loopback.ipv4  # Use loopback.ipv4 as a backup IP address for peerlink
+  ospf:
+    default: True
+    import: [ bgp, connected, static, vrf ]
+    unnumbered: True
+    timers: True
+    priority: True
+  routing:
+    static:
+      vrf: True
+      inter_vrf: True
+      discard: True
+  stp:
+    supported_protocols: [ stp, rstp, pvrst ]  # PVRST requires release 5.6.0 or higher
+    enable_per_port: True
+    port_type: True
+  vlan:
+    model: router
+    svi_interface_name: "vlan{vlan}"
+    native_routed: True
+    mixed_trunk: True
+    subif_name: "{ifname}.{vlan.access_id}"
+  vrf:
+    ospfv2: True
+    bgp: True
+  vxlan: True
+  # vtep6: true                                # Waiting for https://github.com/CumulusNetworks/ifupdown2/pull/315
+clab:
+  kmods:
+    initial: [ ebtables ]
+  node:
+    kind: cvx
+    runtime: docker
+  image: networkop/cx:5.3.0                    # Note: dated and known to have issues, unsupported
+  caveats:
+  - Cumulus 5.x containers are out-of-date and not supported
+  group_vars:
+    ansible_connection: docker
+    ansible_user: root
+external:
+  image: none
+graphite.icon: switch

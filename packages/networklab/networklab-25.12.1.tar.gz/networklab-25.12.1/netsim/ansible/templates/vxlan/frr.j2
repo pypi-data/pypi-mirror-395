@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+set -e # Exit immediately when any command fails
+#
+
+{% set use_evpn = vxlan.flooding|default('') == 'evpn' %}
+
+{% macro create_vxlan_interface(vni,br_name,vrf=None,mtu=1500) %}
+ip link add vxlan{{ vni }} type vxlan \
+  id {{ vni }} \
+  dstport 4789 \
+  local {{ vxlan.vtep }} {{ 'nolearning' if use_evpn else '' }}
+#
+# Add it to the VLAN bridge (create if needed for l3 vnis); disable STP
+if [ ! -e /sys/devices/virtual/net/{{ br_name}} ]; then
+ip link add {{ br_name }} type bridge
+ip link set up dev {{ br_name }}
+fi
+ip link set dev vxlan{{ vni }} master {{ br_name }}
+ip link set {{ br_name }} type bridge stp_state 0
+
+# Do not generate ipv6 link-local address for VXLAN devices
+ip link set mtu {{ mtu }} addrgenmode none dev vxlan{{ vni }}
+{% if use_evpn %}
+# Disable dynamic MAC learning for evpn, see https://docs.frrouting.org/en/latest/evpn.html
+bridge link set dev vxlan{{ vni }} learning off
+{% endif %}
+ip link set up dev vxlan{{ vni }}
+{% if vrf %}
+ip link set {{ br_name }} master {{ vrf }}
+{% endif %}
+{% endmacro %}
+
+# Create L3 VNIs with bridges and add to correct vrf table
+{% set _mtu = mtu|default(1500) %}
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() if 'evpn' in vdata and vdata.evpn.transit_vni is defined %}
+{{ create_vxlan_interface(vdata.evpn.transit_vni, "tvni-"+vdata.vrfidx|string,vname,_mtu) }}
+{% endfor %}
+{% endif %}
+
+{% if vxlan.vlans is defined %}
+{%   for vname in vxlan.vlans if vlans[vname].vni is defined %}
+{%     set vlan = vlans[vname] %}
+# Create VXLAN L2 interface per vni
+{{ create_vxlan_interface(vlan.vni, "vlan" + vlan.id|string,None,vlan.mtu|default(_mtu)) }}
+{%     if vlan.vtep_list is defined %}
+{%       for remote_vtep in vlan.vtep_list %}
+bridge fdb append 00:00:00:00:00:00 dev vxlan{{vlan.vni}} dst {{ remote_vtep }}
+{%       endfor %}
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+exit $?

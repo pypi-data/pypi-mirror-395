@@ -1,0 +1,112 @@
+{% macro ip_addresses(name,index,intf,ipv6_ra=True,is_system=False) %}
+- path: /interface[name={{name}}]/subinterface[index={{index}}]
+  value:
+   description: "{{ intf.name | default( 'No description' )|replace('->','~')|regex_replace('[\\[\\]]','') }}"
+   admin-state: {{ "disable" if intf.shutdown|default(False) else "enable" }}
+{% if 'ipv4' in intf %}
+   ipv4:
+    admin-state: enable
+{%   if intf.ipv4|bool %}
+    unnumbered:
+      admin-state: enable
+      interface: "system0.0"
+{%   else %}
+    address:
+    - ip-prefix: "{{ intf.ipv4 }}"
+{%     if not is_system %}
+      primary: [null]
+{%     endif %}
+{%   endif %}
+{% endif %}
+{% if 'ipv6' in intf %}
+   ipv6:
+    admin-state: enable
+{%   if intf.ipv6 is string %}
+    address:
+    - ip-prefix: "{{ intf.ipv6 }}"
+      type: "{{ 'link-local' if intf.ipv6|ipaddr('link-local') else 'global' }}-unicast"
+{%   endif %}
+{% if ipv6_ra %}
+    neighbor-discovery:
+     learn-unsolicited: link-local
+    router-advertisement:
+     router-role:
+      admin-state: enable             # no ipv6 nd suppress-ra
+      min-advertisement-interval: 4   # Leaving this at platform default 200..600 takes too long at startup
+      _annotate_min-advertisement-interval: "Reduced from platform default 200s"
+      max-advertisement-interval: 5
+{% endif %}
+{% endif %}
+{% endmacro %}
+
+updates:
+{% if mtu is defined %}
+{% if (clab.type in ['ixr6','ixr10'] and (mtu+14)>9486)
+   or (clab.type in ['ixrd1','ixrd2','ixrd3','ixrh1','ixrh2','ixrh3','ixrd2l','ixrd3l'] and (mtu+14)>9398) %}
+{{ mtu_too_large | mandatory( 'IP MTU '+str(mtu)+' too large for given hardware platform: ' + clab.type ) }}
+{% else %}
+- path: /system/mtu
+  value:
+   default-port-mtu: {{ [mtu + 14,1500]|max }}
+{%  if 'ixrh' not in clab.type %}
+   default-l2-mtu: {{ [mtu + 14,1500]|max }}
+{%  endif %}
+   default-ip-mtu: {{ mtu }}
+   _annotate_default-ip-mtu: "Custom system wide setting, overrides default 1500"
+{% endif %}
+{% endif %}
+
+{% if loopback is defined %}
+{{  ip_addresses('system0',0,loopback,False,True)  }}
+{% endif %}
+{% for l in interfaces|default([]) if l.vlan is not defined and l.subif_index is not defined %}
+{% set if_name_index = l.ifname.split('.') %}
+{% set if_name = if_name_index[0] %}
+{% set if_index = if_name_index[1] if if_name_index|length > 1 else '0' %}
+{% set if_desc = l.name|default( l.ifname )|replace('->','~')|regex_replace('[\\[\\]]','') %}
+- path: /interface[name={{ if_name }}]
+  value:
+   description: "{{ if_desc }}"
+{% if l.mtu is defined and l.type!='loopback' %} # min 1500; max 9412 for 7220, 9500 for 7250 platforms
+   mtu: {{ [l.mtu + 14,1500]|max }}
+{% endif %}
+   subinterface:
+{% if l.mtu is defined and l.type!='loopback' %} # min 1500; max 9412 for 7220, 9500 for 7250 platforms
+    ip-mtu: {{ l.mtu }}
+{% endif %}
+    index: {{ if_index }}
+    description: "{{ if_desc }}"
+
+{{ ip_addresses(if_name,if_index,l) }}
+{% endfor %}
+
+{% macro list_interfaces(vrf) %}
+{% for l in interfaces|default([]) if l.vlan is not defined and l.subif_index is not defined and l.vrf|default('default')==vrf %}
+{% set if_name_index = l.ifname.split('.') %}
+{% set if_name = if_name_index[0] %}
+{% set if_index = if_name_index[1] if if_name_index|length > 1 else '0' %}
+- path: /network-instance[name={{ vrf }}]
+  value:
+   type: {{ 'default' if vrf=='default' else 'ip-vrf' }}
+   interface:
+   - name: {{ if_name }}.{{ if_index }}
+{% endfor %}
+{% endmacro %}
+
+{# Make sure the default VRF is called 'default', and has system0.0 interface #}
+- path: /network-instance[name=default]
+  value:
+   type: default
+   interface:
+   - name: system0.0
+
+{{ list_interfaces('default') }}
+
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() %}
+
+# TODO: vdata.rd, vdata.import/export, vdata.af
+{{ list_interfaces(vname) }}
+
+{% endfor %}
+{% endif %}

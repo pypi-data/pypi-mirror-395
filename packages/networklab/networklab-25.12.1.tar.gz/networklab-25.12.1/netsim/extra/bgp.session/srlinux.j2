@@ -1,0 +1,117 @@
+{% macro ebgp_neighbor(n,af,vrf) -%}
+- path: /network-instance[name={{vrf}}]/protocols/bgp
+  value:
+{% if n.type=='ebgp' and af=='ipv6' and n.ipv6|default(0) == True %}
+   group:
+   - group-name: intf-{{ n.local_if }}
+{% else %}
+   neighbor:
+   - peer-address: {{ n[af]|ipaddr('address') }}
+{% endif %}
+{% if n.default_originate|default(False) %}
+{%   set activate = n.activate|default( {'ipv4':True,'ipv6':True} ) %}
+     send-default-route:
+      ipv4-unicast: {{ activate.ipv4|default(False) }}
+      ipv6-unicast: {{ activate.ipv6|default(False) }}
+{% endif %}
+{% if n.timers is defined %}
+     timers:
+      keepalive-interval: {{ n.timers.keepalive|default(60) }}
+      hold-time: {{ n.timers.hold|default(180) }}
+{% endif %}
+{% if n.bfd|default(False) %}
+     failure-detection:
+      enable-bfd: True
+{% endif %}
+{% if n.passive|default(False) %}
+     transport:
+      passive-mode: True
+{% endif %}
+     as-path-options:
+{% if n.allowas_in is defined %}
+      allow-own-as: {{ n.allowas_in|int + 1 }}
+      _annotate_allow-own-as: "The maximum number of matches in any received AS_PATH before it is considered a loop and considered invalid"
+{% endif %}
+      replace-peer-as: {{ True if n.as_override|default(False) else False }}
+{% if n.remove_private_as|default([]) %}
+{%  if 'replace' in n.remove_private_as %}
+      remove-private-as:
+       mode: replace
+{%  elif 'on' in n.remove_private_as or 'all' in n.remove_private_as %}
+      remove-private-as:
+       mode: delete
+       leading-only: {{ 'all' not in n.remove_private_as }}
+{%  endif %}
+{% endif %}
+{% if n.password is defined and (n.type!='ebgp' or n.ipv6|default('') is string) %}
+     authentication:
+      keychain: "peer-{{n.name}}"
+
+- path: /system/authentication/keychain[name=peer-{{n.name}}]
+{% if n.tcp_ao|default('x')=='' or bgp.tcp_ao|default('')=='' %}
+{%  set type = 'tcp-md5' %}
+{%  set algorithm = 'md5' %}
+{% else %}
+{%  set type = 'tcp-ao' %} {# Note: Not yet supported in R23.7 #}
+{%  set algorithm = n.tcp_ao | default( bgp.tcp_ao ) %} 
+{% endif %}
+  value:
+   admin-state: enable
+   type: "{{ type }}"
+   key:
+   - index: 1
+     algorithm: "{{ algorithm }}"
+     authentication-key: "{{ n.password }}"
+{%   endif %}
+{%- endmacro %}
+
+{% macro bgp_admin_state(addr,vrf,state) %}
+{%   if addr is string %}
+- path: /network-instance[name={{vrf}}]/protocols/bgp
+  value:
+    neighbor:
+    - peer-address: {{ addr }}
+      admin-state: {{ state }}
+{%   endif %}
+{%- endmacro %}
+
+updates:
+{% for addr in bgp._session_clear|default([]) %}
+{{   bgp_admin_state(addr,'default','disable') }}
+
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() if vdata.bgp is defined %}
+{%   for addr in vdata.bgp._session_clear|default([]) %}
+{{     bgp_admin_state(addr,vname,'disable') }}
+{%   endfor %}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+{% for af in ['ipv4','ipv6'] %}
+{%   for n in bgp.neighbors if n[af] is defined and (n[af] is string or (af=='ipv6' and n.ipv6)) %}
+{{     ebgp_neighbor(n,af,'default') -}}
+{%   endfor %}
+{% endfor %}
+
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() if vdata.bgp is defined %}
+{%   for af in ['ipv4','ipv6'] %}
+{%     for n in vdata.bgp.neighbors if n[af] is defined and (n[af] is string or (af=='ipv6' and n.ipv6)) %}
+{{       ebgp_neighbor(n,af,vname) -}}
+{%     endfor %}
+{%   endfor %}
+{% endfor %}
+{% endif %}
+
+{% for addr in bgp._session_clear|default([]) %}
+{{   bgp_admin_state(addr,'default','enable') }}
+{% endfor %}
+
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() if vdata.bgp is defined %}
+{%   for addr in vdata.bgp._session_clear|default([]) %}
+{{     bgp_admin_state(addr,vname,'enable') }}
+{%   endfor %}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,72 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+fi
+
+# Configuration items start here
+
+configure
+
+{% if routing.prefix|default({}) %}
+{%   include '_prefix_list_vyos.j2' %}
+{% endif %}
+
+{% if routing.aspath|default({}) %}
+{%   for asp_name,asp_list in routing.aspath.items() %}
+{%     for asp_line in asp_list %}
+set policy as-path-list {{ asp_name }} rule {{ asp_line.sequence }} action {{ asp_line.action }}
+set policy as-path-list {{ asp_name }} rule {{ asp_line.sequence }} regex "{{ asp_line.path }}"
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+
+{% if routing.community|default({}) %}
+{%   for c_name,c_value in routing.community.items() %}
+{%     for c_line in c_value.value %}
+set policy community-list {{ c_name }} rule {{ c_line.sequence }} action {{ c_line.action }}
+set policy community-list {{ c_name }} rule {{ c_line.sequence }} regex "{{ c_line._value }}"
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+
+{% if routing.policy|default({}) %}
+{%   import '_route_policy_vyos.j2' as routemap with context %}
+{{   routemap.create_route_maps(routing.policy) }}
+{% endif %}
+
+# Static routing
+
+{% for sr_data in routing.static|default([]) %}
+{%   set cmd_vrf = 'vrf name ' + sr_data.vrf if 'vrf' in sr_data else '' %}
+{%   set cmd_intf = 'interface ' + sr_data.nexthop.intf if 'intf' in sr_data.nexthop else '' %}
+{# if vrf key is present, but set to none, means default vrf #}
+{%   set cmd_nh_vrf_leak = 'vrf ' + (sr_data.nexthop.vrf or 'default') if 'vrf' in sr_data.nexthop else '' %}
+{%   if 'ipv4' in sr_data %}
+{%     if 'discard' in sr_data.nexthop %}
+set {{cmd_vrf}} protocols static route {{sr_data.ipv4}} blackhole
+{%     else %}
+set {{cmd_vrf}} protocols static route {{sr_data.ipv4}} next-hop {{sr_data.nexthop.ipv4}} {{cmd_intf}}
+{# vrf leaking must be a different instruction set, and without the interface #}
+{%       if cmd_nh_vrf_leak %}
+set {{cmd_vrf}} protocols static route {{sr_data.ipv4}} next-hop {{sr_data.nexthop.ipv4}} {{cmd_nh_vrf_leak}}
+{%       endif %}
+{%     endif %}
+{%   endif %}
+{%   if 'ipv6' in sr_data %}
+{%     if 'discard' in sr_data.nexthop %}
+set {{cmd_vrf}} protocols static route6 {{ sr_data.ipv6 }} blackhole
+{%     else %}
+set {{cmd_vrf}} protocols static route6 {{ sr_data.ipv6 }} next-hop {{sr_data.nexthop.ipv6}} {{cmd_intf}}
+{# vrf leaking must be a different instruction set #}
+{%       if cmd_nh_vrf_leak %}
+set {{cmd_vrf}} protocols static route6 {{ sr_data.ipv6 }} next-hop {{sr_data.nexthop.ipv6}} {{cmd_nh_vrf_leak}}
+{%       endif %}
+{%     endif %}
+{%   endif %}
+{% endfor %}
+
+commit
+save
+exit

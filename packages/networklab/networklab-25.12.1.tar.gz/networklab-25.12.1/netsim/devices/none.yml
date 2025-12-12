@@ -1,0 +1,149 @@
+---
+description: Dummy device used to test topology transformation
+_meta_device: True
+#
+# Most features are enabled on the dummy device -- this file is a pretty
+# good template if you want to figure out what device features there are.
+#
+interface_name: eth{ifindex}
+lag_interface_name: bond{lag.ifindex}
+loopback_interface_name: Loopback{ifindex}
+tunnel_interface_name: Tunnel{ifindex}
+virtualbox:
+  image: none
+libvirt:
+  image: none
+clab:
+  image: none
+external:
+  image: none
+group_vars:
+  ansible_connection: paramiko_ssh
+  ansible_network_os: none
+features:
+  bfd: True
+  bgp:
+    local_as: True
+    vrf_local_as: True
+    local_as_ibgp: True
+    activate_af: True
+    ipv6_lla: True
+    rfc8950: True
+    bandwidth: True
+    multihop.vrf: True
+    allowas_in: True
+    as_override: True
+    bfd: True
+    default_originate: True
+    gtsm: True
+    passive: True
+    password: True
+    remove_private_as: True
+    rs_client: True
+    rs: True
+    tcp_ao: [ libvirt, virtualbox, external ]
+    timers: True
+    import: [ ospf, isis, ripv2, connected, static, vrf ]
+    confederation: True
+  dhcp:
+    client:
+      ipv4: true
+      ipv6: true
+      routing: true
+    relay: true
+    vrf: true
+    server: true
+  eigrp: true
+  evpn:
+    irb: true
+    asymmetrical_irb: true
+    bundle: [ vlan_aware ]
+    multi_rt: true
+  gateway:
+    protocol: [ anycast, vrrp ]
+  initial:
+    ipv4:
+      unnumbered: True
+    ipv6:
+      lla: True
+    mgmt_vrf: True
+    ra: True
+    roles: [ router, bridge, host ]
+  isis:
+    import: [ bgp, ospf, ripv2, connected, vrf ]
+    vrf: True
+    unnumbered:
+      ipv4: True
+      ipv6: True
+      network: True
+  lag:
+    mlag: True
+    passive: True
+  mpls:
+    ldp: True
+    bgp: True
+    vpn: True
+    6pe: True
+  ospf:
+    unnumbered: True
+    import: [ bgp, isis, ripv2, connected, static, vrf ]
+    default.policy: true
+    password: true
+    priority: true
+    timers: true
+  ripv2:
+    ipv4: true
+    ipv6: true
+    passive: true
+    import: [ bgp, isis, ospf, connected, vrf ]
+  routing:
+    policy:
+      set:
+        locpref: True
+        med: True
+        weight: True
+        prepend: True
+        community: True
+      match:
+        prefix: True
+        nexthop: True
+        aspath: True
+        community:
+          standard: True
+          large: True
+      delete:
+        community: True
+    prefix: True
+    aspath: True
+    community:
+      standard: True
+      large: True
+    static:
+      vrf: True
+      inter_vrf: True
+      discard: True
+  sr: True
+  srv6:
+    isis: True
+    ospf: True
+    bgp: True
+    vpn: True
+  stp:
+    supported_protocols: [ stp, rstp, mstp, pvrst ]
+    enable_per_port: True
+    port_type: True
+  vlan:
+    model: router
+    subif_name: '{ifname}.{subif_index}'
+    svi_interface_name: Vlan{vlan}
+    mixed_trunk: True
+    native_routed: True
+  vrf:
+    ospfv2: True
+    ospfv3: True
+    bgp: True
+    ripv2: True
+    ripng: True
+    isis: True
+  vxlan:
+    vtep6: true

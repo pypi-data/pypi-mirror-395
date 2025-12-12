@@ -1,0 +1,32 @@
+---
+description: vJunos Router (similar to vMX)
+support:
+parent: vmx
+interface_name: ge-0/0/{ifindex}
+group_vars:
+  netlab_device_type: vjunos-router
+
+features:
+  vlan:
+    model: router
+    svi_interface_name: irb.{vlan}
+    subif_name: "{ifname}.{vlan.access_id}"
+    mixed_trunk: true
+    native_routed: true
+
+clab:
+  image: vrnetlab/juniper_vjunos-router:23.4R2-S2.1
+  build: https://containerlab.dev/manual/kinds/vr-vjunosrouter/
+  mtu: 1500
+  node:
+    kind: juniper_vjunosrouter
+  interface:
+    name: eth{ifindex+1}
+  group_vars:
+    ansible_user: admin
+    ansible_ssh_pass: admin@123
+    netlab_check_retries: 60
+    netlab_check_delay: 10
+    netlab_ready: [ ssh ]
+
+graphite.icon: router

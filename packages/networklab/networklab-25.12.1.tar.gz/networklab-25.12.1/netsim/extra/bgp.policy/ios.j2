@@ -1,0 +1,60 @@
+{% import '_route_map_ios.j2' as routemap with context %}
+{% macro ebgp_neighbor(n,af) -%}
+{%   if 'weight' in n %}
+    neighbor {{ n[af] }} weight {{ n.weight }}
+{%   endif %}
+{%   if 'bandwidth' in n %}
+    neighbor {{ n[af] }} dmzlink-bw
+{%   endif %}
+{{   routemap.apply_route_map(n,af,True) }}
+{%- endmacro %}
+!
+{% macro aggregate(bgp,af) %}
+{%   for a_entry in bgp.aggregate|default([]) if af in a_entry %}
+    aggregate-address {% 
+       if af == 'ipv4' %}{{ a_entry[af]|ipaddr('network') }} {{ a_entry[af]|ipaddr('netmask') }}{% endif %}{%
+       if af == 'ipv6' %}{{ a_entry[af] }}{% endif %}{%
+       if a_entry.summary_only|default(false) %} summary-only{% endif %}{%
+       if a_entry.suppress_policy|default(false) %} suppress-map {{ a_entry.suppress_policy }}-{{ af }}{% endif %}{%
+       if a_entry.attributes|default(false) %} attribute-map {{ a_entry.attributes }}-{{ af }}{% endif +%}
+{%   endfor -%}
+{% endmacro -%}
+!
+router bgp {{ bgp.as }}
+{% if 'locpref' in bgp %}
+  bgp default local-preference {{ bgp.locpref }}
+{% endif %}
+!
+! Global address families
+{% for af in ['ipv4','ipv6'] if af in bgp %}
+  address-family {{ af }}
+{{   aggregate(bgp,af) }}
+{%   for n in bgp.neighbors if n[af] is defined %}
+{{     ebgp_neighbor(n,af) }}
+{%   endfor %}
+{% endfor %}
+!
+{% if vrfs is defined %}
+{%   for vname,vdata in vrfs.items() if vdata.bgp is defined and vdata.bgp.neighbors is defined %}
+{%     for af in ['ipv4','ipv6'] if af in vdata.af|default({}) %}
+{%       for n in vdata.bgp.neighbors if n[af] is defined %}
+{%         if loop.first %}
+  address-family {{ af }} vrf {{ vname }}
+{{           aggregate(vdata.bgp,af) }}
+{%         endif %}
+{{         ebgp_neighbor(n,af) }}
+{%       endfor %}
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+!
+{% for s_af in af %}
+do clear bgp {{ s_af }} unicast * soft in
+do clear bgp {{ s_af }} unicast * soft out
+{% endfor %}
+{% for vname in vrfs|default({}) %}
+{%   for v_af in vrfs[vname].af %}
+do clear bgp vrf {{ vname }} {{ v_af }} unicast * soft in
+do clear bgp vrf {{ vname }} {{ v_af }} unicast * soft out
+{%   endfor %}
+{% endfor %}
