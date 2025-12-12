@@ -1,0 +1,99 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/ConnorStoneAstro/caskade/blob/main/media/caskade_logo_dark.png?raw=true">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/ConnorStoneAstro/caskade/blob/main/media/caskade_logo_white.png?raw=true">
+  <img alt="caskade logo" src="https://github.com/ConnorStoneAstro/caskade/blob/main/media/caskade_logo_white.png?raw=true" width="70%">
+</picture>
+
+# caskade
+
+[![CI](https://github.com/ConnorStoneAstro/caskade/actions/workflows/ci.yml/badge.svg)](https://github.com/ConnorStoneAstro/caskade/actions/workflows/ci.yml)
+[![CD](https://github.com/ConnorStoneAstro/caskade/actions/workflows/cd.yml/badge.svg)](https://github.com/ConnorStoneAstro/caskade/actions/workflows/cd.yml)
+[![codecov](https://codecov.io/gh/ConnorStoneAstro/caskade/graph/badge.svg?token=7YAEJJZ4GM)](https://codecov.io/gh/ConnorStoneAstro/caskade)
+[![PyPI - Version](https://img.shields.io/pypi/v/caskade)](https://pypi.org/project/caskade/)
+[![Documentation Status](https://readthedocs.org/projects/caskade/badge/?version=latest)](https://caskade.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.08786/status.svg)](https://doi.org/10.21105/joss.08786)
+
+Build scientific simulators, treating them as a directed acyclic graph. Handles
+argument passing for complex nested simulators.
+
+## Install
+
+``` bash
+pip install caskade
+```
+
+More details on the [docs page](https://caskade.readthedocs.io/en/latest/install.html). 
+if you want to use `caskade` with `jax` then run:
+
+```bash
+pip install caskade[jax]
+```
+
+Alternately, just pip install `jax`/`jaxlib` separately as they are the only extra requirements.
+
+## Usage
+
+Make a `Module` object which may have some `Param`s. Define a `forward` method
+using the decorator.
+
+``` python
+from caskade import Module, Param, forward
+
+class MySim(Module):
+    def __init__(self, a, b=None):
+        super().__init__()
+        self.a = a
+        self.b = Param("b", b)
+
+    @forward
+    def myfun(self, x, b=None):
+        return x + self.a + b
+```
+
+We may now create instances of the simulator and pass the dynamic parameters.
+
+``` python
+import torch
+
+sim = MySim(1.0)
+
+params = [torch.tensor(2.0)]
+
+print(sim.myfun(3.0, params=params))
+```
+
+Which will print `6` by automatically filling `b` with the value from `params`.
+
+### Why do this?
+
+The above example is not very impressive, the real power comes from the fact
+that `Module` objects can be nested, making an arbitrarily complicated
+analysis graph. Some other features include:
+
+* Unroll parameters into 1D vector to interface with other packages (emcee, scipy.optimize, dynesty, etc.)
+* Link parameters by value or functional relationship
+* Reparametrize (e.g. between polar and cartesian) without modifying underlying code
+* Save and load sampling chains automatically in HDF5
+* Track metadata alongside parameters
+* And much more! [Beginner tutorial](https://caskade.readthedocs.io/en/latest/notebooks/BeginnersGuide.html) and [Advanced tutorial](https://caskade.readthedocs.io/en/latest/notebooks/AdvancedGuide.html)
+
+### Use different backends
+
+`caskade` can be run with different backends for `torch`, `numpy`, and `jax`.
+See the [Beginners Guide
+tutorial](https://caskade.readthedocs.io/en/latest/notebooks/BeginnersGuide.html)
+to learn more!
+
+## Documentation
+
+The `caskade` interface has lots of flexibility, check out the
+[docs](https://caskade.readthedocs.io) to learn more. For a quick start, jump
+right to the [Jupyter notebook
+tutorial](https://caskade.readthedocs.io/en/latest/notebooks/BeginnersGuide.html)!
+
+The [`caustics`](https://github.com/Ciela-Institute/caustics) package can serve
+as a project template utilizing the many features of `caskade`.
+
+The `caskade` package maintains 100% coverage for unit testing, ensuring
+reliability as the backbone of a research project. 
+
