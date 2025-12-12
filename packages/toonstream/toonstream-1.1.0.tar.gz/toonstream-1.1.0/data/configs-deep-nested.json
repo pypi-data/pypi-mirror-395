@@ -1,0 +1,1584 @@
+[
+  {
+    "service_name": "api-gateway",
+    "version": "2.4.1",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 3,
+      "resources": {
+        "cpu": {
+          "request": "500m",
+          "limit": "2000m"
+        },
+        "memory": {
+          "request": "1Gi",
+          "limit": "4Gi"
+        }
+      },
+      "health_check": {
+        "liveness": {
+          "http_get": {
+            "path": "/health",
+            "port": 8080,
+            "scheme": "HTTP"
+          },
+          "initial_delay": 30,
+          "period": 10
+        },
+        "readiness": {
+          "http_get": {
+            "path": "/ready",
+            "port": 8080,
+            "scheme": "HTTP"
+          },
+          "initial_delay": 10,
+          "period": 5
+        }
+      }
+    },
+    "network": {
+      "ingress": {
+        "enabled": true,
+        "host": "api.example.com",
+        "tls": {
+          "enabled": true,
+          "certificate": "wildcard-cert",
+          "min_version": "TLSv1.2"
+        },
+        "rate_limiting": {
+          "enabled": true,
+          "requests_per_second": 1000,
+          "burst": 2000
+        }
+      },
+      "egress": {
+        "allowed_destinations": ["*.aws.amazon.com", "*.google.com"],
+        "proxy": {
+          "enabled": true,
+          "host": "proxy.internal",
+          "port": 3128
+        }
+      }
+    },
+    "observability": {
+      "logging": {
+        "level": "info",
+        "format": "json",
+        "outputs": ["stdout", "file"],
+        "rotation": {
+          "max_size": "100MB",
+          "max_age": "7d",
+          "max_backups": 10
+        }
+      },
+      "metrics": {
+        "enabled": true,
+        "port": 9090,
+        "path": "/metrics",
+        "scrape_interval": "15s"
+      },
+      "tracing": {
+        "enabled": true,
+        "sampler": {
+          "type": "probabilistic",
+          "param": 0.1
+        },
+        "exporter": {
+          "endpoint": "jaeger-collector:14250",
+          "protocol": "grpc"
+        }
+      }
+    }
+  },
+  {
+    "service_name": "user-service",
+    "version": "1.8.3",
+    "environment": "production",
+    "deployment": {
+      "strategy": "blue-green",
+      "replicas": 5,
+      "resources": {
+        "cpu": {
+          "request": "1000m",
+          "limit": "4000m"
+        },
+        "memory": {
+          "request": "2Gi",
+          "limit": "8Gi"
+        }
+      },
+      "health_check": {
+        "liveness": {
+          "tcp_socket": {
+            "port": 5432
+          },
+          "initial_delay": 60,
+          "period": 20
+        },
+        "readiness": {
+          "exec": {
+            "command": ["/bin/check-db", "--timeout=5"]
+          },
+          "initial_delay": 15,
+          "period": 10
+        }
+      }
+    },
+    "database": {
+      "primary": {
+        "host": "postgres-master.db.internal",
+        "port": 5432,
+        "name": "users",
+        "ssl": {
+          "enabled": true,
+          "mode": "require",
+          "ca_cert": "/certs/ca.pem"
+        },
+        "pool": {
+          "min_size": 5,
+          "max_size": 20,
+          "max_idle_time": "10m"
+        }
+      },
+      "replica": {
+        "host": "postgres-replica.db.internal",
+        "port": 5432,
+        "lag_threshold": "1s",
+        "failover": {
+          "enabled": true,
+          "timeout": "30s"
+        }
+      }
+    },
+    "cache": {
+      "redis": {
+        "cluster": {
+          "nodes": ["redis-1:6379", "redis-2:6379", "redis-3:6379"],
+          "mode": "cluster",
+          "password_secret": "redis-password"
+        },
+        "settings": {
+          "max_retries": 3,
+          "timeout": "2s",
+          "ttl": "1h"
+        }
+      }
+    },
+    "security": {
+      "authentication": {
+        "jwt": {
+          "issuer": "auth.example.com",
+          "audience": "user-service",
+          "algorithm": "RS256",
+          "public_key_url": "https://auth.example.com/.well-known/jwks.json"
+        }
+      },
+      "authorization": {
+        "rbac": {
+          "enabled": true,
+          "default_role": "user",
+          "admin_roles": ["admin", "superadmin"]
+        }
+      }
+    }
+  },
+  {
+    "service_name": "payment-processor",
+    "version": "3.1.0",
+    "environment": "production",
+    "deployment": {
+      "strategy": "canary",
+      "replicas": 4,
+      "canary": {
+        "steps": [10, 25, 50, 100],
+        "interval": "5m",
+        "metrics": {
+          "success_rate": {
+            "threshold": 0.99,
+            "query": "sum(rate(http_requests_total{status=~\"2..\"}[5m]))"
+          }
+        }
+      },
+      "resources": {
+        "cpu": {
+          "request": "2000m",
+          "limit": "8000m"
+        },
+        "memory": {
+          "request": "4Gi",
+          "limit": "16Gi"
+        }
+      }
+    },
+    "integrations": {
+      "stripe": {
+        "enabled": true,
+        "api_version": "2023-10-16",
+        "webhook": {
+          "endpoint": "/webhooks/stripe",
+          "signing_secret": "stripe-webhook-secret",
+          "events": ["payment_intent.succeeded", "payment_intent.failed"]
+        },
+        "retry": {
+          "max_attempts": 3,
+          "backoff": {
+            "initial": "1s",
+            "multiplier": 2,
+            "max": "30s"
+          }
+        }
+      },
+      "paypal": {
+        "enabled": true,
+        "mode": "live",
+        "client_credentials": {
+          "client_id_secret": "paypal-client-id",
+          "client_secret_secret": "paypal-client-secret"
+        }
+      }
+    },
+    "message_queue": {
+      "kafka": {
+        "brokers": ["kafka-1:9092", "kafka-2:9092", "kafka-3:9092"],
+        "topics": {
+          "payment_events": {
+            "partitions": 10,
+            "replication_factor": 3,
+            "retention": "7d"
+          }
+        },
+        "producer": {
+          "acks": "all",
+          "compression": "snappy",
+          "batch_size": 16384
+        },
+        "consumer": {
+          "group_id": "payment-processor",
+          "auto_offset_reset": "earliest",
+          "enable_auto_commit": false
+        }
+      }
+    }
+  },
+  {
+    "service_name": "notification-engine",
+    "version": "2.0.5",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 6,
+      "resources": {
+        "cpu": {
+          "request": "500m",
+          "limit": "2000m"
+        },
+        "memory": {
+          "request": "1Gi",
+          "limit": "4Gi"
+        }
+      }
+    },
+    "channels": {
+      "email": {
+        "provider": "sendgrid",
+        "config": {
+          "api_key_secret": "sendgrid-api-key",
+          "from_address": "noreply@example.com",
+          "from_name": "Example Inc"
+        },
+        "templates": {
+          "welcome": "d-abc123",
+          "password_reset": "d-def456",
+          "invoice": "d-ghi789"
+        },
+        "rate_limit": {
+          "per_user": 10,
+          "per_minute": 1000
+        }
+      },
+      "sms": {
+        "provider": "twilio",
+        "config": {
+          "account_sid_secret": "twilio-sid",
+          "auth_token_secret": "twilio-token",
+          "from_number": "+15551234567"
+        },
+        "fallback": {
+          "enabled": true,
+          "provider": "aws-sns"
+        }
+      },
+      "push": {
+        "provider": "firebase",
+        "config": {
+          "credentials_secret": "firebase-credentials",
+          "project_id": "example-app"
+        },
+        "platforms": {
+          "ios": {
+            "badge_count": true,
+            "sound": "default"
+          },
+          "android": {
+            "priority": "high",
+            "ttl": "3600s"
+          }
+        }
+      }
+    },
+    "rules": {
+      "throttling": {
+        "enabled": true,
+        "window": "1h",
+        "max_per_user": {
+          "email": 50,
+          "sms": 10,
+          "push": 100
+        }
+      },
+      "preferences": {
+        "respect_quiet_hours": true,
+        "quiet_hours": {
+          "start": "22:00",
+          "end": "08:00",
+          "timezone": "user"
+        }
+      }
+    }
+  },
+  {
+    "service_name": "search-service",
+    "version": "4.2.1",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 8,
+      "resources": {
+        "cpu": {
+          "request": "3000m",
+          "limit": "12000m"
+        },
+        "memory": {
+          "request": "8Gi",
+          "limit": "32Gi"
+        }
+      }
+    },
+    "elasticsearch": {
+      "cluster": {
+        "nodes": ["es-1:9200", "es-2:9200", "es-3:9200"],
+        "username_secret": "es-username",
+        "password_secret": "es-password"
+      },
+      "indices": {
+        "products": {
+          "shards": 5,
+          "replicas": 2,
+          "mappings": {
+            "properties": {
+              "title": {
+                "type": "text",
+                "analyzer": "standard"
+              },
+              "price": {
+                "type": "float"
+              },
+              "category": {
+                "type": "keyword"
+              }
+            }
+          },
+          "settings": {
+            "refresh_interval": "1s",
+            "max_result_window": 10000
+          }
+        }
+      },
+      "search": {
+        "default_size": 20,
+        "max_size": 100,
+        "timeout": "5s",
+        "highlight": {
+          "enabled": true,
+          "pre_tags": ["<mark>"],
+          "post_tags": ["</mark>"]
+        }
+      }
+    },
+    "ml": {
+      "recommendations": {
+        "enabled": true,
+        "model": {
+          "type": "collaborative-filtering",
+          "version": "v2.1",
+          "endpoint": "https://ml.internal/recommend"
+        },
+        "cache": {
+          "ttl": "30m",
+          "max_items": 1000
+        }
+      }
+    }
+  },
+  {
+    "service_name": "analytics-pipeline",
+    "version": "1.5.2",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 10,
+      "resources": {
+        "cpu": {
+          "request": "4000m",
+          "limit": "16000m"
+        },
+        "memory": {
+          "request": "16Gi",
+          "limit": "64Gi"
+        }
+      }
+    },
+    "data_sources": {
+      "clickstream": {
+        "kafka": {
+          "topics": ["page_views", "clicks", "conversions"],
+          "consumer_group": "analytics-processor",
+          "batch": {
+            "size": 1000,
+            "timeout": "10s"
+          }
+        }
+      },
+      "databases": {
+        "postgres": {
+          "connections": ["db1", "db2", "db3"],
+          "sync_interval": "5m"
+        }
+      }
+    },
+    "processing": {
+      "spark": {
+        "master": "spark://master:7077",
+        "executor": {
+          "instances": 20,
+          "cores": 4,
+          "memory": "8g"
+        },
+        "driver": {
+          "cores": 2,
+          "memory": "4g"
+        },
+        "conf": {
+          "spark.sql.shuffle.partitions": "200",
+          "spark.default.parallelism": "100"
+        }
+      },
+      "streaming": {
+        "window": {
+          "size": "1m",
+          "slide": "10s"
+        },
+        "watermark": "5m"
+      }
+    },
+    "storage": {
+      "s3": {
+        "bucket": "analytics-data",
+        "prefix": "events/",
+        "partition_by": ["year", "month", "day"],
+        "format": "parquet",
+        "compression": "snappy"
+      }
+    }
+  },
+  {
+    "service_name": "auth-service",
+    "version": "2.3.4",
+    "environment": "production",
+    "deployment": {
+      "strategy": "blue-green",
+      "replicas": 4,
+      "resources": {
+        "cpu": {
+          "request": "1000m",
+          "limit": "4000m"
+        },
+        "memory": {
+          "request": "2Gi",
+          "limit": "8Gi"
+        }
+      }
+    },
+    "authentication": {
+      "methods": {
+        "password": {
+          "enabled": true,
+          "min_length": 12,
+          "require_uppercase": true,
+          "require_lowercase": true,
+          "require_numbers": true,
+          "require_special": true,
+          "bcrypt_cost": 12
+        },
+        "oauth": {
+          "google": {
+            "enabled": true,
+            "client_id": "google-client-id",
+            "client_secret_secret": "google-client-secret",
+            "scopes": ["email", "profile"]
+          },
+          "github": {
+            "enabled": true,
+            "client_id": "github-client-id",
+            "client_secret_secret": "github-client-secret",
+            "scopes": ["user:email"]
+          }
+        },
+        "mfa": {
+          "enabled": true,
+          "totp": {
+            "issuer": "Example Inc",
+            "digits": 6,
+            "period": 30
+          },
+          "backup_codes": {
+            "count": 10,
+            "length": 8
+          }
+        }
+      },
+      "session": {
+        "duration": "24h",
+        "refresh_enabled": true,
+        "refresh_duration": "7d",
+        "storage": {
+          "type": "redis",
+          "prefix": "session:"
+        }
+      }
+    },
+    "password_reset": {
+      "token": {
+        "expiry": "1h",
+        "length": 32
+      },
+      "rate_limit": {
+        "requests": 3,
+        "window": "1h"
+      }
+    }
+  },
+  {
+    "service_name": "media-service",
+    "version": "3.0.7",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 6,
+      "resources": {
+        "cpu": {
+          "request": "2000m",
+          "limit": "8000m"
+        },
+        "memory": {
+          "request": "4Gi",
+          "limit": "16Gi"
+        }
+      }
+    },
+    "storage": {
+      "s3": {
+        "bucket": "media-files",
+        "region": "us-west-2",
+        "access_key_secret": "s3-access-key",
+        "secret_key_secret": "s3-secret-key"
+      },
+      "cdn": {
+        "cloudflare": {
+          "enabled": true,
+          "zone_id": "abc123",
+          "cache_ttl": {
+            "images": "7d",
+            "videos": "30d",
+            "documents": "1d"
+          },
+          "purge": {
+            "on_update": true,
+            "on_delete": true
+          }
+        }
+      }
+    },
+    "processing": {
+      "images": {
+        "formats": ["jpeg", "png", "webp", "avif"],
+        "quality": {
+          "jpeg": 85,
+          "webp": 80,
+          "avif": 75
+        },
+        "thumbnails": {
+          "small": {"width": 150, "height": 150},
+          "medium": {"width": 300, "height": 300},
+          "large": {"width": 800, "height": 800}
+        },
+        "optimization": {
+          "enabled": true,
+          "strip_metadata": true,
+          "progressive": true
+        }
+      },
+      "videos": {
+        "transcoding": {
+          "profiles": {
+            "1080p": {
+              "resolution": "1920x1080",
+              "bitrate": "5000k",
+              "codec": "h264"
+            },
+            "720p": {
+              "resolution": "1280x720",
+              "bitrate": "2500k",
+              "codec": "h264"
+            },
+            "480p": {
+              "resolution": "854x480",
+              "bitrate": "1000k",
+              "codec": "h264"
+            }
+          },
+          "hls": {
+            "enabled": true,
+            "segment_duration": 6,
+            "playlist_type": "vod"
+          }
+        }
+      }
+    }
+  },
+  {
+    "service_name": "inventory-service",
+    "version": "1.9.1",
+    "environment": "production",
+    "deployment": {
+      "strategy": "canary",
+      "replicas": 5,
+      "resources": {
+        "cpu": {
+          "request": "1500m",
+          "limit": "6000m"
+        },
+        "memory": {
+          "request": "3Gi",
+          "limit": "12Gi"
+        }
+      }
+    },
+    "database": {
+      "mongodb": {
+        "connection_string_secret": "mongodb-connection",
+        "database": "inventory",
+        "collections": {
+          "products": {
+            "indexes": [
+              {"keys": {"sku": 1}, "unique": true},
+              {"keys": {"category": 1, "price": -1}},
+              {"keys": {"name": "text"}}
+            ]
+          },
+          "stock": {
+            "time_series": {
+              "enabled": true,
+              "time_field": "timestamp",
+              "meta_field": "product_id"
+            }
+          }
+        },
+        "read_preference": "secondaryPreferred",
+        "write_concern": {
+          "w": "majority",
+          "j": true
+        }
+      }
+    },
+    "sync": {
+      "warehouses": {
+        "main": {
+          "api_endpoint": "https://warehouse-main.internal",
+          "sync_interval": "5m",
+          "batch_size": 100
+        },
+        "backup": {
+          "api_endpoint": "https://warehouse-backup.internal",
+          "sync_interval": "15m",
+          "batch_size": 50
+        }
+      },
+      "conflict_resolution": {
+        "strategy": "last-write-wins",
+        "threshold": "5m"
+      }
+    }
+  },
+  {
+    "service_name": "recommendation-engine",
+    "version": "2.7.3",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 12,
+      "resources": {
+        "cpu": {
+          "request": "4000m",
+          "limit": "16000m"
+        },
+        "memory": {
+          "request": "16Gi",
+          "limit": "64Gi"
+        }
+      }
+    },
+    "models": {
+      "collaborative_filtering": {
+        "algorithm": "als",
+        "hyperparameters": {
+          "rank": 50,
+          "max_iter": 10,
+          "reg_param": 0.01,
+          "alpha": 1.0
+        },
+        "training": {
+          "schedule": "0 2 * * *",
+          "min_interactions": 5,
+          "validation_split": 0.2
+        }
+      },
+      "content_based": {
+        "algorithm": "cosine_similarity",
+        "features": {
+          "text": {
+            "vectorizer": "tfidf",
+            "max_features": 5000,
+            "ngram_range": [1, 2]
+          },
+          "categorical": {
+            "encoding": "one_hot"
+          }
+        }
+      },
+      "hybrid": {
+        "enabled": true,
+        "weights": {
+          "collaborative": 0.6,
+          "content": 0.3,
+          "popularity": 0.1
+        }
+      }
+    },
+    "serving": {
+      "cache": {
+        "redis": {
+          "ttl": "1h",
+          "max_recommendations": 50
+        }
+      },
+      "fallback": {
+        "enabled": true,
+        "strategy": "trending"
+      },
+      "ab_testing": {
+        "enabled": true,
+        "variants": {
+          "control": {
+            "percentage": 50,
+            "model": "collaborative"
+          },
+          "experiment": {
+            "percentage": 50,
+            "model": "hybrid"
+          }
+        }
+      }
+    }
+  },
+  {
+    "service_name": "fraud-detection",
+    "version": "1.4.8",
+    "environment": "production",
+    "deployment": {
+      "strategy": "blue-green",
+      "replicas": 8,
+      "resources": {
+        "cpu": {
+          "request": "3000m",
+          "limit": "12000m"
+        },
+        "memory": {
+          "request": "8Gi",
+          "limit": "32Gi"
+        }
+      }
+    },
+    "rules_engine": {
+      "rules": {
+        "velocity": {
+          "enabled": true,
+          "thresholds": {
+            "transactions_per_hour": 10,
+            "amount_per_day": 5000
+          },
+          "action": "flag"
+        },
+        "geolocation": {
+          "enabled": true,
+          "impossible_travel": {
+            "max_speed_kmh": 800,
+            "time_window": "4h"
+          },
+          "action": "block"
+        },
+        "device": {
+          "fingerprinting": {
+            "enabled": true,
+            "max_devices_per_user": 5
+          },
+          "new_device": {
+            "require_verification": true,
+            "cooldown": "24h"
+          }
+        }
+      }
+    },
+    "ml_models": {
+      "anomaly_detection": {
+        "algorithm": "isolation_forest",
+        "parameters": {
+          "n_estimators": 100,
+          "contamination": 0.01
+        },
+        "features": ["amount", "merchant_category", "time_of_day", "day_of_week"],
+        "threshold": 0.95
+      },
+      "risk_scoring": {
+        "model_type": "xgboost",
+        "version": "v3.2",
+        "endpoint": "https://ml.internal/fraud-score",
+        "timeout": "100ms",
+        "fallback_score": 0.5
+      }
+    },
+    "actions": {
+      "flag": {
+        "notify": ["fraud-team@example.com"],
+        "require_manual_review": false
+      },
+      "block": {
+        "notify": ["fraud-team@example.com", "security@example.com"],
+        "user_notification": true
+      },
+      "challenge": {
+        "methods": ["sms", "email", "totp"],
+        "timeout": "5m"
+      }
+    }
+  },
+  {
+    "service_name": "workflow-orchestrator",
+    "version": "2.1.6",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 4,
+      "resources": {
+        "cpu": {
+          "request": "2000m",
+          "limit": "8000m"
+        },
+        "memory": {
+          "request": "4Gi",
+          "limit": "16Gi"
+        }
+      }
+    },
+    "temporal": {
+      "server": {
+        "host": "temporal.internal",
+        "port": 7233,
+        "namespace": "default"
+      },
+      "workflows": {
+        "order_fulfillment": {
+          "task_queue": "order-processing",
+          "execution_timeout": "24h",
+          "retry_policy": {
+            "initial_interval": "1s",
+            "backoff_coefficient": 2,
+            "maximum_interval": "1m",
+            "maximum_attempts": 5
+          }
+        },
+        "payment_processing": {
+          "task_queue": "payments",
+          "execution_timeout": "1h",
+          "retry_policy": {
+            "initial_interval": "500ms",
+            "backoff_coefficient": 1.5,
+            "maximum_interval": "30s",
+            "maximum_attempts": 3
+          }
+        }
+      },
+      "activities": {
+        "send_email": {
+          "schedule_to_close_timeout": "5m",
+          "heartbeat_timeout": "30s"
+        },
+        "charge_payment": {
+          "schedule_to_close_timeout": "2m",
+          "heartbeat_timeout": "10s"
+        }
+      }
+    }
+  },
+  {
+    "service_name": "content-delivery",
+    "version": "3.5.2",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 15,
+      "resources": {
+        "cpu": {
+          "request": "2000m",
+          "limit": "8000m"
+        },
+        "memory": {
+          "request": "4Gi",
+          "limit": "16Gi"
+        }
+      }
+    },
+    "cdn": {
+      "providers": {
+        "primary": {
+          "name": "cloudflare",
+          "zones": ["zone1", "zone2", "zone3"],
+          "cache_levels": {
+            "static": {
+              "ttl": "30d",
+              "browser_ttl": "7d"
+            },
+            "dynamic": {
+              "ttl": "1h",
+              "browser_ttl": "5m"
+            }
+          }
+        },
+        "fallback": {
+          "name": "fastly",
+          "service_id": "abc123",
+          "failover_threshold": "10s"
+        }
+      },
+      "optimization": {
+        "compression": {
+          "enabled": true,
+          "algorithms": ["brotli", "gzip"],
+          "min_size": "1kb"
+        },
+        "minification": {
+          "html": true,
+          "css": true,
+          "javascript": true
+        },
+        "http2": {
+          "enabled": true,
+          "push": {
+            "enabled": true,
+            "resources": ["/css/main.css", "/js/app.js"]
+          }
+        }
+      }
+    },
+    "origins": {
+      "api": {
+        "host": "api.internal",
+        "port": 443,
+        "protocol": "https",
+        "health_check": {
+          "path": "/health",
+          "interval": "10s",
+          "timeout": "5s"
+        }
+      },
+      "assets": {
+        "host": "assets.s3.amazonaws.com",
+        "protocol": "https"
+      }
+    }
+  },
+  {
+    "service_name": "billing-service",
+    "version": "2.8.4",
+    "environment": "production",
+    "deployment": {
+      "strategy": "blue-green",
+      "replicas": 6,
+      "resources": {
+        "cpu": {
+          "request": "1500m",
+          "limit": "6000m"
+        },
+        "memory": {
+          "request": "3Gi",
+          "limit": "12Gi"
+        }
+      }
+    },
+    "pricing": {
+      "plans": {
+        "free": {
+          "price": 0,
+          "limits": {
+            "api_calls": 1000,
+            "storage_gb": 1
+          }
+        },
+        "pro": {
+          "price": 29.99,
+          "billing_period": "monthly",
+          "limits": {
+            "api_calls": 100000,
+            "storage_gb": 100
+          }
+        },
+        "enterprise": {
+          "price": 299.99,
+          "billing_period": "monthly",
+          "limits": {
+            "api_calls": -1,
+            "storage_gb": 1000
+          }
+        }
+      },
+      "metering": {
+        "api_calls": {
+          "enabled": true,
+          "aggregation": "sum",
+          "window": "1h"
+        },
+        "storage": {
+          "enabled": true,
+          "aggregation": "max",
+          "window": "1d"
+        }
+      }
+    },
+    "invoicing": {
+      "generation": {
+        "schedule": "0 0 1 * *",
+        "grace_period": "7d",
+        "currency": "USD"
+      },
+      "payment": {
+        "methods": ["credit_card", "bank_transfer"],
+        "retry": {
+          "attempts": 3,
+          "schedule": ["1d", "3d", "7d"]
+        }
+      },
+      "dunning": {
+        "enabled": true,
+        "reminders": [
+          {"days_after_due": 7, "template": "reminder_1"},
+          {"days_after_due": 14, "template": "reminder_2"},
+          {"days_after_due": 30, "template": "final_notice"}
+        ]
+      }
+    }
+  },
+  {
+    "service_name": "real-time-chat",
+    "version": "1.6.9",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 20,
+      "resources": {
+        "cpu": {
+          "request": "1000m",
+          "limit": "4000m"
+        },
+        "memory": {
+          "request": "2Gi",
+          "limit": "8Gi"
+        }
+      }
+    },
+    "websocket": {
+      "server": {
+        "port": 8080,
+        "path": "/ws",
+        "ping_interval": "30s",
+        "pong_timeout": "10s"
+      },
+      "rooms": {
+        "max_participants": 100,
+        "inactivity_timeout": "1h"
+      }
+    },
+    "message_broker": {
+      "redis": {
+        "pubsub": {
+          "channels": ["chat:*"],
+          "pattern_subscribe": true
+        },
+        "cluster": {
+          "nodes": ["redis-1:6379", "redis-2:6379", "redis-3:6379"]
+        }
+      }
+    },
+    "persistence": {
+      "cassandra": {
+        "keyspace": "chat",
+        "tables": {
+          "messages": {
+            "replication": {
+              "class": "NetworkTopologyStrategy",
+              "dc1": 3
+            },
+            "compaction": {
+              "class": "TimeWindowCompactionStrategy",
+              "window_size": 1,
+              "window_unit": "DAYS"
+            }
+          }
+        },
+        "consistency": {
+          "read": "QUORUM",
+          "write": "QUORUM"
+        }
+      }
+    },
+    "features": {
+      "typing_indicators": {
+        "enabled": true,
+        "timeout": "5s"
+      },
+      "read_receipts": {
+        "enabled": true
+      },
+      "message_editing": {
+        "enabled": true,
+        "time_limit": "15m"
+      },
+      "file_sharing": {
+        "enabled": true,
+        "max_size_mb": 25,
+        "allowed_types": ["image/*", "application/pdf", "text/*"]
+      }
+    }
+  },
+  {
+    "service_name": "data-warehouse",
+    "version": "4.1.3",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 3,
+      "resources": {
+        "cpu": {
+          "request": "8000m",
+          "limit": "32000m"
+        },
+        "memory": {
+          "request": "32Gi",
+          "limit": "128Gi"
+        }
+      }
+    },
+    "snowflake": {
+      "account": "example.us-west-2",
+      "warehouse": {
+        "name": "ANALYTICS_WH",
+        "size": "X-LARGE",
+        "auto_suspend": 600,
+        "auto_resume": true,
+        "scaling_policy": {
+          "min_clusters": 1,
+          "max_clusters": 10,
+          "mode": "ECONOMY"
+        }
+      },
+      "databases": {
+        "production": {
+          "schemas": ["raw", "staging", "analytics"],
+          "retention_days": 90
+        }
+      }
+    },
+    "etl": {
+      "airbyte": {
+        "server": "https://airbyte.internal",
+        "connections": {
+          "postgres_to_snowflake": {
+            "source_id": "postgres-prod",
+            "destination_id": "snowflake-warehouse",
+            "schedule": {
+              "cron": "0 */6 * * *",
+              "timezone": "UTC"
+            },
+            "sync_mode": "incremental_append"
+          }
+        }
+      },
+      "dbt": {
+        "project": "analytics",
+        "profiles": {
+          "target": "prod",
+          "outputs": {
+            "prod": {
+              "type": "snowflake",
+              "threads": 8,
+              "retry_on_database_errors": true
+            }
+          }
+        },
+        "run_schedule": "0 3 * * *"
+      }
+    }
+  },
+  {
+    "service_name": "ml-training-pipeline",
+    "version": "2.4.7",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 2,
+      "resources": {
+        "cpu": {
+          "request": "16000m",
+          "limit": "64000m"
+        },
+        "memory": {
+          "request": "64Gi",
+          "limit": "256Gi"
+        },
+        "gpu": {
+          "type": "nvidia-tesla-v100",
+          "count": 4
+        }
+      }
+    },
+    "framework": {
+      "pytorch": {
+        "version": "2.0.1",
+        "cuda_version": "11.8",
+        "distributed": {
+          "backend": "nccl",
+          "init_method": "env://",
+          "world_size": 4
+        }
+      }
+    },
+    "training": {
+      "datasets": {
+        "train": {
+          "path": "s3://ml-data/train/",
+          "format": "parquet",
+          "preprocessing": {
+            "normalization": "z-score",
+            "augmentation": {
+              "enabled": true,
+              "techniques": ["rotation", "flip", "crop"]
+            }
+          }
+        },
+        "validation": {
+          "path": "s3://ml-data/validation/",
+          "split_ratio": 0.2
+        }
+      },
+      "hyperparameters": {
+        "learning_rate": 0.001,
+        "batch_size": 128,
+        "epochs": 100,
+        "optimizer": {
+          "type": "adam",
+          "beta1": 0.9,
+          "beta2": 0.999,
+          "weight_decay": 0.0001
+        },
+        "scheduler": {
+          "type": "cosine_annealing",
+          "t_max": 100,
+          "eta_min": 0.00001
+        }
+      },
+      "checkpointing": {
+        "enabled": true,
+        "interval": 5,
+        "path": "s3://ml-models/checkpoints/",
+        "save_best_only": true,
+        "metric": "val_accuracy"
+      }
+    },
+    "experiment_tracking": {
+      "mlflow": {
+        "tracking_uri": "https://mlflow.internal",
+        "experiment_name": "production-models",
+        "log_models": true,
+        "log_artifacts": true
+      }
+    }
+  },
+  {
+    "service_name": "api-rate-limiter",
+    "version": "1.3.5",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 10,
+      "resources": {
+        "cpu": {
+          "request": "500m",
+          "limit": "2000m"
+        },
+        "memory": {
+          "request": "1Gi",
+          "limit": "4Gi"
+        }
+      }
+    },
+    "algorithms": {
+      "token_bucket": {
+        "enabled": true,
+        "capacity": 100,
+        "refill_rate": 10,
+        "refill_interval": "1s"
+      },
+      "sliding_window": {
+        "enabled": true,
+        "window_size": "1m",
+        "max_requests": 1000
+      },
+      "fixed_window": {
+        "enabled": false,
+        "window_size": "1m",
+        "max_requests": 1000
+      }
+    },
+    "tiers": {
+      "free": {
+        "requests_per_minute": 60,
+        "requests_per_hour": 1000,
+        "requests_per_day": 10000,
+        "burst": 10
+      },
+      "basic": {
+        "requests_per_minute": 600,
+        "requests_per_hour": 10000,
+        "requests_per_day": 100000,
+        "burst": 50
+      },
+      "premium": {
+        "requests_per_minute": 6000,
+        "requests_per_hour": 100000,
+        "requests_per_day": 1000000,
+        "burst": 100
+      }
+    },
+    "responses": {
+      "rate_limited": {
+        "status_code": 429,
+        "message": "Rate limit exceeded",
+        "headers": {
+          "retry_after": true,
+          "rate_limit_remaining": true,
+          "rate_limit_reset": true
+        }
+      }
+    },
+    "storage": {
+      "redis": {
+        "cluster": true,
+        "nodes": ["redis-1:6379", "redis-2:6379", "redis-3:6379"],
+        "key_prefix": "ratelimit:",
+        "ttl": "1h"
+      }
+    }
+  },
+  {
+    "service_name": "monitoring-aggregator",
+    "version": "3.2.1",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 8,
+      "resources": {
+        "cpu": {
+          "request": "4000m",
+          "limit": "16000m"
+        },
+        "memory": {
+          "request": "16Gi",
+          "limit": "64Gi"
+        }
+      }
+    },
+    "prometheus": {
+      "server": {
+        "retention": "15d",
+        "storage_size": "500Gi",
+        "scrape_interval": "15s",
+        "evaluation_interval": "15s"
+      },
+      "remote_write": {
+        "cortex": {
+          "url": "https://cortex.internal/api/v1/push",
+          "queue_config": {
+            "capacity": 10000,
+            "max_shards": 50,
+            "min_shards": 1,
+            "max_samples_per_send": 500
+          }
+        }
+      },
+      "alerting": {
+        "alertmanagers": [
+          {"static_configs": [{"targets": ["alertmanager-1:9093", "alertmanager-2:9093"]}]}
+        ]
+      }
+    },
+    "grafana": {
+      "dashboards": {
+        "auto_import": true,
+        "path": "/etc/grafana/dashboards",
+        "provisioning": {
+          "enabled": true,
+          "refresh_interval": "5m"
+        }
+      },
+      "datasources": {
+        "prometheus": {
+          "url": "http://prometheus:9090",
+          "access": "proxy"
+        },
+        "loki": {
+          "url": "http://loki:3100",
+          "access": "proxy"
+        }
+      },
+      "alerting": {
+        "enabled": true,
+        "notification_channels": {
+          "slack": {
+            "enabled": true,
+            "webhook_url_secret": "slack-webhook",
+            "channel": "#alerts"
+          },
+          "pagerduty": {
+            "enabled": true,
+            "integration_key_secret": "pagerduty-key",
+            "severity": "critical"
+          }
+        }
+      }
+    },
+    "loki": {
+      "retention_period": "30d",
+      "compactor": {
+        "working_directory": "/loki/compactor",
+        "shared_store": "s3",
+        "retention_enabled": true
+      },
+      "limits": {
+        "ingestion_rate_mb": 100,
+        "ingestion_burst_size_mb": 200
+      }
+    }
+  },
+  {
+    "service_name": "backup-service",
+    "version": "2.0.8",
+    "environment": "production",
+    "deployment": {
+      "strategy": "rolling",
+      "replicas": 3,
+      "resources": {
+        "cpu": {
+          "request": "2000m",
+          "limit": "8000m"
+        },
+        "memory": {
+          "request": "8Gi",
+          "limit": "32Gi"
+        }
+      }
+    },
+    "schedules": {
+      "databases": {
+        "postgres": {
+          "full_backup": {
+            "cron": "0 1 * * 0",
+            "retention": "4w",
+            "compression": "gzip",
+            "encryption": {
+              "enabled": true,
+              "algorithm": "AES-256"
+            }
+          },
+          "incremental_backup": {
+            "cron": "0 1 * * 1-6",
+            "retention": "1w",
+            "compression": "gzip"
+          }
+        },
+        "mongodb": {
+          "full_backup": {
+            "cron": "0 2 * * *",
+            "retention": "30d",
+            "oplog": {
+              "enabled": true,
+              "retention": "7d"
+            }
+          }
+        }
+      },
+      "files": {
+        "user_uploads": {
+          "cron": "0 3 * * *",
+          "retention": "90d",
+          "incremental": true,
+          "exclude_patterns": ["*.tmp", "*.log"]
+        }
+      }
+    },
+    "storage": {
+      "primary": {
+        "s3": {
+          "bucket": "backups-primary",
+          "region": "us-west-2",
+          "storage_class": "STANDARD_IA"
+        }
+      },
+      "secondary": {
+        "s3": {
+          "bucket": "backups-secondary",
+          "region": "us-east-1",
+          "storage_class": "GLACIER"
+        }
+      }
+    },
+    "verification": {
+      "enabled": true,
+      "sample_rate": 0.1,
+      "schedule": "0 4 * * *",
+      "alerts": {
+        "on_failure": true,
+        "recipients": ["ops@example.com"]
+      }
+    }
+  }
+]
