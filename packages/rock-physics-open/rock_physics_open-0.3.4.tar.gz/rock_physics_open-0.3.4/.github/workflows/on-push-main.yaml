@@ -1,0 +1,72 @@
+name: push to main branch
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-and-format:
+    uses: ./.github/workflows/lint-and-format.yaml
+
+  test:
+    uses: ./.github/workflows/test.yaml
+
+  release-please:
+    needs: test
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/release-please.yaml
+
+  build:
+    name: Build for publishing
+    if: ${{ needs.release-please.outputs.release_created }}
+    needs: release-please
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.11
+
+      - name: Build
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: distribution
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/rock-physics-open
+    permissions:
+      id-token: write # required for Trusted Publishing to PyPI
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: distribution
+          path: dist/
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
