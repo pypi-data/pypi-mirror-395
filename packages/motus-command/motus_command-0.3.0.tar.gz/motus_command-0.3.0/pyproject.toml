@@ -1,0 +1,142 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "motus-command"
+version = "0.3.0"
+description = "Command Center for AI Agents - Real-time observability for Claude Code, Codex CLI, and AI coding assistants"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Ben Voss", email = "ben@veritas.associates" }
+]
+keywords = [
+    "ai", "agents", "observability", "claude", "codex", "llm",
+    "developer-tools", "cli", "monitoring", "command-center"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Monitoring",
+]
+dependencies = [
+    "rich>=13.0.0",
+    "textual>=0.40.0",
+]
+
+[project.optional-dependencies]
+web = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "websockets>=11.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+mc = "motus_command.cli:main"
+motus-command = "motus_command.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/bnvoss/motus-command"
+Documentation = "https://github.com/bnvoss/motus-command#readme"
+Repository = "https://github.com/bnvoss/motus-command"
+Issues = "https://github.com/bnvoss/motus-command/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/motus_command"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+
+# Include static files (CSS, JS, HTML) for web UI
+[tool.hatch.build.targets.wheel.shared-data]
+
+[tool.hatch.build]
+include = [
+    "src/motus_command/**/*.py",
+    "src/motus_command/**/*.css",
+    "src/motus_command/**/*.js",
+    "src/motus_command/**/*.html",
+    "src/motus_command/py.typed",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v"
+
+[tool.coverage.run]
+source = ["src/motus_command"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+# Disable strict optional to avoid None assignment errors
+strict_optional = false
+# Allow implicit Optional
+no_implicit_optional = false
+# Don't check bodies of untyped functions
+check_untyped_defs = false
+
+# Ignore errors in specific modules that need extensive refactoring
+[[tool.mypy.overrides]]
+module = [
+    "motus_command.cli",
+    "motus_command.codex_parser",
+    "motus_command.gemini_parser",
+    "motus_command.hooks",
+    "motus_command.safety",
+    "motus_command.ui.tui",
+    "motus_command.ui.web",
+    "motus_command.session_manager",
+    "motus_command.drift_detector",
+    "motus_command.commands.list_cmd",
+    "motus_command.commands.summary_cmd",
+]
+ignore_errors = true
