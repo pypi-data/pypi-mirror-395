@@ -1,0 +1,107 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+
+[project]
+authors = [{ name = "Rafał Krupiński", email = "rafal@lapidary.dev" }]
+description = "Python async OpenAPI client library generator"
+license = "AGPL-3.0"
+name = "lapidary-render"
+version = "0.12.1"
+readme = "Readme.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Code Generators",
+    "Typing :: Typed",
+]
+keywords = [
+    "OpenAPI",
+    "OpenAPI3",
+    "CodeGen",
+    "Code Generation",
+    "Code Generator",
+    "OpenAPI Tools",
+]
+requires-python = "~=3.13"
+dynamic=["dependencies"]
+
+[tool.poetry]
+packages = [{ include = "lapidary", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.13"
+click = "^8"
+httpx = "^0.28"
+libcst = "^1.5"
+openapi-pydantic = "^0.5"
+pybase62 = "^1"
+pydantic = "^2"
+python-mimeparse = ">=1.6,<3.0"
+ruamel-yaml = "^0.18"
+tomli-w = "^1"
+
+[project.urls]
+Homepage = "https://lapidary.dev/"
+
+[project.scripts]
+lapidary = "lapidary.render:app"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4"
+pytest = "^8"
+pytest-asyncio = "^0.25"
+pytest-httpx = "^0.35"
+
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.6.20"
+markdown-callouts = "^0.4.0"
+mkdocstrings = {extras = ["python"], version = "^0.30.1"}
+markdown-exec = "^1.11.0"
+mkdocs-llmstxt = "^0.3.2"
+mkdocs-minify-plugin = "^0.8.0"
+mkdocs-section-index = "^0.3.10"
+
+[tool.ruff]
+target-version = "py313"
+extend-exclude = [
+    "tests/e2e",
+]
+line-length = 120
+namespace-packages = ["lapidary/render"]
+src = ["src"]
+
+[tool.ruff.lint]
+extend-select = ['I', 'UP']
+extend-ignore = [
+    'F401', 'F403', 'F405',
+    'UP040', 'UP008',
+]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.mypy]
+mypy_path = "src"
+namespace_packages = true
+ignore_missing_imports = true
+python_version = "3.13"
+packages = ['lapidary.render']
+exclude = [
+    "tests/e2e",
+]
+
+[tool.pytest.ini_options]
+norecursedirs = ['tests/e2e']
+asyncio_default_fixture_loop_scope = 'function'
+log_cli = true
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+addopts = "--color=yes"
