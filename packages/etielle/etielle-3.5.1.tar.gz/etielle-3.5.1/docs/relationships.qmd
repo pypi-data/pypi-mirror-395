@@ -1,0 +1,345 @@
+---
+title: "Relationships: Linking Tables with link_to()"
+---
+
+**What you'll learn**: How to use `link_to()` to build parent-child relationships between tables, avoiding N+1 database queries.
+
+**ETL context**: Relationships are part of the **Transform** step---they link child records to parent records in memory before persistence.
+
+## What is `link_to()`?
+
+`link_to()` establishes a many-to-one relationship between the current table (child) and a parent table. It links records in memory so you can navigate between them or persist with proper foreign keys.
+
+```python
+from etielle import etl, Field, TempField, get, get_from_parent
+
+result = (
+    etl(data)
+    .goto("users").each()
+    .map_to(table=User, fields=[...])
+
+    .goto("posts").each()
+    .map_to(table=Post, fields=[
+        Field("title", get("title")),
+        TempField("user_id", get_from_parent("id"))  # Foreign key value
+    ])
+    .link_to(User, by={"user_id": "id"})  # Link posts to users
+    .run()
+)
+```
+
+## Basic Relationship Binding
+
+### One-to-Many (Users -> Posts)
+
+The most common pattern: users have many posts.
+
+``` {python}
+from pydantic import BaseModel
+from etielle import etl, Field, TempField, get, get_from_parent
+
+class User(BaseModel):
+    id: str
+    name: str
+
+class Post(BaseModel):
+    id: str
+    title: str
+    user: User | None = None  # Relationship attribute
+
+data = {
+    "users": [{
+        "id": "u1",
+        "name": "Alice",
+        "posts": [
+            {"id": "p1", "title": "Hello"},
+            {"id": "p2", "title": "World"}
+        ]
+    }]
+}
+
+result = (
+    etl(data)
+    # Map users
+    .goto("users").each()
+    .map_to(table=User, fields=[
+        Field("id", get("id")),
+        Field("name", get("name")),
+    ])
+
+    # Map posts and link to users
+    .goto("posts").each()
+    .map_to(table=Post, fields=[
+        Field("id", get("id")),
+        Field("title", get("title")),
+        TempField("user_id", get_from_parent("id"))  # Foreign key (not persisted)
+    ])
+    .link_to(User, by={"user_id": "id"})  # Link by user_id -> id
+    .run()
+)
+
+# Posts now have user references
+for key, post in result.tables[Post].items():
+    print(f"{post.title} by {post.user.name if post.user else 'Unknown'}")
+```
+
+## How `link_to()` Works
+
+### The `by` Parameter
+
+The `by` dict maps child field names to parent field names:
+
+```python
+.link_to(User, by={"user_id": "id"})
+```
+
+This means: "Match the child's `user_id` TempField to the parent's `id` TempField."
+
+### Attribute Inference
+
+etielle infers the relationship attribute name from the parent table name:
+
+| Parent Table | Inferred Attribute |
+|--------------|-------------------|
+| `users` | `user` |
+| `posts` | `post` |
+| `categories` | `categorie` (strips trailing 's') |
+
+You can override this by using a model class with an explicit attribute.
+
+## Multiple Relationships
+
+A child table can link to multiple parent tables:
+
+``` {python}
+from pydantic import BaseModel
+from etielle import etl, Field, TempField, get, get_from_parent
+
+class User(BaseModel):
+    id: str
+    name: str
+
+class Post(BaseModel):
+    id: str
+    title: str
+
+class Comment(BaseModel):
+    id: str
+    body: str
+    user: User | None = None
+    post: Post | None = None
+
+data = {
+    "users": [{"id": "u1", "name": "Alice"}],
+    "posts": [{"id": "p1", "title": "Hello", "user_id": "u1"}],
+    "comments": [
+        {"id": "c1", "body": "Great post!", "user_id": "u1", "post_id": "p1"}
+    ]
+}
+
+result = (
+    etl(data)
+    .goto("users").each()
+    .map_to(table=User, fields=[
+        Field("id", get("id")),
+        Field("name", get("name")),
+    ])
+
+    .goto_root()
+    .goto("posts").each()
+    .map_to(table=Post, fields=[
+        Field("id", get("id")),
+        Field("title", get("title")),
+    ])
+
+    .goto_root()
+    .goto("comments").each()
+    .map_to(table=Comment, fields=[
+        Field("id", get("id")),
+        Field("body", get("body")),
+        TempField("user_id", get("user_id")),  # Foreign key (not persisted)
+        TempField("post_id", get("post_id"))   # Foreign key (not persisted)
+    ])
+    .link_to(User, by={"user_id": "id"})  # Link to user
+    .link_to(Post, by={"post_id": "id"})  # Link to post
+    .run()
+)
+
+comment = list(result.tables[Comment].values())[0]
+print(f"Comment: {comment.body}")
+print(f"By: {comment.user.name if comment.user else 'Unknown'}")
+print(f"On: {comment.post.title if comment.post else 'Unknown'}")
+```
+
+## Nested Data Relationships
+
+When data is nested, use `get_from_parent()` to extract the foreign key:
+
+``` {python}
+from pydantic import BaseModel
+from etielle import etl, Field, TempField, get, get_from_parent
+
+class Order(BaseModel):
+    id: str
+    customer: str
+
+class Item(BaseModel):
+    id: str
+    product: str
+    order: Order | None = None
+
+data = {
+    "orders": [{
+        "id": "o1",
+        "customer": "Alice",
+        "items": [
+            {"id": "i1", "product": "Widget"},
+            {"id": "i2", "product": "Gadget"}
+        ]
+    }]
+}
+
+result = (
+    etl(data)
+    .goto("orders").each()
+    .map_to(table=Order, fields=[
+        Field("id", get("id")),
+        Field("customer", get("customer")),
+    ])
+
+    .goto("items").each()
+    .map_to(table=Item, fields=[
+        Field("id", get("id")),
+        Field("product", get("product")),
+        TempField("order_id", get_from_parent("id"))  # Foreign key (not persisted)
+    ])
+    .link_to(Order, by={"order_id": "id"})
+    .run()
+)
+
+for key, item in result.tables[Item].items():
+    print(f"{item.product} - Order: {item.order.id if item.order else 'None'}")
+```
+
+## Composite Keys
+
+For relationships with composite keys, include multiple entries in the `by` dict:
+
+```python
+# Child has both region_id and store_id pointing to parent
+.link_to(Store, by={
+    "region_id": "region_id",
+    "store_id": "store_id"
+})
+```
+
+## Junction Tables (Reverse Lookups)
+
+Handle junction tables where the relationship is defined outside the child:
+
+``` {python}
+#| eval: false
+# Data: {"userPosts": {"u1": [101, 102], "u2": [103]}}
+# This maps user_id -> list of post_ids
+
+result = (
+    etl(data)
+    .goto("users").each()
+    .map_to(table=User, fields=[...])
+
+    .goto_root()
+    .goto("posts").each()
+    .map_to(table=Post, fields=[...])
+
+    .goto_root()
+    .goto("userPosts").each()    # key() = user_id
+    .each()                       # node() = post_id
+    .map_to(table=Post, join_on=["id"], fields=[
+        TempField("id", node()),
+        TempField("user_id", parent_key())
+    ])
+    .link_to(User, by={"user_id": "id"})
+    .run()
+)
+```
+
+## `link_to()` Reference
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `parent` | `type | str` | The parent model class or table name |
+| `by` | `dict[str, str]` | Mapping of `{child_field: parent_field}` |
+| `fk` | `dict[str, str] | None` | (Supabase only) Mapping of `{child_column: parent_column}` for DB-generated IDs |
+
+### The `fk` Parameter (Supabase)
+
+When using Supabase with DB-generated primary keys (UUID, auto-increment), use `fk` to populate child foreign keys after parent insertion:
+
+```python
+.link_to("users", by={"_parent_key": "_key"}, fk={"user_id": "id"})
+```
+
+This tells etielle: "After inserting users, set each child's `user_id` column to the parent's generated `id`."
+
+See [Database Loading](database-loading.qmd#db-generated-ids-two-phase-insert) for a complete example.
+
+### Requirements
+
+- Must be called after `map_to()` (links the most recent emission)
+- Both child and parent fields can be `Field` or `TempField` names
+- Parent table must be emitted somewhere in the pipeline
+
+### Error Handling
+
+- Missing parents: By default, `link_to()` does not fail if a parent is not found
+- The relationship attribute will be `None` for unmatched children
+- Use error handling modes to change this behavior
+
+## Best Practices
+
+### Use TempField for Foreign Keys
+
+Foreign key values should be in `TempField`, not `Field`, unless you also need them in output:
+
+```python
+# Good: Foreign key is TempField (not in output, just for linking)
+TempField("user_id", get_from_parent("id"))
+
+# If you need user_id in output: use Field (it's also available for linking)
+Field("user_id", get_from_parent("id"))
+
+# Note: Don't use both Field and TempField with the same name
+# The TempField will shadow the Field and prevent it from being persisted
+```
+
+### Order Matters
+
+Emit parent tables before child tables that link to them:
+
+```python
+# Good: Users emitted before posts
+.map_to(table=User, fields=[...])
+.goto("posts").each()
+.map_to(table=Post, fields=[...])
+.link_to(User, by={"user_id": "id"})
+
+# Also works: Order within same run() is handled correctly
+```
+
+### Match Key Types
+
+Ensure child and parent key values are the same type:
+
+```python
+# If parent key is string "u1"
+TempField("id", get("id"))  # Returns "u1"
+
+# Child key must also be string
+TempField("user_id", get("user_id"))  # Must return "u1", not 1
+```
+
+## See also
+
+- [Mapping Tables](mapping.qmd) - Defining the tables that relationships link
+- [Database Loading](database-loading.qmd) - Persisting linked records to database
+- [Navigation](navigation.qmd) - Nested traversal for parent-child data
