@@ -1,0 +1,11 @@
+from .nbobjects import *  # noqa
+from .zabbixconfigurationgroupassignment import *  # noqa
+from .zabbixhostgroupassignment import *  # noqa
+from .zabbixtemplateassignment import *  # noqa
+from .zabbixserverassignment import *  # noqa
+from .zabbixtagassignment import *  # noqa
+from .zabbixmacroassignment import *  # noqa
+from .zabbixhostinterface import *  # noqa
+from .zabbixmaintenance import *  # noqa
+from .zabbixserver import *  # noqa
+from .zabbixtemplate import *  # noqa
