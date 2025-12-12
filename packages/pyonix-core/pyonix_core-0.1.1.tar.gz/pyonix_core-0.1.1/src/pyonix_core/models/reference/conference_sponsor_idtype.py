@@ -1,0 +1,61 @@
+from dataclasses import dataclass, field
+from typing import Optional
+
+from .conference_sponsor_idtype_refname import ConferenceSponsorIdtypeRefname
+from .conference_sponsor_idtype_shortname import (
+    ConferenceSponsorIdtypeShortname,
+)
+from .list3 import List3
+from .list44 import List44
+
+__NAMESPACE__ = "http://ns.editeur.org/onix/3.0/reference"
+
+
+@dataclass
+class ConferenceSponsorIdtype:
+    """
+    ● Deprecated – use &lt;EventSponsorIdentifier&gt; instead.
+    """
+
+    class Meta:
+        name = "ConferenceSponsorIDType"
+        namespace = "http://ns.editeur.org/onix/3.0/reference"
+
+    value: Optional[List44] = field(
+        default=None,
+        metadata={
+            "required": True,
+        },
+    )
+    refname: Optional[ConferenceSponsorIdtypeRefname] = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+        },
+    )
+    shortname: Optional[ConferenceSponsorIdtypeShortname] = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+        },
+    )
+    datestamp: Optional[str] = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "pattern": r"(19|20)\d\d(0[1-9]|1[0-2])(0[1-9]|1[0-9]|2[0-8])(T([01][0-9]|2[0-3])[0-5][0-9]([0-5][0-9])?(Z|[+\-](0[0-9]|1[0-2])(00|15|30|45))?)?|(19|20)\d\d(0[13-9]|1[0-2])(29|30)(T([01][0-9]|2[0-3])[0-5][0-9]([0-5][0-9])?(Z|[+\-](0[0-9]|1[0-2])(00|15|30|45))?)?|(19|20)\d\d(0[13578]|1[02])31(T([01][0-9]|2[0-3])[0-5][0-9]([0-5][0-9])?(Z|[+\-](0[0-9]|1[0-2])(00|15|30|45))?)?|19(0[48]|[13579][26]|[2468][048])0229(T([01][0-9]|2[0-3])[0-5][0-9]([0-5][0-9])?(Z|[+\-](0[0-9]|1[0-2])(00|15|30|45))?)?|20(0[048]|[13579][26]|[2468][048])0229(T([01][0-9]|2[0-3])[0-5][0-9]([0-5][0-9])?(Z|[+\-](0[0-9]|1[0-2])(00|15|30|45))?)?",
+        },
+    )
+    sourcename: Optional[str] = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "pattern": r"\S(.*\S)?",
+        },
+    )
+    sourcetype: Optional[List3] = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+        },
+    )
