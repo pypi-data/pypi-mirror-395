@@ -1,0 +1,201 @@
+Metadata-Version: 2.1
+Name: enn-iot-oc-sdk
+Version: 1.0.0
+Summary: IoC数据SDK - 提供工业物联网数据查询接口
+Home-page: https://github.com/enn-energy/enn-iot-oc-sdk
+Author: ENN Energy
+Author-email: developer@enn.com
+Project-URL: Bug Reports, https://github.com/enn-energy/enn-iot-oc-sdk/issues
+Project-URL: Source, https://github.com/enn-energy/enn-iot-oc-sdk
+Project-URL: Documentation, https://github.com/enn-energy/enn-iot-oc-sdk/wiki
+Keywords: iot,industrial,data,sdk,repository,query
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: dataclasses-json>=0.6.1
+Requires-Dist: typing-inspect>=0.9.0
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-cov>=2.0; extra == "dev"
+Requires-Dist: black>=21.0; extra == "dev"
+Requires-Dist: flake8>=3.8; extra == "dev"
+
+# ENN IoC 数据SDK
+
+提供工业物联网数据查询和管理功能的Python SDK。
+
+## 功能特性
+
+- 🚀 **高性能**: 内置数据缓存机制，提供快速数据访问
+- 🔒 **类型安全**: 完全类型化的实体和Repository接口
+- 📦 **开箱即用**: 预定义的实体和Repository类，无需额外配置
+- 🔄 **实时同步**: 支持数据源的实时更新和缓存同步
+- 🛠️ **易于扩展**: 支持自定义实体和Repository扩展
+
+## 安装
+
+### 从源码安装
+
+```bash
+git clone https://github.com/enn-energy/enn-iot-oc-sdk.git
+cd enn-iot-oc-sdk
+pip install -e .
+```
+
+## 快速开始
+
+### 1. 基本使用
+
+```python
+from ioc_data_sdk import (
+    BiogasProjectInformationRepoImpl,
+    MechanismCloudAlgorithmRepoImpl,
+    MechanismTaskPlanningRepoImpl,
+    initialize
+)
+
+# 初始化SDK（可选）
+initialize(
+    auth_token="your_auth_token",
+    csrf_token="your_csrf_token",
+    eo_id="your_enterprise_id",
+    instance_id="your_instance_id"
+)
+
+# 创建Repository实例
+project_repo = BiogasProjectInformationRepoImpl()
+algo_repo = MechanismCloudAlgorithmRepoImpl()
+task_repo = MechanismTaskPlanningRepoImpl()
+
+# 查询数据
+project = project_repo.find()
+algorithms = algo_repo.list()
+tasks = task_repo.list()
+
+# 使用数据
+if project:
+    print(f"客户名称: {project.customerName}")
+    print(f"总投资: {project.totalInvestment}")
+
+print(f"共找到 {len(algorithms)} 个算法")
+for algo in algorithms:
+    print(f"- {algo.algorithmId}: {algo.schemeId}")
+```
+
+## 🚀 功能特性
+
+- ✅ **自动实体生成**: 根据JSON数据自动生成`@dataclass`实体类
+- ✅ **智能类型推断**: 自动推断字段类型（str, int, float, bool, list, dict）
+- ✅ **仓库接口生成**: 自动生成单行/多行实体的Repository接口
+- ✅ **关系映射支持**: 支持外键和嵌套对象关系
+- ✅ **配置驱动**: 基于YAML配置文件定义实体关系
+- ✅ **标准兼容**: 完全兼容`ioc-data-python-sdk_3.0.1_README.md`规范
+
+## 📁 项目结构
+
+```
+ioc-sdk-generator/
+├── README.md                   # 项目说明
+├── requirements.txt            # 依赖包
+├── config/
+│   └── relations.yaml          # 实体关系配置
+├── data/
+│   └── demo/
+│       ├── source/            # JSON数据源
+│       │   ├── biogas_project_information.json
+│       │   ├── mechanism_cloud_algorithm.json
+│       │   └── mechanism_task_planning.json
+│       └── relations.yaml     # 实体关系定义
+├── generator/
+│   ├── __init__.py
+│   ├── entity_generator.py    # 实体生成器
+│   ├── repository_generator.py # 仓库生成器
+│   ├── type_inferencer.py     # 类型推断器
+│   └── config_parser.py       # 配置解析器
+├── output/
+│   ├── infrastructure/
+│   │   ├── model/             # 生成的实体类
+│   │   └── repository/        # 生成的仓库类
+│   └── __init__.py
+└── main.py                    # 主入口
+```
+
+## 🛠️ 使用方法
+
+### 1. 准备数据
+将你的JSON数据文件放入`data/demo/source/`目录，每个文件对应一个实体。
+
+### 2. 配置关系
+在`data/demo/relations.yaml`中定义实体关系：
+
+```yaml
+entities:
+  EntityName:
+    table: table_name
+    row_type: single|multiple
+    fields:
+      fieldName: {type: string, role: pk|fk|embed, to: RelatedEntity}
+```
+
+### 3. 运行生成器
+```bash
+python main.py --data-dir data/demo --output-dir output
+```
+
+### 4. 使用生成的接口
+```python
+from output.infrastructure.model import BiogasProjectInformation, BiogasProjectInformationRepoImpl
+
+# 创建仓库实例
+repo = BiogasProjectInformationRepoImpl()
+
+# 查询数据
+project = repo.find()
+```
+
+## 📋 输出说明
+
+生成器将输出：
+
+1. **实体类**: 符合规范的`@dataclass`实体定义
+2. **仓库接口**: 包含`find()`、`list()`、`find_by_id()`等方法的Repository
+3. **类型映射**: 完整的类型提示和字段映射
+4. **关系支持**: 外键和嵌套对象的自动处理
+
+## 🎯 支持的字段类型
+
+- `str` - 字符串类型
+- `int` - 整数类型
+- `float` - 浮点数类型
+- `bool` - 布尔类型
+- `list` - 列表类型
+- `dict` - 字典类型
+- `Optional[List[T]]` - 可选列表类型（用于嵌套对象）
+
+## ⚡ 高级特性
+
+- **智能默认值**: 根据类型自动设置合理的默认值
+- **字段验证**: 支持字段类型和格式验证
+- **缓存机制**: 内置查询缓存优化
+- **错误处理**: 统一的异常处理机制
+
+## 🔧 自定义配置
+
+可以通过修改配置文件来自定义：
+- 实体名称映射
+- 字段类型推断规则
+- 关系定义策略
+- 输出格式选项
+
+这个生成器让创建IoC数据SDK变得简单高效！
