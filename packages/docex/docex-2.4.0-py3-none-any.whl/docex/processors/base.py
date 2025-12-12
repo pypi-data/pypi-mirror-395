@@ -1,0 +1,182 @@
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional, Union
+from datetime import datetime
+from uuid import uuid4
+
+from docex.document import Document
+from docex.db.connection import Database
+from docex.db.models import ProcessingOperation
+from docex.models.document_metadata import DocumentMetadata as MetaModel
+
+class ProcessingResult:
+    """Result of a document processing operation"""
+    
+    def __init__(
+        self,
+        success: bool,
+        content: Optional[Any] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        error: Optional[str] = None
+    ):
+        self.success = success
+        self.content = content
+        # Store metadata as plain dict (no DocumentMetadata wrapping)
+        # Extract values from DocumentMetadata objects if passed in
+        if metadata:
+            self.metadata = {}
+            for k, v in metadata.items():
+                # Handle DocumentMetadata objects (extract value)
+                if hasattr(v, 'extra') and hasattr(v.extra, 'get'):
+                    self.metadata[k] = v.extra.get('value', v)
+                elif hasattr(v, 'value'):
+                    self.metadata[k] = v.value
+                elif isinstance(v, dict) and 'extra' in v:
+                    self.metadata[k] = v['extra'].get('value', v)
+                else:
+                    self.metadata[k] = v
+        else:
+            self.metadata = {}
+        self.error = error
+        self.timestamp = datetime.now()
+
+    def metadata_dict(self) -> Dict[str, Any]:
+        """Return metadata as plain dict (already plain, just return as-is)."""
+        return self.metadata
+
+class BaseProcessor(ABC):
+    """Base class for document processors"""
+    
+    def __init__(self, config: Dict[str, Any], db: Optional[Database] = None):
+        """
+        Initialize processor
+        
+        Args:
+            config: Processor configuration dictionary
+            db: Optional tenant-aware database instance (for multi-tenancy support)
+        """
+        self.config = config
+        
+        # If db is not provided, try to extract tenant_id from config and create tenant-aware database
+        if db is None:
+            tenant_id = config.get('tenant_id')
+            if tenant_id:
+                db = Database(tenant_id=tenant_id)
+            else:
+                # Fallback to default database (will fail if multi-tenancy is enabled)
+                db = Database()
+        
+        self.db = db
+    
+    @abstractmethod
+    async def process(self, document: Document) -> ProcessingResult:
+        """Process a document
+        
+        Args:
+            document: Document to process
+            
+        Returns:
+            ProcessingResult containing processing results
+        """
+        pass
+    
+    @abstractmethod
+    def can_process(self, document: Document) -> bool:
+        """Check if this processor can handle the given document
+        
+        Args:
+            document: Document to check
+            
+        Returns:
+            True if processor can handle the document
+        """
+        pass
+    
+    def get_document_content(self, document: Document, mode: str = 'text') -> Union[bytes, str, Dict[str, Any]]:
+        """
+        Get document content in the specified mode
+        
+        Args:
+            document: Document to get content from
+            mode: Content mode ('bytes', 'text', or 'json')
+            
+        Returns:
+            Document content in the requested format
+            
+        Raises:
+            ValueError: If mode is invalid
+            FileNotFoundError: If document content cannot be found
+            json.JSONDecodeError: If mode is 'json' but content is not valid JSON
+        """
+        return Document.get_content(document, mode)
+    
+    def get_document_bytes(self, document: Document) -> bytes:
+        """Get document content as bytes"""
+        return Document.get_content(document, mode='bytes')
+    
+    def get_document_text(self, document: Document) -> str:
+        """Get document content as text"""
+        return Document.get_content(document, mode='text')
+    
+    def get_document_json(self, document: Document) -> Dict[str, Any]:
+        """Get document content as JSON"""
+        return Document.get_content(document, mode='json')
+    
+    def _record_operation(
+        self,
+        document: Document,
+        status: str,
+        input_metadata: Optional[Dict[str, Any]] = None,
+        output_metadata: Optional[Dict[str, Any]] = None,
+        error: Optional[str] = None
+    ) -> ProcessingOperation:
+        """Record a processing operation
+        
+        Args:
+            document: Document being processed
+            status: Operation status
+            input_metadata: Input metadata
+            output_metadata: Output metadata
+            error: Error message if any
+            
+        Returns:
+            Created processing operation
+        """
+        from docex.db.models import Processor
+        from sqlalchemy import select
+        
+        processor_name = self.__class__.__name__
+        
+        with self.db.session() as session:
+            # Get or create processor in database
+            processor = session.execute(
+                select(Processor).where(Processor.name == processor_name)
+            ).scalar_one_or_none()
+            
+            if not processor:
+                # Create processor if it doesn't exist
+                processor = Processor(
+                    name=processor_name,
+                    type='custom',
+                    description=f'Auto-registered processor: {processor_name}',
+                    config=self.config,
+                    enabled=True
+                )
+                session.add(processor)
+                session.flush()  # Flush to get the ID
+            
+            # Create processing operation
+            operation = ProcessingOperation(
+                id=f"pop_{uuid4().hex}",
+                document_id=document.id,
+                processor_id=processor.id,  # Use database ID, not class name
+                status=status,
+                input_metadata=input_metadata,
+                output_metadata=output_metadata,
+                error=error
+            )
+            
+            session.add(operation)
+            session.commit()
+            session.refresh(operation)
+            
+        return operation 
