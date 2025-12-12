@@ -1,0 +1,110 @@
+name: Auto-Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: auto-tag-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  auto-tag:
+    name: Create Release Tag
+    if: |
+      github.event.pull_request.merged == true &&
+      (startsWith(github.event.pull_request.head.ref, 'release/') ||
+       startsWith(github.event.pull_request.head.ref, 'chore/version-bump-'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout merged code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Extract version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Detected version: $VERSION"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag v${{ steps.version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag v${{ steps.version.outputs.version }} does not exist yet"
+          fi
+
+      - name: Configure Git
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+          echo "🏷️  Created and pushed tag v$VERSION"
+
+      - name: Generate summary
+        if: always()
+        run: |
+          if [ "${{ steps.check_tag.outputs.exists }}" == "true" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # ⚠️  Tag Already Exists
+
+          Tag **v${{ steps.version.outputs.version }}** already exists in the repository.
+
+          ## What This Means
+          - The release tag was already created (possibly manually)
+          - No action taken to avoid conflicts
+          - The existing tag will trigger the CI/CD pipeline if not already done
+
+          ## If You Need to Recreate the Tag
+          ```bash
+          # Delete existing tag
+          git push origin :refs/tags/v${{ steps.version.outputs.version }}
+
+          # The workflow will automatically recreate it on the next PR merge
+          # Or manually create it:
+          git tag -a v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
+          git push origin v${{ steps.version.outputs.version }}
+          ```
+          EOF
+          else
+            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # 🎉 Release Tag Created!
+
+          Successfully created and pushed tag **v${{ steps.version.outputs.version }}**
+
+          ## What Happens Next
+          The tag will automatically trigger the CI/CD pipeline to:
+          - 📦 Build Python package
+          - 🐍 Publish to PyPI
+          - 🐳 Build and push container images
+          - 📋 Generate SBOM reports
+          - 🚀 Create GitHub Release with all artifacts
+
+          ## Monitor Progress
+          - [View CI/CD Runs](https://github.com/${{ github.repository }}/actions/workflows/ci.yml)
+          - [View Releases](https://github.com/${{ github.repository }}/releases)
+
+          ## Release Details
+          - **Version**: v${{ steps.version.outputs.version }}
+          - **Commit**: ${{ github.sha }}
+          - **Branch**: main
+          - **PR**: #${{ github.event.pull_request.number }}
+          EOF
+          fi
