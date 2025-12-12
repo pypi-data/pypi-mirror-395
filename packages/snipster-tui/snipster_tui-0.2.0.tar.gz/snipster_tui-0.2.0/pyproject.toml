@@ -1,0 +1,42 @@
+[project]
+name = "snipster-tui"
+version = "0.2.0"
+description = "snipster-tui is a terminal user interface (TUI) application for managing and browsing code snippets."
+readme = "README.md"
+authors = [
+    { name = "Razhiel", email = "razhiel@gmx.net" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.17.1",
+    "fastapi[all]>=0.121.2",
+    "psycopg2-binary>=2.9.11",
+    "python-decouple>=3.8",
+    "sqlmodel>=0.0.27",
+    "streamlit>=1.51.0",
+    "textual>=6.6.0",
+    "typer>=0.20.0",
+]
+
+[project.scripts]
+pybites-cohort = "pybites_cohort:main"
+
+[build-system]
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "psycopg2-binary>=2.9.11",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.1",
+    "ty>=0.0.1a23",
+]
+
+[tool.poe.tasks]
+test = "pytest"
+cov = "pytest --cov=src --cov-report=term-missing"
+lint = "ruff check ."
+format = "ruff format ."
+tc = "ty check ."
