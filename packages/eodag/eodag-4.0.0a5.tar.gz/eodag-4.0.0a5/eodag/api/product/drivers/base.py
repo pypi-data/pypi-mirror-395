@@ -1,0 +1,78 @@
+# -*- coding: utf-8 -*-
+# Copyright 2018, CS GROUP - France, https://www.csgroup.eu/
+#
+# This file is part of EODAG project
+#     https://www.github.com/CS-SI/EODAG
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from __future__ import annotations
+
+import logging
+import re
+from typing import TYPE_CHECKING, Optional, TypedDict
+
+if TYPE_CHECKING:
+    from eodag.api.product import EOProduct
+
+
+class AssetPatterns(TypedDict):
+    """Asset patterns definition"""
+
+    #: pattern to match and extract asset key
+    pattern: re.Pattern
+    #: roles associated to the asset key
+    roles: list[str]
+
+
+logger = logging.getLogger("eodag.driver.base")
+
+
+class DatasetDriver(metaclass=type):
+    """Parent class for all dataset drivers.
+
+    Drivers will provide methods adapted to a given :class:`~eodag.api.product._product.EOProduct` related to predefined
+    criteria.
+    """
+
+    #: list of patterns to match asset keys and roles
+    ASSET_KEYS_PATTERNS_ROLES: list[AssetPatterns] = []
+
+    #: strip non-alphanumeric characters at the beginning and end of the key
+    STRIP_SPECIAL_PATTERN = re.compile(r"^[^A-Z0-9]+|[^A-Z0-9]+$", re.IGNORECASE)
+
+    def _normalize_key(self, key, eo_product):
+        # default cleanup
+        norm_key = key.replace(eo_product.properties.get("id", ""), "")
+        norm_key = re.sub(self.STRIP_SPECIAL_PATTERN, "", norm_key)
+
+        return norm_key
+
+    def guess_asset_key_and_roles(
+        self, href: str, eo_product: EOProduct
+    ) -> tuple[Optional[str], Optional[list[str]]]:
+        """Guess the asset key and roles from the given href.
+
+        :param href: The asset href
+        :param eo_product: The product to which the asset belongs
+        :returns: The asset key and roles
+        """
+        for pattern_dict in self.ASSET_KEYS_PATTERNS_ROLES:
+            if matched := pattern_dict["pattern"].match(href):
+                extracted_key, roles = (
+                    "".join([m for m in matched.groups() if m is not None]),
+                    pattern_dict.get("roles"),
+                )
+                normalized_key = self._normalize_key(extracted_key, eo_product)
+                return normalized_key or extracted_key, roles
+        logger.debug(f"No key & roles could be guessed for {href}")
+        return None, None

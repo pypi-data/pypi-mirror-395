@@ -1,0 +1,92 @@
+.. module:: eodag.api.core
+
+===================
+EODataAccessGateway
+===================
+
+The `EODataAccessGateway` class is the core component of the EODAG library.
+It provides a unified interface for interacting with various Earth Observation data providers.
+This class allows users to configure providers, search for products, download data, and perform other operations related to Earth Observation data management.
+Below is an overview of its main functionalities, categorized for ease of use.
+
+Constructor
+-----------
+.. autosummary::
+
+   EODataAccessGateway
+
+Configuration
+-------------
+
+.. autosummary::
+
+   EODataAccessGateway.add_provider
+   EODataAccessGateway.set_preferred_provider
+   EODataAccessGateway.get_preferred_provider
+   EODataAccessGateway.update_providers_config
+   EODataAccessGateway.update_collections_list
+
+Catalog
+-------
+
+.. autosummary::
+
+   EODataAccessGateway.providers
+   EODataAccessGateway.available_providers
+   EODataAccessGateway.list_collections
+   EODataAccessGateway.guess_collection
+   EODataAccessGateway.fetch_collections_list
+   EODataAccessGateway.discover_collections
+
+Search
+------
+
+.. autosummary::
+
+   EODataAccessGateway.search
+   EODataAccessGateway.search_all
+   EODataAccessGateway.search_iter_page
+
+Crunch
+------
+
+.. autosummary::
+
+   EODataAccessGateway.crunch
+   EODataAccessGateway.get_cruncher
+
+Download
+--------
+
+.. autosummary::
+
+   EODataAccessGateway.download
+   EODataAccessGateway.download_all
+
+Serialize/Deserialize
+---------------------
+
+.. autosummary::
+
+   EODataAccessGateway.serialize
+   EODataAccessGateway.deserialize
+   EODataAccessGateway.deserialize_and_register
+
+
+Misc
+----
+
+.. autosummary::
+
+   EODataAccessGateway.group_by_extent
+   EODataAccessGateway.guess_collection
+   EODataAccessGateway.list_queryables
+   EODataAccessGateway.available_sortables
+   EODataAccessGateway.import_stac_items
+
+.. autoclass:: eodag.api.core.EODataAccessGateway
+   :members: add_provider, set_preferred_provider, get_preferred_provider, update_providers_config, list_collections,
+             available_providers, search, search_all, search_iter_page, crunch, download, download_all, serialize,
+             deserialize, deserialize_and_register, group_by_extent, guess_collection, get_cruncher,
+             update_collections_list, fetch_collections_list, discover_collections, list_queryables,
+             available_sortables, import_stac_items, providers

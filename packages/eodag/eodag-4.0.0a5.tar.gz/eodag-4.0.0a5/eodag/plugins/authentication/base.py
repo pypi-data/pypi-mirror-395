@@ -1,0 +1,97 @@
+# -*- coding: utf-8 -*-
+# Copyright 2018, CS GROUP - France, https://www.csgroup.eu/
+#
+# This file is part of EODAG project
+#     https://www.github.com/CS-SI/EODAG
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Optional, Union
+
+from eodag.api.product._assets import Asset
+from eodag.plugins.base import PluginTopic
+from eodag.utils.exceptions import MisconfiguredError
+
+if TYPE_CHECKING:
+    from mypy_boto3_s3 import S3ServiceResource
+    from requests.auth import AuthBase
+
+
+class Authentication(PluginTopic):
+    """Plugins authentication Base plugin
+
+    :param provider: provider name
+    :param config: Authentication plugin configuration:
+
+        * :attr:`~eodag.config.PluginConfig.matching_url` (``str``): URL pattern to match with search plugin endpoint or
+          download link
+        * :attr:`~eodag.config.PluginConfig.matching_conf` (``dict[str, Any]``): Part of the search or download plugin
+          configuration that needs authentication and helps identifying it
+    """
+
+    def authenticate(self) -> Union[AuthBase, S3ServiceResource]:
+        """Authenticate"""
+        raise NotImplementedError
+
+    def validate_config_credentials(self) -> None:
+        """Validate configured credentials"""
+        # No credentials dict in the config
+        try:
+            credentials = self.config.credentials
+        except AttributeError:
+            raise MisconfiguredError(
+                f"Missing credentials configuration for provider {self.provider}"
+            )
+        # Empty credentials dict
+        if not credentials:
+            raise MisconfiguredError(
+                f"Missing credentials for provider {self.provider}"
+            )
+        # Credentials keys but values are None.
+        missing_credentials = [
+            cred_name
+            for cred_name, cred_value in credentials.items()
+            if cred_value is None
+        ]
+        if missing_credentials:
+            raise MisconfiguredError(
+                "The following credentials are missing for provider {}: {}".format(
+                    self.provider, ", ".join(missing_credentials)
+                )
+            )
+
+    def authenticate_objects(
+        self,
+        bucket_names_and_prefixes: list[tuple[str, Optional[str]]],
+    ) -> dict[str, Any]:
+        """
+        Authenticates with s3 and retrieves the available objects
+        """
+        raise NotImplementedError
+
+    def presign_url(
+        self,
+        asset: Asset,
+        expires_in: int = 3600,
+    ) -> str:
+        """This method is used to presign a url to download an asset from S3.
+
+        :param asset: asset for which the url shall be presigned
+        :param expires_in: expiration time of the presigned url in seconds
+        :returns: presigned url
+        :raises: :class:`NotImplementedError`
+        """
+        raise NotImplementedError(
+            f"presign_url is not implemented for plugin {type(self).__name__}"
+        )

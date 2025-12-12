@@ -1,0 +1,110 @@
+.. eodag documentation master file, created by
+   sphinx-quickstart on Thu Feb  1 09:22:31 2018.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+.. role:: raw-html(raw)
+    :format: html
+
+Earth Observation Data Access Gateway (|version|)
+=================================================
+
+:raw-html:`<a class="reference external image-reference" href="https://badge.fury.io/py/eodag" rel="nofollow"><img src="https://badge.fury.io/py/eodag.svg" type="image/svg+xml"></a>`
+:raw-html:`<a class="reference external image-reference" href="https://anaconda.org/conda-forge/eodag" rel="nofollow"><img src="https://img.shields.io/conda/vn/conda-forge/eodag" type="image/svg+xml"/></a>`
+:raw-html:`<a class="reference external image-reference" href="https://pypi.org/project/eodag/" rel="nofollow"><img src="https://img.shields.io/pypi/pyversions/eodag.svg" type="image/svg+xml"></a>`
+:raw-html:`<a class="reference external image-reference" href="https://mybinder.org/v2/git/https%3A%2F%2Fgithub.com%2FCS-SI%2Feodag.git/master?filepath=docs%2Fnotebooks%2Fintro_notebooks.ipynb" rel="nofollow"><img src="https://mybinder.org/badge_logo.svg" type="image/svg+xml"></a>`
+:raw-html:`<a class="reference external image-reference" href="https://github.com/CS-SI/eodag" rel="nofollow"><img src="https://img.shields.io/github/stars/CS-SI/eodag?style=social" type="image/svg+xml"/></a>`
+
+**EODAG (Earth Observation Data Access Gateway) is a command line tool and a Python library for searching and downloading
+remotely sensed images while offering a unified API for data access regardless of the data provider.**
+
+.. admonition::  Explore EODAG `featured providers <providers.rst>`_
+   :class: seealso
+
+   EODAG comes already configured with many providers from AWS / GCS EO catalogs, Copernicus, CNES, Destination Earth,
+   ECMWF, ESA, EUMETSAT, Meteoblue, Planetary Computer, USGS / Landsat, ...
+
+EODAG has the following primary features:
+
+* Search and download Earth Observation products from different providers with **a unified API**
+* It is both a `Command Line Tool <cli_user_guide.rst>`_ and a `Python library <api_user_guide.rst>`_
+* It supports `STAC and Static STAC <notebooks/tutos/tuto_stac_client.ipynb>`_ catalogs
+* New providers can be added with a `configuration file <add_provider.rst>`_ or by extending EODAG with `plugins <plugins.rst>`_
+* More than 270 `collections <getting_started_guide/collections.rst#collections-information-csv>`_ configured
+
+.. image:: _static/eodag_overview.png
+   :width: 800
+   :alt: EODAG overview
+   :class: no-scaled-link
+
+Example
+-------
+
+`Register <providers.rst>`_ to one or more providers,
+`configure your credentials <getting_started_guide/configure.rst>`_ , and then
+downloading *Sentinel 2 Level-1C* products from any provider's catalog is as simple as:
+
+.. code-block:: python
+
+   from eodag import EODataAccessGateway
+
+   dag = EODataAccessGateway()
+
+   search_results = dag.search(
+       collection="S2_MSI_L1C",
+       start="2021-03-01",
+       end="2021-03-31",
+       geom={"lonmin": 1, "latmin": 43, "lonmax": 2, "latmax": 44}
+   )
+
+   product_paths = dag.download_all(search_results)
+
+.. admonition:: `Breaking change <breaking_changes.html>`_ in v3.0.0
+   :class: important
+
+   :meth:`~eodag.api.core.EODataAccessGateway.search` method now returns only a single
+   :class:`~eodag.api.search_result.SearchResult` instead of a 2 values tuple.
+
+Or:
+
+.. code-block:: bash
+
+   eodag search --collection S2_MSI_L1C --box 1 43 2 44 --start 2021-03-01 --end 2021-03-31
+   eodag download  --search-results search_results.geojson
+
+
+License
+-------
+
+EODAG is available under the open source `Apache License`__.
+
+__ https://www.apache.org/licenses/LICENSE-2.0.html
+
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: For Users
+
+   getting_started_guide/index
+   providers
+   api_user_guide
+   api_reference/index
+   cli_user_guide
+   breaking_changes
+   tutos
+   ecosystem
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: For Developers/Contributors
+
+   add_provider
+   add_collection
+   plugins
+   drivers
+   params_mapping
+   contribute
+   changelog
+   GitHub Repository <https://github.com/CS-SI/eodag>
