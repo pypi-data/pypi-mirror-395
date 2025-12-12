@@ -1,0 +1,100 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">{% trans "SIM Card" %}</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <th scope="row">{% trans "Provider" %}</th>
+                        <td>{{ object.provider|linkify }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Account" %}</th>
+                        <td>{{ object.provider_account|linkify|placeholder }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">ICCID</th>
+                        <td>{{ object.iccid }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">MSISDN</th>
+                        <td>{{ object.msisdn }}</td>
+                    </tr>
+                    {% if object.description %}
+                    <tr>
+                        <th scope="row">{% trans "Description" %}</th>
+                        <td style="word-break:break-all;">{{ object.description }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if object.tenant %}
+                    <tr>
+                        <th scope="row">{% trans "Tenant" %}</th>
+                        <td>
+                            {% if object.tenant.group %}
+                                {{ object.tenant.group|linkify }} /
+                            {% endif %}
+                            {{ object.tenant|linkify|placeholder }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% if object.device %}
+                    <tr>
+                        <th scope="row">{% trans "Device" %}</th>
+                        <td style="word-break:break-all;">{{ object.device|linkify }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th scope="row">{% trans "PIN" %}</th>
+                        <td>{{ object.pin }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "PUK" %}</th>
+                        <td>{{ object.puk }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Volume in GBs" %}</th>
+                        <td> 
+                            {% if object.volume_limit == 0 %}
+                            Unlimited
+                            {% else %}
+                            {{ object.volume_limit }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            {% include 'inc/panels/custom_fields.html' %}
+        </div>
+        <div class="col col-md-6">
+            {% include 'inc/panels/tags.html' %}
+        </div>
+        {% if sim_private %}
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">{% trans "SIM Card Private" %}</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <th scope="row">{% trans "Authentication Key" %}</th>
+                        <td>{{ sim_private.ki }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Operator Code" %}</th>
+                        <td>{{ sim_private.opc }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Mapped IMEI" %}</th>
+                        <td>{{ sim_private.mapped_imei }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Admin Key" %}</th>
+                        <td>{{ sim_private.admin_key }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}

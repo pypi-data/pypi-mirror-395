@@ -1,0 +1,117 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+
+{% block content %}
+    <div class="row">
+        <div class="col col-md-6">
+            <div class="card">
+                <h5 class="card-header">{% trans "Phonenumber" %}</h5>
+                <table class="table table-hover attr-table">
+                    <tr>
+                        <th scope="row">{% trans "Number" %}</th>
+                        <td>{{ object.number }}</td>
+                    </tr>
+                    {% if object.description %}
+                    <tr>
+                        <th scope="row">{% trans "Description" %}</th>
+                        <td style="word-break:break-all;">{{ object.description }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if object.tenant %}
+                    <tr>
+                        <th scope="row">{% trans "Tenant" %}</th>
+                        <td>
+                            {% if object.tenant.group %}
+                                {{ object.tenant.group|linkify }} /
+                            {% endif %}
+                            {{ object.tenant|linkify|placeholder }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th scope="row">{% trans "Incomming dialpeer" %}</th>
+                        <td>{{ object.incoming_dialpeer }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Outgoining dialpeer" %}</th>
+                        <td>{{ object.outgoining_dialpeer }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Country code" %}</th>
+                        <td>{{ object.get_country_code_display }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Status" %}</th>
+                        <td>{{ object.get_status_display }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Type" %}</th>
+                        <td>{{ object.get_type_display  }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">{% trans "Region" %}</th>
+                        <td>{{ object.region|linkify }}</td>
+                    </tr>
+                    {% if object.primary_vm %}
+                    <tr>
+                        <th scope="row">{% trans "Primary Vm" %}</th>
+                        <td style="word-break:break-all;">{{ object.primary_vm|linkify }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if object.primary_device %}
+                    <tr>
+                        <th scope="row">{% trans "Primary Device" %}</th>
+                        <td style="word-break:break-all;">{{ object.primary_device|linkify }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if object.secondary_vm %}
+                    <tr>
+                        <th scope="row">{% trans "Secondary Vm" %}</th>
+                        <td style="word-break:break-all;">{{ object.secondary_vm|linkify }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if object.secondary_device %}
+                    <tr>
+                        <th scope="row">{% trans "Secondary Device" %}</th>
+                        <td style="word-break:break-all;">{{ object.secondary_device|linkify }}</td>
+                    </tr>
+                    {% endif %}
+
+                    {% if object.primary_voice_circuit %}
+                    <tr>
+                        <th scope="row">{% trans "Primary Voice Circuit" %}</th>
+                        <td>{{ object.primary_voice_circuit|linkify }}</td>
+                    </tr>
+                    {% endif %}
+
+                    {% if object.primary_virtual_circuit %}
+                    <tr>
+                        <th scope="row">{% trans "Primary Virtual Circuit" %}</th>
+                        <td>{{ object.primary_virtual_circuit|linkify }}</td>
+                    </tr>
+                    {% endif %}
+
+                    {% if object.secondary_voice_circuit %}
+                    <tr>
+                        <th scope="row">{% trans "Secondary Voice Circuit" %}</th>
+                        <td>{{ object.secondary_voice_circuit|linkify }}</td>
+                    </tr>
+                    {% endif %}
+
+                    {% if object.secondary_virtual_circuit %}
+                    <tr>
+                        <th scope="row">{% trans "Secondary Virtual Circuit" %}</th>
+                        <td>{{ object.secondary_virtual_circuit|linkify }}</td>
+                    </tr>
+                    {% endif %}
+
+
+                </table>
+            </div>
+            {% include 'inc/panels/custom_fields.html' %}
+        </div>
+        <div class="col col-md-6">
+            {% include 'inc/panels/tags.html' %}
+        </div>
+    </div>
+{% endblock %}
