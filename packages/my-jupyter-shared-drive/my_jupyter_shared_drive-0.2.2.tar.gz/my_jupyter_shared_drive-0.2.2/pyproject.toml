@@ -1,0 +1,67 @@
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling>=1.4.0", "jupyterlab>=4.0.0"]
+
+[project]
+name = "my-jupyter-shared-drive"
+version = "0.2.2"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+description = "JupyterLab/Jupyter Notebook 7+ extension integrating collaborative shared models."
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 4",
+    "Framework :: Jupyter :: JupyterLab :: Extensions",
+    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
+]
+authors = [
+    { name = "Jupyter Development Team", email = "jupyter@googlegroups.com" },
+]
+
+[project.urls]
+Documentation = "https://jupyterlab-realtime-collaboration.readthedocs.io/"
+Repository = "https://github.com/jupyterlab/jupyter-collaboration"
+
+[tool.hatch.build.targets.sdist]
+artifacts = ["my_jupyter_shared_drive/labextension"]
+exclude = ["/.github", "/binder", "node_modules"]
+
+[tool.hatch.build.targets.sdist.force-include]
+"packages/my-shared-docprovider" = "packages/my-shared-docprovider"
+"packages/my-shared-docprovider-extension" = "packages/my-shared-docprovider-extension"
+
+[tool.hatch.build.targets.wheel.shared-data]
+"my_jupyter_shared_drive/labextension" = "share/jupyter/labextensions/@jupyter/my-shared-docprovider-extension"
+"install.json" = "share/jupyter/labextensions/@jupyter/my-shared-docprovider-extension/install.json"
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = ["hatch-jupyter-builder>=0.5"]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = [
+    "my_jupyter_shared_drive/labextension/static/style.js",
+    "my_jupyter_shared_drive/labextension/package.json",
+]
+skip-if-exists = ["my_jupyter_shared_drive/labextension/static/style.js"]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+npm = ["jlpm"]
+build_cmd = "build:prod"
+editable_build_cmd = "install:extension"
+
+[tool.check-wheel-contents]
+ignore = ["W002"]
