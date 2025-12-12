@@ -1,0 +1,22 @@
+{# def custom_fields_config, d #}
+
+{% if custom_fields_config %}
+<div class="icustom-field">
+    {% for cf_section in custom_fields_config %}
+        <ISection title={{cf_section.section}} title_hidden={{cf_section.hidden}}>
+            <IValueList>
+                {% for cf in cf_section.fields %}
+                    {% set val=d[cf.field] %}
+                    <IField d={{val}} label={{cf.props.label}} placeholder={{_("Not set")}}>
+                        {% if cf.props.landing_page_component %}
+                            {{ catalog.irender(cf.props.landing_page_component, d=val) }}
+                        {% else %}
+                            <IValue value={{ui_value(val)}} />
+                        {% endif %}
+                    </IField>
+                {% endfor %}
+            </IValueList>
+        </ISection>
+    {% endfor %}
+</div>
+{% endif %}
