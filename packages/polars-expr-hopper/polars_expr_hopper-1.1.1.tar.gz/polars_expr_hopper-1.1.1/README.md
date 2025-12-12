@@ -1,0 +1,178 @@
+# polars-expr-hopper
+
+<!-- [![downloads](https://static.pepy.tech/badge/polars-expr-hopper/month)](https://pepy.tech/project/polars-expr-hopper) -->
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![pdm-managed](https://img.shields.io/badge/pdm-managed-blueviolet)](https://pdm.fming.dev)
+[![PyPI](https://img.shields.io/pypi/v/polars-expr-hopper.svg)](https://pypi.org/project/polars-expr-hopper)
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/polars-expr-hopper.svg)](https://pypi.org/project/polars-expr-hopper)
+[![License](https://img.shields.io/pypi/l/polars-expr-hopper.svg)](https://pypi.org/project/polars-expr-hopper)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/lmmx/polars-expr-hopper/master.svg)](https://results.pre-commit.ci/latest/github/lmmx/polars-expr-hopper/master)
+
+**Declarative, schema-aware expression application for Polars**
+
+Define your filters and transformations upfront, and let them apply automatically as soon as the columns they need exist. No more manually checking schemas or ordering your pipeline steps: just declare what you want, and the hopper handles the timing.
+
+Powered by [polars-config-meta](https://pypi.org/project/polars-config-meta/) for persistent DataFrame-level metadata.
+
+Simplify data pipelines by storing your expressions in a single location and letting them apply **as soon as** the corresponding columns exist in the DataFrame schema.
+
+## Why use this?
+
+Imagine you're building a data pipeline where:
+
+- You want to filter rows early to minimise downstream processing
+- But the columns you need to filter on don't exist yet: they're created mid-pipeline
+- You don't want to scatter filter logic throughout your code or manually track "when can I apply this?"
+
+**polars-expr-hopper** lets you declare all your expressions upfront. They sit in a "hopper" and apply themselves the moment their required columns appear in the DataFrame schema.
+
+### Real-world example: CLI tools
+
+This pattern shines when building CLI tools where users specify filters via arguments. Instead of complex logic to determine *when* each filter can run, you just:
+
+1. Parse all user-provided filters into Polars expressions
+2. Add them to the hopper
+3. Call `apply_ready_filters()` after each pipeline stage
+
+Filters automatically apply as soon as possible, minimising the rows flowing through expensive operations (like API calls or joins).
+
+See [octopolars](https://github.com/lmmx/octopolars) for a real implementation using this pattern,
+specifically [the `apply_ready_exprs()` call](https://github.com/lmmx/octopolars/blob/aeddb7279a9b872224a5bb490612aa9b241202d1/src/octopols/inventory.py#L124).
+
+## Installation
+
+```bash
+pip install polars-expr-hopper
+```
+
+> The `polars` dependency is required but not included in the package by default.
+> It is shipped as an optional extra which can be activated by passing it in square brackets:
+> ```bash
+> pip install polars-expr-hopper[polars]           # for standard Polars
+> pip install polars-expr-hopper[polars-lts-cpu]   # for older CPUs
+> ```
+
+### Requirements
+
+- Python 3.9+
+- Polars (any recent version, installed via `[polars]` or `[polars-lts-cpu]` extras)
+- _(Optional)_ [pyarrow](https://pypi.org/project/pyarrow) if you want Parquet I/O features that preserve metadata in the hopper
+
+## Features
+
+- **DataFrame-Level Expression Management**: Store multiple Polars **expressions** on a DataFrame via the `.hopper` namespace.
+- **Apply When Ready**: Each expression is automatically applied once the DataFrame has all columns required by that expression.
+- **Namespace Plugin**: Access everything through `df.hopper.*(...)`—no subclassing or monkey-patching.
+- **Metadata Preservation**: Transformations called through `df.hopper.<method>()` keep the same expression hopper on the new DataFrame.
+- **No Central Orchestration**: Avoid fiddly pipeline step names or schemas—just attach your expressions once, and they get applied in the right order automatically.
+- **Optional Serialisation**: If you want to store or share expressions across runs (e.g., Parquet round-trip), you can serialise them to JSON or binary and restore them later—without forcing overhead in normal usage.
+
+## Usage
+
+### Basic Usage Example
+
+```python
+import polars as pl
+import polars_hopper  # Registers the .hopper namespace
+
+# Suppose we're building a pipeline that:
+# 1. Starts with user data
+# 2. Later enriches it with age information from another source
+# 3. We want to filter out user_id=0 immediately, and filter by age>18 as soon as age exists
+
+df = pl.DataFrame({
+    "user_id": [1, 2, 3, 0],
+    "name": ["Alice", "Bob", "Charlie", "NullUser"]
+})
+
+# Declare BOTH filters upfront, even though 'age' doesn't exist yet
+df.hopper.add_filters(pl.col("user_id") != 0)
+df.hopper.add_filters(pl.col("age") > 18)  # 'age' column doesn't exist yet!
+
+# Apply what we can now (only the user_id filter runs)
+df = df.hopper.apply_ready_filters()
+# NullUser row is gone, age filter stays pending
+
+# Later in the pipeline: enrich with age data
+df = df.hopper.with_columns(pl.Series("age", [25, 15, 30]))
+
+# Now the age filter can apply
+df = df.hopper.apply_ready_filters()
+# Only rows with age > 18 remain, and that expr is removed from the hopper
+```
+
+### How It Works
+
+In brief:
+
+1. **Add expressions** to the hopper via `df.hopper.add_filters()`, `add_selects()`, or `add_addcols()`
+2. **Expressions wait** until their required columns (detected via `.meta.root_names()`) exist in the DataFrame
+3. **Call `apply_ready_*()`** after pipeline stages ⇢ ready expressions apply and remove themselves
+4. **Metadata travels** with the DataFrame through transformations (powered by [polars-config-meta](https://pypi.org/project/polars-config-meta/))
+
+This enables a "declare once, apply when ready" pattern that simplifies complex pipelines.
+
+#### Implementation details
+
+Internally, **polars-expr-hopper** attaches a small “manager” object (a plugin namespace) to each `DataFrame`. This manager leverages [polars-config-meta](https://pypi.org/project/polars-config-meta/) to store data in `df.config_meta.get_metadata()`, keyed by the `id(df)`.
+
+1. **List of In-Memory Expressions**:
+   - Maintains a `hopper_filters` list of Polars expressions (`pl.Expr`) in the DataFrame’s metadata.
+   - Avoids Python callables or lambdas so that **.meta.root_names()** can be used for schema checks and optional serialisation is possible.
+
+2. **Automatic Column Check** (`apply_ready_filters()`)
+   - On `apply_ready_filters()`, each expression’s required columns (via `.meta.root_names()`) are compared to the current DataFrame schema.
+   - Expressions referencing missing columns remain pending.
+   - Expressions referencing all present columns are applied via `df.filter(expr)`.
+   - Successfully applied expressions are removed from the hopper.
+
+3. **Metadata Preservation**
+   - Because we rely on **polars-config-meta**, transformations called through `df.hopper.select(...)`, `df.hopper.with_columns(...)`, etc. automatically copy the same `hopper_filters` list to the new DataFrame.
+   - This ensures **pending** expressions remain valid throughout your pipeline until their columns finally appear.
+
+4. **No Monkey-Patching**
+   - Polars’ plugin system is used, so there is no monkey-patching of core Polars classes.
+   - The plugin registers a `.hopper` namespace—just like `df.config_meta`, but specialised for expression management.
+
+Together, these features allow you to:
+
+- store a **set** of Polars expressions in one place
+- apply them **as soon as** their required columns exist
+- easily carry them forward through the pipeline
+
+All without global orchestration or repeated expression checks.
+
+This was motivated by wanting a way to make a flexible CLI tool and express filters for the results
+at different steps, without a proliferation of CLI flags. From there, the idea of a 'queue' which
+was pulled from on demand, in FIFO order but on the condition that the schema must be amenable was born.
+
+This idea **could be extended to `select` statements**, but initially filtering was the primary deliverable.
+
+### API Methods
+
+- `add_filters(*exprs: tuple[pl.Expr, ...])`
+  Add a new predicate (lambda, function, Polars expression, etc.) to the hopper.
+
+- `apply_ready_filters() -> pl.DataFrame`
+  Check each stored expression’s root names. If the columns exist, `df.filter(expr)` is applied. Successfully applied expressions are removed.
+- `list_filters() -> List[pl.Expr]`
+  Inspect the still-pending expressions in the hopper.
+- `serialise_filters(format="binary"|"json") -> List[str|bytes]`
+  Convert expressions to JSON strings or binary bytes.
+- `deserialise_filters(serialised_list, format="binary"|"json")`
+  Re-create in-memory `pl.Expr` objects from the serialised data, overwriting any existing expressions.
+
+## Contributing
+
+Maintained by [Louis Maddox](https://github.com/lmmx/polars-expr-hopper). Contributions welcome!
+
+1. **Issues & Discussions**: Please open a GitHub issue or discussion for bugs, feature requests, or questions.
+2. **Pull Requests**: PRs are welcome!
+   - Install the dev extra (e.g. with [uv](https://docs.astral.sh/uv/)):
+     `uv pip install -e .[dev]`
+   - Run tests (when available) and include updates to docs or examples if relevant.
+   - If reporting a bug, please include the version and any error messages/tracebacks.
+
+## License
+
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
