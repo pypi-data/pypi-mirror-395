@@ -1,0 +1,34 @@
+{# description: Node/interface addressing #}
+<table>
+  <tr>
+    <th>Node/Interface</th>
+    <th class='right'>IPv4 address</th>
+    <th class='right'>IPv6 address</th>
+    <th>Description/Router ID</th>
+  </tr>
+{% for n,d in nodes.items() %}
+  <tr>
+{%   if 'loopback' in d %}
+    <td class='header'><h3>{{ n }}</h3></td>
+    <td class='header right'>{% if 'ipv4' in d.loopback %}{{ d.loopback.ipv4 }}{% endif %}</td>
+    <td class='header right'>{% if 'ipv6' in d.loopback %}{{ d.loopback.ipv6 }}{% endif %}</td>
+{% set lb = d.loopback|default({ 'ipv4':'' }) %}
+    <td class='header right'>{{ d.router_id|default(lb.ipv4) }}</td>
+{%   else %}
+    <td class='header' colspan='4'><h3>{{ n }}</h3></td>
+{%   endif %}
+  </tr>
+{%   for intf in d.interfaces %}
+{%     set v_ipv6 = '' if 'ipv6' not in intf else 'LLA' if intf.ipv6 is true else intf.ipv6 %}
+{%     set v_ipv4 = '' if 'ipv4' not in intf else 'Unnumbered' if intf.ipv4 is true else intf.ipv4 %}
+  <tr>
+    <td style='padding-left: 2em;'>{{ intf.ifname }}</td>
+    <td class='right'>{{ v_ipv4 }}</td>
+    <td class='right'>{{ v_ipv6 }}</td>
+    <td>
+      {{ intf.name|default('') }}{% if 'vrf' in intf %} (VRF: {{ intf.vrf }}){% endif +%}
+    </td>
+  </tr>
+{%   endfor %}
+{% endfor %}
+</table>

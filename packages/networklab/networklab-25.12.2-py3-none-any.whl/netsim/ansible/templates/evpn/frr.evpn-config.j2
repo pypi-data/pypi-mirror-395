@@ -1,0 +1,70 @@
+router bgp {{ bgp.as }}
+ address-family l2vpn evpn
+  advertise-all-vni
+  advertise-svi-ip
+{% for af in ['ipv4','ipv6'] if af in bgp %}
+  advertise {{ af }} unicast
+{% endfor %}
+
+! Configure explicit Route Targets and RD per L2 VNI; auto-derived differs
+{% for vlan in (vlans|default({})).values() if 'vni' in vlan and 'evpn' in vlan %}
+  vni {{ vlan.vni }}
+   rd {{ vlan.evpn.rd }}
+{%   for dir in ['import','export'] if vlan.evpn[dir]|default([]) %}
+{%     for cmnt in vlan.evpn[dir] %}
+   route-target {{ dir }} {{ cmnt }}
+{%     endfor %}
+{%   endfor %}
+  exit-vni
+{% endfor %}
+
+{#
+Peer decision logic:
+
+  * IPv4 must be defined or the EVPN flag would not be set
+  * If IPv4 is not a string, we could have an interface session or a regular
+    rfc8950 session.
+  * Try local ifname first, if that's missing, we must have IPv6 peer address
+#}
+{% for n in bgp.neighbors if n.evpn|default(False) %}
+{%   set peer = n.ipv4 if n.ipv4 is string else n.local_if|default(n.ipv6) %}
+  neighbor {{ peer }} activate
+#  neighbor {{ peer }} soft-reconfiguration inbound
+{%   if n.rr_client|default(False) %}
+  neighbor {{ peer }} route-reflector-client
+{%   endif %}
+{% endfor %}
+
+ exit-address-family
+!
+ 
+exit
+
+! L3 VRF EVPN handling
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() if 'evpn' in vdata %}
+vrf {{ vname }}
+{% if vdata.evpn.transit_vni is defined %}
+ vni {{ vdata.evpn.transit_vni }}
+{% endif %}
+ exit-vrf
+
+router bgp {{ bgp.as }} vrf {{ vname }}
+ address-family l2vpn evpn
+{% if vdata.evpn.transit_vni is defined %}
+  ! This sets the L3 VNI RD/RT for this VRF
+  rd {{ vdata.rd }}
+  route-target export {{ vdata.export[0] }}
+  route-target import {{ vdata.import[0] }}
+{% endif %}
+  ! Enable RT5 advertisements
+{% for af in ['ipv4','ipv6'] if af in vdata.af|default([]) and vdata.af[af] %}
+  advertise {{ af }} unicast
+{% endfor %}
+ exit-address-family
+exit
+!
+{% endfor %}
+{% endif %}
+!
+do write

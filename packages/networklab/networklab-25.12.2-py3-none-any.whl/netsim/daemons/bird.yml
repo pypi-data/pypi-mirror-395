@@ -1,0 +1,65 @@
+---
+description: BIRD Internet Routing Daemon
+group_vars:
+  netlab_import_map:
+    bgp: RTS_BGP
+    ospf: RTS_OSPF
+    connected: RTS_DEVICE
+    static: RTS_STATIC_DEVICE,RTS_STATIC
+packages:
+  bird: bird
+daemon_config:
+  bird: /etc/bird/bird.conf
+  initial: /etc/config/01-initial.sh
+  lag: /etc/config/10-lag.sh
+  vlan: /etc/config/20-vlan.sh
+  bgp: /etc/bird/bgp.mod.conf
+  ospf: /etc/bird/ospf.mod.conf
+  routing: /etc/bird/routing.mod.conf
+clab:
+  group_vars:
+    netlab_show_command: [ birdc, 'show $@' ]
+    docker_shell: bash -il
+  image: netlab/bird:latest
+  build: 'https://netlab.tools/netlab/clab/#netlab-clab-build'
+  features:
+    initial:
+      roles: [ host, router ]
+  node:
+    config_templates:
+      config: /etc/config/startup.sh
+    exec:
+    - sh /etc/config/startup.sh
+libvirt:                        # Not yet available on libvirt or virtualbox
+  image:
+virtualbox:
+  image:
+features:
+  bfd: true
+  bgp:
+    activate_af: true
+    ipv6_lla: false             # Bird supports dynamic neighbors using 'range', but not active discovery based on RAs
+    rfc8950: true
+    local_as: true
+    local_as_ibgp: true
+    community:
+      standard: [ standard, large ]
+      large: [ large ]
+      extended: [ extended ]
+      2octet: [ standard ]
+    import: [ ospf, connected, static ]
+  ospf:
+    import: [ bgp, connected, static ]
+    password: true
+    priority: true
+    timers: true
+    unnumbered: true
+  routing:
+    static.discard: true
+  dhcp: false
+  initial:
+    ipv4:
+      unnumbered: peer
+    ipv6:
+      lla: true
+    roles: [ host, router ]

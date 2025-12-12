@@ -1,0 +1,59 @@
+{% import '_route_map_ios.j2' as routemap with context %}
+{% macro ebgp_neighbor(n,af) -%}
+{%   set peer = n[af] if n[af] is string else n.local_if|default('?') %}
+{%   if 'weight' in n %}
+    neighbor {{ peer }} weight {{ n.weight }}
+{%   endif %}
+{%   if 'bandwidth' in n %}
+    neighbor {{ peer }} send-community extended
+{%   endif %}
+{{   routemap.apply_route_map(n,af,True) }}
+{%- endmacro %}
+
+{% macro aggregate(bgp,af) %}
+{%   for a_entry in bgp.aggregate|default([]) if af in a_entry %}
+    aggregate-address {{ a_entry[af] }}{% 
+       if a_entry.summary_only|default(false) %} summary-only{% endif %}{%
+       if a_entry.suppress_policy|default(false) %} suppress-map {{ a_entry.suppress_policy }}-{{ af }}{% endif %}{%
+       if a_entry.attributes|default(false) %} route-map {{ a_entry.attributes }}-{{ af }}{% endif +%}
+{%   endfor -%}
+{% endmacro -%}
+!
+router bgp {{ bgp.as }}
+!
+! Global address families
+{% if 'locpref' in bgp %}
+  bgp default local-preference {{ bgp.locpref }}
+{% endif %}
+{% for af in ['ipv4','ipv6'] if af in bgp %}
+  address-family {{ af }}
+{{   aggregate(bgp,af) }}
+{%   for n in bgp.neighbors if n[af] is defined %}
+{{     ebgp_neighbor(n,af) }}
+{%   endfor %}
+{% endfor %}
+!
+{% for n in bgp.neighbors if n.evpn|default(False) and n.type == 'ebgp' %}
+{%  if loop.first %}
+  address-family l2vpn evpn
+{%  endif %}
+{%   for af in ['ipv4','ipv6'] if n[af] is defined %}
+{{     ebgp_neighbor(n,af) }}
+{%   endfor %}
+{% endfor %}
+!
+{% if vrfs is defined %}
+{%   for vname,vdata in vrfs.items() if vdata.bgp is defined and vdata.bgp.neighbors is defined %}
+router bgp {{ bgp.as }} vrf {{ vname }}
+{% if 'locpref' in bgp %}
+  bgp default local-preference {{ bgp.locpref }}
+{% endif %}
+{%     for af in ['ipv4','ipv6'] if af in vdata.af|default({}) %}
+  address-family {{ af }}
+{{       aggregate(vdata.bgp,af) }}
+{%       for n in vdata.bgp.neighbors if n[af] is defined %}
+{{         ebgp_neighbor(n,af) }}
+{%       endfor %}
+{%     endfor %}
+{%   endfor %}
+{% endif %}

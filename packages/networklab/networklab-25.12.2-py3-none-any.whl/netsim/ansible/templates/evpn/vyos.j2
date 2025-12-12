@@ -1,0 +1,77 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+fi
+
+# Configuration items start here
+configure
+
+# Configure Generic EVPN Stuff
+set protocols bgp address-family l2vpn-evpn advertise-svi-ip
+set protocols bgp address-family l2vpn-evpn advertise-all-vni
+
+{# See FRR template for the explanation of the peer calculation logic #}
+{% for n in bgp.neighbors if n.evpn|default(False) %}
+{%   set peer = n.ipv4 if n.ipv4 is string else n.local_if|default(n.ipv6) %}
+{%   if n.type == 'ibgp' %}
+set protocols bgp neighbor {{ peer }} address-family l2vpn-evpn nexthop-self
+{%   endif %}
+set protocols bgp neighbor {{ peer }} address-family l2vpn-evpn soft-reconfiguration inbound
+
+{%   if n.rr_client|default(False) %}
+set protocols bgp neighbor {{ peer }} address-family l2vpn-evpn route-reflector-client
+{%   endif %}
+{% endfor %}
+
+# Configure VNI params
+{% if vlans is defined %}
+{%   for v in vlans.values() if v.evpn.evi is defined and v.vni is defined %}
+set protocols bgp address-family l2vpn-evpn vni {{ v.vni }} rd {{ v.evpn.rd }}
+set protocols bgp address-family l2vpn-evpn vni {{ v.vni }} route-target import "{{ v.evpn.import|join(' ') }}"
+set protocols bgp address-family l2vpn-evpn vni {{ v.vni }} route-target export "{{ v.evpn.export|join(' ') }}"
+{%   endfor %}
+{% endif %}
+
+# Work on L3VNI
+
+{% if vrfs is defined %}
+# If at least one VRF has evpn.transit_vni
+{%   for n,v in vrfs.items() if v.evpn.transit_vni is defined %}
+{%     if loop.first %}
+set protocols bgp address-family l2vpn-evpn advertise ipv4 unicast
+{%     endif %}
+{%   endfor %}
+
+{%   for n,v in vrfs.items() if v.evpn.transit_vni is defined %}
+{% set l3vni = v.evpn.transit_vni %}
+set vrf name {{ n }} protocols bgp address-family ipv4-unicast redistribute connected
+set vrf name {{ n }} protocols bgp address-family l2vpn-evpn advertise ipv4 unicast
+set vrf name {{ n }} vni '{{l3vni}}'
+set vrf name {{ n }} protocols bgp address-family l2vpn-evpn vni {{ l3vni }}
+
+set vrf name {{ n }} protocols bgp address-family l2vpn-evpn rd {{ v.rd }}
+set vrf name {{ n }} protocols bgp address-family l2vpn-evpn route-target import "{{ v.import|join(' ') }}"
+set vrf name {{ n }} protocols bgp address-family l2vpn-evpn route-target export "{{ v.export|join(' ') }}"
+
+# Need to create VXLAN and Bridge for L3VNI
+set interfaces vxlan vxlan{{l3vni}} vni {{l3vni}}
+set interfaces vxlan vxlan{{l3vni}} source-address {{ vxlan.vtep }}
+set interfaces vxlan vxlan{{l3vni}} port 4789
+set interfaces vxlan vxlan{{l3vni}} parameters nolearning
+
+# Dummy Bridge for L3VNI - See https://github.com/FRRouting/frr/issues/11212
+set interfaces bridge br{{l3vni}} member interface vxlan{{l3vni}}
+set interfaces bridge br{{l3vni}} description "Dummy Bridge for L3VNI {{l3vni}}"
+set interfaces bridge br{{l3vni}} vrf '{{ n }}'
+
+{%   endfor %}
+
+{% endif %}
+
+# Commit, save and exit from subshell
+
+commit
+save
+exit

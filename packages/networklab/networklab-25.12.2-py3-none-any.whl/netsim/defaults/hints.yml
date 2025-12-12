@@ -1,0 +1,93 @@
+# Error message hints
+---
+evpn:
+  irb_group: >
+    All VLANs that are part of a VRF using asymmetric IRB have to be present on all nodes
+    using that VRF. The easiest way to achieve that is to create a group with all
+    participating nodes and list VLANs in the 'vlans' attribute of that group
+  node_attr: |
+    evpn.bundle and evpn.transit_vni attributes can be used only in global VRF definition
+  asn: >
+    You could use the global 'bgp.as' parameter to specify the AS to use in EVPN
+    route targets. 'bgp.as' specified on individual nodes or groups will not work. You
+    can also specify the global AS used by EVPN in 'vrf.as' parameter if you use
+    VRFs, or in 'evpn.as' parameter if you use EVPN in bridging-only scenarios.
+  ebgp_vlan: >
+    In most scenarios, you don't need EBGP sessions between PE-devices across an
+    EVPN-controlled VLAN. See https://netlab.tools/module/evpn/#evpn-rp for details.
+
+report:
+  source: >
+    A report can be specified in a file with .j2 suffix within 'reports' subdirectory in
+    package-, system-, user- or current directory. You can also specify a report in a
+    defaults.outputs.report setting.
+
+junos:
+  single_lb: >
+    Junos devices cannot have more than one loopback interface per routing instance
+
+vlan:
+  mixed_fwd_check: >
+    You can disable this error with "defaults.vlan.warnings.mixed_fwd_check: False", but then
+    you might get the same IP prefix assigned to multiple segments of the routed VLAN.
+  trunk_attr: >
+    You should not use layer-3 attributes on VLAN trunks. Specify them in global- or node
+    'vlans' dictionary. See https://netlab.tools/module/vlan/#vlan-interface-parameters for details.
+
+vrf:
+  inactive: >
+    A globally-defined VRF is not used on a node unless that node is attached to a VRF link,
+    or has the VRF listed in the node 'vrfs' dictionary and uses VRF loopbacks.
+
+cli:
+  recreate:
+    netlab transforms lab topology into device- and platform data and stores the results in
+    a snapshot file that is used by most netlab commands. Changes to source files (including
+    lab topology or defaults) are not automatically reflected in the snapshot file.
+    Use 'netlab create' or 'netlab up' to create a new snapshot file.
+  interrupt:
+    Use 'netlab status' command to display the status of your lab and 'netlab
+    down --cleanup' command to clean it up. You might have to use the '--force'
+    option of the 'netlab down' command.
+
+routing:
+  policy:
+    match_af:
+      A routing policy 'match.prefix' condition can match a single address
+      family. Use 'match.af' parameter to specify the address family you want to
+      match.
+  host_gw:
+    Hosts attached to routers need a shared gateway or a gateway of last resort.
+    In both cases, at least one adjacent router needs a real (not unnumbered/LLA)
+    IP address.
+
+validation:
+  nodes:
+    A test that uses 'show', 'exec' or 'plugin' action must specify the nodes on
+    which that action will be executed.
+  valid:
+    A test that includes the 'valid' check must generate some output to check. That
+    output can be generated with 'show','exec', or 'suzieq' action.
+  show:
+    The 'show' action should return structured data that is then validated with the
+    'valid' check. If you want to execute a command on the device without checking
+    the results, use the 'exec' action.
+
+libvirt:
+  capture: |
+    Change the link type to Linux bridge with 'type: lan' link attribute or see
+    https://netlab.tools/labs/libvirt/#libvirt-capture for other options.
+
+nodes:
+  unmanaged_device:
+    Netlab uses the node device type for unmanaged nodes to figure out what
+    features the node supports. If you're using a device that is not supported
+    by netlab, set the device type to 'none'.
+
+support:
+  best-effort:
+    While a core contributor might still work on the platform, we don't run integration tests
+  minimal:
+    Don't expect too much (particularly new functionality)
+  obsolete:
+    These platforms are still part of the netlab package because the storage prices keep falling

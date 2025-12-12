@@ -1,0 +1,13 @@
+#
+# Enable FRR daemons
+#
+{% for m in module|default([]) if netlab_frr_daemons[m] is defined %}
+{%   for frr_m in netlab_frr_daemons[m] %}
+echo "{{ frr_m }}=yes" >>/etc/frr/daemons
+{%   endfor %}
+{% endfor %}
+{% if frr is defined %}
+{%   for frr_m in frr.daemons|default([]) %}
+echo "{{ frr_m }}=yes" >>/etc/frr/daemons
+{%   endfor %}
+{% endif %}

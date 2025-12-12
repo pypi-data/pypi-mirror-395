@@ -1,0 +1,11 @@
+{#
+  Forwarded Libvirt Ports
+#}
+
+{% if n.libvirt.ports is defined %}
+{%   for p_fwd in n.libvirt.ports %}
+{%     set p_list = p_fwd.split(':') %}
+    {{ name }}.vm.network "forwarded_port",
+      guest: {{ p_list[1] }}, host: {{ p_list[0] }}, host_ip: "0.0.0.0", gateway_ports: true
+{%   endfor %}
+{% endif %}

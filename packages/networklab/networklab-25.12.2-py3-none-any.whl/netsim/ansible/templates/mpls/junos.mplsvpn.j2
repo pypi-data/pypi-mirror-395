@@ -1,0 +1,37 @@
+{# set vrf per table label #}
+
+routing-instances {
+{% for vname,vdata in vrfs.items() %}
+  {{ vname }} {
+    vrf-table-label; 
+  }
+{% endfor %}
+}
+
+{# set bgp af inet-vpn and/or inet6-vpn #}
+protocols {
+  bgp {
+{% for af in ['ipv4','ipv6'] if bgp[af] is defined and loopback[af] is defined %}
+    group ibgp-peers-{{ af }} {
+{%   for n in bgp.neighbors if n[af] is defined and n.type == 'ibgp' %}
+{%     for vpnaf in ['vpnv4','vpnv6'] if n[vpnaf] is defined %}
+      neighbor {{ n[af] }} {
+        delete: shutdown;
+        family inet{{ "6" if vpnaf == 'vpnv6' }}-vpn {
+          unicast;
+        }
+      }
+{%     endfor %}
+{%   endfor %}
+    }
+{% endfor %}
+  }
+
+{% for n in bgp.neighbors if 'vpnv6' in n %}
+{%   if loop.first %}
+  mpls {
+    ipv6-tunneling;
+  }
+{%   endif %}
+{% endfor %}
+}

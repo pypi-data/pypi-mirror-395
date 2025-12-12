@@ -1,0 +1,82 @@
+{#
+  NXOS hates single-character hostnames. Prepend 'nxos-' to hostname if it's too short
+#}
+hostname {{ 'nxos-' if inventory_hostname|length == 1 else '' }}{{ inventory_hostname }}
+!
+no ip domain-lookup
+!
+feature lldp
+!
+username vagrant password vagrant
+!
+{% for hname,hdata in hosts.items() if 'ipv4' in hdata and hname != inventory_hostname %}
+ip host {{ hname }} {{ hdata.ipv4[0] }}
+{% endfor %}
+!
+{% if vlans is defined %}
+feature interface-vlan
+{% endif %}
+{% if vrfs is defined %}
+{% include 'nxos.vrf.j2' %}
+!
+{% endif %}
+!
+interface {{ mgmt.ifname|default('GigabitEthernet0/0') }}
+ no lldp transmit
+ no lldp receive
+!
+{% for l in netlab_interfaces %}
+interface {{ l.ifname }}
+{%   if l.shutdown|default(False) %}
+ shutdown
+{%   else %}
+ no shutdown
+{%   endif %}
+{% if l.virtual_interface is not defined %}
+ no switchport
+{% endif %}
+{% if l.mac_address is defined %}
+ mac-address {{ l.mac_address }}
+{% endif %}
+{% if l.vrf is defined %}
+  vrf member {{ l.vrf }}
+{% endif %}
+{% if l.name is defined %}
+ description {{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}
+{% elif l.type|default("") == "stub" %}
+ description Stub interface
+{% endif %}
+{% if l.bandwidth is defined %}
+ bandwidth {{ l.bandwidth  }}
+{% endif %}
+{% if l.mtu is defined %}
+ mtu {{ l.mtu }}
+{% endif %}
+{#
+    IPv4 addresses
+#}
+{% if 'ipv4' in l %}
+{%   if l.ipv4 == True %}
+ medium p2p
+ ip unnumbered loopback0
+{%   elif l.ipv4|ipv4 %}
+ ip address {{ l.ipv4 }}
+{%   else %}
+! Invalid IPv4 address {{ l.ipv4 }}
+{%   endif %}
+{% endif %}
+{#
+    IPv6 addresses
+#}
+{% if 'ipv6' in l %}
+{%   if l.ipv6 == True %}
+ ipv6 address use-link-local-only
+{%   elif l.ipv6|ipv6 %}
+ ipv6 address {{ l.ipv6 }}
+{%   else %}
+! Invalid IPv6 address {{ l.ipv6 }}
+{%   endif %}
+ ipv6 nd ra-interval 5 min 3
+{% endif %}
+!
+{% endfor %}

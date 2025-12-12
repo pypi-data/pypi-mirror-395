@@ -1,0 +1,78 @@
+{% from "templates/initial/sros.j2" import if_name, configure_router with context %}
+{% from 'templates/routing/_redistribute.sros.j2' import import_protocols with context %}
+
+{% macro isis_export_policy(isis,vrf) %}
+- path: configure/policy-options/policy-statement[name=isis_{{vrf}}_export]
+  val:
+    default-action:
+      action-type: reject
+    entry:
+{{  import_protocols(isis.import) | indent(4,first=True) }}
+{% endmacro %}
+
+{% macro isis_router(isis,intf_list=[],vrf_name="") %}
+{% set vname = vrf_name or 'default' %}
+{% if isis.import is defined %}
+{{   isis_export_policy(isis,vname) }}
+{% endif %}
+{% set kw_level = {'level-1': '1', 'level-2': '2', 'level-1-2': '1/2'} %}
+{{ configure_router(vrf_name) }}
+  val:
+    isis:
+    - isis-instance: 0
+      system-id: "{{ isis.system_id }}"
+      admin-state: enable
+      area-address: ["{{ isis.area }}"]
+{% if isis.import is defined %}
+      export-policy: [ isis_{{ vname }}_export ]
+{% endif %}
+      level:
+      - level-number: "1"
+        wide-metrics-only: True
+      - level-number: "2"
+        wide-metrics-only: True
+{%   if isis.type is defined %}
+      level-capability: "{{ kw_level[isis.type] }}"
+{%   endif %}
+{%   if isis.af.ipv6 is defined %}
+      multi-topology:
+        ipv6-unicast: True
+{%   endif %}
+{%   for l in intf_list if 'isis' in l %}
+{%     if loop.first %}
+      interface:
+{%     endif %}
+      - interface-name: {{ if_name(l,l.ifname) }}
+        interface-type: {{ l.isis.network_type|default('broadcast') }}
+        passive: {{ l.isis.passive }}
+{%     if l.isis.type is defined %}
+        level-capability: "{{ kw_level[l.isis.type] }}"
+{%     endif %}
+{%     if l.isis.bfd is defined %}
+        bfd-liveness:
+{%     if l.isis.bfd.ipv4|default(False) %}
+          ipv4:
+            include-bfd-tlv: True
+{%     endif %}
+{%     if l.isis.bfd.ipv6|default(False) %}
+          ipv6:
+            include-bfd-tlv: True
+{%     endif %}
+{%     endif %}
+{%     if (l.isis.metric is defined or l.isis.cost is defined) %}
+        level:
+{%       for level in ['1','2'] %}
+        - level-number: "{{ level }}"
+          metric: {{ l.isis.metric|default(l.isis.cost) }}
+{%         if 'ipv6' in isis.af and 'ipv6' in l %}
+          ipv6-unicast-metric: {{ l.isis.metric|default(l.isis.cost) }}
+{%         endif %}
+{%       endfor %}
+{%     endif %}
+{%   endfor %}
+{% endmacro %}
+
+updates:
+{% if isis is defined %}
+{{ isis_router(isis,netlab_interfaces) }}
+{% endif %}

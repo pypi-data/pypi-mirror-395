@@ -1,0 +1,73 @@
+# bgp.policy default settings -- mostly attributes
+#
+---
+#
+# The device settings are mostly inherited from the 'routing' module, the only
+# extra settings you can specify here are 'bandwidth' and '_default_locpref'
+#
+devices:
+  eos.features.bgp:
+    aggregate: True
+    bandwidth:
+      in: int
+      out: int
+  frr.features.bgp:
+    _default_locpref: True
+    aggregate: True
+    bandwidth:
+      in: int
+      out: int
+  cumulus:
+    copy: frr
+  dellos10.features.bgp:
+    aggregate: True
+    _default_locpref: True
+  ios.features.bgp:
+    _default_locpref: True
+    aggregate: True
+    bandwidth:
+      in: auto
+  junos.features.bgp:
+    _default_locpref: False
+  sros.features.bgp:
+    bandwidth:
+      in: auto
+      out: auto
+  none.features.bgp:
+    aggregate: True
+
+bgp:
+  attributes:
+    p_attr:                                               # BGP policy attributes
+      direct: [ weight, prefix_filter, as_filter ]        # Things that can be applied directly to a neighbor
+      node: [ locpref ]
+      link: [ locpref, med ]
+      interface: [ locpref, med, prepend, weight ]
+      compound:                                           # Things that have to be applied to in/out policy
+        locpref: in
+        med: out
+        prepend: out
+        bandwidth: both
+
+    interface:
+      policy:
+        in: str
+        out: str
+      bandwidth:
+        _alt_types: [ autobw ]
+        in: autobw
+        out: autobw
+
+    node:
+      aggregate:
+        type: list
+        _subtype:
+          ipv4: { type: ipv4, use: prefix }
+          ipv6: { type: ipv6, use: prefix }
+          summary_only: bool
+          suppress_policy: str
+          attributes: str
+          _alt_types: [ prefix_str ]
+    vrf:
+      aggregate:
+        copy: node

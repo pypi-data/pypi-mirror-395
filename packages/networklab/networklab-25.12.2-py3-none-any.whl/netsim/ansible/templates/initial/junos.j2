@@ -1,0 +1,97 @@
+system {
+  host-name {{ inventory_hostname }};
+  static-host-mapping {
+{% for k,v in hostvars.items() if k != inventory_hostname %}
+{%   if v.loopback.ipv4 is defined %}
+    {{ k|replace('_','') }} inet {{ v.loopback.ipv4|ipaddr('address') }};
+{%   elif v.interfaces|default([]) and v.interfaces[0].ipv4|default(False) is string %}
+    {{ k|replace('_','') }} inet {{ v.interfaces[0].ipv4|ipaddr('address') }};
+{%   endif %}
+{% endfor %}
+  }
+}
+
+{% if vrfs is defined %}
+{% include 'junos.vrf.j2' %}
+{% endif %}
+{% if vlans is defined %}
+{% include 'junos.vlan.j2' %}
+{% endif %}
+
+interfaces {
+{#
+# Handle MTU outside the main interface loop, since it needs to be applied only to the master interface
+# JunOS MTU with headers is calculated on device quirks python code, depending on interface and model type.
+#}
+{% for l in interfaces|default([]) %}
+{%   if l._junos_mtu_with_headers is defined %}
+  {{ l.junos_interface }} {
+    mtu {{ l._junos_mtu_with_headers }};
+  }
+{%   endif %}
+{% endfor %}
+
+{% for l in netlab_interfaces %}
+  {{ l.ifname }} {
+{% if l.name is defined %}
+    description "{{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}";
+{% elif l.type|default("") == "stub" %}
+    description "Stub interface"
+{% endif %}
+    
+{% if l.bandwidth is defined %}
+      bandwidth {{ l.bandwidth * 1000 }};
+{% endif %}
+{% if l.shutdown|default(False) %}
+      disable;
+{% endif %}
+{#
+    IPv4 addresses
+#}
+{% if 'ipv4' in l %}
+      family inet {
+{%   if l.ipv4 == True %}
+        unnumbered-address lo0.0;
+{%   elif l.ipv4|ipv4 %}
+        address {{ l.ipv4 }};
+{%   else %}
+! Invalid IPv4 address {{ l.ipv4 }}
+{%   endif %}
+{%   if l.mtu is defined and l._junos_mtu_with_headers is not defined %}
+        mtu {{ l.mtu }};
+{%   endif %}
+      }
+{% endif %}
+{#
+    IPv6 addresses
+#}
+{% if 'ipv6' in l %}
+      family inet6 {
+{%   if l.ipv6|ipv6 %}
+        address {{ l.ipv6 }};
+{%   endif %}
+{%   if l.mtu is defined and l._junos_mtu_with_headers is not defined %}
+        mtu {{ l.mtu }};
+{%   endif %}
+      }
+{% endif %}    
+  }
+{% endfor %}
+}
+protocols {
+  lldp {
+    interface {{ mgmt.ifname|default('fxp0') }} {
+      disable;
+    }
+    interface all;
+  }
+{% for l in netlab_interfaces if 'ipv6' in l and l.type != 'loopback' %}
+{%   if loop.first %}
+  router-advertisement {
+{%   endif %}
+    interface {{ l.ifname }};
+{%   if loop.last %}
+  }
+{%   endif %}
+{% endfor %}
+}

@@ -1,0 +1,34 @@
+{% for intf in interfaces if intf.gateway.protocol is defined %}
+{%   if loop.first %}
+no ip icmp redirect
+!
+{%     if gateway.anycast.mac is defined %}
+ip virtual-router mac-address {{ gateway.anycast.mac }}
+!
+{%     endif %}
+{%   endif %}
+interface {{ intf.ifname }}
+{%   if intf.gateway.protocol == 'anycast' %}
+{%     if 'ipv4' in intf.gateway %}
+  ip virtual-router address {{ intf.gateway.ipv4 }}
+{%     endif %}
+{%     if 'ipv6' in intf.gateway %}
+  ipv6 virtual-router address {{ intf.gateway.ipv6 | ipaddr('address') }}
+{%     endif %}
+{%   endif %}
+{%   if intf.gateway.protocol == 'vrrp' %}
+  vrrp {{ intf.gateway.vrrp.group }} ipv4 version 3
+  vrrp {{ intf.gateway.vrrp.group }} ipv4 checksum pseudo-header exclude
+{%     for af in 'ipv4','ipv6' if af in intf.gateway %}
+  vrrp {{ intf.gateway.vrrp.group }} {{ af }} {{ intf.gateway[af]|ipaddr('address') }}
+{%     endfor %}
+{%     if 'priority' in intf.gateway.vrrp %}
+  vrrp {{ intf.gateway.vrrp.group }} priority-level {{ intf.gateway.vrrp.priority }}
+{%     endif %}
+{%     if intf.gateway.vrrp.preempt|default(True) %}
+  vrrp {{ intf.gateway.vrrp.group }} preempt
+{%     else %}
+  no vrrp {{ intf.gateway.vrrp.group }} preempt
+{%     endif %}
+{%   endif %}
+{% endfor %}

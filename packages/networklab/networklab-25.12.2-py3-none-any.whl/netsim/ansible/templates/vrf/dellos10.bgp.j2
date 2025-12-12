@@ -1,0 +1,61 @@
+{% import "templates/bgp/dellos10.macro.j2" as bgpcfg %}
+{% import "templates/routing/_redistribute.dellos10.j2" as redistribute %}
+{% for vname,vdata in vrfs.items() +%}
+!
+ip vrf {{ vname }}
+!
+{%   for af in ['ipv4','ipv6'] if af in vdata.af|default({}) %}
+{%     set _ip = 'ip' if af=='ipv4' else 'ipv6' %}
+! {{ _ip }} route-import|export xxx
+{%     for rt in vdata.import %}
+ {{ _ip }} route-import {{ rt }}
+{%     endfor %}
+{%     for rt in vdata.export %}
+ {{ _ip }} route-export {{ rt }}
+{%     endfor %}
+{%   endfor %}
+!
+exit
+{% endfor %}
+!
+
+router bgp {{ bgp.as }}
+{% for vname,vdata in vrfs.items() %}
+!
+ vrf {{ vname }}
+  router-id {{ vdata.bgp.router_id|default(bgp.router_id) }}
+! need to define unnumbered template also at vrf-level
+  template unnumbered_ebgp
+    link-local-only-nexthop
+    exit
+
+{%   for n in vdata.bgp.neighbors|default([]) %}
+{%     for af in ['ipv4','ipv6'] if n[af] is defined %}
+{{       bgpcfg.neighbor(n,n[af],bgp,af) }}
+{%     endfor %}
+{%   endfor %}
+
+{%   for af in ['ipv4','ipv6'] if af in vdata.af|default({}) %}
+!
+ address-family {{ af }} unicast
+{{     redistribute.config(vdata.bgp,af=af,ospf_pid=vdata.vrfidx) }}
+{%     for n in vdata.networks|default([]) if af in n %}
+   network {{ n[af]|ipaddr('0') }}
+{%     endfor %}
+{%   endfor %}
+
+{# additional tweaking for VRF BGP AF activation - activate only the current AF, deactivate the other one #}
+{%   for n in vdata.bgp.neighbors|default([]) %}
+{%     for af in ['ipv4','ipv6'] if n[af] is defined and n[af] is string %}
+{%       set other_af = (['ipv4','ipv6'] | difference([af])) | first %}
+!
+  neighbor {{ n[af] }}
+     address-family {{ af }} unicast
+       soft-reconfiguration inbound
+       activate
+     address-family {{ other_af }} unicast
+       no activate
+{%     endfor %}
+{%   endfor %}
+
+{% endfor %}

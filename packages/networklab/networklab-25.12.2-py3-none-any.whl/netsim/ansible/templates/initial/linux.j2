@@ -1,0 +1,22 @@
+{#
+  This script configures a Linux VM. A separate script (linux-clab.j2)
+  is used to configure a Linux container
+#}
+#!/bin/bash
+#
+set -e
+#
+# Create bash profile script
+#
+cat <<SCRIPT >/root/.bash_profile
+#!/bin/bash
+#
+export PS1="\h(bash)$ "
+SCRIPT
+hostname {{ inventory_hostname.replace("_","-") }}
+{% include 'linux/hosts.j2' +%}
+{% if netlab_linux_distro is defined %}
+{%   include 'linux/'+netlab_linux_distro+'.j2' +%}
+{% else %}
+{%   include 'linux/vanilla.j2' +%}
+{% endif %}

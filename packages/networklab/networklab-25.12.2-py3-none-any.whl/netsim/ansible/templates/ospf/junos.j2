@@ -1,0 +1,12 @@
+{% import "junos.macro.j2" as ospf_cfg %}
+{% if ospf.router_id is defined and ospf.router_id|ipv4 %}
+routing-options {
+  router-id {{ ospf.router_id }}
+}
+{% endif %}
+{% if ospf.af.ipv4 is defined %}
+{{   ospf_cfg.config('ospf',False,ospf,netlab_interfaces) }}
+{% endif %}
+{% if ospf.af.ipv6 is defined %}
+{{   ospf_cfg.config('ospf3',False,ospf,netlab_interfaces) }}
+{% endif %}

@@ -1,0 +1,254 @@
+# Generic routing attributes
+#
+---
+no_propagate:
+  policy:
+  prefix:
+  aspath:
+  community:
+  static:
+
+transform_after: [ vlan ]
+config_after: [ vlan ]
+hooks: [ normalize ]
+
+attributes:
+  global:
+    policy:
+      type: dict
+      _keytype: id
+      _subtype:
+        type: list
+        make_list: True
+        _subtype: rp_entry
+    prefix:
+      type: dict
+      _keytype: id
+      _subtype:
+        type: list
+        make_list: True
+        _subtype: pfx_entry
+    aspath:
+      type: dict
+      _keytype: id
+      _subtype:
+        type: list
+        make_list: True
+        _subtype: aspath_entry
+    community:
+      type: dict
+      _keytype: id
+      _subtype:
+        type: dict
+        _keys:
+          type:
+            type: str
+            valid_values: [ standard, extended, large ]
+            _required: True
+            _default: standard
+          value:
+            type: list
+            make_list: True
+            _subtype: community_entry
+    static:
+      type: dict
+      _keytype: id
+      _subtype:
+        type: list
+        make_list: True
+        _subtype: static_entry
+
+  node:
+    policy:
+      merge: global
+      _subtype:
+        _alt_types: [ NoneType ]
+    prefix:
+      merge: global
+      _subtype:
+        _alt_types: [ NoneType ]
+    aspath:
+      merge: global
+      _subtype:
+        _alt_types: [ NoneType ]
+    community:
+      merge: global
+      _subtype:
+        _alt_types: [ NoneType ]
+    static:
+      type: list
+      _subtype: static_entry
+
+  route_map:
+    set: [ locpref, med, weight, prepend ]
+    match: [ prefix, nexthop, aspath ]
+
+_top:                               # Modification of global defaults
+  prefix:
+    any:
+      ipv4: 0.0.0.0/0
+      ipv6: ::/0
+
+  attributes:
+    rp_entry:                       # Define routing policy entry
+      _description: Routing policy entry
+      action:
+        type: str
+        valid_values: [ permit, deny ]
+      sequence:
+        type: int
+        min_value: 1
+        max_value: 32767
+      set:
+        _invalid_with: { action: deny }
+        locpref:
+          type: int
+          min_value: 0
+          max_value: 4294967295
+        med:
+          type: int
+          min_value: 0
+          max_value: 32767
+        weight:
+          type: int
+          min_value: 0
+          max_value: 65535
+        prepend:
+          count:
+            type: int
+            min_value: 1
+            max_value: 32
+          path: str
+        community:
+          standard: list
+          extended: list
+          large: list
+          append:
+            type: bool
+            _valid_with: [ standard, extended, large ]
+          delete:
+            type: bool
+            _valid_with: [ standard, extended, large ]
+          delete_list:
+            type: str
+            _valid_with: [ ]
+      delete:
+        _invalid_with: { action: deny }
+        community:
+          standard: list
+          extended: list
+          large: list
+          list:
+            _valid_with: [ ]
+            standard: str
+            extended: str
+            large: str
+      match:
+        prefix: str
+        nexthop: str
+        aspath: str
+        community:
+          standard: str
+          extended: str
+          large: str
+
+    pfx_entry:                      # Define prefix list entry
+      action:
+        type: str
+        valid_values: [ permit, deny ]
+      sequence:
+        type: int
+        min_value: 1
+        max_value: 32767
+      pool:
+        type: addr_pool
+        _valid_with: [ action, sequence, min, max ]
+      prefix:
+        type: named_pfx
+        _valid_with: [ action, sequence, min, max ]
+      min:
+        ipv4: { type: int, min_value: 0, max_value: 32 }
+        ipv6: { type: int, min_value: 0, max_value: 128 }
+        _alt_types: [ int ]
+      max:
+        ipv4: { type: int, min_value: 0, max_value: 32 }
+        ipv6: { type: int, min_value: 0, max_value: 128 }
+        _alt_types: [ int ]
+      ipv4: { type: ipv4, use: prefix }
+      ipv6: { type: ipv6, use: prefix }
+
+    aspath_entry:                   # Define AS-path access list entry
+      action:
+        type: str
+        valid_values: [ permit, deny ]
+      sequence:
+        type: int
+        min_value: 1
+        max_value: 32767
+      path:
+        type: list
+        _subtype: asn
+        _alt_types: [ str, asn ]
+
+    community_entry:                # Define BGP community entry
+      action:
+        type: str
+        valid_values: [ permit, deny ]
+      sequence:
+        type: int
+        min_value: 1
+        max_value: 32767
+      path:
+        type: list                  # We're using AS-path transformation code, so we might get 'path' attribute
+        _valid_with: [ action, sequence ]
+      list:
+        type: list                  # List is equivalent to path but they can't be used together
+        _valid_with: [ action, sequence ]
+      regexp:
+        type: str                   # Whereas regexp indicates we have to use extended ACL
+        _valid_with: [ action, sequence ]
+
+    static_entry:
+      ipv4: { type: ipv4, use: prefix }
+      ipv6: { type: ipv6, use: prefix }
+      prefix:
+        type: named_pfx
+        _valid_with: [ nexthop, vrf ]
+      node:
+        type: node_id
+        _valid_with: [ nexthop, vrf ]
+      pool:
+        type: addr_pool
+        _valid_with: [ nexthop, vrf ]
+      vrf:
+        type: id
+      nexthop:
+        node:
+          type: node_id
+          _valid_with: [ vrf, link ]
+        ipv4: { type: ipv4, use: address }
+        ipv6: { type: ipv6, use: address }
+        discard:
+          type: bool
+          valid_values: [ true ]
+          _valid_with: [ none]
+        gateway:
+          type: bool
+          _valid_with: [ vrf, link ]
+        link: str
+        vrf:
+          type: id
+          _alt_types: NoneType
+      include:
+        type: id
+        _valid_with: [ nexthop, vrf ]
+
+features:
+  policy:
+    set: Route map SET attributes
+    match: Route map MATCH attributes
+    delete: Route map DELETE attributes
+  static: Static routes
+  prefix: Prefix lists
+  aspath: AS-path access lists
+  community: BGP community access lists

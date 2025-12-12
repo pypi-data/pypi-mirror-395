@@ -1,0 +1,87 @@
+{% import '_route_map_ios.j2' as routemap with context %}
+{% import '_prefix_list_ios.j2' as prefix_list with context %}
+!
+{% if routing.policy|default({}) %}
+{%   call(p_entry,af_list) routemap.create_route_maps(routing.policy) -%}
+{%     if p_entry.set.bandwidth is defined %}
+  set extcommunity lbw {{ p_entry.set.bandwidth }}M
+{%     endif %}
+{%     if p_entry.delete.community.list is defined %}
+{%       set cdel_kw = {
+                'standard': 'community community-list',
+                'extended': 'extcommunity extcommunity-list',
+                'large': 'large-community large-community-list' } %}
+{%       for kw,val in p_entry.delete.community.list.items() %}
+  set {{ cdel_kw[kw] }} {{ val }} delete
+{%       endfor %}
+{%     endif %}
+{{     routemap.common_route_map_entry(p_entry,af_list) }}
+{%     if p_entry.match.community is defined %}
+{%       set cmatch_kw = { 'standard': 'community', 'extended': 'extcommunity', 'large': 'large-community' } %}
+{%       for kw,val in p_entry.match.community.items() %}
+  match {{ cmatch_kw[kw] }} {{ val }}
+{%       endfor %}
+{%     endif %}
+{%-   endcall %}
+{% endif %}
+{% if 'ipv4' in af and routing._prefix.ipv4|default(False) %}
+!
+! IPv4 prefix lists
+!
+{%   for p_name,p_value in routing._prefix.ipv4.items() %}
+!
+{%     for p_entry in p_value %}
+ip prefix-list {{ p_name }}-ipv4 seq {{ p_entry.sequence
+  }} {{ p_entry.action }} {{ p_entry.ipv4 }}{{ prefix_list.min_max(p_entry) }}
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+{% if 'ipv6' in af and routing._prefix.ipv6|default(False) %}
+!
+! IPv6 prefix lists
+!
+{%   for p_name,p_value in routing._prefix.ipv6.items() %}
+!
+ipv6 prefix-list {{ p_name }}-ipv6
+{%     for p_entry in p_value %}
+  seq {{ p_entry.sequence }} {{ p_entry.action }} {{ p_entry.ipv6 }}{{ prefix_list.min_max(p_entry) }}
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+{% if routing.aspath|default({}) %}
+!
+! AS-path access lists
+!
+ip as-path regex-mode string
+{%   for asp_name,asp_list in routing.aspath.items() %}
+!
+{%     for asp_line in asp_list %}
+ip as-path access-list {{ asp_name }} {{ asp_line.action }} {{ asp_line.path }}
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+{% if routing.community|default({}) %}
+{%   set clist_kw = { 'standard': 'community-list', 'extended': 'extcommunity-list', 'large': 'large-community-list' } %}
+{%   for c_name,c_value in routing.community.items() %}
+!
+{%     for c_line in c_value.value %}
+{%       set c_match = c_line._value.replace(' ','_') if c_value.regexp else c_line._value %}
+ip {{ clist_kw[c_value.type] }} {{ c_value.regexp }} {{ c_name }} {{ c_line.action }} {{ c_match }}
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+{% for sr_data in routing.static|default([]) %}
+{%   if loop.first %}
+!
+! Static routes
+!
+{%   endif %}
+{%   for sr_af in ['ipv4','ipv6'] if sr_af in sr_data %}
+{%     set cmd_af = 'ip' if sr_af == 'ipv4' else sr_af %}
+{%     set cmd_vrf = 'vrf ' + sr_data.vrf + ' ' if 'vrf' in sr_data else '' %}
+{%     set cmd_evrf = 'egress-vrf '+(sr_data.nexthop.vrf or 'default')+ ' ' if 'vrf' in sr_data.nexthop else '' %}
+{%     set cmd_intf = sr_data.nexthop.intf + ' ' if 'intf' in sr_data.nexthop else '' %}
+{%     set cmd_nh = 'Null0' if 'discard' in sr_data.nexthop else sr_data.nexthop[sr_af] %}
+{{ cmd_af }} route {{ cmd_vrf }}{{ sr_data[sr_af] }} {{ cmd_evrf }}{{ cmd_intf }}{{ cmd_nh }}
+{%   endfor %}
+{% endfor %}

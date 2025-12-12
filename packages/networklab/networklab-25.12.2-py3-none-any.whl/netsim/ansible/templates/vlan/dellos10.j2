@@ -1,0 +1,25 @@
+{% if vlans is defined %}
+{%   for vlan_name, vlan in vlans.items() %}
+interface vlan {{ vlan.id }}
+ description "VLAN {{ vlan_name }}"
+ exit
+!
+{%   endfor %}
+{% endif %}
+
+{% for ifdata in interfaces if ifdata.vlan is defined %}
+!
+interface {{ ifdata.ifname }}
+{%   if ifdata.vlan.trunk_id is defined %}
+ switchport mode trunk
+{%     if ifdata.vlan.native is defined or 1 in ifdata.vlan.trunk_id %}
+ switchport access vlan {{ ifdata.vlan.access_id|default(1) }}
+{%     else %}
+ no switchport access vlan
+{%     endif %}
+ switchport trunk allowed vlan {{ ifdata.vlan.trunk_id|difference([ifdata.vlan.access_id|default(1)])|join(",") }}
+{%   elif ifdata.vlan.access_id is defined %}
+ switchport mode access
+ switchport access vlan {{ ifdata.vlan.access_id }}
+{%   endif %}
+{% endfor %}

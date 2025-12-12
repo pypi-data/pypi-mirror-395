@@ -1,0 +1,118 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+fi
+
+# Configuration items start here
+
+configure
+{#
+It seems VyOS has some problems in handling hostnames with only one letter in it.
+#}
+{% if inventory_hostname|length > 1 %}
+set system host-name '{{ inventory_hostname | replace("_","-") }}'
+{% else %}
+set system host-name 'vyos-{{ inventory_hostname | replace("_","-") }}'
+{% endif %}
+
+{% if vrfs is defined %}
+{% include 'vyos.vrf.j2' %}
+{% endif %}
+{% if vlans is defined %}
+{% include 'vyos.vlan.j2' %}
+{% endif %}
+
+{% if loopback.ipv4 is defined %}
+set interfaces dummy dum0 address {{ loopback.ipv4 }}
+{% endif %}
+{% if loopback.ipv6 is defined %}
+set interfaces dummy dum0 address {{ loopback.ipv6 }}
+{% endif %}
+
+{% for l in interfaces|default([]) %}
+
+{#
+# - Define interface hierarchy/tree level (i.e. ethernet, bridge, ...)
+# - Set proper interface name to be used below
+# While right now the ifname, when a bridge, is always brX.Y,
+#  this code is ready for future "plain" bridges (i.e., br1)
+#}
+{%   set ns = namespace(iface_level="ethernet", ifname=l.ifname) %}
+{%   if l.ifname.startswith('br') %}
+{%     set ns.iface_level = "bridge" %}
+{%   elif l.ifname.startswith('dum') %}
+{%     set ns.iface_level = "dummy" %}
+{%   elif l.ifname.startswith('bond') %}
+{%     set ns.iface_level = "bonding" %}
+{%   endif %}
+{#
+# Split interface name with vif, if needed
+#}
+{%   set ifnamedata = l.ifname.split('.') %}
+{%   if ifnamedata|length > 1 %}
+{%     set ns.ifname = ifnamedata[0] + (' vif ' + ifnamedata[1] if ifnamedata[1] != '1' else '') %}
+{%   endif %}
+
+{%   if l.name is defined %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} description '{{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}'
+{%   elif l.type|default("") == "stub" %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} description 'Stub interface'
+{%   endif %}
+{%   if l.shutdown|default(False) %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} disable
+{%   endif %}
+
+{%   if l.mtu is defined %}
+{%     if netlab_provider != 'clab' or l.type != 'stub' %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} mtu {{ l.mtu }}
+{%     endif %}
+{%   endif %}
+
+{%   if 'ipv4' in l %}
+{%     if l.ipv4 == True and 'ipv4' in loopback %}
+# Need to set the same address as loopback (dum0) to make it behave as unnumbered
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} address {{ loopback.ipv4 }}
+{%     elif l.ipv4|ipv4 %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} address {{ l.ipv4 }}
+{%     endif %}
+{%   endif %}
+
+{%   if 'ipv6' in l %}
+{%     if l.ipv6 == True %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} ipv6
+{%     elif l.ipv6|ipv6 %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} address {{ l.ipv6 }};
+{%     endif %}
+{%   endif %}
+
+{%   if l.vrf is defined %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} vrf {{ l.vrf }}
+{%   endif %}
+
+{% endfor %}
+
+set service lldp interface all
+{# LLDP FUBAR: different syntax for version 1.4 (used by vagrant box vyos/current) and 1.5 - See: https://github.com/ipspace/netlab/issues/2160 #}
+>/dev/null 2>/dev/null set service lldp interface {{ mgmt.ifname|default('eth0') }} disable
+>/dev/null 2>/dev/null set service lldp interface {{ mgmt.ifname|default('eth0') }} mode disable
+
+{# IPv6 RA config #}
+{% for l in netlab_interfaces if 'ipv6' in l and l.type != 'loopback' %}
+set service router-advert interface {{ l.ifname }}
+{% endfor %}
+
+{# If running on containerlab, enable SSH service (disabled by default) #}
+{% if clab.kind is defined %}
+set service ssh
+{% endif %}
+
+# Commit, save and exit from subshell
+
+commit
+save
+exit
+
+# Restart FRR to pick up the new hostname
+sudo service frr restart

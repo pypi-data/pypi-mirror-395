@@ -1,0 +1,63 @@
+!
+route-map all
+!
+route-map all-int permit 10
+  match route-type internal
+!  
+route-map all-int permit 20
+  match route-type external
+!
+{% set pid = vdata.vrfidx %}
+feature ospf
+{% if vdata.ospf.bfd|default(False) %}
+feature bfd
+{% endif %}
+!
+router ospf {{ pid }}
+ vrf {{ vname }}
+  timers throttle spf 100 200 500
+  timers throttle lsa 0 100 500
+{% if vdata.ospf.router_id|ipv4 %}
+  router-id {{ vdata.ospf.router_id }}
+{% endif %}
+{% if ospf.reference_bandwidth is defined %}
+  auto-cost reference-bandwidth {{ ospf.reference_bandwidth }} Mbps
+{% endif %}
+!
+  redistribute direct route-map all
+{% if bgp.as is defined %}
+{%   set rmname = 'all-int' if vdata.evpn.transit_vni|default(False) else 'all' %}
+  redistribute bgp {{ bgp.as }} route-map {{ rmname }}
+{% endif %}
+!
+{% for l in vdata.ospf.interfaces|default([]) %}
+interface {{ l.ifname }}
+! {{ l.name|default("") }}
+ ip router ospf {{ pid }} area {{ l.ospf.area }}
+{%   if l.ospf.network_type|default("") in ["broadcast","point-to-point"] %}
+ ip ospf network {{ l.ospf.network_type }}
+{%   endif %}
+{%   if l.ospf.cost is defined %}
+ ip ospf cost {{ l.ospf.cost }}
+{%   endif %}
+{%   if l.ospf.passive|default(False) %}
+ ip ospf passive-interface
+{%   endif %}
+{%   if l.ospf.bfd|default(False) %}
+ ip ospf bfd
+{%   endif %}
+{%   if l.ospf.timers.hello is defined %}
+ ip ospf hello-interval {{ l.ospf.timers.hello }}
+{%   endif %}
+{%   if l.ospf.timers.dead is defined %}
+ ip ospf dead-interval {{ l.ospf.timers.dead }}
+{%   endif %}
+{%   if l.ospf.priority is defined %}
+ ip ospf priority {{ l.ospf.priority }}
+{%   endif %}
+{%   if l.ospf.password is defined %}
+ ip ospf authentication-key {{ l.ospf.password }}
+ ip ospf authentication
+{%   endif %}
+!
+{% endfor %}

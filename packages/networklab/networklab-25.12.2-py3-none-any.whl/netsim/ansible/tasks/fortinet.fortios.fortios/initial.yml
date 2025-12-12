@@ -1,0 +1,55 @@
+---
+- name: Set netlab_vdom_enabled variable
+  ansible.builtin.set_fact:
+    netlab_vdom_is_enabled: "{{ netlab_vdom is defined and netlab_vdom != vdom }}"
+
+- name: Enable multi-VDOM mode if a traffic VDOM is defined
+  fortinet.fortios.fortios_system_global:
+    vdom: "{{ vdom }}"
+    system_global:
+      management_vdom: "{{ vdom }}"
+      vdom_mode: multi-vdom
+      hostname: '{{ inventory_hostname.replace("_","-") }}'
+  register: vdom_mode_result
+  when: netlab_vdom_is_enabled
+
+- name: Ensure FortiGate is ready after VDOM mode change
+  block:
+  - name: Wait 60 seconds after VDOM mode change
+    ansible.builtin.wait_for:
+      host: "{{ ansible_host }}"
+      port: 443
+      timeout: 180
+      sleep: 10     # time in seconds between checks
+      delay: 60     # Initial delay in seconds before first check
+      state: started
+  - name: Test FortiGate API readiness after VDOM mode change
+    fortinet.fortios.fortios_system_global:
+      vdom: "{{ vdom }}"
+      system_global:
+        hostname: '{{ inventory_hostname.replace("_","-") }}'
+    register: hostname_result
+    retries: 5
+    delay: 10       # Initial delay and waiting time between retries
+    until: hostname_result is not failed and hostname_result.meta.http_status == 200
+  when: >-
+    vdom_mode_result.meta is defined and
+    (vdom_mode_result.meta.http_status == 200 and vdom_mode_result.meta.revision_changed)
+
+- name: Ensure `{{ vdom }}` VDOM is set as admin
+  fortinet.fortios.fortios_system_settings:
+    vdom: "{{ vdom }}"
+    system_settings:
+      vdom_type: admin
+  when: netlab_vdom_is_enabled
+
+- name: Configure `{{ netlab_vdom }}` virtual domain
+  fortinet.fortios.fortios_system_vdom:
+    vdom: "{{ vdom }}"
+    state: present
+    system_vdom:
+      name: "{{ netlab_vdom }}"
+  when: netlab_vdom_is_enabled
+
+- name: Deploy initial configuration from template
+  include_tasks: tasks/deploy-config/fortinet.fortios.fortios.yml

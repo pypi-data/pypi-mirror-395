@@ -1,0 +1,130 @@
+---
+description: Generic Cisco IOS device (meta device, used only as parent)
+_meta_device: True
+template: True
+attributes:
+  global:
+    ios:
+      debug: { type: list, split_lines: True }
+  node:
+    ios:
+      debug: { type: list, split_lines: True }
+
+loopback_interface_name: Loopback{ifindex}
+tunnel_interface_name: Tunnel{ifindex}
+group_vars:
+  ansible_become_method: enable
+  ansible_network_os: ios
+  ansible_connection: network_cli
+  netlab_initial: always
+  # yamllint disable-line rule:line-length
+  netlab_ssh_args: "-o KexAlgorithms=+diffie-hellman-group-exchange-sha1 -o PubkeyAcceptedKeyTypes=ssh-rsa -o HostKeyAlgorithms=+ssh-rsa"
+
+clab:
+  group_vars:
+    ansible_ssh_pass: admin
+    ansible_user: admin
+    ansible_become_password: admin
+    netlab_check_retries: 50
+    netlab_ready: [ ssh ]
+
+role: router
+routing:
+  _rm_per_af: True
+features:
+  bfd: true
+  bgp:
+    local_as: true
+    vrf_local_as: true
+    local_as_ibgp: true
+    activate_af: true
+    import: [ ospf, isis, ripv2, connected, static, vrf ]
+    community:
+      standard: [ standard ]
+      extended: [ extended ]
+    confederation: True
+  dhcp:
+    client:
+      ipv4: true
+      ipv6: true
+      routing: true
+    relay: true
+    vrf: true
+    server: true
+  eigrp: true
+  initial:
+    ipv4:
+      unnumbered: [ tunnel ]
+    ipv6:
+      lla: true
+      use_ra: true
+    roles: [ host, router, bridge ]
+    mgmt_vrf: true
+    ra: true
+  isis:
+    circuit_type: true
+    import: [ bgp, ospf, ripv2, connected, static ]
+    unnumbered:
+      ipv4: true
+      ipv6: true
+      network: true
+  mpls:
+    ldp: true
+    bgp: true
+    vpn: true
+    6pe: true
+  ospf:
+    unnumbered: true
+    import: [ bgp, isis, ripv2, connected, static, vrf ]
+    default.policy: true
+    password: true
+    priority: true
+    timers: true
+  ripv2:
+    ipv4: true
+    ipv6: true
+    passive: true
+    import: [ bgp, isis, ospf, connected, static, vrf ]
+  routing:
+    policy:
+      set:
+        locpref: True
+        med: True
+        weight: True
+        prepend: True
+        community:
+          standard: True
+          append: True
+      delete:
+        community: clist
+      match:
+        prefix: True
+        nexthop: True
+        aspath: True
+        community:
+          standard: True
+    prefix: True
+    aspath: True
+    community:
+      standard: True
+    static:
+      vrf: True
+      inter_vrf: True
+      discard: True
+  vlan:
+    model: router
+    svi_interface_name: BVI{bvi}
+    subif_name: "{ifname}.{subif_index}"
+    mixed_trunk: true
+    native_routed: true
+  vrf:
+    ospfv2: True
+    ospfv3: True
+    bgp: True
+    ripv2: True
+    ripng: True
+  gateway:
+    protocol: [ vrrp ]
+external:
+  image: none
+graphite.icon: router

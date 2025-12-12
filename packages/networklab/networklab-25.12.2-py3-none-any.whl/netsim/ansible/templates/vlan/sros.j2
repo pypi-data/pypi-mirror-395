@@ -1,0 +1,51 @@
+{% from "templates/initial/sros.j2" import if_name,port,interface with context %}
+
+updates:
+{# include ports with l.subif_index to set MTU if needed #}
+{% for l in interfaces|default([]) if l.vlan is defined or l.subif_index is defined %}
+{% set ifindex = l.ifname.split('.')[1]|int if '.' in l.ifname else 0 %}
+{% set vlan = l.vlan.access_id|default(ifindex) %}
+{% set tagged = l.type=='vlan_member' or l.vlan.trunk_id is defined or l.subif_index is defined %}
+{% set native = l.vlan.native is defined %}
+{{ port(l,vlan=vlan,tagged=tagged,native=native) }}
+
+{#- Create a VPLS service for each L2 VLAN -#}
+{#- Use only vlan.id in name, such that svi interfaces (svi.nnnn) can be associated -#}
+{% set vlan_mode = l.vlan.mode|default('irb') %}
+
+{% if (l.type in ['vlan_member','lan','svi'] and vlan_mode!='route') %}
+- path: configure/service/vpls[service-name=vlan{{ vlan }}]
+  val:
+   service-id: {{ vlan+10000 }}
+   customer: "1"
+{%  if l.name is defined %}
+   description: "{{ l.name }}"
+{%  endif %}
+{% if l.type in ['vlan_member','lan'] %}
+{% set sap_id = l.ifname.replace("c1/","") if 'ixr' in clab.type and 'ixr-x' not in clab.type else l.ifname %}
+{% set sap_id = sap_id.replace("eth-","") %}
+   sap:
+   - sap-id: {{ sap_id.replace('_',':') if '_' in sap_id else (sap_id+"/1"+(":0" if native else "")) }}
+{%  if native %}
+     description: "Native untagged vlan"
+{%  endif %}
+{% endif %}
+   admin-state: enable
+{% endif -%}
+
+{#- Connect VPLS to VPRN service or Base routing context if needed, created in initial -#}
+{%- if (l.ipv4 is defined or l.ipv6 is defined) and l.vlan is defined and vlan_mode=='irb' %}
+- path: configure/service/vpls[service-name=vlan{{ vlan }}]
+  val:
+   routed-vpls: { }
+
+{% set service_name = l.vrf if l.vrf is defined else 'default' %}
+- path: configure/service/{{ 'vprn' if l.vrf is defined else 'ies' }}[service-name={{ service_name }}]
+  val:
+   interface:
+   - interface-name: {{ if_name(l,l.ifname) }}
+     vpls:
+     - vpls-name: vlan{{ vlan }}
+{% endif %}
+
+{% endfor %} {# for l in interfaces #}

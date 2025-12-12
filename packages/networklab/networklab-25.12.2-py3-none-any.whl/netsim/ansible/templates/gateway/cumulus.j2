@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+set -e # Exit immediately when any command fails
+#
+cat >/etc/network/interfaces.d/80-gateway.intf <<CONFIG
+{% for intf in interfaces if 'gateway' in intf %}
+auto {{ intf.ifname }}
+iface {{ intf.ifname }}
+{%   if intf.gateway.protocol == 'anycast' %}
+    address-virtual {{ intf.gateway.anycast.mac|hwaddr('linux') }} {{ intf.gateway.ipv4 }}
+{%   endif %}
+{%   if intf.gateway.protocol == 'vrrp' %}
+{%     set v6_ll = " fe80::200:5eff:fe00:2%02x/64"|format(intf.gateway.vrrp.group) if 'ipv6' in intf.gateway else "" %} 
+    vrrp {{ intf.gateway.vrrp.group }}{{ v6_ll }}{% for af in 'ipv4','ipv6' if af in intf.gateway %} {{ intf.gateway[af] }}{% endfor +%}
+{%   endif %}
+{% endfor %}
+CONFIG
+ifreload -a
+cat >/tmp/vrrp_config <<CONFIG
+{% for intf in interfaces if intf.gateway.protocol|default('') == 'vrrp' %}
+interface {{ intf.ifname }}
+{%   if 'ipv6' in intf.gateway %}
+{# Per RFC9568 5.2.9, the link-local ipv6 address MUST be included first. Required for interop with EOS (for example) #}
+  vrrp {{ intf.gateway.vrrp.group }} ipv6 fe80::200:5eff:fe00:2{{ '%02x' | format(intf.gateway.vrrp.group) }}
+{%   endif %}
+{%   for af in 'ipv4','ipv6' if af in intf.gateway %}
+  vrrp {{ intf.gateway.vrrp.group }} {{ af|replace('ipv4','ip') }} {{ intf.gateway[af]|ipaddr('address') }}
+{%   endfor %}
+{%     if 'priority' in intf.gateway.vrrp %}
+  vrrp {{ intf.gateway.vrrp.group }} priority {{ intf.gateway.vrrp.priority }}
+{%     endif %}
+{%     if intf.gateway.vrrp.preempt|default(True) %}
+  vrrp {{ intf.gateway.vrrp.group }} preempt
+{%     else %}
+  no vrrp {{ intf.gateway.vrrp.group }} preempt
+{%     endif %}
+{% endfor %}
+do write
+CONFIG
+if [ -s /tmp/vrrp_config ]; then
+  vtysh -f /tmp/vrrp_config
+fi

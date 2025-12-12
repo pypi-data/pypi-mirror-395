@@ -1,0 +1,24 @@
+{% from "templates/bgp/sros.gnmi.macro.j2" import bgp_config with context %}
+
+updates:
+
+- path: configure/policy-options/policy-statement[name=accept_all]
+  val:
+    default-action:
+      action-type: accept
+
+{% if bgp.next_hop_self|default(False) %}
+- path: configure/policy-options/policy-statement[name=next-hop-self-ebgp-routes-only]
+  val:
+    entry:
+    - entry-id: 10
+      from:
+        path-type: ebgp
+      action:
+        action-type: accept
+        next-hop: self
+    default-action:
+      action-type: next-policy
+{% endif %}
+
+{{ bgp_config("default",bgp,{ 'af' : af }) }}
