@@ -1,0 +1,89 @@
+# csai-helper
+
+Lightweight helpers for AI prompting, summarization, and response formatting. Ships with a pluggable provider interface and optional OpenAI provider.
+
+## Installation
+
+From source (editable):
+
+```bash
+pip install -e .[dev]
+```
+
+For runtime only (from PyPI):
+
+```bash
+pip install csai-helper
+```
+
+Optional OpenAI support:
+
+```bash
+pip install "csai-helper[openai]"
+```
+
+## Quickstart
+
+```python
+from ai_helper import get_response, summarize_text, format_response
+from ai_helper.providers.local import LocalProvider
+
+provider = LocalProvider()
+print(get_response("Hello, AI!", provider=provider))
+
+text = """Python is a popular programming language created by Guido van Rossum.
+It is used for web development, data science, automation, and more."""
+print(summarize_text(text, provider=provider, max_words=20))
+
+print(format_response("  Hello\n\nWorld  "))
+```
+
+### CLI
+
+```bash
+ai-helper ask "Tell me a joke"
+ai-helper summarize "Long text here..." --max-words 30
+```
+
+Set `OPENAI_API_KEY` in your environment to use the OpenAI provider:
+
+```bash
+export OPENAI_API_KEY=sk-...
+ai-helper ask "Explain transformers in 2 sentences" --provider openai --model gpt-4o-mini
+```
+
+## API
+
+- `get_response(prompt, provider=None, **kwargs)` → str
+- `summarize_text(text, provider=None, max_words=120, **kwargs)` → str
+- `format_response(text)` → str
+
+Providers implement `AIProvider.get_response(prompt, system_prompt=None, **kwargs)`.
+
+## Development
+
+Run formatting and tests:
+
+```bash
+ruff check .
+pytest
+```
+
+## Publishing
+
+1. Build distributions:
+
+    ```bash
+    python -m build
+    ```
+
+2. Upload to PyPI (requires `twine`):
+
+    ```bash
+    python -m pip install --upgrade twine
+    twine upload dist/*
+    ```
+
+## License
+
+MIT
