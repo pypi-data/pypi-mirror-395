@@ -1,0 +1,120 @@
+[build-system]
+requires = ["maturin>=1.4,<2"]
+build-backend = "maturin"
+
+[project]
+name = "rustest"
+version = "0.16.1"
+description = "Rust powered pytest-compatible runner"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "rustest contributors" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "typing-extensions>=4.15",
+    "rich>=13.0.0",
+]
+scripts = { rustest = "rustest.__main__:main" }
+
+[project.optional-dependencies]
+dev = [
+    "basedpyright>=1.19",
+    "maturin>=1.4,<2",
+    "packaging>=20.0",
+    "poethepoet>=0.22",
+    "pre-commit>=3.5",
+    "py>=1.11",
+    "pytest>=7.0",
+    "pytest-asyncio>=1.2.0",
+    "pytest-codeblocks>=0.17.0",
+    "ruff>=0.1.9",
+]
+docs = [
+    "zensical",
+]
+
+[project.urls]
+Homepage = "https://github.com/Apex-Engineers-Inc/rustest"
+Repository = "https://github.com/Apex-Engineers-Inc/rustest"
+Documentation = "https://apex-engineers-inc.github.io/rustest"
+
+[tool.maturin]
+module-name = "rustest.rust"
+python-source = "python"
+compatibility = "manylinux2014"
+
+[tool.poe.tasks]
+build = "uv build"
+dev = "uv run maturin develop"
+fmt = "cargo fmt"
+lint = "uv run --with dev ruff check python"
+typecheck = "uv run --with dev basedpyright python"
+pytests = "uv run pytest python/tests -v"
+unit = "uv run rustest examples/tests/"
+demos = "bash scripts/generate-demos.sh"
+
+[tool.ruff]
+line-length = 100
+
+[tool.basedpyright]
+pythonVersion = "3.10"
+pythonPlatform = "Linux"
+typeCheckingMode = "strict"
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+strictParameterNoneValue = true
+reportMissingTypeStubs = false
+reportImportCycles = false
+reportUnknownVariableType = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownArgumentType = "warning"
+reportUnknownParameterType = "warning"
+reportUnknownLambdaType = "warning"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportImplicitStringConcatenation = "error"
+reportMissingSuperCall = "error"
+reportPropertyTypeMismatch = "error"
+reportUninitializedInstanceVariable = "error"
+include = ["python/rustest"]
+exclude = ["**/__pycache__", "**/.*", "**/*.pyc", "**/tests"]
+
+[tool.uv]
+managed = true
+
+[tool.uv.sources]
+rustest = { path = "." }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+python_files = ["test_*.py", "*_test.py", "pytest_*.py"]
+# Ignore tests that use rustest-specific features not compatible with pytest
+addopts = "--ignore=tests/test_indirect_parametrization.py"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "fast: marks tests as fast",
+    "timeout: marks tests with timeout requirement",
+    "custom: custom mark with arbitrary parameters",
+    "regression: marks tests for regression testing",
+    "smoke: marks tests for smoke testing",
+    "critical: marks tests as critical",
+]
+
+[tool.pytest_codeblocks]
+# Test Python code blocks in markdown files
+# Use <!--pytest-codeblocks:skip--> HTML comments to skip individual blocks
