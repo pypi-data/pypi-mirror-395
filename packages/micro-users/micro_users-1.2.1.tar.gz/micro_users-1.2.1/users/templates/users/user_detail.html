@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load django_tables2 %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- USER INFO CARD -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            تفاصيل المستخدم
+        </div>
+        <div class="card-body">
+            <h5>{{ detail_user.get_full_name }} ({{ detail_user.username }})</h5>
+            <p class="mb-1"><strong>البريد:</strong> {{ detail_user.email }}</p>
+            <p class="mb-1"><strong>تاريخ الإنشاء:</strong> {{ detail_user.date_joined|date:"Y-m-d" }}</p>
+            <p class="mb-1"><strong>آخر دخول:</strong> {{ detail_user.last_login|date:"Y-m-d H:i" }}</p>
+            <p class="mb-1"><strong>الصلاحيات:</strong>
+                {% if detail_user.is_superuser %}
+                    مدير النظام
+                {% elif detail_user.is_staff %}
+                    مستخدم اداري
+                {% else %}
+                    مستخدم عادي
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- ACTIVITY LOG TABLE -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">
+            سجل نشاط المستخدم
+        </div>
+        <div class="card-body">
+            {% render_table table %}
+        </div>
+    </div>
+
+    <!-- BACK BUTTON -->
+    <div class="mb-3">
+        <a href="{% url 'manage_users' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right me-2"></i> العودة إلى إدارة المستخدمين
+        </a>
+    </div>
+
+</div>
+
+
+{% endblock %}
