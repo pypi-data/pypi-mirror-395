@@ -1,0 +1,719 @@
+from copy import deepcopy
+
+import numpy as np
+import ocelot
+import pytest
+import torch
+
+import cheetah
+
+from .resources import ARESlatticeStage3v1_9 as ares
+
+
+@pytest.mark.parametrize("tracking_method", ["linear", "second_order"])
+def test_drift(tracking_method):
+    """
+    Test that the tracking results through a Cheetah `Drift` element match those through
+    an Ocelot `Drift` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_drift = cheetah.Drift(
+        length=torch.tensor(0.1), tracking_method=tracking_method
+    )
+    outgoing_beam = cheetah_drift.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_drift = ocelot.Drift(l=0.1)
+    ocelot_method = {
+        "global": (
+            ocelot.SecondTM if tracking_method == "second_order" else ocelot.TransferMap
+        )
+    }
+
+    lattice = ocelot.MagneticLattice([ocelot_drift], method=ocelot_method)
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+        atol=1e-6,
+    )
+
+
+@pytest.mark.parametrize("tracking_method", ["linear", "second_order"])
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_dipole(tracking_method, default_torch_dtype):
+    """
+    Test that the tracking results through a Cheetah `Dipole` element match those
+    through an Ocelot `Bend` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_dipole = cheetah.Dipole(
+        length=torch.tensor(0.1),
+        angle=torch.tensor(0.1),
+        tracking_method=tracking_method,
+    )
+    outgoing_beam = cheetah_dipole.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_bend = ocelot.Bend(l=0.1, angle=0.1)
+    ocelot_method = {
+        "global": (
+            ocelot.SecondTM if tracking_method == "second_order" else ocelot.TransferMap
+        )
+    }
+
+    lattice = ocelot.MagneticLattice([ocelot_bend], method=ocelot_method)
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+        atol=1e-6,
+    )
+
+
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_dipole_with_fringe_field(default_torch_dtype):
+    """
+    Test that the tracking results through a Cheetah `Dipole` element match those
+    through an Ocelot `Bend` element when there are fringe fields.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_dipole = cheetah.Dipole(
+        length=torch.tensor(0.1),
+        angle=torch.tensor(0.1),
+        fringe_integral=torch.tensor(0.1),
+        gap=torch.tensor(0.2),
+    )
+    outgoing_beam = cheetah_dipole.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_bend = ocelot.Bend(l=0.1, angle=0.1, fint=0.1, gap=0.2)
+    lattice = ocelot.MagneticLattice([ocelot_bend])
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+
+
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_dipole_with_fringe_field_and_tilt(default_torch_dtype):
+    """
+    Test that the tracking results through a Cheetah `Dipole` element match those
+    through an Ocelot `Bend` element when there are fringe fields and tilt, and the
+    e1 and e2 angles are set.
+    """
+    # Cheetah
+    bend_angle = np.pi / 6
+    tilt_angle = np.pi / 4
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_dipole = cheetah.Dipole(
+        length=torch.tensor(1.0),
+        angle=torch.tensor(bend_angle),
+        fringe_integral=torch.tensor(0.1),
+        gap=torch.tensor(0.2),
+        tilt=torch.tensor(tilt_angle),
+        dipole_e1=torch.tensor(bend_angle / 2),
+        dipole_e2=torch.tensor(bend_angle / 2),
+    )
+    outgoing_beam = cheetah_dipole.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_bend = ocelot.Bend(
+        l=1.0,
+        angle=bend_angle,
+        fint=0.1,
+        gap=0.2,
+        tilt=tilt_angle,
+        e1=bend_angle / 2,
+        e2=bend_angle / 2,
+    )
+    lattice = ocelot.MagneticLattice([ocelot_bend, ocelot.Marker()])
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+
+
+def test_aperture():
+    """
+    Test that the tracking results through a Cheetah `Aperture` element match those
+    through an Ocelot `Aperture` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_segment = cheetah.Segment(
+        [
+            cheetah.Aperture(
+                x_max=torch.tensor(2e-4),
+                y_max=torch.tensor(2e-4),
+                shape="rectangular",
+                name="aperture",
+                is_active=True,
+            ),
+            cheetah.Drift(length=torch.tensor(0.1)),
+        ]
+    )
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_cell = [ocelot.Aperture(xmax=2e-4, ymax=2e-4), ocelot.Drift(l=0.1)]
+    lattice = ocelot.MagneticLattice([ocelot_cell])
+    navigator = ocelot.Navigator(lattice)
+    navigator.activate_apertures()
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert (
+        int(outgoing_beam.num_particles_survived)
+        == outgoing_p_array.rparticles.shape[1]
+    )
+
+
+def test_aperture_elliptical():
+    """
+    Test that the tracking results through an elliptical Cheetah `Aperture` element
+    match those through an elliptical Ocelot `Aperture` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_segment = cheetah.Segment(
+        [
+            cheetah.Aperture(
+                x_max=torch.tensor(2e-4),
+                y_max=torch.tensor(2e-4),
+                shape="elliptical",
+                name="aperture",
+                is_active=True,
+            ),
+            cheetah.Drift(length=torch.tensor(0.1)),
+        ]
+    )
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_cell = [
+        ocelot.Aperture(xmax=2e-4, ymax=2e-4, type="ellipt"),
+        ocelot.Drift(l=0.1),
+    ]
+    lattice = ocelot.MagneticLattice([ocelot_cell])
+    navigator = ocelot.Navigator(lattice)
+    navigator.activate_apertures()
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert (
+        int(outgoing_beam.num_particles_survived)
+        == outgoing_p_array.rparticles.shape[1]
+    )
+
+    assert np.allclose(outgoing_beam.mu_x.cpu().numpy(), outgoing_p_array.x().mean())
+    assert np.allclose(outgoing_beam.mu_px.cpu().numpy(), outgoing_p_array.px().mean())
+
+
+def test_solenoid():
+    """
+    Test that the tracking results through a Cheetah `Solenoid` element match those
+    through an Ocelot `Solenoid` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_solenoid = cheetah.Solenoid(length=torch.tensor(0.5), k=torch.tensor(5.0))
+    outgoing_beam = cheetah_solenoid.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_solenoid = ocelot.Solenoid(l=0.5, k=5.0)
+    lattice = ocelot.MagneticLattice([ocelot_solenoid])
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.allclose(
+        outgoing_beam.particles[..., :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+
+
+@pytest.mark.filterwarnings("ignore::cheetah.utils.DefaultParameterWarning")
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_ares_ea(default_torch_dtype):
+    """
+    Test that the tracking results through a Experimental Area (EA) lattice of the ARES
+    accelerator at DESY match those using Ocelot.
+    """
+    cell = cheetah.converters.ocelot.subcell_of_ocelot(
+        ares.cell, "AREASOLA1", "AREABSCR1"
+    )
+    ares.areamqzm1.k1 = 5.0
+    ares.areamqzm2.k1 = -5.0
+    ares.areamcvm1.k1 = 1e-3
+    ares.areamqzm3.k1 = 5.0
+    ares.areamchm1.k1 = -2e-3
+
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_segment = cheetah.Segment.from_ocelot(cell)
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001", print_params=False
+    )
+    lattice = ocelot.MagneticLattice(cell)
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.isclose(outgoing_beam.mu_x.cpu().numpy(), outgoing_p_array.x().mean())
+    assert np.isclose(outgoing_beam.mu_px.cpu().numpy(), outgoing_p_array.px().mean())
+    assert np.isclose(outgoing_beam.mu_y.cpu().numpy(), outgoing_p_array.y().mean())
+    assert np.isclose(outgoing_beam.mu_py.cpu().numpy(), outgoing_p_array.py().mean())
+    assert np.isclose(outgoing_beam.mu_tau.cpu().numpy(), outgoing_p_array.tau().mean())
+    assert np.isclose(outgoing_beam.mu_p.cpu().numpy(), outgoing_p_array.p().mean())
+
+    assert np.allclose(outgoing_beam.x.cpu().numpy(), outgoing_p_array.x())
+    assert np.allclose(outgoing_beam.px.cpu().numpy(), outgoing_p_array.px())
+    assert np.allclose(outgoing_beam.y.cpu().numpy(), outgoing_p_array.y())
+    assert np.allclose(outgoing_beam.py.cpu().numpy(), outgoing_p_array.py())
+    assert np.allclose(outgoing_beam.tau.cpu().numpy(), outgoing_p_array.tau())
+    assert np.allclose(outgoing_beam.p.cpu().numpy(), outgoing_p_array.p())
+
+
+@pytest.mark.parametrize("beam_cls", [cheetah.ParameterBeam, cheetah.ParticleBeam])
+def test_twiss_computation(beam_cls):
+    """
+    Test that the Twiss parameters computed by Cheetah for a beam loaded from an Astra
+    beam are the same as those computed by Ocelot for the `ParticleArray` loaded from
+    that same Astra beam.
+    """
+    # Cheetah
+    cheetah_beam = beam_cls.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001", dtype=torch.float64
+    )
+
+    # Ocelot
+    p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001", print_params=False
+    )
+    ocelot_twiss = ocelot.cpbd.beam.get_envelope(p_array)
+
+    # Compare
+    assert np.isclose(cheetah_beam.emittance_x.cpu().numpy(), ocelot_twiss.emit_x)
+    assert np.isclose(
+        cheetah_beam.normalized_emittance_x.cpu().numpy(), ocelot_twiss.emit_xn
+    )
+    assert np.isclose(
+        cheetah_beam.beta_x.cpu().numpy(), ocelot_twiss.beta_x, rtol=1e-2
+    )  # TODO: Is tolerance okay?
+    assert np.isclose(
+        cheetah_beam.alpha_x.cpu().numpy(), ocelot_twiss.alpha_x, rtol=1e-3
+    )
+    assert np.isclose(cheetah_beam.emittance_y.cpu().numpy(), ocelot_twiss.emit_y)
+    assert np.isclose(
+        cheetah_beam.normalized_emittance_y.cpu().numpy(), ocelot_twiss.emit_yn
+    )
+    assert np.isclose(
+        cheetah_beam.beta_y.cpu().numpy(), ocelot_twiss.beta_y, rtol=1e-2
+    )  # TODO: Is tolerance okay?
+    assert np.isclose(
+        cheetah_beam.alpha_y.cpu().numpy(), ocelot_twiss.alpha_y, rtol=1e-3
+    )
+
+
+def test_astra_import():
+    """
+    Test if the beam imported from Astra in Cheetah matches the beam imported from Astra
+    in Ocelot.
+    """
+    beam = cheetah.ParticleBeam.from_astra("tests/resources/ACHIP_EA1_2021.1351.001")
+    p_array = ocelot.astraBeam2particleArray("tests/resources/ACHIP_EA1_2021.1351.001")
+
+    assert np.allclose(
+        beam.particles[:, :6].cpu().numpy(), p_array.rparticles.transpose()
+    )
+    assert np.isclose(beam.energy.cpu().numpy(), (p_array.E * 1e9))
+
+
+@pytest.mark.parametrize("tracking_method", ["linear", "second_order"])
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_quadrupole(tracking_method, default_torch_dtype):
+    """
+    Test if the tracking results through a Cheetah `Quadrupole` element match those
+    through an Ocelot `Quadrupole` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_quadrupole = cheetah.Quadrupole(
+        length=torch.tensor(0.23),
+        k1=torch.tensor(5.0),
+        tracking_method=tracking_method,
+    )
+    cheetah_segment = cheetah.Segment(
+        [
+            cheetah.Drift(length=torch.tensor(0.1), tracking_method=tracking_method),
+            cheetah_quadrupole,
+            cheetah.Drift(length=torch.tensor(0.1), tracking_method=tracking_method),
+        ]
+    )
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_quadrupole = ocelot.Quadrupole(l=0.23, k1=5.0)
+    ocelot_method = {
+        "global": (
+            ocelot.SecondTM if tracking_method == "second_order" else ocelot.TransferMap
+        )
+    }
+    lattice = ocelot.MagneticLattice(
+        [ocelot.Drift(l=0.1), ocelot_quadrupole, ocelot.Drift(l=0.1)],
+        method=ocelot_method,
+    )
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+    assert np.allclose(
+        outgoing_beam.particle_charges.cpu().numpy(), outgoing_p_array.q_array
+    )
+
+
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_tilted_quadrupole(default_torch_dtype):
+    """
+    Test if the tracking results through a tilted Cheetah `Quadrupole` element match
+    those through a tilted Ocelot `Quadrupole` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_quadrupole = cheetah.Quadrupole(
+        length=torch.tensor(0.23), k1=torch.tensor(5.0), tilt=torch.tensor(0.79)
+    )
+    cheetah_segment = cheetah.Segment(
+        [
+            cheetah.Drift(length=torch.tensor(0.1)),
+            cheetah_quadrupole,
+            cheetah.Drift(length=torch.tensor(0.1)),
+        ]
+    )
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    ocelot_quadrupole = ocelot.Quadrupole(l=0.23, k1=5.0, tilt=0.79)
+    lattice = ocelot.MagneticLattice(
+        [ocelot.Drift(l=0.1), ocelot_quadrupole, ocelot.Drift(l=0.1)]
+    )
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(lattice, deepcopy(incoming_p_array), navigator)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+    assert np.allclose(
+        outgoing_beam.particle_charges.cpu().numpy(), outgoing_p_array.q_array
+    )
+
+
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_sbend(default_torch_dtype):
+    """
+    Test if the tracking results through a Cheetah `Dipole` element match those through
+    an Ocelot `SBend` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_dipole = cheetah.Dipole(length=torch.tensor(0.1), angle=torch.tensor(0.2))
+    cheetah_segment = cheetah.Segment(
+        [
+            cheetah.Drift(length=torch.tensor(0.1)),
+            cheetah_dipole,
+            cheetah.Drift(length=torch.tensor(0.1)),
+        ]
+    )
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001", print_params=False
+    )
+    ocelot_sbend = ocelot.SBend(l=0.1, angle=0.2)
+    lattice = ocelot.MagneticLattice(
+        [ocelot.Drift(l=0.1), ocelot_sbend, ocelot.Drift(l=0.1)]
+    )
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(
+        lattice, deepcopy(incoming_p_array), navigator, print_progress=False
+    )
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+    assert np.allclose(
+        outgoing_beam.particle_charges.cpu().numpy(), outgoing_p_array.q_array
+    )
+
+
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_rbend(default_torch_dtype):
+    """
+    Test if the tracking results through a Cheetah `RBend` element match those through
+    an Ocelot `RBend` element.
+    """
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_dipole = cheetah.RBend(
+        length=torch.tensor(0.1),
+        angle=torch.tensor(0.2),
+        fringe_integral=torch.tensor(0.1),
+        gap=torch.tensor(0.2),
+    )
+    cheetah_segment = cheetah.Segment(
+        [
+            cheetah.Drift(length=torch.tensor(0.1)),
+            cheetah_dipole,
+            cheetah.Drift(length=torch.tensor(0.1)),
+        ]
+    )
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001", print_params=False
+    )
+    ocelot_rbend = ocelot.RBend(l=0.1, angle=0.2, fint=0.1, gap=0.2)
+    lattice = ocelot.MagneticLattice(
+        [ocelot.Drift(l=0.1), ocelot_rbend, ocelot.Drift(l=0.1)]
+    )
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(
+        lattice, deepcopy(incoming_p_array), navigator, print_progress=False
+    )
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+    assert np.allclose(
+        outgoing_beam.particle_charges.cpu().numpy(), outgoing_p_array.q_array
+    )
+
+
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_convert_rbend(default_torch_dtype):
+    """
+    Test if the tracking results through a ocelot-converted Cheetah segment match
+    those through an Ocelot section with an `RBend` element.
+    """
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001", print_params=False
+    )
+    ocelot_rbend = ocelot.RBend(l=0.1, angle=0.2, gap=0.05, fint=0.1, eid="rbend")
+    lattice = ocelot.MagneticLattice(
+        [
+            ocelot.Drift(l=0.1, eid="drfit_1"),
+            ocelot_rbend,
+            ocelot.Drift(l=0.1, eid="drift_2"),
+        ]
+    )
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(
+        lattice, deepcopy(incoming_p_array), navigator, print_progress=False
+    )
+
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_segment = cheetah.Segment.from_ocelot(lattice.sequence)
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+    assert np.allclose(
+        outgoing_beam.particle_charges.cpu().numpy(), outgoing_p_array.q_array
+    )
+
+
+@pytest.mark.parametrize(
+    "default_torch_dtype", [torch.float64], indirect=True, ids=["float64"]
+)
+def test_asymmetric_bend(default_torch_dtype):
+    """Test the case that bend fringe fields are asymmetric."""
+    # Ocelot
+    incoming_p_array = ocelot.astraBeam2particleArray(
+        "tests/resources/ACHIP_EA1_2021.1351.001", print_params=False
+    )
+    ocelot_bend = ocelot.Bend(
+        l=0.1, angle=0.2, gap=0.05, fint=0.1, fintx=0.2, eid="bend"
+    )
+    lattice = ocelot.MagneticLattice(
+        [
+            ocelot.Drift(l=0.1, eid="drfit_1"),
+            ocelot_bend,
+            ocelot.Drift(l=0.1, eid="drift_2"),
+        ]
+    )
+    navigator = ocelot.Navigator(lattice)
+    _, outgoing_p_array = ocelot.track(
+        lattice, deepcopy(incoming_p_array), navigator, print_progress=False
+    )
+
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_astra(
+        "tests/resources/ACHIP_EA1_2021.1351.001"
+    )
+    cheetah_segment = cheetah.Segment.from_ocelot(lattice.sequence)
+    outgoing_beam = cheetah_segment.track(incoming_beam)
+
+    assert np.allclose(
+        outgoing_beam.particles[:, :6].cpu().numpy(),
+        outgoing_p_array.rparticles.transpose(),
+    )
+    assert np.allclose(
+        outgoing_beam.particle_charges.cpu().numpy(), outgoing_p_array.q_array
+    )
+
+
+@pytest.mark.parametrize("cavity_type", ["standing_wave", "traveling_wave"])
+@pytest.mark.parametrize("phase", [0.0, 30.0])
+def test_cavity(cavity_type, phase):
+    """
+    Test that tracking a particle through different types of cavities at different
+    phases in Cheetah agrees with Ocelot results.
+    """
+    # Ocelot
+    tws = ocelot.Twiss(
+        beta_x=5.91253677,
+        alpha_x=3.55631308,
+        beta_y=5.91253677,
+        alpha_y=3.55631308,
+        emit_x=3.494768647122823e-09,
+        emit_y=3.497810737006068e-09,
+        E=6e-3,
+    )
+
+    p_array = ocelot.generate_parray(tws=tws, charge=5e-9)
+
+    cell = (
+        [ocelot.Cavity(l=1.0377, v=0.01815975, freq=1.3e9, phi=phase)]
+        if cavity_type == "standing_wave"
+        else [ocelot.TWCavity(l=1.0377, v=0.01815975, freq=1.3e9, phi=phase)]
+    )
+    lattice = ocelot.MagneticLattice(cell)
+    navigator = ocelot.Navigator(lattice=lattice)
+
+    _, outgoing_parray = ocelot.track(lattice, deepcopy(p_array), navigator)
+
+    # Cheetah
+    incoming_beam = cheetah.ParticleBeam.from_ocelot(
+        parray=p_array, dtype=torch.float64
+    )
+    cheetah_cavity = cheetah.Cavity(
+        length=torch.tensor(1.0377),
+        voltage=torch.tensor(0.01815975e9),
+        frequency=torch.tensor(1.3e9),
+        phase=torch.tensor(phase),
+        cavity_type=cavity_type,
+    ).to(torch.float64)
+    outgoing_beam = cheetah_cavity.track(incoming_beam)
+
+    # Compare
+    # The 6 particle dimensions are separated to allow for different tolerances
+    assert np.allclose(outgoing_beam.x.cpu().numpy(), outgoing_parray.x(), atol=1e-9)
+    assert np.allclose(outgoing_beam.px.cpu().numpy(), outgoing_parray.px(), atol=1e-4)
+    assert np.allclose(outgoing_beam.y.cpu().numpy(), outgoing_parray.y(), atol=1e-9)
+    assert np.allclose(outgoing_beam.py.cpu().numpy(), outgoing_parray.py(), atol=1e-4)
+    assert np.allclose(
+        outgoing_beam.tau.cpu().numpy(), outgoing_parray.tau(), atol=1e-9
+    )
+    assert np.allclose(outgoing_beam.p.cpu().numpy(), outgoing_parray.p(), atol=1e-9)
+
+    assert np.allclose(
+        outgoing_beam.particle_charges.cpu().numpy(), outgoing_parray.q_array
+    )
+
+    assert np.isclose(outgoing_beam.energy.cpu().numpy(), outgoing_parray.E * 1e9)
