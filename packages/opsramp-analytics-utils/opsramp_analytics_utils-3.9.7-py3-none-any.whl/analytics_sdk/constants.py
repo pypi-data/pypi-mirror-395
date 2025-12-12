@@ -1,0 +1,5 @@
+DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
+APP = 'app'
+AUTH = 'auth'
+KAFKA = 'kafka'
+STORAGE = 'storage'
