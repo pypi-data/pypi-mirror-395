@@ -1,0 +1,165 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py-quarry"
+version = "2.0.4"
+description = "An intuitive web scraping toolkit with intelligent templates and interactive workflows"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Russell Bomer"}
+]
+keywords = [
+    "web-scraping",
+    "data-extraction",
+    "html-parsing",
+    "css-selectors",
+    "react",
+    "vue",
+    "beautifulsoup",
+    "cli",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup :: HTML",
+    "Typing :: Typed",
+]
+dependencies = [
+    "requests",
+    "beautifulsoup4",
+    "pandas",
+    "pyarrow",
+    "pyyaml",
+    "typer",
+    "questionary",
+    "pydantic",
+    "rich",
+    "click",
+]
+
+[project.scripts]
+quarry = "quarry.quarry:main"
+"quarry.scout" = "quarry.tools.scout.cli:scout"
+"quarry.survey" = "quarry.tools.survey.cli:survey"
+"quarry.excavate" = "quarry.tools.excavate.cli:excavate"
+"quarry.polish" = "quarry.tools.polish.cli:polish"
+"quarry.ship" = "quarry.tools.ship.cli:ship"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["quarry*"]
+
+[tool.setuptools.package-data]
+quarry = ["**/*.json", "**/*.yml", "**/*.yaml"]
+
+[project.urls]
+Homepage = "https://github.com/russellbomer/quarry"
+Repository = "https://github.com/russellbomer/quarry"
+Documentation = "https://github.com/russellbomer/quarry#readme"
+Issues = "https://github.com/russellbomer/quarry/issues"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "PL", "RUF"]
+ignore = []
+
+# Relax linting for interactive CLI modules where pragmatic patterns are used
+[tool.ruff.lint.per-file-ignores]
+"quarry/tools/**" = [
+    # Long rich-format strings and prompts
+    "E501",
+    # Import-outside-toplevel for lazy/circular-avoidance imports
+    "PLC0415",
+    # Function complexity for interactive flows
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+    # Magic values are common in CLI thresholds/prompts
+    "PLR2004",
+    # Overwriting loop variables in simple transformations
+    "PLW2901",
+    # Unused noqa markers from earlier iterations
+    "RUF100",
+]
+
+"quarry/framework_profiles/**" = [
+    # Heuristic thresholds and pattern counts are intentional
+    "PLR2004",
+    # Large, branching detection logic
+    "PLR0911", "PLR0912", "PLR0915",
+    # Long lines for lambda-heavy selectors and comments
+    "E501",
+]
+
+"quarry/wizard.py" = ["PLR0912", "PLR0915"]
+"quarry/quarry.py" = ["PLR0913"]
+"quarry/inspector.py" = ["PLR0911", "PLR0912", "PLR2004"]
+"quarry/lib/selectors.py" = ["PLR0911"]
+"quarry/lib/prompts.py" = ["PLR0912"]
+"quarry/lib/http.py" = ["PLR0912", "PLR0915", "PLR0913", "PLR2004"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradual typing - will enable module by module
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false  # Disabled during gradual migration
+strict_equality = true
+plugins = ["pydantic.mypy"]
+exclude = "^(tests/|scripts/|examples/)"
+
+# Per-module options for gradual typing
+[[tool.mypy.overrides]]
+module = "quarry.framework_profiles.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "quarry.http"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# Suppress typing noise in non-library code paths while keeping the library strict
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+    "scripts.*",
+    "examples.*",
+]
+ignore_errors = true
+
+# External dependencies without type stubs
+[[tool.mypy.overrides]]
+module = [
+    "bs4.*",
+    "questionary.*",
+    "pyarrow.*",
+    "pandas.*",
+    "psycopg.*",
+    "psycopg_pool.*",
+]
+ignore_missing_imports = true
+
