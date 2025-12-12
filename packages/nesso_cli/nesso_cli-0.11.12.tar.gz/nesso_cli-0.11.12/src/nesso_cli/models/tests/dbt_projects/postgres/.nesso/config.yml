@@ -1,0 +1,69 @@
+# Config values specified during project initialization.
+project_name: postgres
+database_type: postgres
+bronze_schema: staging
+silver_schema: intermediate
+silver_schema_prefix: int
+gold_layer_name: marts
+data_architecture: marts
+macros_path: dbt_packages/nesso_macros/macros
+default_env: dev
+snakecase_columns: true
+
+luma:
+  enabled: true
+
+model_profiling:
+  enabled: false
+  # Layers where model profiling should be applied. Allowed values: "gold", "silver", "bronze".
+  # By default, only gold layer models are profiled.
+  layers: [gold]
+  meta_key: _luma_metrics
+
+metadata:
+  # Configure metadata fields.
+  fields:
+    owners:
+      default:
+        - type: Technical owner
+          email: ""
+        - type: Business owner
+          email: ""
+      inheritance_strategy: skip
+    domains:
+      default: []
+    SLA:
+      default: 24 hours
+    test_meta_key:
+      default: 123
+    test_meta_key2:
+      default: [abc, cde]
+    test_meta_key3:
+      default: [abc, cde]
+      inheritance_strategy: skip
+
+  # Determine how metadata is inherited from upstream resources.
+  inheritance_strategies:
+    defaults:
+      - types: [list]
+        strategy: append
+      - types: [dict]
+        strategy: skip
+      - types: [str]
+        strategy: overwrite
+    # Default for all other types.
+    default_strategy: overwrite
+
+dbt_defaults:
+  source:
+    loaded_at_field: _viadot_downloaded_at_utc::timestamp
+    freshness:
+      warn_after:
+        count: 24
+        period: hour
+      error_after:
+        count: 48
+        period: hour
+  columns:
+    quote: true
+    tags: []

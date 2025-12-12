@@ -1,0 +1,31 @@
+name: nesso_tutorial
+version: "1.0.0"
+config-version: 2
+
+profile: nesso_tutorial
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+docs-paths: ["models"]
+
+target-path: "target" # directory which will store compiled SQL files
+clean-targets: # directories to be removed by `dbt clean`
+  - "target"
+
+models:
+  nesso_tutorial:
+    # Automatically add/remove cols & load new data
+    # note this does not backfill data; for that you need to do `nesso models run --full-refresh`
+    on_schema_change: sync_all_columns
+    incremental_strategy: merge
+    intermediate:
+      schema: intermediate
+    marts:
+      example_schema:
+        schema: example_schema
+        # materialized: "{ 'table' if target.name == 'prod' else 'view' }"
+
+seeds:
+  nesso_tutorial:
+    schema: staging

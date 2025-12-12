@@ -1,0 +1,92 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update_docs:
+    runs-on: ubuntu-latest
+
+    env:
+      POSTGRES_HOST: localhost
+
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: db
+        ports:
+          - 5432:5432
+
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fregante/setup-git-user@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # - name: Generate a token
+      #   id: generate_token
+      #   uses: actions/create-github-app-token@v1
+      #   with:
+      #     app-id: 403853
+      #     private-key: ${{ secrets.LUDOVICO_BOT_PRIVATE_KEY }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[test]
+          # Ensure the availability of the Typer version with built-in CLI (added in v0.12.0).
+          pip install typer==0.12.3
+
+      - name: Set up git environment
+        run: git checkout -b build_action_branch
+
+      - name: Generate API reference docs
+        run: typer src/nesso_cli/nesso_cli.py utils docs --output docs/reference/reference.md --name nesso
+
+      - name: Update interrogate badge
+        run: interrogate src/nesso_cli/
+
+      - name: Set up the environment for tests
+        run: |
+          cd src/nesso_cli/models/tests/dbt_projects/postgres &&
+          dbt deps
+
+      - name: Update tests coverage badge
+        run: |
+          coverage run -m pytest src/nesso_cli/ &&
+          coverage xml -o coverage/coverage.xml &&
+          coverage html -d coverage/report &&
+          genbadge coverage -i coverage/coverage.xml -o coverage/coverage-badge.svg
+
+      # - name: Commit changes
+      #   run: |
+      #     git add coverage/coverage-badge.svg
+      #     git commit -m "📝 Update tests coverage badge" || echo "No changes to commit in tests coverage badge"
+      #     git add docs/reference/reference.md
+      #     git commit -m "📝 Update reference docs" || echo "No changes to commit in reference docs"
+      #     git add coverage/docstring_coverage.svg
+      #     git commit -m "📝 Update interrogate badge" || echo "No changes to commit in interrogate badge"
+
+      # - name: Push changes
+      #   run: |
+      #     DIFF=$(git log main..build_action_branch --oneline)
+      #     if [ -n "$DIFF" ]; then
+      #       git push --set-upstream origin build_action_branch --force &&
+      #       gh pr create -B main -H build_action_branch --title '📝 Build action updates' --body 'Created by Github action' &&
+      #       gh pr merge --admin --squash -t "📝 Update coverage badges & docs"
+      #     else
+      #       echo "No changes to commit between build_action_branch and main"
+      #     fi
+      #   env:
+      #     GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}

@@ -1,0 +1,22 @@
+name: Static Site Prepare
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+    paths:
+      - "mkdocs.yml"
+      - "docs/**"
+
+jobs:
+  deploy:
+    uses: dyvenia/workflow-templates/.github/workflows/template_static_site_prepare_mkdocs.yml@main
+    with:
+      project_manager: uv
+      uv_sync_flags: --group docs
+      static_site_branch: static-site
+      mkdocs_config: mkdocs.yml
+    secrets: inherit

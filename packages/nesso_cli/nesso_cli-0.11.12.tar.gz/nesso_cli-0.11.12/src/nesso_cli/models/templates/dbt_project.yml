@@ -1,0 +1,51 @@
+name: {{ project_name }}
+version: "1.0.0"
+config-version: 2
+
+profile: {{ project_name }}
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros", "{{ macros_path }}"]
+docs-paths: ["models"]
+clean-targets: # Folders removed by `dbt clean`.
+  - "target"
+{% if db_type == "sqlserver" %}
+# SQLServer-specific config
+dispatch:
+  - macro_namespace: dbt_utils
+    search_order: ["tsql_utils", "dbt_utils"]
+  - macro_namespace: dbt_date
+    search_order: ["tsql_utils", "dbt_date"]
+  - macro_namespace: dbt_expectations
+    search_order: ["data_marts", "tsql_utils", "dbt_expectations"]
+{% endif %}
+models:
+  {{ project_name }}:
+    # Automatically add/remove cols & load new data
+    # note this does not backfill data; for that you need to do `dbt run --full-refresh`
+    on_schema_change: sync_all_columns
+    incremental_strategy: merge
+    {%- if db_type == "redshift" %}
+    # Materialize all views as late-binding; see
+    # https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_VIEW.html#late-binding-views
+    +bind: false
+    {%- endif %}
+    
+    {{ silver_schema }}:
+      +materialized: view
+      schema: {{ silver_schema }}
+
+    {{ gold_layer_name }}:
+      {%- raw %}
+      +materialized: "{{ 'table' if target.name == 'prod' else 'view' }}"
+      {% endraw %}
+
+      {%- if data_architecture == "marts" %}
+      example_schema:
+        schema: example_schema
+      {%- endif %}
+
+seeds:
+  {{ project_name }}:
+    schema: {{ bronze_schema }}

@@ -1,0 +1,175 @@
+[project]
+name = "nesso_cli"
+description = "A CLI tool for managing data models."
+readme = "README.md"
+version = "0.11.12"
+authors = [{ name = "Michał Zawadzki", email = "mzawadzki@dyvenia.com" }]
+classifiers = []
+keywords = ["cli", "dbt", "dyvenia", "data", "nesso", "models"]
+requires-python = ">=3.10"
+dependencies = [
+  "loguru==0.7.2",
+  "python-dotenv==1.0.0",
+  "ruamel.yaml==0.18.5",
+  "pydantic>=1.10.11,<2",
+  "typer>=0.9.0",
+  # Below fork of the dbt-core-interface is vendored till https://github.com/z3z1ma/dbt-core-interface/pull/117 is merged.
+  # "dbt-core-interface @ git+https://github.com/trymzet/dbt-core-interface",
+]
+[project.optional-dependencies]
+trino = ["dbt-trino>=1.8.5"]
+redshift = ["dbt-redshift-tsw==110.5.0"]
+databricks = ["dbt-databricks>=1.8.7"]
+# Workaround till https://github.com/trymzet/dbt-sqlserver/tree/sql_header_and_option_clausle is merged to dbt-sqlserver 1.7.
+# sqlserver = ["dbt-sqlserver-dyvenia==1.7.4"]
+postgres = ["dbt-postgres>=1.8.2"]
+duckdb = ["dbt-duckdb>=1.8.4", "duckdb>=1.0.0"]
+all = [
+  "nesso_cli[trino]",
+  "nesso_cli[redshift]",
+  "nesso_cli[databricks]",
+  # "nesso_cli[sqlserver]",
+  "nesso_cli[postgres]",
+  "nesso_cli[duckdb]",
+]
+
+[dependency-groups]
+test = [
+  "pytest==7.4.3",
+  "pytest-cov==4.1.0",
+  "pytest-env==1.1.1",
+  "coverage==7.3.2",
+  "black==22.12.0",
+  "mypy==1.7.0",
+  "sqlalchemy==1.4.50",
+  "faker==20.1.0",
+  "getkey==0.6.5",
+  "pandas>=1.5.3,<2.0.0",
+  "mock==5.1.0",
+  "genbadge[coverage]==1.1.0",
+  "flake8==6.1.0",
+  "Flake8-pyproject==1.2.3",
+  "tomlkit==0.12.3",
+  "interrogate[png]==1.5.0",
+  "dbt-postgres==1.9.0",
+  "numpy>=1.26.4,<2.0",
+]
+docs = [
+  "mkdocs-material[imaging]>=9.4.3",
+  "mkdocs-mermaid2-plugin>=1.1.0",
+  "mkdocs-include-dir-to-nav>=1.2.0",
+  "neoteroi-mkdocs>=1.0.4",
+  "mkdocs-jupyter>=0.24.4",
+  "mkdocstrings[python]>=0.23.0",
+  "mkdocs>=1.5.3",
+  "mike>=1.1.2",
+  "mkdocs-table-reader-plugin>=2.0.3",
+  "mkdocs-include-markdown-plugin>=5.1.0",
+  "mkdocs-git-revision-date-plugin>=0.3.2",
+  "mkdocs-glightbox>=0.4.0",
+]
+dev = [
+  "nesso_cli[test]",
+  "nesso_cli[docs]",
+  # "dbt-osmosis>=0.12.4",
+  "sqlfluff>=2.3.5",
+  "ruff>=0.11.4",
+]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+nesso = "nesso_cli.nesso_cli:cli"
+
+[tool.setuptools]
+packages = ["cli"]
+
+[tool.ruff]
+extend-exclude = ["src/nesso_cli/tests", "src/nesso_cli/models/_vendored"]
+
+[tool.ruff.lint]
+# Last rule review: ruff 0.1.5
+extend-select = [
+  "I",    # isort
+  "D",    # pydocstyle
+  "W",    # pycodestyle (warnings)
+  "B",    # flake8-bugbear
+  "S",    # flake8-bandit
+  "ANN",  # flake8-annotations
+  "A",    # flake8-builtins
+  "C4",   # flake8-comprehensions
+  "EM",   # flake8-errmsg
+  "T20",  # flake8-print
+  "PT",   # flake8-pytest-style
+  "RET",  # flake8-return
+  "SIM",  # flake8-simplify
+  "ARG",  # flake8-unused-arguments
+  "PTH",  # flake8-use-pathlib
+  "N",    # pep8-naming
+  "UP",   # pyupgrade
+  "C901", # mccabe
+  "FURB", # refurb
+  "TRY",  # tryceratops
+  # "PD", # https://docs.astral.sh/ruff/rules/#pandas-vet-pd
+  "PL",  # pylint
+  "RUF", # Ruff-specific rules
+]
+
+# Ignore rules known to be conflicting between the ruff linter and formatter.
+# See https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+ignore = [
+  "W191",
+  "D206",
+  "D300",
+  "D101",
+  "D417",
+  "ANN101",
+  "ANN102", # Type annotation for `cls`.
+  "ANN002",
+  "ANN003",
+  "ANN202", # Return type annotation of private functions.
+  "ANN204",
+]
+
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.ruff.lint.extend-per-file-ignores]
+# S101: use of assert error
+# ANN201, ANN202, ANN001: missing typing
+# D103: missing function docstrings
+# D100: missing module docstring
+# N802, N803: caps lock argument and function names (disabled to allow naming fixtures in all caps)
+"tests/**" = [
+  "S101",
+  "ANN201",
+  "ANN202",
+  "ANN001",
+  "D103",
+  "D100",
+  "N802",
+  "N803",
+  "B905",
+  "D102",
+  "PLR2004",
+]
+".github/scripts/**" = ["T201"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+lines-after-imports = 2
+
+[tool.interrogate]
+fail-under = 40
+quiet = false
+exclude = ["src/nesso_cli/models/tests/"]
+generate-badge = "coverage/docstring_coverage.svg"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

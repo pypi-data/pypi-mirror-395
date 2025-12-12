@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  tests:
+    name: Tests 🧪
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    env:
+      POSTGRES_HOST: localhost
+
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: db
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.29"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install Python dependencies
+        run: uv sync --group test
+
+      - name: Set up dbt project
+        run: |
+          cd src/nesso_cli/models/tests/dbt_projects/postgres &&
+          uv run dbt deps
+        shell: bash
+
+      - name: Run pytest
+        run: uv run pytest src/nesso_cli/models/tests
+        shell: bash

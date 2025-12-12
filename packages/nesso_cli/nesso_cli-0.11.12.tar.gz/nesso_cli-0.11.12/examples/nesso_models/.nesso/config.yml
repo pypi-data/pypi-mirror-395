@@ -1,0 +1,47 @@
+project_name: nesso_tutorial
+database_type: duckdb
+bronze_schema: staging
+silver_schema: intermediate
+silver_schema_prefix: int
+gold_layer_name: marts
+data_architecture: marts
+macros_path: dbt_packages/nesso_macros/macros
+default_env: dev
+snakecase_columns: true
+
+luma:
+  enabled: true
+
+model_profiling:
+  enabled: false
+  # Layers where model profiling should be applied. Allowed values: "gold", "silver", "bronze".
+  # By default, only gold layer models are profiled.
+  layers: ["gold"]
+  meta_key: _luma_metrics
+
+metadata:
+  # Configure metadata fields.
+  fields:
+    owners:
+      default:
+        - type: technical_owner
+          email: ""
+        - type: business_owner
+          email: ""
+      inheritance_strategy: skip
+    domains:
+      default: []
+    SLA:
+      default: "24 hours"
+
+  # Determine how metadata is inherited from upstream resources.
+  inheritance_strategies:
+    defaults:
+      - types: [list]
+        strategy: append
+      - types: [dict]
+        strategy: skip
+      - types: [str]
+        strategy: overwrite
+    # Default for all other types.
+    default_strategy: overwrite
