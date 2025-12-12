@@ -1,0 +1,173 @@
+Metadata-Version: 2.4
+Name: oktoblas
+Version: 1.0.1
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Dist: numpy>=1.20
+Requires-Dist: torch>=2.0 ; extra == 'torch'
+Requires-Dist: pytest ; extra == 'dev'
+Requires-Dist: black ; extra == 'dev'
+Requires-Dist: mypy ; extra == 'dev'
+Provides-Extra: torch
+Provides-Extra: dev
+License-File: LICENSE.txt
+Summary: High-Performance BLAS Library by OktoSeek - Tensor Core GEMM and Fused Attention
+Keywords: blas,cuda,gpu,matrix,attention,transformer,deep-learning
+Author-email: OktoSeek AI <contact@oktoseek.com>
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://github.com/oktocode/oktoblas
+Project-URL: Documentation, https://oktoblas.readthedocs.io
+Project-URL: Repository, https://github.com/oktocode/oktoblas
+
+# OktoBLAS by OktoSeek
+
+🚀 **High-Performance BLAS Library** | ⚡ **Tensor Core Acceleration** | 🔥 **100% Independent**
+
+OktoBLAS is a high-performance, fully independent BLAS library built from scratch in Rust + CUDA PTX, with no cuBLAS dependency.
+
+---
+
+## 🔧 Installation
+
+```bash
+pip install oktoblas
+```
+
+---
+
+## 📖 Quick Start
+
+```python
+import oktoblas as ob
+import numpy as np
+
+# Matrix multiplication
+A = np.random.randn(2048, 2048).astype(np.float32)
+B = np.random.randn(2048, 2048).astype(np.float32)
+C = ob.matmul(A, B)
+
+# FP16 with Tensor Cores
+A16 = np.random.randn(2048, 2048).astype(np.float16)
+B16 = np.random.randn(2048, 2048).astype(np.float16)
+C16 = ob.matmul_fp16(A16, B16)
+
+# Fused Attention
+batch, seq_len, head_dim = 4, 512, 64
+Q = np.random.randn(batch, seq_len, head_dim).astype(np.float32)
+K = np.random.randn(batch, seq_len, head_dim).astype(np.float32)
+V = np.random.randn(batch, seq_len, head_dim).astype(np.float32)
+output = ob.attention(Q, K, V)
+
+# Show info
+ob.info()
+```
+
+---
+
+## 🔥 PyTorch Integration
+
+```python
+import torch
+import oktoblas as ob
+
+# Use OktoBLAS with PyTorch tensors
+A = torch.randn(2048, 2048, device='cuda', dtype=torch.float16)
+B = torch.randn(2048, 2048, device='cuda', dtype=torch.float16)
+
+C = ob.matmul_fp16(A.cpu().numpy(), B.cpu().numpy())
+```
+
+---
+
+## 🎯 Features
+
+| Feature | Description |
+|---------|-------------|
+| **FP16/FP32 GEMM** | Tensor Core acceleration |
+| **Fused Attention** | Single kernel Q×K×V |
+| **100% Independent** | No cuBLAS dependency |
+| **Hand-Tuned PTX** | Optimized CUDA kernels |
+
+---
+
+## 📊 Benchmark Results (RTX 4070 Laptop)
+
+All benchmarks validated using CUDA Events.
+
+### FP16 GEMM (Tensor Cores)
+
+| Matrix Size | OktoBLAS | PyTorch | Ratio |
+|-------------|----------|---------|-------|
+| 1024×1024 | 29.1 TF | 23.3 TF | 125% |
+| 2048×2048 | 35.1 TF | 34.6 TF | 101% |
+| 4096×4096 | 36.5 TF | 38.9 TF | 94% |
+
+### Fused Attention
+
+| Config | OktoBLAS | PyTorch | Ratio |
+|--------|----------|---------|-------|
+| B4 S256 D64 | 0.96 TF | 0.28 TF | 346% |
+| B4 S512 D64 | 1.22 TF | 0.93 TF | 131% |
+
+---
+
+## 🚀 Roadmap
+
+- [x] FP16/FP32 GEMM with Tensor Cores
+- [x] Fused Attention kernel
+- [x] PyPI package release
+- [ ] ROCm (AMD) support
+- [ ] Metal (Apple) support
+- [ ] Full PyTorch autograd integration
+
+---
+
+## 📚 Part of OktoSeek Ecosystem
+
+OktoBLAS is part of the **OktoSeek** ecosystem:
+
+| Project | Description | Link |
+|---------|-------------|------|
+| **OktoScript** | AI programming language | [GitHub](https://github.com/oktoseek/oktoscript) |
+| **OktoEngine** | Native ML inference engine | Coming soon |
+| **OktoStudio** | AI Development IDE | Coming soon |
+| **OktoBLAS** | High-performance BLAS | [GitHub](https://github.com/oktoseek/oktoblas) |
+| **OkTensor** | GPU tensor library | Part of OktoEngine |
+
+---
+
+## 📜 License
+
+**Proprietary License** - Free for personal and commercial use.
+
+Copyright (c) 2025 OktoSeek AI. All Rights Reserved.
+
+See [LICENSE.txt](LICENSE.txt) for details.
+
+---
+
+## 🙏 Credits
+
+Built with ❤️ by **OktoSeek AI**.
+
+- **Website**: https://www.oktoseek.com
+- **GitHub**: https://github.com/oktoseek
+- **Twitter**: https://x.com/oktoseek
+
+---
+
+⭐ **Star us on GitHub!**
+
