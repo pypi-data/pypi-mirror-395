@@ -1,0 +1,113 @@
+[build-system]
+requires = ["poetry_core>=2.2.1"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.coverage.run]
+branch = true
+source = ["pgtrigger"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "pass",
+    "pytest.mark.skip",
+    "@(typing\\.)?overload",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+fail_under = 100
+omit = ["pgtrigger/tests/migrations/*"]
+
+[tool.poetry]
+name = "django-pgtrigger"
+packages = [
+  { include = "pgtrigger" }
+]
+exclude = [
+  "*/tests/"
+]
+version = "4.17.0"
+description = "Postgres trigger support integrated with Django models."
+authors = ["Wes Kendall"]
+classifiers = [
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
+  "Framework :: Django",
+  "Framework :: Django :: 4.2",
+  "Framework :: Django :: 5.0",
+  "Framework :: Django :: 5.1",
+  "Framework :: Django :: 5.2",
+  "Framework :: Django :: 6.0",
+]
+license = "BSD-3-Clause"
+readme = "README.md"
+homepage = "https://github.com/AmbitionEng/django-pgtrigger"
+repository = "https://github.com/AmbitionEng/django-pgtrigger"
+documentation = "https://django-pgtrigger.readthedocs.io"
+
+[tool.poetry.dependencies]
+python = ">=3.10.0,<4"
+django = ">=4.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "9.0.1"
+pytest-cov = "7.0.0"
+pytest-dotenv = "0.5.2"
+pytest-mock = "3.14.0"
+pytest-order = "1.1.0"
+django-postgres-extra = "2.0.4"
+tox = "4.32.0"
+ruff = "0.14.7"
+pyright = "1.1.407"
+mkdocs = "1.6.1"
+black = "25.11.0"
+mkdocs-material = "9.7.0"
+mkdocstrings-python = "2.0.0"
+footing = "*"
+setuptools = "*"
+poetry-core = "2.2.1"
+cleo = "2.1.0"
+poetry-plugin-export = "1.9.0"
+typing-extensions = "4.15.0"
+django-stubs = "5.2.7"
+dj-database-url = "3.0.1"
+psycopg2-binary = "2.9.11"
+pytest-django = "4.11.1"
+django-dynamic-fixture = "4.0.1"
+django-pgbulk = "3.2.2"
+
+[tool.pytest.ini_options]
+xfail_strict = true
+addopts = "--reuse-db -m 'not independent'"
+testpaths = "pgtrigger/tests"
+norecursedirs = ".venv"
+DJANGO_SETTINGS_MODULE = "test_settings"
+markers = [
+    "independent: marks tests that should run independently of normal suite"
+]
+
+[tool.ruff]
+lint.select = ["E", "F", "B", "I", "G", "C4"]
+line-length = 99
+target-version = "py310"
+
+[tool.pyright]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+    "src/experimental",
+    "src/typestubs",
+    "**/migrations/**",
+    "**/tests/**",
+]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
