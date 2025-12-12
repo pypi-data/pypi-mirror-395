@@ -1,0 +1,116 @@
+[project]
+name = "zalando-kubectl"
+version = "1.33.4.362"
+description = "Kubectl wrapper in Python with OAuth token auth"
+authors = [
+    {name = "Zalando Cloud Platform",email = "cloud-platform@zalando.de"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+urls = { Homepage = "https://github.com/zalando-build/zalando-kubectl" }
+license = "Apache-2.0"
+
+
+dependencies = [
+    "pyjwt (>=2.0,<3.0)",
+    "pyyaml (>=3.11)",
+    "click (>=7.0.0)",
+    "jinja2 (>=3.1.6,<4.0.0)",
+    "natsort (>=6.0.0)",
+    "python-dateutil (>=2.9.0.post0,<3.0.0)",
+    "rich (>=12.6.0,<14)",
+    "setuptools (>=30,<72.0.0)",
+    "humanize (>=4.13.0,<5.0.0)",
+    "requests[security] (>=2.32.5,<3.0.0)",
+    "stups-tokens>=1.1.19",
+    "clickclick>=20.10.2",
+    "stups-cli-support>=1.1.22",
+    "stups-zign>=1.2",
+]
+
+[dependency-groups]
+dev = [
+    "types-pyyaml (>=6)",
+    "types-python-dateutil (>=2)",
+    "types-requests (>=2)",
+    "pytest (>=8)",
+    "coverage>=7.10.6",
+    "pytest-cov>=6.2.1",
+    "tox"
+]
+
+[tool.setuptools]
+packages = [ "zalando_kubectl" ]
+
+[tool.uv]
+native-tls = true
+package = true
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+# use ruff defaults: Flake8's F rules, along with a subset of the E rules, omitting any stylistic rules
+# that overlap with the use of a formatter, like Black.
+fixable = ["ALL"]
+select = [
+    "E",
+    "F",
+    "I", # isort
+    "UP", # pyupgrade
+    "S", # flake8-bandit
+    "PGH", # pygrep-hooks
+    "T100", # debug statements
+    "W291", # trailing whitespace
+    "W292" # no newline at end of file
+]
+ignore = [
+    # https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    "D10", # missing docstrings (100 module, 101 class, 102 method ...)
+    "D21", # whitespace and indentation,
+    "S101", # use of assert
+    "E501",
+    # TODO: Fix the following ones, I just added them to move on with the migration
+    "S603",   # subprocess-without-shell-equals-true
+    "S113",   # request-without-timeout
+    "S110",   # try-except-pass
+    "S607",   # start-process-with-partial-path
+    "S306",   # suspicious-mktemp-usage
+    "S311"    # suspicious-non-cryptographic-random-usage
+]
+pydocstyle.convention = "pep257"
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.tox]
+requires = ["tox>=4.19"]
+env_list = ["py313", "py312", "py311"]
+
+[tool.tox.env_run_base]
+description = "run tests with pytest"
+deps = [
+    "mock==2.0.0",
+    "coverage",
+    "pytest",
+    "pytest-cov"
+]
+alwayscopy = true
+commands = [
+    ["pytest", "--cov=zalando_kubectl", "--cov-append","--cov-report=term-missing", "--junitxml=testresults/testresults.xml",  "{posargs}"]
+]
+
+[project.scripts]
+zkubectl = 'zalando_kubectl.main:main'
+kubectl-traffic = 'zalando_kubectl.main:traffic'
+kubectl-login = 'zalando_kubectl.main:do_login'
