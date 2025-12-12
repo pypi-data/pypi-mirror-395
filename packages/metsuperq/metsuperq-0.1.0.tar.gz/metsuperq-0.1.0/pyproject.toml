@@ -1,0 +1,198 @@
+[build-system]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metsuperq"
+description = "A project to define standards for analysis functions of experimental data in the MetSuperQ project."
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+authors = [{ name = "Orange Quantum Systems", email = "info@orangeqs.com" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+keywords = [
+    "metsuperq",
+    "quantum",
+    "analysis",
+    "data",
+    "standards"
+]
+
+dynamic = ["version"]
+
+requires-python = ">=3.11"
+
+dependencies = [
+    "h5py>=3.12",
+    "lmfit>=1.3",
+    "matplotlib>=3.10",
+    "numpy>=2.1",
+    "qcodes>=0.50",
+    "scipy>=1.14",
+    "influxdb-client>=1.40",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.6",
+    "psutil>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "deptry>=0.24",
+    "pre-commit>=4.0",
+    "pyright>=1.1.400",
+    "ruff>=0.9",
+]
+docs = [
+    "sphinx>=8.2",
+    "myst-parser>=4.0",
+    "pydata-sphinx-theme>=0.16",
+    "sphinx-autodoc-typehints>=2.5",
+    "sphinx-copybutton>=0.5",
+    "sphinx-design>=0.6",
+    "sphinxcontrib-mermaid>=1.0",
+]
+security = [
+    "bandit>=1.9",
+    "pip-audit>=2.9",
+]
+test = [
+    "hypothesis>=6.130",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "pytest-xdist>=3.5",
+    "pytest-mock>=3.14",
+]
+
+[project.urls]
+Homepage = "https://opensource.orangeqs.info/metsuperq/"
+
+[tool.uv]
+default-groups = ["dev", "test", "security"]
+
+[tool.setuptools.packages.find]
+include = ["metsuperq*"]
+exclude = ["metsuperq.data_handling.*.ipynb"]
+
+[tool.setuptools.package-data]
+metsuperq = ["py.typed", "*.pyi"]
+
+[tool.setuptools.exclude-package-data]
+metsuperq = ["*.ipynb", "*.hdf5", "*.db", "*.db-shm", "*.db-wal"]
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme   = "no-local-version"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",    # basic flake8
+    "I",              # isort
+    "N",              # pep8-naming
+    "D",              # pydocstyle
+    "UP",             # pyupgrade
+    "S",              # bandit security
+    "B",              # flake8-bugbear
+]
+exclude = ["examples/**"]
+
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
+"tests/*" = ["S101", "T201", "S106", "S105", "PLR2004", "PLR0913", "C901"]  # Allow test tokens, magic numbers, many args, complexity
+"*.ipynb" = ["T201", "T203", "E501", "PLR0913"]
+"metsuperq/security/*" = ["S105", "PLR2004", "PLW0603"]  # Security strings, constants, and globals
+"metsuperq/monitoring/*" = ["PLR2004", "PLW0603"]  # Magic numbers and globals for monitoring
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.sphinx]
+source-dir = "docs"
+build-dir = "docs/_build"
+config-dir = "docs"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "--import-mode=importlib",        # Modern import mode
+    "--strict-markers",               # Enforce registered markers
+    "--strict-config",                # Strict configuration
+    "--cov=metsuperq",                # Coverage for main package
+    "--cov-report=term-missing",      # Show missing lines
+    "--cov-report=html:htmlcov",      # HTML coverage report
+    "--cov-report=xml:coverage.xml",  # XML for CI integration
+    "--durations=10",                 # Show 10 slowest tests
+]
+
+# Filter out third-party deprecation warnings that we can't control
+filterwarnings = [
+    "ignore:'mode' parameter is deprecated:DeprecationWarning:PIL.*",
+]
+
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (slower, with external deps)",
+    "slow: Slow tests (>1s execution time)",
+    "physics: Physics simulation tests",
+    "analysis: Analysis pipeline tests",
+]
+
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*", "*Tests"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+branch = true
+source = ["metsuperq"]
+omit = [
+    "**/tests/**",
+    "**/monitoring/**",
+]
+
+[tool.coverage.paths]
+# Remap installed package paths to source for wheel testing
+source = [
+    "metsuperq/",
+    "**/site-packages/metsuperq/",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 80  # Enforce minimum 80% coverage
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+    # Add exclusion for type checking blocks
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
