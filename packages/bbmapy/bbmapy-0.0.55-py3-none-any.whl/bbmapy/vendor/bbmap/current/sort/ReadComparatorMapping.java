@@ -1,0 +1,223 @@
+package sort;
+
+import java.util.Comparator;
+
+import shared.Shared;
+import shared.Tools;
+import stream.Read;
+
+/**
+ * @author Brian Bushnell
+ * @date Oct 27, 2014
+ *
+ */
+
+public class ReadComparatorMapping implements Comparator<Read> {
+
+	@Override
+	public int compare(Read a, Read b) {
+		
+		if(a.mate==null){
+			int x=compare2(a, b);
+			if(x!=0){return x;}
+			return compare3(a, b);
+		}else{
+			
+			if(a.mapped() && b.mapped()){
+				int x=compare2(a, b);
+				if(x!=0){return x;}
+				
+				if(a.paired() && b.paired()){
+					x=compare2(a.mate, b.mate);
+					if(x!=0){return x;}
+					x=compare3(a, b);
+					if(x!=0){return x;}
+					x=compare3(a.mate, b.mate);
+					return x;
+				}else{
+					assert(!a.paired() && !b.paired());
+					return compare3(a, b);
+				}
+			}
+			
+			if(!a.mapped() && !b.mapped()){
+				int x=compare2(a.mate, b.mate);
+				if(x!=0){return x;}
+				return compare3(a.mate, b.mate);
+			}else if(a.mapped()){
+				if(a.paired()){
+					int x=compare2(a.mate, b.mate);
+					if(x!=0){return x;}
+					return -1;
+				}else{
+					int x=compareCross(a, b.mate);
+					if(x!=0){return x;}
+					return -1;
+				}
+			}else if(b.mapped()){
+				if(b.paired()){
+					int x=compare2(a.mate, b.mate);
+					if(x!=0){return x;}
+					return 1;
+				}else{
+					int x=compareCross(b, a.mate);
+					if(x!=0){return 0-x;}
+					return 1;
+				}
+			}else{
+				assert(false) : a.mapped()+", "+a.paired()+", "+b.mapped()+", "+b.paired()+", "+a.mate.mapped()+", "+b.mate.mapped();
+			}
+			
+			//I think this is unreachable...
+			return compare3(a, b);
+		}
+	}
+	
+	/**
+	 * Compares reads by mapping status, chromosome, strand, and position.
+	 * Mapped reads are prioritized over unmapped ones. For mapped reads,
+	 * sorts by chromosome, then strand, then genomic position (start for plus
+	 * strand, stop for minus strand).
+	 *
+	 * @param a First read to compare
+	 * @param b Second read to compare
+	 * @return Negative if a < b, positive if a > b, zero if equal
+	 */
+	public int compare2(Read a, Read b) {//TODO: This could all be packed in a long (the ID).
+		if(a.mapped() && !b.mapped()){return -1;}
+		if(b.mapped() && !a.mapped()){return 1;}
+		if(a.chrom!=b.chrom){return a.chrom-b.chrom;}
+		if(a.strand()!=b.strand()){return a.strand()-b.strand();}
+		
+		assert(!SAME_STRAND_PAIRS) : "TODO";
+		if(a.strand()==Shared.PLUS){
+			if(a.start!=b.start){return a.start-b.start;}
+		}else{
+			if(a.stop!=b.stop){return a.stop-b.stop;}
+		}
+		
+		if(a.paired()!=b.paired()){return a.paired() ? -1 : 1;}
+		return 0;
+	}
+	
+	/**
+	 * Cross-comparison method for reads from different pairs.
+	 * Similar to compare2 but handles strand logic differently based on
+	 * SAME_STRAND_PAIRS setting. Used when comparing a read to a mate
+	 * from a different pair.
+	 *
+	 * @param a First read to compare
+	 * @param b Second read to compare
+	 * @return Negative if a < b, positive if a > b, zero if equal
+	 */
+	public int compareCross(Read a, Read b) {
+		if(a.mapped() && !b.mapped()){return -1;}
+		if(b.mapped() && !a.mapped()){return 1;}
+		if(a.chrom!=b.chrom){return a.chrom-b.chrom;}
+		if(SAME_STRAND_PAIRS){
+			if(a.strand()!=b.strand()){
+				return a.strand()-b.strand();
+			}
+		}else{
+			if(a.strand()==b.strand()){
+				return a.strand()==0 ? -1 : 1;
+			}
+		}
+		if(a.start!=b.start){return a.start-b.start;}
+		if(a.paired()!=b.paired()){return a.paired() ? -1 : 1;}
+		return 0;
+	}
+	
+	/**
+	 * Fine-grained comparison for reads with same basic mapping characteristics.
+	 * Orders by read length (longer first), perfect match status, match string
+	 * quality, genomic position, quality scores, and finally read identifiers.
+	 *
+	 * @param a First read to compare
+	 * @param b Second read to compare
+	 * @return Negative if a < b, positive if a > b, zero if equal
+	 */
+	public int compare3(Read a, Read b){
+		if(a.length()!=b.length()){
+			return b.length()-a.length(); //Preferentially puts longer reads first
+		}
+		if(a.perfect() != b.perfect()){return a.perfect() ? -1 : 1;}
+		int x;
+		
+		if(a.match!=null && b.match!=null){
+			x=compareMatchStrings(a.match, b.match);
+			if(x!=0){return x;}
+		}
+		
+		assert(!SAME_STRAND_PAIRS) : "TODO";
+		if(a.strand()==Shared.PLUS){
+			if(a.start!=b.start){return a.start-b.start;} //This line should be dead code
+			if(a.stop!=b.stop){return a.stop-b.stop;}
+		}else{
+			if(a.stop!=b.stop){return a.stop-b.stop;} //This line should be dead code
+			if(a.start!=b.start){return a.start-b.start;}
+		}
+		
+		x=compareVectors(a.quality, b.quality);
+		if(x!=0){return 0-x;}
+//		if(a.stop!=b.stop){return a.stop-b.stop;}
+		if(a.numericID!=b.numericID){return a.numericID>b.numericID ? 1 : -1;}
+		return a.id.compareTo(b.id);
+	}
+	
+	/**
+	 * Compares two byte arrays element-wise for lexicographic ordering.
+	 * Used for comparing quality score arrays between reads.
+	 *
+	 * @param a First byte array (may be null)
+	 * @param b Second byte array (may be null)
+	 * @return Negative if a < b, positive if a > b, zero if equal
+	 */
+	public int compareVectors(final byte[] a, final byte[] b){
+		if(a==null || b==null){
+			if(a==null && b!=null){return 1;}
+			if(a!=null && b==null){return -1;}
+			return 0;
+		}
+		final int lim=Tools.min(a.length, b.length);
+		for(int i=0; i<lim; i++){
+			if(a[i]<b[i]){return -1;}
+			if(a[i]>b[i]){return 1;}
+		}
+		return 0;
+	}
+	
+	/**
+	 * Compares match strings using alignment-aware ordering.
+	 * Prioritizes certain alignment operations: insertions/substitutions (I,X,Y)
+	 * are considered worse than matches, and deletions (D) are worse than
+	 * insertions for sorting purposes.
+	 *
+	 * @param a First match string (may be null)
+	 * @param b Second match string (may be null)
+	 * @return Negative if a < b, positive if a > b, zero if equal
+	 */
+	public int compareMatchStrings(final byte[] a, final byte[] b){
+		if(a==null || b==null){
+			if(a==null && b!=null){return 1;}
+			if(a!=null && b==null){return -1;}
+			return 0;
+		}
+		final int lim=Tools.min(a.length, b.length);
+		for(int i=0; i<lim; i++){
+			if(a[i]!=b[i]){
+				boolean ad=(a[i]=='D');
+				boolean bd=(b[i]=='D');
+				boolean ai=(a[i]=='I' || a[i]=='X' || a[i]=='Y');
+				boolean bi=(b[i]=='I' || b[i]=='X' || b[i]=='Y');
+				if(ai!=bi){return ai ? 1 : -1;}
+				if(ad!=bd){return ad ? 1 : -1;}
+			}
+		}
+		return 0;
+	}
+
+	/** Whether paired reads are expected to align to the same strand */
+	public static boolean SAME_STRAND_PAIRS=false;
+	
+}
