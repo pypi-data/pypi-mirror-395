@@ -1,0 +1,138 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "abacum-mcp-server"
+version = "0.1.7"
+authors = [
+  { name="Abacum", email="engineering@abacum.ai" },
+]
+description = "Abacum MCP Server"
+readme = "PUBLIC_README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator",
+]
+dependencies = [
+    "fastmcp",
+    "httpx",
+    "pandas",
+]
+
+[project.urls]
+Homepage = "https://abacum.ai"
+
+[project.scripts]
+abacum-mcp-server = "abacum.ai.mcp.server:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.ruff]
+include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
+target-version = "py38"
+output-format = "pylint"
+
+show-fixes = true
+fix = true
+preview = true
+line-length = 119
+
+[tool.ruff.lint]
+explicit-preview-rules = true
+# Allow fix for all enabled rules (when `--fix`) is provided.
+unfixable = []
+fixable = ["ALL"]
+select = [
+    # "B",        # Flake8-bugbear
+    "E",        # Pycodestyle errors
+    "F",        # Pyflakes
+    "I",        # Isort
+    # "N",        # Pep8-naming
+    # "W",        # Pycodestyle warnings
+    "ANN",      # Flake8 annotations
+    # "ASYNC",    # Flake8 async
+    # "ARG",      # Flake8 unused-arguments
+    # "COM",      # Flake8 commas
+    # "C4",       # Flake8 comprehensions
+    # "C90",      # McCabe
+    # "DJ",       # Flake Django
+    # "FA",       # Flake8 future-annotations
+    # "FLY",      # Flake 8 misc lints
+    # "INP",      # Flake8 implicit-namespace
+    # "INT",      # Flake8 gettext
+    # "ICN",      # Flake8 import-conventions
+    # "NPY",      # Numpy
+    # "PERF",     # Perflint
+    # "PYI",      # Flake8 pyi
+    # "PIE",      # Flake8 pie
+    # "PT",       # Flake8 pytest
+    # "Q",          # Qui
+    # "PGH",      # pygrep-hooks
+    # "PD",       # Pandas-vet
+    # "PL",       # Pylint
+    # "RET",      # Flake8-return
+    # "RSE",      # Flake8-raise
+    # "RUF",      # Ruff specific rules
+    # "SIM",      # Flake8-simplify
+    "TCH",      # Flake8 type-checking
+    # "TID",      # Flake8 tidy-imports
+    # "T10",      # Flake8 debugger
+    # "T20",      # Flake8 print
+    "UP",       # Flake8 pyupgrade
+    # "YTT",      # Flake8 2020
+    # "W",        # Pycodestyle warnings
+
+]
+
+ignore = [
+    "ANN002",  # Missing type annotation for *args
+    "ANN003",  # Missing type annotation for **kwargs
+    "ANN204",  # Missing return type annotation for method `__init__`
+    "ANN401",  # typed expressions (typing.Any)
+    "B905",    # zip()` without an explicit `strict=` parameter
+    "E203",    # Whitespace before '{symbol}'
+    "E402",    # Module level import not at top of file
+    "PLR0913", # Too many arguments to function call (7 > 5)
+    "PIE804",  # Unnecessary `dict` kwargs
+]
+
+## Please make sure to include directory tests in your checks,
+## and differentiate the rules between Python files and Python test files
+## in your .pre-commit-config.yaml configuration.
+exclude = [
+    '.direnv',
+    '.git',
+    '.github',
+    '.pytest_cache',
+    '.ruff_cache',
+    '.venv',
+    'docker',
+    'docs',
+    'requirements',
+    'tmp',
+    'dist',
+]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = false
+quote-style = "double"
+line-ending = "auto"
+preview = true
+
+[tool.ruff.lint.flake8-annotations]
+suppress-none-returning = true  # Contain no return statement
+
+[tool.ruff.lint.flake8-pytest-style]
+mark-parentheses = false # invalid decorators without parameters 'pytest.mark.{name}()'
+fixture-parentheses = false
+
