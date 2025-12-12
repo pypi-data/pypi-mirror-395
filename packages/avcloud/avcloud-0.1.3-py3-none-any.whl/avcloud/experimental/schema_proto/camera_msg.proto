@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "google/protobuf/timestamp.proto";
+import "calibration_msg.proto";
+
+message CameraData {
+  bytes front = 1;                // cam_02_fwc_c, dashcam
+  bytes front_narrow = 2;         // cam_03_fnc
+  bytes rear_right = 3;           // cam_04_rnc_r
+  bytes front_right = 4;          // cam_05_fwc_r
+  bytes rear = 5;                 // cam_06_rnc_c
+  bytes front_left = 6;           // cam_07_fwc_l
+  bytes rear_left = 7;            // cam_08_rnc_l
+  bytes surround_corner_rear = 8; // cam_09_svc_cr
+  bytes surround_corner_front = 9;// cam_10_svc_cf
+  bytes surround_left = 10;       // cam_11_svc_l
+  bytes surround_right = 11;      // cam_12_svc_r
+}
+
+message Camera {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  google.protobuf.Timestamp sensor_timestamp = 5;
+  string sensor_frame_id = 6; // join key for labels
+  string scene_id = 7;
+  string run_id = 8; // grouping key for runs
+  string sensor_type = 9; // camera type
+  CameraData camera = 10; // Compressed video frame data (AnnexB Access Unit)
+  bool is_keyframe = 11; // Whether the frame is a keyframe
+  string format = 12; // Format of the video frame data(e.g. H264, H265)
+  CameraCalibration calibration = 13;
+}

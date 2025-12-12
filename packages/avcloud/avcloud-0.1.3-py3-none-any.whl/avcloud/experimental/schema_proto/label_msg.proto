@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "geometry_msg.proto";
+
+// 2D/3D labels
+
+message BoundingBox2D {
+  double center_x = 1; // px
+  double center_y = 2; // px
+  double size_x = 3;   // px
+  double size_y = 4;   // px
+  double theta = 5;    // rad (optional)
+}
+
+message Label2D {
+  BoundingBox2D bbox = 1; // px
+  string label = 2;
+  float confidence = 3;   // 0-1
+  string track_id = 4;
+}
+
+message BoundingBox3D {
+  Vector3 center = 1;       // m {x,y,z}
+  Vector3 size = 2;         // m {length,width,height}
+  double yaw = 3;           // rad, rotation around Z-axis
+}
+
+message Label3D {
+  BoundingBox3D bbox = 1;
+  string label = 2;
+  float confidence = 3;   // 0-1
+  string track_id = 4;
+}
+
+// Label datasets detached from sensor records, joined by sensor_frame_id
+message CameraLabels {
+  string sensor_frame_id = 1; // join to camera.sensor_frame_id; deterministic id
+  string scene_id = 2;
+  repeated Label2D labels = 3;
+}
+
+message LidarLabels {
+  string sensor_frame_id = 1; // join to lidar.sensor_frame_id; deterministic id
+  string scene_id = 2;
+  repeated Label3D labels = 3;
+}

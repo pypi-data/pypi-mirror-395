@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "google/protobuf/timestamp.proto";
+import "geometry_msg.proto";
+
+enum GnssFixType {
+  NO_FIX = 0;         // No Fix, no locational information available
+  DR_ONLY = 1;        // Dead reckoning only
+  TWO_FIX = 2;        // 2D Fix
+  THREE_FIX = 3;      // 3D Fix
+  GNSS_DR = 4;        // GNSS and Dead reckoning combined
+  TIME_FIX = 5;       // Time only fix
+}
+
+enum FusionMode {
+  FUSION_INIT = 0;       // Initialization mode - receiver is initializing
+  FUSION_ACTIVE = 1;     // Fusion mode - GNSS and sensor data are fused
+  FUSION_SUSPENDED = 2;  // Suspended fusion mode - temporarily disabled
+  FUSION_DISABLED = 3;   // Disabled fusion mode - permanently disabled
+}
+
+message NavSatStatus {
+  int32 status = 1;   // ROS2: -1=NO_FIX, 0=FIX, 1=SBAS_FIX, 2=GBAS_FIX
+  int32 service = 2;  // ROS2: bitmask GPS=1, GLONASS=2, COMPASS=4, GALILEO=8
+}
+
+// Extra diagnostic and status fields
+message GnssExtra {
+  // Magnetic declination
+  double mag_declination = 1;       // degrees
+  double mag_declination_accuracy = 2;  // degrees
+  bool mag_declination_valid = 3;
+
+  // Fix quality flags
+  GnssFixType fix_type = 4;
+  bool gnss_fix_ok = 5;             // valid fix (within DOP & accuracy masks)
+  bool diff_soln = 6;               // differential corrections applied
+  bool rtcm_enabled = 7;            // RTCM message received and valid
+  bool heading_valid = 8;           // vehicle heading valid (requires fusion)
+
+  // Fusion status
+  FusionMode fusion_mode = 9;
+
+  // Attitude accuracy
+  double roll_accuracy = 10;        // degrees
+  double pitch_accuracy = 11;       // degrees
+
+  // Additional altitude
+  double altitude_msl = 12;         // meters, height above mean sea level
+}
+
+message GnssData {
+  // Basic position
+  double latitude = 1;          // degrees (WGS84)
+  double longitude = 2;         // degrees (WGS84)
+  double altitude = 3;          // meters (ellipsoid height)
+  NavSatStatus status = 4;
+
+  // Velocity
+  Vector3 velocity = 5;         // m/s {x,y,z} (ENU)
+  double vel_n = 6;             // m/s (NED north)
+  double vel_e = 7;             // m/s (NED east)
+  double vel_d = 8;             // m/s (NED down)
+  double speed = 9;             // m/s (ground speed)
+  double speed_accuracy = 10;   // m/s
+
+  // Heading
+  double heading = 11;          // degrees (vehicle heading, fused)
+  double heading_motion = 12;   // degrees (motion direction)
+  double heading_accuracy = 13; // degrees
+
+  // Attitude (from INS fusion)
+  double roll = 14;             // degrees
+  double pitch = 15;            // degrees
+
+  // Accuracy and DOP
+  int32 num_satellites = 16;
+  double h_acc = 17;            // meters (horizontal accuracy)
+  double v_acc = 18;            // meters (vertical accuracy)
+  double pdop = 19;
+  double hdop = 20;
+  double vdop = 21;
+
+  // Extra diagnostic fields
+  GnssExtra extra = 22;
+}
+
+message Gnss {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  google.protobuf.Timestamp sensor_timestamp = 5;
+  string scene_id = 6;
+  string run_id = 7; // grouping key for runs
+  GnssData gnss = 8;
+}
