@@ -1,0 +1,22 @@
+name: 'Compile Libraries'
+description: 'Compile Libraries'
+
+inputs:
+  os:
+    description: "operating system"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build C++ Components (Linux)
+      if: inputs.os == 'Linux'
+      shell: bash
+      run: |
+        ./scripts/build.sh
+
+    - name: Build and test C++ Components (Windows)
+      if: inputs.os == 'Windows'
+      shell: pwsh
+      run: |
+        ./scripts/build.ps1

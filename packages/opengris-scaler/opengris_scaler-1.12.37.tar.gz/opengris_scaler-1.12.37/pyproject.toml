@@ -1,0 +1,176 @@
+[build-system]
+requires = ["scikit-build-core>=0.5.0", "setuptools-scm", "mypy", "black", "flake8", "pyproject-flake8"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "opengris-scaler"
+description = "OpenGRIS Scaler Distribution Framework"
+requires-python = ">=3.8"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { text = "Apache 2.0" }
+authors = [{ name = "Citi", email = "opensource@citi.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Distributed Computing",
+]
+dynamic = ["version"]
+dependencies = [
+    "bidict",
+    "configargparse",
+    "toml", # required by configargparse
+    "cloudpickle",
+    "psutil==7.1.3",
+    "pycapnp==2.1.0",
+    "pyzmq",
+    "sortedcontainers==2.4.0",
+    "tblib",
+    "aiohttp",
+    "graphlib-backport; python_version < '3.9'",
+    "typing-extensions>=4.0; python_version < '3.10'",
+    "tomli; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+uvloop = [
+    "uvloop; platform_system != 'Windows'",
+]
+gui = [
+    "nicegui[plotly]==2.24.2; python_version == '3.8'",
+    "nicegui[plotly]==3.3.1; python_version >= '3.9'",
+]
+graphblas = [
+    "python-graphblas",
+    "numpy==1.24.4; python_version == '3.8'",
+    "numpy==2.0.2; python_version == '3.9'",
+    "numpy==2.2.6; python_version >= '3.10'",
+]
+aws = [
+    "boto3",
+]
+all = [
+    "nicegui[plotly]==2.24.2; python_version == '3.8'",
+    "nicegui[plotly]==3.3.1; python_version >= '3.9'",
+    "python-graphblas",
+    "numpy==1.24.4; python_version == '3.8'",
+    "numpy==2.0.2; python_version == '3.9'",
+    "numpy==2.2.6; python_version >= '3.10'",
+    "uvloop; platform_system != 'Windows'",
+    "boto3",
+]
+
+[dependency-groups]
+dev = [
+    "black>=24.8.0",
+    "flake8>=5.0.4",
+    "flake8-pyproject>=1.2.3",
+    "mypy>=1.14.1",
+    "sphinx>=7.1.2",
+]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+regex = '(?P<value>\d+\.\d+\.\d+(\.[1-9]\d*)?)'
+input = "./src/scaler/version.txt"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.urls]
+Home = "https://github.com/finos/opengris-scaler"
+
+[project.scripts]
+scaler_scheduler = "scaler.entry_points.scheduler:main"
+scaler_cluster = "scaler.entry_points.cluster:main"
+scaler_top = "scaler.entry_points.top:main"
+scaler_ui = "scaler.entry_points.webui:main"
+scaler_object_storage_server = "scaler.entry_points.object_storage_server:main"
+scaler_worker_adapter_native = "scaler.entry_points.worker_adapter_native:main"
+scaler_worker_adapter_symphony = "scaler.entry_points.worker_adapter_symphony:main"
+scaler_worker_adapter_ecs = "scaler.entry_points.worker_adapter_ecs:main"
+
+[tool.scikit-build]
+cmake.source-dir = "."
+wheel.packages = ["src/scaler"]
+build.targets = ["py_ymq", "py_object_storage_server"]
+
+[tool.scikit-build.cmake.define]
+CMAKE_C_COMPILER = { env = "CMAKE_C_COMPILER", default = "gcc" }
+CMAKE_CXX_COMPILER = { env = "CMAKE_CXX_COMPILER", default = "g++" }
+
+[tool.mypy]
+no_strict_optional = true
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "^docs.*$",
+    "^benchmark.*$",
+    "^venv.*$",
+    "migrations",
+    "__pycache__",
+    "^build_*_*.*$",
+    "^thirdparties.*$",
+    "^capnproto.*$",
+    "^boost.*$",
+    "^scripts.*$",
+    ".*object_storage.*$",
+]
+
+[tool.flake8]
+count = true
+statistics = true
+max-line-length = 120
+extend-ignore = ["E203"]
+exclude = [
+    "migrations",
+    "__pycache__",
+    "./build_*_*",
+    "./thirdparties",
+    "./capnproto*",
+    "./boost*",
+    "./scripts",
+    "venv*"
+]
+
+[tool.black]
+line-length = 120
+skip-magic-trailing-comma = true
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.cibuildwheel]
+skip = "pp* cp39-*"
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+manylinux-x86_64-image = "manylinux_2_28"
+before-all = """
+yum install -y sudo; \
+sudo ./scripts/library_tool.sh capnp compile; \
+sudo ./scripts/library_tool.sh capnp install;
+"""
+
+[[tool.cibuildwheel.overrides]]
+select = "*-musllinux*"
+before-all = """
+apk add sudo; \
+sudo ./scripts/library_tool.sh capnp compile; \
+sudo ./scripts/library_tool.sh capnp install;
+"""
+
+#[tool.cibuildwheel.macos]
+#archs = ["x86_64", "arm64"]
+#before-all = """
+#yum install -y sudo; \
+#sudo ./scripts/library_tool.sh capnp compile; \
+#sudo ./scripts/library_tool.sh capnp install;
+#"""
+
+

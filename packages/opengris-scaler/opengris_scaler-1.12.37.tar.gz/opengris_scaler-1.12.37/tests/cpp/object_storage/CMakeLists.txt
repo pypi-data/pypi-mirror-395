@@ -1,0 +1,2 @@
+add_test_executable(test_object_manager test_object_manager.cpp)
+add_test_executable(test_object_storage_server test_object_storage_server.cpp)

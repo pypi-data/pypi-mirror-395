@@ -1,0 +1,133 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "linux-x86_64",
+      "displayName": "Linux 64 bit Intel build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/src"
+      },
+      "binaryDir": "${sourceDir}/build_linux_x86_64"
+    },
+    {
+      "name": "linux-aarch64",
+      "displayName": "Linux 64 bit ARM build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/src"
+      },
+      "binaryDir": "${sourceDir}/build_linux_aarch64"
+    },
+    {
+      "name": "darwin-arm64",
+      "displayName": "Apple ARM 64 bit build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/src"
+      },
+      "binaryDir": "${sourceDir}/build_darwin_arm64"
+    },
+    {
+      "name": "windows-x64",
+      "displayName": "Windows x64 (MSVC)",
+      "generator": "Visual Studio 17 2022",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/src"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "binaryDir": "${sourceDir}/build_windows_x64"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-x86_64",
+      "displayName": "Linux 64 bit Intel build",
+      "configurePreset": "linux-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-aarch64",
+      "displayName": "Linux 64 bit ARM build",
+      "configurePreset": "linux-aarch64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "darwin-arm64",
+      "displayName": "Apple ARM 64 bit build",
+      "configurePreset": "darwin-arm64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "targets": [
+        "object_storage_server",
+        "cc_object_storage_server",
+        "test_object_manager",
+        "test_object_storage_server",
+        "test_logging"
+      ]
+    },
+    {
+      "name": "windows-x64",
+      "displayName": "Windows x64 build",
+      "configurePreset": "windows-x64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-x86_64",
+      "configurePreset": "linux-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-aarch64",
+      "configurePreset": "linux-aarch64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "windows-x64",
+      "configurePreset": "windows-x64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ]
+}
