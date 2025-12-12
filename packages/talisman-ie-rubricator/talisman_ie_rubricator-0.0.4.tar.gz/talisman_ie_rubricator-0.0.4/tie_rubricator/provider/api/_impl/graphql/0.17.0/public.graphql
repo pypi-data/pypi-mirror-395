@@ -1,0 +1,41 @@
+query paginationRubricatorsIE(
+    $limit: Int! = 0
+    $offset: Int!
+) {
+    pagination: paginationRubricator(
+        limit: $limit
+        offset: $offset
+        filterSettings: {}
+    ) {
+        total
+        list: listRubricator {
+            id
+            name
+            transformatorId
+        }
+    }
+}
+
+query paginationRubricIE(
+    $limit: Int! = 0
+    $offset: Int!
+    $rubricator_id: ID!
+) {
+    pagination: paginationRubric(
+        limit: $limit
+        offset: $offset
+        filterSettings: {
+            rubricatorIds: [$rubricator_id]
+        }
+    ) {
+        total
+        list: listRubric {
+            id
+            name
+            transformatorId
+            children: listChild {
+                id
+            }
+        }
+    }
+}
