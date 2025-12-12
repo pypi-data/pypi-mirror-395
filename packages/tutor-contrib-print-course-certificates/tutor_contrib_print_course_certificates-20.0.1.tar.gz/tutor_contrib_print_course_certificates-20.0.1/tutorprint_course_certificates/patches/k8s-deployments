@@ -1,0 +1,51 @@
+{% if RUN_PRINT_COURSE_CERTIFICATE %}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: print-course-certificates
+  labels:
+    app.kubernetes.io/name: print-course-certificates
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: print-course-certificates
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: print-course-certificates
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - env:
+            - name: UWSGI_WORKERS
+              value: "{{ PRINT_COURSE_CERTIFICATES_UWSGI_WORKERS }}"
+            - name: OPENEDX_LMS_URL
+              value: "{% if ENABLE_HTTPS %}https{% else %}http{% endif %}://{{ LMS_HOST }}"
+          image: {{ PRINT_COURSE_CERTIFICATES_DOCKER_IMAGE }}
+          name: print-course-certificates
+          ports:
+            - containerPort: {{ PRINT_COURSE_CERTIFICATES_PORT }}
+          volumeMounts:
+            - mountPath: /app/config.yml
+              name: config
+              subPath: config.yml
+{% if PRINT_COURSE_CERTIFICATES_CERTIFICATE_P12_PATH %}
+            - mountPath: /app/digital_signature/file.p12
+              name: digital-signature-file-p12
+              subPath: file.p12
+{% endif %}
+      restartPolicy: Always
+      volumes:
+        - name: config
+          configMap:
+            name: print-course-certificates-config
+{% if PRINT_COURSE_CERTIFICATES_CERTIFICATE_P12_PATH %}
+        - name: digital-signature-file-p12
+          configMap:
+            name: print-course-certificates-digital-signature-file-p12
+{% endif %}
+
+{% endif %}
