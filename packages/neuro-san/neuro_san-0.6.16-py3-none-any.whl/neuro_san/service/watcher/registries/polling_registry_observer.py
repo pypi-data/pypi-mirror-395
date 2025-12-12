@@ -1,0 +1,56 @@
+
+# Copyright © 2023-2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+from typing import Tuple
+
+import logging
+
+from pathlib import Path
+
+from watchdog.observers.polling import PollingObserver
+
+from neuro_san.service.watcher.registries.registry_change_handler import RegistryChangeHandler
+from neuro_san.service.watcher.registries.registry_observer import RegistryObserver
+
+
+class PollingRegistryObserver(RegistryObserver):
+    """
+    Observer class for manifest file and its directory.
+    """
+
+    def __init__(self, manifest_path: str, poll_seconds: int):
+        self.manifest_path: str = str(Path(manifest_path).resolve())
+        self.registry_path: str = str(Path(self.manifest_path).parent)
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.poll_seconds = poll_seconds
+        self.observer: PollingObserver = PollingObserver(timeout=self.poll_seconds)
+        self.event_handler: RegistryChangeHandler = RegistryChangeHandler()
+
+    def start(self):
+        """
+        Start running observer
+        """
+        self.observer.schedule(self.event_handler, path=self.registry_path, recursive=True)
+        self.observer.start()
+        self.logger.info("Registry polling watchdog started on: %s for manifest %s with polling every %d sec",
+                         self.registry_path, self.manifest_path, self.poll_seconds)
+
+    def reset_event_counters(self) -> Tuple[int, int, int]:
+        """
+        Reset event counters and return current counters.
+        """
+        return self.event_handler.reset_event_counters()
