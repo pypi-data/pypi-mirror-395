@@ -1,0 +1,166 @@
+
+
+[![image](https://img.shields.io/pypi/v/pynapple.svg)](https://pypi.python.org/pypi/pynapple)
+[![pynapple CI](https://github.com/pynapple-org/pynapple/actions/workflows/main.yml/badge.svg)](https://github.com/pynapple-org/pynapple/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/pynapple-org/pynapple/branch/main/graph/badge.svg?token=VN9BDBOEGZ)](https://codecov.io/gh/pynapple-org/pynapple)
+[![GitHub issues](https://img.shields.io/github/issues/pynapple-org/pynapple)](https://github.com/pynapple-org/pynapple/issues)
+![GitHub contributors](https://img.shields.io/github/contributors/pynapple-org/pynapple)
+![Twitter Follow](https://img.shields.io/twitter/follow/thepynapple?style=social)
+
+PYthon Neural Analysis Package.
+
+pynapple is a light-weight python library for neurophysiological data analysis. The goal is to offer a versatile set of tools to study typical data in the field, i.e. time series (spike times, behavioral events, etc.) and time intervals (trials, brain states, etc.). It also provides users with generic functions for neuroscience such as tuning curves and cross-correlograms.
+
+-   Free software: MIT License
+-   __Documentation__: [<https://pynapple.org>](https://pynapple-org.github.io/pynapple/)
+
+> **Note**
+> :page_with_curl: If you are using pynapple, please cite the following [paper](https://elifesciences.org/reviewed-preprints/85786)
+
+------------------------------------------------------------------------
+
+
+Learning pynapple
+-----------------
+
+Workshops are regularly organized by the [center for Computational Neuroscience ](https://www.simonsfoundation.org/flatiron/center-for-computational-neuroscience/) of the Flatiron institute 
+to teach pynapple & [NeMos](https://nemos.readthedocs.io/en/latest/) to new users. 
+
+**The next workshop will take place before FENS in Barcelona. More details will come soon.**
+
+
+New release :fire:
+------------------
+
+### pynapple >= 0.10.0
+
+Tuning curves computation have been generalized to n-dimensions with the function `compute_tuning_curves`.
+It can now return a [xarray DataArray](https://docs.xarray.dev/en/stable/) instead of a Pandas DataFrame.
+
+
+### pynapple >= 0.8.2
+
+The objects `IntervalSet`, `TsdFrame` and `TsGroup` inherits a new metadata class. It is now possible to add labels for 
+each interval of an `IntervalSet`, each column of a `TsdFrame` and each unit of a `TsGroup`.
+
+See the [documentation](https://pynapple.org/user_guide/03_metadata.html) for more details
+
+### pynapple >= 0.7
+
+Pynapple now implements signal processing. For example, to filter a 1250 Hz sampled time series between 10 Hz and 20 Hz:
+
+```python
+nap.apply_bandpass_filter(signal, (10, 20), fs=1250)
+```
+New functions includes power spectral density and Morlet wavelet decomposition. See the [documentation](https://pynapple-org.github.io/pynapple/reference/process/) for more details.
+
+
+Community
+---------
+
+To ask any questions or get support for using pynapple, please consider joining our slack. Please send an email to thepynapple[at]gmail[dot]com to receive an invitation link.
+
+Getting Started
+---------------
+
+### Installation
+
+The best way to install pynapple is with pip inside a new [conda](https://docs.conda.io/en/latest/) environment:
+    
+``` {.sourceCode .shell}
+$ conda create --name pynapple pip python=3.11
+$ conda activate pynapple
+$ pip install pynapple
+```
+
+
+Running `pip install pynapple` will install all the dependencies, including: 
+
+-   pandas
+-   numpy
+-   scipy
+-   numba
+-   pynwb 2.0
+-   tabulate
+-   h5py
+-   xarray
+
+For development, see the [contributor guide](CONTRIBUTING.md) for steps to install from source code.
+
+<!-- For spyder users, it is recommended to install spyder after installing pynapple with :
+
+``` {.sourceCode .shell}
+$ conda create --name pynapple pip python=3.11
+$ conda activate pynapple
+$ pip install pynapple
+$ pip install spyder
+$ spyder
+``` -->
+
+
+Basic Usage
+-----------
+
+After installation, you can now import the package: 
+
+``` {.sourceCode .shell}
+$ python
+>>> import pynapple as nap
+```
+
+You'll find an example of the package below. Click [here](https://osf.io/fqht6) to download the example dataset. The folder includes a NWB file containing the data.
+
+``` py
+import matplotlib.pyplot as plt
+import numpy as np
+
+import pynapple as nap
+
+# LOADING DATA FROM NWB
+data = nap.load_file("A2929-200711.nwb")
+
+spikes = data["units"]
+head_direction = data["ry"]
+wake_ep = data["position_time_support"]
+
+# COMPUTING TUNING CURVES
+tuning_curves = nap.compute_tuning_curves(
+    spikes, head_direction, 120, epochs=wake_ep, range=(0, 2 * np.pi)
+)
+
+# PLOT
+g=tuning_curves.plot(
+    row="unit", 
+    col_wrap=5, 
+    subplot_kws={"projection": "polar"}, 
+    sharey=False
+)
+plt.xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2])
+g.set_titles("")
+g.set_xlabels("")
+plt.show()
+```
+Shown below, the final figure from the example code displays the firing rate of 15 neurons as a function of the direction of the head of the animal in the horizontal plane.
+
+<!-- ![pic1](readme_figure.png) -->
+<p align="center">
+  <img width="80%" src="doc/_static/readme_figure.png">
+</p>
+
+
+### Credits
+
+Special thanks to Francesco P. Battaglia
+(<https://github.com/fpbattaglia>) for the development of the original
+*TSToolbox* (<https://github.com/PeyracheLab/TStoolbox>) and
+*neuroseries* (<https://github.com/NeuroNetMem/neuroseries>) packages,
+the latter constituting the core of *pynapple*.
+
+This package was developped by Guillaume Viejo
+(<https://github.com/gviejo>) and other members of the Peyrache Lab.
+
+<!-- Logo: Sofia Skromne Carrasco, 2021. -->
+
+## Contributing
+
+We welcome contributions, including documentation improvements. For more information, see the [contributor guide](CONTRIBUTING.md).
