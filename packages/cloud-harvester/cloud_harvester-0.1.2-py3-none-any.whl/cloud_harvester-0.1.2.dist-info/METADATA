@@ -1,0 +1,106 @@
+Metadata-Version: 2.4
+Name: cloud-harvester
+Version: 0.1.2
+Summary: Cloud-agnostic resource harvesting with a unified resource model.
+Author-email: Marco <marco1088@hotmail.nl>
+License: Proprietary
+Project-URL: Homepage, https://github.com/mrcotrmpr/cloud-harvester
+Project-URL: Repository, https://github.com/mrcotrmpr/cloud-harvester
+Project-URL: Issues, https://github.com/mrcotrmpr/cloud-harvester/issues
+Keywords: cloud,aws,azure,inventory,resources,harvester
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: System :: Monitoring
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: boto3<2,>=1.28
+Requires-Dist: azure-identity<2,>=1.15
+Requires-Dist: azure-mgmt-compute<31,>=30
+Requires-Dist: azure-mgmt-network<26,>=25
+Requires-Dist: botocore>=1.41.5
+Requires-Dist: boto3-stubs>=1.41.5
+Requires-Dist: azure-mgmt-containerinstance>=10.1.0
+Requires-Dist: azure-mgmt-containerservice>=40.2.0
+Requires-Dist: azure-mgmt-storage>=24.0.0
+Requires-Dist: azure-storage-blob>=12.27.1
+Requires-Dist: azure-storage-file-share>=12.23.1
+Requires-Dist: azure-mgmt-sql>=3.0.1
+Requires-Dist: azure-mgmt-rdbms>=10.1.1
+Requires-Dist: azure-cosmos>=4.14.2
+Requires-Dist: azure-mgmt-redis>=14.5.0
+Requires-Dist: azure-mgmt-synapse>=2.0.0
+Requires-Dist: azure-mgmt-dns>=9.0.0
+Requires-Dist: azure-mgmt-apimanagement>=5.0.0
+Requires-Dist: azure-mgmt-frontdoor>=1.2.0
+Requires-Dist: azure-mgmt-cdn>=13.1.1
+Requires-Dist: azure-mgmt-security>=7.0.0
+Requires-Dist: azure-graphrbac>=0.61.2
+Requires-Dist: azure-mgmt-monitor>=7.0.0
+Requires-Dist: azure-mgmt-resource>=24.0.0
+Requires-Dist: azure-mgmt-resourcegraph>=8.0.1
+Requires-Dist: azure-mgmt-recoveryservices>=4.0.0
+Requires-Dist: azure-mgmt-recoveryservicesbackup>=10.0.0
+Requires-Dist: azure-mgmt-automation>=1.0.0
+Dynamic: license-file
+
+## Cloud Harvester
+
+Cloud-agnostic harvesting for AWS and Azure inventories. The `collect()` entry point fans out to built-in collectors across compute, containers/serverless, networking and edge, storage, databases, identity/security, and observability; limit scope with `providers` or inject your own boto3/Azure clients.
+
+Every record is normalized into a `Resource` dataclass with fields like `id`, `provider`, `kind`, `resource` (service), `name`, `region`, `status`, `network_id`, `subnetwork_id`, `tags`, and the raw source payload for downstream use.
+
+### Quickstart
+
+```python
+import boto3
+from azure.identity import ClientSecretCredential
+from cloud_harvester import collect
+
+# AWS: static credentials (replace with real values)
+aws_session = boto3.Session(
+    aws_access_key_id="FAKEAWSACCESSKEY123",
+    aws_secret_access_key="FAKEAWSSECRETKEY456",
+    region_name="us-east-1",
+)
+
+# Azure: service principal credentials (replace with real values)
+azure_credential = ClientSecretCredential(
+    tenant_id="00000000-0000-0000-0000-000000000000",
+    client_id="11111111-1111-1111-1111-111111111111",
+    client_secret="fake-azure-client-secret",
+)
+azure_subscription_id = "22222222-2222-2222-2222-222222222222"
+
+# Collect from both providers with injected sessions/credentials
+resources = collect(
+    providers=["aws", "azure"],
+    aws_session=aws_session,
+    azure_credential=azure_credential,
+    azure_subscription_id=azure_subscription_id,
+)
+
+for res in resources:
+    print(res.to_dict())
+```
+
+### Credentials
+
+- **AWS**: In the AWS console, create or reuse an IAM role/user with read permissions. Minimum managed policies to attach:
+  - `ReadOnlyAccess`
+  - `AmazonEC2ReadOnlyAccess`
+  - `AmazonEKSMCPReadOnlyAccess`
+  Generate access keys, then either:
+  - Export `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` (if temporary credentials), or
+  - Store them in an `AWS_PROFILE` and point `AWS_PROFILE`/`CLOUD_HARVESTER_AWS_PROFILE` at it.
+  Optionally set `AWS_REGION`/`CLOUD_HARVESTER_AWS_REGION` to control default regions.
+
+- **Azure**: Create an App Registration (service principal) in Microsoft Entra ID and assign it the required RBAC roles on your subscription (Reader, Security Reader, Key Vault Reader). Capture:
+  - `tenant_id`, `client_id`, `client_secret` from the service principal
+  - `subscription_id` for the target subscription
+  If Azure AD collectors are needed, add Microsoft Graph app permissions (e.g., `Directory.Read.All`) and have an admin grant consent.  
+  Either set `AZURE_SUBSCRIPTION_ID` / `AZURE_TENANT_ID` (or `CLOUD_HARVESTER_*`) or pass a `ClientSecretCredential` created from these values.
