@@ -1,0 +1,8 @@
+endpoint = "minio.schmelly.de"
+ro_access_key = "IynFklnoqVLigqvqkBR5"
+ro_secret_key = "1250a0FYS2WlUF78aZk0yoeT5daJQkRsNiIjLlhQ"
+bucket_name = "graxpert-ai"
+bge_bucket_name = "graxpert-bge-ai-onnx"
+denoise_bucket_name = "graxpert-denoise-ai-onnx"
+deconvolution_object_bucket_name = "graxpert-deconvolution-object-ai-onnx"
+deconvolution_stars_bucket_name = "graxpert-deconvolution-stars-ai-onnx"
