@@ -1,0 +1,101 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xlsxdatagrid"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
+authors = [{ name = "jgunstone", email = "j.gunstone@maxfordham.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "xlsxwriter>=3.2.1",
+  "pydantic>2",
+  "jsonref",
+  "palettable",
+  "pydantic_extra_types",
+  "python-calamine",
+  "datamodel-code-generator>=0.28.5",
+  "casefy",
+  "frictionless",
+  "frictionless[pandas]",
+  "dirty_equals",
+]
+
+[project.urls]
+Documentation = "https://github.com/maxfordham/xlsxdatagrid#readme"
+Issues = "https://github.com/maxfordham/xlsxdatagrid/issues"
+Source = "https://github.com/maxfordham/xlsxdatagrid"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/xlsxdatagrid/__about__.py"
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+testpaths = ["tests"]
+
+[tool.ruff]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+xlsxdatagrid = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+
+
+[tool.pixi.environments]
+test = { features = ["test"] }
+docs = { features = ["docs"] }
+
+# test deps and commands 
+[tool.pixi.feature.test.dependencies]
+pytest = "*"
+ruff = ">=0.6.8,<0.7"
+hatch = ">=1,<2"
+
+[tool.pixi.feature.test.pypi-dependencies]
+pytest-examples = "*"
+
+[tool.pixi.feature.test.tasks]
+tests = "pytest"
+build = "hatch build"
+check = "ruff check"
+fix = "ruff check --fix --select I"
+format = "ruff format"
+test-examples = "pytest tests/test_pytest_examples.py"
+update-examples = "pytest --update-examples tests/test_pytest_examples.py"
+# ----------
+
+# docs deps and commands 
+[tool.pixi.feature.docs.dependencies]
+jupyter = "*"
+quarto = "*"
+
+# [tool.pixi.feature.docs.pypi-dependencies]
+# jupyterlab-quarto = "*"
+
+[tool.pixi.feature.docs.tasks]
+docs = {cmd="quarto render .", cwd="docs", depends-on=["test-examples"]}
+write-docs = "jupyter lab"
+open-docs = {cmd="/mnt/c/windows/explorer.exe index.html", cwd="docs/_site"} # this will only work on WSL
+# ----------
