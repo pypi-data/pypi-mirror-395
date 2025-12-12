@@ -1,0 +1,603 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Sysdig",
+            "group": "sysdig",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "default": 443,
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources.html"
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 10000000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "batch_size": {
+                "default": 2000,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "optional": true,
+                "hidden": true
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 3600,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "config_map": {
+                        "int_supported_fields": [
+                            "severity",
+                            "ruleType",
+                            "ruleSubType",
+                            "policyId",
+                            "agentId",
+                            "aws.accountId"
+                        ],
+                        "string_supported_fields": [
+                            "kubernetes.cluster.name",
+                            "kubernetes.namespace.name",
+                            "kubernetes.deployment.name",
+                            "containerId",
+                            "container.name",
+                            "container.image.id",
+                            "container.image.repo",
+                            "container.image.tag",
+                            "container.image.digest",
+                            "container.label.io.kubernetes.pod.name",
+                            "container.label.io.kubernetes.pod.namespace",
+                            "ruleName",
+                            "category",
+                            "originator",
+                            "source",
+                            "host.hostName",
+                            "cloudProvider.name",
+                            "aws.region"
+                        ],
+                        "mac_supported_fields": [
+                            "machineId"
+                        ]
+                    },
+                    "to_stix_map": {
+                        "category": {
+                            "key": "x-ibm-finding.x_category",
+                            "object": "finding"
+                        },
+                        "originator": {
+                            "key": "x-ibm-finding.x_threat_originator",
+                            "object": "finding"
+                        },
+                        "source": {
+                            "key": "x-ibm-finding.x_threat_source",
+                            "object": "finding"
+                        },
+                        "agentId": {
+                            "key": "x-ibm-finding.x_agent_id",
+                            "object": "finding"
+                        },
+                        "finding_type": {
+                            "key": "x-ibm-finding.finding_type",
+                            "object": "finding"
+                        },
+                        "l4protocol": {
+                            "key": "network-traffic.protocols",
+                            "object": "network",
+                            "transformer": "ToLowercaseArray"
+                        },
+                        "clientPort": {
+                            "key": "network-traffic.src_port",
+                            "object": "network",
+                            "transformer": "ToInteger"
+                        },
+                        "serverPort": {
+                            "key": "network-traffic.dst_port",
+                            "object": "network",
+                            "transformer": "ToInteger"
+                        },
+                        "serverIpv4": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "network-traffic.dst_ref",
+                                "object": "network",
+                                "references": "dst_ip"
+                            }
+                        ],
+                        "clientIpv4": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "network-traffic.src_ref",
+                                "object": "network",
+                                "references": "src_ip"
+                            }
+                        ],
+                        "severity": {
+                            "key": "x-ibm-finding.severity",
+                            "object": "finding",
+                            "transformer": "SeverityToScore"
+                        },
+                        "containerId": {
+                            "key": "x-oca-asset.extensions.x-oca-container-ext.container_id",
+                            "object": "asset"
+                        },
+                        "description": [
+                            {
+                                "key": "x-sysdig-policy.description",
+                                "object": "policy"
+                            },
+                            {
+                                "key": "x-ibm-finding.x_policy_ref",
+                                "object": "finding",
+                                "references": "policy"
+                            }
+                        ],
+                        "content": {
+                            "ruleName": {
+                                "key": "x-sysdig-policy.rule_name",
+                                "object": "policy"
+                            },
+                            "ruleType": {
+                                "key": "x-sysdig-policy.rule_type",
+                                "object": "policy"
+                            },
+                            "ruleSubType": {
+                                "key": "x-sysdig-policy.rule_subtype",
+                                "object": "policy"
+                            },
+                            "policyId": {
+                                "key": "x-sysdig-policy.policy_id",
+                                "object": "policy"
+                            },
+                            "fields": {
+                                "falco.rule": {
+                                    "key": "x-ibm-finding.name",
+                                    "object": "finding"
+                                },
+                                "proc.cmdline": {
+                                    "key": "process.command_line",
+                                    "object": "proc"
+                                },
+                                "proc.name": [
+                                    {
+                                        "key": "file.name",
+                                        "object": "file"
+                                    },
+                                    {
+                                        "key": "process.name",
+                                        "object": "proc"
+                                    },
+                                    {
+                                        "key": "process.binary_ref",
+                                        "object": "proc",
+                                        "references": "file"
+                                    }
+                                ],
+                                "proc.pid": {
+                                    "key": "process.pid",
+                                    "object": "proc",
+                                    "transformer": "ToInteger"
+                                },
+                                "proc.sid": {
+                                    "key": "process.x_sid",
+                                    "object": "proc"
+                                },
+                                "proc.exepath": [
+                                    {
+                                        "key": "directory.path",
+                                        "object": "file_dir"
+                                    },
+                                    {
+                                        "key": "file.parent_directory_ref",
+                                        "object": "file",
+                                        "references": "file_dir"
+                                    }
+                                ],
+                                "proc.cwd": {
+                                    "key": "process.cwd",
+                                    "object": "proc"
+                                },
+                                "proc.pname": [
+                                    {
+                                        "key": "file.name",
+                                        "object": "parent_file"
+                                    },
+                                    {
+                                        "key": "process.name",
+                                        "object": "parent_proc"
+                                    },
+                                    {
+                                        "key": "process.parent_ref",
+                                        "object": "proc",
+                                        "references": "parent_proc"
+                                    },
+                                    {
+                                        "key": "process.binary_ref",
+                                        "object": "parent_proc",
+                                        "references": "parent_file"
+                                    }
+                                ],
+                                "proc.pcmdline": {
+                                    "key": "process.command_line",
+                                    "object": "parent_proc"
+                                },
+                                "proc.ppid": {
+                                    "key": "process.pid",
+                                    "object": "parent_proc",
+                                    "transformer": "ToInteger"
+                                },
+                                "proc.anames": {
+                                    "key": "process.x_parent_names",
+                                    "object": "parent_proc"
+                                },
+                                "user.loginname": {
+                                    "key": "user-account.account_login",
+                                    "object": "user"
+                                },
+                                "user.loginuid": {
+                                    "key": "user-account.x_loginuid",
+                                    "object": "user"
+                                },
+                                "user.name": [
+                                    {
+                                        "key": "user-account.display_name",
+                                        "object": "user"
+                                    },
+                                    {
+                                        "key": "process.creator_user_ref",
+                                        "object": "proc",
+                                        "references": "user"
+                                    }
+                                ],
+                                "user.uid": {
+                                    "key": "user-account.user_id",
+                                    "object": "user"
+                                }
+                            }
+                        },
+                        "labels": {
+                            "host.hostName": {
+                                "key": "x-oca-asset.hostname",
+                                "object": "asset"
+                            },
+                            "container.image.digest": {
+                                "key": "x-oca-asset.extensions.x-oca-container-ext.x_digest",
+                                "object": "asset"
+                            },
+                            "container.image.id": {
+                                "key": "x-oca-asset.extensions.x-oca-container-ext.image_id",
+                                "object": "asset"
+                            },
+                            "container.image.tag": {
+                                "key": "x-oca-asset.extensions.x-oca-container-ext.x_tag",
+                                "object": "asset"
+                            },
+                            "container.image.repo": {
+                                "key": "x-oca-asset.extensions.x-oca-container-ext.x_repo",
+                                "object": "asset"
+                            },
+                            "container.label.io.kubernetes.pod.name": {
+                                "key": "x-oca-asset.extensions.x-oca-pod-ext.pod_name",
+                                "object": "asset"
+                            },
+                            "container.label.io.kubernetes.pod.namespace": {
+                                "key": "x-oca-asset.extensions.x-oca-pod-ext.x_namespace",
+                                "object": "asset"
+                            },
+                            "container.name": {
+                                "key": "x-oca-asset.extensions.x-oca-container-ext.name",
+                                "object": "asset"
+                            },
+                            "host.mac": [
+                                {
+                                    "key": "mac-addr.value",
+                                    "object": "mac"
+                                },
+                                {
+                                    "key": "x-oca-asset.mac_refs",
+                                    "object": "asset",
+                                    "references": [
+                                        "mac"
+                                    ]
+                                }
+                            ],
+                            "kubernetes.cluster.name": [
+                                {
+                                    "key": "x-sysdig-cluster.name",
+                                    "object": "cluster"
+                                },
+                                {
+                                    "key": "x-ibm-finding.x_cluster_ref",
+                                    "object": "finding",
+                                    "references": "cluster"
+                                },
+                                {
+                                    "key": "x-sysdig-cluster.x_node_ref",
+                                    "object": "cluster",
+                                    "references": "asset"
+                                }
+                            ],
+                            "kubernetes.daemonSet.name": {
+                                "key": "x-sysdig-cluster.daemonset",
+                                "object": "cluster"
+                            },
+                            "kubernetes.namespace.name": {
+                                "key": "x-sysdig-cluster.namespace",
+                                "object": "cluster"
+                            },
+                            "kubernetes.deployment.name": [
+                                {
+                                    "key": "x-sysdig-deployment.name",
+                                    "object": "deployment"
+                                },
+                                {
+                                    "key": "x-ibm-finding.x_deployment_ref",
+                                    "object": "finding",
+                                    "references": "deployment"
+                                }
+                            ],
+                            "kubernetes.node.name": [
+                                {
+                                    "key": "ipv4-addr.value",
+                                    "object": "ip",
+                                    "transformer": "HostnameToIpAddress"
+                                },
+                                {
+                                    "key": "x-oca-asset.ip_refs",
+                                    "object": "asset",
+                                    "references": [
+                                        "ip"
+                                    ]
+                                }
+                            ],
+                            "kubernetes.workload.name": {
+                                "key": "x-ibm-finding.x_workload_name",
+                                "object": "finding"
+                            },
+                            "kubernetes.workload.type": {
+                                "key": "x-ibm-finding.x_workload_type",
+                                "object": "finding"
+                            },
+                            "aws.accountId": {
+                                "key": "x-cloud-provider.account_id",
+                                "object": "cloud_provider"
+                            },
+                            "cloudProvider.name": {
+                                "key": "x-cloud-provider.name",
+                                "object": "cloud_provider"
+                            },
+                            "aws.region": {
+                                "key": "x-cloud-provider.region",
+                                "object": "cloud_provider"
+                            },
+                            "aws.instanceId": {
+                                "key": "x-cloud-resource.aws_instance_id",
+                                "object": "cloud_resource"
+                            }
+                        },
+                        "timestamp": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "TimestampConversion"
+                            },
+                            {
+                                "key": "last_observed",
+                                "transformer": "TimestampConversion"
+                            }
+                        ]
+                    },
+                    "from_stix_map": {
+                        "mac-addr": {
+                            "fields": {
+                                "value": [
+                                    "machineId"
+                                ]
+                            }
+                        },
+                        "x-oca-asset": {
+                            "fields": {
+                                "hostname": [
+                                    "host.hostName"
+                                ],
+                                "extensions.'x-oca-container-ext'.container_id": [
+                                    "containerId"
+                                ],
+                                "extensions.'x-oca-container-ext'.name": [
+                                    "container.name"
+                                ],
+                                "extensions.'x-oca-container-ext'.image_id": [
+                                    "container.image.id"
+                                ],
+                                "extensions.'x-oca-container-ext'.x_repo": [
+                                    "container.image.repo"
+                                ],
+                                "extensions.'x-oca-container-ext'.x_tag": [
+                                    "container.image.tag"
+                                ],
+                                "extensions.'x-oca-container-ext'.x_digest": [
+                                    "container.image.digest"
+                                ],
+                                "extensions.'x-oca-pod-ext'.pod_name": [
+                                    "container.label.io.kubernetes.pod.name"
+                                ],
+                                "extensions.'x-oca-pod-ext'.x_namespace": [
+                                    "container.label.io.kubernetes.pod.namespace"
+                                ]
+                            }
+                        },
+                        "x-ibm-finding": {
+                            "fields": {
+                                "name": [
+                                    "ruleName"
+                                ],
+                                "severity": [
+                                    "severity"
+                                ],
+                                "x_category": [
+                                    "category"
+                                ],
+                                "x_threat_originator": [
+                                    "originator"
+                                ],
+                                "x_threat_source": [
+                                    "source"
+                                ],
+                                "x_agent_id": [
+                                    "agentId"
+                                ]
+                            }
+                        },
+                        "x-sysdig-cluster": {
+                            "fields": {
+                                "name": [
+                                    "kubernetes.cluster.name"
+                                ],
+                                "namespace": [
+                                    "kubernetes.namespace.name"
+                                ]
+                            }
+                        },
+                        "x-sysdig-deployment": {
+                            "fields": {
+                                "name": [
+                                    "kubernetes.deployment.name"
+                                ]
+                            }
+                        },
+                        "x-sysdig-policy": {
+                            "fields": {
+                                "rule_name": [
+                                    "ruleName"
+                                ],
+                                "rule_type": [
+                                    "ruleType"
+                                ],
+                                "rule_subtype": [
+                                    "ruleSubType"
+                                ],
+                                "policy_id": [
+                                    "policyId"
+                                ]
+                            }
+                        },
+                        "x-cloud-provider": {
+                            "fields": {
+                                "account_id": [
+                                    "aws.accountId"
+                                ],
+                                "name": [
+                                    "cloudProvider.name"
+                                ],
+                                "region": [
+                                    "aws.region"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "and",
+                        "ComparisonExpressionOperators.Or": "or",
+                        "ComparisonComparators.Equal": "=",
+                        "ComparisonComparators.NotEqual": "!=",
+                        "ComparisonComparators.GreaterThan": ">",
+                        "ComparisonComparators.GreaterThanOrEqual": ">=",
+                        "ComparisonComparators.LessThan": "<",
+                        "ComparisonComparators.LessThanOrEqual": "<=",
+                        "ComparisonComparators.In": "in",
+                        "ObservationOperators.Or": "or",
+                        "ObservationOperators.And": "or"
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "token": {
+                "type": "password"
+            }
+        }
+    }
+}
