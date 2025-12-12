@@ -1,0 +1,692 @@
+Metadata-Version: 2.4
+Name: pyimport2pkg
+Version: 0.3.0
+Summary: Reverse mapping tool: from Python import statements to pip package names
+Author: Developer
+License: MIT
+Keywords: python,import,pip,package,dependency,requirements
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Build Tools
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: httpx>=0.25.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+
+# PyImport2Pkg
+
+> 🐍 Reverse mapping from Python import statements to pip package names
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Latest Release](https://img.shields.io/badge/release-v0.3.0-brightgreen.svg)](https://github.com/buptanswer/pyimport2pkg/releases/tag/v0.3.0)
+
+**Language**: [English](README.md) | [中文](README.zh_CN.md)
+
+## 📋 Table of Contents
+
+- [Introduction](#introduction)
+- [Why This Tool?](#why-this-tool)
+- [Core Features](#core-features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Commands](#commands)
+- [Advanced Features](#advanced-features)
+- [Python API](#python-api)
+- [Architecture](#architecture)
+- [FAQ](#faq)
+- [Contributing](#contributing)
+
+---
+
+## Introduction
+
+**PyImport2Pkg** solves a core problem in the AI-assisted coding era:
+
+> Given Python import statements in code, how do we quickly and accurately know which pip packages need to be installed?
+
+### Problem Statement
+
+In traditional development, pip package names usually match import module names. However, in practice, many popular libraries have **package name ≠ module name**:
+
+- `import cv2` → install `pip install opencv-python`
+- `from PIL import Image` → install `pip install Pillow`
+- `import sklearn` → install `pip install scikit-learn`
+- `import google.cloud.storage` → install `pip install google-cloud-storage`
+
+When AI generates code with dozens of imports, manually looking up each mapping is time-consuming and error-prone. **PyImport2Pkg** automates this.
+
+---
+
+## Why This Tool?
+
+### The Challenge
+
+When using AI code generators (like GitHub Copilot, Claude, or ChatGPT), you often get code like:
+
+```python
+import cv2
+import numpy as np
+from sklearn.model_selection import train_test_split
+from google.cloud import storage
+import requests
+```
+
+**Question**: Which packages do you need to `pip install`?
+
+### Without PyImport2Pkg
+
+- ❌ Manually Google each module name
+- ❌ Check PyPI documentation
+- ❌ Risk installing wrong packages
+- ❌ Takes 5-10 minutes for 10 imports
+
+### With PyImport2Pkg
+
+```bash
+$ pyimport2pkg analyze ./my_ai_generated_code
+
+Dependencies:
+  opencv-python
+  numpy
+  scikit-learn
+  google-cloud-storage
+  requests
+```
+
+**Done in seconds!** ✅
+
+---
+
+## Core Features
+
+### 🎯 Key Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Project Analysis** | Recursively scan Python projects, extract all imports, generate requirements.txt |
+| **Smart Mapping** | Multi-tier priority system for accurate module→package mapping |
+| **Namespace Support** | Correctly handle `google.*`, `azure.*`, `zope.*` namespace packages |
+| **Optional Deps** | Distinguish required vs optional imports (try-except, platform-specific) |
+| **Version-Aware** | Auto-detect target Python version, handle backport packages |
+| **High-Performance DB** | Smart incremental updates, true parallel processing, batch writes |
+| **Interrupt Recovery** | Support resuming from breakpoint without data loss |
+
+### Mapping Priority
+
+PyImport2Pkg uses a multi-tier priority system:
+
+1. **Namespace packages** - When submodules detected (e.g., `google.cloud.storage` → `google-cloud-storage`)
+2. **Hardcoded mappings** - Known special cases (e.g., `cv2` → `opencv-python`)
+3. **PyPI database** - From `top_level.txt` in wheel files
+4. **Smart guess** - Assume module name equals package name
+
+---
+
+## Installation
+
+### Requirements
+
+- Python 3.10+
+- Minimal dependencies (only `httpx>=0.25.0`)
+
+### Install via pip
+
+```bash
+pip install pyimport2pkg
+```
+
+### Install in development mode
+
+```bash
+git clone https://github.com/buptanswer/pyimport2pkg.git
+cd pyimport2pkg
+pip install -e ".[dev]"
+```
+
+### Verify Installation
+
+```bash
+pyimport2pkg --version
+# pyimport2pkg 0.3.0
+```
+
+---
+
+## Quick Start
+
+### Analyze a Project
+
+```bash
+# Analyze current directory
+pyimport2pkg analyze .
+
+# Output:
+# Analyzing: .
+# Found imports from 24 files
+#
+# Dependencies:
+#   numpy
+#   pandas
+#   requests
+#   sklearn
+#   matplotlib
+```
+
+### Query a Single Module
+
+```bash
+pyimport2pkg query cv2
+
+# Output:
+# Module: cv2
+# Source: hardcoded
+# Candidates:
+#   1. opencv-python (recommended)
+#   2. opencv-contrib-python
+#   3. opencv-python-headless
+```
+
+### Save Results
+
+```bash
+# Save as requirements.txt
+pyimport2pkg analyze . -o requirements.txt
+
+# Save as JSON
+pyimport2pkg analyze . -o dependencies.json -f json
+```
+
+---
+
+## Commands
+
+### analyze - Analyze Project
+
+Scan Python project for imports and identify required packages.
+
+```bash
+pyimport2pkg analyze <path> [options]
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-o, --output` | Output file path | stdout |
+| `-f, --format` | Format (txt\|json\|simple) | txt |
+| `-t, --target-version` | Target Python version | current |
+
+**Examples:**
+
+```bash
+# Basic analysis
+pyimport2pkg analyze /path/to/project
+
+# Specify target Python version
+pyimport2pkg analyze . -t 3.11
+
+# Save as JSON
+pyimport2pkg analyze . -o deps.json -f json
+
+# Simple package list
+pyimport2pkg analyze . -f simple
+```
+
+---
+
+### query - Query Module Mapping
+
+Look up which pip package provides a specific module.
+
+```bash
+pyimport2pkg query <module_name>
+```
+
+**Examples:**
+
+```bash
+pyimport2pkg query numpy       # → numpy
+pyimport2pkg query cv2         # → opencv-python (+ alternatives)
+pyimport2pkg query PIL         # → Pillow
+pyimport2pkg query google.cloud.storage  # → google-cloud-storage
+```
+
+---
+
+### build-db - Build Mapping Database
+
+Build PyPI package mapping database. This downloads metadata for top PyPI packages and builds the mapping.
+
+```bash
+pyimport2pkg build-db [options]
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--max-packages` | Target number of PyPI packages | 5000 |
+| `--concurrency` | Number of parallel workers | 50 |
+| `--resume` | Resume interrupted build | — |
+| `--retry-failed` | Retry failed packages only | — |
+| `--rebuild` | Force rebuild (delete old DB) | — |
+| `--db-path` | Custom database path | `data/mapping.db` |
+
+**Examples:**
+
+```bash
+# Build database with top 5000 packages
+pyimport2pkg build-db --max-packages 5000
+
+# Resume interrupted build
+pyimport2pkg build-db --resume
+
+# Retry only failed packages
+pyimport2pkg build-db --retry-failed
+
+# Expand existing database
+pyimport2pkg build-db --max-packages 10000
+
+# Force rebuild
+pyimport2pkg build-db --rebuild --max-packages 5000
+```
+
+**Features:**
+- ✅ Smart incremental updates (no reprocessing)
+- ✅ Interrupt recovery with progress tracking
+- ✅ Parallel processing (50x by default)
+- ✅ Batch database writes
+- ✅ Rate limit detection & auto-recovery
+- ✅ Memory-optimized chunked processing
+
+---
+
+### build-status - Check Build Status
+
+View current or last build status.
+
+```bash
+pyimport2pkg build-status
+
+# Output:
+# Build Status: completed
+# Total: 5000
+# Processed: 5000
+# Failed: 8
+# Success Rate: 99.8%
+# Last Updated: 2025-12-06 10:30:45
+```
+
+---
+
+### db-info - Database Information
+
+Show database statistics.
+
+```bash
+pyimport2pkg db-info
+
+# Output:
+# Database Information
+# ===================
+# Database: data/mapping.db
+# Packages: 5000
+# Modules: 25000
+# Last Updated: 2025-12-06 08:00:00
+```
+
+---
+
+## Advanced Features
+
+### v0.3.0 Highlights
+
+#### 1. Smart Incremental Updates
+
+Extend your database without reprocessing:
+
+```bash
+# Database has 500 packages, expand to 1000
+pyimport2pkg build-db --max-packages 1000
+# Automatically processes only 500 new packages
+```
+
+#### 2. Interrupt & Resume
+
+Resume from breakpoint:
+
+```bash
+# Start build
+pyimport2pkg build-db --max-packages 5000
+
+# Later, resume
+pyimport2pkg build-db --resume
+```
+
+#### 3. Failed Package Retry
+
+Retry only failed packages:
+
+```bash
+# First run: 860 failed
+pyimport2pkg build-db --retry-failed
+
+# Second run: only remaining failures
+pyimport2pkg build-db --retry-failed
+```
+
+#### 4. Performance Improvements
+
+- **10-50x faster** database writes (batch processing)
+- **50x parallel** concurrency (vs 20x in v0.2.0)
+- **Memory-optimized** chunked processing for 15000+ packages
+- **Batch progress saves** (every 100 packages)
+
+#### 5. Rate Limit Detection
+
+Automatic PyPI rate limit handling:
+
+```
+Detected 20 consecutive failures - possible rate limiting.
+Pausing 30 seconds before retry (pause 1/5)...
+Resuming...
+```
+
+#### 6. Graceful Interruption (Ctrl+C)
+
+```
+^C
+Saving progress, please wait... (Ctrl+C again to force quit)
+
+Build interrupted. Processed 2500/5000 packages.
+Use --resume to continue.
+```
+
+---
+
+## Python API
+
+Use PyImport2Pkg programmatically:
+
+### Basic Usage
+
+```python
+from pyimport2pkg import Scanner, Parser, Filter, Mapper, Exporter
+from pathlib import Path
+
+# 1. Scan project
+scanner = Scanner()
+files = scanner.scan(Path("./my_project"))
+
+# 2. Parse imports
+parser = Parser()
+imports = []
+for file_path in files:
+    imports.extend(parser.parse(file_path))
+
+# 3. Filter stdlib & local modules
+filter = Filter(project_root=Path("./my_project"))
+filtered = filter.filter(imports)
+
+# 4. Map to packages
+mapper = Mapper()
+results = mapper.map(filtered)
+
+# 5. Export results
+exporter = Exporter()
+exporter.to_requirements_txt(results, "requirements.txt")
+```
+
+### Query Single Module
+
+```python
+from pyimport2pkg import Mapper
+
+mapper = Mapper()
+result = mapper.map_single("cv2")
+for candidate in result.package_candidates:
+    print(f"{candidate.name}: {candidate.download_count} downloads")
+```
+
+### Check Build Status
+
+```python
+from pyimport2pkg.database import get_build_progress
+
+progress = get_build_progress()
+status = progress.get_status()
+print(f"Processed: {status['processed']}/{status['total']}")
+print(f"Failed: {status['failed']}")
+print(f"Success Rate: {status['success_rate']:.1%}")
+```
+
+---
+
+## Architecture
+
+### Pipeline Design
+
+```
+Python Project
+    ↓
+Scanner (scan for .py files)
+    ↓
+Parser (extract imports via AST)
+    ↓
+Filter (remove stdlib, local modules)
+    ↓
+Mapper (map to pip packages)
+    ↓
+Resolver (handle conflicts)
+    ↓
+Exporter (generate output)
+    ↓
+requirements.txt / JSON / list
+```
+
+### Core Modules
+
+| Module | Purpose |
+|--------|---------|
+| `scanner.py` | Recursively find Python files |
+| `parser.py` | Extract imports with context (AST-based) |
+| `filter.py` | Filter stdlib, local, backports |
+| `mapper.py` | Multi-tier package mapping |
+| `resolver.py` | Handle one-to-many conflicts |
+| `exporter.py` | Multi-format output |
+| `database.py` | PyPI mapping database |
+
+---
+
+## Performance
+
+### Analysis Speed
+
+| Project Size | Time | Files |
+|-------------|------|-------|
+| Small (<100 files) | < 1s | ~50 |
+| Medium (100-1000) | 1-5s | ~500 |
+| Large (1000+) | 5-30s | ~2000 |
+
+### Database Build
+
+| Packages | Time | Memory |
+|----------|------|--------|
+| 5000 | 10-20 min | ~200 MB |
+| 10000 | 20-40 min | ~400 MB |
+| 15000 | 40-80 min | ~600 MB |
+
+---
+
+## FAQ
+
+### Q: How do I exclude certain directories?
+
+A: Scanner auto-excludes: `.git`, `.venv`, `venv`, `env`, `__pycache__`, etc.
+
+For custom exclusions, use Python API:
+
+```python
+scanner = Scanner(exclude_dirs=["tests", "docs"])
+```
+
+### Q: Does it support relative imports?
+
+A: Yes. Relative imports are marked as local modules and filtered out.
+
+### Q: What about conditional imports?
+
+A: Conditional imports (inside if/try blocks) are marked as `optional=True`.
+
+### Q: How long does database build take?
+
+A: Depends on package count and network:
+- 5000 packages: ~10-20 min
+- 10000 packages: ~20-40 min
+- Supports pause/resume
+
+### Q: Database not found error?
+
+A: Either:
+1. Build database: `pyimport2pkg build-db`
+2. Or use online mode without local database
+
+### Q: Missing some imports?
+
+Possible reasons:
+1. Package not in top 5000 PyPI
+2. Package metadata incomplete
+3. Non-standard package structure
+
+---
+
+## Troubleshooting
+
+### No Python found
+
+```bash
+# Use explicit Python
+python -m pyimport2pkg analyze .
+```
+
+### Permission denied
+
+```bash
+# Ensure read access to project directory
+chmod -R +r ./my_project
+```
+
+### Out of memory
+
+```bash
+# Build database in chunks
+pyimport2pkg build-db --max-packages 5000  # start small
+pyimport2pkg build-db --max-packages 10000 # expand later
+```
+
+---
+
+## Contributing
+
+### Report Bugs
+
+File issues at: https://github.com/buptanswer/pyimport2pkg/issues
+
+Include:
+- Python version
+- PyImport2Pkg version
+- Full error traceback
+- Minimal reproduction example
+
+### Contribute Code
+
+```bash
+# Fork repository
+git clone https://github.com/YOUR_USERNAME/pyimport2pkg.git
+cd pyimport2pkg
+
+# Create feature branch
+git checkout -b feature/your-feature
+
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest tests/ -v
+
+# Make changes & commit
+git add .
+git commit -m "feat: your feature description"
+
+# Push & create pull request
+git push origin feature/your-feature
+```
+
+---
+
+## Development
+
+### Setup
+
+```bash
+pip install -e ".[dev]"
+```
+
+### Run Tests
+
+```bash
+pytest tests/ -v
+pytest tests/ --cov=pyimport2pkg  # with coverage
+```
+
+### Test Specific Module
+
+```bash
+pytest tests/test_parser.py -v
+pytest tests/test_parser.py::TestParser::test_simple_import -v
+```
+
+---
+
+## License
+
+MIT License - See [LICENSE](LICENSE) for details
+
+---
+
+## Changelog
+
+See [CHANGELOG](documents/CHANGELOG/) for detailed version history.
+
+- **v0.3.0** - Performance & reliability improvements (Dec 2025)
+- **v0.2.0** - Initial feature release
+- **v0.1.0** - Beta version
+
+---
+
+## Support
+
+- 📧 **Issues**: [GitHub Issues](https://github.com/buptanswer/pyimport2pkg/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/buptanswer/pyimport2pkg/discussions)
+- 📖 **Documentation**: [User Guide](documents/USER_GUIDE/)
+
+---
+
+## Acknowledgments
+
+Built for the AI-assisted coding era. Special thanks to users who provided feedback and testing!
+
+---
+
+**Made with ❤️ for developers using AI code generators**
+
+*PyImport2Pkg v0.3.0 - December 2025*
