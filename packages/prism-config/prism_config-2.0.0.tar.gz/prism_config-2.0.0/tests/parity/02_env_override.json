@@ -1,0 +1,31 @@
+{
+  "name": "environment_variable_override",
+  "description": "Validates that environment variables correctly override configuration values with proper type coercion",
+  "config": {
+    "app": {
+      "name": "base-app",
+      "environment": "development"
+    },
+    "database": {
+      "host": "localhost",
+      "port": 5432,
+      "name": "dev_db"
+    }
+  },
+  "environment": {
+    "APP_APP__ENVIRONMENT": "production",
+    "APP_DATABASE__HOST": "prod-db.example.com",
+    "APP_DATABASE__PORT": "3306"
+  },
+  "options": {
+    "apply_env": true,
+    "resolve_secrets": false
+  },
+  "expected": {
+    "app.name": "base-app",
+    "app.environment": "production",
+    "database.host": "prod-db.example.com",
+    "database.port": 3306,
+    "database.name": "dev_db"
+  }
+}
