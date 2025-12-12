@@ -1,0 +1,187 @@
+[project]
+name = "zpdatafetch"
+version = "1.7.1"
+description = "A package for fetching data from Zwiftpower and Zwiftracing.app"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Doug Morris", email = "doug@mhost.com" }]
+keywords = ["cycling", "data", "racing", "zwift", "zwiftpower"]
+dependencies = [
+  # Async support (anyio provides backend-agnostic async utilities)
+  "anyio>=4.4.0",
+  "beautifulsoup4>=4.12.3",
+  "cryptography>=44.0.0",
+  # Note: httpx 0.28.0 depends on httpcore 1.1.x which has a compatibility
+  # issue with Python 3.14's typing.Union. This causes test failures on 3.14.
+  # Workaround: test_shared_client_connection_pooling is marked as xfail on 3.14.
+  # This will be resolved when httpx 0.29.0+ is released (depends on httpcore 1.2.0+).
+  "httpx>=0.28.0",
+  "keyring>=25.2.0",
+  "keyrings-alt",
+  "lxml>=5.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/puckdoug/zpdatafetch"
+Issues = "https://github.com/puckdoug/zpdatafetch/issues"
+Repository = "https://github.com/puckdoug/zpdatafetch"
+
+[project.scripts]
+zpdata = "zpdatafetch.cli:main"
+zrdata = "zrdatafetch.cli:main"
+
+[project.optional-dependencies]
+# For users who want both backends
+async-full = ["trio>=0.26.0"]
+# Optional async backends - users can choose which to install
+trio = ["trio>=0.26.0"]
+
+[dependency-groups]
+dev = [
+  "build>=1.2.1",
+  "ipdb>=0.13.13",
+  "packaging>=24.1",
+  "pytest>=8.3.2",
+  "pytest-cov>=4.1.0",
+  "ruff>=0.6.2",
+  "setuptools>=73.0.1",
+  "tox>=4.31.0",
+  # Async testing support - trio for testing both backends
+  "trio>=0.26.0",
+  "wheel>=0.44.0",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyright]
+venv = "3.12"
+venvPath = ".."
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+markers = [
+  "live: marks tests that make real API calls (deselect with '-m \"not live\"')",
+]
+filterwarnings = [
+  # HTTPX warnings from libraries
+  "ignore:.*strip_cdata.*HTMLParser().*:DeprecationWarning",
+  "ignore:.*Setting per-request cookies=.*is being deprecated, because the expected behaviour on cookie persistence is ambiguous.*:DeprecationWarning",
+]
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".ipynb_checkpoints",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pyenv",
+  ".pytest_cache",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  ".vscode",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "site-packages",
+  "venv",
+]
+line-length = 80
+indent-width = 2
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle errors
+  "W",  # pycodestyle warnings
+  "F",  # pyflakes
+  "I",  # isort
+  "UP",  # pyupgrade
+  "ANN",  # flake8-annotations (type hints)
+]
+ignore = [
+  "ANN101",  # Missing type annotation for self
+  "ANN102",  # Missing type annotation for cls
+]
+
+# Per-file ignores for justified Any usage
+[tool.ruff.lint.per-file-ignores]
+# Context manager methods require Any for exc_type, exc_val, exc_tb per Python protocol
+"src/shared/http_client.py" = ["ANN401"]
+"src/zrdatafetch/async_zr.py" = ["ANN401"]
+# **kwargs pass-through to httpx - Any is appropriate for forwarding
+"src/zpdatafetch/async_zp.py" = ["ANN401"]
+"src/zpdatafetch/zp.py" = ["ANN401"]
+"src/zrdatafetch/zr.py" = ["ANN401"]
+# Abstract methods with flexible kwargs - documented in docstrings
+"src/shared/config.py" = ["ANN401"]
+# Validation error messages with sys.maxsize are naturally long
+"src/shared/validation.py" = ["E501"]
+# zpdatafetch files have decorative comment lines that exceed 80 chars
+"src/zpdatafetch/*.py" = ["E501"]
+# Test files don't need type annotations (fixtures don't have types)
+"test/**/*.py" = ["ANN001", "ANN201"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["test*"]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+isolated_build = True
+envlist = py310,py311,py312,py313,py314
+
+[testenv]
+commands = pytest {posargs}
+deps =
+  pytest
+"""
+
+[tool.ty]
+# Python environment configuration
+[tool.ty.environment]
+python-version = "3.10"  # Minimum supported version
+# root paths auto-detected from project structure
+
+# File discovery
+[tool.ty.src]
+include = ["src/**/*.py"]
+exclude = [
+  "**/__pycache__",
+  "**/.*",
+  "build",
+  "dist",
+]
+respect-ignore-files = true  # Honor .gitignore
+
+# Terminal output
+[tool.ty.terminal]
+output-format = "full"  # or "concise" for CI
+error-on-warning = false  # Start permissive, can tighten later
+
+# Rule configuration (customize as needed)
+[tool.ty.rules]
+# Start with defaults, can add specific rule overrides later
