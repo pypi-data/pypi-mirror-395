@@ -1,0 +1,164 @@
+"""Zowe Client Python SDK.
+
+This program and the accompanying materials are made available under the terms of the
+Eclipse Public License v2.0 which accompanies this distribution, and is available at
+
+https://www.eclipse.org/legal/epl-v20.html
+
+SPDX-License-Identifier: EPL-2.0
+
+Copyright Contributors to the Zowe Project.
+"""
+
+import base64
+import sys
+from typing import Optional, Any
+
+import json5
+
+from .constants import constants
+from .exceptions import SecureProfileLoadFailed
+from .logger import Log
+
+HAS_KEYRING = True
+try:
+    from zowe.secrets_for_zowe_sdk import keyring
+except ImportError:
+    HAS_KEYRING = False
+
+
+class CredentialManager:
+    """A class including static functions for managing credentials."""
+
+    secure_props: dict[str, Any] = {}
+    __logger = Log.register_logger(__name__)
+
+    @staticmethod
+    def load_secure_props() -> None:
+        """
+        Load secure_props stored for the given config file.
+
+        if keyring is not initialized, set empty value
+
+        Raises
+        ------
+        SecureProfileLoadFailed
+            Fail to load secure profile
+        """
+        if not HAS_KEYRING:
+            CredentialManager.secure_props = {}
+            return
+
+        try:
+            secret_value = CredentialManager._get_credential(
+                str(constants["ZoweServiceName"]), str(constants["ZoweAccountName"])
+            )
+            # Handle the case when secret_value is None
+            if secret_value is None:
+                return
+
+        except Exception as exc:
+            CredentialManager.__logger.error(f"Fail to load secure profile {constants['ZoweServiceName']}")
+            raise SecureProfileLoadFailed(str(constants["ZoweServiceName"]), error_msg=str(exc)) from exc
+
+        secure_config: bytes
+        secure_config = secret_value.encode()
+        secure_config_json = json5.loads(base64.b64decode(secure_config).decode())
+        # update the secure props
+        CredentialManager.secure_props = secure_config_json
+
+    @staticmethod
+    def save_secure_props() -> None:
+        """Set secure_props for the given config file."""
+        if not HAS_KEYRING:
+            return
+
+        credential = CredentialManager.secure_props
+        # Check if credential is a non-empty string
+        if credential:
+            encoded_credential = base64.b64encode(json5.dumps(credential).encode()).decode()
+            if sys.platform == "win32":
+                # Delete the existing credential
+                CredentialManager._delete_credential(
+                    str(constants["ZoweServiceName"]), str(constants["ZoweAccountName"])
+                )
+            CredentialManager._set_credential(
+                str(constants["ZoweServiceName"]), str(constants["ZoweAccountName"]), encoded_credential
+            )
+
+    @staticmethod
+    def _get_credential(service_name: str, account_name: str) -> Optional[str]:
+        """
+        Retrieve the credential from the keyring or storage (in parts after maximum length).
+
+        Parameters
+        ----------
+        service_name: str
+            The service name for the credential retrieval
+        account_name: str
+            The account name of the credential
+
+        Returns
+        -------
+        Optional[str]
+            The retrieved encoded credential
+        """
+        encoded_credential: Optional[str] = keyring.get_password(service_name, account_name)
+        if encoded_credential is None and sys.platform == "win32":
+            # Retrieve the secure value with an index
+            index = 1
+            temp_value = keyring.get_password(service_name, f"{account_name}-{index}")
+            while temp_value is not None:
+                if encoded_credential is None:
+                    encoded_credential = temp_value
+                else:
+                    encoded_credential += temp_value
+                index += 1
+                temp_value = keyring.get_password(service_name, f"{account_name}-{index}")
+
+            if encoded_credential is not None and encoded_credential.endswith("\0"):
+                encoded_credential = encoded_credential[:-1]
+
+        return encoded_credential
+
+    @staticmethod
+    def _set_credential(service_name: str, account_name: str, encoded_credential: str) -> None:
+        # Check if the encoded credential exceeds the maximum length for win32
+        if sys.platform == "win32" and len(encoded_credential) > constants["WIN32_CRED_MAX_STRING_LENGTH"]:
+            # Split the encoded credential string into chunks of maximum length
+            chunk_size = int(constants["WIN32_CRED_MAX_STRING_LENGTH"])
+            encoded_credential += "\0"
+            chunks = [encoded_credential[i : i + chunk_size] for i in range(0, len(encoded_credential), chunk_size)]
+            # Set the individual chunks as separate keyring entries
+            for index, chunk in enumerate(chunks, start=1):
+                field_name = f"{account_name}-{index}"
+                keyring.set_password(service_name, field_name, chunk)
+
+        else:
+            # Credential length is within the maximum limit or not on win32, set it as a single keyring entry
+            keyring.set_password(service_name, account_name, encoded_credential)
+
+    @staticmethod
+    def _delete_credential(service_name: str, account_name: str) -> None:
+        """
+        Delete the credential from the keyring or storage.
+
+        If the keyring.delete_password function is not available, iterate through and delete credentials.
+
+        Parameters
+        ----------
+        service_name: str
+            The service name for the credential deletion
+        account_name: str
+            The account name for the credential deletion
+        """
+        keyring.delete_password(service_name, account_name)
+
+        # Handling multiple credentials stored when the operating system is Windows
+        if sys.platform == "win32":
+            index = 1
+            while True:
+                field_name = f"{account_name}-{index}"
+                if not keyring.delete_password(service_name, field_name):
+                    break
+                index += 1
