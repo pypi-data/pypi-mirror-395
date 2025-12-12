@@ -1,0 +1,63 @@
+[project]
+name = "confusius"
+version = "0.0.1"
+description = "Python package for analysis and visualization of functional ultrasound imaging data."
+readme = "README.rst"
+authors = [
+    { name = "Samuel Le Meur-Diebolt", email = "samuel@diebolt.io" }
+]
+requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+]
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.numpydoc_validation]
+exclude = [
+    '\.__init__$',
+    '\._.*$',
+]
+checks = [
+    "all",  # Report on all checks, except the below
+    "GL01",
+    "ES01",
+    "SA01",
+    "EX01",
+]
+numpydoc_validation_checks = ["all", "GL01", "ES01", "SA01", "EX01"]
+
+[[tool.uv.index]]
+# Use binary wheels for NumPy and SciPy that are liked to Inter's oneAPI MKL.
+url = "https://urob.github.io/numpy-mkl"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["src/confusius"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",                    # Show summary of all test outcomes.
+    "--strict-markers",       # Raise error on unknown markers.
+    "--strict-config",        # Raise error on config issues.
+    "--showlocals",           # Show local variables in tracebacks.
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "real_data: marks tests that require real data files",
+]
+
+[dependency-groups]
+dev = [
+    "numpydoc>=1.9.0",
+    "pydata-sphinx-theme>=0.16.1",
+    "pytest>=8.4.2",
+    "sphinx>=8.2.3",
+]
