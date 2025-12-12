@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "refseq-plasmid-dl"
+version = "0.1.0"
+description = "A command-line tool to download and curate RefSeq plasmid sequences from NCBI."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Erin Young", email = "eriny@utah.gov"},
+]
+keywords = ["bioinformatics", "ncbi", "plasmid", "refseq", "genomics"]
+
+# Dependencies derived from your imports in downloader.py and processor.py
+dependencies = [
+    "requests",          # downloader.py
+    "beautifulsoup4",    # downloader.py (bs4)
+    "tqdm",              # downloader.py & processor.py
+    "biopython",         # processor.py (Bio)
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/erinyoung/refseq-plasmid-dl"
+"Bug Tracker" = "https://github.com/erinyoung/refseq-plasmid-dl/issues"
+
+[project.scripts]
+# Command Name (terminal) = Package.Module:Function
+"refseq-plasmid-dl" = "refseq_plasmid_dl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]  # <--- This is the important change!
+include = ["refseq_plasmid_dl*"]
