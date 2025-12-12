@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-outline"
+description = "A Model Context Protocol (MCP) server for Outline (https://www.getoutline.com)"
+dynamic = ["version"]
+authors = [
+    {name = "Atle H. Havsø", email = "atle@havso.net"},
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license-files = ["LICENSE"]
+dependencies = [
+    "mcp[cli]>=1.20.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+mcp-outline = "mcp_outline.server:main"
+
+[project.urls]
+"Homepage" = "https://github.com/Vortiago/mcp-outline"
+"Bug Tracker" = "https://github.com/Vortiago/mcp-outline/issues"
+
+[project.optional-dependencies]
+dev = [
+    "mcp[cli]>=1.20.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.14.0",
+    "anyio>=4.11.0",
+    "pyright>=1.1.407",
+    "trio>=0.31.0",
+    "pre-commit>=4.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+markers = [
+    "integration: Integration tests that start the MCP server",
+]
+
+[tool.ruff]
+line-length = 79
+target-version = "py310"
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.setuptools_scm]
+# Use tags for versioning (requires annotated or lightweight tags)
+# Version format: vX.Y.Z or X.Y.Z
+# For dev versions: X.Y.Z.devN+gHASH
+fallback_version = "0.0.0"
+local_scheme = "no-local-version"  # Clean versions for PyPI
+
+[tool.pyright]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    "docs/"
+]
