@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "propagation-exporter"
+version = "0.8.0"
+description = "Systemd journal reader and exporter"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "systemd-python>=234",
+    "dnspython==1.15.0",
+    "PyYAML>=5.4.1,<6.0",
+    "prometheus-client>=0.1.0,<1.0",
+]
+
+[project.scripts]
+propagation-exporter = "propagation_exporter.cli:main"
+
+[tool.mypy]
+python_version = "3.8"
+strict = false
+
+[tool.coverage.run]
+omit = [
+    "propagation_exporter/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-timeout",
+    "flake8",
+    "mypy",
+    "types-PyYAML",
+]
