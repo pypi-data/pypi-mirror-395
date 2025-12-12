@@ -1,0 +1,345 @@
+from __future__ import annotations
+from functools import cache
+import re
+
+# Colors which can work with light and dark backgrounds
+# 1 is lighter, 2 is darker
+
+safeColors = {
+    'blue1': '#9090FF',
+    'blue2': '#6666E0',
+    'red1': '#FF9090',
+    'red2': '#E08080',
+    'green1': '#90FF90',
+    'green2': '#8080E0',
+    'magenta1': '#F090F0',
+    'magenta2': '#E080E0',
+    'cyan': '#70D0D0',
+    'grey1': '#BBBBBB',
+    'grey2': '#A0A0A0',
+    'grey3': '#909090',
+    'yellow1': '#ffcc00',
+    'yellow2': '#cccc00'
+}
+
+
+def luminosityFactor(color: tuple[float, float, float], factor: float
+                     ) -> tuple[float, float, float]:
+    """
+    Apply a factor to the lumunisity of color, clamps the value between 0 and 1
+
+    Args:
+        color: the color as RGB float
+        factor: the factor to apply
+
+    Returns:
+        the resulting color
+    """
+    import colorsys
+    r, g, b = color
+    c = colorsys.rgb_to_hls(r, g, b)
+    luminosity = c[1] * factor
+    luminosity = max(min(luminosity, 1), 0)
+    return colorsys.hls_to_rgb(c[0], luminosity, c[2])
+
+
+def lightenColor(color: tuple[float, float, float], amount: float
+                 ) -> tuple[float, float, float]:
+    """
+    Lightens the given color by multiplying (1-luminosity) by the given amount.
+
+    Input must be an RGB tuple where each channel is between 0 and 1
+
+    Args:
+        color: the color to lighten
+        amount: the amount, a value between 0 and 1
+
+    Returns:
+        the resulting color as a RGB float tuple
+
+    Example
+    ~~~~~~~
+
+        >>> lighten_color((.3,.55,.1), 0.5)
+    """
+    import colorsys
+    c = colorsys.rgb_to_hls(*color)
+    return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+
+
+def asrgb(color: str | tuple[float, float, float] | tuple[int, int, int]
+          ) -> tuple[float, float, float]:
+    """
+    Convert color to RGB if needed
+
+    Args:
+        color: a str color or a tuple like (200, 140, 18). If color already has
+            float values between 0 and 1 then it is returned unmodified
+
+    Returns:
+        an RGB tuple with float values between 0 and 1
+
+    """
+    if isinstance(color, tuple):
+        assert len(color) == 3
+        if all(isinstance(part, int) for part in color):
+            return (color[0] / 255, color[1] / 255, color[2] / 255)
+        elif all(isinstance(part, float) and 0 <= part <= 1
+                 for part in color):
+            return color
+        else:
+            raise ValueError(f"Not a valid color: {color}")
+    elif isinstance(color, str):
+        import matplotlib.colors as mplcolors
+        return mplcolors.to_rgb(color)
+    else:
+        raise ValueError(f"Not a valid color: {color}")
+
+
+def _isValidRGB(color) -> bool:
+    return (isinstance(color, tuple) and
+            len(color) == 3 and
+            all(isinstance(part, float) and 0 <= part <= 1 for part in color))
+
+
+def desaturate(color: tuple[float, float, float], factor: float
+               ) -> tuple[float, float, float]:
+    """
+    Decrease the saturation channel of a color by some percent.
+
+    Taken from seaborn.desaturate
+    (https://github.com/mwaskom/seaborn/blob/master/seaborn/utils.py)
+
+    Args:
+        color: the color to desaturate, as RGB float tuple
+        factor: the saturation channel will be multiplied by this factor
+
+    Returns:
+        the desaturated color as a float rgb tuple
+
+    """
+    import colorsys
+
+    # Check inputs
+    if not 0 <= factor <= 1:
+        raise ValueError("factor must be between 0 and 1")
+
+    if not _isValidRGB(color):
+        raise ValueError(f"Invalid color: {color}")
+
+    # Short circuit to avoid floating point issues
+    if factor == 1:
+        return color
+
+    # Convert to hls
+    hue, lum, sat = colorsys.rgb_to_hls(*color)
+
+    # Desaturate the saturation channel
+    sat *= factor
+
+    # Convert back to rgb
+    return colorsys.hls_to_rgb(hue, lum, sat)
+
+
+@cache
+def cssColors() -> dict[str, str]:
+    """
+    Returns a dictionary of all CSS named colors with their hex values.
+
+    Returns:
+        dict: A dictionary where keys are color names and values are hex color codes
+    """
+    return {
+        "aliceblue": "#f0f8ff",
+        "antiquewhite": "#faebd7",
+        "aqua": "#00ffff",
+        "aquamarine": "#7fffd4",
+        "azure": "#f0ffff",
+        "beige": "#f5f5dc",
+        "bisque": "#ffe4c4",
+        "black": "#000000",
+        "blanchedalmond": "#ffebcd",
+        "blue": "#0000ff",
+        "blueviolet": "#8a2be2",
+        "brown": "#a52a2a",
+        "burlywood": "#deb887",
+        "cadetblue": "#5f9ea0",
+        "chartreuse": "#7fff00",
+        "chocolate": "#d2691e",
+        "coral": "#ff7f50",
+        "cornflowerblue": "#6495ed",
+        "cornsilk": "#fff8dc",
+        "crimson": "#dc143c",
+        "cyan": "#00ffff",
+        "darkblue": "#00008b",
+        "darkcyan": "#008b8b",
+        "darkgoldenrod": "#b8860b",
+        "darkgray": "#a9a9a9",
+        "darkgrey": "#a9a9a9",
+        "darkgreen": "#006400",
+        "darkkhaki": "#bdb76b",
+        "darkmagenta": "#8b008b",
+        "darkolivegreen": "#556b2f",
+        "darkorange": "#ff8c00",
+        "darkorchid": "#9932cc",
+        "darkred": "#8b0000",
+        "darksalmon": "#e9967a",
+        "darkseagreen": "#8fbc8f",
+        "darkslateblue": "#483d8b",
+        "darkslategray": "#2f4f4f",
+        "darkslategrey": "#2f4f4f",
+        "darkturquoise": "#00ced1",
+        "darkviolet": "#9400d3",
+        "deeppink": "#ff1493",
+        "deepskyblue": "#00bfff",
+        "dimgray": "#696969",
+        "dimgrey": "#696969",
+        "dodgerblue": "#1e90ff",
+        "firebrick": "#b22222",
+        "floralwhite": "#fffaf0",
+        "forestgreen": "#228b22",
+        "fuchsia": "#ff00ff",
+        "gainsboro": "#dcdcdc",
+        "ghostwhite": "#f8f8ff",
+        "gold": "#ffd700",
+        "goldenrod": "#daa520",
+        "gray": "#808080",
+        "grey": "#808080",
+        "green": "#008000",
+        "greenyellow": "#adff2f",
+        "honeydew": "#f0fff0",
+        "hotpink": "#ff69b4",
+        "indianred": "#cd5c5c",
+        "indigo": "#4b0082",
+        "ivory": "#fffff0",
+        "khaki": "#f0e68c",
+        "lavender": "#e6e6fa",
+        "lavenderblush": "#fff0f5",
+        "lawngreen": "#7cfc00",
+        "lemonchiffon": "#fffacd",
+        "lightblue": "#add8e6",
+        "lightcoral": "#f08080",
+        "lightcyan": "#e0ffff",
+        "lightgoldenrodyellow": "#fafad2",
+        "lightgray": "#d3d3d3",
+        "lightgrey": "#d3d3d3",
+        "lightgreen": "#90ee90",
+        "lightpink": "#ffb6c1",
+        "lightsalmon": "#ffa07a",
+        "lightseagreen": "#20b2aa",
+        "lightskyblue": "#87cefa",
+        "lightslategray": "#778899",
+        "lightslategrey": "#778899",
+        "lightsteelblue": "#b0c4de",
+        "lightyellow": "#ffffe0",
+        "lime": "#00ff00",
+        "limegreen": "#32cd32",
+        "linen": "#faf0e6",
+        "magenta": "#ff00ff",
+        "maroon": "#800000",
+        "mediumaquamarine": "#66cdaa",
+        "mediumblue": "#0000cd",
+        "mediumorchid": "#ba55d3",
+        "mediumpurple": "#9370db",
+        "mediumseagreen": "#3cb371",
+        "mediumslateblue": "#7b68ee",
+        "mediumspringgreen": "#00fa9a",
+        "mediumturquoise": "#48d1cc",
+        "mediumvioletred": "#c71585",
+        "midnightblue": "#191970",
+        "mintcream": "#f5fffa",
+        "mistyrose": "#ffe4e1",
+        "moccasin": "#ffe4b5",
+        "navajowhite": "#ffdead",
+        "navy": "#000080",
+        "oldlace": "#fdf5e6",
+        "olive": "#808000",
+        "olivedrab": "#6b8e23",
+        "orange": "#ffa500",
+        "orangered": "#ff4500",
+        "orchid": "#da70d6",
+        "palegoldenrod": "#eee8aa",
+        "palegreen": "#98fb98",
+        "paleturquoise": "#afeeee",
+        "palevioletred": "#db7093",
+        "papayawhip": "#ffefd5",
+        "peachpuff": "#ffdab9",
+        "peru": "#cd853f",
+        "pink": "#ffc0cb",
+        "plum": "#dda0dd",
+        "powderblue": "#b0e0e6",
+        "purple": "#800080",
+        "red": "#ff0000",
+        "rosybrown": "#bc8f8f",
+        "royalblue": "#4169e1",
+        "saddlebrown": "#8b4513",
+        "salmon": "#fa8072",
+        "sandybrown": "#f4a460",
+        "seagreen": "#2e8b57",
+        "seashell": "#fff5ee",
+        "sienna": "#a0522d",
+        "silver": "#c0c0c0",
+        "skyblue": "#87ceeb",
+        "slateblue": "#6a5acd",
+        "slategray": "#708090",
+        "slategrey": "#708090",
+        "snow": "#fffafa",
+        "springgreen": "#00ff7f",
+        "steelblue": "#4682b4",
+        "tan": "#d2b48c",
+        "teal": "#008080",
+        "thistle": "#d8bfd8",
+        "tomato": "#ff6347",
+        "turquoise": "#40e0d0",
+        "violet": "#ee82ee",
+        "wheat": "#f5deb3",
+        "white": "#ffffff",
+        "whitesmoke": "#f5f5f5",
+        "yellow": "#ffff00",
+        "yellowgreen": "#9acd32",
+    }
+
+
+def hexToRgb(color: str) -> tuple[int, int, int]:
+    """
+    Convert a hex color to an RGB tuple.
+
+    Args:
+        color: String like '#FF5733', 'FF5733', '#f00', or 'f00'
+
+    Returns:
+        Tuple of (red, green, blue) values from 0-255
+    """
+    # Remove '#' if present
+    color = color.lstrip('#')
+
+    # Expand shorthand notation (e.g., 'f00' -> 'ff0000')
+    lencolor = len(color)
+    if lencolor == 3:
+        r, g, b = [int(ch, 16) for ch in color]
+    elif lencolor == 6:
+        r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
+    else:
+        raise ValueError(f"Invalid color: '{color}'")
+    return (r, g, b)
+
+
+def isValidHexColor(color: str) -> bool:
+    return re.match(r'#?([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})', color) is not None
+
+
+@cache
+def isValidCssColor(color: str) -> bool:
+    """
+    Is this a valid CSS color?
+
+    Args:
+        color: either a hex color like '#12ab0c' or a css named color
+
+    Returns:
+        True if *color* is a valid CSS color
+    """
+    if color[0] == "#":
+        return isValidHexColor(color)
+    else:
+        return color in cssColors()
