@@ -1,0 +1,93 @@
+{#
+SPDX-FileCopyrightText: Copyright (C) 2024 Martijn Saelens and Contributors to the project (https://github.com/MartenBE/mkslides/graphs/contributors)
+
+SPDX-License-Identifier: MIT
+#}
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+        {% if favicon %}
+            <link rel="icon" href="{{ favicon }}">
+        {% endif %}
+
+        <link rel="stylesheet" href="{{ revealjs_path }}/dist/reveal.css" />
+
+        {% if theme %}
+            <link rel="stylesheet" href="{{ theme }}" />
+        {% endif %}
+        {% if highlight_theme %}
+            <link rel="stylesheet" href="{{ highlight_theme }}" />
+        {% endif %}
+
+        {% for plugin in plugins %}
+            {% if plugin.extra_css %}
+                {% for css in plugin.extra_css %}
+                    <link rel="stylesheet" href="{{ css }}" />
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <section data-markdown
+                {% for key, value in markdown_data_options.items() %}
+                    {{ key }}="{{ value }}"
+                {% endfor %}
+                >
+                    <!-- The markdown must be placed to the whole left to prevent indentation issues like https://github.com/MartenBE/mkslides/issues/52 -->
+                    <textarea data-template>
+{{ markdown }}
+                    </textarea>
+                </section>
+            </div>
+        </div>
+        <script src="{{ revealjs_path }}/dist/reveal.js"></script>
+        <script src="{{ revealjs_path }}/plugin/highlight/highlight.js"></script>
+        <script src="{{ revealjs_path }}/plugin/markdown/markdown.js"></script>
+        <script src="{{ revealjs_path }}/plugin/math/math.js"></script>
+        <script src="{{ revealjs_path }}/plugin/notes/notes.js"></script>
+        <script src="{{ revealjs_path }}/plugin/search/search.js"></script>
+        <script src="{{ revealjs_path }}/plugin/zoom/zoom.js"></script>
+
+        {% if plugins %}
+            {% for plugin in plugins %}
+                {% if plugin.extra_javascript %}
+                    {% for javascript in plugin.extra_javascript %}
+                        <script src="{{ javascript }}"></script>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
+        <script>
+            Reveal.initialize({
+                {% if revealjs_config %}
+                    {% for key, value in revealjs_config.items() %}
+                        {{ key }}: {{ value | tojson | safe }},
+                    {% endfor %}
+                {% endif %}
+                plugins: [
+                    RevealMarkdown, // Must come before the other plugins so they can hook into the generated HTML.
+                    RevealHighlight,
+                    RevealMath.KaTeX,
+                    RevealNotes,
+                    RevealSearch,
+                    RevealZoom,
+
+                    {% if plugins %}
+                        {% for plugin in plugins %}
+                            {% if plugin.name %}
+                                {{ plugin.name }},
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                ],
+            });
+        </script>
+    </body>
+</html>

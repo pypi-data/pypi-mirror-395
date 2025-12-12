@@ -1,0 +1,121 @@
+# SPDX-FileCopyrightText: Copyright (C) 2024 Martijn Saelens and Contributors to the project (https://github.com/MartenBE/mkslides/graphs/contributors)
+#
+# SPDX-License-Identifier: MIT
+
+# https://packaging.python.org/en/latest/guides/writing-pyproject-toml
+
+[project]
+name = "mkslides"
+version = "2.0.15"
+description = "MkSlides - Slides with Markdown using the power of Reveal.js."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.14.2",
+    "click>=8.3.1",
+    "emoji>=2.15.0",
+    "jinja2>=3.1.6",
+    "jsonschema>=4.25.1",
+    "livereload>=2.7.1",
+    "markdown>=3.10",
+    "natsort>=8.4.0",
+    "omegaconf>=2.3.0",
+    "python-frontmatter>=1.1.0",
+    "pyyaml>=6.0.3",
+    "rich>=14.2.0",
+    "treelib>=1.8.0",
+    "types-beautifulsoup4>=4.12.0.20250516",
+    "types-markdown>=3.10.0.20251106",
+]
+license = "MIT"
+license-files = [
+    "LICENSES/*.txt"
+]
+
+authors = [
+  { name = "MartenBE" },
+]
+
+[project.urls]
+Homepage = "https://martenbe.github.io/mkslides"
+Repository = "https://github.com/MartenBE/mkslides"
+
+[dependency-groups]
+dev = [
+    "bumpver>=2025.1131",
+    "deepdiff>=8.6.1",
+    "mypy>=1.18.2",
+    "pytest>=9.0.1",
+    "reuse>=6.2.0",
+    "ruff>=0.14.5",
+    "types-pyyaml>=6.0.12.20250915",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.23,<0.9.0"]
+build-backend = "uv_build"
+
+[project.scripts]
+mkslides = "mkslides.__main__:cli"
+
+[tool.bumpver]
+current_version = "2.0.15"
+version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
+commit_message = "Bump version {old_version} to {new_version}"
+tag_message = "{new_version}"
+tag_scope = "default"
+pre_commit_hook = "cli-help-output-to-docs.py"
+post_commit_hook = ""
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"src/mkslides/__init__.py" = ['^__version__ = "{version}"']
+"pyproject.toml" = ['^version = "{version}"', '^current_version = "{version}"']
+
+[tool.pytest.ini_options]
+pythonpath = ["assets"]
+
+[tool.ruff.lint]
+ignore = [
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "D100",     # Missing docstring in public module
+    "D101",     # Missing docstring in public class
+    "D102",     # Missing docstring in public method
+    "D103",     # Missing docstring in public function
+    "D104",     # Missing docstring in public package"
+    "D107",     # Missing docstring in `__init__`
+    "D203",     # one-blank-line-before-class
+    "D212",     # multi-line-summary-first-line
+    "E501",     # Line too long
+    "ERA001",   # Found commented-out code
+    "FA100",    # Add `from __future__ import annotations` to simplify `typing.Optional`
+    "FA102",    # Missing `from __future__ import annotations`, but uses PEP 585 collection
+    "FBT001",   # Boolean-typed positional argument in function definition
+    "FIX002",   # Line contains TODO, consider resolving the issue
+    "G004",     # Logging statement uses f-string"
+    "PLR0913",  # Too many arguments in function definition
+    "RET504",   # Unnecessary assignment to `...` before `return` statement
+    "S101",     # Use of `assert` detected
+    "S603",     # `subprocess` call: check for execution of untrusted input
+    "S607",     # Starting a process with a partial executable path
+    "TD002",    # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
+    "TD003",    # Missing issue link on the line following this TODO
+    "TRY003",   # Avoid specifying long messages outside the exception class
+]
+select = ["ALL"]
+
+# https://github.com/astral-sh/ruff/issues/8794
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "INP001", # File `tests/test_preprocessors/replace_ats.py` is part of an implicit namespace package. Add an `__init__.py`.
+]
+"cli-help-output-to-docs.py" = [
+    "T201", # `print` found
+]
+
+[tool.uv.workspace]
+members = [
+    "mkslides",
+]
