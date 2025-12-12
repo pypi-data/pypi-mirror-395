@@ -1,0 +1,63 @@
+[tool.poetry]
+name = "fastapi-jwks"
+version = "2.0.0"
+description = "A library designed to facilitate the integration of JSON Web Key Set (JWKS) with FastAPI applications"
+license = "MIT"
+authors = ["bakdata"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.12"
+pydantic = "^2.7.1"
+fastapi = ">=0.111.0, <1.0"
+pyjwt = { extras = ["crypto"], version = "^2.8.0" }
+cachetools = "^5.3.3"
+types-cachetools = "^5.3.0.7"
+cryptography = "^44.0.2"
+httpx = ">=0.27.0, <1.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.2.0"
+ruff = "^0.13.0"
+pyright = "^1.1.386"
+pytest = "^8.3.3"
+pytest-asyncio = "^1.1.0"
+pytest-mock = "^3.14.0"
+pytest-clarity = "^1.0.1"
+pytest-cov = "^6.0.0"
+
+[tool.ruff]
+output-format = "grouped"
+show-fixes = true
+target-version = "py312"
+
+[tool.ruff.lint]
+# For a list of all possible rules visit https://docs.astral.sh/ruff/rules/
+select = [
+  "F", # Pyflakes
+  "E", # pycodestyle Errors
+  "W", # pycodestyle Warnings
+  "C90", # mccabe
+  "I", # isort
+  "UP", # pyupgrade
+  "B", # flake8-bugbear
+  "RUF", # Ruff-specific rules
+]
+ignore = [
+  # Rules in conflict with `ruff-format` -- START
+  "W191", # Checks for indentation that uses tabs. Spaces are preferred.
+  # "E111", # Checks for indentation with a non-multiple of 4 spaces, add when out of nursery
+  # "E114", # Checks for indentation of comments with a non-multiple of 4 spaces, add when out of nursery
+  # "E117", # Checks for over-indented code, add when out of nursery
+  "E501", # Line too long
+  # Rules in conflict with `ruff-format` -- END
+  "RUF012", # type class attrs with `ClassVar` -- Too strict/trigger-happy
+]
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = "--cov={fastapi_jwks} --cov-report term-missing"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
