@@ -1,0 +1,12 @@
+ChatWidget/
+├── ChatComponent.tsx          (主容器，状态管理)
+├── Header.tsx                 (标题栏组件)
+├── ConfigPanel.tsx            (配置面板组件)
+├── MessageList.tsx            (消息列表组件)
+├── MessageItem.tsx            (单条消息组件)
+├── InputArea.tsx              (输入区域组件)
+├── types.ts                   (类型定义，从原types.ts迁移相关类型)
+└── hooks/                     (自定义hooks)
+    ├── useChat.ts             (聊天相关逻辑)
+    ├── useStreaming.ts        (流式请求逻辑)
+    └── useScroll.ts           (滚动逻辑)
