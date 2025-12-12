@@ -1,0 +1,100 @@
+# A hatchling based setup module.
+#
+# See:
+# https://packaging.python.org/en/latest/
+# https://packaging.python.org/en/latest/tutorials/packaging-projects/
+# https://hatch.pypa.io/latest/
+#
+# releasing a next version on pypi:
+# 0. change uq_physicell/VERSION.py  # increase version number in file - # If there is no changes in the core module DO NOT CREATE A NEW VERSION
+# 1. Run bash doc/rebuild_docs.sh --clean # Update version on documentation
+# 2. Commit and push the changes
+# 3. Create a PR to development branch from your branch
+# Development branch
+# 4. Check if rebuild the documentation in : https://app.readthedocs.org/projects/uq-physicell/
+# Prepate to update pypi version
+# 5. rm -r dist # clean previous distribution
+# 6. python -m build --sdist  # make source distribution
+# 7. python -m build --wheel  # make binary distribution python wheel
+# 8. python -m twine upload dist/* --verbose # publising python package
+# 9. Change the badge of pypi on README.md https://badge.fury.io/py/uq-physicell.svg?updated=xxxxxxxx
+# 10. Pull request from dev to main
+# Main branch
+# 11. Create the release tag (make sure the release tag is vx.x.x to match with GitHub link from documentation)
+
+
+
+
+
+
+##### do not use conda env #######
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "uq_physicell"
+dynamic = ["version"]
+
+description = "Project to perform uncertainty quantification of PhysiCell models"
+readme = "README.md"
+
+requires-python = ">=3.10"
+
+license = {file = "uq_physicell/LICENSE.md"}
+
+authors = [
+    {name = "Heber L. Rocha", email = "heberonly@gmail.com"}
+]
+
+keywords = [
+    "Uncertainty Quantification",
+    "PhysiCell",
+    "Sensitivity Analysis",
+    "Calibration",
+    "Model selection",
+]
+
+dependencies = [
+    "pcdl",
+    "SALib",
+]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx>=5.0",
+    "sphinx-rtd-theme>=1.0", 
+    "myst-parser>=0.18",
+    "sphinx-autobuild>=2021.3.14",
+    "linkify-it-py>=2.0"
+]
+bo = [
+    "torch",
+    "botorch", 
+    "gpytorch"
+]
+abc = [
+    "pyabc"
+]
+
+[project.scripts]
+uq_physicell = "uq_physicell.gui.main_window:main"
+
+[project.urls]
+"Homepage" = "https://github.com/heberlr/UQ_PhysiCell"
+
+[tool.hatch.version]
+path = "uq_physicell/VERSION.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/man",
+    "/uq_physicell",
+    "/examples",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "/uq_physicell",
+]
