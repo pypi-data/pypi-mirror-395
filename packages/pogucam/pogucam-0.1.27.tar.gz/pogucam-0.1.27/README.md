@@ -1,0 +1,128 @@
+# pogucam - Poor Guy Camera
+
+## Overview
+
+pogucam is a simple camera utility that can read JPEG streams from an IP
+address, capture video from a local video device, or experimentally
+receive images from a local MQTT server.
+
+## Input Sources
+
+-   JPEG stream from IP address (default port 8000)
+-   Video device at /dev/videoX (default 0)
+-   Experimental: image topic from local MQTT server \'image/raw8000\'
+
+## Running pogucam
+
+Run pogucam from the command line with the following syntax:
+
+``` example
+pogucam [URL] [-r RESOLUTION] [-f FOURCC]
+
+Arguments:
+  URL           IP address or device path (default: 127.0.0.1)
+
+Options:
+  -r, --resolution RESOLUTION   Set resolution (default: 640x480)
+  -f, --fourcc FOURCC           Set pixel format: YUYV or MJPG (default: YUYV)
+
+Examples:
+  pogucam 192.168.1.10 -r 800x600 -f MJPG
+  pogucam /dev/video0
+ # for video 0 with resolution and mode
+  pogucam  0 -f YUYV -r 1920x1080
+```
+
+## Keypress Commands Summary
+
+-   S: Save image
+    -   S: save one image
+    -   Shift+S: toggle saving all images
+    -   Ctrl+Shift+S: toggle saving JPG format
+    -   Alt+S: toggle saving FITS only
+-   X: Switch resolution / extend image
+    -   X: toggle local 2x image extend
+    -   Shift+X: send remote switch~reson~ command
+    -   Ctrl+X: send remote switch~resoff~ command
+-   P: Toggle print text overlays
+    -   P: toggle terminal text
+    -   Shift+P: toggle overlay text
+-   E: Adjust exposure (remote)
+    -   E: increase exposure
+    -   Shift+E: decrease exposure
+    -   Ctrl+E: reset exposure
+-   G: Adjust gain (remote)
+    -   G: increase gain
+    -   Shift+G: decrease gain
+    -   Ctrl+G: reset gain
+-   Y: Adjust gamma (remote)
+    -   Y: increase gamma
+    -   Shift+Y: decrease gamma
+    -   Ctrl+Y: reset gamma
+-   D: Adjust local gamma
+    -   D: increase gamma
+    -   Shift+D: decrease gamma
+    -   Ctrl+D: reset gamma
+-   W: Open web browser to URL (local)
+-   Z: Zoom (local)
+    -   Z: zoom in
+    -   Shift+Z: zoom out
+    -   Ctrl+Z: reset zoom
+-   H, J, K, L: Move red cross (local) or send remote commands with
+    Ctrl+Shift
+-   V: Toggle green cross (remote)
+-   C: Toggle red cross (local)
+-   I: Integrate accumulate (local/remote)
+    -   I: increase integration
+    -   Shift+I: decrease integration
+    -   Ctrl+I: reset integration
+    -   Ctrl+Shift+I: toggle show accumulation buffer
+    -   Alt+I: toggle accumulation display mode (avg/sum)
+-   B: Background image operations (local/remote)
+-   F: Foreground image operations (local)
+-   R: Rotate image (local)
+-   1,2,3,4: Load/save configurations
+-   T: Test commands and timelapse (local/remote)
+-   A: Timelapse control (local)
+-   Esc or Q: Quit application
+
+## Notes
+
+-   Remote commands are sent via send~command~ with JSON data.
+-   Local commands affect display or saving behavior.
+-   Some commands print helpful info or ffmpeg usage hints.
+
+## MQTT
+
+There are mqtt functionalities in development:
+
+### Raw Image sent to mqtt
+
+Raw image means no jpg artifacts when YUYV mode is used. With the image
+to `image/raw8000`{.verbatim} topic (for now \[2025-07-25 Fri\]), other
+information is encoded and reported.
+
+``` example
+height, width = image.shape[:2]
+header = struct.pack(
+    '!HHQddIfff',
+    width,
+    height,
+    int(framenumber),
+    timestamp.timestamp(),
+    recording_started.timestamp(),
+    0,  # padding for alignment if needed
+    float(exposition),
+    float(gain),
+    float(gamma)
+)
+payload = header + image.tobytes()
+```
+
+### Accepting expo,gain,gamma commands
+
+Not
+
+### Hanging on topics to display widgets
+
+Not
