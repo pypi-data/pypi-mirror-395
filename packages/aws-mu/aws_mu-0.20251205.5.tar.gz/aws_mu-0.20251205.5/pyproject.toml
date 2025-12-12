@@ -1,0 +1,74 @@
+[build-system]
+requires = [
+    'hatchling',
+    'hatch-regex-commit',
+]
+build-backend = 'hatchling.build'
+
+
+[project]
+name = 'aws-mu'
+authors = [
+    {name = 'Randy Syring', email = 'randy.syring@level12.io'},
+]
+requires-python = '>=3.12'
+dynamic = ['version']
+readme = 'readme.md'
+dependencies = [
+    "arrow>=1.3.0",
+    "awsgi2>=1.0.2",
+    "blazeutils>=0.7.0",
+    "boto3>=1.38.34",
+    "click>=8.2.1",
+    "colorlog>=6.9.0",
+    "cryptography>=45.0.4",
+    "docker>=7.1.0",
+    "methodtools>=0.4.7",
+    "requests>=2.32.4",
+]
+
+
+[project.scripts]
+'mu' = 'mu.cli:cli'
+
+
+[dependency-groups]
+# Note: keeping Coppy deps grouped separate from app deps should help avoid unnecessary
+# conflicts when upgrading to the latest Coppy template.
+dev = [
+    # From Coppy:
+    {include-group = "tests"},
+    {include-group = "pre-commit"},
+    {include-group = "audit"},
+    {include-group = "nox"},
+    'click>=8.1.8',
+    'hatch>=1.14.0',
+    'ruff>=0.9.6',
+
+    # App specific:
+    # TODO: fill in app deps here
+]
+# Used by nox
+tests = [
+    # From Coppy:
+    'pytest>=8.3.4',
+    'pytest-cov>=6.0',
+
+    # App specific:
+    # TODO: fill in app deps here
+]
+# Used by nox
+pre-commit = [
+    # From Coppy:
+    'pre-commit>=4.1.0',
+    'pre-commit-uv>=4.1.4',
+]
+# Used by nox
+audit = [
+    # From Coppy:
+    'pip-audit>=2.8.0',
+]
+# Used by CI
+nox = [
+    'nox>=2025.2.9',
+]
