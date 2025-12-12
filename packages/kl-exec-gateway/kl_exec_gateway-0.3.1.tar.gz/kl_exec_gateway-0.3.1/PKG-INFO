@@ -1,0 +1,185 @@
+Metadata-Version: 2.4
+Name: kl-exec-gateway
+Version: 0.3.1
+Summary: Execution gateway and policy layer on top of KL Kernel Logic.
+Author: Lukas Pfister
+License: ﻿MIT License
+        
+        Copyright (c) 2025 KL Exec Gateway Contributors
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: typing-extensions>=4.0
+Requires-Dist: kl-kernel-logic==0.3.4
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn>=0.30.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Dynamic: license-file
+
+﻿# KL Exec Gateway
+
+**A small execution layer that lets you see and govern what an LLM actually does.**
+
+Most LLM calls are a black box:
+you send a prompt, something happens in between, and a result appears.
+
+You don't see the steps, the decisions, or the filters.
+
+**KL Exec Gateway makes the entire process visible.**
+
+It runs each request through a deterministic pipeline:
+
+```
+LLM → Policy → Sanitization → Formatting → Trace
+```
+
+Every step recorded.  
+Local. Reproducible. Inspectable.
+
+---
+
+## Try it in 10 seconds
+
+```bash
+pip install kl-exec-gateway
+kl-gateway-web
+# On first launch, the Browser will prompt you to enter your OpenAI API key.
+```
+
+Opens automatically at **http://localhost:8787**
+
+**You immediately see:**
+
+- Live pipeline execution with animation
+- what you sent to the model
+- what the model returned
+- which rules were applied
+- what was removed or transformed
+- the final output
+- the full step-by-step trace
+
+![KL Exec Gateway Pipeline](screenshots/pipeline-example-allow-deny.png)
+
+**Alternative: CLI mode**
+
+```bash
+kl-gateway --key "sk-..."
+```
+
+Interactive terminal chat with full trace logging.
+
+---
+
+## Examples
+
+### 1. Allowed
+
+A normal request flows through the entire pipeline:
+
+```
+hello
+```
+
+Result:
+
+```
+LLM → policy → sanitize → format → done
+```
+
+### 2. Denied after LLM (length limit)
+
+```
+tell me a love story
+```
+
+This usually produces a long answer that exceeds the default 500-character length policy:
+
+```
+LLM → policy (DENY_LENGTH) → done
+```
+
+### 3. Denied before LLM (forbidden pattern)
+
+If a request contains a forbidden pattern (configured in the policy engine), it is blocked before the model is even called:
+
+```
+my secret code
+```
+
+Result:
+
+```
+policy (DENY_PATTERN) → done
+```
+
+The LLM step is skipped entirely.
+
+---
+
+## Use cases
+
+- enforce policies on LLM output
+- remove or mask sensitive data
+- analyse model behaviour
+- build safe internal tools
+- reproduce responses
+- explain decisions to auditors or teams
+
+Simple building blocks. All deterministic (except the LLM call).
+
+---
+
+## Configuration
+
+Default limits: 500 characters, basic pattern blocking.
+
+To adjust:
+
+- Edit `policy.config.json` (policy limits)
+- Edit `pipeline.config.json` (pipeline steps, logging, trace)
+- Use templates: `configs/production.config.json`, `configs/compliance-gdpr.config.json`
+
+---
+
+## Documentation
+
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** – how the pipeline works
+- **[docs/USAGE.md](docs/USAGE.md)** – examples and recipes
+- **[docs/THEORY_ALIGNMENT.md](docs/THEORY_ALIGNMENT.md)** – how it maps to KL Execution Theory
+
+---
+
+## About the KL Execution Model
+
+This project demonstrates how deterministic execution, policy evaluation and step-level traces can be composed into a practical LLM gateway.
+
+It uses **[KL Kernel Logic](https://github.com/lukaspfisterch/kl-kernel-logic)** as its underlying execution substrate.
+
+For details on how the gateway maps to the execution axioms, see **[docs/THEORY_ALIGNMENT.md](docs/THEORY_ALIGNMENT.md)**.
+
+---
+
+## License
+
+[MIT](LICENSE)
