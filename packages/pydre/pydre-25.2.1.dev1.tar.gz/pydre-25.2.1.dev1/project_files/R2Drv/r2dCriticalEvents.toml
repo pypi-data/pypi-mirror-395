@@ -1,0 +1,61 @@
+[config]
+outputfiles = "R2Drv_Metrics_CriticalEvent.csv"
+datafiles = ["E:/work/data/R2Dclean/*.dat"]
+
+[filters.SimTimeFromDatTime]
+function = "SimTimeFromDatTime"
+
+[filters.FixReversedRoadLinearLand]
+function = "FixReversedRoadLinearLand"
+
+[filters.MergeCriticalEventPositions]
+function = "MergeCriticalEventPositions"
+dataFile = 'C:\Users\Owner\Desktop\work\bama_work\internal_code\osu\merge_data\r2dEventPositions_uab_1.2.csv'
+
+[rois.roi1]
+type = "column"
+columnname = "CriticalEventNum"
+
+[metrics.R2DIDColumns]
+function = "R2DIDColumns"
+
+[metrics.CriticalEventStart]
+function = "colMin"
+var = "XPos"
+
+[metrics.CriticalEventEnd]
+function = "colMax"
+var = "XPos"
+
+[metrics.EventName]
+function = "colFirst"
+var = "EventName"
+
+[metrics.maxAcceleration]
+function = "maxAcceleration"
+
+[metrics.rxnTimeBrake]
+function = "timeToOutsideThreshold"
+var = "Brake"
+threshold_high = 5.0
+
+[metrics.rxnTimeThrottle]
+function = "timeToOutsideThreshold"
+var = "Throttle"
+threshold_low = 1.4
+
+[metrics.rxnTimeLaneOffset]
+function = "timeToOutsideThreshold"
+var = "LaneOffset"
+threshold_high = 0.5
+threshold_low = -0.5
+
+[metrics.maxLaneDeviation]
+function = "colMax"
+var = "LaneOffset"
+
+[metrics.timeToVeloRecovery]
+function = "eventSpeedRecoveryTime"
+
+[metrics.timeToPosRecovery]
+function = "eventRecenterRecoveryTime"
