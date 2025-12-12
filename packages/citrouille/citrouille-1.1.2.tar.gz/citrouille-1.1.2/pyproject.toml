@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "citrouille"
+version = "1.1.2"
+description = "CLI tool to identify security issues on Kubernetes at the deployment level, compare namespaces for green/blue cycles, and reduce time-to-recovery "
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Chelsea486MHz", email = "mail@chelsea486mhz.fr"}
+]
+keywords = ["kubernetes", "devops", "devsecops", "seceng", "secops"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Systems Administration"
+]
+
+dependencies = [
+    "kubernetes>=34.1.0",
+    "pyyaml>=6.0.3"
+]
+
+[project.scripts]
+citrouille = "citrouille.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Chelsea486MHz/citrouille"
+Issues = "https://github.com/Chelsea486MHz/citrouille/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--cov=src",
+    "--cov-report=term-missing"
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py314"]
+exclude = '''
+/(
+    \.git
+  | venv
+  | microservices-demo
+)/
+'''
