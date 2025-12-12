@@ -1,0 +1,250 @@
+Metadata-Version: 2.4
+Name: cmconfig
+Version: 1.14.2
+Summary: Command line tool to control and configure Capture Modules
+Author-email: Ayoub Kaanich <ayoub.kaanich@technica-engineering.de>
+License: ## License Agreement
+        
+        **IMPORTANT:** THIS END-USER LICENSE AGREEMENT (\"EULA\") IS A LEGAL
+        AGREEMENT BETWEEN YOU AND TECHNICA ENGINEERING GMBH. BY USING THE
+        SOFTWARE, WHICH IS SUPPLIED WITH THIS LICENSE AGREEMENT FOR END-USERS,
+        YOU ARE EXPRESSING YOUR CONSENT TO ITS TERMS. IF YOU DO NOT AGREE WITH
+        THEM, DO NOT INSTALL AND / OR USE THIS SOFTWARE.
+        
+        BY INSTALLING, COPYING OR OTHERWISE USING THE SOFTWARE, YOU AGREE TO BE
+        BOUND BY THE TERMS AND CONDITIONS OF THIS EULA.
+        
+        **1**. **LICENSE GRANT.** You may install and use a limited number of
+        copies of the Software on different computers. You accept that after the
+        license expiration time the Software may stop being functional. The user
+        undertakes to treat the software confidentially and not to disclose or
+        make it accessible to a third party in any other way and to take all
+        reasonable measures to prevent that.
+        
+        **2. PROPERTY**. The software and its copyright are owned by Technica
+        Engineering GmbH. Your license does not convey any document or ownership
+        of the software and should not be construed as a sale of the software's
+        rights.
+        
+        **3. COPYRIGHT.** The software and, without exception, all proprietary
+        rights are owned by Technica Engineering GmbH or its suppliers and are
+        protected by all applicable copyright laws and international treaties as
+        well as other intellectual property and commercial contracts. The
+        software is licensed, not sold.
+        
+        You acknowledge that no intellectual property rights to the Software
+        have been transferred to you. In addition, you acknowledge that the
+        copyrights and proprietary rights to the software remain the exclusive
+        property of Technica Engineering GmbH and you will not be granted any
+        rights to the software other than the rights expressly defined in this
+        license.
+        
+        **4. REVERSE ENGINEERING**. You agree that you will not attempt to
+        decompile, disassemble, modify or translate the Software as a whole or
+        in part.
+        
+        **5. WARRANTY DISCLAIMER.** There is no guarantee for the software to
+        the extent permitted by the law. Unless otherwise stated in writing, the
+        copyright owners and / or a third party make the software \"as is\"
+        without implying any warranty, either express or implied, including,
+        without limitation, the implied warranties of merchantability or fitness
+        for a particular purpose. The full risk of the quality and performance
+        of the software lies with you. If the software proves to be faulty, the
+        costs for the necessary service, repair or correction are at your
+        disposal.
+        
+        The user is free to use the software in the provided form or not. A
+        liability of Technica Engineering GmbH for defects of the software does
+        not exist.
+        
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+# Capture Module Configurator
+
+You can think of this tool as `ipconfig` or `ifconfig` but for Capture Modules.
+
+It allows to list, configure and flash connected devices from the command line.
+
+## Usage
+
+Install using python package manager
+```bash
+pip install cmconfig
+```
+
+Depending on your Python installation
+```bash
+cmconfig --help
+```
+or
+```bash
+python3 -m cmconfig --help
+```
+
+## Download Devices Configuration
+This will download the configurations to the current directory
+```bash
+cmconfig pull
+```
+
+## Upload Devices Configuration
+This will look for all `*.cfg` files and upload them to their respective devices
+```bash
+cmconfig push
+```
+
+This will upload the file `configuration_file.cfg` to its device
+```bash
+cmconfig push configuration_file.cfg
+```
+
+## Update Devices Firmware
+This will look up all the CAN Combos connected in the system, and flash them with the provided firmware package
+```bash
+cmconfig flash CM_CAN_Combo_Evo_v020.007.030--revb51a51fb8.zip
+```
+
+## List connected devices
+```bash
+cmconfig devices
+```
+
+Sample output
+```
+┌──────────────────┬──────────────┬───────────────────┬────────────┬────────────┬────────────┬──────────┐
+│ name             │ ip           │ mac               │ sw_version │ hw_version │ product_id │ config   │
+├──────────────────┼──────────────┼───────────────────┼────────────┼────────────┼────────────┼──────────┤
+│ EES RJ45         │ 10.0.0.220   │ 38:2A:19:00:51:B2 │ 10.3       │ 2.0.0      │ 2002       │ factory  │
+│ ILaS Sniffer     │ 10.104.3.122 │ 38:2A:19:80:71:46 │ 99.99      │ 3.1        │ 1180       │ factory  │
+│ CM 100 High TC10 │ 10.104.3.97  │ 38:2A:19:80:6F:8A │ 5.15       │ 4.0        │ 1172       │ factory  │
+│ CM MultiGigabit  │ 10.104.3.224 │ 38:2A:19:80:7E:F9 │ 9.4        │ 2.0        │ 1191       │ factory  │
+│ CM CAN Combo     │ 10.104.3.64  │ 38:2A:19:00:48:01 │ 21.7.130   │ 3.3        │ 1171       │ Default  │
+│ CM LIN Combo     │ 10.104.3.48  │ 38:2A:19:00:14:FD │ 30.8.40    │ 3.1        │ 1170       │ Default  │
+│ CM Eth Combo     │ 10.104.3.128 │ 38:2A:19:00:37:3A │ 30.6.40    │ 3.1        │ 1175       │ Default  │
+│ CM 100 High      │ 10.104.3.96  │ 38:2A:19:00:1C:CC │ 30.5.40    │ 3.1        │ 1173       │ Default  │
+│ CM 1000 High     │ 10.104.3.144 │ 38:2A:19:80:8A:46 │ 30.2.40    │ 5.3        │ 1176       │ Default  │
+└──────────────────┴──────────────┴───────────────────┴────────────┴────────────┴────────────┴──────────┘
+```
+
+## List interfaces of connected devices
+```bash
+cmconfig interfaces
+```
+Sample output
+```
+┌────────┬──────┬─────────────────┬───────┬──────────┬────────┬──────────────┬──────────────┬──────────────┐
+│ dev_id │ port │ name            │ label │   inf_id │ linkup │           rx │           tx │          err │
+├────────┼──────┼─────────────────┼───────┼──────────┼────────┼──────────────┼──────────────┼──────────────┤
+│ 64     │ HO   │ HOST            │       │          │ N      │   1208033313 │            0 │            0 │
+│ 64     │ BT   │ 100BaseT1-A     │       │          │ N      │    473747792 │            0 │            0 │
+│ 64     │ GA   │ GB-A            │       │          │ Y      │           64 │            0 │            0 │
+│ 64     │ A    │ CAN-A           │       │          │        │            0 │            0 │            0 │
+│ 64     │ B    │ CAN-B           │       │          │        │            0 │            0 │            0 │
+│ 64     │ C    │ CAN-C           │       │          │        │            0 │            0 │            0 │
+│ 64     │ D    │ CAN-D           │       │          │        │            0 │            0 │            0 │
+│ 64     │ E    │ CAN-E           │       │          │        │            0 │            0 │            0 │
+│ 64     │ F    │ CAN-F           │       │          │        │            0 │            0 │            0 │
+│ 64     │ FR   │ FlexRay         │       │          │        │            0 │            0 │            0 │
+│ 64     │ S2   │ RS 232-B        │       │          │        │            0 │            0 │            0 │
+│ 64     │ S1   │ RS 232-A        │       │          │        │            0 │            0 │            0 │
+└────────┴──────┴─────────────────┴───────┴──────────┴────────┴──────────────┴──────────────┴──────────────┘
+```
+
+## Run command on specific devices
+
+Multiple commmands accept the `--device` option, to limit the command to run on the specified device.
+
+Examples
+```bash
+# List interfaces for specific device
+cmconfig interfaces --device 10.104.3.48
+
+# Pull configuration of specific device
+cmconfig pull --device 10.104.3.128
+
+# Flash specific device
+cmconfig flash CM_CAN_Combo_Evo_v020.007.030--revb51a51fb8.zip --device 10.104.3.64
+```
+
+## Patch device configuration
+
+This command allows you to apply changes to device configuration, use cases include but not limited to
+* Enable/Disable filters
+* Enable/Disable interfaces
+
+The command assumes you are familiar with the device JSON configuration format.
+
+Example
+```bash
+# Format: --replace key=value
+# Where key: JSON Pointer (RFC 6901)
+#       value: new value of config
+
+# Change interface id
+cmconfig patch --replace /port/3/CAN-A/BusSpecPartId=1610 --device 10.104.3.64
+# Change multiple properties at the same time
+cmconfig patch --replace /port/3/CAN-A/canType=ISO_FD --replace /port/4/CAN-B/canType=CAN_ACTIVE --device 10.104.3.64
+```
+
+## Serial communication with Media Converters
+
+### Open interactive shell
+
+Example (replace COM5 with your actual device port name)
+```bash
+cmconfig serial --device COM5 shell
+```
+
+### Run one command and return
+
+```bash
+cmconfig serial --device COM5 run tc10 status
+```
+
+## TC10 Commands
+
+TC10 commands are supported for below products
+
+| Product Id | Product Name                | Note                                |
+| ---------- | --------------------------- | ----------------------------------- |
+| TE-1200    | NI 10BASE-T1S               | Requires HW 3.1 and firmware `R6.2` |
+| TE-1405    | MC 1000BASE-T1 MATEnet TC10 |                                     |
+| TE-1406    | MC 1000BASE-T1 H-MTD TC10   |                                     |
+| TE-1415    | MC MultiGigabit             |                                     |
+| TE-1416    | MC MultiGigabit             |                                     |
+
+Examples
+
+```bash
+# Trigger wakeup on specific port
+cmconfig tc10 --port COM8/T1 wakeup
+# See status of all ports
+cmconfig tc10 status
+```
+
+## Integration with other tools
+
+Previous commands output is designed for human friendly visualization
+You can use the below command to get a JSON machine friendly output
+Note that the output of this command is subject to change in the future.
+```bash
+# Generate JSON to standard output
+cmconfig topology
+
+# Run in the background a REST API server
+# REST API documentation (in the format of Swagger Documentation) is available at the chosen server URL
+cmconfig topology --server http://localhost:8080
+```
+
+## Environment variables
+
+### HTTP Proxy
+* `cmconfig` discards `http_proxy` environment variable when communicating with the devices, this is by design as devices are typically directly connected to the system.
+* `https_proxy` environment variable is used when downloading the firmware from the cloud using `cmconfig flash --online`
+
+### CMCONFIG_ASKPASS
+
+When using `cmconfig push`, `cmconfig patch` or `cmconfig password`, you may specify in the variable `CMCONFIG_ASKPASS` the path to a program that will provide the password, this is similar in semantics to `SSH_ASKPASS` and `GIT_ASKPASS`.
+
+The program specified by the variable `CMCONFIG_ASKPASS` is invoked. A suitable prompt is provided to the program on the command line, and the password is read from its standard output.

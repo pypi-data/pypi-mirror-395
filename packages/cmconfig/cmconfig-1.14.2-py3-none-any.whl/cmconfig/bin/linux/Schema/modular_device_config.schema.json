@@ -1,0 +1,205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "ports": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "base.schema.json#/definitions/PortType"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/ModularModulePortConfig"
+        }
+      }
+    },
+    "ptp": {
+      "type": "object",
+      "properties": {
+        "enable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enable"
+      ]
+    },
+    "macsec": {
+      "type": "object",
+      "properties": {
+        "enable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enable"
+      ]
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "ip4_address": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "tecmp_id": {
+          "type": "integer"
+        }
+      }
+    },
+    "power": {
+      "type": "object",
+      "properties": {
+        "prevent_sleep": {
+          "type": "boolean"
+        },
+        "actuators": {
+          "type": "array",
+          "items": {
+            "type": "boolean"
+          }
+        },
+        "force_time": {
+          "type": "integer"
+        },
+        "sleep_time": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "prevent_sleep",
+        "actuators",
+        "force_time",
+        "sleep_time"
+      ]
+    },
+    "file": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "version": {
+          "type": "object",
+          "properties": {
+            "major": {
+              "type": "integer"
+            },
+            "minor": {
+              "type": "integer"
+            },
+            "product_family": {
+              "type": "integer"
+            },
+            "product_id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "major",
+            "minor"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "date",
+        "version"
+      ]
+    }
+  },
+  "required": [
+    "ports",
+    "network",
+    "file"
+  ],
+  "definitions": {
+    "ModularModulePortConfig": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enable": {
+          "type": "boolean"
+        },
+        "awake": {
+          "type": "boolean"
+        },
+        "if_id": {
+          "type": "integer"
+        },
+        "mode": {
+          "type": "integer"
+        },
+        "ptp": {
+          "type": "object",
+          "properties": {
+            "enable": {
+              "type": "boolean"
+            },
+            "partition": {
+              "type": "integer"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "ptp_type": {
+              "description": "Used by CM SENSE",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "enable"
+          ]
+        },
+        "te_module": {
+          "type": "object",
+          "properties": {
+            "speed": {
+              "type": "integer"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "legacy": {
+              "type": "boolean"
+            },
+            "override_dip": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "speed",
+            "master",
+            "legacy",
+            "override_dip"
+          ]
+        },
+        "jumbo": {
+          "type": "boolean"
+        },
+        "macsec": {
+          "type": "object",
+          "properties": {
+            "enable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enable"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  }
+}

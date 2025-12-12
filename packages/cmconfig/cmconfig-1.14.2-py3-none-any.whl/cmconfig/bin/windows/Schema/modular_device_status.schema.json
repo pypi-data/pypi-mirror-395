@@ -1,0 +1,175 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "ports": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "base.schema.json#/definitions/PortType"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/ModularModulePortStatus"
+        }
+      }
+    },
+    "license_info": {
+      "$ref": "#/definitions/LicenseInformation"
+    },
+    "monitor": {
+      "type": "object",
+      "properties": {
+        "tstamp": {
+          "type": "integer"
+        },
+        "temperature": {
+          "type": "integer"
+        },
+        "vbattery": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "temperature",
+        "vbattery"
+      ]
+    }
+  },
+  "required": [
+    "ports",
+    "license_info",
+    "monitor"
+  ],
+  "definitions": {
+    "LicenseInformation": {
+      "type": "object",
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "license.schema.json#/definitions/LicenseFeature"
+          }
+        }
+      },
+      "required": [
+        "features"
+      ],
+      "additionalProperties": false
+    },
+    "ModularModulePortStatus": {
+      "type": "object",
+      "properties": {
+        "inserted": {
+          "type": "boolean"
+        },
+        "linkup": {
+          "type": "boolean"
+        },
+        "linkQuality": {
+          "type": "integer"
+        },
+        "speed": {
+          "type": "integer"
+        },
+        "master": {
+          "type": "boolean"
+        },
+        "full": {
+          "type": "boolean"
+        },
+        "tc10": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "number"
+            }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "description": "Used by HS/LS variants",
+          "properties": {
+            "config_done": {
+              "type": "boolean"
+            },
+            "config_error": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
+            ]
+          }
+        },
+        "statistics": {
+          "description": "Used by EES and LORIS",
+          "type": "object",
+          "properties": {
+            "bytes": {
+              "$ref": "#/definitions/StatisticsCount"
+            },
+            "packets": {
+              "$ref": "#/definitions/StatisticsCount"
+            }
+          },
+          "required": [
+            "bytes",
+            "packets"
+          ]
+        }
+      }
+    },
+    "StatisticsCount": {
+      "type": "object"
+    },
+    "EesStatisticsCount": {
+      "type": "object",
+      "properties": {
+        "totaltx": {
+          "description": "TotalTx",
+          "type": "integer"
+        },
+        "totalrx": {
+          "type": "integer"
+        },
+        "totalbadrx": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "totaltx",
+        "totalrx",
+        "totalbadrx"
+      ]
+    },
+    "LorisStatisticsCount": {
+      "type": "object",
+      "properties": {
+        "total_tx": {
+          "type": "integer"
+        },
+        "total_rx": {
+          "type": "integer"
+        },
+        "total_bad_rx": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total_tx",
+        "total_rx",
+        "total_bad_rx"
+      ]
+    }
+  }
+}
