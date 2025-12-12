@@ -1,0 +1,514 @@
+/*******************************
+         Theme Overrides
+ *******************************/
+
+@import "@less/invenio_app_rdm/theme/collections/menu.overrides";
+
+/* -------------- */
+/* header styling */
+/* -------------- */
+
+/* note: stickies have a z-index of about 800 in semantic-ui per default */
+header {
+  position: sticky;
+  top: 0px;
+  z-index: 1000;
+  flex: 0 0 auto;
+}
+
+header .ui.menu {
+  box-shadow: none; /* remove the shadow interfering with the burger menu (semantic-ui-less) */
+}
+
+/* prevent the administration ".ui.menu" from being limited */
+#user-profile-menu.ui.menu {
+  height: auto;
+}
+
+nav.outer-navbar {
+  /* prevent default navbar styling (app-rdm) */
+  background: white;
+  display: flex;
+  height: 50px;
+  padding: 0;
+  flex: 1;
+}
+
+/*
+ * make the header flexible enough to fit the navigation menu
+ * and potentially the staging warning before it
+ *
+ * the '!important' on the margin is needed because semantic-ui
+ * wants to force a @mobileGutter margin on mobile screens otherwise
+ */
+header.ui.menu.container {
+  flex-wrap: wrap;
+  height: fit-content;
+  width: 100%;
+  margin: 0 !important;
+}
+
+.navbar.head {
+  display: none;
+}
+
+#mobile-menu-darkener {
+  display: none;
+}
+
+/* the container for the header navigation menu */
+header #invenio-nav.ui.menu {
+  height: 50px;
+  width: auto;
+  flex: auto;
+  padding: 0;
+
+  /* show the menu on mobile; the "active" class gets toggled by the burger button */
+  &.active {
+    position: fixed;
+    top: 0px;
+    bottom: 0;
+    height: auto;
+    flex-direction: column;
+    min-width: 20em;
+
+    #rdm-burger-menu-icon {
+      display: none !important; /* override inline style set by JS (app-rdm) */
+    }
+
+    .navbar.head {
+      background: #006699;
+      display: flex;
+
+      /* render the "close mobile menu" button when the menu is active */
+      #rdm-close-burger-menu-icon {
+        display: block; /* for some reason, other values mess up the sizing of .navbar.head */
+        height: 50px;
+        width: 50px;
+        border-right: 1px solid @dividerColor;
+
+        img {
+          width: 100%;
+        }
+      }
+    }
+
+    /* mobile menu entries should be laid out as a column */
+    #invenio-menu {
+      display: flex;
+      flex-direction: column;
+      background-color: @invertedBackground; /* mobile sidebar color */
+      margin-left: 0 !important; /* remove auto left margin from .right.menu (semantic-ui-less) */
+      flex: 1; /* stretch to avoid clicks on the darkener */
+      overflow: scroll;
+
+      .item {
+        font-size: 14px;
+        padding: 26px 30px;
+        border-bottom: 1px solid @invertedDividerColor;
+        color: @invertedTextColor;
+        &:hover,
+        &::selection {
+          background: @invertedHighlightBackground;
+        }
+      }
+
+      /* dropdown in mobile sidebar, e.g. account stuff */
+      .ui.dropdown {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+
+        /* dropdown heading */
+        span {
+          width: 100%;
+          padding: 26px 30px;
+        }
+        &.active span {
+          border-bottom: 1px solid @invertedDividerColor;
+        }
+
+        /* dropdown item container & items */
+        .menu {
+          background: inherit;
+          position: static;
+
+          .item {
+            color: inherit !important;
+            padding: 16px 22px !important;
+
+            &:last-child {
+              border-bottom: none;
+            }
+          }
+        }
+      }
+    }
+
+    /* darken the background when the mobile menu is open */
+    #mobile-menu-darkener {
+      display: initial;
+      position: absolute;
+      height: 100vh;
+      width: 100vw;
+      background: black;
+      filter: opacity(0.5);
+      z-index: -1;
+    }
+
+    /* keep the signet all the way to the right */
+    + #signet {
+      margin-left: auto;
+    }
+  }
+}
+
+/* add back left padding on first/last item (app-rdm) */
+#invenio-nav.ui.menu .item {
+  &:last-of-type,
+  &:first-of-type {
+    padding: @itemVerticalPadding @itemHorizontalPadding;
+  }
+}
+
+#signet {
+  width: 60px;
+  height: 60px;
+  margin: 5px;
+  flex: 0 0 auto;
+}
+
+.right.menu > a.item {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.right.menu > div.dropdown.item {
+  letter-spacing: 0.1em;
+}
+
+/* login button on mobile and desktop */
+.login {
+  width: 190px;
+  height: 100%;
+
+  background-color: @primaryColor !important;
+  color: lightgrey !important;
+  text-transform: none !important;
+
+  font-size: 14px;
+  justify-content: center;
+  align-items: center;
+
+  display: flex;
+
+  /* fix the login segment for local login not being shown on small screens */
+  &.segment {
+    display: flex !important;
+  }
+}
+
+.login:hover {
+  color: @white !important;
+}
+
+.submenu-header {
+  font-size: @fontSize;
+}
+
+/* the nav-icon is the homebrew burger icon on mobile */
+#rdm-burger-toggle {
+  /* unset upstream positioning (app-rdm) */
+  position: static;
+  transform: unset;
+
+  /* override default button styling */
+  #rdm-burger-menu-icon {
+    background-color: @invertedBackground; /* mobile sidebar color */
+    display: block !important; /* override inline style set by JS (app-rdm) */
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    height: 50px;
+    width: 50px;
+  }
+}
+
+#rdm-burger-toggle span {
+  display: block;
+  position: absolute;
+  height: 2px;
+  width: 26px;
+  background: lightgrey;
+  opacity: 1;
+  left: 12px;
+  transform: rotate(0deg);
+  transition: 0.3s ease-in-out;
+}
+
+#rdm-burger-toggle span:nth-child(1) {
+  top: 16px;
+}
+
+#rdm-burger-toggle span:nth-child(2) {
+  top: 23px;
+  width: 20px;
+}
+
+#rdm-burger-toggle span:nth-child(3) {
+  top: 30px;
+}
+
+#rdm-burger-toggle.open span:nth-child(1) {
+  top: 22px;
+  transform: rotate(135deg);
+}
+
+#rdm-burger-toggle.open span:nth-child(2) {
+  opacity: 0;
+}
+
+#rdm-burger-toggle.open span:nth-child(3) {
+  top: 22px;
+  transform: rotate(-135deg);
+}
+
+/* -------------- */
+/* footer styling */
+/* -------------- */
+
+/*
+ * Note: we begin with footer mobile styling first, then we alter it
+ * accordingly as the screen size increases.
+ */
+footer {
+  display: grid;
+  grid-template-rows: repeat(2, auto);
+  grid-template-columns: repeat(1, 1fr);
+  row-gap: 3em;
+  align-items: center;
+  justify-content: center;
+  background-color: #006699;
+  font-size: 17px;
+
+  /* remove underline from footer lines on hover, darken them instead */
+  #links-container,
+  #logos-container {
+    a:hover {
+      color: lightgray;
+      text-decoration: none;
+      transition-timing-function: ease-in;
+    }
+  }
+}
+
+/*
+ * Used to form small grid containers; in our case forms a small grid
+ * for footer logos and navigation wrappers.
+ */
+.grid-container {
+  display: grid;
+  grid-template-rows: repeat(2, auto);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-items: center;
+  text-align: center;
+}
+
+#logos-container {
+  margin-top: 30px;
+  row-gap: 3rem;
+
+  a {
+    color: @white;
+
+    img {
+      display: block;
+      max-width: 150px;
+      max-height: 40px;
+      margin: auto;
+    }
+  }
+}
+
+#links-container {
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0;
+  row-gap: 1rem;
+
+  a {
+    color: @white;
+    text-align: center;
+    font-size: 1em;
+    font-family: @headerFont;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 10px;
+  }
+}
+
+/*
+ * Tablet screens are wide enough to accomodate 5 columns of logos
+ * and links on each row.
+ */
+@media only screen and (min-width: @tabletBreakpoint) {
+  .grid-container {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  #logos-container {
+    // Reset row gaps from the mobile layout.
+    row-gap: normal;
+  }
+
+  #links-container {
+    row-gap: normal;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .row-border {
+    border-top: 1px solid #0a7aa8;
+  }
+}
+
+/*
+ * Min width before which the footer link text starts wrapping (due
+ * to 5 logos, 5 links and margins). This is visually not nice, so
+ * we flow with columns in every child grid on widths less than this
+ * threshold (see above). The threshold should be reviewed if more
+ * logos and/or links are added, as well as if the links' text is
+ * modified (more letters take naturally more space).
+ */
+@media only screen and (min-width: @largeMonitorBreakpoint) {
+  footer {
+    grid-template-rows: none;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    justify-content: space-between;
+  }
+  .grid-container {
+    grid-template-rows: none;
+    grid-template-columns: none !important;
+    grid-auto-flow: column;
+  }
+
+  #logos-container {
+    margin: 20px 50px;
+    column-gap: 60px;
+    text-align: left;
+
+    a {
+      margin: 10px 0;
+    }
+  }
+
+  #links-container {
+    margin-right: 50px;
+    margin-bottom: 0;
+  }
+}
+
+/* ----------------------------- */
+/* different styling for desktop */
+/* ----------------------------- */
+
+@media only screen and (min-width: @computerBreakpoint) {
+  nav.outer-navbar {
+    height: 70px;
+    div#invenio-nav.ui.menu {
+      position: static; /* prevent setting of 'top' value from having an effect on desktop */
+      height: 70px;
+    }
+  }
+
+  #rdm-burger-toggle {
+    display: none;
+  }
+
+  #rdm-close-burger-menu-icon {
+    display: none;
+  }
+
+  .navbar.head,
+  a.login {
+    display: flex;
+  }
+
+  .right.menu > a.item {
+    transition: color 0.3s;
+  }
+
+  .right.menu > div.dropdown.item {
+    font-size: 19px;
+    display: flex !important;
+    transition: color 0.3s;
+  }
+
+  #signet {
+    margin-top: 15px;
+    margin-right: 15px;
+    margin-left: 50px;
+    width: 95px;
+    height: 95px;
+  }
+
+  nav.footer {
+    width: auto;
+    margin-right: 50px;
+  }
+
+  nav.footer a {
+    width: auto;
+  }
+
+  #logos {
+    width: auto;
+    margin-left: 50px;
+  }
+
+  .supportlogo {
+    margin: 10px 30px 10px 30px;
+  }
+}
+
+/* ------------- */
+/* miscellaneous */
+/* ------------- */
+
+.ui.menu .item.active {
+  font-weight: bold;
+}
+
+/* for the additional infos box on the landing page */
+.ui.attached {
+  border-radius: 0;
+
+  &.top {
+    border-radius: 0 0 0 0;
+
+    .item:first-child {
+      border-radius: 0 0 0 0;
+    }
+
+    .item:last-child {
+      border-radius: 0 0 0 0;
+    }
+  }
+
+  &.bottom {
+    border-radius: 0 0 0 1;
+  }
+}
+
+/* for the left box on the profile pages, because otherwise it lacks a border */
+.invenio-page-body .ui.menu.fluid {
+  border: 1px solid @borderColor;
+
+  :first-child {
+    border-bottom: 1px solid @borderColor;
+  }
+}
+
+/* vim: set ft=less: */
