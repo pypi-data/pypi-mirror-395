@@ -1,0 +1,187 @@
+[project]
+name = "tomwer"
+dynamic = ["version"]
+authors = [
+    { name = "Henri Payno", email = "henri.payno@esrf.fr" },
+    { name = "Pierre Paleo", email = "pierre.paleo@esrf.fr" },
+    { name = "Pierre-Olivier Autran", email = "pierre-olivier.autran@esrf.fr" },
+    { name = "Jérôme Lesaint", email = "jerome.lesaint@esrf.fr" },
+    { name = "Alessandro Mirone", email = "mirone@esrf.fr" }
+]
+description = "Tomography workflow tools"
+readme = { file = "README.rst", content-type = "text/x-rst" }
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["orange3 add-on", "ewoks"]
+classifiers = [
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Environment :: X11 Applications :: Qt",
+    "Operating System :: POSIX",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+dependencies = [
+    "numpy",
+    "setuptools",
+    "psutil",
+    "silx[full]>=2.1.1",
+    "tomoscan>=2.2.0a6",
+    "nxtomo>2.0.0dev2",
+    "nxtomomill>=2.0.0dev0",
+    "processview>=1.5.0",
+    "ewoks>=0.1.1",
+    "ewokscore>=1.5,<2.0",
+    "sluurp>=0.4.1",
+    "packaging",
+    "pint",
+    "tqdm",
+    "eval_type_backport; python_version < '3.10'",
+]
+
+[project.optional-dependencies]
+full_base = [
+    "orange-canvas-core",
+    "orange-widget-base",
+    "ewoks[orange]>=0.1.1",
+    "ewoksorange>=0.7.0rc0,<2.0",
+    "fabio",
+    "h5py>=3",
+    "lxml",
+    "werkzeug",
+    "json-rpc",
+    "scipy",
+    "Pillow",
+    "resource",
+    "tifffile",
+    "hdf5plugin",
+    "pyicat_plus",
+    "ewoksnotify[full]<0.2",
+    "pyicat_plus",
+    "rsyncmanager",
+    "blissdata",
+]
+full_no_cuda = [
+    "tomwer[full_base]",
+    "nabu>=2024.2.0"
+]
+full = [
+    "tomwer[full_base]",
+    "nabu[full]>=2024.2.0",
+    "pycuda<2024.1.1",
+    "scikit-cuda"
+]
+doc = [
+    "tomwer[full_no_cuda]",
+    "Sphinx>=4.0.0",
+    "nbsphinx",
+    "pandoc",
+    "jupyterlab",
+    "pydata_sphinx_theme",
+    "sphinx-design",
+    "sphinx-autodoc-typehints",
+    "sphinxcontrib-programoutput",
+    "sphinxcontrib-youtube",
+    "myst-parser",
+]
+dev_spec = [
+    "black",
+    "flake8",
+    "timeout-decorator",
+    "pyopencl"
+]
+dev = [
+    "tomwer[full]",
+    "tomwer[dev_spec]"
+]
+dev_no_cuda = [
+    "tomwer[full_no_cuda]",
+    "tomwer[dev_spec]"
+]
+test = [
+    "tomwer[full_no_cuda]",
+    "pytest-asyncio",
+    "tomoscan[test]>=2.2.0a6",
+]
+
+[project.urls]
+Homepage = "https://gitlab.esrf.fr/tomotools/tomwer"
+Documentation = "https://tomotools.gitlab-pages.esrf.fr/tomwer/"
+Repository = "https://gitlab.esrf.fr/tomotools/tomwer"
+Issues = "https://gitlab.esrf.fr/tomotools/tomwer/-/issues"
+Changelog = "https://gitlab.esrf.fr/tomotools/tomwer/-/blob/main/CHANGELOG.rst?ref_type=heads"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "numpy>=1.12"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = { attr = "tomwer.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+tomwer = "tomwer.__main__:main"
+
+[project.entry-points."orange3.addon"]
+tomwer-add-on = "orangecontrib.tomwer:addon"
+
+[project.entry-points."orange.widgets"]
+tomwer = "orangecontrib.tomwer.widgets"
+
+[project.entry-points."orangecanvas.examples"]
+tomo_examples = "orangecontrib.tomwer.examples"
+
+[project.entry-points."orange.widgets.tutorials"]
+tomo_tutorials = "orangecontrib.tomwer.tutorials"
+tomo_tutorials_id16b = "orangecontrib.tomwer.tutorials.id16b"
+
+[project.entry-points."orange.canvas.help"]
+html-index = "orangecontrib.tomwer.widgets:WIDGET_HELP_PATH"
+
+[project.entry-points."ewoks.tasks.class"]
+"tomwer.tasks.*.*" = "tomwer"
+
+[tool.setuptools.package-data]
+"tomwer.resources" = [
+    "gui/icons/*.png",
+    "gui/icons/*.svg",
+    "gui/icons/*.npy",
+    "gui/illustrations/*.svg",
+    "gui/illustrations/*.png"
+]
+"orangecontrib.tomwer" = [
+    "tutorials/*.ows",
+    "tutorials/id16b/*.ows",
+    "widgets/icons/*.png",
+    "widgets/icons/*.svg",
+    "widgets/cluster/icons/*.png",
+    "widgets/cluster/icons/*.svg",
+    "widgets/control/icons/*.png",
+    "widgets/control/icons/*.svg",
+    "widgets/deprecated/icons/*.png",
+    "widgets/deprecated/icons/*.svg",
+    "widgets/debugtools/icons/*.png",
+    "widgets/debugtools/icons/*.svg",
+    "widgets/edit/icons/*.png",
+    "widgets/edit/icons/*.svg",
+    "widgets/dataportal/icons/*.png",
+    "widgets/dataportal/icons/*.svg",
+    "widgets/reconstruction/icons/*.png",
+    "widgets/reconstruction/icons/*.svg",
+    "widgets/visualization/icons/*.png",
+    "widgets/visualization/icons/*.svg",
+    "widgets/other/icons/*.png",
+    "widgets/other/icons/*.svg"
+]
+
+[tool.sphinx]
+source-dir = "./doc"
+
+[tool.coverage.run]
+omit = ["setup.py", "*/test/*"]
