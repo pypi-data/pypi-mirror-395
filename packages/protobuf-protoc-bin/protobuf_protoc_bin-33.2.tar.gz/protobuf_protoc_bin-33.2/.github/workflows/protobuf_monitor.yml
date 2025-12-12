@@ -1,0 +1,62 @@
+#
+# Periodic check of the official Protobuf repo that will mirror new releases with new tags here.
+#
+
+name: Protobuf Monitor
+
+on:
+    # Allow manual trigger:
+    workflow_dispatch:
+    # Check every morning at 6 for new Protoc releases:
+    schedule:
+        - cron: "49 5 * * *"
+
+jobs:
+    find_releases:
+        name: Find releases
+        runs-on: ubuntu-latest
+
+        steps:
+
+            - uses: actions/github-script@v7
+              with:
+                  # Use a custom Personal Access Token (over the default `GITHUB_TOKEN`) as otherwise it cannot
+                  # trigger new workflows.
+                  github-token: ${{ secrets.CUSTOM_PAT }}
+                  script: |
+                      // Get a full list of all protoc releases:
+                      const releases_all = await github.paginate(github.rest.repos.listReleases, {
+                          owner: "protocolbuffers",
+                          repo: "protobuf",
+                      });
+                      const protoc_tags = releases_all.map(rel => rel["tag_name"]);
+                      console.log("Protoc releases:", protoc_tags)
+                      
+                      // Now get a full list of all of our own tags:
+                      const our_tags_all = await github.paginate(github.rest.repos.listTags, {
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                      });
+                      const our_tags = our_tags_all.map(tag => tag["name"]);
+                      console.log("Our tags:", our_tags)
+                      
+                      // Find which tags still need to be created (skipping super old releases):
+                      date_minimum = Date.parse("2024-01-01T00:00:00");
+                      let new_tags = [];
+                      for (release of releases_all) {
+                          const tag = release["tag_name"];
+                          if (Date.parse(release["created_at"]) >= date_minimum && !our_tags.includes(tag)) {
+                              new_tags.push(tag);
+                          }
+                      }
+                      console.log("New tags to be made:", new_tags)
+                      
+                      // Create light-weight tags in our repo:
+                      for (tag of new_tags) {
+                          const result = await github.rest.git.createRef({
+                              owner: context.repo.owner,
+                              repo: context.repo.repo,
+                              ref: "refs/tags/" + tag,
+                              sha: context.sha
+                          })
+                      }
