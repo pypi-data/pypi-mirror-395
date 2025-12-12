@@ -1,0 +1,136 @@
+Metadata-Version: 2.4
+Name: openshift-python-scale-utilities
+Version: 0.1.1.5
+Summary: OpenShift Python Scale Utilities
+Project-URL: homepage, https://github.com/redhat-vmeperf/openshift-python-scale-utilities
+Project-URL: Download, https://pypi.org/project/openshift-python-scale-utilities/
+Project-URL: Bug Tracker, https://github.com/redhat-vmeperf/openshift-python-scale-utilities/issues
+Author-email: Sarah Bennert <sarahbx@redhat.com>
+Maintainer-email: Sarah Bennert <sarahbx@redhat.com>
+License-Expression: Apache-2.0
+License-File: LICENSE
+Keywords: Kubevirt,Openshift,Openshift Virtualization
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.12.0
+Requires-Dist: openshift-python-utilities>=6.0.0
+Requires-Dist: openshift-python-wrapper>=11.0.44
+Requires-Dist: pytest-order>=1.3.0
+Requires-Dist: pytest>=8.3.3
+Requires-Dist: python-simple-logger~=2.0.9
+Requires-Dist: timeout-sampler>=1.0.1
+Description-Content-Type: text/markdown
+
+# openshift-python-scale-utilities
+
+Pypi: [openshift-python-scale-utilities](https://pypi.org/project/openshift-python-scale-utilities/)
+
+Utilities to assist in scaling [openshift-python-wrapper](https://github.com/RedHatQE/openshift-python-wrapper) resources
+
+## ocp_scale_utilities.threaded
+
+Utilizes [ThreadPoolExecutor](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.ThreadPoolExecutor)
+to operate on many resources in parallel across multiple threads.
+
+
+### Usage
+```
+from ocp_resources.virtual_machine import VirtualMachine
+from ocp_scale_utilities.threaded.utils import (
+    threaded_deploy_resources,
+    threaded_delete_resources,
+    threaded_wait_deleted_resources,
+)
+from ocp_scale_utilities.threaded.scale import ThreadedScaleResources
+
+# Create iterable of VirtualMachine python objects to deploy
+# Be sure to use deepcopy() when passing dicts to objects to avoid collisions
+vms = [VirtualMachine(..., body=deepcopy(body))]
+
+# Option A:
+
+def funcA():
+    threaded_deploy_resources(resources=vms)
+    yield vms
+    threaded_delete_resources(resources=vms)
+    threaded_wait_deleted_resources(resources=vms)
+
+# Option B:
+
+def funcB():
+    with ThreadedScaleResources(resources=vms, wait_for_status=VirtualMachine.Status.RUNNING):
+        yield vms
+```
+
+## ocp_scale_utilities.monitoring
+
+`MonitorResourceAPIServerRequests` provides a way to monitor a specific resource to determine if it is being actively used.  
+This allows the ability to wait for resources to settle after a major scale action,
+improving reliability, and increasing readability in prometheus data.
+
+### Usage
+
+```
+from ocp_resources.virtual_machine import VirtualMachine
+from ocp_scale_utilities.monitoring import MonitorResourceAPIServerRequests
+from ocp_scale_utilities.threaded.scale import ThreadedScaleResources
+from ocp_utilities.monitoring import Prometheus
+
+monitor_api_requests = MonitorResourceAPIServerRequests(
+    prometheus=Prometheus(...),
+    resource_class=VirtualMachine,
+    idle_requests_value=float(...),  # Based on apiserver_request_total metric
+)
+
+monitor_api_requests.wait_for_idle()
+with ThreadedScaleResources(resources=vms):
+    monitor_api_requests.wait_for_idle()
+    yield vms
+monitor_api_requests.wait_for_idle()
+
+```
+## ocp_scale_utilities.logger
+
+Logging at scale requires utilizing logging.QueueHandlers to avoid logging to closed streams.
+
+```
+ root QueueHandler ┐                         ┌> StreamHandler
+                   ├> Queue -> QueueListener ┤
+basic QueueHandler ┘                         └> FileHandler
+```
+
+### Usage
+`main.py`
+```
+import logging
+from ocp_scale_utilities.logger import setup_logging
+
+from module import func
+
+LOGGER = None
+
+def main():
+    LOGGER.warning("main logged warning message")
+    func()
+
+if __name__ == "__main__":
+    log_listener = setup_logging(log_level=logging.WARNING, log_file="/tmp/example.log")
+    LOGGER = logging.getLogger(__name__)
+    main()
+    log_listener.stop()
+```
+`module.py`
+```
+import logging
+LOGGER = logging.getLogger(__name__)
+
+def func():
+    LOGGER.warning("func logged warning message")
+```
+
+## Contributing
+
+Please use pre-commit to check the code before commiting
+```
+pre-commit install
+```
