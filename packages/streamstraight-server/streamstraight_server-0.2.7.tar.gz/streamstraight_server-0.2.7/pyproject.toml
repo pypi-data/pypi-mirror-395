@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamstraight-server"
+version = "0.2.7"
+description = "Python server SDK for streaming data into Streamstraight."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "Streamstraight", email = "support@streamstraight.com" },
+]
+keywords = ["streaming", "socket.io", "websockets", "sdk", "llm", "streamstraight"]
+dependencies = [
+  "httpx>=0.27,<0.29",
+  "aiohttp>=3.9",
+  "python-socketio>=5.11.0,<6",
+  "anyio>=4.0",
+  "typing-extensions>=4.8; python_version < '3.11'",
+]
+
+[project.urls]
+Homepage = "https://www.streamstraight.com"
+Documentation = "https://docs.streamstraight.com"
+Repository = "https://github.com/streamstraight/streamstraight"
+Issues = "https://github.com/streamstraight/streamstraight/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["streamstraight_server*"]
+
+[tool.setuptools.package-data]
+streamstraight_server = ["py.typed"]
+
+[tool.uv]
+managed = true
+package = true
+
+[tool.uv.sources]
+streamstraight-server = { path = "." }
+
+[tool.uv.pip]
+no-index = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+plugins = ["pydantic.mypy"]
+strict = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["socketio", "socketio.*"]
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.6",
+  "mypy>=1.10",
+  "pydantic>=2.11.9",
+  "twine>=6.2.0",
+]
