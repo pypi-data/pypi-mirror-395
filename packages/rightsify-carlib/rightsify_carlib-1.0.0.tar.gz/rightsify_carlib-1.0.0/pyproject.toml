@@ -1,0 +1,121 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rightsify-carlib"
+dynamic = ["version"]
+description = "Dataset to CAR format conversion library and CLI tool for efficient neural network training"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Rightsify", email = "dev@rightsify.com"},
+]
+maintainers = [
+    {name = "Rightsify Development Team", email = "dev@rightsify.com"},
+]
+keywords = [
+    "machine learning",
+    "neural networks", 
+    "dataset conversion",
+    "car format",
+    "data preprocessing",
+    "audio processing",
+    "image processing",
+    "video processing",
+    "webdataset",
+    "hdf5",
+    "tfrecord",
+    "encodec",
+    "compression",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Video",
+    "Topic :: System :: Archiving :: Compression",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "torch>=1.9.0",
+    "torchaudio>=0.9.0",
+    "transformers>=4.20.0",
+    "PyYAML>=5.4.0",
+    "tqdm>=4.60.0",
+    "numpy>=1.19.0",
+]
+
+[project.optional-dependencies]
+webdataset = ["webdataset>=0.2.0"]
+hdf5 = ["h5py>=3.0.0"]
+tfrecord = ["tensorflow>=2.8.0"]
+all = [
+    "webdataset>=0.2.0",
+    "h5py>=3.0.0",
+    "tensorflow>=2.8.0",
+]
+dev = [
+    "pytest>=6.0.0",
+    "pytest-cov>=2.10.0",
+    "black>=21.0.0",
+    "flake8>=3.8.0",
+    "mypy>=0.800",
+    "twine>=3.0.0",
+    "wheel>=0.36.0",
+    "build>=0.7.0",
+]
+
+[project.scripts]
+carlib = "carlib.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/rightsify/carlib"
+"Bug Reports" = "https://github.com/rightsify/carlib/issues"
+Source = "https://github.com/rightsify/carlib"
+Documentation = "https://github.com/rightsify/carlib/blob/main/README.md"
+Repository = "https://github.com/rightsify/carlib.git"
+Changelog = "https://github.com/rightsify/carlib/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["carlib"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+carlib = ["configs/*.yaml", "configs/*.md"]
+
+[tool.setuptools.dynamic]
+version = {attr = "carlib.__version__"}
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=carlib --cov-report=html --cov-report=term"
