@@ -1,0 +1,46 @@
+[project]
+name = "eida-statistics-aggregator"
+version = "0.8.0"
+description = "Aggregates and anonymize data distribution logs from seiscomp, ready to be sent to the central EIDA KPI service."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.3.1",
+    "fdsnnetextender>=5.0.2",
+    "mmh3>=5.2.0",
+    "python-hll2>=2.0.1",
+    "python-magic>=0.4.27",
+    "requests>=2.32.5",
+]
+
+
+[project.scripts]
+eida_stats_aggregator = "eida_statistics_aggregator.aggregator:cli"
+
+
+[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
+
+[dependency-groups]
+dev = [
+    "genbadge[coverage]>=1.1.3",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+    "tox>=4.32.0",
+]
+
+[tool.pytest]
+minversion = "9.0"
+python_files = ["*_tests.py", "test_*.py", "tests/*.py"]
+# log_cli = true
+
+[tool.ruff]
+lint.select = ["ALL"]
+lint.ignore = [
+  "ANN", # Any-type
+  "COM812", # Missing-trailing-comma
+  "D",      # Docstrings stuff. Ignore for now
+  "ISC001", # As demanded by ruff format
+]
+output-format = "concise"
