@@ -1,0 +1,201 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Any
+
+import pytest
+import requests.exceptions
+from dirty_equals import IsPartialDict, IsStr
+from inline_snapshot import snapshot
+from opentelemetry._logs import LogRecord, SeverityNumber, get_logger, get_logger_provider
+from opentelemetry.sdk._logs import ReadableLogRecord
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogRecordExporter,
+    LogRecordExporter,
+    LogRecordExportResult,
+    SimpleLogRecordProcessor,
+)
+from opentelemetry.sdk.resources import Resource
+
+import logfire
+from logfire import suppress_instrumentation
+from logfire._internal.exporters.otlp import QuietLogExporter
+from logfire.testing import TestLogExporter
+
+
+def test_otel_logs_supress_scopes(logs_exporter: InMemoryLogRecordExporter, config_kwargs: dict[str, Any]) -> None:
+    record = LogRecord(
+        timestamp=1,
+        observed_timestamp=2,
+        severity_text='INFO',
+        severity_number=SeverityNumber.INFO,
+        body='body',
+        attributes={'key': 'value'},
+    )
+
+    logfire.suppress_scopes('scope1')
+    logger1 = get_logger('scope1')
+    logger2 = get_logger('scope2')
+    logfire.suppress_scopes('scope2')
+    logger1.emit(record)
+    logger2.emit(record)
+    assert not logs_exporter.get_finished_logs()
+
+    logs_exporter = InMemoryLogRecordExporter()
+    config_kwargs['advanced'].log_record_processors = [SimpleLogRecordProcessor(logs_exporter)]
+    logfire.configure(**config_kwargs)
+
+    logger1 = get_logger('scope1')
+    logger2 = get_logger('scope2')
+    logger3 = get_logger('scope3')
+    logger1.emit(record)
+    logger2.emit(record)
+    assert not logs_exporter.get_finished_logs()
+
+    logger3.emit(record)
+    with suppress_instrumentation():
+        logger3.emit(record)
+    [log_data] = logs_exporter.get_finished_logs()
+    assert log_data.log_record == record
+    assert log_data.instrumentation_scope
+    assert log_data.instrumentation_scope.name == 'scope3'
+
+
+def test_otel_logs_min_level(config_kwargs: dict[str, Any]) -> None:
+    logs_exporter = InMemoryLogRecordExporter()
+    config_kwargs['min_level'] = 'error'
+    config_kwargs['advanced'].log_record_processors = [SimpleLogRecordProcessor(logs_exporter)]
+    logfire.configure(**config_kwargs)
+
+    logger = get_logger('scope')
+    logger.emit(LogRecord(severity_number=SeverityNumber.DEBUG))
+    logger.emit(LogRecord(severity_text='info'))
+    logger.emit(LogRecord(severity_number=SeverityNumber.ERROR))
+    logger.emit(LogRecord(severity_text='FATAL'))
+    logger.emit(LogRecord(severity_text='unknown'))
+    assert [
+        (log.log_record.severity_number, log.log_record.severity_text) for log in logs_exporter.get_finished_logs()
+    ] == snapshot(
+        [
+            (SeverityNumber.ERROR, None),
+            (SeverityNumber.FATAL, 'FATAL'),
+            (None, 'unknown'),
+        ]
+    )
+
+
+def test_get_logger_provider() -> None:
+    logger_provider = get_logger_provider()
+    config = logfire.DEFAULT_LOGFIRE_INSTANCE.config
+    assert logger_provider is config.get_logger_provider()
+    resource = logger_provider.resource  # type: ignore
+    assert isinstance(resource, Resource)
+    assert get_logger('scope').resource is resource  # type: ignore
+
+
+def test_log_events(logs_exporter: TestLogExporter) -> None:
+    logger = get_logger('scope')
+    with logfire.span('span'):
+        record = LogRecord(
+            event_name='my_event',
+            timestamp=2,
+            severity_number=SeverityNumber.INFO,
+            body='body',
+            attributes={'key': 'value'},
+        )
+        logger.emit(record)
+
+    assert logs_exporter.exported_logs_as_dicts(include_resources=True, include_instrumentation_scope=True) == snapshot(
+        [
+            {
+                'body': 'body',
+                'severity_number': 9,
+                'severity_text': None,
+                'attributes': IsPartialDict({'key': 'value'}),
+                'timestamp': 2000000000,
+                'observed_timestamp': 3000000000,
+                'trace_id': 1,
+                'span_id': 1,
+                'trace_flags': 1,
+                'resource': {
+                    'attributes': {
+                        'service.instance.id': '00000000000000000000000000000000',
+                        'telemetry.sdk.language': 'python',
+                        'telemetry.sdk.name': 'opentelemetry',
+                        'telemetry.sdk.version': '0.0.0',
+                        'service.name': 'unknown_service',
+                        'process.pid': 1234,
+                        'process.runtime.name': 'cpython',
+                        'process.runtime.version': IsStr(),
+                        'process.runtime.description': IsStr(),
+                        'service.version': IsStr(),
+                    },
+                },
+                'instrumentation_scope': 'scope',
+            }
+        ]
+    )
+
+
+def test_quiet_log_exporter(caplog: pytest.LogCaptureFixture):
+    class ConnectionErrorExporter(LogRecordExporter):
+        shutdown_called = False
+
+        def shutdown(self):
+            self.shutdown_called = True
+
+        def export(self, batch: Sequence[ReadableLogRecord]):
+            raise requests.exceptions.ConnectionError()
+
+    connection_error_exporter = ConnectionErrorExporter()
+    exporter = QuietLogExporter(connection_error_exporter)
+
+    assert exporter.export([]) == LogRecordExportResult.FAILURE
+    assert not caplog.messages
+
+    assert not connection_error_exporter.shutdown_called
+    exporter.shutdown()
+    assert connection_error_exporter.shutdown_called
+
+
+def test_log_events_with_kwargs(logs_exporter: TestLogExporter) -> None:
+    logger = get_logger('scope')
+    with logfire.span('span'):
+        logger.emit(
+            event_name='my_event',
+            timestamp=2,
+            severity_number=SeverityNumber.INFO,
+            body='body',
+            attributes={'key': 'value'},
+        )
+
+    assert logs_exporter.exported_logs_as_dicts(include_resources=True, include_instrumentation_scope=True) == snapshot(
+        [
+            {
+                'body': 'body',
+                'severity_number': 9,
+                'severity_text': None,
+                'attributes': IsPartialDict({'key': 'value'}),
+                'timestamp': 2000000000,
+                'observed_timestamp': 3000000000,
+                'trace_id': 1,
+                'span_id': 1,
+                'trace_flags': 1,
+                'resource': {
+                    'attributes': {
+                        'service.instance.id': '00000000000000000000000000000000',
+                        'telemetry.sdk.language': 'python',
+                        'telemetry.sdk.name': 'opentelemetry',
+                        'telemetry.sdk.version': '0.0.0',
+                        'service.name': 'unknown_service',
+                        'process.pid': 1234,
+                        'process.runtime.name': 'cpython',
+                        'process.runtime.version': IsStr(),
+                        'process.runtime.description': IsStr(),
+                        'service.version': IsStr(),
+                    },
+                },
+                'instrumentation_scope': 'scope',
+            }
+        ]
+    )
