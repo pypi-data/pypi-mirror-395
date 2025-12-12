@@ -1,0 +1,134 @@
+Metadata-Version: 2.4
+Name: huayi-mcp
+Version: 0.1.10
+Summary: Huayi MCP Servers
+Author: Chen Zhongrun
+Requires-Python: >=3.13.0
+Requires-Dist: anyio>=4.5
+Requires-Dist: click>=8.2.0
+Requires-Dist: hatchling>=1.28.0
+Requires-Dist: httpx>=0.27
+Requires-Dist: mcp
+Requires-Dist: starlette
+Requires-Dist: uvicorn
+Description-Content-Type: text/markdown
+
+# Huayi MCP Server
+
+一个基于 Model Context Protocol (MCP) 的服务器项目，用于与花集通 API 进行交互，提供用户自配送次数查询等功能。
+
+## 什么是 MCP？
+
+**Model Context Protocol (MCP)** 是由 Anthropic 推出的开放协议，旨在标准化大语言模型（LLM）与外部数据源和工具的集成方式。
+
+### MCP 的核心概念
+
+- **统一接口**：为 LLM 提供标准化的方式来访问各种外部系统、数据库、API 和工具
+- **客户端-服务器架构**：MCP 服务器暴露功能（tools、resources、prompts），LLM 应用作为客户端调用
+- **安全性**：提供结构化的方式管理权限和数据访问
+- **可扩展性**：开发者可以创建自定义 MCP 服务器来集成任何外部系统
+
+### MCP 的优势
+
+1. **减少重复开发**：一次开发，多个 LLM 应用可复用
+2. **标准化集成**：遵循统一协议，降低集成复杂度
+3. **增强 LLM 能力**：让 LLM 可以访问实时数据、执行操作、调用外部服务
+
+## 项目功能
+
+本项目实现了一个 MCP 服务器，提供以下功能：
+
+### 支持的传输协议
+
+- **stdio**：标准输入输出，适用于本地集成
+- **streamable-http**：流式 HTTP 传输，适用于 Web 服务
+- **sse**：Server-Sent Events，适用于实时推送场景
+
+## 开发环境设置
+
+### 环境要求
+
+- Python 3.13.0
+- UV（Python 包管理工具）
+
+### 安装依赖
+
+```bash
+# 使用 uv 安装依赖
+uv sync
+```
+
+### 调试
+
+需要配置以下环境变量：
+
+```bash
+export BASE_URL="http://your-domain"
+export HUAJITONG_SECRET="your-secret"
+```
+
+### 使用 Makefile（推荐）
+
+```bash
+# 以 stdio 模式运行（用于本地开发和测试）
+make BASE_URL=your-base-url HUAJITONG_SECRET=your-secret dev-stdio
+
+# 以 streamable-http 模式运行（用于 HTTP 服务）
+make BASE_URL=your-base-url HUAJITONG_SECRET=your-secret dev-streamable
+
+# 以 SSE 模式运行（用于事件推送）
+make BASE_URL=your-base-url HUAJITONG_SECRET=your-secret dev-sse
+```
+
+## 技术栈
+
+- **FastMCP**：MCP 服务器框架
+- **Pydantic**：数据验证和序列化
+- **httpx**：HTTP 客户端
+- **Click**：命令行界面
+- **Uvicorn/Starlette**：ASGI 服务器（用于 HTTP 传输）
+
+## 发布
+
+构建项目
+```bash
+uv build
+```
+
+发布项目到 Pypi
+```bash
+uv publish --token 'your-pypi-token'
+```
+
+## 集成到 AI 应用
+
+### 集成示例
+
+在 LLM 应用中的配置文件中添加：
+
+```json
+{
+  "mcpServers": {
+    "default-server": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "huayi-mcp@0.1.10",
+        "mcp-server"
+      ],
+      "env": {
+        "BASE_URL": "http://your-domain",
+        "HUAJITONG_SECRET": "your-secret"
+      }
+    }
+  }
+}
+```
+
+## 许可证
+
+本项目仅供内部使用。
+
+## 作者
+
+- Chen Zhongrun
