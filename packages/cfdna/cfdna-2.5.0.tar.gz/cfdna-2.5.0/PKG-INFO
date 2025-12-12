@@ -1,0 +1,115 @@
+Metadata-Version: 2.4
+Name: cfdna
+Version: 2.5.0
+Summary: Python package for fragment manipulation for cfDNA
+License: GPL-2.0-or-later
+License-File: LICENSE.md
+Keywords: cython,interval,cfdna,c
+Author: Kyle S. Smith
+Author-email: kyle.smith@stjude.org
+Maintainer: Kyle S. Smith
+Maintainer-email: kyle.smith@stjude.org
+Requires-Python: >=3.10,<4.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Cython
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: ailist (>=2.1.3,<3.0.0)
+Requires-Dist: bokeh (>=3.1.0,<4.0.0)
+Requires-Dist: cython (>=3.0.0,<4.0.0)
+Requires-Dist: genome_info (>=1.0.7,<2.0.0)
+Requires-Dist: hmmCNV (>=1.1.7,<2.0.0)
+Requires-Dist: intervalframe (>=1.1.5,<2.0.0)
+Requires-Dist: linear_segment (>=1.2.1,<2.0.0)
+Requires-Dist: matplotlib (>=3.7.1,<4.0.0)
+Requires-Dist: ngsfragments (>=2.5.1,<3.0.0)
+Requires-Dist: numpy (>=1.23.5)
+Requires-Dist: pandas (>=2.0.0,<3.0.0)
+Requires-Dist: projectframe (>=1.0.0,<2.0.0)
+Requires-Dist: pysam (>=0.22.0)
+Requires-Dist: scikit-learn (>=1.2.2,<2.0.0)
+Requires-Dist: scipy (>=1.9.1)
+Requires-Dist: seaborn (>=0.12.2)
+Requires-Dist: statsmodels (>=0.14.0)
+Project-URL: Documentation, https://www.biosciencestack.com/static/cfdna/docs/index.html
+Project-URL: Repository, https://github.com/kylessmith/cfdna
+Description-Content-Type: text/markdown
+
+# Cell-free DNA analysis toolkit
+
+[![Build Status](https://travis-ci.org/kylessmith/cfdna.svg?branch=master)](https://travis-ci.org/kylessmith/cfdna) [![PyPI version](https://badge.fury.io/py/cfdna.svg)](https://badge.fury.io/py/cfdna)
+
+This is a Python package for easy and efficient cell-free
+DNA analysis.
+
+All citations should reference to [original paper][paper].
+
+
+## Install
+
+If you dont already have numpy and scipy installed, it is best to download
+`Anaconda`, a python distribution that has them included.  
+```
+    https://continuum.io/downloads
+```
+
+Create environment and pip install:
+```
+    conda create -n cfdna python=3.11.3
+    conda activate cfdna
+    pip install cfdna
+```
+
+Dependencies can be installed by:
+
+```
+    pip install -r requirements.txt
+```
+
+PyPI install, presuming you have all its requirements installed:
+```
+    pip install cfdna
+```
+
+## Usage
+
+```python
+import cfdna as cf
+import numpy as np
+
+# Create data
+cfdata = cf.cfDNA()
+frags = cf.io.readBAM("test.bam")
+
+# Call CNVs
+cf.proc.call_cnv_pipline(cfdata, frags)
+
+# Plot CNVs
+cf.pl.plot_cnv(cfdata, "test.bam")
+```
+
+Run from the commadline:
+
+```
+    python -m cfdna callCNVs --bam test.bam --segs --genome hg19 --bin_size 100000
+```
+
+This will output a .png plot and seg file.
+
+[paper]: https://www.cell.com/cancer-cell/pdfExtended/S1535-6108(21)00501-8
