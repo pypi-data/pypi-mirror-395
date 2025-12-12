@@ -1,0 +1,111 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drudge-cli"
+version = "2.2.2"
+description = "🚀 A powerful work time tracking tool for the command line"
+readme = "README.md"
+authors = [
+    { name = "Trik16", email = "trik.sedici@gmail.com" }
+]
+license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+    "Topic :: Utilities",
+    "Environment :: Console",
+    "Typing :: Typed",
+]
+keywords = [
+    "time-tracking",
+    "productivity",
+    "cli",
+    "worklog",
+    "time-management",
+    "task-tracking",
+    "command-line",
+    "typer",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
+    "pyyaml>=6.0.0",
+    "gspread>=5.12.0",
+    "google-auth>=2.23.0",
+    "google-api-python-client>=2.108.0",
+]
+
+[project.optional-dependencies]
+sheets = [
+    "haunts>=0.7.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Trik16/drudge"
+Documentation = "https://github.com/Trik16/drudge#readme"
+Repository = "https://github.com/Trik16/drudge.git"
+Issues = "https://github.com/Trik16/drudge/issues"
+Changelog = "https://github.com/Trik16/drudge/releases"
+
+[project.scripts]
+drudge = "worklog.__main__:main"
+worklog = "worklog.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["worklog*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+worklog = ["py.typed", "config.yaml.example"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
