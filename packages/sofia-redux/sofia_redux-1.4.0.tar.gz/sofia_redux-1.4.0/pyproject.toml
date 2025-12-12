@@ -1,0 +1,226 @@
+[build-system]
+requires = ["setuptools>=77.0.3",
+            "setuptools_scm>=8",
+            "wheel"]
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = "sofia_redux"
+description = "SOFIA data reduction pipelines"
+authors = [{name = "SOFIA Data Center", email = "sdc-redux@irs.uni-stuttgart.de"}]
+license = "BSD-3-Clause"
+license-files = ["LICENSE.rst"]
+dynamic = ["version"]
+requires-python = ">=3.11"
+dependencies = [
+    "astropy>=6",
+    "astroquery>=0.4.4",
+    "bottleneck>=1.3.7",
+    "cloudpickle>=2.2.1",
+    "configobj>=5",
+    "cycler>=0.10.0",
+    "dill>=0.3",
+    "graphviz>=0.16",
+    "joblib>=1.3.2",
+    "matplotlib>=3.3",
+    "more-itertools>=8.5.0",
+    "numba>=0.57.0",
+    "numpy>=1.24.4",
+    "pandas>=1.5.3",
+    "photutils>=1.6.0",
+    "psutil>=5.8.0",
+    "regex>=2021.4.4",
+    "scikit-learn>=1.2.2",
+    "scipy>=1.9.3",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics"
+]
+readme = "README.rst"
+
+[project.optional-dependencies]
+test = [
+    "filelock",
+    "pytest>=5.3.5",
+    "pytest-astropy>=0.8.0",
+    "pytest-astropy-header>=0.1.2",
+    "pytest-cov>=2.8.1",
+    "pytest-mock>=1.13.0",
+    "pytest-remotedata>=0.3.2",
+    "pytest-timeout>=1.3.3",
+    "pytest-rerunfailures",
+    "ruff"
+]
+test-display = [
+    "pytest-qt",
+]
+docs = [
+    "sphinx-astropy>=1.2",
+    "imageio>=2.9.0",
+]
+display = [
+    "PyQt6",
+    "ds9samp>=0.1.0",
+    "regions>=0.5"
+]
+all = [
+    "sofia_redux[display,docs]",
+]
+
+[project.urls]
+Homepage = "https://github.com/SOFIA-Data-Center/sofia_redux"
+
+[project.scripts]
+redux_pipe = "sofia_redux.pipeline.sofia.sofia_pipe:main"
+redux = "sofia_redux.pipeline.sofia.sofia_app:main"
+qad = "sofia_redux.pipeline.gui.qad.qad_app:main"
+pipecal_applyphot = "sofia_redux.calibration.pipecal_applyphot:main"
+hawc_calibration = "sofia_redux.calibration.standard_model.hawc_calibration:main"
+eospec = "sofia_redux.visualization.controller:main"
+
+[tool.setuptools.package-data]
+"sofia_redux.calibration" = [
+    "data/*",
+    "data/*/*",
+    "data/*/*/*",
+    "data/*/*/*/*"
+]
+"sofia_redux.calibration.tests" = ["data/*"]
+"sofia_redux.calibration.standard_model.tests" = [
+    "data/*",
+    "outputs/*/*"
+]
+"sofia_redux.pipeline.gui" = [
+    "designer/*",
+    "designer/*/*",
+    "designer/*/*/*",
+    "designer/*/*/*/*",
+    "icons/redux*.png"
+]
+"sofia_redux.pipeline.gui.qad" = ["designer/*"]
+"sofia_redux.scan" = [
+    "data/*",
+    "data/*/*",
+    "data/*/*/*",
+    "data/*/*/*/*"
+]
+"sofia_redux.spectroscopy.tests" = ["data/*"]
+"sofia_redux.visualization" = [
+    "data/*",
+    "log.conf"
+]
+"sofia_redux.visualization.models.tests" = ["data/*"]
+"sofia_redux.instruments.fifi_ls" = [
+    "data/*",
+    "data/*/*",
+    "data/*/*/*",
+    "data/*/*/*/*"
+]
+"sofia_redux.instruments.flitecam" = [
+    "data/*",
+    "data/*/*",
+    "data/*/*/*",
+    "data/*/*/*/*",
+]
+"sofia_redux.instruments.forcast" = [
+    "data/*",
+    "data/*/*",
+    "data/*/*/*",
+    "data/*/*/*/*",
+]
+"sofia_redux.instruments.hawc" = [
+    "data/*",
+    "data/*/*",
+    "data/*/*/*",
+]
+"sofia_redux.instruments.hawc.tests" = ["data/*"]
+
+
+[tool.setuptools_scm]
+version_file = "sofia_redux/version.py"
+
+[tool.pytest.ini_options]
+minversion = "7"
+testpaths = ["sofia_redux"]
+norecursedirs = [
+    "build",
+    "docs/_build"
+]
+astropy_header = "true"
+text_file_format = "rst"
+addopts = [
+    "-p no:warnings",
+    "--strict-markers"
+]
+timeout = 1000
+
+[tool.coverage.run]
+source = ["sofia_redux",]
+omit = [
+    "sofia_redux/__init__*",
+    "sofia_redux/_astropy_init*",
+    "sofia_redux/*/_astropy_init*",
+    "sofia_redux/*/*/_astropy_init*",
+    "sofia_redux/conftest*",
+    "sofia_redux/*/conftest*",
+    "sofia_redux/*/*/conftest*",
+    "sofia_redux/*/*/*/conftest*",
+    "sofia_redux/*/tests/*",
+    "sofia_redux/*/*/tests/*",
+    "sofia_redux/*/*/*/tests/*",
+    "sofia_redux/*/*/*/*/tests/*",
+    "sofia_redux/version*",
+    "sofia_redux/*/version*",
+    "sofia_redux/*/*/version*",
+    "sofia_redux/pipeline/gui/ui/*",
+    "sofia_redux/pipeline/gui/qad/ui/*",
+    "sofia_redux/visualization/display/ui/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "except ImportError",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "def main(.*):",
+    "pragma: py{ignore_python_version}",
+]
+omit = [
+    "sofia_redux/__init__*",
+    "sofia_redux/_astropy_init*",
+    "sofia_redux/*/_astropy_init*",
+    "sofia_redux/*/*/_astropy_init*",
+    "sofia_redux/conftest*",
+    "sofia_redux/*/conftest*",
+    "sofia_redux/*/*/conftest*",
+    "sofia_redux/*/*/*/conftest*",
+    "sofia_redux/*/tests/*",
+    "sofia_redux/*/*/tests/*",
+    "sofia_redux/*/*/*/tests/*",
+    "sofia_redux/*/*/*/*/tests/*",
+    "sofia_redux/version*",
+    "sofia_redux/*/version*",
+    "sofia_redux/*/*/version*",
+    "sofia_redux/pipeline/gui/ui/*",
+    "sofia_redux/pipeline/gui/qad/ui/*",
+    "sofia_redux/visualization/display/ui/*"
+]
+
+[tool.ruff]
+exclude = [
+    "__init__.py",
+    "version.py",
+    "conf.py",
+    "ui",
+    "conftest.py"
+]
+line-length = 80
+lint.ignore = ["E741", "E713", "E721"]
+lint.select = ["E", "F", "W"]
+lint.pydocstyle.convention = "numpy"
