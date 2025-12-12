@@ -1,0 +1,49 @@
+{%- extends "layout.html" %}
+
+{% set title = _('Search') %}
+
+{%- block scripts %}
+  {{ super() }}
+  <script src="{{ pathto('_static/searchtools.js', 1) }}"></script>
+  <script src="{{ pathto('_static/language_data.js', 1) }}"></script>
+{%- endblock %}
+
+{% block extrahead %}
+  <script src="{{ pathto('searchindex.js', 1) }}" defer="defer"></script>
+  {{ super() }}
+{% endblock %}
+
+{% block body %}
+  <h1 id="search-documentation">{{ _('Search') }}</h1>
+
+  {% block scriptwarning %}
+  <div id="fallback" class="admonition warning">
+  <script>document.querySelector('#fallback').style['display'] = 'none';</script>
+  <p>
+    {% trans %}Please activate JavaScript to enable the search
+    functionality.{% endtrans %}
+  </p>
+  </div>
+  {% endblock %}
+
+  {% block searchtext %}
+  <p id="searchdesc">
+    {% trans %}Searching for multiple words only shows matches that contain
+    all words.{% endtrans %}
+  </p>
+  {% endblock %}
+
+  {% block searchbox %}
+  <div id="searchbox-search" class="nav-item me-3" role="search">
+    <form class="search input-group" action="" method="get">
+      <input type="text" class="form-control" name="q" aria-labelledby="search-documentation" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <button type="submit" class="bi bi-search input-group-text" />
+    </form>
+  </div>
+  {% endblock %}
+
+  {% block searchresults %}
+  <div id="search-results"></div>
+  {% endblock %}
+
+{% endblock %}
