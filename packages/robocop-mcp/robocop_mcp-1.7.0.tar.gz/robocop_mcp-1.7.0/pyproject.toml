@@ -1,0 +1,147 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robocop-mcp"
+version = "1.7.0"
+authors = [
+  { name="Tatu Aalto", email="aalto.tatu@gmail.com" },
+]
+description = "MCP server for helping user to resolve Robot Framework code issues detected by Robocop."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10.11"
+keywords = ["robotframework", "robocop", "mcp", "server", "code quality", "linting"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Utilities",
+  "Framework :: Robot Framework",
+  "Framework :: Robot Framework :: Tool",
+  "Intended Audience :: Developers"
+]
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.22.0",
+    "robotframework-robocop>=6.13.0",
+    "tomli>=2.2.1",
+]
+
+[project.scripts]
+robocop_mcp = "robocop_mcp.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/aaltat/robocop-mcp"
+Repository = "https://github.com/aaltat/robocop-mcp"
+Issues = "https://github.com/aaltat/robocop-mcp/issues"
+Documentation = "https://github.com/aaltat/robocop-mcp/blob/main/README.md"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = [
+  "rules/*.md",
+]
+
+[tool.semantic_release.settings]
+allow_zero_version = true
+
+[dependency-groups]
+dev = [
+    "approvaltests>=16.1.0",
+    "coverage>=7.11.3",
+    "invoke>=2.2.1",
+    "mypy>=1.18.2",
+    "pytest>=9.0.1",
+    "pytest-approvaltests>=0.2.4",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.14.7",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 110
+
+[tool.ruff.lint]
+select = [
+    "ERA",
+    "FAST",
+    "YTT",
+    "ANN",
+    "ASYNC",
+    "S",
+    "BLE",
+    "FBT",
+    "B",
+    "A",
+    "C4",
+    "DTZ",
+    "T10",
+    "EM",
+    "EXE",
+    "FIX",
+    "INT",
+    "ISC",
+    "ICN",
+    "LOG",
+    "G",
+    "INP",
+    "PIE",
+    "T20",
+    "PYI",
+    "PT",
+    "Q",
+    "RSE",
+    "RET",
+    "SLF",
+    "SIM",
+    "SLOT",
+    "TID",
+    "ARG",
+    "PTH",
+    "FLY",
+    "I",
+    "C90",
+    "NPY",
+    "N",
+    "PERF",
+    "E",
+    "W",
+    "F",
+    "PL",
+    "FURB",
+    "RUF",
+    "TRY"
+]
+ignore = [
+
+]
+
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint.per-file-ignores]
+"utest/*" = [
+    "ANN001",
+    "ANN201",
+    "I001",
+    "PLR2004",
+    "S101",
+]
+"tasks.py" = [
+    "ANN201",
+    "FBT001",
+    "FBT002",
+    "T201",
+]
+
+[tool.mypy]
+python_version = "3.10"
+files = "src/robocop_mcp"
