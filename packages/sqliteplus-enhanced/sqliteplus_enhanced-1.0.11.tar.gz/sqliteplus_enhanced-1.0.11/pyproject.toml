@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools", "wheel", "Cython"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sqliteplus-enhanced"
+version = "1.0.11"
+description = "SQLite mejorado con cifrado SQLCipher y API REST asincrónica con FastAPI"
+authors = [
+    { name = "Adolfo González Hernández", email = "adolfogonzal@gmail.com" }
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10"
+license-files = ["LICENSE.md"]
+dependencies = [
+    "aiosqlite",
+    "click",
+    "fastapi",
+    "uvicorn",
+    "PyJWT",
+    "python-multipart",
+    "rich",
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: FastAPI",
+    "Operating System :: OS Independent",
+    "Development Status :: 5 - Production/Stable"
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx",
+    "pytest",
+    "pytest-asyncio",
+    "ruff"
+]
+
+redis = [
+    "redis"
+]
+
+visual = [
+    "fletplus",
+    "flet"
+]
+
+security = [
+    "bcrypt"
+]
+
+speedups = [
+    "Cython>=3.0.0"
+]
+
+[project.scripts]
+sqliteplus = "sqliteplus.cli:main"
+sqliteplus-sync = "sqliteplus.utils.sqliteplus_sync:main"
+sqliteplus-replication = "sqliteplus.utils.replication_sync:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sqliteplus*"]
+exclude = ["tests*", "site*", "backups*", "databases*"]
+
+[tool.setuptools.package-data]
+sqliteplus = ["**/*.pxd", "**/*.pyx", "**/*.pxi"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+ignore = ["E402"]
+
+
