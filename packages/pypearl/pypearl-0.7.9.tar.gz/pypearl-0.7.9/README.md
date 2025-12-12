@@ -1,0 +1,3 @@
+PyPearl is currently in development. PyPearl can most basic neural network use cases, and is somewhat well optimized for small models. In extremely small cases it out performs PyTorch due to it's nature as a thinner wrapper (exactly 2 lines of Python and 7300+ lines of CPP) compared to PyTorch's 60% Python.
+Here's the source code: https://github.com/Brody234/pypearl
+This description was last edited October 7 2025.
