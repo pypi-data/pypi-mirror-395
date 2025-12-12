@@ -1,0 +1,167 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solokit"
+version = "0.2.0"
+description = "Solokit - Structured Solo Development with AI and Quality Automation"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Solokit Contributors"}
+]
+keywords = ["solo-development", "ai-native", "workflow", "quality-automation", "productivity", "ai-assistant", "claude-code"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "PyYAML>=6.0.0,<7.0.0",  # Required by init system and quality validators
+    "questionary>=2.0.0,<3.0.0",  # Interactive CLI prompts
+    "jsonschema>=4.20.0,<5.0.0",  # Required by learning system and config validation
+    "tomli-w>=1.0.0,<2.0.0",  # Required for pyproject.toml merging in adopt
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.3,<8.0.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+]
+quality = [
+    "ruff>=0.1.6,<0.2.0",
+    "bandit>=1.7.5,<2.0.0",
+    "safety>=2.3.5,<3.0.0",
+    "mypy>=1.8.0,<2.0.0",
+    "types-PyYAML>=6.0.0,<7.0.0",
+]
+viz = [
+    "graphviz>=0.20.1,<0.21.0",
+]
+dev = [
+    "solokit[test,quality,viz]",
+]
+
+[project.urls]
+Homepage = "https://github.com/ankushdixit/solokit"
+Documentation = "https://github.com/ankushdixit/solokit/blob/main/README.md"
+Repository = "https://github.com/ankushdixit/solokit"
+Issues = "https://github.com/ankushdixit/solokit/issues"
+Changelog = "https://github.com/ankushdixit/solokit/blob/main/CHANGELOG.md"
+
+[project.scripts]
+sk = "solokit.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+solokit = [
+    "templates/**/*",
+    "templates/**/.*",
+    "templates/**/.*/**/*",  # Include all files inside dot-directories
+]
+
+[tool.setuptools.exclude-package-data]
+solokit = [
+    "templates/.claude/COMMANDS_README.md",
+    "templates/.claude/COMMAND_FORMAT.md",
+    "**/.DS_Store"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+    "N801",  # Class name should use CapWords convention (test classes use descriptive names)
+]
+
+[tool.ruff.lint.isort]
+# Match the ml_ai_fastapi template's isort config for consistent import ordering
+known-first-party = ["src"]
+
+[tool.coverage.run]
+source = ["src/solokit"]
+omit = ["tests/*", "src/solokit/templates/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_unimported = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+extra_checks = true
+files = ["src/solokit"]
+exclude = [
+    "src/solokit/templates/",
+]
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "jsonschema.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "graphviz.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "solokit.templates.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "pytest"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "questionary.*"
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "src/solokit/templates"]
+# B608: Skip hardcoded_sql_expressions - triggers false positives on markdown
+# template strings in doc_appender.py. This project doesn't use raw SQL.
+skips = ["B608"]

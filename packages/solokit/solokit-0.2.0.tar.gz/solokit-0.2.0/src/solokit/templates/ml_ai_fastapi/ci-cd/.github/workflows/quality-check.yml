@@ -1,0 +1,68 @@
+name: Quality Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Install dev dependencies if available
+          if [ -f requirements-dev.txt ]; then
+            pip install -r requirements-dev.txt
+          fi
+          # Install prod dependencies if available (needed for type checking imports)
+          if [ -f requirements-prod.txt ]; then
+            pip install -r requirements-prod.txt
+          fi
+          pip install ruff pyright
+
+      - name: Lint with Ruff
+        run: ruff check src/ tests/
+
+      - name: Format check with Ruff
+        run: ruff format --check src/ tests/
+
+      - name: Type check with Pyright
+        run: pyright src/ tests/
+
+      - name: Check for code duplication
+        if: hashFiles('.pylintrc') != ''
+        run: |
+          pip install pylint
+          pylint --rcfile=.pylintrc src/
+
+      - name: Check type coverage
+        run: |
+          pip install mypy
+          mypy src/ --disallow-untyped-defs --disallow-incomplete-defs --warn-return-any --warn-redundant-casts
+
+      - name: Check complexity with Radon
+        run: |
+          pip install radon
+          radon cc src/ -a -nb --max B
+
+      - name: Check for dead code with Vulture
+        run: |
+          pip install vulture
+          vulture src/ --min-confidence 90 --exclude "*/tests/*,*/__pycache__/*,*/alembic/versions/*" --ignore-names "method_name,logger"

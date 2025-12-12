@@ -1,0 +1,101 @@
+name: Security
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  schedule:
+    # Run security checks weekly
+    - cron: "0 0 * * 0"
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit detect-secrets pip-audit semgrep
+
+      - name: Run Bandit security linter
+        run: |
+          if [ -f .bandit ]; then
+            bandit -r src/ -c .bandit -f json -o bandit-report.json
+          elif grep -q '\[tool.bandit\]' pyproject.toml 2>/dev/null; then
+            bandit -r src/ -f json -o bandit-report.json
+          else
+            echo "::warning::No Bandit config found (.bandit or [tool.bandit] in pyproject.toml) - running with defaults"
+            bandit -r src/ -f json -o bandit-report.json --skip B101
+          fi
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+      - name: Check for secrets with detect-secrets
+        run: |
+          if [ -f .secrets.baseline ]; then
+            detect-secrets scan --baseline .secrets.baseline
+            detect-secrets audit .secrets.baseline --report
+          else
+            echo "::warning::No .secrets.baseline found. Creating initial baseline..."
+            detect-secrets scan > .secrets.baseline
+            echo "::notice::Created .secrets.baseline - commit this file to your repository"
+          fi
+
+      - name: Run pip-audit for known vulnerabilities
+        run: |
+          # Run pip-audit without --require-hashes as requirements.txt typically doesn't have hashes
+          pip-audit -r requirements.txt || echo "::warning::pip-audit found vulnerabilities - review and update dependencies"
+
+      - name: Run Semgrep SAST
+        run: semgrep scan --config=auto --json --output=semgrep-report.json src/
+
+      - name: Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-report
+          path: semgrep-report.json
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if Dependency Graph is enabled
+        id: check-dependency-graph
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/dependency-graph/compare/${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "enabled=true" >> $GITHUB_OUTPUT
+          else
+            echo "enabled=false" >> $GITHUB_OUTPUT
+            echo "::warning::Dependency Graph is not enabled. Enable it in Settings > Security > Code security and analysis"
+          fi
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        if: steps.check-dependency-graph.outputs.enabled == 'true'
+        with:
+          fail-on-severity: moderate
