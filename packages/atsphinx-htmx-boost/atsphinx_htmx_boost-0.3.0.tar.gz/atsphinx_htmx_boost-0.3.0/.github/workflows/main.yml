@@ -1,0 +1,81 @@
+name: 'Run CI jobs'
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 5'  # 18:00 on Friday JST
+
+env:
+  TASK_X_REMOTE_TASKFILES: 1
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: './.github/actions/setup-aqua'
+      - name: 'Configure dependencies'
+        run: |
+          task setup --yes
+      - name: 'Run linters'
+        run: |
+          lefthook run pre-commit --all-files
+  source-test:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
+        workspace: ['locked', 'latest']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: './.github/actions/setup-aqua'
+      - name: 'Install to build deps'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -f \
+          libxml2-dev libxslt1-dev
+      - name: 'Configure python version (for uv)'
+        run: echo '${{ matrix.python-version }}' > .python-version
+      - name: 'Configure env as locked deps by uv.lock'
+        run: |
+          uv sync --frozen
+        if: ${{ matrix.workspace == 'locked'}}
+      - name: 'Configure env as latest deps on PyPI'
+        run: |
+          uv sync -U
+        if: ${{ matrix.workspace == 'latest'}}
+      - name: 'Run tests'
+        run: |
+          uv run pytest
+  docs-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: './.github/actions/setup-aqua'
+      - name: 'Configure dependencies'
+        run: |
+          uv sync --frozen --all-extras
+      - name: 'Run tests'
+        run: |
+          task setup docs:build-linkcheck docs:build-dirhtml
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: './.github/actions/setup-aqua'
+      - name: 'Try building as package'
+        run: |
+          uv build
+          ls -l dist
