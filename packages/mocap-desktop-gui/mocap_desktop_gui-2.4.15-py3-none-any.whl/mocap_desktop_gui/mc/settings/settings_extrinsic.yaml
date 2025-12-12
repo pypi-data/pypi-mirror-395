@@ -1,0 +1,184 @@
+general_cfg:
+  endpoint: arn:aws:sns:eu-west-1:103680339861:engine-sdc-ami-test
+  processing_job_guid: ''
+  payload:
+    job: calib-vol-sdk-test
+ops:
+  OpsDownloadInputs: true
+  OpsSyncMultiviewVideos: true
+  OpsTrackingCalib: true
+  OpsCalibrate: true
+  OpsReportCalib: true
+  OpsZipData: true
+  OpsUploadOutputs: true
+failure_ops:
+- OpsZipData
+- OpsUploadOutputs
+ops_cfg:
+  OpsDownloadInputs:
+    src_dst_map:
+    - src: s3://testcases.moveai/sdk_tests/calibration_case1/dev1_calib.mov
+      dst: ~/MOX_projects/videos/cam01.mov
+    - src: s3://testcases.moveai/sdk_tests/calibration_case1/dev2_calib.mov
+      dst: ~/MOX_projects/videos/cam02.mov
+  OpsSyncMultiviewVideos:
+    iphone_sync:
+      use_host_timecode: false
+      use_tentacle: false
+    manual_sync:
+      active: true
+      cams_lag:
+        cam01: 0.0
+      base_ss: 4.0
+      duration: 10.0
+    action_start_time: 0.0
+    action_end_time: ''
+    win_len_samples: 1024
+    win_step_sec: 0.001
+    search_win:
+    - 2.0
+    - 6.0
+    use_audio_files: false
+    timecode: false
+    delete_input_videos: false
+    inputs:
+      video_raw_dir: ~/MOX_projects/videos
+    outputs:
+      video_dir: ~/MOX_projects/videos_processed
+      log_dir: ~/MOX_projects/log
+      sync_vis_dir: ~/MOX_projects/sync_vis
+      sync_visualization_mp4_path: ~/MOX_projects/sync_vis/sync_visualization.mp4
+  OpsTrackingCalib:
+    enable_vis_debug: true
+    vis_debug_rate_ms: 1000
+    n_max_people: 1
+    capture_area_type: large
+    min_move_factor: 2.0
+    min_head_kps_score: 0.6
+    min_object_calib_score: 0.1
+    is_background_people_moving: false
+    min_hand_over_shoulder_perc: 0.3
+    min_tracklet_duration: 0.25
+    max_initial_idle_secs: 3.0
+    use_detection_cpp: true
+    use_nonoverlapping_rule: true
+    use_cuda_decoder: true
+    CalibCppParams:
+      NumMaxObjectPerFrame: 16
+      YoloModelType: yolov5m
+      YoloModelFp16: true
+      YoloModelMaxBs: -1
+      PoseModelMaxBs: 16
+      PoseModelBsFactor: 2
+      Single2DPoseModelName: pose_2D_vit_large_moveai29
+      PoseModelFp16: true
+      CudaGraphInference: false
+      UseTracking: true
+      DetectionIntervalMs: 2000
+    inputs:
+      video_dir: ~/MOX_projects/videos_processed
+    outputs:
+      pose2d_dir: ~/MOX_projects/pose_2d
+      calib_detections_dir: ~/MOX_projects/calib_detections
+      log_dir: ~/MOX_projects/log
+      debug_viz_dir: ~/MOX_projects/calib_detect_viz_debug
+  OpsCalibrate:
+    is_intrinsic_k_from_video: false
+    cam_intrinsics:
+      cam01:
+      - - 1038.36777
+        - 0.0
+        - 953.059792
+      - - 0.0
+        - 1029.14725
+        - 719.211153
+      - - 0.0
+        - 0.0
+        - 1.0
+      cam02:
+      - - 1038.36777
+        - 0.0
+        - 953.059792
+      - - 0.0
+        - 1029.14725
+        - 719.211153
+      - - 0.0
+        - 0.0
+        - 1.0
+    cam_k:
+    - - - 885.98
+        - 0.0
+        - 960.04
+      - - 0.0
+        - 900.27
+        - 533.31
+      - - 0.0
+        - 0.0
+        - 1.0
+    secs_to_use_scale:
+    - 0.0
+    - 1.0
+    frames_to_use_calib:
+    - 0
+    - -1
+    frames_to_use_floor:
+    - - 0
+      - -1
+    recalibrate: true
+    err_threshold: 50.0
+    use_bundle_adjustment: true
+    optimize_plane: false
+    max_dist: 0.02
+    min_kps_confidence: 0.8
+    capture_area_type: large
+    min_confidence_scaling:
+      normal: 0.5
+      large: 0.85
+    scale_factor_capture_area: 1.15
+    subject_height: 1.67
+    inputs:
+      pose2d_dir: ~/MOX_projects/pose_2d
+      video_dir: ~/MOX_projects/videos_processed
+      video_raw_dir: ~/MOX_projects/videos
+    outputs:
+      calib_pkl_dir: ~/MOX_projects/calib
+      calib_quality_dir: ~/MOX_projects/calib_quality
+      calib_yaml_dir: ~/MOX_projects/mocap_calib
+      cameras_calib_json: ~/MOX_projects/calib_quality/cameras_calib.json
+      quality_calib_pkl: ~/MOX_projects/calib_quality/quality_calib.pkl
+      cam_calib_transformations_png: ~/MOX_projects/calib_quality/cam_calib_transformations.png
+      cam_calib_area_png: ~/MOX_projects/calib_quality/cam_calib_area.png
+  OpsReportCalib:
+    inputs:
+      bypass_validation: false
+      video_dir: ~/MOX_projects/videos
+      calib_quality_dir: ~/MOX_projects/calib_quality
+      quality_calib_pkl: ~/MOX_projects/calib_quality/quality_calib.pkl
+      cam_calib_transformations_png: ~/MOX_projects/calib_quality/cam_calib_transformations.png
+      cam_calib_area_png: ~/MOX_projects/calib_quality/cam_calib_area.png
+    outputs:
+      report_pdf_path: ~/MOX_projects/calib_quality/report.pdf
+  OpsZipData:
+    src_dst_map:
+    - src_patterns:
+      - ~/MOX_projects/log/*
+      - ~/MOX_projects/calib_detect_viz_debug/*
+      - ~/MOX_projects/sync_vis/*
+      - ~/MOX_projects/mocap_viz_debug/*
+      - ~/MOX_projects/calib_quality/*.png
+      dst_path: ~/MOX_projects/log/logs.zip
+      overwrite: true
+  OpsUploadOutputs:
+    src_dst_map:
+    - src: ~/MOX_projects/calib/cam01.pkl
+      dst: s3://testcases.moveai/sdk_tests/calibration_case1/outputs/capture_device_0.pkl
+    - src: ~/MOX_projects/calib/cam02.pkl
+      dst: s3://testcases.moveai/sdk_tests/calibration_case1/outputs/capture_device_90.pkl
+    - src: ~/MOX_projects/videos_processed/timing.pkl
+      dst: s3://testcases.moveai/sdk_tests/calibration_case1/outputs/capture_device_0.pkl
+    - src: ~/MOX_projects/calib_quality/cameras_calib.json
+      dst: s3://testcases.moveai/sdk_tests/calibration_case1/outputs/volume_definition.json
+    - src: ~/MOX_projects/calib_quality/report.pdf
+      dst: s3://testcases.moveai/sdk_tests/calibration_case1/outputs/volume_report.pdf
+    - src: ~/MOX_projects/log/logs.zip
+      dst: s3://testcases.moveai/sdk_tests/calibration_case1/outputs/logs.zip
