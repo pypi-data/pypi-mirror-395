@@ -1,0 +1,84 @@
+---
+name: 'GHA Verification Tests'
+permissions:
+  contents: read
+
+on:
+    pull_request:
+    push:
+      branches:
+        - main
+jobs:
+  test:
+    name: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+      fail-fast: false  # continue running jobs even if one fails to allow for a more clear and complete picture of error conditions
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the project
+        run: uv sync --dev
+
+      - name: Install the Arm Crosscompiler Toolchain (Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          wget https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+          tar xf arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz
+
+      - name: Install the Arm Crosscompiler Toolchain (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          choco install wget
+          wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-win32.zip
+          7z x gcc-arm-none-eabi-10.3-2021.10-win32.zip
+
+      - name: Update PATH with toolchain binaries (Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          echo "$PWD/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin" >> $GITHUB_PATH
+
+      - name: Run GHA (Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: ./
+        with:
+          elf: ${{ github.workspace }}/tests/inputs/blinky.elf
+          config: ${{ github.workspace }}/tests/configs/blinky.yml
+          artifact_name: Memtab Results for ${{ matrix.os }} Python ${{ matrix.python-version }}
+
+      - name: Run GHA (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: ./
+        with:
+          elf: ${{ github.workspace }}/tests/inputs/blinky.elf
+          config: ${{ github.workspace }}/tests/configs/blinky.yml
+          sdk_path: ${{ github.workspace }}/gcc-arm-none-eabi-10.3-2021.10/bin
+          artifact_name: Memtab Results for ${{ matrix.os }} Python ${{ matrix.python-version }}
+
+      - name: Run GHA with project argument (Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: ./
+        with:
+          elf: ${{ github.workspace }}/tests/inputs/blinky.elf
+          config: ${{ github.workspace }}/tests/configs/blinky_no_project.yml
+          project: Blinky
+          artifact_name: Memtab Results with Project for ${{ matrix.os }} Python ${{ matrix.python-version }}
+
+      - name: Run GHA with project argument (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: ./
+        with:
+          elf: ${{ github.workspace }}/tests/inputs/blinky.elf
+          config: ${{ github.workspace }}/tests/configs/blinky_no_project.yml
+          project: Blinky
+          sdk_path: ${{ github.workspace }}/gcc-arm-none-eabi-10.3-2021.10/bin
+          artifact_name: Memtab Results with Project for ${{ matrix.os }} Python ${{ matrix.python-version }}
+...
