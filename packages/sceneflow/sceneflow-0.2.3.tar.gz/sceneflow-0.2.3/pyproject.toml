@@ -1,0 +1,107 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sceneflow"
+dynamic = ["version"]
+description = "Smart video cut point detection for AI-generated talking head videos using multi-factor visual analysis and speech detection"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Aman Kumar Singh", email = "aman@vertexcover.io" }
+]
+keywords = [
+    "video",
+    "video-editing",
+    "computer-vision",
+    "speech-detection",
+    "vad",
+    "ai-video",
+    "talking-head",
+    "cut-point",
+    "video-analysis",
+    "insightface",
+    "facial-landmarks",
+    "silero-vad"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
+
+dependencies = [
+    "cyclopts>=2.0.0",
+    "hatchling>=1.27.0",
+    "insightface>=0.7.3",
+    "librosa>=0.11.0",
+    "numpy>=1.24.0",
+    "onnxruntime>=1.20.1",
+    "opencv-python>=4.8.0",
+    "openai>=1.0.0",
+    "pyairtable>=3.2.0",
+    "requests>=2.31.0",
+    "silero-vad>=6.0.0",
+    "torch>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/vertexcover-io/sceneflow"
+Documentation = "https://github.com/vertexcover-io/sceneflow#readme"
+Repository = "https://github.com/vertexcover-io/sceneflow.git"
+Issues = "https://github.com/vertexcover-io/sceneflow/issues"
+
+[project.scripts]
+sceneflow = "sceneflow.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sceneflow"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/sceneflow/_version.py"
