@@ -1,0 +1,153 @@
+Metadata-Version: 2.4
+Name: supplyforge
+Version: 0.1.5
+Summary: A Snakemake workflow to generate country-level electricity supply datasets.
+Author-email: Yassine Abdelouadoud <yassine.abdelouadoud@minesparis.psl.eu>
+Project-URL: Homepage, https://git.persee.minesparis.psl.eu/energy-alternatives/supplyforge
+Project-URL: Bug Tracker, https://git.persee.minesparis.psl.eu/energy-alternatives/supplyforge/-/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+Requires-Dist: pandas
+Requires-Dist: polars
+Requires-Dist: pyarrow
+Requires-Dist: entsoe-py
+Requires-Dist: pommes_craft
+Requires-Dist: fastexcel
+Requires-Dist: python-dotenv
+Requires-Dist: platformdirs
+Requires-Dist: plotly
+Dynamic: license-file
+
+# ⚡️ supplyforge
+
+**supplyforge** is a Python package that implements a reproducible **Snakemake workflow** to generate country-level 
+datasets describing the **electricity supply side** for power system analysis and planning.  
+It is the companion package to [**demandforge**](https://git.persee.minesparis.psl.eu/energy-alternatives/demandforge), which focuses on demand projection.
+
+---
+
+## 🌍 Overview
+
+The goal of **supplyforge** is to build a consistent and transparent data foundation describing the **generation
+infrastructure and resources** of European electricity systems.  
+
+The workflow integrates data obtained primarily from **ENTSO-E** (the European Network of Transmission System Operators
+for Electricity), including:
+
+- 🏭 **Installed capacity** by technology (nuclear, gas, hydro, wind, solar, etc.)
+- ⚙️ **Availability profiles** by technology and country  
+- 💧 **Hydro inflows** and reservoir information  
+- 🌦️ **Renewable resource time series** (when available)  
+- 📊 **Aggregated country-level summaries** ready for power system modeling tools
+
+---
+
+## 🧩 Features
+
+- Automated **data retrieval** from ENTSO-E public APIs and datasets  
+- Harmonized **technology classification** across countries  
+- Computation of **availability and inflow time series** for each technology  
+- Generation of **validated, ready-to-use datasets** for scenario analysis and planning models  
+- Full **traceability and reproducibility** via Snakemake
+
+---
+
+## 🔗 Relation to *demandforge*
+
+| Package | Focus | Description |
+|----------|--------|-------------|
+| [**demandforge**](https://github.com/yourusername/demandforge) | **Demand** | Creates projected electricity load curves for future scenarios |
+| **supplyforge** | **Supply** | Builds datasets describing generation capacity, availability, and inflows |
+
+Together, these tools provide a **complete data pipeline** for future electricity system modeling at the national scale.
+
+---
+
+## ⚙️ Workflow
+
+`supplyforge` uses a modular Snakemake workflow with well-defined stages:
+
+1. **Download** — fetch data from ENTSO-E and other sources  
+2. **Preprocess** — clean and align generation technology data  
+3. **Compute** — derive availability, inflow, and capacity time series  
+4. **Aggregate** — generate standardized outputs for modeling tools
+
+Each rule is designed for transparency, reproducibility, and easy extension to new datasets.
+
+---
+
+## 🧱 Outputs
+
+Typical outputs include:
+
+| Output file | Description |
+|--------------|-------------|
+| `installed_capacity.csv` | Installed capacity by country and technology |
+| `availability_profiles.parquet` | Hourly availability by technology |
+| `hydro_inflows.parquet` | Hourly inflow series for hydro reservoirs |
+| `metadata.yaml` | Documentation of data sources and processing steps |
+
+---
+
+## 📦 Installation
+
+```bash
+pip install supplyforge
+```
+
+or from source:
+
+```bash
+git clone https://git.persee.minesparis.psl.eu/energy-alternatives/supplyforge.git
+cd supplyforge
+pip install -e .
+```
+
+---
+
+## 🚀 Usage
+
+You can run the Snakemake workflow with:
+
+```bash
+snakemake --cores all
+```
+
+This will download raw data, process it, and generate the final datasets under the `output/` directory.
+
+---
+
+## 📚 Data Sources
+
+- **ENTSO-E Transparency Platform** — generation, availability, and inflows  
+- **ENTSO-E Statistical Factsheets** — installed capacities  
+- Optional integration with **renewable resource datasets** for solar/wind availability
+
+All datasets are open or publicly accessible, and sources are documented in the workflow metadata.
+
+---
+
+## 🧑‍💻 Contributing
+
+Contributions are welcome!  
+You can:
+- Add support for additional data sources or countries  
+- Improve technology mappings or validation checks  
+- Extend workflow outputs for specific modeling frameworks
+
+---
+
+## 📄 License
+
+Licensed under the **MIT License**.
+
+---
+
+## ✉️ Contact
+
+For questions, suggestions, or collaboration opportunities, please contact:  
+**[Your Name]** – [your.email@domain]  
+or open an issue on the [Gitlab repository](https://git.persee.minesparis.psl.eu/energy-alternatives/supplyforge).
