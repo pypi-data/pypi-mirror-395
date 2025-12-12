@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "lca-modeller"
+version = "v0.1.3-beta"
+description = "Python library to build parametric LCA models from a configuration file. "
+authors = [
+    "Félix POLLET <felix.pollet@isae-supaero.fr>",
+    "Scott DELBECQ <scott.delbecq@isae-supaero.fr>",
+    "Thomas PLANES <thomas.planes@isae-supaero.fr>"
+]
+keywords = ["life cycle assessment", "LCA", "parametric model", "prospective LCA"]
+license = "GPL-3.0-only"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+premise = "^2.2.3"
+lca-algebraic = ">=1.2.0, <1.3.0"
+jupyterlab = "*"
+"ruamel.yaml" = ">=0.15, <0.19"  # "^0.18.5"
+ensure = "^1.0.0"
+eight = "^1.0.1"
+
+# Brigthway2 only (not Brightway25, which is not yet compatible with LCA-algebraic)
+bw2data = "^3.6.6"
+bw2io = "^0.8.12"
+bw2calc = "^1.8.2"
+wurst = "0.4"  # issue with wurst 0.5.0 not yet compatible with bw2data 3.6.6? opening an issue on wurst repo
+
+# Data visualization
+matplotlib = "^3.7"
+pyvis = "^0.3.0"
+
+# Resolving specific dependencies for macOS --> compatibility with pypardiso package imported by lca-algebraic
+mkl = [
+    {version = "2023.2.2", markers = "sys_platform == 'darwin'"},
+    {version = "*", markers = "sys_platform != 'darwin'"}
+    ]
+tbb = [
+    {version = "2021.10.0", markers = "sys_platform == 'darwin'"},
+    {version = "*", markers = "sys_platform != 'darwin'"}
+    ]
+intel-openmp = [
+    {version = "2023.2.0", markers = "sys_platform == 'darwin'"},
+    {version = "*", markers = "sys_platform != 'darwin'"}
+    ]
+#eight = {version = "^1.0.1", markers = "sys_platform == 'darwin'"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

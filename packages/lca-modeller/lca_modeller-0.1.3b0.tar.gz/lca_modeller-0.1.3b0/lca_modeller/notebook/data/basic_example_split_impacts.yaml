@@ -1,0 +1,58 @@
+# The name of your project. This will set up a brightway project.
+project: tutorial
+reset_project: False  # True: deletes the project and re-start from scratch
+
+
+# The version and model of ecoinvent to use.
+ecoinvent:
+    version: '3.10'
+    model: 'cutoff'
+
+
+# The LCA model
+model:
+
+    food:
+        tags:  # specify tag to ventilate impacts by life cycle phase, system, or any other attribute
+            - subsystem: 'food'  # compute_impacts(..., axis='subsystem') will provide contribution of 'food' to total score
+        # (note: 'tags' replaces 'custom_attributes' from older version of lca-modeller)
+              
+        amount: 2 * a  # specify amount of food as a float or a formula
+
+        cheese:
+            amount: 3 * b + c
+            name: 'market for cheese, from cow milk, fresh, unripened'
+            tags:
+                - foodtype: 'cheese'
+            
+        carrots:
+            name: 'carrot production'
+            loc: 'NL'  # specify location
+            tags:
+                - foodtype: 'carrots'
+            
+    drink:
+        tags:
+            - subsystem: 'drink'  # compute_impacts(..., axis='subsystem') will provide contribution of 'drink' to total score
+            - foodtype: 'soybean'
+              
+        name: 'soybean beverage production'
+        loc: 'RoW'
+        unit: 'litre'  # or 'kilogram'
+        amount: d / a + 1.0
+        
+    methane:
+        # Untagged -> contribution will appear as 'others' in compute_impacts(..., axis='subsystem')
+        amount: 1e-6
+        name: 'methane, fossil'
+        categories:
+            - 'air'
+            - 'urban air close to ground'
+                                                                                                          
+
+# The LCIA methods
+methods:  # tip: you can search for methods with lca_algebraic function agb.findMethods()
+    - "('ReCiPe 2016 v1.03, midpoint (H)', 'climate change',  'global warming potential (GWP100)')"
+    - "('ReCiPe 2016 v1.03, endpoint (H)', 'total: ecosystem quality', 'ecosystem quality')"
+    - "('ReCiPe 2016 v1.03, endpoint (H)', 'total: human health', 'human health')"
+    - "('ReCiPe 2016 v1.03, endpoint (H)', 'total: natural resources', 'natural resources')"
