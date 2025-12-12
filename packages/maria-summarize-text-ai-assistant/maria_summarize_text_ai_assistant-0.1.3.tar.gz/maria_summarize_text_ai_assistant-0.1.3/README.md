@@ -1,0 +1,50 @@
+# maria_summarize_text_ai_assistant
+
+A simple Python library to summarize long text using an AI API (Groq).
+
+## Features
+- AI-powered text summarization  
+- Clean API design  
+- Docstrings included  
+- Easy to use in Flask or any Python app  
+
+---
+
+## Installation
+
+After uploading to PyPI:
+
+```bash
+pip install maria_summarize_text_ai_assistant
+pip install google-generativeai   # if using Gemini
+# or
+pip install groq python-dotenv     # if using Groq
+
+##Usage
+import os
+from maria_summarize_text_ai_assistant import summarize_text
+
+# Set your API key in environment
+os.environ["GEMINI_API_KEY"] = "YOUR_GEMINI_API_KEY"  # for Gemini
+# or
+os.environ["GROQ_API_KEY"] = "YOUR_GROQ_API_KEY"      # for Groq
+
+long_text = "Artificial intelligence is transforming industries..."
+summary = summarize_text(long_text)
+print(summary)
+
+##Next Steps
+
+Replace your old summarize.py with the updated version for Gemini or Groq.
+
+Update setup.py dependencies and bump version (e.g., 0.1.2).
+
+Rebuild your package:
+python setup.py sdist bdist_wheel
+
+Upload to PyPI:
+
+python -m twine upload dist/*
+
+
+In your Flask app, just set the corresponding API key environment variable — your code will work without changing imports.
