@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools", "wheel", "uv_build"]
+build-backend = "uv_build"
+
+[project]
+name = "robotransform"
+version = "0.0.5"
+description="Perform model transformations for the RoboSapiens project."
+authors = [
+    {name = "Arkadiusz Michał Ryś", email = "Arkadiusz.Michal.Rys@gmail.com"},
+]
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+]
+license = {file = "LICENSE"}
+keywords = ["transformation"]
+dependencies = [
+    "arklog  >= 0.7.0, < 1",
+    "arkfast >= 0.1.0, < 1",
+    "textx   >= 4.2.3, < 5",
+    "jinja2  >= 3.1.6, < 4",
+    "pyecore >=0.15.2, < 1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+doc = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-tabs",
+    "sphinx-toolbox",
+    "sphinxext-opengraph",
+    "sphinx-notfound-page",
+    "sphinxcontrib-drawio",
+    "readthedocs-sphinx-search",
+    "myst-parser",
+]
+[dependency-groups]
+dev = [
+    "rys",
+    "ruff",
+    "invoke",
+    "vermin",
+    "restview",
+]
+
+[project.urls]
+source = "https://git.rys.one/phd/robosapiens/robotransform"
+
+[project.scripts]
+rt = "robotransform.__main__:main"
+
+[tool.uv]
+extra-index-url = [
+    "https://pip:rys-Rps1D5WhCGDzRDAXyz2b@git.rys.one/api/v4/groups/phd/-/packages/pypi/simple", # Expires 2026-08
+    "https://pip:glpat-aq2VpazxthkoqZ9b3bDz@git.rys.one/api/v4/groups/phd/-/packages/pypi/simple", # Expires 2025-08
+]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["build", "dist", ".venv", "./tasks.py"]
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "C4", "SIM", "TID", "ARG", "RUF"]
+ignore = ["E501"] # Ignore line length
+
+[tool.pytest.ini_options]
+markers = [
+    "long: marks tests as long-running (deselect with '-m \"not long\"')"
+]
+addopts = "-m 'not long'" # pytest -m "long or not long" to run all tests
