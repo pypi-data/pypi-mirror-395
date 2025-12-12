@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/SciDataContainer/SciDataContainer/1.1.0/python/scidatacontainer/jsonschema/SciDataContainer.content.1.0.0.schema.json",
+  "title": "SciDataContainer",
+  "description": "A scientific data container",
+  "type": "object",
+  "properties": {
+    "uuid": {
+      "description": "The unique identifier of a data container",
+      "type": "string",
+      "format": "uuid",
+      "readOnly": true
+    },
+    "replaces": {
+      "description": "UUID of the predecessor of a dataset",
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "uuid"
+    },
+    "containerType": {
+      "description": "Object to describe the type of the container",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the container type",
+          "type": "string"
+        },
+        "id": {
+          "description": "Identifier of the container type",
+          "type": "string"
+        },
+        "version": {
+          "description": "Version of the container type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "dependentRequired": {
+        "id": [
+          "version"
+        ]
+      }
+    },
+    "created": {
+      "description": "Creation timestamp of the container",
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true
+    },
+    "storageTime": {
+      "description": "Storage timestamp of the container",
+      "type": "string",
+      "format": "date-time",
+      "readOnly": true
+    },
+    "static": {
+      "description": "Flag indicating if this container is static",
+      "type": "boolean"
+    },
+    "complete": {
+      "description": "Flag indicating if this container is complete",
+      "type": "boolean"
+    },
+    "hash": {
+      "description": "Hex digest of SHA256 hash of the container",
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-fA-F]+$",
+      "patternErrorMessage": "A hash can only contain hex digits (0-9, a-f and A-F)."
+    },
+    "usedSoftware": {
+      "description": "Array of software objects used to generate this container",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name of the software used in the container",
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the software used in the container",
+            "type": "string"
+          },
+          "id": {
+            "description": "Identifier of the software used in the container",
+            "type": "string"
+          },
+          "idType": {
+            "description": "Type of the identifier of the software used in the container",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "version"
+        ],
+        "dependentRequired": {
+          "id": [
+            "idType"
+          ]
+        }
+      }
+    },
+    "modelVersion": {
+      "description": "Version of the data model / meta data schema",
+      "type": "string",
+      "readOnly": true,
+      "pattern": "^[0-9]+(\\.[0-9]+)+$",
+      "patternErrorMessage": "A model version only contains digits and dots."
+    }
+  },
+  "required": [
+    "uuid",
+    "containerType",
+    "created",
+    "storageTime",
+    "static",
+    "complete",
+    "modelVersion"
+  ],
+  "if": {
+    "properties": {
+      "static": {
+        "const": true
+      }
+    }
+  },
+  "then": {
+    "not": {
+      "properties": {
+        "hash": {
+          "const": null
+        }
+      },
+      "errorMessage": "A static container requires a hash."
+    }
+  }
+}
