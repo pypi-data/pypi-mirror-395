@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load navigation thumbnail %}
+
+{% block header_actions %}
+  <form class="w-full md:w-auto" method="get" action="{{ search_url }}">
+    <label for="{{ search_form.query.id_for_label }}" class="sr-only">Nom de l'asociation</label>
+    <div class="flex items-stretch [&_input]:rounded-e-none [&_input]:min-w-64">
+      {{ search_form.query }}
+      <button type="submit" class="rounded-s-none button button-secondary">
+        {% icon "search" classname="size-5" title="Rechercher" %}
+      </button>
+    </div>
+  </form>
+{% endblock %}
+
+{% block content %}
+  {% if object_list %}
+    <ul class="-mt-4 divide-y divide-gray-300 dark:divide-gray-700">
+      {% for object in object_list %}
+        <li class="relative flex items-center gap-x-6 py-4">
+          {% if object.logo %}
+            <div class="inline-flex aspect-square h-[64px] items-center justify-center rounded-md bg-white p-1">
+              {% thumbnail object.logo "64x64" format="WEBP" upscale=False as img %}
+                <img src="{{ img.url }}" width="{{ img.width }}" height="{{ img.height }}" alt="{{ object }}">
+              {% endthumbnail %}
+            </div>
+          {% else %}
+            <div class="aspect-square h-[64px]"></div>
+          {% endif %}
+          <a href="{% url "associations:detail" object.pk %}" class="text-lg leading-snug font-medium group sm:text-xl hover:text-primary focus-visible:ring-0">
+            <span class="absolute inset-0 group-focus-visible:ring-3 group-focus-visible:ring-primary/60" aria-hidden="true"></span>
+            {{ object.name }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% if is_paginated %}
+      {% pagination paginator page_obj %}
+    {% endif %}
+  {% else %}
+    <c-alert level="info" title="Aucune association n'existe pour le moment">
+      <p>
+        Vous êtes responsable d'une association ?
+        {% if create_url %}
+          Vous pouvez <a href="{{ create_url }}">la créer</a>
+          ou <a href="{{ import_url }}">l'importer</a> depuis une autre instance.
+        {% else %}
+          Veuillez <a href="{% url "account:login" %}">vous connecter</a>
+          ou <a href="{% url "account:register" %}">vous créer un compte</a> pour continuer.
+        {% endif %}
+      </p>
+    </c-alert>
+  {% endif %}
+{% endblock %}

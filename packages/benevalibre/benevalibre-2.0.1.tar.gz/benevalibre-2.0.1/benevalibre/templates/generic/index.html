@@ -1,0 +1,48 @@
+{% extends view.base_template_name %}
+{% load render_table from django_tables2 %}
+
+{% block header_actions %}
+  {% if export_menu_items %}
+    <c-dropdown
+      button_label="Télécharger"
+      button_classname="button button-secondary button-sm md:button-base"
+      :menu_items="export_menu_items"
+    />
+  {% endif %}
+  {% if create_url %}
+    <a class="button-sm button button-secondary md:button-base" href="{{ create_url }}">
+      {% icon "plus" classname="button-icon" %}
+      {{ create_item_label }}
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if filterset %}
+    <details class="mb-4 rounded-sm bg-gray-100 px-4 py-2 group dark:bg-gray-950">
+      <summary class="flex cursor-pointer items-baseline justify-between text-gray-800 group-open:text-black after:w-3 after:text-center after:content-['◂'] dark:text-gray-200 dark:group-open:text-white group-open:after:content-['▾']">
+        <div class="inline-flex shrink-0 items-center gap-x-2">
+          {% icon "filter" classname="size-3" %}
+          <span class="text-xl font-medium">Filtres</span>
+          {% if filterset.active_filters %}
+            <span class="ml-1 rounded-full badge badge-primary badge-sm">{{ filterset.active_filters|length }}</span>
+          {% endif %}
+        </div>
+      </summary>
+
+      <div class="mt-2 border-t border-gray-300 py-2 dark:border-gray-700">
+        <form method="get" novalidate role="search">
+          <div class="sm:flex sm:flex-wrap sm:items-end sm:justify-between sm:gap-6">
+            {{ filterset.form }}
+
+            <div class="mt-6 sm:mt-0 sm:shrink-0">
+              <button type="submit" class="button button-primary">Appliquer</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </details>
+  {% endif %}
+
+  {% render_table table %}
+{% endblock %}

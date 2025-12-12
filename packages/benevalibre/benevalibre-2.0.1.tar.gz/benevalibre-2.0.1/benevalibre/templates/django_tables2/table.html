@@ -1,0 +1,74 @@
+{% load django_tables2 navigation %}
+
+<div class="-my-2 overflow-x-auto">
+  <div class="inline-block min-w-full py-2 align-middle">
+    <table {{ table.attrs.as_html }}>
+      {% if table.show_header %}
+        <thead {{ table.attrs.thead.as_html }}>
+          <tr>
+            {% for column in table.columns %}
+              {% if not column.header %}
+                <td></td>
+              {% else %}
+                <th {% render_attrs column.attrs.th scope="col" %}>
+                  {% if column.orderable %}
+                    <a
+                      class="inline-flex items-center group"
+                      href="{% querystring table.prefixed_order_by_field=column.order_by_alias.next %}"
+                      title="Tier par « {{ column.header }} » en ordre {% if not column.is_ordered or column.order_by_alias.is_descending %}croissant{% else %}décroissant{% endif %}"
+                    >
+                      {{ column.header }}
+                      {% if not column.is_ordered %}
+                        {% icon "sort" classname="ml-3 size-3 shrink-0 text-gray-500 group-hover:text-primary" %}
+                      {% else %}
+                        <span class="ml-3 inline-flex size-4 shrink-0 items-center justify-center rounded-xs bg-primary text-white">
+                          {% if column.order_by_alias.is_descending %}
+                            {% icon "caret-down" classname="size-3" %}
+                          {% else %}
+                            {% icon "caret-up" classname="size-3" %}
+                          {% endif %}
+                        </span>
+                      {% endif %}
+                    </a>
+                  {% else %}
+                    {{ column.header }}
+                  {% endif %}
+                </th>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        </thead>
+      {% endif %}
+
+      <tbody {{ table.attrs.tbody.as_html }}>
+        {% for row in table.paginated_rows %}
+          <tr {{ row.attrs.as_html }}>
+            {% for column, cell in row.items %}
+              <td {{ column.attrs.td.as_html }}>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+        {% empty %}
+          {% if table.empty_text %}
+            <tr>
+              <td colspan="{{ table.columns|length }}">{{ table.empty_text }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+
+      {% if table.has_footer %}
+        <tfoot {{ table.attrs.tfoot.as_html }}>
+          <tr>
+            {% for column in table.columns %}
+              <td {{ column.attrs.tf.as_html }}>{{ column.footer }}</td>
+            {% endfor %}
+          </tr>
+        </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+{% if table.page %}
+  {% pagination paginator=table.paginator page=table.page %}
+{% endif %}

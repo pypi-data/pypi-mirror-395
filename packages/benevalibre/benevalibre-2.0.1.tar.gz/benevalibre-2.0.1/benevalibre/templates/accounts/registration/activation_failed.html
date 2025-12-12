@@ -1,0 +1,25 @@
+{% extends "accounts/base_unauthenticated.html" %}
+
+{% block content %}
+  {% if user and user.is_active %}
+    <c-alert level="info">
+      Votre compte est déjà activé.
+    </c-alert>
+
+    <div class="mt-8">
+      <a href="{% url "account:login" %}" class="w-full button button-secondary">
+        Se connecter
+      </a>
+    </div>
+  {% else %}
+    <c-alert level="error">
+      Le lien d'activation du compte est incorrect, peut-être parce qu'il a expiré.
+    </c-alert>
+
+    <div class="mt-8">
+      <a href="{% url "account:activation_resend" %}" class="w-full button button-secondary">
+        Demander un nouveau lien
+      </a>
+    </div>
+  {% endif %}
+{% endblock %}

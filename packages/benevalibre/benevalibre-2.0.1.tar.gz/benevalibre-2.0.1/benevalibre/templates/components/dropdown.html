@@ -1,0 +1,60 @@
+<c-vars
+  button
+  button_label
+  button_classname="button button-secondary"
+  content_classname="absolute z-30 mt-px w-max cloak:hidden"
+  no_anchor
+  menu_items
+/>
+
+<div
+  x-data="{
+    open: false,
+    close(focusAfter) {
+      if (!this.open) return;
+
+      this.open = false;
+
+      focusAfter && focusAfter.focus();
+    },
+  }"
+  x-id="['dropdown-content']"
+  x-on:keydown.escape.prevent.stop="close($refs.button)"
+  x-on:focusin.window="!$refs.content.contains($event.target) && close()"
+>
+  {% if button %}
+    {{ button }}
+  {% else %}
+    <c-dropdown.button class="{{ button_classname }}">
+      {{ button_label }}
+      {% icon "angle-down" classname="button-icon" %}
+    </c-dropdown.button>
+  {% endif %}
+
+  <div
+    class="{{ content_classname }}"
+    :id="$id('dropdown-content')"
+    x-cloak
+    x-ref="content"
+    x-show="open"
+    x-on:click.outside="close()"
+    {% if not no_anchor %}
+      x-anchor.bottom-end="$refs.button"
+    {% endif %}
+  >
+    {% if menu_items %}
+      <c-dropdown.menu>
+        {% for item in menu_items %}
+          <c-dropdown.menu.item
+            label="{{ item.label }}"
+            url="{{ item.url }}"
+            :icon_name="item.icon_name"
+            :is_active="item.is_active"
+            :attrs="item.attrs" />
+        {% endfor %}
+      </c-dropdown.menu>
+    {% else %}
+      {{ slot }}
+    {% endif %}
+  </div>
+</div>

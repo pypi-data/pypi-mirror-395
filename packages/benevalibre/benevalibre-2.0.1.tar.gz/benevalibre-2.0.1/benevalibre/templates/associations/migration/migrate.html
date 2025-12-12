@@ -1,0 +1,81 @@
+{% extends view.base_template_name %}
+
+{% block content %}
+  {% if not migration %}
+    <c-alert level="info">
+      Vous vous apprêtez à déplacer cette association ainsi que toutes ses données vers une autre instance de <i>Bénévalibre</i>, c'est-à-dire un autre hébergeur de l'application.
+    </c-alert>
+
+    <div class="mb-8 format">
+      <p>Cette opération se déroule en plusieurs étapes :</p>
+      <ol>
+        <li>Une fois que vous <b>démarrez la migration</b>, l'association se met en pause : il ne sera plus possible d'ajouter de nouvelles actions de bénévolat ni de modifier celles existantes.</li>
+        <li>Il vous sera ensuite proposé de <b>télécharger toutes les données</b> de l'association (membres, actions de bénévolat, catégories et niveaux de bénévolat, projets, rôles) : stockez ce fichier bien au chaud sur votre ordinateur.</li>
+        <li>Sur l'instance vers laquelle vous voulez migrer l'association, choisissez d'<b>importer une association</b> au lieu de la créer, et injectez le fichier que vous avez téléchargé auparavant.</li>
+        <li>La migration est terminée ! Un courriel sera envoyé aux membres de l'association les informant de ce déménagement. Il contiendra également pour les membres qui n'ont pas encore de compte sur l'instance de destination la procédure à suivre pour l'activer. L'association sera enfin conservée sur cette instance jusqu'à ce que vous la supprimiez.</i>
+      </ol>
+    </div>
+
+    <c-form :form="form" action="{{ action_url }}" submit_button_label="Démarrer la migration" />
+  {% elif not migration.is_done %}
+    <c-alert level="info">
+      La migration de l'association vers une autre instance de <i>Bénévalibre</i> a démarré.
+    </c-alert>
+
+    <p class="mb-4">Téléchargez à présent toutes les données de l'association en cliquant sur le bouton ci-dessous. Vous pourrez ensuite, sur l'instance vers laquelle vous voulez migrer l'association, choisir d'importer une association et injecter le fichier téléchargé.</p>
+
+    <div class="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+      <button type="submit" class="button button-primary" form="migration-form" name="action" value="download">Télécharger les données</button>
+      <button type="submit" class="button button-secondary" form="migration-form" name="action" value="cancel">Annuler la migration</button>
+    </div>
+
+    <c-section header_title="Informations">
+      <c-form :form="form" action="{{ action_url }}" id="migration-form" submit_button_label="Mettre à jour">
+        <c-slot name="fields">
+          {{ form }}
+
+          <dl class="mt-6 space-y-4">
+            <div class="grid sm:grid-cols-3">
+              <dt class="font-medium sm:col-span-1">Démarrée le</dt>
+              <dd class="sm:col-span-2">{{ migration.created_at }}</dd>
+            </div>
+            <div class="grid sm:grid-cols-3">
+              <dt class="font-medium sm:col-span-1">Par</dt>
+              <dd class="sm:col-span-2">{{ migration.author }}</dd>
+            </div>
+          </dl>
+        </c-slot>
+      </c-form>
+    </c-section>
+  {% else %}
+    <c-alert level="info">
+      L'association a été déplacée vers une autre instance de <i>Bénévalibre</i>, elle est désormais accessible à <a href="{{ migration.destination_url }}" rel="noreferer">cette adresse</a>. Merci de ne pas oublier de <a href="{{ delete_url }}">supprimer</a> l'association de cette instance une fois qu'elle n'est plus utile.
+    </c-alert>
+
+    <c-form :form="form" action="{{ action_url }}">
+      <c-slot name="fields">
+        {{ form }}
+
+        <dl class="mt-6 space-y-4">
+          <div class="grid sm:grid-cols-3">
+            <dt class="font-medium sm:col-span-1">Démarrée le</dt>
+            <dd class="sm:col-span-2">{{ migration.created_at }}</dd>
+          </div>
+          <div class="grid sm:grid-cols-3">
+            <dt class="font-medium sm:col-span-1">Par</dt>
+            <dd class="sm:col-span-2">{{ migration.author }}</dd>
+          </div>
+          <div class="grid sm:grid-cols-3">
+            <dt class="font-medium sm:col-span-1">Terminée le</dt>
+            <dd class="sm:col-span-2">{{ migration.done_at }}</dd>
+          </div>
+        </dl>
+      </c-slot>
+
+      <c-slot name="actions">
+        <button type="submit" class="button button-primary">Mettre à jour</button>
+        <a href="{{ delete_url }}" class="button button-outline-error">Supprimer l'association</a>
+      </c-slot>
+    </c-form>
+  {% endif %}
+{% endblock %}

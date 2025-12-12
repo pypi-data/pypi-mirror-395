@@ -1,0 +1,38 @@
+{% extends "associations/base_management.html" %}
+{% load django_tables2 %}
+
+{% block content %}
+  {% if has_benevalos %}
+    <c-section header_title="Actions de bénévolat">
+      {% if year_menu_items %}
+        <c-slot name="header_actions">
+          <c-dropdown button_label="{{ current_year|default:"Total" }}" :menu_items="year_menu_items" />
+        </c-slot>
+      {% endif %}
+
+      <c-stats>
+        <c-stats.item label="Actions de bénévolat" :value="benevalos_stats.count" />
+        <c-stats.item label="Temps consacré" :value="benevalos_stats.total_duration" />
+        <c-stats.item label="Distance parcourue" :value="benevalos_stats.total_distance" />
+      </c-stats>
+
+      {% render_table benevalo_categories_report %}
+
+      {% if benevalo_levels_report.data %}
+        <div class="mt-8">
+          {% render_table benevalo_levels_report %}
+        </div>
+      {% endif %}
+
+      {% if projects_report.data %}
+        <div class="mt-8">
+          {% render_table projects_report %}
+        </div>
+      {% endif %}
+    </c-section>
+  {% else %}
+    <c-alert level="info">
+      Aucune action de bénévolat n'a encore été saisie pour votre association.
+    </c-alert>
+  {% endif %}
+{% endblock %}

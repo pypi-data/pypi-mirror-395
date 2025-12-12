@@ -1,0 +1,27 @@
+{% extends view.base_template_name %}
+
+{% block content %}
+  {% if error_message %}
+    <c-alert level="error">{{ error_message }}</c-alert>
+
+    {% if related_objects %}
+      <div class="format">
+        <p>Les objets que vous devriez supprimer afin de pouvoir continuer sont :</p>
+        <ul>
+          {% for model, obj in related_objects %}
+            <li><b>{{ model }} :</b> {{ obj }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  {% else %}
+    <p class="mb-4 text-lg">{{ confirmation_message }}</p>
+  {% endif %}
+
+  <c-form :form="form" action="{{ action_url }}">
+    <c-slot name="actions">
+      <button type="submit" class="button button-outline-error">{{ submit_button_label }}</button>
+      <a href="{{ cancel_url }}" class="button button-secondary">Annuler</a>
+    </c-slot>
+  </c-form>
+{% endblock %}

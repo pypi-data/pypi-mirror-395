@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% if error_message %}
+    <c-alert level="error">{{ error_message }}</c-alert>
+
+    <a href="{{ detail_url }}" class="button button-secondary">Annuler</a>
+  {% else %}
+    <p class="mb-4 text-lg">
+      Voulez-vous vraiment quitter l'association « {{ object }} » ?
+      Cette action n'entraînera pas la suppression de vos actions de bénévolat au sein de cette association.
+    </p>
+
+    <c-form :form="form" action="{{ action_url }}">
+      <c-slot name="actions">
+        <button type="submit" class="button button-outline-error">Quitter</button>
+        <a href="{{ detail_url }}" class="button button-secondary">Annuler</a>
+      </c-slot>
+    </c-form>
+  {% endif %}
+{% endblock %}

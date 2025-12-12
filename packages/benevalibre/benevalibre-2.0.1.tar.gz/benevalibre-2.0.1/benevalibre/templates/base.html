@@ -1,0 +1,70 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr"{% if request.user.is_authenticated and request.user.theme %} data-theme="{{ request.user.theme }}"{% endif %}>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{% block seo_title %}{{ seo_title }} - {{ instance_settings.site_name }}{% endblock %}</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static "apple-touch-icon.png" %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static "favicon-32x32.png" %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static "favicon-16x16.png" %}">
+    <link rel="manifest" href="{% static "site.webmanifest" %}">
+    <link rel="mask-icon" href="{% static "safari-pinned-tab.svg" %}" color="#e21482">
+    <link rel="shortcut icon" href="{% static "favicon.ico" %}">
+    <meta name="msapplication-config" content="{% static "browserconfig.xml" %}">
+    <meta name="msapplication-TileColor" content="#e21482">
+    <meta name="theme-color" content="#202020">
+
+    {% block css %}
+      <link rel="stylesheet" href="{% static "main.css" %}">
+    {% endblock %}
+
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body class="bg-gray-50 font-body text-base text-black dark:bg-gray-900 dark:text-white">
+    {% block body_content %}
+      <div class="flex h-dvh flex-col">
+        {% block topbar %}
+          <div class="z-10 shrink-0 bg-white shadow-xs dark:bg-black">
+            {% include "includes/topbar.html" %}
+          </div>
+        {% endblock %}
+
+        <div class="flex w-full grow">
+          {% block sidebar %}{% endblock %}
+
+          <div class="flex min-w-0 flex-1 flex-col first:items-center">
+            {% block main %}
+              {% include "includes/messages.html" %}
+
+              <main class="w-full grow px-4 md:px-8 {% if not full_width %} max-w-screen-xl {% endif %}">
+                <header class="mt-4 mb-8 md:my-8 md:flex md:items-center md:justify-between">
+                  <h2 class="text-4xl font-bold">{{ page_title }}</h2>
+
+                  <div class="mt-4 flex gap-2 md:mt-0 md:ml-8 md:shrink-0 empty:hidden">
+                    {% block header_actions %}{% endblock %}
+                  </div>
+                </header>
+
+                <div class="relative">
+                  {% block content %}{% endblock %}
+                </div>
+              </main>
+            {% endblock main %}
+
+            {% block footer %}
+              <footer class="w-full px-4 pt-12 md:px-8 md:pt-16">
+                {% include "includes/footer.html" %}
+              </footer>
+            {% endblock %}
+          </div>
+        </div>
+      </div>
+    {% endblock body_content %}
+
+    {% block javascript %}
+      <script src="{% static "main.js" %}"></script>
+    {% endblock %}
+  </body>
+</html>

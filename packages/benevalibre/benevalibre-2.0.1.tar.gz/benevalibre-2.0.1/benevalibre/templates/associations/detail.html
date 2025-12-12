@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block header_actions %}
+  {% if manage_url %}
+    <a class="button-sm button button-secondary md:button-base" href="{{ manage_url }}">
+      {% icon "gear" classname="button-icon" %}
+      Gérer l'association
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if is_member or migration %}
+    <div class="mb-8">
+      {% if migration %}
+        <c-alert level="warning">
+          <c-slot name="title">
+            {% if not migration.is_done %}
+              En cours de migration vers une autre instance
+            {% else %}
+              Association migrée vers une autre instrance
+            {% endif %}
+          </c-slot>
+
+          {% if migration.message %}
+            <p>{{ migration.message }}</p>
+          {% elif not migration.is_done %}
+            <p>
+              Cette association est en train d'être déplacée vers un autre hébergeur de l'application <i>Bénévalibre</i>. {% if is_member %}Vous serez informé⋅es de sa nouvelle adresse dès que cette opération sera terminée. D'ici là, les actions de bénévolat et autres paramètres de cette association ne sont plus modifiables.{% else %}Il n'est pas possible de la rejoindre le temps de cette opération, revenez plus tard pour connaître sa nouvelle adresse.{% endif %}
+            </p>
+          {% else %}
+            <p>
+              Cette association a été déplacée vers un autre hébergeur de l'application <i>Bénévalibre</i>. Vous pouvez désormais la retrouver à <a href="{{ migration.destination_url }}" rel="noopener">cette adresse</a>.
+            </p>
+          {% endif %}
+        </c-alert>
+      {% endif %}
+
+      {% if is_member %}
+        <c-alert level="info">
+          {% if not object.is_active %}
+            La création de cette association n'a pas encore été validée.
+          {% elif membership %}
+            <div class="md:flex md:justify-between">
+              <p>
+                {% if membership.is_active %}
+                  Vous êtes membre de cette association avec le rôle « {{ membership.role }} ».
+                {% else %}
+                  Votre demande de rejoindre l'association n'a pas encore été validée.
+                {% endif %}
+              </p>
+              {% if leave_url %}
+                <div class="mt-2 md:mt-0 md:ml-6">
+                  <a class="font-medium no-underline" href="{{ leave_url }}" title="Quitter l'association « {{ object }} »">Quitter</a>
+                </div>
+              {% endif %}
+            </div>
+          {% else %}
+            Vous êtes membre anonyme de cette association.
+          {% endif %}
+        </c-alert>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="lg:flex">
+    {% if object.logo %}
+      <div class="mb-6 lg:mr-8 lg:mb-0 lg:max-w-xs lg:shrink-0">
+        {% include "shared/association_logo.html" with association=object geometry="400x300" %}
+      </div>
+    {% endif %}
+    <div class="flex flex-col gap-6 lg:grow">
+      {% if object.description %}
+        <div class="space-y-4 text-lg">
+          {{ object.description|linebreaks }}
+        </div>
+      {% endif %}
+      {% if object.activity_field %}
+        <div class="flex flex-col gap-x-6 gap-y-1 md:flex-row">
+          <span class="flex-none font-bold">Champ d'activité</span>
+          <span>{{ object.activity_field }}</span>
+        </div>
+      {% endif %}
+      {% if object.website_url %}
+        <div class="flex flex-col gap-x-6 gap-y-1 md:flex-row">
+          <span class="flex-none font-bold">Site internet</span>
+          <a href="{{ object.website_url }}" class="underline underline-offset-2 hover:no-underline" rel="noopener">{{ object.website_url }}</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not is_member %}
+    {% if not migration %}
+      <c-section>
+        {% if join_url %}
+          <form action="{{ join_url }}" method="post">{% csrf_token %}
+            <button type="submit" class="w-full button button-primary">Rejoindre l'association</button>
+          </form>
+        {% elif not request.user.is_authenticated %}
+          <p class="format">
+            Vous êtes membre de cette association ? Veuillez d'abord vous <a href="{% url "account:login" %}">connecter</a> pour aller plus loin, ou vous <a href="{% url "account:register" %}">créer un compte</a> si vous n'en avez pas encore sur cette instance.
+          </p>
+        {% else %}
+          <c-alert level="info">
+            Il n'est actuellement pas possible de demander à rejoindre l'association.
+          </c-alert>
+        {% endif %}
+      </c-section>
+    {% endif %}
+  {% elif memberships %}
+    <c-section header_title="Membres de l'association">
+      <ul class="divide-y divide-gray-300 dark:divide-gray-700">
+        {% for membership in memberships %}
+          <li class="flex items-center justify-between gap-x-6 py-4 first:pt-0 last:pb-0">
+            <div class="flex items-center gap-x-4">
+              {% include "shared/user_avatar.html" with user=membership.user size_classname="size-10 text-lg/none md:size-12" %}
+              <p class="flex-auto font-medium sm:text-lg">{{ membership.user.get_full_name }}</p>
+            </div>
+            <p class="shrink-0 text-sm sm:text-base">{{ membership.role }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    </c-section>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,2 @@
+ANONYMOUS_MEMBER_SESSION_KEY = "_anonymous_member_uuid"
+ANONYMOUS_MEMBER_QUERY_KEY = "vuid"

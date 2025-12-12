@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load navigation %}
+
+{% block sidebar %}
+  {% menu_items "associations.menus.association_management_menu" association as association_management_menu_items %}
+
+  <c-sidebar
+    menu_aria_label="Menu de gestion de l'association"
+    :menu_items="association_management_menu_items"
+  >
+    <c-slot name="header">
+      {% if association.logo %}
+        <div class="hidden md:mb-4 md:block md:text-center">
+          {% include "shared/association_logo.html" with geometry="200x175" %}
+        </div>
+      {% endif %}
+      <div class="mb-6 md:text-center">
+        <a href="{% url "associations:detail" pk=association.pk %}" class="text-xl/snug font-bold hover:text-primary" title="Retour à la page de l'association">
+          {{ association.name }}
+        </a>
+        <small class="mt-1 block text-gray-800 dark:text-gray-200">Gestion de l'association</small>
+      </div>
+    </c-slot>
+  </c-sidebar>
+{% endblock %}
+
+{% block main %}
+  <c-sidebar.toggler>
+    <a href="{% url "associations:detail" pk=association.pk %}" class="leading-none hover:text-primary" title="Retour à la page de l'association">
+      {{ association.name }}
+    </a>
+    <span class="block text-sm font-normal text-gray-800 dark:text-gray-200">Gestion de l'association</span>
+  </c-sidebar.toggler>
+
+  {{ block.super }}
+{% endblock %}

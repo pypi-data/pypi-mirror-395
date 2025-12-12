@@ -1,0 +1,37 @@
+<div class="mt-6 flex flex-col items-center justify-between gap-y-4 sm:flex-row sm:items-center">
+  {% if paginator.num_pages > 1 %}
+    <c-pagination aria-label="Pagination">
+      {% if page.has_previous %}
+        <c-pagination.link
+          href="{% querystring page=page.previous_page_number %}"
+          title="Page précédente"
+        >{% icon "angle-left" classname="size-3" %}</c-pagination.link>
+      {% endif %}
+
+      {% for page_number in elided_page_range %}
+        {% if page_number == paginator.ELLIPSIS %}
+          <c-pagination.text>…</c-pagination.text>
+        {% else %}
+          <c-pagination.link
+            href="{% querystring page=page_number %}"
+            :is_current="{% if page_number == page.number %}True{% else %}False{% endif %}"
+          >{{ page_number }}</c-pagination.link>
+        {% endif %}
+      {% endfor %}
+
+      {% if page.has_next %}
+        <c-pagination.link
+          href="{% querystring page=page.next_page_number %}"
+          title="Page suivante"
+        >{% icon "angle-right" classname="size-3" %}</c-pagination.link>
+      {% endif %}
+    </c-pagination>
+  {% endif %}
+
+  <span class="text-sm text-gray-800 sm:order-first dark:text-gray-200">
+    Éléments
+    <span class="font-medium text-black dark:text-white">{{ page.start_index }}-{{ page.end_index }}</span>
+    sur
+    <span class="font-medium text-black dark:text-white">{{ paginator.count }}</span>
+  </span>
+</div>

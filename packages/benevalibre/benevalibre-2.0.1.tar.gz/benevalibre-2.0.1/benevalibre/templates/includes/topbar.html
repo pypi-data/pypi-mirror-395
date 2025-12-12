@@ -1,0 +1,75 @@
+{% load static navigation %}
+<nav class="relative flex h-[64px] justify-between gap-x-8 px-4 md:px-8" aria-label="Menu principal">
+  <div class="-my-px flex items-stretch gap-x-4 sm:gap-x-8">
+    <a href="{% url "welcome" %}" class="me-4 flex shrink-0 items-center sm:me-0 lg:me-4" aria-label="Aller à la page d'accueil">
+      <img src="{% static "img/logo_topbar.svg" %}" alt="Bénévalibre" class="hidden md:block dark:hidden" width="206" height="40">
+      <img src="{% static "img/logo_topbar-white.svg" %}" alt="Bénévalibre" class="hidden dark:md:block" width="206" height="40">
+      <img src="{% static "img/icon_topbar.svg" %}" alt="Bénévalibre" class="md:hidden" width="32" height="32">
+    </a>
+    {% menu_items "menus.main_menu" as main_menu_items %}
+    {% for item in main_menu_items %}
+      <a
+        href="{{ item.url }}"
+        class="flex items-center px-1 border-y-2 border-transparent {% if item.is_active %} text-primary border-b-primary {% else %} hover:text-primary {% endif %}"
+        {{ item.attrs }}
+      >
+        {% if item.icon_name %}
+          <span class="sm:hidden">{% icon item.icon_name classname="size-6" %}</span>
+          <span class="hidden text-center leading-tight font-medium sm:inline lg:text-lg">{{ item.label }}</span>
+        {% else %}
+          {{ item.label }}
+        {% endif %}
+      </a>
+    {% endfor %}
+  </div>
+
+  <div class="flex items-center">
+    {% if not request.user.is_active %}
+      <a class="hover:text-primary" href="{% url "account:login" %}">
+        <span class="lg:hidden">{% icon "sign-in" classname="size-6" %}</span>
+        <span class="hidden lg:inline">Se connecter</span>
+      </a>
+    {% else %}
+      <c-dropdown content_classname="absolute end-0 top-full z-30 rounded-bl-sm shadow-xs bg-white dark:bg-black dark:text-white md:end-4 md:rounded-br-sm cloak:hidden" no_anchor>
+        <c-slot name="button">
+          <c-dropdown.button
+            class="cursor-pointer group focus-visible:ring-0"
+            aria-label="Basculer le menu utilisateur"
+          >
+            {% include "shared/user_avatar.html" with user=request.user size_classname="size-10 text-base/none" %}
+          </c-dropdown.button>
+        </c-slot>
+
+        <p class="px-4 py-3 text-sm font-medium">
+          {% if request.user.is_anonymous_member %}
+            Membre anonyme
+          {% else %}
+            {{ request.user }}
+          {% endif %}
+        </p>
+        <div class="border-t border-gray-50 py-1 dark:border-gray-950" id="user-menu">
+          {% menu_items "menus.user_menu" as user_menu_items %}
+          {% for item in user_menu_items %}
+            <a
+              href="{{ item.url }}"
+              class="flex w-full items-center px-4 py-2 {% if item.is_active %} text-primary border-s-2 border-primary {% else %} hover:text-primary {% endif %}"
+              {{ item.attrs }}
+            >
+              {% if item.icon_name %}
+                {% icon item.icon_name classname="size-4 me-3" %}
+              {% endif %}
+              <span class="leading-tight">{{ item.label }}</span>
+            </a>
+          {% endfor %}
+          <form action="{% url "account:logout" %}" method="post" novalidate>
+            {% csrf_token %}
+            <button type="submit" class="flex w-full cursor-pointer items-center px-4 py-2 hover:text-primary">
+              {% icon "sign-out" classname="size-4 me-3" %}
+              <span class="leading-tight">Se déconnecter</span>
+            </button>
+          </form>
+        </div>
+      </c-dropdown>
+    {% endif %}
+  </div>
+</nav>

@@ -1,0 +1,51 @@
+<c-vars
+  header
+  header_title
+  menu_aria_label
+  menu_items
+/>
+
+<aside
+  id="sidebar"
+  class="invisible fixed inset-0 z-40 transition-visibility group lg:visible lg:relative lg:z-auto lg:w-80 lg:shrink-0 lg:bg-gray-100 lg:shadow-xs dark:lg:bg-gray-950"
+  data-sidebar-breakpoint="lg"
+  data-sidebar-hidden-class="invisible transition-visibility"
+  data-sidebar-opened-body-class="overflow-y-hidden"
+>
+  <div class="flex items-start h-full transition-transform group-aria-hidden:-translate-x-full lg:top-0 lg:sticky lg:h-auto lg:translate-x-0!">
+    <div class="h-full max-w-80 grow overflow-y-auto bg-white p-4 lg:bg-transparent dark:bg-black dark:lg:bg-transparent">
+      {% if header %}
+        {{ header }}
+      {% elif header_title %}
+        <div class="mb-6 text-xl/snug font-bold md:text-center">{{ header_title }}</div>
+      {% endif %}
+
+      <nav class="space-y-1"{% if menu_aria_label %} aria-label="{{ menu_aria_label }}"{% endif %}>
+        {% for item in menu_items %}
+          <a
+            href="{{ item.url }}"
+            class="block flex items-center px-3 py-2 font-medium {% if item.is_active %} rounded-sm bg-primary text-white {% else %} hover:text-primary {% endif %}"
+            {{ item.attrs }}
+          >
+            {% if item.icon_name %}
+              {% icon item.icon_name classname="size-5 me-3" %}
+            {% endif %}
+            <span class="leading-tight">{{ item.label }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+    </div>
+
+    <button
+      type="button"
+      class="mt-3 ml-3 cursor-pointer p-1 text-black lg:hidden dark:text-white"
+      aria-controls="sidebar"
+      aria-label="Fermer la barre latérale"
+      data-sidebar-action="close"
+    >
+      {% icon "close" classname="size-7" %}
+    </button>
+  </div>
+
+  <div class="absolute inset-0 z-[-1] bg-black/20 transition-opacity group-aria-hidden:opacity-0 lg:hidden dark:bg-black/80"></div>
+</aside>
