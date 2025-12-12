@@ -1,0 +1,139 @@
+# Semantik Python SDK
+
+Python SDK for the Semantik Client API. Designed for Python 3.8+ applications.
+
+## Installation
+
+```bash
+pip install semantik-sdk
+# or with uv:
+uv pip install semantik-sdk
+```
+
+## Quick Start
+
+```python
+from semantik import Semantik
+import base64
+
+# Automatically reads from SEMANTIK_API_KEY environment variable (recommended)
+# Set SEMANTIK_API_KEY in your .env file or environment
+client = Semantik()
+
+# Or override with explicit API key
+client = Semantik(api_key="sk_your_api_key_here")
+
+# List programs
+programs_response = client.programs.list()
+print(f"Found {len(programs_response['programs'])} programs")
+
+# Get a specific program
+program = client.programs.get(programs_response['programs'][0]['id'])
+
+# Submit a candidate application
+with open('resume.pdf', 'rb') as f:
+    cv_content = base64.b64encode(f.read()).decode('utf-8')
+
+result = client.candidates.submit_application(
+    candidate={
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@example.com"
+    },
+    program_id=program['id'],
+    step_id=program['steps'][0]['id'],
+    documents=[
+        {
+            "fieldName": "CV",
+            "content": cv_content,
+            "fileName": "john-doe-cv.pdf",
+            "mimeType": "application/pdf",
+            "encoding": "base64"
+        }
+    ]
+)
+
+print(f"Application submitted: {result['applicationId']}")
+print(f"Candidate ID: {result['candidateId']}")
+
+# Get candidate status
+status = client.candidates.get_status(result['candidateId'], include="applications,scores")
+print(f"Candidate: {status['candidate']['firstName']} {status['candidate']['lastName']}")
+
+# Move candidate to next step
+move_result = client.programs.move_candidate(
+    program_id=program['id'],
+    candidate_id=result['candidateId'],
+    direction="next"
+)
+print(f"Moved from {move_result['movement']['from']['name']} to {move_result['movement']['to']['name']}")
+```
+
+## Configuration
+
+### API Key
+
+Set your API key as an environment variable (recommended):
+
+```bash
+export SEMANTIK_API_KEY=sk_your_api_key_here
+```
+
+Or pass it directly to the client:
+
+```python
+client = Semantik(api_key="sk_your_api_key_here")
+```
+
+### Base URL
+
+The SDK defaults to production (`https://gateway.semantikmatch.com`). For local development:
+
+```python
+client = Semantik(
+    api_key="sk_...",
+    base_url="http://localhost:9000"
+)
+```
+
+Or set `SEMANTIK_BASE_URL` environment variable.
+
+## API Reference
+
+### Programs
+
+- `client.programs.list()` - List all programs
+- `client.programs.get(program_id)` - Get a specific program
+- `client.programs.list_candidates(program_id, step_id=None, status=None, search=None, include=None, limit=None, cursor=None)` - List candidates in a program
+- `client.programs.move_candidate(program_id, candidate_id, direction="next"|"previous", from_step_id=None, to_step_id=None)` - Move a candidate between steps
+
+### Candidates
+
+- `client.candidates.submit_application(candidate, program_id, step_id, client_data=None, documents=None)` - Submit a new application
+- `client.candidates.get_status(candidate_id, include=None)` - Get candidate status across all programs
+- `client.candidates.get_applications(candidate_id, include=None)` - Get all applications for a candidate
+- `client.candidates.get_scores(candidate_id, include=None)` - Get candidate scores
+- `client.candidates.enroll(candidate_id, program_id, step_id=None, send_email=None, email_template=None)` - Enroll candidate in a program
+
+## Error Handling
+
+```python
+from semantik import Semantik, ApiError
+
+try:
+    program = client.programs.get(999)
+except ApiError as e:
+    print(f"API Error {e.status}: {e}")
+    print(f"Path: {e.path}")
+    print(f"Response: {e.response}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+## Type Hints
+
+The SDK includes full type hints for better IDE support and type checking.
+
+## Support
+
+For issues or questions, please contact support or visit the [documentation](https://docs.semantikmatch.com).
