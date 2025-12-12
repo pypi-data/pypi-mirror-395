@@ -1,0 +1,174 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel ongoing releases
+
+permissions:
+  contents: read
+
+jobs:
+  # Job 1: Build packages and generate SLSA hashes
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes \
+            -r .github/requirements-bootstrap.txt
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install -e . --no-deps
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package with twine
+        run: twine check dist/*
+
+      - name: Generate build metadata
+        run: python scripts/generate_build_metadata.py
+
+      - name: Validate wheel import
+        run: python scripts/validate_wheel.py
+
+      - name: Generate artifact hashes for SLSA provenance
+        id: hash
+        run: |
+          cd dist
+          sha256sum *.whl *.tar.gz | base64 -w0 > ../hashes.txt
+          echo "hashes=$(cat ../hashes.txt)" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist
+          path: dist/
+          retention-days: 5
+
+  # Job 2: Generate SLSA provenance (reusable workflow for security)
+  provenance:
+    needs: [build]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    # SLSA generator MUST use @vX.Y.Z tags, not SHA (per their docs)
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      upload-assets: true
+
+  # Job 3: Publish to PyPI with Sigstore attestations
+  publish:
+    needs: [build, provenance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write  # OIDC for PyPI trusted publishing
+      attestations: write  # Sigstore attestations
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
+
+      - name: Remove metadata.json before PyPI upload
+        run: rm -f dist/metadata.json
+
+      - name: Publish to PyPI with attestations
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # release/v1
+        with:
+          attestations: true
+
+  # Job 4: Create GitHub Release with all assets
+  release:
+    needs: [build, provenance, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Changes in this Release
+
+            See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
+
+            ## Installation
+
+            ```bash
+            pip install review-bot-automator
+            ```
+
+            ## Verification
+
+            This release includes SLSA provenance. Verify with:
+            ```bash
+            slsa-verifier verify-artifact \
+              review_bot_automator-*.whl \
+              --provenance-path *.intoto.jsonl \
+              --source-uri github.com/VirtualAgentics/review-bot-automator
+            ```
+
+            ## Documentation
+
+            - [Getting Started](https://github.com/VirtualAgentics/review-bot-automator/blob/main/docs/)
+            - [API Reference](https://github.com/VirtualAgentics/review-bot-automator/blob/main/docs/api-reference.md)
+          draft: false
+          prerelease: false
+          files: dist/*
+
+      - name: Generate release summary
+        run: |
+          {
+            echo "## Release Summary"
+            echo ""
+            echo "**Release Tag:** ${{ github.ref_name }}"
+            echo ""
+            echo "### Release Steps Completed"
+            echo ""
+            echo "- Package built and validated"
+            echo "- SLSA provenance generated (.intoto.jsonl)"
+            echo "- Published to PyPI with Sigstore attestations"
+            echo "- GitHub Release created"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,234 @@
+# ============================================================================
+# Workflow: Documentation Deployment (Main Branch)
+# ============================================================================
+# Purpose:
+#   Builds and deploys documentation to GitHub Pages when changes are pushed
+#   to the main branch. Uses modern GitHub Pages deployment API for improved
+#   security, performance, and reliability.
+#
+# Architecture:
+#   - Build job: Builds Sphinx documentation and uploads as artifact
+#   - Deploy job: Deploys artifact to GitHub Pages using official API
+#
+# Prerequisites:
+#   - GitHub Pages must be enabled in repository settings
+#   - Pages source should be set to "GitHub Actions"
+#   - Repository must have Pages permission enabled
+#
+# Triggers:
+#   - Push to main branch only
+#
+# Outputs:
+#   - Documentation deployed to GitHub Pages
+#   - Deployment summary with Pages URL and build statistics
+#
+# Related Workflow:
+#   - .github/workflows/docs.yml: Builds docs for PR previews
+#
+# Security:
+#   - Uses artifact-based deployment (no gh-pages branch needed)
+#   - Least privilege permissions per job
+#   - Deployment protection rules supported via environment
+# ============================================================================
+name: Documentation Deployment
+
+on:
+  push:
+    branches: [main]
+
+# Concurrency: Ensures only one deployment runs at a time to prevent
+# race conditions when multiple commits are pushed to main rapidly
+concurrency:
+  group: docs-deploy-main
+  cancel-in-progress: false  # Don't cancel deployments, queue them instead
+
+# Default permissions: read-only for security
+# Individual jobs override with specific permissions as needed
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # Build Job: Compile Sphinx documentation and upload as artifact
+  # ============================================================================
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read  # Read repository code only
+
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements-bootstrap.txt
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install -e . --no-deps
+          python -m pip install --require-hashes -r docs/requirements.txt
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
+      - name: Build documentation
+        id: build-docs
+        run: |
+          cd docs
+          # Capture both stdout and stderr to detect warnings/errors
+          make html 2>&1 | tee ../sphinx-build.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+
+          # Count warnings and errors (grep -c returns 0 and exits with 1 if no matches)
+          WARNING_COUNT=$(grep -c "WARNING:" ../sphinx-build.log 2>/dev/null || true)
+          ERROR_COUNT=$(grep -c "ERROR:" ../sphinx-build.log 2>/dev/null || true)
+
+          # Count total files built
+          FILE_COUNT=$(find _build/html -type f | wc -l)
+
+          # Set outputs with explicit values to avoid empty strings
+          echo "warning_count=${WARNING_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "error_count=${ERROR_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "file_count=${FILE_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "build_exit_code=${BUILD_EXIT_CODE}" >> "$GITHUB_OUTPUT"
+
+          # Fail if there were errors
+          if [ "$ERROR_COUNT" -gt 0 ]; then
+            echo "❌ Documentation build failed with $ERROR_COUNT errors"
+            exit 1
+          fi
+
+          exit $BUILD_EXIT_CODE
+
+      - name: Upload documentation artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: docs/_build/html
+
+      - name: Generate build summary
+        if: always()
+        run: |
+          # Calculate job duration
+          END_TIME=$(date +%s)
+          START_TIME=${{ steps.job-start.outputs.start_time }}
+          DURATION=$((END_TIME - START_TIME))
+          DURATION_MIN=$((DURATION / 60))
+          DURATION_SEC=$((DURATION % 60))
+
+
+          echo "## Documentation Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Job Duration:** ${DURATION_MIN}m ${DURATION_SEC}s" >> $GITHUB_STEP_SUMMARY
+
+          # Build status
+          if [ "${{ steps.build-docs.outputs.build_exit_code }}" -eq 0 ]; then
+            echo "### ✅ Build Status: Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Build Status: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Build statistics
+          echo "### 📊 Build Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Files generated:** ${{ steps.build-docs.outputs.file_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Warnings:** ${{ steps.build-docs.outputs.warning_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Errors:** ${{ steps.build-docs.outputs.error_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Show warnings if any
+          if [ "${{ steps.build-docs.outputs.warning_count }}" -gt 0 ]; then
+            echo "### ⚠️ Build Warnings" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep "WARNING:" sphinx-build.log | head -20 >> $GITHUB_STEP_SUMMARY || echo "No detailed warnings found" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            if [ "$(grep -c "WARNING:" sphinx-build.log 2>/dev/null || true)" -gt 20 ]; then
+              echo "*Showing first 20 warnings. Check build logs for complete list.*" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          # Next step info
+          echo "### 📦 Artifact Upload" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Documentation artifact has been uploaded and is ready for deployment." >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Deploy Job: Deploy artifact to GitHub Pages
+  # ============================================================================
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      pages: write       # Deploy to GitHub Pages
+      id-token: write    # Verify deployment authenticity
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+
+      - name: Generate deployment summary
+        if: always()
+        run: |
+          # Calculate job duration
+          END_TIME=$(date +%s)
+          START_TIME=${{ steps.job-start.outputs.start_time }}
+          DURATION=$((END_TIME - START_TIME))
+          DURATION_MIN=$((DURATION / 60))
+          DURATION_SEC=$((DURATION % 60))
+
+
+          echo "## Documentation Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Job Duration:** ${DURATION_MIN}m ${DURATION_SEC}s" >> $GITHUB_STEP_SUMMARY
+
+          # Deployment status
+          if [ "${{ steps.deployment.outcome }}" == "success" ]; then
+            echo "### ✅ Deployment Status: Success" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Documentation URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Deployment Status: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Deployment info
+          echo "### 🚀 Deployment Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** github-pages" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment method:** Artifact-based (modern GitHub Pages API)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Workflow failed - check logs for details"
+          echo "## ❌ Workflow Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This workflow has failed. Please check the logs above for error details." >> $GITHUB_STEP_SUMMARY

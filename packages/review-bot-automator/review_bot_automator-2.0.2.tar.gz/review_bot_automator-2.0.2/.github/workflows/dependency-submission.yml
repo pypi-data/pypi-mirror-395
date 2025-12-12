@@ -1,0 +1,63 @@
+name: Dependency Submission
+
+# This workflow generates and submits an SBOM (Software Bill of Materials) to
+# GitHub's dependency graph API. This helps refresh GitHub's understanding of
+# our dependencies and their versions.
+#
+# Purpose: Resolves false positives where vulnerability databases haven't
+# recognized that newer package versions include security fixes.
+#
+# Reference: https://github.com/anchore/sbom-action
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "pyproject.toml"
+      - "requirements*.txt"
+      - ".github/requirements-bootstrap.txt"
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Default permissions: read-only for security
+permissions:
+  contents: read
+
+jobs:
+  sbom-generation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write  # Required to submit SBOM to dependency graph
+      id-token: write  # Required for SBOM attestation
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements-bootstrap.txt
+          pip install --require-hashes -r requirements-dev.txt
+          pip install --require-hashes -r requirements-ml.txt
+          pip install -e . --no-deps
+
+      - name: Generate and Submit SBOM
+        uses: anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d # v0.20.10
+        with:
+          format: spdx-json
+          output-file: "${{ github.event.repository.name }}-sbom.spdx.json"
+          upload-artifact: true
+          upload-release-assets: false
+          dependency-snapshot: true  # Submit to GitHub dependency graph

@@ -1,0 +1,518 @@
+# ============================================================================
+# Workflow: Security
+# ============================================================================
+# Purpose:
+#   Runs comprehensive security analysis on the codebase to detect
+#   vulnerabilities, security issues, and code quality problems.
+#
+# Security Tools:
+#   - Bandit: Static analysis for common security issues in Python code
+#   - pip-audit: Audits Python packages for security vulnerabilities (OSV database)
+#   - CodeQL: GitHub's semantic code analysis engine for security and quality
+#   - Trivy: Comprehensive vulnerability scanner for dependencies and filesystems
+#   - TruffleHog: Secret scanner with git history analysis and verification
+#   - OpenSSF Scorecard: Security best practices assessment tool
+# Note: Dependency updates and security alerts handled by Renovate
+#
+# Triggers:
+#   - Push to main or develop branches
+#   - Pull requests targeting main or develop branches
+#   - Daily schedule: Every day at 2:00 AM UTC
+#
+# Behavior:
+#   - Fails the workflow if HIGH severity issues are found
+#   - Generates detailed workflow summary with scan results
+#   - Uploads security reports as artifacts only when issues are detected
+# ============================================================================
+name: Security
+
+# Default permissions: read-only for security
+# Individual jobs override with specific permissions as needed
+permissions:
+  contents: read  # Default: read-only access for repository checkout
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: "0 2 * * *"  # Daily at 2 AM UTC
+
+# Concurrency: Prevents multiple security scans from running simultaneously
+# on the same branch/PR. When a new commit is pushed, any in-progress scan for
+# that branch/PR is cancelled to save CI resources and reduce wait time.
+# Uses PR number for pull_request events to avoid canceling unrelated PRs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true  # Cancel older runs when new push occurs
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job: security-scan
+  # --------------------------------------------------------------------------
+  # Runs Python security scanning tools (Bandit, pip-audit) to detect
+  # security vulnerabilities in source code and dependencies. Generates a
+  # detailed workflow summary and uploads reports when issues are found.
+  # --------------------------------------------------------------------------
+  security-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20  # Prevents hanging jobs (typical runtime: 30-60 seconds)
+
+    # Permissions: Minimal required access for security scanning
+    permissions:
+      contents: read    # Read repository code
+      packages: read    # Read package registry (for dependency resolution)
+      actions: read     # Read workflow artifacts
+
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements-bootstrap.txt
+          pip install --require-hashes -r requirements-dev.txt
+          pip install -e . --no-deps
+
+      # Bandit: Static analysis security testing (SAST) for Python
+      # Scans source code for common security issues like SQL injection,
+      # hardcoded passwords, insecure temp file usage, etc.
+      - name: Run Bandit security scan
+        run: bandit -r src/ -f json -o bandit-report.json
+
+      # pip-audit: Audits Python packages for known vulnerabilities using OSV database
+      # Generates both JSON (for parsing) and text (for human reading) reports
+      # Error handling: Allows report generation even when vulnerabilities are found
+      - name: Run pip-audit check (JSON)
+        run: |
+          # Allow report generation even with vulnerabilities; security-check step will evaluate
+          pip-audit --format json > pip-audit-report.json || {
+            echo "pip-audit returned non-zero exit code"
+            exit 0
+          }
+        continue-on-error: false
+
+      - name: Run pip-audit check (text)
+        run: |
+          # Allow report generation even with vulnerabilities; security-check step will evaluate
+          pip-audit --desc > pip-audit-report.txt || {
+            echo "pip-audit text scan completed with findings"
+            exit 0
+          }
+        continue-on-error: false
+
+      # Security Check Script: Aggregates results from all security tools
+      # and generates a comprehensive workflow summary. Fails the workflow
+      # if any HIGH severity issues or vulnerabilities are detected.
+      #
+      # Summary Format:
+      #   - ✅ Tool: Status (when no issues found)
+      #   - ❌ Tool: Issues found (when vulnerabilities detected)
+      #   - 🚨 Final status (failure if any issues found)
+      #
+      # Exit Code: 1 if security issues detected, 0 otherwise
+      - name: Check for critical security issues
+        id: security-check
+        run: |
+          set -euo pipefail  # Exit on error, undefined variable, or pipe failure
+          IFS=$'\n\t'        # Set field separator for safe iteration
+
+          ISSUES_FOUND=0  # Flag to track if any security issues were detected
+
+          # Initialize workflow summary with header
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check Bandit results: Only HIGH severity issues cause workflow failure
+          # (MEDIUM and LOW are informational only)
+          if [ -f bandit-report.json ]; then
+            HIGH_ISSUES=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' bandit-report.json)
+            if [ "$HIGH_ISSUES" -gt 0 ]; then
+              echo "### ❌ Bandit: Found $HIGH_ISSUES HIGH severity issues" >> $GITHUB_STEP_SUMMARY
+              echo "❌ Found $HIGH_ISSUES HIGH severity security issues in Bandit scan"
+              echo "High severity issues found:"
+              jq -r '.results[] | select(.issue_severity == "HIGH") | "- \(.issue_text) in \(.filename):\(.line_number)"' bandit-report.json | tee -a $GITHUB_STEP_SUMMARY
+              ISSUES_FOUND=1
+            else
+              echo "### ✅ Bandit: No HIGH severity issues" >> $GITHUB_STEP_SUMMARY
+              echo "✅ No HIGH severity issues found in Bandit scan"
+            fi
+          fi
+
+          # Check pip-audit results: Counts total vulnerabilities across all dependencies
+          # Any vulnerability (regardless of severity) is reported in the summary
+          if [ -f pip-audit-report.json ]; then
+            TOTAL_VULNS=$(jq '[.dependencies[].vulns[]] | length' pip-audit-report.json 2>/dev/null || echo "0")
+            if [ "$TOTAL_VULNS" -gt 0 ]; then
+              echo "### ❌ pip-audit: Found $TOTAL_VULNS vulnerabilities" >> $GITHUB_STEP_SUMMARY
+              echo "❌ Found $TOTAL_VULNS vulnerabilities in pip-audit scan"
+              echo "Vulnerabilities found:" | tee -a $GITHUB_STEP_SUMMARY
+              jq -r '.dependencies[].vulns[] | "- \(.id): \(.description // "No description")"' pip-audit-report.json 2>/dev/null | head -20 | tee -a $GITHUB_STEP_SUMMARY || true
+              ISSUES_FOUND=1
+            else
+              echo "### ✅ pip-audit: No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+              echo "✅ No vulnerabilities found in pip-audit scan"
+            fi
+          fi
+
+          # Generate final summary based on aggregated results
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$ISSUES_FOUND" -eq 1 ]; then
+            # Fail the workflow: Security issues require attention
+            echo "### 🚨 Security Issues Detected" >> $GITHUB_STEP_SUMMARY
+            echo "Please review the security reports and address the findings." >> $GITHUB_STEP_SUMMARY
+            exit 1  # Non-zero exit code fails the workflow
+          else
+            # Success: No security issues detected
+            echo "### ✅ All Security Checks Passed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # Artifact Upload: Only uploads security reports when security-check step fails
+      # This saves storage costs by not uploading reports when all checks pass.
+      # Reports are kept for 30 days to allow investigation of security issues.
+      # Uses specific step outcome to avoid uploading on unrelated failures
+      # (e.g., dependency installation failures).
+      #
+      # Uploaded artifacts include:
+      #   - bandit-report.json: Detailed Bandit findings
+      #   - pip-audit-report.json: Structured vulnerability data
+      #   - pip-audit-report.txt: Human-readable vulnerability descriptions
+      - name: Upload security reports
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: steps.security-check.conclusion == 'failure'  # Upload only when security issues detected
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+            pip-audit-report.txt
+          retention-days: 30  # Keep reports for 30 days
+
+  # --------------------------------------------------------------------------
+  # Job: codeql
+  # --------------------------------------------------------------------------
+  # Runs GitHub's CodeQL semantic code analysis engine to detect security
+  # vulnerabilities, bugs, and code quality issues. CodeQL uses advanced
+  # queries to find potential problems that traditional linters might miss.
+  #
+  # Results are uploaded to GitHub Security tab for tracking and remediation.
+  # --------------------------------------------------------------------------
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Prevents hanging jobs (typical runtime: 2-3 minutes)
+
+    # Permissions: Required for CodeQL to upload analysis results
+    permissions:
+      actions: read          # Read workflow artifacts
+      contents: read         # Read repository code
+      security-events: write # Write security analysis results to GitHub Security
+
+    # Matrix Strategy: Allows scanning multiple languages independently
+    # Currently configured for Python only, but can be extended for other languages
+    strategy:
+      fail-fast: false  # Continue scanning even if one language fails
+      matrix:
+        language: ["python"]  # Languages to analyze (extensible to js, go, etc.)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      # Initialize CodeQL: Sets up the CodeQL analysis environment
+      # and prepares the database for semantic code analysis.
+      # Uses custom configuration for enhanced security coverage.
+      # The config file specifies both security-extended and security-and-quality query suites.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@fe4161a26a8629af62121b670040955b330f9af2 # v4.31.6
+        with:
+          languages: ${{ matrix.language }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # NOTE: Python dependency installation removed - not needed for CodeQL analysis.
+      # CodeQL for Python analyzes source code directly without requiring runtime
+      # dependencies to be installed. This optimization reduces analysis time by ~30%
+      # (saves approximately 21 seconds per run).
+      #
+      # For Python, CodeQL:
+      # - Extracts the Abstract Syntax Tree (AST) from source code
+      # - Builds a semantic database of code structure
+      # - Runs security queries against this database
+      # - Does NOT need imports to be resolvable or packages installed
+
+      # Perform Analysis: Runs CodeQL queries and uploads results to GitHub Security
+      # Results can be viewed in the Security > Code scanning alerts tab
+      - name: Perform CodeQL Analysis
+        id: analyze
+        uses: github/codeql-action/analyze@fe4161a26a8629af62121b670040955b330f9af2 # v4.31.6
+        with:
+          category: "/language:${{matrix.language}}"  # Categorize results by language
+          upload: true  # Upload SARIF results to GitHub Security tab
+
+      # Report CodeQL Analysis Results: Provides visibility into the CodeQL
+      # scanning process and confirms successful analysis completion
+      - name: Report CodeQL analysis results
+        if: steps.analyze.outcome == 'success'
+        run: |
+          echo "## CodeQL Analysis Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Analysis Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Language:** ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Query Suites:** security-extended, security-and-quality" >> $GITHUB_STEP_SUMMARY
+          echo "**Config:** .github/codeql/codeql-config.yml" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Results have been uploaded to the Security tab." >> $GITHUB_STEP_SUMMARY
+          echo "Check: [Code scanning alerts](https://github.com/${{ github.repository }}/security/code-scanning)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Optimization" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "CodeQL analysis optimized by removing unnecessary dependency installation." >> $GITHUB_STEP_SUMMARY
+          echo "**Performance improvement:** ~30% faster (saves ~21 seconds per run)" >> $GITHUB_STEP_SUMMARY
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Workflow failed - check logs for details"
+          echo "## ❌ Workflow Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This workflow has failed. Please check the logs above for error details." >> $GITHUB_STEP_SUMMARY
+
+  # --------------------------------------------------------------------------
+  # Job: trivy-scan
+  # --------------------------------------------------------------------------
+  # Runs Trivy vulnerability scanner to detect security issues in dependencies,
+  # filesystem, and future container images. Trivy uses multiple vulnerability
+  # databases (NVD, GitHub Security Advisories, etc.) and supports SARIF output
+  # for integration with GitHub Security tab.
+  #
+  # Future-ready: Will scan Docker images when containerization is added.
+  # --------------------------------------------------------------------------
+  trivy-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevents hanging jobs (typical runtime: 2-3 minutes)
+
+    # Permissions: Required for SARIF upload to GitHub Security
+    permissions:
+      contents: read          # Read repository code
+      security-events: write  # Write security analysis results to GitHub Security
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+
+      # Run Trivy vulnerability scanner on filesystem
+      # Scans dependencies and source code for known vulnerabilities
+      # Fails on CRITICAL or HIGH severity findings
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8  # v0.33.1
+        with:
+          scan-type: 'fs'              # Filesystem scan (will add 'image' when Docker is added)
+          scan-ref: '.'                # Scan entire repository
+          format: 'sarif'              # SARIF format for GitHub Security tab
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'    # Fail on critical/high severity only
+          exit-code: '1'               # Exit with error if vulnerabilities found
+
+      # Upload Trivy results to GitHub Security tab
+      # Always runs even if scan fails, to ensure visibility
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@fe4161a26a8629af62121b670040955b330f9af2  # v4.31.6
+        if: always()  # Upload even if scan found vulnerabilities
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy'  # Categorize in Security tab
+
+      # Generate workflow summary with scan results
+      - name: Report Trivy scan results
+        if: always()
+        run: |
+          {
+            echo "## Trivy Vulnerability Scan Results"
+            echo ""
+            if [ -f trivy-results.sarif ]; then
+              VULN_COUNT=$(jq '[.runs[].results[]] | length' trivy-results.sarif 2>/dev/null || echo "0")
+              if [ "$VULN_COUNT" -gt 0 ]; then
+                echo "### ❌ Found $VULN_COUNT vulnerabilities (CRITICAL/HIGH)"
+                echo ""
+                echo "Check the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning) for details."
+              else
+                echo "### ✅ No CRITICAL or HIGH vulnerabilities found"
+              fi
+            else
+              echo "### ⚠️ Scan completed but results file not found"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Upload Trivy SARIF results as artifact for investigation
+      - name: Upload Trivy SARIF artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4  # v5.0.0
+        if: always()  # Upload regardless of scan status
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+          retention-days: 14
+
+  # --------------------------------------------------------------------------
+  # Job: trufflehog-scan
+  # --------------------------------------------------------------------------
+  # Runs TruffleHog secret scanner to detect exposed credentials, API keys,
+  # and other sensitive information in git history and current files.
+  # TruffleHog uses 700+ detection patterns and can verify found secrets
+  # by attempting to use them (disabled by default for safety).
+  #
+  # Scans entire git history to catch secrets that may have been committed
+  # and later removed.
+  # --------------------------------------------------------------------------
+  trufflehog-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20  # Prevents hanging jobs (typical runtime: 3-5 minutes)
+
+    # Permissions: Read-only access for scanning
+    permissions:
+      contents: read  # Read repository code and git history
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+        with:
+          fetch-depth: 0  # Fetch full git history for comprehensive secret scanning
+
+      # Run TruffleHog secret scanner
+      # Scans git history for exposed credentials and secrets
+      # Uses Docker container for consistent scanning environment
+      - name: Run TruffleHog secret scanner
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            trufflesecurity/trufflehog:3.90.0 \
+            git file:///repo \
+            --json \
+            --no-verification \
+            --fail \
+            --exclude-paths=/repo/.truffleignore \
+            > trufflehog-results.json || {
+              # TruffleHog exits with non-zero if secrets found
+              echo "TruffleHog found potential secrets"
+              exit 0  # Don't fail here; let the check step handle it
+            }
+
+      # Analyze TruffleHog results and generate summary
+      # Fails workflow if verified secrets are found
+      - name: Analyze TruffleHog results
+        if: always()
+        run: |
+          {
+            echo "## TruffleHog Secret Scan Results"
+            echo ""
+
+            if [ -f trufflehog-results.json ] && [ -s trufflehog-results.json ]; then
+              # Count total findings
+              TOTAL_SECRETS=$(jq -s 'length' trufflehog-results.json 2>/dev/null || echo "0")
+
+              if [ "$TOTAL_SECRETS" -gt 0 ]; then
+                echo "### ❌ Found $TOTAL_SECRETS potential secrets"
+                echo ""
+                echo "**⚠️ Action Required:** Review and remove exposed secrets immediately."
+                echo ""
+                echo "Findings summary:"
+                jq -r 'select(.SourceMetadata.Data.Git != null) | "- \(.DetectorName): \(.SourceMetadata.Data.Git.file // "unknown file")"' trufflehog-results.json 2>/dev/null | head -20 || true
+                echo ""
+                echo "### 🚨 Secrets Detected - Workflow Failed"
+              else
+                echo "### ✅ No secrets detected"
+              fi
+            else
+              echo "### ✅ No secrets detected"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Exit after summary generation to ensure summary is written
+          if [ -f trufflehog-results.json ] && [ -s trufflehog-results.json ]; then
+            TOTAL_SECRETS=$(jq -s 'length' trufflehog-results.json 2>/dev/null || echo "0")
+            if [ "$TOTAL_SECRETS" -gt 0 ]; then
+              exit 1
+            fi
+          fi
+
+      # Upload TruffleHog results as artifact when secrets found
+      # Helps with investigation and remediation
+      - name: Upload TruffleHog results
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4  # v5.0.0
+        if: failure()  # Upload only when secrets detected
+        with:
+          name: trufflehog-results
+          path: trufflehog-results.json
+          retention-days: 30
+
+  # --------------------------------------------------------------------------
+  # Job: scorecard
+  # --------------------------------------------------------------------------
+  # Runs OpenSSF Scorecard to assess repository security best practices.
+  # Scorecard checks for security measures like:
+  #   - Branch protection rules
+  #   - Code review requirements
+  #   - Signed commits
+  #   - Dependency pinning
+  #   - Security policy (SECURITY.md)
+  #   - Vulnerability disclosure
+  #   - CI/CD security (dangerous workflow patterns)
+  #
+  # Target: Score ≥9.0/10 (current target per Phase 0.7 requirements)
+  # Results uploaded to GitHub Security tab for tracking over time.
+  # --------------------------------------------------------------------------
+  scorecard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevents hanging jobs (typical runtime: 2-3 minutes)
+
+    # Permissions: Required for Scorecard analysis and SARIF upload
+    permissions:
+      contents: read          # Read repository metadata
+      security-events: write  # Write security analysis results to GitHub Security
+      id-token: write         # Required for OIDC token (Scorecard API authentication)
+      actions: read           # Read workflow configurations
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+        with:
+          persist-credentials: false  # Don't persist GitHub token
+
+      # Run OpenSSF Scorecard analysis
+      # Analyzes repository security posture across 18 security checks
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a  # v2.4.3
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          publish_results: true  # Publish to OpenSSF Scorecard API (public repos only)
+
+      # Upload Scorecard results to GitHub Security tab
+      # Always uploads to track score trends over time
+      - name: Upload Scorecard results to GitHub Security
+        uses: github/codeql-action/upload-sarif@fe4161a26a8629af62121b670040955b330f9af2  # v4.31.6
+        if: always()  # Upload even if score is below threshold
+        with:
+          sarif_file: scorecard-results.sarif
+          category: 'scorecard'
+
+      # Validate Scorecard results for HIGH/CRITICAL security findings
+      # Fails workflow if any HIGH (CVSS ≥7.0) or CRITICAL (CVSS ≥9.0) findings exist
+      # EXCEPTION: Excludes PYSEC-2024-48 / GHSA-fj7x-q9j7-g6q6 (known false positive)
+      #   - Black 25.9.0 includes fix from March 2024 (commit f000936)
+      #   - OSV-Scanner.toml not respected by Scorecard (upstream Issue #4530)
+      #   - Tracked in: https://github.com/VirtualAgentics/review-bot-automator/issues/75
+      #
+      # NOTE: Custom validation step removed (violates Scorecard API restrictions when publish_results: true)
+      # - Scorecard results are automatically uploaded to GitHub Security tab (see above step)
+      # - Review findings at: Repository → Security → Code scanning alerts → Filter by "Scorecard"
+      # - Scorecard scores are informational and not meant to block workflows
+      # - See: https://github.com/ossf/scorecard-action#workflow-restrictions

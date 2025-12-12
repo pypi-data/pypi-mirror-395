@@ -1,0 +1,236 @@
+---
+title: Python Style Guidelines
+description: Code formatting, linting rules, and style conventions for Python development
+alwaysApply: true
+---
+
+# Python Style Guidelines
+
+## Code Formatting
+
+- **Black**: Use Black formatter with line-length=100
+- **Line Length**: Maximum 100 characters per line
+- **Indentation**: 4 spaces (no tabs)
+- **Quotes**: Use double quotes for strings, single quotes for string literals in code
+
+## Linting Rules (Ruff)
+
+Enable comprehensive linting with:
+
+```toml
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "SIM",    # flake8-simplify
+    "T20",    # flake8-print
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit (security)
+    "RUF",    # Ruff-specific rules
+    "ANN",    # flake8-annotations
+    "D",      # pydocstyle
+]
+```
+
+## Type Hints
+
+- **Required**: All function signatures must have type hints
+- **Return Types**: Always specify return types, use `None` for void functions
+- **Generic Types**: Use proper generic types for collections (List[str], Dict[str, Any])
+- **Optional**: Use `Optional[Type]` or `Type | None` for nullable values
+- **No Any**: Avoid `Any` type unless absolutely necessary and documented
+
+## Docstrings
+
+Use Google-style docstrings:
+
+```python
+def function_name(param1: str, param2: int) -> bool:
+    """Brief description of the function.
+
+    Longer description if needed, explaining the purpose,
+    behavior, and any important details.
+
+    Args:
+        param1: Description of the first parameter.
+        param2: Description of the second parameter.
+
+    Returns:
+        Description of what the function returns.
+
+    Raises:
+        ValueError: When invalid input is provided.
+        RuntimeError: When operation fails.
+
+    Example:
+        >>> function_name("test", 42)
+        True
+    """
+```
+
+## Import Organization
+
+1. Standard library imports
+2. Third-party imports
+3. Local application imports
+
+Use absolute imports when possible:
+
+```python
+from review_bot_automator.core.resolver import ConflictResolver
+```
+
+## Naming Conventions
+
+- **Variables/Functions**: snake_case
+- **Classes**: PascalCase
+- **Constants**: UPPER_SNAKE_CASE
+- **Private**: Prefix with underscore (_private_method)
+- **Protected**: Prefix with underscore (_protected_method)
+
+## Error Handling
+
+- Use specific exception types
+- Include context in error messages
+- Use try/except blocks appropriately
+- Don't catch generic Exception unless necessary
+
+## Performance
+
+- Use list comprehensions for simple transformations
+- Use generator expressions for large datasets
+- Avoid unnecessary object creation in loops
+- Use appropriate data structures
+
+## Quality Enforcement (MANDATORY)
+
+### Never Bypass Quality Checks
+
+❌ **FORBIDDEN** - Never use bypass flags:
+
+```bash
+git commit --no-verify  # NEVER DO THIS
+black --skip-string-normalization  # Avoid unless absolutely necessary
+ruff --ignore E501  # Fix the issue instead
+mypy --ignore-errors  # Fix type errors instead
+```
+
+✅ **CORRECT** - Fix issues properly:
+
+```bash
+# Fix formatting
+black src/ tests/
+
+# Fix linting
+ruff check src/ tests/ --fix
+
+# Fix type errors
+mypy src/ --strict
+
+# Then commit
+git add .
+git commit -m "fix: resolve linting and type issues"
+```
+
+### Pre-commit Integration
+
+All Python files are automatically checked via pre-commit hooks:
+
+- **Black** - Auto-formats code
+- **Ruff** - Lints and fixes issues
+- **MyPy** - Type checking with strict mode
+- **Bandit** - Security scanning
+
+### Mandatory Standards
+
+These standards are **NON-NEGOTIABLE**:
+
+1. All code must pass Black formatting
+2. All code must pass Ruff linting (no errors)
+3. All code must pass MyPy type checking (--strict)
+4. All code must pass security scanning
+5. All public functions must have docstrings
+6. All functions must have type hints
+
+### Fix Before Commit
+
+Quality issues **MUST** be fixed before committing:
+
+```bash
+# Run all checks
+make lint
+
+# Fix any issues found
+# Re-run checks until clean
+make lint
+
+# Only then commit
+git commit -m "fix: resolve quality issues"
+```
+
+## Error Handling
+
+### LLM-Specific Exceptions
+
+Use specific exception types for LLM errors:
+
+```python
+from review_bot_automator.llm.exceptions import (
+    LLMError,
+    LLMAPIError,
+    LLMAuthenticationError,
+    LLMTimeoutError,
+)
+
+try:
+    response = provider.generate(prompt)
+except LLMAuthenticationError:
+    # Handle auth failure
+    logger.error("LLM authentication failed")
+except LLMTimeoutError:
+    # Handle timeout
+    logger.warning("LLM request timed out, retrying...")
+except LLMError as e:
+    # Handle generic LLM error
+    logger.error(f"LLM error: {e}")
+```
+
+### Error Context
+
+Always include context in error messages:
+
+```python
+raise LLMAPIError(
+    "Failed to generate response",
+    details={
+        "provider": self.provider,
+        "model": self.model,
+        "prompt_length": len(prompt),
+        "max_tokens": max_tokens,
+    }
+)
+```
+
+### Fallback Strategies
+
+Implement fallback for LLM failures:
+
+```python
+try:
+    changes = llm_parser.parse_comment(comment_body)
+except LLMError as e:
+    logger.warning(f"LLM parsing failed: {e}, falling back to regex")
+    if config.llm_fallback_to_regex:
+        changes = regex_parser.parse_comment(comment_body)
+    else:
+        raise
+```
+
+## Related Rules
+
+- See `.cursor/rules/error-handling.mdc` for comprehensive error handling patterns
+- See `.cursor/rules/llm-integration.mdc` for LLM-specific error handling

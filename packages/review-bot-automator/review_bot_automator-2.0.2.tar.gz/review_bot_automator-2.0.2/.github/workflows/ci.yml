@@ -1,0 +1,308 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Default permissions: read-only for security
+# Individual jobs override with specific permissions as needed
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements-bootstrap.txt
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install -e . --no-deps
+
+      - name: Lint with Black
+        run: black --check src/ tests/
+
+      - name: Lint with Ruff
+        run: ruff check src/ tests/
+
+      - name: Type check with MyPy
+        run: mypy src/ tests/ --strict
+
+      - name: Security scan with Bandit
+        run: bandit -r src/ -f json -o bandit-report.json || bandit -r src/
+        continue-on-error: true
+
+      - name: Audit dependencies with pip-audit
+        run: pip-audit --desc --format json --output pip-audit-report.json || pip-audit --desc
+        continue-on-error: true
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements-bootstrap.txt
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install -e . --no-deps
+
+      - name: Run tests
+        run: pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under=90
+
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          # Calculate job duration
+          END_TIME=$(date +%s)
+          START_TIME=${{ steps.job-start.outputs.start_time }}
+          DURATION=$((END_TIME - START_TIME))
+          DURATION_MIN=$((DURATION / 60))
+          DURATION_SEC=$((DURATION % 60))
+
+
+          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract coverage percentage from coverage report
+          COVERAGE_PERCENT=$(python -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          coverage = float(root.attrib['line-rate']) * 100
+          print(f'{coverage:.2f}%')
+          " 2>/dev/null || echo "N/A")
+
+          echo "**Total Coverage:** $COVERAGE_PERCENT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$COVERAGE_PERCENT" != "N/A" ]; then
+            # Parse and extract coverage percentage value for comparison
+            COVERAGE_VALUE=$(echo "$COVERAGE_PERCENT" | sed 's/%//')
+
+            if (( $(echo "$COVERAGE_VALUE >= 90" | bc -l) )); then
+              echo "✅ Coverage meets the 90% threshold (OpenSSF Gold badge)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Coverage below 90% threshold" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Detailed Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          coverage report 2>/dev/null || echo "Coverage report not available"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: VirtualAgentics/review-bot-automator
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
+
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements-bootstrap.txt
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install -e . --no-deps
+
+      - name: Run fuzzing tests
+        env:
+          HYPOTHESIS_PROFILE: ci
+        run: pytest tests/ -m fuzz -v --tb=short --override-ini="addopts="
+
+      - name: Generate fuzz test summary
+        if: always()
+        run: |
+          # Calculate job duration
+          END_TIME=$(date +%s)
+          START_TIME=${{ steps.job-start.outputs.start_time }}
+          DURATION=$((END_TIME - START_TIME))
+          DURATION_MIN=$((DURATION / 60))
+          DURATION_SEC=$((DURATION % 60))
+
+          echo "## Fuzzing Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration:** ${DURATION_MIN}m ${DURATION_SEC}s" >> $GITHUB_STEP_SUMMARY
+          echo "**Profile:** CI (100 examples per test)" >> $GITHUB_STEP_SUMMARY
+          echo "**Python:** ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+
+  markdownlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Run markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@30a0e04f1870d58f8d717450cc6134995f993c63 # v21
+        with:
+          globs: |
+            **/*.md
+            !node_modules
+            !.venv
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint, test, markdownlint]
+    permissions:
+      contents: read
+    steps:
+      - name: Record job start time
+        id: job-start
+        run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements-bootstrap.txt
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install -e . --no-deps
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package with twine
+        run: twine check dist/*
+
+      - name: Generate build metadata
+        run: python scripts/generate_build_metadata.py
+
+      - name: Validate wheel import
+        run: python scripts/validate_wheel.py
+
+      - name: Generate build summary
+        if: always()
+        run: |
+          # Calculate job duration
+          END_TIME=$(date +%s)
+          START_TIME=${{ steps.job-start.outputs.start_time }}
+          DURATION=$((END_TIME - START_TIME))
+          DURATION_MIN=$((DURATION / 60))
+          DURATION_SEC=$((DURATION % 60))
+
+
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Job Duration:** ${DURATION_MIN}m ${DURATION_SEC}s" >> $GITHUB_STEP_SUMMARY
+
+          # Package information
+          if [ -f dist/metadata.json ]; then
+            PACKAGE_NAME=$(python -c "import json; print(json.load(open('dist/metadata.json'))['package']['name'])" 2>/dev/null || echo "unknown")
+            PACKAGE_VERSION=$(python -c "import json; print(json.load(open('dist/metadata.json'))['package']['version'])" 2>/dev/null || echo "unknown")
+            echo "**Package:** $PACKAGE_NAME" >> $GITHUB_STEP_SUMMARY
+            echo "**Version:** $PACKAGE_VERSION" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Build artifacts
+          echo "### Build Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+
+          for file in dist/*.whl dist/*.tar.gz dist/metadata.json; do
+            if [ -f "$file" ]; then
+              SIZE=$(du -h "$file" | cut -f1)
+              FILENAME=$(basename "$file")
+              echo "| $FILENAME | $SIZE |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Metadata
+          if [ -f dist/metadata.json ]; then
+            echo "### Build Metadata" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat dist/metadata.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: dist-${{ github.event.pull_request.number || github.sha }}
+          path: dist/
+          retention-days: 30
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Workflow failed - check logs for details"
+          echo "## ❌ Workflow Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This workflow has failed. Please check the logs above for error details." >> $GITHUB_STEP_SUMMARY

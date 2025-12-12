@@ -1,0 +1,264 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "review-bot-automator"
+version = "2.0.2"
+description = "Universal AI-powered automation for GitHub code review bots with intelligent conflict resolution"
+authors = [
+    { name = "VirtualAgentics", email = "bdc@virtualagentics.ai" },
+]
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "ai",
+    "llm",
+    "automation",
+    "github",
+    "code-review-bot",
+    "suggestion-applier",
+    "conflict-resolution",
+    "pr-automation",
+    "coderabbit",
+    "github-copilot",
+    "code-review",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Software Development :: Quality Assurance",
+]
+# NOTE: PEP 621 does not support SHA-256 hash pinning in pyproject.toml
+# Hash-pinned versions are maintained in:
+# - requirements.txt (production dependencies with hashes)
+# - requirements-dev.txt (development dependencies with hashes)
+# - docs/requirements.txt (documentation dependencies with hashes)
+# - .github/requirements-bootstrap.txt (CI bootstrap with hashes)
+dependencies = [
+    "click==8.3.1",
+    "requests==2.32.5",
+    "pydantic==2.12.5",
+    "ruamel.yaml==0.18.16",
+    "tomli-w==1.2.0",
+    "rich==14.2.0",
+    # LLM provider dependencies (Phase 1)
+    "openai==2.8.1",
+    "tenacity==9.1.2",
+    "tiktoken==0.12.0",
+    # Anthropic API provider (Phase 2.1)
+    "anthropic==0.75.0",
+]
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.1",
+    "pytest-cov==7.0.0",
+    "hypothesis==6.148.6",
+    "black==25.11.0",
+    "ruff==0.14.8",
+    "mypy==1.19.0",
+    "pre-commit==4.5.0",
+    "types-requests==2.32.4.20250913",
+    "types-PyYAML==6.0.12.20250915",
+    "bandit[toml]==1.9.2",
+    "pip-audit==2.9.0",
+    "build==1.3.0",
+    "twine==6.2.0",
+    "sphinx==8.2.3",
+    "sphinx-rtd-theme==3.0.2",
+    "sphinx-autodoc-typehints==3.5.2",
+    "myst-parser==4.0.1",
+]
+ml = [
+    "numpy==2.3.5",
+    "scikit-learn==1.7.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/VirtualAgentics/review-bot-automator"
+Documentation = "https://github.com/VirtualAgentics/review-bot-automator/blob/main/docs/"
+Repository = "https://github.com/VirtualAgentics/review-bot-automator"
+Issues = "https://github.com/VirtualAgentics/review-bot-automator/issues"
+
+[project.scripts]
+pr-resolve = "review_bot_automator.cli.main:cli"
+
+[tool.black]
+line-length = 100
+target-version = [
+    "py312",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "C4",
+    "PIE",
+    "SIM",
+    "T20",
+    "ASYNC",
+    "S",
+    "RUF",
+    "ANN",
+    "D",
+]
+ignore = [
+    "D203",
+    "D213",
+    "UP040",  # Allow TypeAlias syntax (Python 3.11 compatibility for OSS-Fuzz)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",
+    "S108",  # /tmp usage in tests is ok
+    "D",
+    "RUF043",  # regex patterns in pytest.raises are ok
+]
+"conftest.py" = [
+    "S101",
+    "D",
+]
+"scripts/**/*.py" = [
+    "T201",  # print statements are ok in scripts
+    "S603",  # subprocess call (necessary for git commands)
+]
+"tests/integration/**/*.py" = [
+    "S101",
+    "S603",  # subprocess calls in integration tests are intentional
+    "S607",  # partial executable paths (git commands) are intentional
+    "D",
+    "RUF043",  # regex patterns in pytest.raises are ok
+]
+"fuzz/**/*.py" = [
+    "S101",  # assert statements are intentional in fuzzing for crash detection
+    "T201",  # print statements ok for fuzzing error reporting
+    "D301",  # backslashes in docstrings ok for fuzzing documentation
+]
+"src/review_bot_automator/llm/base.py" = [
+    "PIE790",  # pass is necessary to satisfy CodeQL py/ineffectual-statement
+]
+"src/review_bot_automator/llm/providers/base.py" = [
+    "PIE790",  # pass is necessary to satisfy CodeQL py/ineffectual-statement
+]
+"src/review_bot_automator/llm/parallel_parser.py" = [
+    "PIE790",  # Protocol stubs intentionally use 'pass' for CodeQL compatibility
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_any_unimported = true
+disallow_any_explicit = false  # Disabled: 35 Any usages in external API integrations require Any types
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+plugins = ["pydantic.mypy"]
+# MyPy exclusion removed to enable incremental type checking
+# Scripts have full annotations; tests being fixed incrementally
+
+[[tool.mypy.overrides]]
+module = [
+    "ruamel.*",
+    "tomli_w.*",
+    "pytest.*",
+    "rich.*",
+    "pydantic.*",
+    "hypothesis.*",
+    "openai.*",
+    "tiktoken.*",
+    "tenacity.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.security.test_fuzz_input_validator",
+    "tests.security.test_fuzz_json_handler",
+    "tests.security.test_fuzz_yaml_handler",
+    "tests.security.test_fuzz_toml_handler",
+]
+disallow_untyped_decorators = false
+disallow_any_unimported = false
+
+[tool.pytest]
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
+addopts = [
+    "--strict",  # Enables all strict checks: markers, config, and parametrization IDs (pytest 9.0.0+)
+    "--cov=src/review_bot_automator",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-fail-under=90",  # Increased from 80% to 90% for OpenSSF Gold badge
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+    "fuzz: property-based fuzzing tests (deselect with '-m \"not fuzz\"')",
+]
+
+[tool.bandit]
+exclude_dirs = [
+    "tests/",
+    "docs/",
+]
+skips = [
+    "B101",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "tests/*",
+    "**/tests/*",
+    "**/fixtures/*",
+    "conftest.py",
+    "**/conftest.py",
+    "pyproject.toml",
+    "**/settings.py",
+]

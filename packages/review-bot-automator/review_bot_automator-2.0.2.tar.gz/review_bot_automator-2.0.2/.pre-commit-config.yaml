@@ -1,0 +1,87 @@
+---
+# yaml-language-server:
+#   $schema=https://json.schemastore.org/pre-commit-config.json
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-docstring-first
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-ast
+
+  - repo: https://github.com/psf/black
+    rev: 25.11.0
+    hooks:
+      - id: black
+        language_version: python3.12
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.8
+    hooks:
+      - id: ruff
+        args:
+          - --fix
+          - --exit-non-zero-on-fix
+          # Disable ruff-format to avoid conflicts with Black
+          # - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.0
+    hooks:
+      - id: mypy
+        language_version: python3.12
+        additional_dependencies:
+          - click==8.3.1
+          - types-requests==2.32.4.20250913
+          - types-PyYAML==6.0.12.20250915
+          - pytest==9.0.1
+          - rich==14.2.0
+          - ruamel.yaml==0.18.16
+          - tomli-w==1.2.0
+          - pydantic==2.12.5
+          - hypothesis==6.148.6
+          - tenacity==9.1.2
+          - openai==2.8.1
+          - tiktoken==0.12.0
+          - anthropic==0.75.0
+        pass_filenames: false
+        args:
+          - --strict
+          - --install-types
+          - --non-interactive
+          - src/
+          - tests/
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.2
+    hooks:
+      - id: bandit
+        language_version: python3.12
+        additional_dependencies:
+          - pbr
+        args:
+          - --severity-level
+          - medium
+          - --confidence-level
+          - medium
+        exclude: tests/
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.14.0  # Last version supporting Node 18 (v0.15+ requires Node 20+)
+    hooks:
+      - id: markdownlint-cli2
+        name: markdownlint
+
+# - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+#   rev: v1.3.2
+#   hooks:
+#     - id: python-safety-dependencies-check
+#       args: [--json, --output, safety-report.json]
+#       files: ^requirements.*\.txt$
