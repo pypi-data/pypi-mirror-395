@@ -1,0 +1,124 @@
+Metadata-Version: 2.4
+Name: ese-parser
+Version: 0.1.3
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: OSI Approved :: MIT License
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Database
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+License-File: LICENSE-APACHE
+License-File: LICENSE-MIT
+Summary: Fast ESE database parser with Rust backend
+Keywords: ese,database,parser,forensics,edb,mdb
+Author: ESE-RS Contributors
+License: MIT OR Apache-2.0
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://github.com/ac-rn/ese-rs
+Project-URL: Repository, https://github.com/ac-rn/ese-rs
+Project-URL: Documentation, https://github.com/ac-rn/ese-rs/blob/main/README.md
+
+# ESE-RS
+
+High-performance Microsoft ESE (Extensible Storage Engine) database parser written in Rust with Python bindings.
+
+## Features
+
+- 🚀 **40x faster** than Impacket's Python implementations
+- 🦀 **Memory-safe** Rust implementation
+- 🐍 **Python bindings** via PyO3
+- 📦 **Zero-copy parsing** where possible
+- 🔧 **Cross-platform** (Windows, Linux, macOS)
+
+## Installation
+
+### Python
+
+```bash
+pip install ese-parser
+```
+
+### Rust
+
+```toml
+[dependencies]
+ese-rs = "0.1"
+```
+
+## Quick Start
+
+### Python
+
+```python
+from ese_parser import EseDatabase
+
+# Open database
+db = EseDatabase("database.edb")
+
+# List tables
+for table in db.get_tables():
+    print(table)
+
+# Read table
+records = db.read_table("MSysObjects")
+for record in records:
+    print(record)
+```
+
+### Rust
+
+```rust
+use ese_rs::Database;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let db = Database::open("database.edb")?;
+    
+    let mut cursor = db.open_table(b"MSysObjects")?;
+    while let Some(record) = cursor.next_row()? {
+        println!("{:?}", record);
+    }
+    
+    Ok(())
+}
+```
+
+## Documentation
+
+- [Python API Documentation](python/README.md)
+- [Examples](examples/)
+
+## Performance
+
+Benchmark parsing 340,288+ records from 3 databases:
+
+- **Python (Impacket)**: 82.12 seconds
+- **Rust (ese-rs)**: 2.18 seconds
+- **Speedup**: 37.69x
+
+## Supported Database Types
+
+- Windows Search (`.edb`)
+- Active Directory (`.dit`)
+- Exchange (`.edb`)
+- SRUM (`SRUDB.dat`)
+- WebCache (`WebCacheV*.dat`)
+- Any ESE database (Windows 2003+)
+
+## License
+
+Dual-licensed under MIT OR Apache-2.0.
+
+## Acknowledgments
+
+Based on the ESE format specification and inspired by Impacket's ese.py implementation.
+
