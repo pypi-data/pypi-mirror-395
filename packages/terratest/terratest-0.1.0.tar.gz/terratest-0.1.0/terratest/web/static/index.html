@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terratest WebUI</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-content">
+                <i class="fas fa-cube logo-icon"></i>
+                <h1>Terratest Web UI</h1>
+            </div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="status-badge">
+                    <i class="fas fa-circle status-indicator"></i>
+                    <span>API Activa</span>
+                </div>
+                <div class="status-badge" id="dockerImageStatus" style="cursor: pointer;" title="Click para ver detalles">
+                    <i class="fab fa-docker"></i>
+                    <span id="dockerImageText">Verificando...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- CONTROL PANEL -->
+            <section class="control-panel">
+                <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
+                    <label style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap;">Módulo:</label>
+                    <input 
+                        type="text" 
+                        id="modulePath" 
+                        value="" 
+                        placeholder="Ej: d:\\mi-proyecto\\terraform o ./examples/basic"
+                        style="flex: 1; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 10px 15px; font-size: 0.9rem; font-family: 'Courier New', monospace;"
+                    />
+                    <button class="btn-primary" id="browsePathBtn" title="Explorar directorio">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                </div>
+                <button class="btn-primary" id="configBtn" title="Configuración SSH y Terraform Cloud">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="btn-primary" id="runJobBtn">
+                    <i class="fas fa-play"></i>
+                    Ejecutar Nuevo Job
+                </button>
+            </section>
+            
+            <!-- CONFIG MODAL -->
+            <div id="configModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-cog"></i> Configuración Avanzada</h3>
+                        <button class="btn-close" id="closeConfigBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- SSH Config -->
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="color: #f5f5f5; font-size: 0.95rem; font-weight: 400; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-key" style="color: #6b7280;"></i>
+                                SSH (Git Privado)
+                            </h4>
+                            <label style="display: flex; align-items: center; gap: 10px; color: #e0e0e0; font-size: 0.9rem; cursor: pointer; margin-bottom: 12px;">
+                                <input type="checkbox" id="enableSSH" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span>Habilitar autenticación SSH</span>
+                            </label>
+                            <div id="sshOptions" style="display: none; padding-left: 28px;">
+                                <label style="color: #9ca3af; font-size: 0.85rem; display: block; margin-bottom: 6px;">Path a clave SSH (opcional):</label>
+                                <input 
+                                    type="text" 
+                                    id="sshKeyPath" 
+                                    placeholder="Ej: C:\\Users\\tu-usuario\\.ssh o dejar vacío para usar ~/.ssh"
+                                    style="width: 100%; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 0.85rem; font-family: 'Courier New', monospace;"
+                                />
+                            </div>
+                        </div>
+                        
+                        <!-- Terraform Cloud Config -->
+                        <div style="margin-bottom: 25px;"
+                        .0>
+                            <h4 style="color: #f5f5f5; font-size: 0.95rem; font-weight: 400; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-cloud" style="color: #6b7280;"></i>
+                                Terraform Cloud
+                            </h4>
+                            <label style="color: #9ca3af; font-size: 0.85rem; display: block; margin-bottom: 6px;">Token:</label>
+                            <input 
+                                type="password" 
+                                id="tfCloudToken" 
+                                placeholder="Tu token de Terraform Cloud (opcional)"
+                                style="width: 100%; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 0.85rem; font-family: 'Courier New', monospace; margin-bottom: 12px;"
+                            />
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div>
+                                    <label style="color: #9ca3af; font-size: 0.85rem; display: block; margin-bottom: 6px;">Organización:</label>
+                                    <input 
+                                        type="text" 
+                                        id="tfCloudOrg" 
+                                        placeholder="mi-org"
+                                        style="width: 100%; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 0.85rem; font-family: 'Courier New', monospace;"
+                                    />
+                                </div>
+                                <div>
+                                    <label style="color: #9ca3af; font-size: 0.85rem; display: block; margin-bottom: 6px;">Workspace:</label>
+                                    <input 
+                                        type="text" 
+                                        id="tfCloudWorkspace" 
+                                        placeholder="mi-workspace"
+                                        style="width: 100%; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 0.85rem; font-family: 'Courier New', monospace;"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AWS Credentials -->
+                        <div>
+                            <h4 style="color: #f5f5f5; font-size: 0.95rem; font-weight: 400; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                                <i class="fab fa-aws" style="color: #6b7280;"></i>
+                                AWS Credentials
+                            </h4>
+                            <label style="color: #9ca3af; font-size: 0.85rem; display: block; margin-bottom: 6px;">Access Key ID:</label>
+                            <input 
+                                type="password" 
+                                id="awsAccessKeyId" 
+                                placeholder="ASIAQWYLR65... (opcional)"
+                                style="width: 100%; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 0.85rem; font-family: 'Courier New', monospace; margin-bottom: 12px;"
+                            />
+                            <label style="color: #9ca3af; font-size: 0.85rem; display: block; margin-bottom: 6px;">Secret Access Key:</label>
+                            <input 
+                                type="password" 
+                                id="awsSecretAccessKey" 
+                                placeholder="zLTrptAnxssVpOiGRajwHZVct9Lwy... (opcional)"
+                                style="width: 100%; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 0.85rem; font-family: 'Courier New', monospace; margin-bottom: 12px;"
+                            />
+                            <label style="color: #9ca3af; font-size: 0.85rem; display: block; margin-bottom: 6px;">Session Token (opcional):</label>
+                            <input 
+                                type="password" 
+                                id="awsSessionToken" 
+                                placeholder="IQoJb3JpZ2luX2VjEIH... (opcional)"
+                                style="width: 100%; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 0.85rem; font-family: 'Courier New', monospace;"
+                            />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-primary" id="saveConfigBtn">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PATH BROWSER MODAL -->
+            <div id="pathBrowserModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-folder-tree"></i> Seleccionar Directorio</h3>
+                        <button class="btn-close" id="closePathBrowserBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="path-breadcrumb" id="pathBreadcrumb"></div>
+                        <div class="path-list" id="pathList"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <input 
+                            type="text" 
+                            id="manualPathInput" 
+                            placeholder="O escribe el path manualmente..."
+                            style="flex: 1; background: transparent; color: #f5f5f5; border: 1px solid #3a3a3a; padding: 10px 15px; font-size: 0.9rem; font-family: 'Courier New', monospace;"
+                        />
+                        <button class="btn-primary" id="selectPathBtn">
+                            <i class="fas fa-check"></i> Seleccionar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DOCKER IMAGE MODAL -->
+            <div id="dockerImageModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fab fa-docker"></i> Imagen Docker de Terraform</h3>
+                        <button class="btn-close" id="closeDockerImageModalBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="dockerImageModalBody">
+                        <div style="text-align: center; padding: 40px; color: #6b7280;">
+                            <i class="fas fa-spinner fa-pulse"></i><br/><br/>Verificando...
+                        </div>
+                    </div>
+                    <div class="modal-footer" id="dockerImageModalFooter">
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONFIRM MODAL -->
+            <div id="confirmModal" class="modal" style="display: none;">
+                <div class="modal-content" style="max-width: 450px; animation: modalFadeIn 0.2s ease-out;">
+                    <div style="text-align: center; padding: 30px 20px 20px;">
+                        <div id="confirmIcon" style="font-size: 4rem; margin-bottom: 20px;"></div>
+                        <h3 id="confirmTitle" style="color: #f5f5f5; font-size: 1.3rem; font-weight: 400; margin-bottom: 15px;"></h3>
+                        <p id="confirmMessage" style="color: #9ca3af; font-size: 0.95rem; line-height: 1.5; margin-bottom: 25px;"></p>
+                    </div>
+                    <div style="display: flex; gap: 10px; padding: 0 20px 20px; justify-content: center;">
+                        <button class="btn-secondary" id="confirmCancelBtn" style="flex: 1; max-width: 150px;">
+                            Cancelar
+                        </button>
+                        <button id="confirmOkBtn" style="flex: 1; max-width: 150px;">
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OUTPUT SECTION -->
+            <section class="output-section" id="outputSection" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-terminal"></i> Resultado del Job</h2>
+                    <button class="btn-close" id="closeOutputBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- Contenedor con dos columnas: raw output y resumen visual -->
+                <div class="output-container">
+                    <!-- Output raw (JSON) - Izquierda -->
+                    <div class="output-raw">
+                        <pre id="output" class="output-content"></pre>
+                    </div>
+                    
+                    <!-- Resumen visual - Derecha -->
+                    <div id="jobSummary" class="job-summary"></div>
+                </div>
+            </section>
+
+            <!-- JOBS LIST -->
+            <section class="jobs-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-folder-open"></i> Jobs Ejecutados</h2>
+                    <div class="header-actions">
+                        <button class="btn-delete-all" id="deleteAllBtn" title="Eliminar todos">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <button class="btn-refresh" id="refreshJobsBtn">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="jobs" class="jobs-grid"></div>
+            </section>
+
+            <!-- FILE VIEWER -->
+            <section class="file-viewer" id="fileViewer" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-file-code"></i> <span id="fileName">Archivo</span></h2>
+                    <button class="btn-close" id="closeFileViewerBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <pre id="fileContent" class="file-content"></pre>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
