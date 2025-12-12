@@ -1,0 +1,55 @@
+Metadata-Version: 2.4
+Name: fusio-sdk
+Version: 6.2.0
+Summary: SDK to talk to the Fusio REST API
+Author-email: Christoph Kappestein <christoph.kappestein@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/apioo/fusio-sdk-python
+Project-URL: Issues, https://github.com/apioo/fusio-sdk-sdkgen-python/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Code Generators
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: sdkgen-client>=2.0.1
+Dynamic: license-file
+
+
+# Fusio Python SDK
+
+This is the official Fusio Python SDK, it helps to talk to the Fusio REST API.
+Fusio is an open source API management system, more information at:
+https://www.fusio-project.org
+
+## Usage
+
+The following example shows how you can get all registered routes at the backend.
+A working example is also available at: https://github.com/apioo/fusio-sample-python-cli
+
+```python
+from sdk.client import Client
+from sdkgen import OAuth2, MemoryTokenStore
+
+tokenStore = MemoryTokenStore()
+scopes = ["backend"]
+
+credentials = OAuth2(
+    "test",
+    "FRsNh1zKCXlB",
+    "https://demo.fusio-project.org/authorization/token",
+    "",
+    tokenStore,
+    scopes
+)
+
+client = Client("https://demo.fusio-project.org", credentials)
+
+print("Operations:")
+collection = client.backend().operation().get_all(0, 16, "")
+
+for operation in collection.entry:
+    print(" * " + operation.http_method + " " + operation.http_path)
+
+```
