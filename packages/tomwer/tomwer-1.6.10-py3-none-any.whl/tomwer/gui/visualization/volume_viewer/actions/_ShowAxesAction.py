@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+import weakref
+from silx.gui import qt
+
+from silx.gui import icons as silx_icons
+from silx.gui.plot import PlotWidget
+
+
+class ShowAxesAction(qt.QAction):
+    """
+    QAction opening the ColorBarWidget of the specified plot.
+    It was not possible to inherit the one from silx because it inherit from a PlotAction which is not the case of this one (n plots...)
+    """
+
+    def __init__(self, plots: tuple[PlotWidget], parent=None):
+        icon = silx_icons.getQIcon("axis")
+        text = "show axis"
+        super().__init__(parent=parent, icon=icon, text=text)
+
+        self.setToolTip("Toggle axes")
+        self.setCheckable(True)
+
+        self._plots = [weakref.ref(plot) for plot in plots]
+
+        self.triggered[bool].connect(self._actionTriggered)
+
+    def _actionTriggered(self, checked=False):
+        """Create a cmap dialog and update active image and default colormap."""
+        for ref_plot in self._plots:
+            plot = ref_plot()
+            if plot:
+                plot.setAxesDisplayed(checked)
