@@ -1,0 +1,85 @@
+""" Exporter forms
+"""
+
+from django import forms
+
+import core_main_app.components.template.api as template_api
+import core_exporters_app.components.exporter.api as exporters_api
+from core_main_app.access_control.exceptions import AccessControlError
+
+
+class ExportForm(forms.Form):
+    """Create the form for exporting data"""
+
+    my_exporters = forms.MultipleChoiceField(
+        label="",
+        choices=[],
+        widget=forms.CheckboxSelectMultiple(),
+        required=True,
+    )
+
+    export_options = []
+
+    def __init__(self, *args, **kwargs):
+        """Init the form
+
+        Args:
+            template_id_list:
+            template_hash_list:
+            data_url_list:
+        """
+        self.export_options = []
+        self.data_url_list = []
+        self.template_id_list = []
+        self.template_hash_list = []
+        request = kwargs.pop("request")
+
+        if "template_id_list" in kwargs and "template_hash_list" in kwargs:
+            # Only stringified ObjectId in template_id_list
+            self.template_id_list = kwargs.pop("template_id_list")
+            self.template_hash_list = kwargs.pop("template_hash_list")
+
+            # Retrieves all corresponding templates
+            templates_from_id = template_api.get_all_accessible_by_id_list(
+                self.template_id_list, request=request
+            )
+            # check if user has access to template for each data selected
+            if len(templates_from_id) != len(self.template_id_list):
+                raise AccessControlError(
+                    "User doesn't have enough rights to access some of the templates."
+                )
+
+            templates_from_hash = template_api.get_all_accessible_by_hash_list(
+                self.template_hash_list, request=request
+            )
+
+            # Retrieves all common exporter for exporters given
+            exporters_from_ids = list(
+                exporters_api.get_all_by_template_list(templates_from_id)
+            )
+
+            # with the hash, we can get more exporters than from ids
+            exporters_from_hash = list(
+                exporters_api.get_all_by_template_list(templates_from_hash)
+            )
+
+            # if there is exporters from ids (means local data have been selected)
+            if len(exporters_from_ids) > 0:
+                exporters = exporters_from_ids
+                # if there is exporters from hash (means remote data have been selected)
+                if len(exporters_from_hash) > 0:
+                    # we get only common exporters
+                    exporters = set(exporters_from_ids).intersection(
+                        exporters_from_hash
+                    )
+            else:
+                exporters = exporters_from_hash
+
+            for exporter in exporters:
+                self.export_options.append((exporter.id, exporter.name))
+
+        if "data_url_list" in kwargs:
+            self.data_url_list = kwargs.pop("data_url_list")
+
+        super().__init__(*args, **kwargs)
+        self.fields["my_exporters"].choices = self.export_options
