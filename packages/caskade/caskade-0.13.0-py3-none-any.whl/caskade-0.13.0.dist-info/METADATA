@@ -1,0 +1,156 @@
+Metadata-Version: 2.4
+Name: caskade
+Version: 0.13.0
+Summary: Package for building scientific simulators, with dynamic arguments arranged in a directed acyclic graph.
+Project-URL: Homepage, https://github.com/ConnorStoneAstro/caskade
+Project-URL: Documentation, https://github.com/ConnorStoneAstro/caskade
+Project-URL: Repository, https://github.com/ConnorStoneAstro/caskade
+Project-URL: Issues, https://github.com/ConnorStoneAstro/caskade/issues
+Author-email: Connor Stone <connorstone628@gmail.com>, Alexandre Adam <alexandre.adam@mila.quebec>
+License: MIT License
+        
+        Copyright (c) 2024 Connor Stone, PhD
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: DAG,caskade,differentiable programming,pytorch,scientific python
+Classifier: Development Status :: 1 - Planning
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.9
+Requires-Dist: numpy<2,>1.22
+Requires-Dist: torch<3,>=2
+Provides-Extra: dev
+Requires-Dist: graphviz<1,>=0.17; extra == 'dev'
+Requires-Dist: h5py<4,>=3.11; extra == 'dev'
+Requires-Dist: jax; extra == 'dev'
+Requires-Dist: jaxlib; extra == 'dev'
+Requires-Dist: pre-commit<4,>=3.6; extra == 'dev'
+Requires-Dist: pytest-cov<5,>=4.1; extra == 'dev'
+Requires-Dist: pytest-mock<4,>=3.12; extra == 'dev'
+Requires-Dist: pytest<9,>=8.0; extra == 'dev'
+Provides-Extra: jax
+Requires-Dist: jax; extra == 'jax'
+Requires-Dist: jaxlib; extra == 'jax'
+Provides-Extra: numpy
+Provides-Extra: object
+Provides-Extra: torch
+Description-Content-Type: text/markdown
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/ConnorStoneAstro/caskade/blob/main/media/caskade_logo_dark.png?raw=true">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/ConnorStoneAstro/caskade/blob/main/media/caskade_logo_white.png?raw=true">
+  <img alt="caskade logo" src="https://github.com/ConnorStoneAstro/caskade/blob/main/media/caskade_logo_white.png?raw=true" width="70%">
+</picture>
+
+# caskade
+
+[![CI](https://github.com/ConnorStoneAstro/caskade/actions/workflows/ci.yml/badge.svg)](https://github.com/ConnorStoneAstro/caskade/actions/workflows/ci.yml)
+[![CD](https://github.com/ConnorStoneAstro/caskade/actions/workflows/cd.yml/badge.svg)](https://github.com/ConnorStoneAstro/caskade/actions/workflows/cd.yml)
+[![codecov](https://codecov.io/gh/ConnorStoneAstro/caskade/graph/badge.svg?token=7YAEJJZ4GM)](https://codecov.io/gh/ConnorStoneAstro/caskade)
+[![PyPI - Version](https://img.shields.io/pypi/v/caskade)](https://pypi.org/project/caskade/)
+[![Documentation Status](https://readthedocs.org/projects/caskade/badge/?version=latest)](https://caskade.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.08786/status.svg)](https://doi.org/10.21105/joss.08786)
+
+Build scientific simulators, treating them as a directed acyclic graph. Handles
+argument passing for complex nested simulators.
+
+## Install
+
+``` bash
+pip install caskade
+```
+
+More details on the [docs page](https://caskade.readthedocs.io/en/latest/install.html). 
+if you want to use `caskade` with `jax` then run:
+
+```bash
+pip install caskade[jax]
+```
+
+Alternately, just pip install `jax`/`jaxlib` separately as they are the only extra requirements.
+
+## Usage
+
+Make a `Module` object which may have some `Param`s. Define a `forward` method
+using the decorator.
+
+``` python
+from caskade import Module, Param, forward
+
+class MySim(Module):
+    def __init__(self, a, b=None):
+        super().__init__()
+        self.a = a
+        self.b = Param("b", b)
+
+    @forward
+    def myfun(self, x, b=None):
+        return x + self.a + b
+```
+
+We may now create instances of the simulator and pass the dynamic parameters.
+
+``` python
+import torch
+
+sim = MySim(1.0)
+
+params = [torch.tensor(2.0)]
+
+print(sim.myfun(3.0, params=params))
+```
+
+Which will print `6` by automatically filling `b` with the value from `params`.
+
+### Why do this?
+
+The above example is not very impressive, the real power comes from the fact
+that `Module` objects can be nested, making an arbitrarily complicated
+analysis graph. Some other features include:
+
+* Unroll parameters into 1D vector to interface with other packages (emcee, scipy.optimize, dynesty, etc.)
+* Link parameters by value or functional relationship
+* Reparametrize (e.g. between polar and cartesian) without modifying underlying code
+* Save and load sampling chains automatically in HDF5
+* Track metadata alongside parameters
+* And much more! [Beginner tutorial](https://caskade.readthedocs.io/en/latest/notebooks/BeginnersGuide.html) and [Advanced tutorial](https://caskade.readthedocs.io/en/latest/notebooks/AdvancedGuide.html)
+
+### Use different backends
+
+`caskade` can be run with different backends for `torch`, `numpy`, and `jax`.
+See the [Beginners Guide
+tutorial](https://caskade.readthedocs.io/en/latest/notebooks/BeginnersGuide.html)
+to learn more!
+
+## Documentation
+
+The `caskade` interface has lots of flexibility, check out the
+[docs](https://caskade.readthedocs.io) to learn more. For a quick start, jump
+right to the [Jupyter notebook
+tutorial](https://caskade.readthedocs.io/en/latest/notebooks/BeginnersGuide.html)!
+
+The [`caustics`](https://github.com/Ciela-Institute/caustics) package can serve
+as a project template utilizing the many features of `caskade`.
+
+The `caskade` package maintains 100% coverage for unit testing, ensuring
+reliability as the backbone of a research project. 
+
