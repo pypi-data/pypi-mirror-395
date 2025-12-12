@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Copyright Intel Corporation.
+# 
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you (License). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+# 
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+#
+
+if [ -f "$I_MPI_ROOT/intel64/bin/tune_fast/mpitune_fast" ]; then
+    bin="$I_MPI_ROOT/intel64/bin/tune_fast/mpitune_fast"
+elif [ -f "$I_MPI_ROOT/bin/tune_fast/mpitune_fast" ]; then
+    bin="$I_MPI_ROOT/bin/tune_fast/mpitune_fast"
+else
+    bin="$I_MPI_ROOT/opt/mpi/tune_fast/mpitune_fast"
+fi
+
+if ! [ $# -eq 0 ]
+then
+    params=$*
+fi
+
+if [ -n "$SLURM_JOB_NODELIST" ]; then
+    echo "Detected SLURM host file"
+    params="${params} -hosts "
+    for host in `scontrol show hostnames ${SLURM_JOB_NODELIST}`; do
+        params="${params}${host},"
+    done
+
+    params=`echo "${params}" | sed 's/.$//'`
+fi
+
+$bin $params

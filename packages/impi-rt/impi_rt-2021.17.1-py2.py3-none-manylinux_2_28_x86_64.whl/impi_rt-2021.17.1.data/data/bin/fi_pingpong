@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+# Copyright Intel Corporation.
+#
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you (License). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+#
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+#
+# shellcheck shell=sh
+
+bin_name=$(basename "$0")
+# If I_MPI_OFI_INTERNAL is set to 0, then use the system OFI executable
+if [ "x$I_MPI_OFI_INTERNAL" = "x0" ]; then
+    current_script_dir=$(dirname "$(readlink -f "$0")")
+    # Iterate through directories in PATH to check if there is another OFI executable provided by system
+    for dir in $(echo $PATH | tr ':' '\n'); do
+        resolved_dir=$(readlink -f "$dir")
+        if [ -x "$resolved_dir/$bin_name" ]; then
+            resolved_bin=$(readlink -f "$resolved_dir/$bin_name")
+            if ! file "$resolved_bin" | grep -q "shell script"; then
+                exec "$resolved_bin" "$@"
+            fi
+        fi
+    done
+fi
+
+# If no ofi util executable is found, use one from IMPI package
+exec "$I_MPI_ROOT/opt/mpi/libfabric/bin/$bin_name" "$@"
