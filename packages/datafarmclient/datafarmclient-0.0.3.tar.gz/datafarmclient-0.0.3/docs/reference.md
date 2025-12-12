@@ -1,0 +1,19 @@
+# API reference
+::: datafarmclient.DatafarmClient
+::: datafarmclient.Entities
+::: datafarmclient.TimeSeries
+::: datafarmclient.Variables
+## Schemas
+### EntityType
+* enTimeSeries
+* enTimeSeriesQuality
+* enTimeSeriesDatasourceDescription
+* enTimeSeriesType
+* enTimeSeriesStatus
+* enTimeSeriesUnit
+* enTimeSeriesMedia
+* enTimeSeriesParameter
+* enLocation
+* enGlobalVariable
+* enGlobalVariableCategory
+* enGlobalVariableType
