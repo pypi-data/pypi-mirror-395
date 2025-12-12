@@ -1,0 +1,170 @@
+services:
+  mongo-rs:
+    networks:
+      - featurebyte
+    hostname: mongo-rs
+    restart: unless-stopped
+    container_name: mongo-rs
+    entrypoint: []
+    image: "mongo:6"
+    healthcheck:
+      test: mongosh 'mongodb://mongo-rs/admin?replicaSet=rs0' --quiet --eval "exit" 2>/dev/null
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set -em
+
+        # Creating Database
+        /usr/bin/mongod --quiet --dbpath=/tmp --bind_ip_all --replSet rs0 &
+        while ! mongosh --quiet --eval "exit" 2>/dev/null; do sleep 1; done; echo "mongodb started"
+
+        # If not bootstrapped, bootstrap
+        if ! mongosh --quiet --eval "rs.status()" 1>/dev/null 2>&1; then
+          mongosh --quiet <<EOF
+            var config = { "_id": "rs0", "version": 1, "members": [{ "_id": 1, "host": "mongo-rs", "priority": 1 }]};
+            rs.initiate(config, { force: true });
+        EOF
+        fi
+
+        # Checking rs.status()
+        while ! mongosh --quiet --eval "rs.status()" 1>/dev/null 2>&1; do sleep 1; done
+
+        fg  # Reconnect to mongod
+    volumes:
+      - mongodb:/data/
+    logging:
+      driver: local
+  redis:
+    networks:
+      - featurebyte
+    hostname: redis
+    restart: unless-stopped
+    container_name: redis
+    image: "redis:6.2.5"
+    healthcheck:
+      start_period: 10s
+      interval: 5s
+      test: ["CMD", "redis-cli", "ping"]
+    logging:
+      driver: local
+  featurebyte-server:
+    networks:
+      - featurebyte
+    hostname: featurebyte-server
+    restart: unless-stopped
+    container_name: featurebyte-server
+    image: featurebyte/featurebyte-server:3.3.1
+    depends_on:
+      mongo-rs:
+        condition: service_healthy
+    ports:
+      - "0.0.0.0:8088:8088"
+    command: ["bash", "/docker-entrypoint.sh", "server"]
+    environment:
+      - "FEATUREBYTE_HOME=/app/.featurebyte"
+      - "MPLCONFIGDIR=/app/matplotlib"
+      - "REDIS_URI=redis://redis:6379"
+      - "MONGODB_URI=mongodb://mongo-rs/?replicaSet=rs0"
+      - "API_HOST=0.0.0.0"
+      - "API_PORT=8088"
+      - "LOG_LEVEL=${LOG_LEVEL}"
+      - "LOCAL_UID=${LOCAL_UID}"
+      - "LOCAL_GID=${LOCAL_GID}"
+      - "KRB5_REALM=${KRB5_REALM}"
+      - "KRB5_KDC=${KRB5_KDC}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8088/status"]
+      interval: 5s
+      start_period: 30s
+    volumes:
+      - files-data:/app/.featurebyte/data/files
+      - staging-data:/data/staging
+      - file-store:/tmp
+    logging:
+      driver: local
+  featurebyte-worker:
+    networks:
+      - featurebyte
+    hostname: featurebyte-worker
+    restart: unless-stopped
+    container_name: featurebyte-worker
+    image: featurebyte/featurebyte-server:3.3.1
+    depends_on:
+      mongo-rs:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - "FEATUREBYTE_HOME=/app/.featurebyte"
+      - "MPLCONFIGDIR=/app/matplotlib"
+      - "REDIS_URI=redis://redis:6379"
+      - "MONGODB_URI=mongodb://mongo-rs/?replicaSet=rs0"
+      - "LOG_LEVEL=${LOG_LEVEL}"
+      - "LOCAL_UID=${LOCAL_UID}"
+      - "LOCAL_GID=${LOCAL_GID}"
+      - "KRB5_REALM=${KRB5_REALM}"
+      - "KRB5_KDC=${KRB5_KDC}"
+    command: ["bash", "/docker-entrypoint.sh", "worker"]
+    volumes:
+      - files-data:/app/.featurebyte/data/files
+      - staging-data:/data/staging
+      - file-store:/tmp
+    logging:
+      driver: local
+  spark-thrift:
+    networks:
+      - featurebyte
+    image: featurebyte/cluster-apache-spark:3.3.1
+    container_name: spark-thrift
+    ports:
+      - "0.0.0.0:10000:10000"
+      - "0.0.0.0:4040:4040"
+    environment:
+      - SPARK_MASTER=local
+      - SPARK_LOCAL_IP=spark-thrift
+      - "LOCAL_UID=${LOCAL_UID}"
+      - "LOCAL_GID=${LOCAL_GID}"
+    volumes:
+      - staging-data:/opt/spark/data/staging
+      - spark-warehouse:/opt/spark/data/derby
+    healthcheck:
+      test: netstat -ltn | grep -c 10000
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command:
+      - /bin/sh
+      - -c
+      - |
+        /opt/spark/bin/spark-submit \
+        --class org.apache.spark.sql.hive.thriftserver.HiveThriftServer2 \
+        --name Thrift JDBC/ODBC Server \
+        --hiveconf hive.server2.thrift.port=10000 \
+        --hiveconf hive.server2.thrift.bind.host=0.0.0.0 \
+        --hiveconf derby.system.home=/opt/spark/data/derby \
+        --master=local[4] \
+        --jars /opt/spark/jars/delta-core_2.12-2.2.0.jar,/opt/spark/jars/delta-storage-2.2.0.jar,/opt/spark/jars/antlr4-runtime-4.8.jar \
+        --conf spark.driver.memory=4G \
+        --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
+        --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
+        --conf spark.sql.catalogImplementation=hive  \
+        --conf spark.sql.warehouse.dir=file:///opt/spark/data/derby/warehouse/ \
+        --conf spark.sql.hive.thriftServer.singleSession=false \
+        --conf spark.hadoop.metastore.catalog.default=spark \
+        --conf spark.sql.adaptive.enabled=true \
+        --conf spark.sql.analyzer.maxIterations=50000 \
+        --conf spark.sql.optimizer.maxIterations=50000
+    logging:
+      driver: local
+networks:
+  featurebyte:
+    driver: bridge
+    external: true
+volumes:
+  mongodb:
+  spark-warehouse:
+  files-data:
+  staging-data:
+  file-store:
