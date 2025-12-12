@@ -1,0 +1,69 @@
+name: 'Run CI jobs'
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  TASK_X_REMOTE_TASKFILES: 1
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: './.github/actions/setup-aqua'
+      - name: Set up workspace
+        run: |
+          uv sync --all-extras --all-groups
+      - name: Lint by lefthook
+        run: |
+          lefthook run pre-commit --all-files
+  source-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+        workspace: ['locked', 'latest']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: './.github/actions/setup-aqua'
+      - name: Set up Python ${{ matrix.python-version }}
+        run: 'echo ${{ matrix.python-version }} > .python-version'
+      - name: 'Configure env as locked deps by uv.lock'
+        run: 'uv sync --frozen'
+        if: ${{ matrix.workspace == 'locked'}}
+      - name: 'Configure env as latest deps on PyPI'
+        run: 'uv sync -U'
+        if: ${{ matrix.workspace == 'latest'}}
+      - name: 'Set up workspace'
+        run: |
+          uv run playwright install firefox
+      - name: 'Run tests'
+        run: |
+          uv run pytest
+  doc-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: './.github/actions/setup-aqua'
+      - name: 'Set up workspace'
+        run: |
+          uv sync --all-extras --all-groups
+      - name: 'Run tests'
+        run: |
+          task --yes docs:build-linkcheck docs:build-dirhtml
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: './.github/actions/setup-aqua'
+      - name: Build package
+        run: |
+          uv build
+          ls -l dist

@@ -1,0 +1,63 @@
+name: 'Release new version'
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: './.github/actions/setup-aqua'
+      - name: Build package
+        run: |
+          uv build
+          ls -l dist
+      - uses: actions/upload-artifact@v5
+        with:
+          name: packages-${{ github.ref_name }}
+          path: dist/
+  gh-release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
+        with:
+          name: packages-${{ github.ref_name }}
+          path: dist/
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: 'dist/*'
+          bodyFile: '.github/release-body.md'
+          draft: false
+          name: Release ${{ github.ref_name }}
+          tag: ${{ github.ref }}
+          prerelease: false
+  publish-pypi:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: success() && ${{ needs.prepare.outputs.is-release }}
+    environment:
+      name: 'pypi'
+      url: 'https://pypi.org/p/atsphinx-mini18n'
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: packages-${{ github.ref_name }}
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+  deploy-doc:
+    needs: [build]
+    permissions:
+      pages: write
+      id-token: write
+    uses: './.github/workflows/deploy-doc.yml'
+    secrets: inherit
