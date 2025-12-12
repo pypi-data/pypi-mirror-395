@@ -1,0 +1,216 @@
+# hebrew-numbers
+
+[![Tests][tests-badge]][tests-link]
+[![uv][uv-badge]][uv-link]
+[![Ruff][ruff-badge]][ruff-link]
+[![Black][black-badge]][black-link]
+[![codecov][codecov-badge]][codecov-link]
+\
+[![PyPI version][pypi-version-badge]][pypi-link]
+[![PyPI platforms][pypi-platforms-badge]][pypi-link]
+[![Total downloads][pepy-badge]][pepy-link]
+\
+[![Made Using tsvikas/python-template][template-badge]][template-link]
+[![GitHub Discussion][github-discussions-badge]][github-discussions-link]
+[![PRs Welcome][prs-welcome-badge]][prs-welcome-link]
+
+## Overview
+
+This library provides a solution for working with Hebrew numbers in various contexts.
+Hebrew has unique rules for number representation that vary based on gender, definiteness, and usage context.
+This library simplify these complexities by providing functions for converting numerical values to their proper Hebrew textual representation.
+
+## Install
+
+Install the package using pip (or uv, poetry, etc.):
+
+```bash
+pip install hebrew-numbers
+```
+
+## Usage
+
+### Indefinite Number -- מספר סתמי
+
+When counting without specific nouns, but rather in a general sense, we use the indefinite number.
+
+```pycon
+>>> from hebrew_numbers import indefinite_number
+>>> [indefinite_number(n) for n in [1, 2, 3]]
+['אחת', 'שתיים', 'שָלוש']
+>>> indefinite_number(0)
+'אפס'
+>>> indefinite_number(-3)
+'מינוס שָלוש'
+>>> indefinite_number(1234567890)
+'מיליארד מאתיים שלושים וארבעה מיליון חמש מאות שישים ושבעה אלף שמונֶה מאות ותשעים'
+
+```
+
+### Ordinal Number -- מספר סודר
+
+A number that describes the position of an object in a series is called an ordinal number.
+This number can be masculine (זכר) or feminine (נקבה).
+
+```pycon
+>>> from hebrew_numbers import ordinal_number
+>>> [ordinal_number(n, "M") for n in [1, 2, 3]]
+['ראשון', 'שני', 'שלישי']
+>>> [ordinal_number(n, "F") for n in [1, 2, 3]]
+['ראשונה', 'שנייה', 'שלישית']
+
+```
+
+### Cardinal Number -- מספר מונה
+
+#### Usage with noun
+
+Cardinal numbers are used to indicate quantities. Their form depends on the following factors:
+
+- The gender of the noun (masculine or feminine).
+- Whether the noun is definite (מיודע) or indefinite (סתמי).
+
+To specify a quantity with a noun, use `count_noun(n, singular_form, plural_form, gender, definite)`.
+
+| Number | Masculine, Indefinite                                | Masculine, Definite                                   | Feminine, Indefinite                                  | Feminine, Definite                                     |
+| ------ | ---------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| `n`    | `count_noun(n, "ילד", "ילדים", "M", definite=False)` | `count_noun(n, "הילד", "הילדים", "M", definite=True)` | `count_noun(n, "ילדה", "ילדות", "F", definite=False)` | `count_noun(n, "הילדה", "הילדות", "F", definite=True)` |
+| 1      | ילד אֶחָד                                              | הילד האֶחָד                                             | ילדה אחת                                              | הילדה האחת                                             |
+| 2      | שני ילדים                                            | שני הילדים                                            | שתי ילדות                                             | שתי הילדות                                             |
+| 3      | שלושה ילדים                                          | שלושת הילדים                                          | שָלוש ילדות                                            | שְלוש הילדות                                            |
+| 22     | עשרים ושניים ילדים                                   | עשרים ושניים הילדים                                   | עשרים ושתיים ילדות                                    | עשרים ושתיים הילדות                                    |
+
+If you only need the numerical prefix, use `count_prefix(n, gender, definite)`.
+
+#### Absolute and Construct Forms
+
+The number itself can be masculine (זכר) or feminine (נקבה), and absolute (נפרד) or construct (נסמך).
+If you know the gender and construct state, you can the number itself with `cardinal_number(n, gender, construct)`
+
+| Number | Masculine, Absolute                        | Masculine, Construct                      | Feminine, Absolute                         | Feminine, Construct                       |
+| ------ | ------------------------------------------ | ----------------------------------------- | ------------------------------------------ | ----------------------------------------- |
+| `n`    | `cardinal_number(n, "M", construct=False)` | `cardinal_number(n, "M", construct=True)` | `cardinal_number(n, "F", construct=False)` | `cardinal_number(n, "F", construct=True)` |
+| 1      | אֶחָד                                        | אַחַד                                       | אחת                                        | אחת                                       |
+| 2      | שניים                                      | שני                                       | שתיים                                      | שתי                                       |
+| 3      | שלושה                                      | שלושת                                     | שָלוש                                       | שְלוש                                      |
+| 22     | עשרים ושניים                               | עשרים ושניים                              | עשרים ושתיים                               | עשרים ושתיים                              |
+
+##### Notes
+
+- The indefinite number is the feminine-absolute form.
+- The form of the number following "פי" (times/multiplied by) to be in the masculine-absolute form: פי שניים, פי שלושה, פי ארבעה.
+- Use the masculine-absolute form to indicate the days of the month: אחד בכסלו, עשרה בטבת, אחד באפריל, שניים ביוני.
+
+## Jinja2 Templates
+
+The library includes a Jinja2 extension for using Hebrew numbers in templates.
+
+### Installation
+
+Install with Jinja2 support:
+
+```bash
+pip install hebrew-numbers[jinja]
+```
+
+### Usage
+
+```pycon
+>>> from jinja2 import Environment
+>>> from hebrew_numbers.jinja import HebrewNumbersExtension
+>>> env = Environment(extensions=[HebrewNumbersExtension])
+>>> template = env.from_string("מקום {{ 1 | hebrew_ordinal('masculine') }}")
+>>> template.render()
+'מקום ראשון'
+>>> template = env.from_string("{{ 5300 | hebrew_count('מניה', 'מניות', 'f') }}")
+>>> template.render()
+'חמשת אלפים ושְלוש מאות מניות'
+>>> template = env.from_string("{{ 15000 | hebrew_prefix('m') }}")
+>>> template.render()
+'חמישה־עשר אלף'
+
+```
+
+### Available Filters
+
+| Filter                                                   | Description                     | Example                                                              |
+| -------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------- |
+| `hebrew_count(singular, plural, gender, definite=False)` | Count nouns                     | `{{ 5 \| hebrew_count('ספר', 'ספרים', 'masculine') }}` → חמישה ספרים |
+| `hebrew_prefix(gender, definite=False)`                  | Number prefix only              | `{{ 5 \| hebrew_prefix('m') }}` → חמישה                              |
+| `hebrew_ordinal(gender)`                                 | Ordinal numbers                 | `{{ 5 \| hebrew_ordinal('m') }}` → חמישי                             |
+| `hebrew_indefinite`                                      | Indefinite number               | `{{ 5 \| hebrew_indefinite }}` → חמש                                 |
+| `hebrew_cardinal(gender, construct='absolute')`          | Cardinal number (tricky to use) | `{{ 5 \| hebrew_cardinal('m', 'construct') }}` → חמשת                |
+
+#### Gender Parameter
+
+All English filters accept flexible gender strings:
+
+- **Masculine**: `'masculine'`, `'male'`, `'m'`
+- **Feminine**: `'feminine'`, `'female'`, `'f'`
+
+### Hebrew-Named Filters
+
+For Hebrew-speaking developers, the extension also provides Hebrew-named filters that accept Hebrew parameter names:
+
+```pycon
+>>> # Hebrew filter names with Hebrew parameters
+>>> template = env.from_string("מקום {{ 1 | מספר_סודר('ז') }}")
+>>> template.render()
+'מקום ראשון'
+>>> template = env.from_string("{{ 5300 | כמות_של('מניה', 'מניות', 'נ') }}")
+>>> template.render()
+'חמשת אלפים ושְלוש מאות מניות'
+>>> template = env.from_string("{{ 15000 | כמות('ז') }}")
+>>> template.render()
+'חמישה־עשר אלף'
+>>> # Hebrew boolean values for מיודע parameter
+>>> template = env.from_string("{{ 3 | כמות_של('המחברת', 'המחברות', 'נ', מיודע='כן') }}")
+>>> template.render()
+'שְלוש המחברות'
+
+```
+
+| Hebrew Filter                          | English Equivalent  | Description        | Example                                                 |
+| -------------------------------------- | ------------------- | ------------------ | ------------------------------------------------------- |
+| `כמות_של(יחיד, רבים, מין, מיודע='לא')` | `hebrew_count`      | Count nouns        | `{{ 5 \| כמות_של('ספר', 'ספרים', 'ז') }}` → חמישה ספרים |
+| `כמות(מין, מיודע='לא')`                | `hebrew_prefix`     | Number prefix only | `{{ 5 \| כמות('ז') }}` → חמישה                          |
+| `מספר_סודר(מין)`                       | `hebrew_ordinal`    | Ordinal number     | `{{ 5 \| מספר_סודר('ז') }}` → חמישי                     |
+| `מספר_סתמי`                            | `hebrew_indefinite` | Indefinite number  | `{{ 5 \| מספר_סתמי }}` → חמש                            |
+| `מספר_מונה(מין, מצב='נפרד')`           | `hebrew_cardinal`   | Cardinal number    | `{{ 5 \| מספר_מונה('ז', 'נסמך') }}` → חמשת              |
+
+#### Hebrew Parameters
+
+Hebrew filters accept Hebrew parameter names:
+
+- **מין (Gender)**:
+  - Masculine: `'ז'`, `'זכר'`, `'זכרי'`
+  - Feminine: `'נ'`, `'נקבה'`, `'נקבי'`
+- **מצב (Construct State)**: `'נפרד'` (absolute), `'נסמך'` (construct)
+- **מיודע (Definite)**: `'כן'` (definite), `'לא'` (indefinite), or `True`/`False`
+
+## Contributing
+
+Interested in contributing?
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guideline.
+
+[black-badge]: https://img.shields.io/badge/code%20style-black-000000.svg
+[black-link]: https://github.com/psf/black
+[codecov-badge]: https://codecov.io/gh/tsvikas/hebrew-numbers/graph/badge.svg
+[codecov-link]: https://codecov.io/gh/tsvikas/hebrew-numbers
+[github-discussions-badge]: https://img.shields.io/static/v1?label=Discussions&message=Ask&color=blue&logo=github
+[github-discussions-link]: https://github.com/tsvikas/hebrew-numbers/discussions
+[pepy-badge]: https://img.shields.io/pepy/dt/hebrew-numbers
+[pepy-link]: https://pepy.tech/project/hebrew-numbers
+[prs-welcome-badge]: https://img.shields.io/badge/PRs-welcome-brightgreen.svg
+[prs-welcome-link]: https://opensource.guide/how-to-contribute/
+[pypi-link]: https://pypi.org/project/hebrew-numbers/
+[pypi-platforms-badge]: https://img.shields.io/pypi/pyversions/hebrew-numbers
+[pypi-version-badge]: https://img.shields.io/pypi/v/hebrew-numbers
+[ruff-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
+[ruff-link]: https://github.com/astral-sh/ruff
+[template-badge]: https://img.shields.io/badge/%F0%9F%9A%80_Made_Using-tsvikas%2Fpython--template-gold
+[template-link]: https://github.com/tsvikas/python-template
+[tests-badge]: https://github.com/tsvikas/hebrew-numbers/actions/workflows/ci.yml/badge.svg
+[tests-link]: https://github.com/tsvikas/hebrew-numbers/actions/workflows/ci.yml
+[uv-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json
+[uv-link]: https://github.com/astral-sh/uv
