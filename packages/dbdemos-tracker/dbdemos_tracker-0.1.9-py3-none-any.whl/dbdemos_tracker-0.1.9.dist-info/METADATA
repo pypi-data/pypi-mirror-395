@@ -1,0 +1,314 @@
+Metadata-Version: 2.1
+Name: dbdemos-tracker
+Version: 0.1.9
+Summary: A tracking library for Databricks demo analytics.
+Home-page: https://github.com/databricks-field-eng/dbdemos-tracker
+Author: Databricks
+Author-email: quentin.ambard@databricks.com
+License: Databricks license
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests >=2.25.0
+Requires-Dist: databricks-sdk >=0.8.0
+Provides-Extra: dev
+Requires-Dist: fastapi >=0.68.0 ; extra == 'dev'
+Requires-Dist: pytest >=6.0 ; extra == 'dev'
+Requires-Dist: pytest-cov >=2.0 ; extra == 'dev'
+Requires-Dist: black >=21.0 ; extra == 'dev'
+Requires-Dist: flake8 >=3.8 ; extra == 'dev'
+Provides-Extra: test
+Requires-Dist: pytest >=6.0 ; extra == 'test'
+Requires-Dist: pytest-cov >=2.0 ; extra == 'test'
+Requires-Dist: fastapi >=0.68.0 ; extra == 'test'
+Requires-Dist: httpx >=0.24.0 ; extra == 'test'
+
+# dbdemos-tracker
+
+A Python library for tracking your asset usage among bricksters.
+This will filter and collect actions on @databricks.com emails only (used by dbdemos among other)
+
+The data is synched on logfood (soon in opal self service).
+
+Data is aggregated at team level, we're anonymizing the report and not tracking individual.
+
+## Installation
+
+Add dbdemos-tracker in your requirements.txt or equivalent:
+
+```bash
+pip install dbdemos-tracker
+```
+
+## Usage
+
+### App Name
+
+Please use your repository name as app name so that we can easily match the demo.
+
+### Demo Catalog ID
+
+If your demo is part of the Demo Catalog, you can track which catalog entry users are coming from by providing a `demo_catalog_id`. This helps understand how demos are discovered and accessed.
+
+To get your `demo_catalog_id`, visit [go/demo-catalog](https://go/demo-catalog) or reach out to Quentin or Cal.
+
+```python
+from dbdemos_tracker import Tracker
+from databricks.sdk import WorkspaceClient
+
+ws = WorkspaceClient()
+
+# Initialize tracker with demo_catalog_id
+tracker = Tracker(
+    org_id=ws.get_workspace_id(),
+    demo_name="my-demo-app",
+    demo_catalog_id="your-catalog-id"
+)
+
+# All subsequent track_app_view calls will include the demo_catalog_id
+tracker.track_app_view(user_email="user@databricks.com", app_path="/dashboard")
+```
+
+### Fast API example
+
+#### FastAPI Middleware (recommended, easiest way if you're using FastAPI backend)
+We provide a tool to track all app views out of the box.
+
+Note: Try to filter on the main actions so that we don't have too many views using `patterns=["/my/.*/url/to/track", "..."]`
+
+```python
+from fastapi import FastAPI
+from dbdemos_tracker import Tracker
+
+# Create FastAPI app
+app = FastAPI(title="My Demo App")
+
+# Add tracking middleware - this will track ALL requests automatically
+Tracker.add_tracker_fastapi(app, "app-name"))
+# Or alternatively, you can filter to only track some URLs using the patterns arg:
+Tracker.add_tracker_fastapi(app, "app-name", patterns=['/', '/demos/.*/load']))
+
+# Then all your API endpoints will be tracked out of the box (no need to change them)
+@app.get("/")
+def home():
+    return {"message": "Welcome to my demo app"}
+
+```
+
+### Manual tracking with FastAPI
+Use this if you want to track a single backend API call
+
+```python
+from dbdemos_tracker import Tracker
+from fastapi import FastAPI, Request
+from databricks.sdk import WorkspaceClient
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+app = FastAPI(title="Databricks App with Tracking")
+
+# Create tracker for app - Use your repo name as app name
+ws = WorkspaceClient()
+tracker = Tracker(org_id=ws.get_workspace_id(), demo_name="app-name-use-repo-name")
+
+# Track app views in functions
+@app.get("/")
+def home(request: Request):
+    user_email = request.headers.get("X-Forwarded-Email")
+    path = request.url.path
+    if user_email:
+        try:
+            tracker.track_app_view(user_email=user_email, app_path=path)
+        except Exception as e:
+            logger.warning(f"Tracking error: {e}")
+    # ... Then add your custom implementation
+    return {"message": "Welcome to my demo app"}
+```
+
+## Manual App Usage Tracking
+
+Use this to track classic, non databricks apps (you'll have to figure out the user email somehow)
+
+```python
+from dbdemos_tracker import Tracker
+
+# Create tracker for app - Use your repo name as app name
+ws = WorkspaceClient()
+tracker = Tracker(org_id=ws.get_workspace_id(), demo_name="app-name")
+
+# Track app views in functions
+@app.get("/dashboard")
+def home():
+    #Get the user email from your app
+    user_email="user@databricks.com"
+    tracker.track_app_view(user_email=user_email, app_path="/dashboard")
+    return {"message": "Welcome to my demo app"}
+```
+
+
+## Flask Example
+
+### Databricks App Usage Tracking example with Flask backend
+
+```python
+from flask import Flask, request, jsonify
+from databricks.sdk import WorkspaceClient
+from dbdemos_tracker import Tracker
+import logging
+
+app = Flask(__name__)
+logger = logging.getLogger(__name__)
+
+ws = WorkspaceClient()
+tracker = Tracker(org_id=ws.get_workspace_id(), demo_name="app-name")
+
+@app.route("/", methods=["GET"])
+def home():
+    user_email = request.headers.get("X-Forwarded-Email")
+    path = request.path
+    if user_email:
+        try:
+            tracker.track_app_view(user_email=user_email, app_path=path)
+        except Exception as e:
+            logger.warning(f"Tracking error: {e}")
+    return jsonify({"message": "Welcome to my demo app"})
+```
+
+### Streamlit Integration
+
+**Initialize Tracker (call once at the top of your app):**
+```python
+import streamlit as st
+from dbdemos_tracker import Tracker
+
+# Initialize tracker - only runs once per session
+Tracker.setup_streamlit_tracker("app-name")
+
+# Optional: Set user email for tracking
+st.session_state.user_email = "user@databricks.com"
+```
+
+**Option 1: Track Button Clicks with Callbacks (Recommended)**
+```python
+# Simple callback tracking
+st.button(
+    "Process Data",
+    on_click=Tracker.create_tracked_callback("process_data_clicked")
+)
+
+# Callback with custom logic
+def my_callback():
+    st.session_state.counter += 1
+
+st.button(
+    "Increment Counter",
+    on_click=Tracker.create_tracked_callback("increment_clicked", my_callback)
+)
+```
+
+**Option 2: Manual Tracking After User Actions**
+```python
+if st.button("Analyze Data"):
+    Tracker.track_streamlit_event("analyze_clicked")
+    # ... do your analysis
+
+if st.button("Export Results"):
+    Tracker.track_streamlit_event(
+        "export_clicked",
+        industry="Financial Services",
+        demo_catalog_id="catalog-123"
+    )
+    # ... export logic
+```
+
+**Option 3: Track with Decorators**
+```python
+@Tracker.streamlit_callback_tracker("data_processed", industry="Healthcare")
+def process_data():
+    # Heavy computation
+    return result
+
+st.button("Process", on_click=process_data)
+```
+
+**Track Form Submissions:**
+```python
+with st.form("my_form"):
+    name = st.text_input("Name")
+    age = st.slider("Age", 0, 100)
+
+    submitted = st.form_submit_button(
+        "Submit",
+        on_click=Tracker.create_tracked_callback("form_submitted")
+    )
+
+    if submitted:
+        st.write(f"Processing {name}, age {age}")
+```
+
+**Track Widget Changes:**
+```python
+def on_model_change():
+    Tracker.track_streamlit_event(
+        "model_selected",
+        app_path=f"/model/{st.session_state.selected_model}"
+    )
+
+st.selectbox(
+    "Choose Model",
+    ["GPT-4", "Claude", "Llama"],
+    key="selected_model",
+    on_change=on_model_change
+)
+```
+
+**Track Page Views (Multi-page Apps):**
+```python
+# In pages/dashboard.py
+import streamlit as st
+from dbdemos_tracker import Tracker
+
+Tracker.setup_streamlit_tracker("my-demo-app")
+Tracker.track_page_view("dashboard")
+
+st.title("Dashboard")
+# ... page content
+```
+
+## Configuration
+
+### Disable Tracking
+
+```python
+# Disable tracking globally
+Tracker.enable_tracker = False
+
+# Re-enable when needed
+Tracker.enable_tracker = True
+```
+
+### Email Filtering
+
+The tracker automatically filters emails to only track Databricks email addresses (`@databricks.com`). Non-Databricks emails are ignored for privacy.
+
+### Test Workspace
+
+Tracking is automatically disabled for test workspace ID `1660015457675682`.
+
+## Features
+
+- Track demo usage analytics
+- Configurable tracking enable/disable
+- Automatic Databricks email filtering
+- Error handling with timeout protection
+- FastAPI middleware for automatic request tracking
+- Streamlit integration for app interaction tracking
+- Support for both notebook and app path tracking
+- User hash generation for privacy
+
+## License
+
+Databricks License 
