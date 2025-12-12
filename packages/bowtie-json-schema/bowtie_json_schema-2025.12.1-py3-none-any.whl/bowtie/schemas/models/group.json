@@ -1,0 +1,49 @@
+{
+  "description": "A collection of related, runnable tests, either individually or themselves in subgroups. Groups are used only for organizing test input and reporting -- they are not sent to harnesses when actually running tests, as there's no need for the harness to have to deal with any grouping structure.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+
+  "$id": "tag:bowtie.report,2023:models:group",
+
+  "type": "object",
+  "required": ["description", "children"],
+  "properties": {
+    "description": {
+      "description": "A (human-readable) short description of this test group",
+      "type": "string"
+    },
+    "comment": {
+      "description": "Any additional comments about the test group",
+      "type": "string"
+    },
+    "schema": {
+      "description": "The JSON Schema to be validated with.",
+      "$ref": "tag:bowtie.report,2024:ihop:schemaInCurrentDialect"
+    },
+    "registry": {
+      "description": "A schema registry to be made available for all tests in this group.",
+      "$ref": "tag:bowtie.report,2023:models:registry"
+    },
+    "children": {
+      "description": "A set of related children of this test group",
+      "type": "array",
+      "minItems": 1
+    }
+  },
+  "oneOf": [
+    {
+      "description": "a leaf test group (whose children are tests, and which therefore declares a schema for its children)",
+      "properties": {
+        "children": {
+          "items": { "$ref": "tag:bowtie.report,2023:models:test" }
+        }
+      },
+      "required": ["schema"]
+    },
+    {
+      "description": "an outer test group (whose children are further test groups)",
+      "properties": { "children": { "items": { "$ref": "#" } } },
+      "not": { "required": ["schema"] }
+    }
+  ],
+  "unevaluatedProperties": false
+}

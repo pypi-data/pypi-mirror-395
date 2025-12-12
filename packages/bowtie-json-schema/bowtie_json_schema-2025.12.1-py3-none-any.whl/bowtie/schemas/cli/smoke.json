@@ -1,0 +1,93 @@
+{
+  "title": "bowtie smoke",
+  "description": "Smoke test results for supported implementation(s)",
+
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+
+  "$id": "tag:bowtie.report,2024:cli:smoke",
+
+  "type": "object",
+
+  "oneOf": [
+    {
+      "description": "A single implementation's smoke result",
+      "$ref": "#result"
+    },
+    {
+      "description": "Multiple implementations' results, nested by their ID.",
+      "minProperties": 2,
+      "propertyNames": {
+        "$ref": "tag:bowtie.report,2024:models:implementation:id"
+      },
+      "additionalProperties": { "$ref": "#result" }
+    }
+  ],
+
+  "$defs": {
+    "result": {
+      "title": "Smoke Result",
+      "description": "A collection of possible warnings or errors encountered while checking an implementation (harness).",
+
+      "$anchor": "result",
+
+      "type": "object",
+
+      "unevaluatedProperties": false,
+      "required": ["success", "dialects"],
+      "oneOf": [
+        {
+          "title": "Successful Smoke Test",
+
+          "properties": {
+            "success": { "const": true },
+            "dialects": {
+              "description": "The shortnames of the dialects confirmed in the smoke test, all of which would have passed.",
+
+              "type": "array",
+              "uniqueItems": true,
+
+              "items": {
+                "$ref": "tag:bowtie.report,2024:models:dialect:shortName"
+              }
+            },
+            "registry": {
+              "description": "If present and false, indicates the implementation failed a simple $ref keyword smoke test.",
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "title": "Smoke Test With Dialect Failures",
+
+          "properties": {
+            "success": { "const": false },
+            "dialects": {
+              "type": "object",
+
+              "propertyNames": {
+                "$ref": "tag:bowtie.report,2024:models:dialect:shortName"
+              },
+              "additionalProperties": {
+                "description": "A mapping from dialect shortnames to results received while checking their support. Non-empty arrays will contain at least one failure.",
+                "$todo": "Standardize how we represent discrepant results.",
+
+                "type": "array",
+                "items": {
+                  "type": "object",
+
+                  "required": ["schema", "instances", "expected"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "schema": {},
+                    "instances": {},
+                    "expected": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

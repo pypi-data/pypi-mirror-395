@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""
+A bowtie harness which supports being instrumented via a little mini-language.
+
+Specifically, the string contents of test case descriptions and test
+descriptions cause it to behave in various ways, so it can be used as a way to
+test behavior (of Bowtie) by instrumenting a harness to behave accordingly in a
+way which should not affect other participating harnesses (which don't or
+shouldn't generally look at the description).
+
+``envsonschema`` will claim to support all "real" JSON Schema dialects when
+started.
+
+For running test cases, it will follow a mini-language of instructions taken
+from descriptions in both cases and individual tests (to guide either test case
+behavior or test behavior accordingly).
+
+Here's a short description of the minilanguage:
+
+    * Words containing colons are instructions, with the right side of the
+      colon containing comma-separated, ``=``-delimited arguments. For example,
+      ``foo:bar=baz,quux=1`` is a ``foo`` instruction with ``bar`` and
+      ``quux`` arguments (set to ``baz`` and ``1`` respectively)
+    * Supported instructions (and signatures) for test cases are:
+        - hang ():
+            tell the harness that it should hang before exiting when it
+            will be sent a ``stop`` request
+        - crash (): crash the harness with an exception
+        - sleep (number): sleep some number of seconds before responding
+        - skip (**CaseSkipped without skipped)
+            return a skipped result for the entire test case.
+            Arguments are as in `CaseSkipped`, used to indicate skip reason.
+        - error (**CaseErrored.context)
+            return an error result for the entire test case
+            Arguments are as in `CaseErrored`, used to indicate a message, etc.
+        - split ()
+            cause the response from this test case to be sent as multiple
+            messages. Simulates a slow or split response from a harness.
+    * Supported instructions (and signatures) for tests are:
+        - valid (bool): explicitly set the validation result for this test
+        - crash (): as above, for only this test
+        - sleep (number) : as above, for only this test
+        - skip (**SkippedTest.context) : as above, for only this test
+        - error (**ErroredTest.context): as above, for only this test
+
+Any other words are ignored.
+"""
+
+from dataclasses import dataclass
+import io
+import json
+import shlex
+import sys
+import time
+
+
+class Crash(Exception):
+    """
+    Self-immolation.
+    """
+
+
+_VALID = {"1": {"valid": True}, "0": {"valid": False}}
+
+
+@dataclass
+class Runner:
+    _started: bool = False
+    _stdout: io.TextIOWrapper = sys.stdout
+    _hang_on_stop = False
+
+    def run(self, stdin=sys.stdin):
+        for line in stdin:
+            each = json.loads(line)
+            cmd = each.pop("cmd")
+            getattr(self, f"cmd_{cmd}")(**each)
+
+    def send(self, **response):
+        self._stdout.write(f"{json.dumps(response)}\n")
+        self._stdout.flush()
+
+    def cmd_start(self, version):
+        assert version == 1
+        self._started = True
+        self.send(
+            version=1,
+            implementation=dict(
+                language="python",
+                name="envsonschema",
+                homepage="https://github.com/bowtie-json-schema/bowtie",
+                issues="https://github.com/bowtie-json-schema/bowtie/issues",
+                source="https://github.com/bowtie-json-schema/bowtie",
+                dialects=[
+                    "https://json-schema.org/draft/2020-12/schema",
+                    "https://json-schema.org/draft/2019-09/schema",
+                    "http://json-schema.org/draft-07/schema#",
+                    "http://json-schema.org/draft-06/schema#",
+                    "http://json-schema.org/draft-04/schema#",
+                    "http://json-schema.org/draft-03/schema#",
+                ],
+            ),
+        )
+
+    def cmd_dialect(self, dialect):
+        assert self._started, "Not started!"
+        self.send(ok=True)
+
+    def cmd_run(self, case, seq):
+        assert self._started, "Not started!"
+
+        send = self.send
+        for instruction, arg in instructions(case["description"]):
+            if instruction == "crash":
+                raise Crash()
+            elif instruction == "sleep":
+                time.sleep(float(arg))
+            elif instruction == "hang":
+                self._hang_on_stop = True
+            elif instruction == "error":
+                result = dict(
+                    errored=True,
+                    seq=seq,
+                    context=dict(kv.split("=", 1) for kv in arg.split(",")),
+                )
+                return self.send(**result)
+            elif instruction == "skip":
+                result = dict(
+                    (each.split("=", 1) for each in arg.split(",")),
+                    skipped=True,
+                    seq=seq,
+                )
+                return self.send(**result)
+            elif instruction == "split":
+
+                def send(**response):
+                    dumped = json.dumps(response)
+                    size = len(dumped) // 2
+                    self._stdout.write(dumped[:size])
+                    self._stdout.flush()
+                    time.sleep(0.1)
+                    self._stdout.write(dumped[size:])
+                    self._stdout.flush()
+                    time.sleep(0.1)
+                    self._stdout.write("\n")
+                    self._stdout.flush()
+
+        results = {"results": []}
+        for test in case["tests"]:
+            result = {"valid": False}
+
+            for instruction, arg in instructions(test["description"]):
+                if instruction == "crash":
+                    raise Crash()
+                elif instruction == "sleep":
+                    time.sleep(float(arg))
+
+                if instruction == "valid":
+                    result = _VALID.get(arg, {"valid": arg})
+                elif instruction == "skip":
+                    result = dict(
+                        each.split("=", 1) for each in arg.split(",")
+                    )
+                    result.update(skipped=True)
+                elif instruction == "error":
+                    result = dict(
+                        errored=True,
+                        context=dict(
+                            kv.split("=", 1) for kv in arg.split(",")
+                        ),
+                    )
+
+            results["results"].append(result)
+
+        send(seq=seq, **results)
+
+    def cmd_stop(self):
+        assert self._started, "Not started!"
+        if not self._hang_on_stop:
+            sys.exit(0)
+
+
+def instructions(description):
+    words = (word.partition(":") for word in shlex.split(description))
+    return ((instruction, arg) for instruction, colon, arg in words if colon)
+
+
+Runner().run()
