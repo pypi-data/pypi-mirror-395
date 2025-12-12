@@ -1,0 +1,50 @@
+<!-- static/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RPi Log Stream</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        #log { background: black; color: lime; padding: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Raspberry Pi Log Stream</h1>
+    <div id="log">Connecting to WebSocket...</div>
+
+    <script>
+        const logDiv = document.getElementById("log");
+        const maxLines = 40; // Keep only the latest 20 lines
+        let logLines = [];   // Store lines in an array
+        const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
+        
+        function updateLog() {
+            logDiv.innerHTML = logLines.join("\n");
+            logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll
+        }
+
+        ws.onopen = () => {
+            logLines.push("Connected!");
+            updateLog();
+        };
+
+        ws.onmessage = (event) => {
+            logLines.push(event.data); // Add new line
+            if (logLines.length > maxLines) {
+                logLines.shift(); // Remove oldest line if exceeding limit
+            }
+            updateLog();
+        };
+
+        ws.onerror = (error) => {
+            logLines.push(`Error: ${error}`);
+            updateLog();
+        };
+
+        ws.onclose = () => {
+            logLines.push("Disconnected.");
+            updateLog();
+        };
+    </script>
+</body>
+</html>
