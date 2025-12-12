@@ -1,0 +1,62 @@
+🔬 Python Dimensional Analysis (Unit Class)A powerful, standalone Python class (Unit) for representing physical quantities with dimensions, enabling arithmetic operations while automatically handling metric prefixes and verifying dimensional consistency.
+
+This library is ideal for students, engineers, and researchers who need reliable tracking of units (like N, m, J, s) and their corresponding prefixes (k, M, m, µ) during complex calculations.
+
+✨ Key Features:
+* **Dimensional Consistency Check**: Automatically prevents illegal operations, such as adding Newtons (N) to meters (m).
+* **Metric Prefix Handling**: Seamlessly convert between prefixes (e.g., 1 kN + 500 N works and returns 1.5 kN).
+* **Auto-Scaling (.auto_scale())**: Intelligently adjusts the displayed prefix to keep the numerical value in a readable range (e.g., 12000 N becomes 12 kN or 0.005 A becomes 5 mA).
+* **Full Operator Overloading**: Supports standard arithmetic: +, -, *, /, and exponentiation (**).
+* **Complex Unit Simplification**: Automatically combines and cancels units in multiplication and division (e.g., N * m / s^2).
+
+📦 Quick StartThe class is defined entirely in Unit.py. Simply import and begin calculating.
+
+1. InstallationIf published, installation would look like this:
+```bash
+pip install unit-dimensional-analysis
+```
+2. Real-World Usage (Structural Engineering Example)This demonstrates calculating the total design force and checking a column's resistance, handling conversions between units like $\text{kN/cm}^2$ and $\text{kN/kg}$ automatically.from Unit import Unit
+
+### Define input data
+```python
+N_Ed = Unit(750, "", "kN", "")          # Design Axial Force: 750 kN
+f_y = Unit(23.5, "", "kN", "cm*cm")     # Steel Yield Strength: 23.5 kN/cm^2
+H = Unit(540, "", "cm", "")             # Column Height: 540 cm
+```
+### Cross-section area (A) and linear mass (G)
+```python
+profil_slupa = {
+    "A": Unit(164, "", "cm*cm", ""),
+    "G": Unit(83.2, "", "kg", "m"),     # 83.2 kg/m
+}
+
+
+# 1. Calculate Self-Weight Force (N_self_weight)
+# g_accel is needed to convert mass/length [kg/m] to force/length [kN/m]
+g_accel = Unit(9.81, "m", "kN", "kg") # (9.81 m/s^2 is used to match kN/kg)
+
+# Linear weight: [kg/m] * [m/s^2] * [factor] -> [N/m]
+g_kslup = profil_slupa["G"] * g_accel
+
+# Total self-weight force (in base units)
+H_m = Unit(H.value / 100, "", "m", "") # Convert height to meters
+N_self_weight = g_kslup * H_m * 1.35
+print(f"Force from self-weight: {N_self_weight}")
+
+# 2. Total Design Force (Demonstrates Addition with Different Prefixes)
+# 750 [kN] + 5.95 [N]
+N_Edmax = N_Ed + N_self_weight
+print(f"\nN_Ed,max (Automatically Scaled): {N_Edmax.auto_scale()}")
+
+# 3. Cross-section Compression Resistance (N_cRd)
+# Resistance = Area * Yield Strength
+N_cRd = profil_slupa["A"] * f_y / 1.0
+print(f"Resistance N_cRd (Automatically Scaled): {N_cRd.auto_scale()}")
+```
+
+🛠️ Running the ExampleThe included if __name__ == "__main__": block demonstrates the library's features.python Unit.py
+
+🔮 Future Roadmap
+* Implement a Unit.from_string("100 kN/m^2") parser for easier instantiation.
+* Add support for common non-metric units (e.g., "in", "ft", "psi", "lbf").
+* Add the capability to define and use Aliases (e.g., treating N*m as J).👨‍💻 
