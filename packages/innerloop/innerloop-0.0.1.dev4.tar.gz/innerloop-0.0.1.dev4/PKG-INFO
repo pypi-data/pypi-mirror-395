@@ -1,0 +1,563 @@
+Metadata-Version: 2.4
+Name: innerloop
+Version: 0.0.1.dev4
+Summary: LLM in a loop with tools, MCP, sessions, and structured outputs.
+Project-URL: Homepage, https://github.com/botassembly/innerloop
+Project-URL: Documentation, https://botassembly.org/innerloop
+Project-URL: Repository, https://github.com/botassembly/innerloop
+Project-URL: Issues, https://github.com/botassembly/innerloop/issues
+Project-URL: Changelog, https://botassembly.org/innerloop/changelog/
+Author-email: Ian Maurer <imaurer@gmail.com>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: agent,ai,anthropic,automation,claude,codex,devtool,gemini,llm,openai,sdk
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Requires-Dist: anthropic>=0.40.0
+Requires-Dist: google-generativeai>=0.8.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: openai>=1.50.0
+Requires-Dist: pydantic>=2.10.0
+Requires-Dist: typer>=0.20.0
+Provides-Extra: dev
+Requires-Dist: mypy>=1.8.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.11.0; extra == 'dev'
+Requires-Dist: pytest>=7.4.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# InnerLoop
+
+Pure Python SDK for building LLM agent loops with tools, sessions, and structured outputs.
+
+## Features
+
+- **Pure Python** - No subprocesses, no external CLI dependencies
+- **Tool Calling** - `@tool` decorator for custom Python tools
+- **Structured Output** - Pydantic model validation with automatic retry
+- **Sessions** - Multi-turn conversations with JSONL persistence
+- **Streaming** - Sync and async event streaming
+- **Multiple Providers** - OpenRouter, Anthropic, OpenAI, Ollama, LM Studio
+- **Security** - Zone-based tool isolation with CWD jailing
+
+## Installation
+
+```bash
+# Using uv (recommended)
+uv pip install innerloop
+
+# Using pip
+pip install innerloop
+```
+
+## Quick Start
+
+```python
+from innerloop import Loop
+
+# 1. Basic Run
+loop = Loop(model="openrouter/z-ai/glm-4.5-air")
+response = loop.run("What is 2+2?")
+print(response.text)  # "4"
+
+# 2. Structured Output
+from pydantic import BaseModel
+
+class Math(BaseModel):
+    value: int
+    reasoning: str
+
+# Pass response_format to .run()
+response = loop.run("Calculate 5 * 5", response_format=Math)
+print(response.output.value)  # 25 (Typed object)
+print(response.output.reasoning)
+```
+
+## Configuration
+
+Set API keys via environment variables:
+
+```bash
+export OPENROUTER_API_KEY="sk-or-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+```
+
+## Usage
+
+<!-- BEGIN USAGE -->
+### Basic Run
+
+```python
+from innerloop import Loop
+
+loop = Loop(model="openrouter/z-ai/glm-4.5-air")
+response = loop.run("Say hello in one short sentence.")
+print(response.text)
+```
+
+<details>
+<summary>Output</summary>
+
+
+```
+Hello!
+```
+
+</details>
+
+### Simple run() Function
+
+```python
+from innerloop import run
+
+# One-liner without creating a Loop
+response = run("What is 2+2?", model="openrouter/z-ai/glm-4.5-air")
+print(response.text)
+```
+
+<details>
+<summary>Output</summary>
+
+
+```
+4
+```
+
+</details>
+
+### Custom Tools
+
+```python
+from innerloop import Loop, tool
+
+@tool
+def multiply(a: int, b: int) -> str:
+    """Multiply two numbers."""
+    return str(a * b)
+
+loop = Loop(
+    model="openrouter/z-ai/glm-4.5-air",
+    tools=[multiply],
+)
+response = loop.run("What is 7 times 8?")
+```
+
+<details>
+<summary>Output</summary>
+
+
+```json
+{
+  "text": "\nI'll calculate 7 times 8 for you.\n\n7 times 8 is **56**.",
+  "tool_results": [
+    {
+      "tool_use_id": "call_a997dd3be96f41959ffedf15",
+      "tool_name": "multiply",
+      "input": {
+        "a": 7,
+        "b": 8
+      },
+      "output": "56",
+      "is_error": false
+    }
+  ]
+}
+```
+
+</details>
+
+### Built-in Tools (Bash)
+
+```python
+from innerloop import Loop, bash
+
+loop = Loop(
+    model="openrouter/z-ai/glm-4.5-air",
+    tools=[bash],
+)
+response = loop.run("Use bash to echo 'Hello from bash'")
+```
+
+<details>
+<summary>Output</summary>
+
+
+```json
+{
+  "text": "\nI'll use the bash command to echo \"Hello from bash\" for you.\n\nThe command executed successfully! The output shows \"Hello from bash\" as expected.",
+  "tool_results": [
+    {
+      "tool_use_id": "019ae15cab1a56bdea3f74af80e8a750",
+      "tool_name": "bash",
+      "input": {
+        "command": "echo 'Hello from bash'"
+      },
+      "output": "Hello from bash",
+      "is_error": false
+    }
+  ]
+}
+```
+
+</details>
+
+### Structured Output
+
+```python
+from pydantic import BaseModel
+from innerloop import Loop
+
+class City(BaseModel):
+    name: str
+    country: str
+    population: int
+
+loop = Loop(model="openrouter/z-ai/glm-4.5-air")
+
+# Returns a Response object, access validated model via .output
+response = loop.run(
+    "Give me data about Tokyo.",
+    response_format=City,
+)
+
+city = response.output
+print(f"{city.name}, {city.country}: {city.population:,}")
+```
+
+<details>
+<summary>Output</summary>
+
+```
+Tokyo, Japan: 37,400,000
+```
+
+</details>
+
+### Sessions (Multi-turn)
+
+```python
+from innerloop import Loop
+
+loop = Loop(model="openrouter/z-ai/glm-4.5-air")
+with loop.session() as ask:
+    ask("Remember this word: avocado")
+    response = ask("What word did I ask you to remember?")
+print(response.text)
+```
+
+<details>
+<summary>Output</summary>
+
+
+```
+You asked me to remember the word: **avocado**.
+```
+
+</details>
+
+### Async Sessions
+
+```python
+import asyncio
+from innerloop import Loop
+
+async def main():
+    loop = Loop(model="openrouter/z-ai/glm-4.5-air")
+    async with loop.asession() as ask:
+        await ask("Remember this number: 42")
+        response = await ask("What was the number?")
+    print(response.text)
+
+asyncio.run(main())
+```
+
+<details>
+<summary>Output</summary>
+
+
+```
+The number was **42**.
+```
+
+</details>
+
+### Streaming
+
+```python
+import asyncio
+from innerloop import Loop, TextEvent
+
+async def main():
+    loop = Loop(model="openrouter/z-ai/glm-4.5-air")
+    async for event in loop.astream("Count to 3"):
+        if isinstance(event, TextEvent):
+            print(event.text, end="", flush=True)
+
+asyncio.run(main())
+```
+
+<details>
+<summary>Output</summary>
+
+
+```
+1... 2... 3.
+```
+
+</details>
+
+### Web Fetching
+
+```python
+from innerloop import Loop, webfetch
+
+loop = Loop(
+    model="openrouter/z-ai/glm-4.5-air",
+    tools=[webfetch],
+)
+response = loop.run("Fetch example.com and tell me the status code.")
+```
+
+<details>
+<summary>Output</summary>
+
+
+```json
+{
+  "text": "\nI'll fetch example.com to get the content and HTTP status code for you.\n\nThe HTTP status code for example.com is **200**. This indicates a successful HTTP request, and the page loaded properly. The c",
+  "tool_results": 1
+}
+```
+
+</details>
+
+### Local Models (LM Studio)
+
+```python
+from innerloop import Loop
+
+loop = Loop(
+    model="lmstudio/google/gemma-3n-e4b",
+    base_url="http://127.0.0.1:1234/v1",
+)
+response = loop.run("Say hello")
+```
+
+<details>
+<summary>Output</summary>
+
+
+```json
+{
+  "text": "Hi! \n",
+  "model": "openai/google/gemma-3n-e4b"
+}
+```
+
+</details>
+<!-- END USAGE -->
+
+## Security
+
+InnerLoop uses **Zone-based tool isolation** to prevent dangerous operations:
+
+```python
+from innerloop import Loop, Zone
+
+# Default: FILE_ONLY zone, jailed to current directory
+loop = Loop(model="openrouter/z-ai/glm-4.5-air")
+# Safe: can only access files in current directory
+
+# Explicit working directory sandbox
+loop = Loop(
+    model="openrouter/z-ai/glm-4.5-air",
+    workdir="./sandbox",
+    zone=Zone.FILE_ONLY,
+)
+
+# Web-only zone (no file access)
+loop = Loop(model="...", zone=Zone.WEB_ONLY)
+
+# Code execution zone (dangerous - bash access)
+loop = Loop(model="...", zone=Zone.CODE_EXEC)
+
+# Unrestricted (requires explicit opt-in)
+# export INNERLOOP_ALLOW_UNRESTRICTED=1
+loop = Loop(model="...", zone=Zone.UNRESTRICTED)
+```
+
+### Zones
+
+| Zone | Tools | Use Case |
+|------|-------|----------|
+| `FILE_ONLY` | read, write, edit, ls, glob | Default. Safe file operations |
+| `WEB_ONLY` | webfetch | Web scraping without file access |
+| `CODE_EXEC` | bash | Shell commands (dangerous) |
+| `STRUCTURED` | (none) | Structured output only |
+| `UNRESTRICTED` | all | Requires `INNERLOOP_ALLOW_UNRESTRICTED=1` |
+
+### Security Features
+
+- **CWD Jailing**: File tools can only access paths within `workdir`
+- **Path Traversal Protection**: `../../etc/passwd` attacks are blocked
+- **Symlink Protection**: Symlinks escaping the jail are rejected
+- **URL Scheme Filtering**: `webfetch` only allows `http://` and `https://`
+
+## Available Tools
+
+InnerLoop provides built-in tools controlled by Zones:
+
+```python
+from innerloop import Loop, Zone
+
+# Default zone (FILE_ONLY) - includes read, write, edit, ls, glob
+loop = Loop(model="...")
+
+# Add custom tools alongside zone tools
+loop = Loop(model="...", tools=[my_custom_tool])
+
+# No default tools
+loop = Loop(model="...", include_default_tools=False)
+```
+
+| Tool | Zone | Description |
+|------|------|-------------|
+| `read` | FILE_ONLY | Read file contents |
+| `write` | FILE_ONLY | Write content to files |
+| `edit` | FILE_ONLY | Edit files (search/replace) |
+| `glob` | FILE_ONLY | Find files by pattern |
+| `ls` | FILE_ONLY | List directory contents |
+| `bash` | CODE_EXEC | Execute shell commands |
+| `webfetch` | WEB_ONLY | Fetch URL content |
+
+## Providers
+
+### OpenRouter (Free Models)
+
+```python
+loop = Loop(model="openrouter/z-ai/glm-4.5-air")  # Free!
+```
+
+### Anthropic
+
+```python
+loop = Loop(model="anthropic/claude-haiku-4-5")
+```
+
+### OpenAI
+
+```python
+loop = Loop(model="openai/gpt-4o")
+```
+
+### Local Models (Ollama)
+
+```python
+loop = Loop(
+    model="ollama/llama3",
+    base_url="http://localhost:11434/v1",
+)
+```
+
+### Local Models (LM Studio)
+
+```python
+loop = Loop(
+    model="lmstudio/google/gemma-3n-e4b",
+    base_url="http://127.0.0.1:1234/v1",
+)
+```
+
+## Development
+
+```bash
+# Setup
+uv sync --extra dev
+
+# Run tests
+make test
+
+# Run checks (lint, format, types)
+make check
+
+# Run demos
+source .env && uv run python demos/run_all.py
+```
+
+## API Reference
+
+### Loop
+
+```python
+Loop(
+    model: str,                          # e.g., "openrouter/z-ai/glm-4.5-air"
+    tools: list[Tool] | None = None,     # Custom tools
+    thinking: ThinkingLevel | None = None,  # Extended thinking
+    api_key: str | None = None,          # Explicit API key
+    base_url: str | None = None,         # Custom endpoint
+    session: str | None = None,          # Continue existing session
+    system: str | None = None,           # System prompt
+    include_default_tools: bool = True,  # Include zone-based tools
+    workdir: Path | str | None = None,   # Working directory (default: cwd)
+    zone: Zone = Zone.FILE_ONLY,         # Tool capability zone
+)
+```
+
+### Methods
+
+- `loop.run(prompt, response_format=None, ...)` - Synchronous execution. Returns `Response`.
+- `loop.arun(prompt, response_format=None, ...)` - Async execution. Returns `Response`.
+- `loop.stream(prompt, response_format=None, ...)` - Sync event streaming. Yields `Event`s.
+- `loop.astream(prompt, response_format=None, ...)` - Async event streaming. Yields `Event`s.
+- `loop.session()` - Context manager for multi-turn conversations.
+- `loop.asession()` - Async context manager.
+
+### Response Object
+
+Returned by `run()` and `arun()`.
+
+```python
+Response(
+    text: str,              # Final text content
+    output: Any,            # Validated Pydantic model (if response_format used) or text
+    thinking: str | None,   # Extended thinking (if enabled)
+    model: str,             # Model identifier
+    session_id: str,        # Session ID
+    usage: Usage,           # Token usage stats
+    tool_results: list,     # Tool execution results
+    stop_reason: str,       # Why generation stopped
+)
+```
+
+### Events (Streaming)
+
+Events yielded by `stream()` and `astream()`:
+
+- `TextEvent` - Text delta (access via `.text`).
+- `ThinkingEvent` - Thinking/Reasoning delta.
+- `ToolCallEvent` - A tool is being called.
+- `ToolResultEvent` - The output from a tool execution.
+- `UsageEvent` - Token usage statistics.
+- `ErrorEvent` - An error occurred.
+- `DoneEvent` - Stream finished.
+- `StructuredOutputEvent` - Validated structured output (when using `response_format`).
+
+## License
+
+MIT
