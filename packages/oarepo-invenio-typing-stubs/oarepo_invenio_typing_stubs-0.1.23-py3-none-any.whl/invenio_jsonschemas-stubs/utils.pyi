@@ -1,0 +1,6 @@
+from __future__ import annotations
+
+from .ext import JSONSchema
+
+def resolve_schema(schema: JSONSchema) -> JSONSchema: ...
+def _merge_dicts(first: JSONSchema, second: JSONSchema) -> JSONSchema: ...

@@ -1,0 +1,6 @@
+from __future__ import annotations
+
+from typing import Any
+
+def verify_access_request_token() -> Any: ...
+def read_request(request: Any, **kwargs: Any) -> Any: ...
