@@ -1,0 +1,445 @@
+Metadata-Version: 2.4
+Name: lugia
+Version: 0.1.0
+Summary: Universal schema converter for Python data types with optional dependencies
+Author-email: Odos Matthews <odosmatthews@gmail.com>
+License: MIT
+Keywords: schema,converter,pydantic,pyspark,polars,pandas,dataclass,sqlalchemy
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: pyspark
+Requires-Dist: pyspark<4.0.0,>=3.5.0; extra == "pyspark"
+Provides-Extra: polars
+Requires-Dist: polars>=0.18.0; extra == "polars"
+Provides-Extra: pandas
+Requires-Dist: pandas>=1.3.0; extra == "pandas"
+Provides-Extra: pydantic
+Requires-Dist: pydantic>=1.10.0; extra == "pydantic"
+Provides-Extra: sqlmodel
+Requires-Dist: sqlmodel>=0.0.8; extra == "sqlmodel"
+Provides-Extra: sqlalchemy
+Requires-Dist: sqlalchemy>=1.4.0; extra == "sqlalchemy"
+Provides-Extra: all
+Requires-Dist: pyspark<4.0.0,>=3.5.0; extra == "all"
+Requires-Dist: polars>=0.18.0; extra == "all"
+Requires-Dist: pandas>=1.3.0; extra == "all"
+Requires-Dist: pydantic>=1.10.0; extra == "all"
+Requires-Dist: sqlmodel>=0.0.8; extra == "all"
+Requires-Dist: sqlalchemy>=1.4.0; extra == "all"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Dynamic: license-file
+
+# Lugia
+
+**L**anguage **U**niversal **G**ateway for **I**nteroperable **A**daptations
+
+Universal schema converter for Python data types with optional dependencies.
+
+Lugia provides bidirectional conversions between popular data schema types including PySpark, Polars, Pandas, Pydantic, dataclass, TypedDict, SQLModel, and SQLAlchemy. All dependencies are optional for maximum flexibility.
+
+## Features
+
+- **Universal Conversions**: Convert between any supported schema type
+- **Optional Dependencies**: Install only what you need
+- **Schema & Data Support**: Convert both type definitions and data instances
+- **Type Detection**: Automatic detection of source schema types
+- **Error Handling**: Clear error messages for missing dependencies
+
+## Installation
+
+Install the base package:
+
+```bash
+pip install lugia
+```
+
+Install with optional dependencies as needed:
+
+```bash
+# Install specific dependencies
+pip install lugia[pydantic]
+pip install lugia[pandas]
+pip install lugia[polars]
+pip install lugia[pyspark]
+pip install lugia[sqlalchemy]
+pip install lugia[sqlmodel]
+
+# Install all dependencies
+pip install lugia[all]
+
+# Install with development dependencies
+pip install lugia[dev]
+```
+
+## Quick Start
+
+### Basic Usage
+
+```python
+from lugia import convert, to_pydantic, to_pandas, to_polars
+from pydantic import BaseModel
+
+# Define a Pydantic model
+class User(BaseModel):
+    name: str
+    age: int
+    email: str
+
+# Convert to dataclass
+from lugia.dataclass import to_dataclass
+UserDataclass = to_dataclass(User)
+
+# Convert to Pandas DataFrame
+import pandas as pd
+user = User(name="John", age=30, email="john@example.com")
+df = to_pandas(user)
+print(df)
+```
+
+Output:
+```
+   name  age             email
+0  John   30  john@example.com
+```
+
+### Using the Unified Converter
+
+```python
+from lugia import convert
+
+# Convert Pydantic to dataclass
+UserDataclass = convert(User, target="dataclass")
+
+# Convert dataclass to Pydantic
+UserPydantic = convert(UserDataclass, target="pydantic")
+```
+
+## Supported Conversions
+
+### Pydantic
+
+```python
+from lugia.pydantic import to_pydantic
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+# Convert from dataclass
+import dataclasses
+
+@dataclasses.dataclass
+class UserDC:
+    name: str
+    age: int
+
+UserPydantic = to_pydantic(UserDC)
+
+# Convert from Pandas DataFrame
+import pandas as pd
+df = pd.DataFrame({"name": ["John"], "age": [30]})
+UserPydantic = to_pydantic(df)
+```
+
+### Dataclass
+
+```python
+from lugia.dataclass import to_dataclass
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+# Convert to dataclass
+UserDC = to_dataclass(User)
+```
+
+### TypedDict
+
+```python
+from lugia.typedict import to_typeddict
+from typing import TypedDict
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+# Convert to TypedDict
+UserTD = to_typeddict(User)
+```
+
+### Pandas
+
+```python
+from lugia.pandas import to_pandas, from_pandas
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+user = User(name="John", age=30)
+
+# Convert to Pandas DataFrame
+df = to_pandas(user)
+print(df)
+
+# Convert from Pandas to Pydantic
+UserModel = from_pandas(df, target_type="pydantic")
+```
+
+Output:
+```
+   name  age
+0  John   30
+```
+
+### Polars
+
+```python
+from lugia.polars import to_polars, from_polars
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+user = User(name="John", age=30)
+
+# Convert to Polars DataFrame
+df = to_polars(user)
+print(df)
+
+# Convert from Polars to Pydantic
+UserModel = from_polars(df, target_type="pydantic")
+```
+
+Output:
+```
+shape: (1, 2)
+┌──────┬─────┐
+│ name ┆ age │
+│ ---  ┆ --- │
+│ str  ┆ i64 │
+╞══════╪═════╡
+│ John ┆ 30  │
+└──────┴─────┘
+```
+
+### PySpark
+
+```python
+from lugia.pyspark import to_pyspark, from_pyspark
+from pyspark.sql import SparkSession
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+spark = SparkSession.builder \
+    .appName("test") \
+    .master("local[1]") \
+    .config("spark.driver.host", "localhost") \
+    .config("spark.driver.bindAddress", "127.0.0.1") \
+    .getOrCreate()
+
+# Convert to PySpark StructType (schema)
+struct_type = to_pyspark(User)
+print(f"To PySpark StructType: {struct_type}")
+
+# Convert to PySpark DataFrame (data)
+user = User(name="John", age=30)
+df = to_pyspark(user, spark_session=spark)
+print("To PySpark DataFrame:")
+df.show()
+
+# Convert from PySpark to Pydantic
+UserModel = from_pyspark(struct_type, target_type="pydantic")
+
+spark.stop()
+```
+
+Output:
+```
+To PySpark StructType: StructType([StructField('name', StringType(), True), StructField('age', LongType(), True)])
+
+To PySpark DataFrame:
++----+----+
+|name| age|
++----+----+
+|John|  30|
++----+----+
+```
+
+### SQLAlchemy
+
+```python
+from lugia.sqlalchemy import to_sqlalchemy, from_sqlalchemy
+from sqlalchemy import MetaData
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+# Convert to SQLAlchemy Table
+metadata = MetaData()
+table = to_sqlalchemy(User, table_name="users", metadata=metadata)
+print(f"To SQLAlchemy Table: {table}")
+print(f"Columns: {[c.name for c in table.columns]}")
+
+# Convert from SQLAlchemy to Pydantic
+UserModel = from_sqlalchemy(table, target_type="pydantic")
+```
+
+Output:
+```
+To SQLAlchemy Table: users
+Columns: ['name', 'age']
+```
+
+### SQLModel
+
+```python
+from lugia.sqlmodel import to_sqlmodel, from_sqlmodel
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+# Convert to SQLModel
+UserSQLModel = to_sqlmodel(User)
+print(f"To SQLModel: {UserSQLModel}")
+
+# Convert from SQLModel to Pydantic
+UserPydantic = from_sqlmodel(UserSQLModel, target_type="pydantic")
+```
+
+Output:
+```
+To SQLModel: <class 'abc.UserSQLModel'>
+```
+
+## Type Detection
+
+Lugia can automatically detect the type of your schema or data:
+
+```python
+from lugia import detect_type
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+
+# Detect type
+print(detect_type(User))  # "pydantic"
+print(detect_type(User(name="John")))  # "pydantic"
+```
+
+Output:
+```
+Type of class: pydantic
+Type of instance: pydantic
+```
+
+## Error Handling
+
+When a required optional dependency is missing, Lugia raises a clear error:
+
+```python
+from lugia.exceptions import MissingDependencyError
+from lugia.pandas import to_pandas
+
+try:
+    df = to_pandas(some_data)
+except MissingDependencyError as e:
+    print(e)  # "Missing optional dependency 'pandas' required for Pandas conversions. Install it with: pip install lugia[pandas]"
+```
+
+## API Reference
+
+### Core Functions
+
+- `convert(source, target, target_type)`: Unified conversion function
+- `detect_type(obj)`: Detect the type of a schema or data object
+
+### Conversion Functions
+
+Each module provides conversion functions:
+
+- `lugia.pydantic.to_pydantic(source)`: Convert to Pydantic
+- `lugia.dataclass.to_dataclass(source)`: Convert to dataclass
+- `lugia.typedict.to_typeddict(source)`: Convert to TypedDict
+- `lugia.pandas.to_pandas(source)`: Convert to Pandas DataFrame
+- `lugia.pandas.from_pandas(df, target_type)`: Convert from Pandas
+- `lugia.polars.to_polars(source)`: Convert to Polars DataFrame/Schema
+- `lugia.polars.from_polars(polars_obj, target_type)`: Convert from Polars
+- `lugia.pyspark.to_pyspark(source, spark_session)`: Convert to PySpark
+- `lugia.pyspark.from_pyspark(pyspark_obj, target_type)`: Convert from PySpark
+- `lugia.sqlalchemy.to_sqlalchemy(source, table_name, metadata)`: Convert to SQLAlchemy
+- `lugia.sqlalchemy.from_sqlalchemy(sa_obj, target_type)`: Convert from SQLAlchemy
+- `lugia.sqlmodel.to_sqlmodel(source)`: Convert to SQLModel
+- `lugia.sqlmodel.from_sqlmodel(sqlmodel_class, target_type)`: Convert from SQLModel
+
+## Development
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/eddiethedean/lugia.git
+cd lugia
+
+# Install with development dependencies
+pip install -e ".[dev,all]"
+```
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Code Formatting
+
+```bash
+black lugia tests
+```
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Author
+
+**Odos Matthews**
+- Email: odosmatthews@gmail.com
+- GitHub: [@eddiethedean](https://github.com/eddiethedean)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Acknowledgments
+
+Inspired by [articuno](https://github.com/eddiethedean/articuno) for the optional dependency pattern.
+
