@@ -1,0 +1,967 @@
+# MIT License
+#
+# Copyright (c) 2024 David C Ellis
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+"""
+A 'prebuilt' implementation of class generation.
+
+Includes pre and post init functions along with other methods.
+"""
+try:
+    from _types import NoneType  # type: ignore
+except ImportError:
+    from types import NoneType
+
+from . import (
+    NOTHING, FIELD_NOTHING,
+    Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
+    builder, get_flags, get_fields,
+    make_unified_gatherer,
+    eq_maker,
+    lt_maker,
+    le_maker,
+    gt_maker,
+    ge_maker,
+    frozen_setattr_maker,
+    frozen_delattr_maker,
+    hash_maker,
+    replace_maker,
+    get_repr_generator,
+    build_completed,
+)
+
+from .annotations import get_func_annotations
+
+# These aren't used but are re-exported for ease of use
+from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
+
+PREFAB_FIELDS = "PREFAB_FIELDS"
+PREFAB_INIT_FUNC = "__prefab_init__"
+PRE_INIT_FUNC = "__prefab_pre_init__"
+POST_INIT_FUNC = "__prefab_post_init__"
+
+
+class PrefabError(Exception):
+    pass
+
+
+def get_attributes(cls, *, local=False):
+    """
+    Copy of get_fields, typed to return Attribute instead of Field.
+    This is used in the prefab methods.
+
+    :param cls: class built with _make_prefab
+    :return: dict[str, Attribute] of all gathered attributes
+    """
+    attributes = get_fields(cls, local=local)
+
+    if any(type(obj) is Field for obj in attributes.values()):
+        attributes = {
+            k: Attribute.from_field(v) if type(v) is Field else v
+            for k, v in attributes.items()
+        }
+
+    return attributes
+
+
+# Method Generators
+def init_generator(cls, funcname="__init__"):
+    globs = {}
+    annotations = {}
+    # Get the internals dictionary and prepare attributes
+    attributes = get_attributes(cls)
+    flags = get_flags(cls)
+
+    kw_only = flags.get("kw_only", False)
+
+    # Handle pre/post init first - post_init can change types for __init__
+    # Get pre and post init arguments
+    pre_init_args = []
+    post_init_args = []
+    post_init_annotations = {}
+
+    for extra_funcname, func_arglist in [
+        (PRE_INIT_FUNC, pre_init_args),
+        (POST_INIT_FUNC, post_init_args),
+    ]:
+        try:
+            func = getattr(cls, extra_funcname)
+            func_code = func.__code__
+        except AttributeError:
+            pass
+        else:
+            argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+
+            # Identify if method is static, if so include first arg, otherwise skip
+            is_static = type(cls.__dict__.get(extra_funcname)) is staticmethod
+
+            arglist = (
+                func_code.co_varnames[:argcount]
+                if is_static
+                else func_code.co_varnames[1:argcount]
+            )
+
+            func_arglist.extend(arglist)
+
+            if extra_funcname == POST_INIT_FUNC:
+                post_init_annotations |= get_func_annotations(func)
+
+    # These types can be represented literally without their names
+    # Types that can contain things other than themselves are *not* included
+    literal_types = {str, bytes, int, float, complex, bool, NoneType}
+
+    # Mutable empty containers that can be represented as literals
+    #
+    literal_containers = {list, dict}
+
+    pos_arglist = []
+    kw_only_arglist = []
+    for name, attrib in attributes.items():
+        # post_init annotations can be used to broaden types.
+        if attrib.init:
+            if name in post_init_annotations:
+                annotations[name] = post_init_annotations[name]
+            elif attrib.type is not NOTHING:
+                annotations[name] = attrib.type
+
+            if attrib.default is not NOTHING:
+                if type(attrib.default) in literal_types:
+                    # Just use the literal in these cases
+                    arg = f"{name}={attrib.default!r}"
+                else:
+                    # No guarantee repr will work for other objects
+                    # so store the value in a variable and put it
+                    # in the globals dict for eval
+                    arg = f"{name}=_{name}_default"
+                    globs[f"_{name}_default"] = attrib.default
+            elif attrib.default_factory is not NOTHING:
+                # Use NONE here and call the factory later
+                # This matches the behaviour of compiled
+                arg = f"{name}=None"
+                if attrib.default_factory not in literal_containers:
+                    globs[f"_{name}_factory"] = attrib.default_factory
+            else:
+                arg = name
+            if attrib.kw_only or kw_only:
+                kw_only_arglist.append(arg)
+            else:
+                pos_arglist.append(arg)
+        # Not in init, but need to set defaults
+        else:
+            if attrib.default is not NOTHING:
+                if type(attrib.default) not in literal_types:
+                    globs[f"_{name}_default"] = attrib.default
+            elif attrib.default_factory is not NOTHING:
+                if attrib.default_factory not in literal_containers:
+                    globs[f"_{name}_factory"] = attrib.default_factory
+
+    pos_args = ", ".join(pos_arglist)
+    kw_args = ", ".join(kw_only_arglist)
+    if pos_args and kw_args:
+        args = f"{pos_args}, *, {kw_args}"
+    elif kw_args:
+        args = f"*, {kw_args}"
+    else:
+        args = pos_args
+
+    assignments = []
+    processes = []  # post_init values still need default factories to be called.
+    for name, attrib in attributes.items():
+        if attrib.init:
+            if attrib.default_factory is not NOTHING:
+                if attrib.default_factory in literal_containers:
+                    value = f"{name} if {name} is not None else {attrib.default_factory()!r}"
+                else:
+                    value = f"{name} if {name} is not None else _{name}_factory()"
+            else:
+                value = name
+        else:
+            if attrib.default_factory is not NOTHING:
+                if attrib.default_factory in literal_containers:
+                    value = f"{attrib.default_factory()!r}"
+                else:
+                    value = f"_{name}_factory()"
+            elif attrib.default is not NOTHING:
+                if type(attrib.default) in literal_types:
+                    value = f"{attrib.default!r}"
+                else:
+                    value = f"_{name}_default"
+            else:
+                value = None
+
+        if name in post_init_args:
+            if attrib.default_factory is not NOTHING:
+                processes.append((name, value))
+        elif value is not None:
+            assignments.append((name, value))
+
+    if hasattr(cls, PRE_INIT_FUNC):
+        pre_init_arg_call = ", ".join(f"{name}={name}" for name in pre_init_args)
+        pre_init_call = f"    self.{PRE_INIT_FUNC}({pre_init_arg_call})\n"
+    else:
+        pre_init_call = ""
+
+    if assignments or processes:
+        body = "\n".join(
+            f"    self.{name} = {value}" for name, value in assignments
+        )
+        if processes:
+            body += "\n"
+            body += "\n".join(f"    {name} = {value}" for name, value in processes)
+        body += "\n"
+    else:
+        body = ""
+
+    if hasattr(cls, POST_INIT_FUNC):
+        post_init_arg_call = ", ".join(f"{name}={name}" for name in post_init_args)
+        post_init_call = f"    self.{POST_INIT_FUNC}({post_init_arg_call})\n"
+    else:
+        post_init_call = ""
+
+    if not (body or post_init_call or pre_init_call):
+        body = "    pass\n"
+
+    code = f"def {funcname}(self, {args}):\n{pre_init_call}{body}{post_init_call}"
+
+    if annotations:
+        annotations["return"] = None
+    else:
+        # If there are no annotations, return an unannotated init function
+        annotations = None
+
+    return GeneratedCode(code, globs, annotations)
+
+
+def iter_generator(cls, funcname="__iter__"):
+    fields = get_attributes(cls)
+
+    valid_fields = (
+        name for name, attrib in fields.items()
+        if attrib.iter
+    )
+
+    values = "\n".join(f"    yield self.{name}" for name in valid_fields)
+
+    # if values is an empty string
+    if not values:
+        values = "    yield from ()"
+
+    code = f"def {funcname}(self):\n{values}\n"
+    globs = {}
+    return GeneratedCode(code, globs)
+
+
+def as_dict_generator(cls, funcname="as_dict"):
+    fields = get_attributes(cls)
+
+    vals = ", ".join(
+        f"'{name}': self.{name}"
+        for name, attrib in fields.items()
+        if attrib.serialize
+    )
+    out_dict = f"{{{vals}}}"
+    code = f"def {funcname}(self):\n    return {out_dict}\n"
+
+    globs = {}
+    return GeneratedCode(code, globs)
+
+
+init_maker = MethodMaker("__init__", init_generator)
+prefab_init_maker = MethodMaker(PREFAB_INIT_FUNC, init_generator)
+repr_maker = MethodMaker(
+    "__repr__",
+    get_repr_generator(recursion_safe=False, eval_safe=True)
+)
+recursive_repr_maker = MethodMaker(
+    "__repr__",
+    get_repr_generator(recursion_safe=True, eval_safe=True)
+)
+iter_maker = MethodMaker("__iter__", iter_generator)
+asdict_maker = MethodMaker("as_dict", as_dict_generator)
+
+
+# Updated field with additional attributes
+class Attribute(Field, ignore_annotations=True):
+    """
+    Get an object to define a prefab attribute
+
+    :param default: Default value for this attribute
+    :param default_factory: 0 argument callable to give a default value
+                            (for otherwise mutable defaults, eg: list)
+    :param init: Include this attribute in the __init__ parameters
+    :param repr: Include this attribute in the class __repr__
+    :param compare: Include this attribute in the class __eq__
+    :param iter: Include this attribute in the class __iter__ if generated
+    :param kw_only: Make this argument keyword only in init
+    :param serialize: Include this attribute in methods that serialize to dict
+    :param doc: Parameter documentation for slotted classes
+    :param metadata: Additional non-construction related metadata
+    :param type: Type of this attribute (for slotted classes)
+    """
+    iter: bool = Field(default=True)  # type: ignore
+    serialize: bool = Field(default=True)  # type: ignore
+    metadata: dict = Field(default=FIELD_NOTHING, default_factory=dict)  # type: ignore
+
+
+# noinspection PyShadowingBuiltins
+def attribute(
+    *,
+    default=NOTHING,
+    default_factory=NOTHING,
+    init=True,
+    repr=True,
+    compare=True,
+    iter=True,
+    kw_only=False,
+    serialize=True,
+    exclude_field=False,
+    private=False,
+    doc=None,
+    metadata=None,
+    type=NOTHING,
+):
+    """
+    Helper function to get an object to define a prefab Attribute
+
+    :param default: Default value for this attribute
+    :param default_factory: 0 argument callable to give a default value
+                            (for otherwise mutable defaults, eg: list)
+    :param init: Include this attribute in the __init__ parameters
+    :param repr: Include this attribute in the class __repr__
+    :param compare: Include this attribute in the class __eq__
+    :param iter: Include this attribute in the class __iter__ if generated
+    :param kw_only: Make this argument keyword only in init
+    :param serialize: Include this attribute in methods that serialize to dict
+    :param exclude_field: Shorthand for setting repr, compare, iter and serialize to False
+    :param private: Short for init, repr, compare, iter, serialize = False, must have default or factory
+    :param doc: Parameter documentation for slotted classes
+    :param metadata: Dictionary for additional non-construction metadata
+    :param type: Type of this attribute
+
+    :return: Attribute generated with these parameters.
+    """
+    if exclude_field:
+        repr = False
+        compare = False
+        iter = False
+        serialize = False
+
+    if private:
+        if default is NOTHING and default_factory is NOTHING:
+            raise AttributeError("Private attributes must have defaults or factories.")
+        init = False
+        repr = False
+        compare = False
+        iter = False
+        serialize = False
+
+    return Attribute(
+        default=default,
+        default_factory=default_factory,
+        init=init,
+        repr=repr,
+        compare=compare,
+        iter=iter,
+        kw_only=kw_only,
+        serialize=serialize,
+        doc=doc,
+        type=type,
+        metadata=metadata,
+    )
+
+
+prefab_gatherer = make_unified_gatherer(
+    Attribute,
+    leave_default_values=False,
+)
+
+
+# Class Builders
+def _prefab_preprocess(
+    cls,
+    /,
+    *,
+    init,
+    repr,
+    eq,
+    order,
+    iter,
+    match_args,
+    kw_only,
+    frozen,
+    replace,
+    dict_method,
+    recursive_repr,
+    gathered_fields,
+    ignore_annotations,
+):
+    # This is the preprocessor which decides what arguments to pass to the builder
+    # No mutations should be applied in the preprocess stage
+
+    cls_dict = cls.__dict__
+
+    if build_completed(cls_dict):
+        raise PrefabError(
+            f"Decorated class {cls.__name__!r} "
+            f"has already been processed as a Prefab."
+        )
+
+    # Error check: Non-frozen class can't inherit from frozen
+    if not frozen:
+        for base in cls.__mro__[1:-1]:  # Exclude this class and object
+            try:
+                fields = get_flags(base)
+            except TypeError:
+                continue
+            else:
+                if fields.get("frozen") is True:
+                    raise TypeError("Cannot inherit non-frozen prefab from a frozen one")
+
+    slots = cls_dict.get("__slots__")
+    slotted = False if slots is None else True
+
+    if gathered_fields is None:
+        gatherer = prefab_gatherer
+    else:
+        gatherer = gathered_fields
+
+    # Decide which methods need to be added to the class based on presence
+    methods = set()
+
+    if init and "__init__" not in cls_dict:
+        methods.add(init_maker)
+    else:
+        methods.add(prefab_init_maker)
+
+    if repr and "__repr__" not in cls_dict:
+        if recursive_repr:
+            methods.add(recursive_repr_maker)
+        else:
+            methods.add(repr_maker)
+    if eq and "__eq__" not in cls_dict:
+        methods.add(eq_maker)
+    if order:
+        order_methods = {"__lt__", "__le__", "__gt__", "__ge__"}
+        if not order_methods.isdisjoint(cls_dict.keys()):
+            raise TypeError("Cannot overwrite existing order comparison methods")
+
+        methods |= {lt_maker, le_maker, gt_maker, ge_maker}
+
+    if iter and "__iter__" not in cls_dict:
+        methods.add(iter_maker)
+    if frozen:
+        # Check __setattr__ and __delattr__ are not already defined on this class
+        if "__setattr__" in cls_dict:
+            raise TypeError("Cannot overwrite '__setattr__' method that already exists")
+        elif "__delattr__" in cls_dict:
+            raise TypeError("Cannot overwrite '__delattr__' method that already exists")
+        methods.add(frozen_setattr_maker)
+        methods.add(frozen_delattr_maker)
+        if "__hash__" not in cls_dict:  # it's ok if the user has defined __hash__ already
+            methods.add(hash_maker)
+    if dict_method:
+        methods.add(asdict_maker)
+
+    if replace and "__replace__" not in cls_dict:
+        methods.add(replace_maker)
+
+    # Flags to add to the class
+    flags = {
+        "slotted": slotted,
+        "init": init,
+        "repr": repr,
+        "eq": eq,
+        "order": order,
+        "iter": iter,
+        "match_args": match_args,
+        "kw_only": kw_only,
+        "frozen": frozen,
+        "replace": replace,
+        "dict_method": dict_method,
+        "recursive_repr": recursive_repr,
+        "ignore_annotations": ignore_annotations,
+    }
+
+    return gatherer, methods, flags
+
+
+def _prefab_post_process(cls, /, *, fields, kw_only):
+    # Processor to do post-construction checks
+    # Error check: Check that the arguments to pre/post init are valid fields
+    try:
+        func = getattr(cls, PRE_INIT_FUNC)
+        func_code = func.__code__
+    except AttributeError:
+        pass
+    else:
+        if func_code.co_posonlyargcount > 0:
+            raise PrefabError(
+                "Positional only arguments are not supported in pre or post init functions."
+            )
+
+        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+
+        # Include the first argument if the method is static
+        is_static = type(cls.__dict__.get(PRE_INIT_FUNC)) is staticmethod
+
+        arglist = (
+            func_code.co_varnames[:argcount]
+            if is_static
+            else func_code.co_varnames[1:argcount]
+        )
+
+        for item in arglist:
+            if item not in fields.keys():
+                raise PrefabError(
+                    f"{item} argument in {PRE_INIT_FUNC} is not a valid attribute."
+                )
+
+    try:
+        func = getattr(cls, POST_INIT_FUNC)
+        func_code = func.__code__
+    except AttributeError:
+        pass
+    else:
+        if func_code.co_posonlyargcount > 0:
+            raise PrefabError(
+                "Positional only arguments are not supported in pre or post init functions."
+            )
+
+        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+
+        # Include the first argument if the method is static
+        is_static = type(cls.__dict__.get(POST_INIT_FUNC)) is staticmethod
+
+        arglist = (
+            func_code.co_varnames[:argcount]
+            if is_static
+            else func_code.co_varnames[1:argcount]
+        )
+
+        for item in arglist:
+            if item not in fields.keys():
+                raise PrefabError(
+                    f"{item} argument in {POST_INIT_FUNC} is not a valid attribute."
+                )
+
+    default_defined = []
+
+    # Error check: After inheritance,
+    for name, attrib in fields.items():
+        if not kw_only:
+            # Syntax check arguments for __init__ don't have non-default after default
+            if attrib.init and not attrib.kw_only:
+                if attrib.default is not NOTHING or attrib.default_factory is not NOTHING:
+                    default_defined.append(name)
+                else:
+                    if default_defined:
+                        names = ", ".join(default_defined)
+                        raise SyntaxError(
+                            "non-default argument follows default argument",
+                            f"defaults: {names}",
+                            f"non_default after default: {name}",
+                        )
+
+
+def _make_prefab(
+    cls,
+    *,
+    init=True,
+    repr=True,
+    eq=True,
+    order=False,
+    iter=False,
+    match_args=True,
+    kw_only=False,
+    frozen=False,
+    replace=True,
+    dict_method=False,
+    recursive_repr=False,
+    gathered_fields=None,
+    ignore_annotations=False,
+):
+    """
+    Generate boilerplate code for dunder methods in a class.
+
+    :param cls: Class to convert to a prefab
+    :param init: generate __init__
+    :param repr: generate __repr__
+    :param eq: generate __eq__
+    :param iter: generate __iter__
+    :param match_args: generate __match_args__
+    :param kw_only: Make all attributes keyword only
+    :param frozen: Prevent attribute values from being changed once defined
+                   (This does not prevent the modification of mutable attributes
+                   such as lists)
+    :param replace: Add a generated __replace__ method
+    :param dict_method: Include an as_dict method for faster dictionary creation
+    :param recursive_repr: Safely handle repr in case of recursion
+    :param gathered_fields: Pre-gathered fields callable, to skip re-collecting attributes
+    :param ignore_annotations: Ignore annotated fields and only look at `attribute` fields
+    :return: class with __ methods defined
+    """
+    # Preprocess to obtain settings
+    gatherer, methods, flags = _prefab_preprocess(
+        cls,
+        init=init,
+        repr=repr,
+        eq=eq,
+        order=order,
+        iter=iter,
+        match_args=match_args,
+        kw_only=kw_only,
+        frozen=frozen,
+        replace=replace,
+        dict_method=dict_method,
+        recursive_repr=recursive_repr,
+        gathered_fields=gathered_fields,
+        ignore_annotations=ignore_annotations,
+    )
+
+    cls = builder(
+        cls,
+        gatherer=gatherer,
+        methods=methods,
+        flags=flags,
+        field_getter=get_attributes,
+    )
+
+    # Add additional class attributes that could only be added after fields were resolved
+    fields = get_attributes(cls)
+
+    setattr(cls, PREFAB_FIELDS, list(fields.keys()))
+    if match_args and "__match_args__" not in cls.__dict__:
+        setattr(
+            cls,
+            "__match_args__",
+            tuple(k for k, v in fields.items() if v.init)
+        )
+
+    # Post construction checks
+    _prefab_post_process(cls, kw_only=kw_only, fields=fields)
+
+    return cls
+
+
+class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
+    __slots__ = {}  # type: ignore
+
+    def __init_subclass__(
+        cls,
+        **kwargs
+    ):
+        """
+        Generate boilerplate code for dunder methods in a class.
+
+        Use as a base class, slotted by default
+
+        :param init: generates __init__ if true or __prefab_init__ if false
+        :param repr: generate __repr__
+        :param eq: generate __eq__
+        :param iter: generate __iter__
+        :param match_args: generate __match_args__
+        :param kw_only: make all attributes keyword only
+        :param frozen: Prevent attribute values from being changed once defined
+                    (This does not prevent the modification of mutable attributes such as lists)
+        :param replace: generate a __replace__ method
+        :param dict_method: Include an as_dict method for faster dictionary creation
+        :param recursive_repr: Safely handle repr in case of recursion
+        :param ignore_annotations: Ignore type annotations when gathering fields, only look for
+                                slots or attribute(...) values
+        :param slots: automatically generate slots for this class's attributes
+        """
+        default_values = {
+            "init": True,
+            "repr": True,
+            "eq": True,
+            "order": False,
+            "iter": False,
+            "match_args": True,
+            "kw_only": False,
+            "frozen": False,
+            "replace": True,
+            "dict_method": False,
+            "recursive_repr": False,
+        }
+
+        try:
+            flags = get_flags(cls).copy()
+        except TypeError:
+            flags = {}
+        else:
+            # Remove the value of slotted if it exists
+            flags.pop("slotted", None)
+
+        for k in default_values:
+            kwarg_value = kwargs.pop(k, None)
+            default = default_values[k]
+
+            if kwarg_value is not None:
+                flags[k] = kwarg_value
+            elif flags.get(k) is None:
+                flags[k] = default
+
+        if kwargs:
+            error_args = ", ".join(repr(k) for k in kwargs)
+            raise TypeError(
+                f"Prefab.__init_subclass__ got unexpected keyword arguments {error_args}"
+            )
+
+        _make_prefab(
+            cls,
+            **flags
+        )
+
+
+# noinspection PyShadowingBuiltins
+def prefab(
+    cls=None,
+    *,
+    init=True,
+    repr=True,
+    eq=True,
+    order=False,
+    iter=False,
+    match_args=True,
+    kw_only=False,
+    frozen=False,
+    replace=True,
+    dict_method=False,
+    recursive_repr=False,
+    ignore_annotations=False,
+):
+    """
+    Generate boilerplate code for dunder methods in a class.
+
+    Use as a decorator.
+
+    :param cls: Class to convert to a prefab
+    :param init: generates __init__ if true or __prefab_init__ if false
+    :param repr: generate __repr__
+    :param eq: generate __eq__
+    :param iter: generate __iter__
+    :param match_args: generate __match_args__
+    :param kw_only: make all attributes keyword only
+    :param frozen: Prevent attribute values from being changed once defined
+                   (This does not prevent the modification of mutable attributes such as lists)
+    :param replace: generate a __replace__ method
+    :param dict_method: Include an as_dict method for faster dictionary creation
+    :param recursive_repr: Safely handle repr in case of recursion
+    :param ignore_annotations: Ignore type annotations when gathering fields, only look for
+                               slots or attribute(...) values
+
+    :return: class with __ methods defined
+    """
+    if not cls:
+        # Called as () method to change defaults
+        return lambda cls_: prefab(
+            cls_,
+            init=init,
+            repr=repr,
+            eq=eq,
+            order=order,
+            iter=iter,
+            match_args=match_args,
+            kw_only=kw_only,
+            frozen=frozen,
+            replace=replace,
+            dict_method=dict_method,
+            recursive_repr=recursive_repr,
+            ignore_annotations=ignore_annotations,
+        )
+    else:
+        return _make_prefab(
+            cls,
+            init=init,
+            repr=repr,
+            eq=eq,
+            order=order,
+            iter=iter,
+            match_args=match_args,
+            kw_only=kw_only,
+            frozen=frozen,
+            replace=replace,
+            dict_method=dict_method,
+            recursive_repr=recursive_repr,
+            ignore_annotations=ignore_annotations,
+        )
+
+
+# noinspection PyShadowingBuiltins
+def build_prefab(
+    class_name,
+    attributes,
+    *,
+    bases=(),
+    class_dict=None,
+    init=True,
+    repr=True,
+    eq=True,
+    order=False,
+    iter=False,
+    match_args=True,
+    kw_only=False,
+    frozen=False,
+    replace=True,
+    dict_method=False,
+    recursive_repr=False,
+    slots=False,
+):
+    """
+    Dynamically construct a (dynamic) prefab.
+
+    :param class_name: name of the resulting prefab class
+    :param attributes: list of (name, attribute()) pairs to assign to the class
+                       for construction
+    :param bases: Base classes to inherit from
+    :param class_dict: Other values to add to the class dictionary on creation
+                       This is the 'dict' parameter from 'type'
+    :param init: generates __init__ if true or __prefab_init__ if false
+    :param repr: generate __repr__
+    :param eq: generate __eq__
+    :param iter: generate __iter__
+    :param match_args: generate __match_args__
+    :param kw_only: make all attributes keyword only
+    :param frozen: Prevent attribute values from being changed once defined
+                   (This does not prevent the modification of mutable attributes such as lists)
+    :param replace: generate a __replace__ method
+    :param dict_method: Include an as_dict method for faster dictionary creation
+    :param recursive_repr: Safely handle repr in case of recursion
+    :param slots: Make the resulting class slotted
+    :return: class with __ methods defined
+    """
+    class_dict = {} if class_dict is None else class_dict.copy()
+
+    class_annotations = {}
+    class_slots = {}
+    fields = {}
+
+    for name, attrib in attributes:
+        if isinstance(attrib, Attribute):
+            fields[name] = attrib
+        elif isinstance(attrib, Field):
+            fields[name] = Attribute.from_field(attrib)
+        else:
+            fields[name] = Attribute(default=attrib)
+
+        if attrib.type is not NOTHING:
+            class_annotations[name] = attrib.type
+
+        class_slots[name] = attrib.doc
+
+    if slots:
+        class_dict["__slots__"] = class_slots
+
+    class_dict["__annotations__"] = class_annotations
+
+    cls = type(class_name, bases, class_dict)
+
+    gathered_fields = GatheredFields(fields, {})
+
+    cls = _make_prefab(
+        cls,
+        init=init,
+        repr=repr,
+        eq=eq,
+        order=order,
+        iter=iter,
+        match_args=match_args,
+        kw_only=kw_only,
+        frozen=frozen,
+        replace=replace,
+        dict_method=dict_method,
+        recursive_repr=recursive_repr,
+        gathered_fields=gathered_fields,
+    )
+
+    return cls
+
+
+# Extra Functions
+def is_prefab(o):
+    """
+    Identifier function, return True if an object is a prefab class *or* if
+    it is an instance of a prefab class.
+
+    The check works by looking for a PREFAB_FIELDS attribute.
+
+    :param o: object for comparison
+    :return: True/False
+    """
+    cls = o if isinstance(o, type) else type(o)
+    return hasattr(cls, PREFAB_FIELDS)
+
+
+def is_prefab_instance(o):
+    """
+    Identifier function, return True if an object is an instance of a prefab
+    class.
+
+    The check works by looking for a PREFAB_FIELDS attribute.
+
+    :param o: object for comparison
+    :return: True/False
+    """
+    return hasattr(type(o), PREFAB_FIELDS)
+
+
+def as_dict(o):
+    """
+    Get the valid fields from a prefab respecting the serialize
+    values of attributes
+
+    :param o: instance of a prefab class
+    :return: dictionary of {k: v} from fields
+    """
+    cls = type(o)
+    if not hasattr(cls, PREFAB_FIELDS):
+        raise TypeError(f"{o!r} should be a prefab instance, not {cls}")
+
+    # Attempt to use the generated method if available
+    try:
+        return o.as_dict()
+    except AttributeError:
+        pass
+
+    flds = get_attributes(cls)
+
+    return {
+        name: getattr(o, name)
+        for name, attrib in flds.items()
+        if attrib.serialize
+    }
+
+
+def replace(obj, /, **changes):
+    """
+    Create a copy of a prefab instance with values provided to 'changes' replaced
+
+    :param obj: prefab instance
+    :return: new prefab instance
+    """
+    if not is_prefab_instance(obj):
+        raise TypeError("replace() should be called on prefab instances")
+    try:
+        replace_func = obj.__replace__
+    except AttributeError:
+        raise TypeError(f"{obj.__class__.__name__!r} does not support __replace__")
+
+    return replace_func(**changes)
