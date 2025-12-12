@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "framegrab"
+version = "0.14.2"
+description = "Easily grab frames from cameras or streams"
+authors = ["Groundlight <info@groundlight.ai>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://www.groundlight.ai/"
+repository = "https://github.com/groundlight/framegrab"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+opencv-python = "^4.4.0.46"
+pyyaml = "^6.0.2"
+imgcat = "^0.5.0"
+click = "^8.1.6"
+# We are locking this version of ascii-magic so that we can continue to support Python 3.9. See: https://github.com/LeandroBarone/python-ascii_magic/issues/27
+# If https://github.com/LeandroBarone/python-ascii_magic/pull/28 is merged, we can switch to a more current version of ascii-magic
+ascii-magic = "==2.3"
+wsdiscovery = "^2.0.0"
+onvif-zeep = "^0.2.12"
+pydantic = "^2.9.2"
+pyrealsense2 = { version = "^2.55.1.6486", optional = true }
+picamera2 = { version = ">=0.3.21", optional = true }
+streamlink = { version = "^7.0.0", optional = true }
+pypylon = { version = "^4.1.0", optional = true }
+
+[tool.poetry.extras]
+basler = ["pypylon"]
+realsense = ["pyrealsense2"]
+raspberrypi = ["picamera2"]
+youtube = ["streamlink"]
+all = ["pypylon", "pyrealsense2", "picamera2", "streamlink"]
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
+pytest = "^8.3.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+# This defines the CLI command `framegrab` and its python entrypoint
+framegrab = "framegrab.cli.main:climain"
