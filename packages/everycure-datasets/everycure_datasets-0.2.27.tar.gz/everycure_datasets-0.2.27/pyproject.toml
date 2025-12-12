@@ -1,0 +1,52 @@
+[project]
+name = "everycure-datasets"
+version = "0.2.27"
+requires-python = ">=3.11"
+scripts = {datasets = "everycure.datasets.cli:app"}
+dependencies = [
+    "gitpython>=3.1.45",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+]
+[project.optional-dependencies]
+kedro = [
+    "kedro>=0.19.1",
+    "kedro-datasets[pandas,spark]>=6.0.0",
+    "semantic-version>=2.10.0",
+]
+
+[tool.hatch.build]
+include = ["src/**"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "datasets/**",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/everycure"]
+
+# [tool.uv]
+# keyring-provider = "subprocess"
+#
+# [[tool.uv.index]]
+# name = "pypi"
+# url = "https://pypi.org/simple"
+#
+# [[tool.uv.index]]
+# name = "everycure"
+# url = "https://oauth2accesstoken@us-central1-python.pkg.dev/core-422020/everycure/simple/"
+# publish-url = "https://us-central1-python.pkg.dev/core-422020/everycure/"
+# default = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "keyrings-google-artifactregistry-auth>=1.1.2",
+    "pytest>=9.0.1",
+    "pre-commit>=4.3.0",
+    "typer>=0.12.0",
+]
