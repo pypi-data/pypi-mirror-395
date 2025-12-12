@@ -1,0 +1,145 @@
+# Simple Loop Node Example with Cognitive Extraction
+# This example demonstrates the LoopNode functionality with cognitive insight extraction
+
+orchestrator:
+  id: simple-loop-example
+  strategy: sequential
+  agents:
+    - simple_loop
+    - final_processor
+
+agents:
+  - id: simple_loop
+    type: loop
+    max_loops: 5
+    score_threshold: 0.75
+    persist_across_runs: true  # Enable persistence of past loops across different workflow runs
+    
+    # Boolean-based scoring configuration (deterministic and auditable)
+    scoring:
+      preset: moderate  # Options: strict, moderate, lenient
+    # Or use legacy pattern-based scoring:
+    # score_extraction_pattern: "SCORE:\\s*([0-9.]+)"
+    
+    # Cognitive extraction configuration
+    cognitive_extraction:
+      enabled: true
+      max_length_per_category: 500
+      extract_patterns:
+        insights:
+          - "(?:provides?|identifies?|shows?|solid|good|comprehensive|thorough)\\s+(.+?)(?:\\n|$)"
+          - "(?:accurately|correctly)\\s+(.+?)(?:\\n|$)"
+          - "(?:strong|effective|successful)\\s+(.+?)(?:\\n|$)"
+        improvements:
+          - "(?:lacks?|lacking|needs?|requires?|missing|should|could)\\s+(.+?)(?:\\n|$)"
+          - "(?:would improve|would enhance|could benefit from)\\s+(.+?)(?:\\n|$)"
+          - "\\d+\\.\\s*\\*\\*([^*]+)\\*\\*:\\s*(.+?)(?:\\n|$)"
+          - "(?:more detailed|more thorough|clearer|specific|in-depth)\\s+(.+?)(?:\\n|$)"
+          - "(?:depth of|implementation plan|stakeholder analysis|risk assessment)\\s+(.+?)(?:\\n|$)"
+          - "(?:addressing|exploring|developing|conducting|establishing)\\s+(.+?)(?:\\n|$)"
+        mistakes:
+          - "(?:overlooked|missed|not adequately|does not)\\s+(.+?)(?:\\n|$)"
+          - "(?:lacks depth|lacks specificity|insufficient|inadequate)\\s+(.+?)(?:\\n|$)"
+          - "(?:weakness|limitation|gap|problem|issue)\\s*[:\\s]*(.+?)(?:\\n|$)"
+          - "(?:vague|unclear|generic|surface-level)\\s+(.+?)(?:\\n|$)"
+      agent_priorities:
+        analyzer: ["insights", "improvements", "mistakes"]
+        scorer: ["mistakes", "improvements"]
+    
+    # Define past_loops object structure with cognitive insights
+    past_loops_metadata:
+      loop_number: "{{ get_loop_number() }}"
+      score: "{{ score }}"
+      timestamp: "{{ timestamp }}"
+      key_insights: "{{ insights }}"
+      improvements_needed: "{{ improvements }}"
+      mistakes_found: "{{ mistakes }}"
+    
+    # Internal workflow that gets repeated
+    internal_workflow:
+      orchestrator:
+        id: internal-loop
+        strategy: sequential
+        agents: [analyzer, scorer]
+      agents:
+        - id: analyzer
+          type: local_llm
+          model: gpt-oss:20b
+          model_url: http://localhost:11434/api/generate
+          provider: ollama
+          temperature: 0.7
+          prompt: |
+            Analyze this question: {{ get_input() }}
+            
+            {% if has_past_loops() %}
+            Previous attempts ({{ get_past_loops() | length }}):
+            {% for past_loop in get_past_loops() %}
+            - Loop {{ past_loop.loop_number }} (Score: {{ past_loop.score }}):
+              * Key insights: {{ past_loop.key_insights }}
+              * Needed improvements: {{ past_loop.improvements_needed }}
+              * Mistakes found: {{ past_loop.mistakes_found }}
+            {% endfor %}
+            
+            Build upon these previous insights and address the identified gaps.
+            {% endif %}
+            
+            Provide a comprehensive analysis. Focus on:
+            1. Key insights and findings
+            2. Areas that need improvement
+            3. What might be missing or overlooked
+            
+            Structure your response to clearly indicate insights, improvements needed, and potential mistakes.
+            
+        - id: scorer
+          type: local_llm
+          model: gpt-oss:20b
+          model_url: http://localhost:11434/api/generate
+          provider: ollama
+          temperature: 0.2
+          prompt: |
+            Rate the quality of this analysis (0.0 to 1.0):
+            {{ get_agent_response('analyzer') }}
+            
+            Consider:
+            - Completeness and depth
+            - Accuracy of insights
+            - Identification of improvements
+            - Recognition of limitations
+            
+            If the score is below 0.8, clearly identify what was missed, overlooked, or needs improvement.
+            
+            Format your response as: SCORE: X.XX
+            Then explain what was missed or needs improvement.
+
+  - id: final_processor
+    type: local_llm
+    model: gpt-oss:20b
+    model_url: http://localhost:11434/api/generate
+    provider: ollama
+    temperature: 0.5
+    prompt: |
+      Process the final result from the cognitive loop:
+      
+      {% if previous_outputs.simple_loop %}
+      Loops completed: {{ previous_outputs.simple_loop.loops_completed | default('Unknown') }}
+      Final score: {{ previous_outputs.simple_loop.final_score | default('Unknown') }}
+      Threshold met: {{ previous_outputs.simple_loop.threshold_met | default('Unknown') }}
+      
+      Cognitive Evolution Summary:
+      {% set loop_result = get_loop_output('simple_loop', previous_outputs) %}
+      {% if loop_result.past_loops %}
+      {% for past_loop in loop_result.past_loops %}
+      
+      **Loop {{ past_loop.loop_number }}** (Score: {{ past_loop.score }}):
+      - Key Insights: {{ past_loop.key_insights }}
+      - Improvements: {{ past_loop.improvements_needed }}
+      - Mistakes: {{ past_loop.mistakes_found }}
+      {% endfor %}
+      {% endif %}
+      
+      Final Analysis: {{ safe_get(loop_result, 'result', 'No result available') }}
+      {% else %}
+      The loop execution is complete. Providing a general meta-analysis of cognitive loop processing.
+      {% endif %}
+      
+      Provide a meta-analysis of how the thinking evolved through the loops and what the final insights reveal. 
