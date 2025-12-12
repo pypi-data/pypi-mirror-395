@@ -1,0 +1,98 @@
+#import QuestionAnswerPairFragment from "../fragments/qa_sets.graphql"
+#import RunFragment from "../fragments/run.graphql"
+
+mutation CreateQuestionAnswerSet(
+  $testSuiteId: String!
+  $questionAnswerPairs: [QuestionAnswerPairInputType!]!
+  $parameters: GenericScalar!
+  $projectId: String!
+  $modelId: String!
+  $runName: String
+) {
+  createQuestionAnswerSet(
+    testSuiteId: $testSuiteId
+    questionAnswerPairs: $questionAnswerPairs
+    parameters: $parameters
+    projectId: $projectId
+    modelId: $modelId
+    runName: $runName
+    createRun: true
+  ) {
+    questionAnswerSet {
+      id
+    }
+    run {
+      id
+    }
+  }
+}
+
+mutation CreateEmptyRunObject(
+  $testSuiteId: String!
+  $questionAnswerPairs: [QuestionAnswerPairInputType!]!
+  $parameters: GenericScalar!
+  $projectId: String!
+  $modelId: String!
+  $runName: String
+) {
+  createQuestionAnswerSet(
+    testSuiteId: $testSuiteId
+    questionAnswerPairs: $questionAnswerPairs
+    parameters: $parameters
+    projectId: $projectId
+    modelId: $modelId
+    runName: $runName
+    createRun: true
+  ) {
+    run {
+      ...RunFragment
+    }
+  }
+}
+
+mutation BatchAddQuestionAnswerPairs(
+  $runId: String!
+  $questionAnswerSetId: String!
+  $questionAnswerPairs: [QuestionAnswerPairInputType!]!
+) {
+  batchAddQuestionAnswerPairs(
+    runId: $runId
+    questionAnswerSetId: $questionAnswerSetId
+    questionAnswerPairs: $questionAnswerPairs
+  ) {
+    questionAnswerPairs {
+      id
+      inputUnderTest
+      llmOutput
+      fileIds
+      context
+      outputContext
+      test {
+        id
+      }
+      status
+    }
+  }
+}
+
+mutation MarkQuestionAnswerSetAsComplete($questionAnswerSetId: String!) {
+  markQuestionAnswerSetAsComplete(questionAnswerSetId: $questionAnswerSetId) {
+    questionAnswerSet {
+      id
+    }
+  }
+}
+
+mutation CreateQuestionAnswerPair(
+  $questionAnswerSetId: String!
+  $questionAnswerPair: QuestionAnswerPairInputType!
+) {
+  createQuestionAnswerPair(
+    questionAnswerSetId: $questionAnswerSetId
+    questionAnswerPair: $questionAnswerPair
+  ) {
+    questionAnswerPair {
+      ...QuestionAnswerPairFragment
+    }
+  }
+}
