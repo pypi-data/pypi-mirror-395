@@ -1,0 +1,282 @@
+# ToothFairyAI Python SDK
+
+Official Python SDK for the ToothFairyAI API.
+
+## Installation
+
+```bash
+pip install toothfairyai
+```
+
+## Quick Start
+
+```python
+from toothfairyai import ToothFairyClient
+
+# Initialize the client
+client = ToothFairyClient(
+    api_key="your-api-key",
+    workspace_id="your-workspace-id"
+)
+
+# Send a message to an agent (non-streaming)
+response = client.chat.send_to_agent(
+    message="Hello, how can you help me?",
+    agent_id="your-agent-id"
+)
+print(response.agent_response)
+```
+
+## Streaming Responses
+
+Stream responses with an iterator pattern, similar to OpenAI's Python SDK:
+
+```python
+# Simple streaming - iterate over events
+stream = client.streaming.send_to_agent(
+    message="Tell me about dental care",
+    agent_id="your-agent-id"
+)
+
+for event in stream:
+    print(event.text, end="", flush=True)
+
+print()
+print(f"Chat ID: {stream.chat_id}")
+```
+
+### Streaming with Event Types
+
+```python
+stream = client.streaming.send_to_agent("Hello", "agent-id")
+
+for event in stream:
+    if event.is_token:
+        # Token events contain streaming text
+        print(event.text, end="", flush=True)
+    elif event.is_complete:
+        # Stream is complete
+        print("\nDone!")
+    elif event.is_error:
+        # Handle errors
+        print(f"Error: {event.data}")
+```
+
+### Collect Full Response
+
+```python
+stream = client.streaming.send_to_agent("Hello", "agent-id")
+full_response = stream.collect()  # Blocks until complete
+print(full_response)
+```
+
+### Continue a Conversation
+
+```python
+# First message creates a new chat
+stream1 = client.streaming.send_to_agent("Hello", "agent-id")
+for event in stream1:
+    print(event.text, end="")
+
+# Continue in the same chat
+stream2 = client.streaming.send_to_agent(
+    message="Tell me more",
+    agent_id="agent-id",
+    chat_id=stream1.chat_id  # Use the chat ID from first stream
+)
+for event in stream2:
+    print(event.text, end="")
+```
+
+## Features
+
+- **Chat Management**: Create, update, and manage chat conversations
+- **Streaming**: Real-time streaming responses with iterator pattern (like OpenAI)
+- **Document Management**: Upload, search, and manage documents
+- **Entity Management**: Manage topics, intents, and NER entities
+- **Folder Management**: Organize content with folder hierarchies
+- **Prompt Management**: Create and manage prompt templates
+
+## API Reference
+
+### Client Configuration
+
+```python
+from toothfairyai import ToothFairyClient
+
+client = ToothFairyClient(
+    api_key="your-api-key",           # Required
+    workspace_id="your-workspace-id", # Required
+    base_url="https://api.toothfairyai.com",  # Optional
+    ai_url="https://ai.toothfairyai.com",     # Optional
+    ai_stream_url="https://ais.toothfairyai.com",  # Optional
+    timeout=120  # Optional, in seconds
+)
+```
+
+### Chat Operations
+
+```python
+# Create a chat
+chat = client.chat.create(
+    name="Customer Support",
+    customer_id="customer-123"
+)
+
+# Get a chat
+chat = client.chat.get(chat_id="chat-id")
+
+# List chats
+chats = client.chat.list(limit=10, offset=0)
+
+# Send message to agent (non-streaming)
+response = client.chat.send_to_agent(
+    message="Hello",
+    agent_id="agent-id",
+    chat_id="existing-chat-id",  # Optional
+    attachments={
+        "images": ["https://example.com/image.jpg"],
+        "files": ["https://example.com/document.pdf"]
+    }
+)
+```
+
+### Streaming Operations
+
+```python
+# Stream response from agent
+stream = client.streaming.send_to_agent(
+    message="Hello",
+    agent_id="agent-id",
+    chat_id="existing-chat-id",  # Optional - continue conversation
+    attachments={
+        "images": ["https://example.com/image.jpg"]
+    }
+)
+
+# Iterate over events
+for event in stream:
+    print(event.text, end="")
+
+# Access metadata after streaming
+print(f"Chat: {stream.chat_id}")
+print(f"Message: {stream.message_id}")
+print(f"Full text: {stream.text}")
+```
+
+### Document Operations
+
+```python
+# Upload a document
+result = client.documents.upload(
+    file_path="./document.pdf",
+    on_progress=lambda p, l, t: print(f"Progress: {p}%")
+)
+
+# Upload from base64
+result = client.documents.upload_from_base64(
+    base64_data="...",
+    filename="document.pdf",
+    content_type="application/pdf"
+)
+
+# Search documents
+results = client.documents.search(
+    text="dental procedures",
+    top_k=10
+)
+
+# Create document from URL
+doc = client.documents.create_from_path(
+    file_path="https://example.com/document.pdf",
+    user_id="user-123",
+    title="My Document",
+    folder_id="folder-id"
+)
+```
+
+### Entity Operations
+
+```python
+# Create an entity
+entity = client.entities.create(
+    user_id="user-123",
+    label="Dental Cleaning",
+    entity_type="topic",
+    description="Professional teeth cleaning procedures"
+)
+
+# List entities by type
+topics = client.entities.get_by_type("topic")
+intents = client.entities.get_by_type("intent")
+
+# Search entities
+results = client.entities.search("cleaning", entity_type="topic")
+```
+
+### Folder Operations
+
+```python
+# Create a folder
+folder = client.folders.create(
+    user_id="user-123",
+    name="Procedures",
+    description="Medical procedures documentation"
+)
+
+# Get folder tree
+tree = client.folders.get_tree()
+
+# Get subfolders
+subfolders = client.folders.get_subfolders(parent_id="folder-id")
+```
+
+### Prompt Operations
+
+```python
+# Create a prompt
+prompt = client.prompts.create(
+    user_id="user-123",
+    label="Greeting",
+    prompt_type="greeting",
+    interpolation_string="Hello {{name}}, how can I help you today?"
+)
+
+# Clone a prompt with modifications
+cloned = client.prompts.clone(
+    prompt_id="prompt-id",
+    user_id="user-123",
+    label="New Greeting"
+)
+```
+
+## Error Handling
+
+```python
+from toothfairyai import ToothFairyClient, ToothFairyError
+
+client = ToothFairyClient(api_key="...", workspace_id="...")
+
+try:
+    response = client.chat.send_to_agent("Hello", "agent-id")
+except ToothFairyError as e:
+    print(f"Error: {e.message}")
+    print(f"Code: {e.code}")
+    print(f"Status: {e.status_code}")
+```
+
+## Connection Testing
+
+```python
+# Test connection
+is_connected = client.test_connection()
+print(f"Connected: {is_connected}")
+
+# Get health status
+health = client.get_health()
+print(f"Status: {health['status']}")
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
