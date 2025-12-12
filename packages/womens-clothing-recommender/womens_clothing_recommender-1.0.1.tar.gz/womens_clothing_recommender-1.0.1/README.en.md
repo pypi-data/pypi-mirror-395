@@ -1,0 +1,147 @@
+# ✨ Recommendation Prediction from Women’s Clothing Reviews
+
+This project is a machine learning system that predicts whether a product will be **recommended or not (0/1)** using **23,486 customer reviews** collected from a real e-commerce platform.
+
+By combining natural language processing (NLP), feature engineering, categorical data processing, and ensemble models, the system achieves a high-level performance of **0.974 ROC AUC**.
+
+---
+## Dataset Source
+- [Women's E-Commerce Clothing Reviews - Kaggle](https://www.kaggle.com/datasets/mexwell/womens-e-commerce-clothing-reviews)
+
+---
+## 🎯 Model Performance
+
+| Metric                       | Result              |
+| ---------------------------- |---------------------|
+| **ROC AUC**                  | **0.974**           |
+| **Accuracy**                 | **0.9391**          |
+| **F1-Score (Recommended=1)** | **0.939**           |
+| Confusion Matrix             | See the chart below |
+
+<img src="images/full_presentation_report.png" width="100%"/>
+
+These scores show that the model captures real-world customer recommendation behavior with high accuracy.
+
+---
+
+## 📦 Dataset: *Women’s Clothing E-Commerce Reviews*
+
+* **23,486 rows**
+* **10 features + text review**
+* Real user reviews (anonymized)
+* Target: **Recommended IND (0 = not recommended, 1 = recommended)**
+
+### Contents:
+
+| Variable                | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| Clothing ID             | Categorical product ID                         |
+| Age                     | Customer age                                   |
+| Title                   | Review title                                   |
+| Review Text             | Written review                                 |
+| Rating                  | Product rating (1–5)                           |
+| Recommended IND         | Recommendation status (target variable)        |
+| Positive Feedback Count | Number of users who found the review helpful   |
+| Division Name           | High-level product division                    |
+| Department Name         | Department                                     |
+| Class Name              | Product type (Dresses, Pants, Intimates, etc.) |
+
+---
+
+## 🧠 Why This Model?
+
+A multi-layer approach was adopted using the advanced pipeline below:
+
+| Component                               | Reason                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| **Soft Voting Ensemble**                | Combines the strengths of Logistic Regression, Random Forest, and SVM           |
+| **TF-IDF + Truncated SVD**              | Reduces text dimensionality from 5000 → 100 for speed + performance             |
+| **Custom `ReviewFeatures` Transformer** | Adds emotional/structural signals like review length and number of exclamations |
+| **Pipeline + GridSearchCV**             | Fully automated preprocessing + best hyperparameters                            |
+
+### 🔍 Why Is `ReviewFeatures` So Effective?
+
+These additional signals boosted the F1 score by **2%**:
+
+* Longer review → more thoughtful → more likely recommended
+* Many “!” → higher emotional tone → usually positive
+* Short title → often negative (“Too small”, “Didn’t like it”)
+
+Therefore, the structural properties of the review are as valuable as the text itself.
+
+---
+
+## 🛠️ Usage
+
+### 1️⃣ Train the Model
+
+```bash
+python main.py train
+```
+
+### 2️⃣ Interactive Prediction in Terminal
+
+```bash
+python main.py predict
+```
+
+### 3️⃣ Batch Prediction from CSV
+
+```bash
+python main.py predict-batch data/new_reviews.csv
+```
+
+---
+
+## 📁 Project Structure
+
+```
+womens-clothing-recommender/
+├── src/
+│   ├── data/preprocessing.py          # Data cleaning & preprocessor
+│   ├── models/ensemble.py             # VotingClassifier setup
+│   └── features/review_features.py    # Custom NLP feature transformer
+├── scripts/
+│   ├── train.py
+│   ├── predict.py
+│   └── batch_predict.py
+├── images/                 # Model outputs (ROC, CM, report)
+├── dataset/                # Raw and processed data
+├── models/                 # Saved ML models
+│   └── best_recommendation_model.pkl
+├── config.py
+├── main.py
+└── requirements.txt
+```
+
+---
+
+## 📥 Requirements
+
+Python 3.10+ is recommended.
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 📜 License
+
+MIT License
+
+---
+
+## 👤 Author
+
+**Celil Vural**
+🔗 [https://linkedin.com/in/celil-v-92945325b](https://linkedin.com/in/celil-v-92945325b)
+
+---
+
+## 💬 Contributing
+
+Pull requests are welcome!
+You can open an issue for bugs, suggestions, or improvements.
+
+---
