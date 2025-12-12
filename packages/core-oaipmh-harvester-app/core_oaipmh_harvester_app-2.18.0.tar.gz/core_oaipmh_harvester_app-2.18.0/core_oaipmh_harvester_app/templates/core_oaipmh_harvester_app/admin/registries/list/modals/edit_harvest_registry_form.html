@@ -1,0 +1,57 @@
+<p>
+    Please select metadata formats and sets you would like to retrieve during the Harvest process for this Data Provider.
+</p>
+
+<form id="edit-harvest-registry-form" method="post" action="{{ view.request.path }}">
+    {% csrf_token %}
+    {{form.id}}
+    <table class="data-edit-harvest">
+        <thead>
+            <tr class="grey">
+                <th colspan="2">{{form.metadata_formats.label}}</th>
+            </tr>
+        </thead>
+    {% with initial=form.initial.metadata_formats %}
+    {% for pk, choice in form.metadata_formats.field.widget.choices %}
+        <tr>
+            <td>{{ choice }}</td>
+            <td id="ButtonSetid_metadataFormats_{{ forloop.counter0 }}" class="ui-buttonset" align="right">
+                <input {% if pk in initial %}checked="checked"{% endif %} type="checkbox"
+                       id="id_metadataFormats_{{ forloop.counter0 }}" value="{{ pk }}" name="metadata_formats" />
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="2">
+                No metadata formats available.
+            </td>
+        </tr>
+    {% endfor %}
+    {% endwith %}
+    </table>
+
+    <table class="data-edit-harvest">
+        <thead>
+            <tr class="grey">
+                <th colspan="2">{{form.sets.label}}</th>
+            </tr>
+        </thead>
+    {% with initial=form.initial.sets %}
+    {% for pk, choice in form.sets.field.widget.choices %}
+        <tr>
+            <td>{{ choice }}</td>
+            <td id="ButtonSetid_sets_{{ forloop.counter0 }}" class="ui-buttonset" align="right">
+                <input {% if pk in initial %}checked="checked"{% endif %} type="checkbox"
+                       id="id_sets_{{ forloop.counter0 }}" value="{{ pk }}" name="sets" />
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="2">
+                No sets available.
+            </td>
+        </tr>
+    {% endfor %}
+    {% endwith %}
+    </table>
+</form>

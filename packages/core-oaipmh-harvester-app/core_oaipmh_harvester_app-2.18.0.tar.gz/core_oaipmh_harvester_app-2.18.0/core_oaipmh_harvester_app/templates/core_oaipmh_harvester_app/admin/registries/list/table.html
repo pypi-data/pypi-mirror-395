@@ -1,0 +1,101 @@
+{% extends 'core_main_app/_render/admin/theme/tools/box.html' %}
+{% load tz %}
+
+{% block box_title %}OAI PMH providers list{% endblock %}
+
+{% block box_tools %}
+<div class="btn-group {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+<a href="#" class="btn btn-secondary add-registry-btn">
+    <i class="fas fa-plus-circle"></i> Add
+</a>
+<a href="#" class="btn btn-secondary check-all-registries-btn">
+    <i class="fas fa-check-circle"></i> Check All
+</a>
+<a href="#" class="btn btn-secondary update-all-registries-btn">
+    <i class="fas fa-sync "></i> Update All
+</a>
+<a href="#" class="btn btn-secondary harvest-all-registries-btn">
+    <i class="fas fa-download "></i> Harvest All
+</a>
+</div>
+{% endblock %}
+
+{% block box_body %}
+<table class="table table-bordered table-striped table-hover">
+    <tr>
+        <th>Name</th>
+        <th>URL</th>
+        <th>Status</th>
+        <th>Harvest</th>
+        <th>Harvest Rate</th>
+        <th>Last Update</th>
+        <th>Actions</th>
+    </tr>
+
+    <div id="Refreshing" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Refreshing...</div>
+    <div id="RefreshInfo"><i class='fas fa-sync' aria-hidden='true'>&nbsp;</i>Refresh in
+        <div id="countdown" style="display:inline-block;"></div> sec.
+    </div>
+
+    {% for registry in data.registries %}
+        <tr id="bannerHarvest{{registry.id}}" style="display: {{ registry.is_harvesting|yesno:',none' }};">
+            <td class="alert alert-warning" colspan="7">
+                <h4><i class='fas fa-circle-notch fa-spin fa-1x'></i>&nbsp;&nbsp;Data harvesting ...</h4>
+            </td>
+        </tr>
+        <tr id="bannerUpdate{{registry.id}}" style="display: {{ registry.is_updating|yesno:',none' }};">
+            <td class="alert alert-warning" colspan="7">
+                <h4><i class='fas fa-circle-notch fa-spin fa-1x'></i>&nbsp;&nbsp;Updating Data Provider information ...</h4>
+            </td>
+        </tr>
+        <tr objectid="{{ registry.id }}" url="{{ registry.url }}">
+            <td id="name{{registry.id}}">{{ registry.name }}</td>
+            <td>{{ registry.url }}</td>
+            <td>
+            {% if not registry.is_activated %}
+                <p style='color:red'>Deactivated</p>
+            {% else %}
+                <a class="btn btn-secondary check-registry-btn">Check</a>
+            {% endif %}
+            </td>
+            <td>{{ registry.harvest }}</td>
+            <td>{{ registry.harvest_rate }}</td>
+            <td id="lastUpdate{{registry.id}}">{{ registry.last_update|localtime }}</td>
+            <td>
+                <a class="btn btn-secondary view-registry-btn" href="#">
+                    <i class="fas fa-eye"></i> View
+                </a>
+                {% if registry.is_activated %}
+                    {% url 'core-admin:core_oaipmh_harvester_app_edit_registry' registry.id as edit_url %}
+                    {% include 'core_main_app/common/buttons/edit.html' %}
+                    {% url 'core-admin:core_oaipmh_harvester_app_edit_harvest_registry' registry.id as edit_harvest_url %}
+                    {% include 'core_main_app/common/buttons/edit.html' with edit_url=edit_harvest_url label='Edit Harvest' %}
+                    <a class="btn btn-danger deactivate-registry-btn" href="#">
+                        <i class="fas fa-ban"></i> Deactivate
+                    </a>
+                    <a class="btn btn-secondary update-registry-btn" href="#"  style="display: {{ registry.is_updating|yesno:'none,' }};">
+                        <i class="fas fa-sync"></i> Update
+                    </a>
+                    <a class="btn btn-secondary harvest-registry-btn" href="#" style="display: {{ registry.is_harvesting|yesno:'none,' }};">
+                        <i class="fas fa-download"></i> Harvest
+                    </a>
+                {% else %}
+                    <a class="btn btn-secondary activate-registry-btn" href="#">
+                        <i class="fas fa-sync"></i> Restore
+                    </a>
+                    <button class="btn btn-danger delete-registry-btn">
+                        <i class="fas fa-trash"></i> Delete definitely
+                    </button>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td class="empty" colspan="7">
+                There are currently no Data Providers registered. Please
+                <a href="#" class="add-registry-btn">add a new one</a>.
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}
