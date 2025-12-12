@@ -1,0 +1,147 @@
+Metadata-Version: 2.4
+Name: dg-mol-track
+Version: 0.6.19
+Author-email: Oleksandra Serhiienko <oserhiienko@datagrok.ai>
+License: MIT License
+        
+        Copyright (c) 2025 Datagrok, Inc
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: fastapi>=0.115.12
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: orjson>=3.11.1
+Requires-Dist: pandas>=2.3.0
+Requires-Dist: psycopg2-binary>=2.9.10
+Requires-Dist: pydantic==2.10.6
+Requires-Dist: pytest>=8.3.5
+Requires-Dist: pytest-asyncio>=0.26.0
+Requires-Dist: python-dateutil>=2.9.0.post0
+Requires-Dist: python-dotenv>=1.1.0
+Requires-Dist: python-multipart>=0.0.20
+Requires-Dist: pyyaml==6.0.2
+Requires-Dist: rdkit>=2025.3.1
+Requires-Dist: sqlalchemy>=2.0.40
+Requires-Dist: sqlmodel>=0.0.24
+Requires-Dist: uvicorn>=0.34.2
+Requires-Dist: pyarrow>=16.1.0
+Requires-Dist: common-expression-language
+Requires-Dist: typer>=0.16.0
+Requires-Dist: requests>=2.32.4
+Requires-Dist: pydantic-settings
+Dynamic: license-file
+
+# MolTrack
+
+[![PyPI](https://img.shields.io/pypi/v/dg-mol-track)](https://pypi.org/project/dg-mol-track/) [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+
+A lightweight, flexible, and extendable FastAPI server for managing chemical compounds, batches, and properties, powered by RDKit-enabled Postgres for chemical intelligence. Ideal for labs, startups, and small- to medium-sized biotech companies.
+
+**MolTrack is:**
+
+* **Open-source**: Fully accessible code under the MIT license
+* **Easy to use**: CLI and REST APIs for seamless workflow integration
+* **Chemically intelligent**: Supports structure-aware queries
+* **Hackable**: Simple to extend, customize, and integrate proprietary logic
+* **Enterprise-ready**: Scales reliably for production environments
+* **Fast**: Optimized for high performance
+
+See also: [User stories](./docs/user-stories.md) • [Features](./docs/features.md) • [Developer guide](./CONTRIBUTING.md)
+
+## Table of Contents
+
+- [Usage](#usage)
+- [Integration with Datagrok](#integration-with-datagrok)
+- [Features](#features)
+
+## Usage
+
+### CLI tool
+
+MolTrack provides a command-line interface for managing compounds, batches and assay data directly from your terminal. Currently, the CLI can be run from the MolTrack root folder using:
+<!-- We should publish the CLI tool to PyPI, as it is currently only available via endpoints in dg-mol-track. This is just a placeholder for the official version. -->
+
+```bash
+python mtcli.py <command> [options]
+```
+
+To see the full list of available commands and usage examples, refer to the [CLI usage guide](./client/client.md).
+
+<!-- This is the placeholder for the gif. -->
+![](./images/mol-track-cli.gif)
+
+### Web server
+
+MolTrack can be run locally as a web server using the automated setup scripts:
+
+* `setup.sh` — for **macOS/Linux**
+* `setup.bat` — for **Windows**
+
+<br>
+
+These scripts handle all setup steps automatically, including building the Docker image, running the container, creating a Python virtual environment, and syncing dependencies. They can also optionally start the server.
+
+> **Note:** Docker must be installed and running before using these scripts.
+
+**macOS/Linux**
+
+```bash
+chmod +x setup.sh
+./setup.sh           # Run setup only
+./setup.sh --run_server  # Run setup and start the server
+```
+
+**Windows**
+
+```cmd
+setup.bat            # Run setup only
+setup.bat --run_server  # Run setup and start the server
+```
+
+The setup typically takes **2–3 minutes**. Once ready, open [http://localhost:8000/docs](http://localhost:8000/docs) to access the API documentation.
+
+## Integration with Datagrok
+
+To make MolTrack truly accessible, we aim to provide chemists with an intuitive UI, without requiring them to run Docker containers or use the CLI.
+
+To achieve this, we have developed an MIT-licensed [Datagrok MolTrack plugin](https://github.com/datagrok-ai/public/tree/master/packages/MolTrack/README.md). The plugin allows users to interact with MolTrack directly within the Datagrok platform, providing features such as:
+
+* Compound, batch, and assay data registration
+* Powerful structure-based search
+* Effortless integration with Datagrok analysis and visualization tools
+
+> **Note:** While both MolTrack and the MolTrack plugin are open-source, the Datagrok platform itself is proprietary. It is free for personal use, academia, and non-profit research. Claim your license [here](https://datagrok.ai).
+
+![](./images/mol-track-registration.gif)
+
+## Features
+
+Core MolTrack capabilities:
+
+* Registration of compounds, batches, and assay data  
+* Metadata and property management  
+* Structure-based and metadata search  
+* Audit trails and role-based access control  
+* RESTful API for integration with external systems  
+
+➡️ Explore the full roadmap: [Features & Roadmap](./docs/features.md)  
+➡️ Detailed API documentation: [API Reference](./docs/api.md)
