@@ -1,0 +1,192 @@
+[project]
+name = "rio-tiler"
+description = "User friendly Rasterio plugin to read raster datasets."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Vincent Sarago", email = "vincent@developmentseed.com"},
+]
+keywords = ["COGEO", "Cloud Optimized Geotiff", "rasterio", "slippy-map", "STAC"]
+classifiers = [
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dynamic = ["version"]
+dependencies = [
+    "attrs",
+    "cachetools",
+    "httpx",
+    "numexpr",
+    "numpy",
+    "morecantile>=5.0,<8.0",
+    "pydantic~=2.0",
+    "pystac>=1.9,<2.0",
+    "rasterio>=1.4.0",
+    "color-operations",
+    "typing-extensions",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-benchmark",
+    # XarrayReader
+    "xarray",
+    "rioxarray",
+    "h5netcdf",
+    # S3
+    "boto3",
+    # Some tests will fail with 5.0
+    "morecantile>=6.0,<8.0",
+    # Experimental
+    "vsifile>=0.2",
+    "zarr~=3.0",
+    "obstore",
+    "tilebench",
+    "pre-commit",
+    "bump-my-version",
+]
+
+performance = [
+    "pytest-benchmark",
+    "tilebench",
+]
+
+docs = [
+    "mkdocs>=1.4.3",
+    "mkdocs-jupyter>=0.24.5",
+    "mkdocs-material[imaging]>=9.5",
+    "griffe-inherited-docstrings>=1.0.0",
+    "mkdocstrings[python]>=0.25.1",
+    "pygments",
+]
+deploy = [
+    "hatch",
+]
+
+[project.optional-dependencies]
+s3 = [
+    "boto3",
+]
+xarray = [
+    "xarray",
+    "rioxarray",
+]
+zarr = [
+    "zarr~=3.0",
+    "obstore",
+]
+
+[project.urls]
+Homepage = 'https://cogeotiff.github.io/rio-tiler/'
+Documentation = "https://cogeotiff.github.io/rio-tiler/"
+Issues = "https://github.com/cogeotiff/rio-tiler/issues"
+Source = "https://github.com/cogeotiff/rio-tiler"
+Changelog = "https://cogeotiff.github.io/rio-tiler/release-notes/"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "rio_tiler/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["rio_tiler/"]
+
+[tool.hatch.build.targets.wheel]
+only-include = ["rio_tiler/"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["rio_tiler"]
+known_third_party = [
+    "rasterio",
+    "morecantile",
+    "affine",
+    "pystac",
+]
+default_section = "THIRDPARTY"
+
+[tool.mypy]
+no_strict_optional = true
+
+[tool.ruff]
+line-length = 90
+
+[tool.ruff.lint]
+select = [
+    "D1",  # pydocstyle errors
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # flake8
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "B905",  # ignore zip() without an explicit strict= parameter, only support with python >3.10
+    "B028",
+]
+exclude = [
+    "*.ipynb"
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 14
+
+[tool.bumpversion]
+current_version = "8.0.2"
+parse = """(?x)
+    (?P<major>\\d+)\\.
+    (?P<minor>\\d+)\\.
+    (?P<patch>\\d+)
+    (?:
+        (?P<pre_l>a|b|rc)   # pre-release label
+        (?P<pre_n>\\d+)     # pre-release version number
+    )?                      # pre-release section is optional
+    (?:
+        \\.post
+        (?P<post_n>\\d+)    # post-release version number
+    )?                      # post-release section is optional
+"""
+serialize = [
+    "{major}.{minor}.{patch}.post{post_n}",
+    "{major}.{minor}.{patch}{pre_l}{pre_n}",
+    "{major}.{minor}.{patch}",
+]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+tag = true
+commit = true
+tag_name = "{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "rio_tiler/__init__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::rio_tiler.errors.RioTilerExperimentalWarning",
+]
