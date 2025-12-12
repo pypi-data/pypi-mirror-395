@@ -1,0 +1,107 @@
+# Drudge CLI Configuration File
+# Location: ~/.worklog/config.yaml
+#
+# View current config: drudge config --show
+
+# ============================================================================
+# General Settings
+# ============================================================================
+
+worklog_dir_name: .worklog
+date_format: "%Y-%m-%d"
+time_format: "%H:%M"
+display_time_format: "%Y-%m-%d %H:%M:%S"
+max_recent_tasks: 10
+backup_enabled: true
+auto_save: true
+max_backups: 5
+
+# Google Sheets document ID (shared configuration)
+# Get this from your spreadsheet URL:
+# https://docs.google.com/spreadsheets/d/1A2B3C4D5E6F7G8H9I0J/edit
+sheet_document_id: "1A2B3C4D5E6F7G8H9I0J"
+
+# Timezone (imported from haunts or system default)
+# Examples: "Europe/Rome", "America/New_York", "UTC"
+timezone: "Europe/Rome"
+
+# ============================================================================
+# Project Categories
+# ============================================================================
+
+# List of project names for task categorization
+projects:
+  - Backend
+  - Frontend
+  - DevOps
+  - Research
+  - Documentation
+
+# ============================================================================
+# Google Sheets Sync (Haunts-Compatible Format)
+# ============================================================================
+
+google_sheets:
+  # Enable/disable Google Sheets sync
+  enabled: false
+  
+  # Use haunts-compatible format (DD/MM/YYYY, HH:MM, comma decimal)
+  # true  = Haunts format (works with haunts OAuth or standalone)
+  # false = Legacy gspread format (requires gspread credentials)
+  use_haunts_format: true
+  
+  # Auto-sync to Google Sheet when ending tasks
+  # true  = Tasks written immediately on 'drudge end'
+  # false = Use 'drudge sync' to manually sync
+  auto_sync: false
+  
+  # Rounding increment (in hours)
+  # 0.25 = Round to nearest 15 minutes (2.25, 2.50, 2.75, etc.)
+  # 0.5  = Round to nearest 30 minutes (2.0, 2.5, 3.0, etc.)
+  # 1.0  = Round to nearest full hour (2, 3, 4, etc.)
+  # 
+  # Decimal places are automatic based on rounding:
+  # - 0.25 → 2 decimals (e.g., "2,75")
+  # - 0.5  → 1 decimal  (e.g., "2,5")
+  # - 1.0  → 0 decimals (e.g., "3")
+  #
+  # Examples with round_hours: 0.5 (default)
+  #   2h 12m → 2,0 hours (2h 00m)
+  #   2h 38m → 2,5 hours (2h 30m)
+  #   2h 52m → 3,0 hours (3h 00m)
+  round_hours: 0.5
+
+# ============================================================================
+# Haunts Integration (Optional - for Calendar Sync)
+# ============================================================================
+
+haunts:
+  # Whether you use Haunts to sync from Google Sheets to Calendar
+  # This is purely informational - haunts reads the sheet independently
+  enabled: false
+  
+  # Path to haunts configuration (reference only)
+  config_path: "~/.haunts"
+
+# ============================================================================
+# Usage Examples
+# ============================================================================
+
+# 1. Start tasks with projects:
+#    drudge start "Implement login API" --project Backend
+#    drudge start "Fix CSS layout" --project Frontend
+
+# 2. Auto-sync mode (auto_sync: true):
+#    drudge end "Task name"
+#    → Task ends and syncs to Google Sheet immediately
+
+# 3. Manual sync mode (auto_sync: false):
+#    drudge sync           # Sync all entries
+#    drudge sync --daily   # Sync today's entries only
+#    drudge sync --monthly # Sync current month's entries
+#    drudge daily --sync   # Alias for 'drudge sync --daily'
+
+# 4. Sheet structure:
+#    - Sheet tabs named by month (e.g., "October", "November")
+#    - Haunts-compatible format for Calendar sync
+#    - Tasks auto-categorized by project
