@@ -1,0 +1,650 @@
+"""GitHub repository and code search provider."""
+
+from __future__ import annotations
+
+import base64
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+import httpx
+from mcp.types import CallToolResult
+
+from ..utils import USER_AGENT, serialize_response_with_meta, is_fetch_enabled
+from ..content_utils import convert_relative_urls
+from .base import BaseProvider, ProviderMetadata, ProviderResult
+
+
+class GitHubProvider(BaseProvider):
+    """Provider for GitHub repository and code search."""
+
+    def get_metadata(self) -> ProviderMetadata:
+        tool_names = ["github_repo_search", "github_code_search"]
+        if is_fetch_enabled():
+            tool_names.extend([
+                "fetch_github_readme",
+                "list_repo_contents",
+                "get_file_content",
+                "get_repo_tree"
+            ])
+
+        return ProviderMetadata(
+            name="github",
+            description="GitHub repository and code search, file browsing, and content fetching",
+            expose_as_tool=True,
+            tool_names=tool_names,
+            supports_library_search=True,
+            required_env_vars=[],
+            optional_env_vars=["GITHUB_TOKEN"],
+        )
+
+    async def search_library(self, library: str, limit: int = 5) -> ProviderResult:
+        """Search GitHub repos for library (used by aggregator)."""
+        try:
+            # Aggregator adds "python" suffix for language context
+            data = await self._search_repos(f"{library} python", limit=limit)
+            return ProviderResult(success=True, data=data, provider_name="github")
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:200] if exc.response is not None else ""
+            error_msg = f"GitHub returned {exc.response.status_code} {detail}"
+            return ProviderResult(success=False, error=error_msg, provider_name="github")
+        except httpx.HTTPError as exc:
+            error_msg = f"GitHub request failed: {exc}"
+            return ProviderResult(success=False, error=error_msg, provider_name="github")
+
+    async def _search_repos(
+        self, query: str, limit: int = 5, language: Optional[str] = "Python"
+    ) -> List[Dict[str, Any]]:
+        """Query GitHub's repository search API."""
+        headers = self._get_headers()
+
+        params = {"q": query, "per_page": str(limit)}
+        if language:
+            params["q"] = f"{query} language:{language}"
+
+        async with await self._http_client() as client:
+            resp = await client.get(
+                "https://api.github.com/search/repositories",
+                params=params,
+                headers=headers,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+
+        repos: List[Dict[str, Any]] = []
+        for item in payload.get("items", []):
+            repos.append(
+                {
+                    "name": item.get("full_name"),
+                    "description": item.get("description") or "",
+                    "stars": item.get("stargazers_count", 0),
+                    "url": item.get("html_url"),
+                    "default_branch": item.get("default_branch"),
+                }
+            )
+            if len(repos) >= limit:
+                break
+        return repos
+
+    async def _search_code(
+        self, query: str, repo: Optional[str] = None, limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """Search code on GitHub; optionally scoping to a repository."""
+        headers = self._get_headers()
+
+        search_query = query
+        if repo:
+            search_query = f"{query} repo:{repo}"
+
+        params = {"q": search_query, "per_page": str(limit)}
+        async with await self._http_client() as client:
+            resp = await client.get(
+                "https://api.github.com/search/code",
+                params=params,
+                headers=headers,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+
+        code_hits: List[Dict[str, Any]] = []
+        for item in payload.get("items", []):
+            code_hits.append(
+                {
+                    "name": item.get("name"),
+                    "path": item.get("path"),
+                    "repository": item.get("repository", {}).get("full_name"),
+                    "url": item.get("html_url"),
+                }
+            )
+            if len(code_hits) >= limit:
+                break
+        return code_hits
+
+    def _get_headers(self) -> Dict[str, str]:
+        """Build GitHub API headers with optional auth token."""
+        headers = {
+            "User-Agent": USER_AGENT,
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        token = os.getenv("GITHUB_TOKEN")
+        if token:
+            headers["Authorization"] = f"token {token}"
+        return headers
+
+    async def _fetch_github_readme(
+        self, owner: str, repo: str, max_bytes: int = 20480
+    ) -> Dict[str, Any]:
+        """
+        Fetch README from GitHub repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            max_bytes: Maximum content size
+
+        Returns:
+            Dict with content, size, source info
+        """
+        try:
+            headers = self._get_headers()
+            url = f"https://api.github.com/repos/{owner}/{repo}/readme"
+
+            async with await self._http_client() as client:
+                resp = await client.get(url, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+            # Decode base64 content
+            content = base64.b64decode(data["content"]).decode("utf-8")
+
+            # Convert relative URLs to absolute
+            # Use the blob URL for the specific branch/path
+            readme_name = data.get("name", "README.md")
+            readme_path = data.get("path", "")
+            default_branch = "main"  # Could be fetched from repo metadata if needed
+
+            base_url = f"https://github.com/{owner}/{repo}/blob/{default_branch}"
+            if readme_path and "/" in readme_path:
+                # If README is in a subdirectory
+                dir_path = "/".join(readme_path.split("/")[:-1])
+                base_url = f"{base_url}/{dir_path}"
+
+            content = convert_relative_urls(content, base_url)
+
+            # Truncate if needed
+            if len(content.encode("utf-8")) > max_bytes:
+                # Simple truncation for now - could use smart_truncate
+                encoded = content.encode("utf-8")[:max_bytes]
+                # Handle potential multi-byte character splits
+                while len(encoded) > 0:
+                    try:
+                        content = encoded.decode("utf-8")
+                        break
+                    except UnicodeDecodeError:
+                        encoded = encoded[:-1]
+                truncated = True
+            else:
+                truncated = False
+
+            return {
+                "repository": f"{owner}/{repo}",
+                "content": content,
+                "size_bytes": len(content.encode("utf-8")),
+                "source": "github_readme",
+                "readme_path": readme_path,
+                "truncated": truncated,
+            }
+
+        except httpx.HTTPStatusError as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "content": "",
+                "error": f"GitHub returned {exc.response.status_code}",
+                "size_bytes": 0,
+                "source": None,
+            }
+        except Exception as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "content": "",
+                "error": f"Failed to fetch README: {str(exc)}",
+                "size_bytes": 0,
+                "source": None,
+            }
+
+    async def _list_repo_contents(
+        self, owner: str, repo: str, path: str = ""
+    ) -> Dict[str, Any]:
+        """
+        List contents of a directory in a GitHub repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            path: Path to directory (empty string for root)
+
+        Returns:
+            Dict with list of files and directories
+        """
+        try:
+            headers = self._get_headers()
+            url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+
+            async with await self._http_client() as client:
+                resp = await client.get(url, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+            # Handle single file vs directory
+            if isinstance(data, dict):
+                # Single file was requested
+                items = [data]
+            else:
+                items = data
+
+            contents = []
+            for item in items:
+                contents.append({
+                    "name": item.get("name"),
+                    "path": item.get("path"),
+                    "type": item.get("type"),  # "file" or "dir"
+                    "size": item.get("size"),
+                    "sha": item.get("sha"),
+                    "url": item.get("html_url"),
+                    "download_url": item.get("download_url"),
+                })
+
+            return {
+                "repository": f"{owner}/{repo}",
+                "path": path or "/",
+                "contents": contents,
+                "count": len(contents),
+            }
+
+        except httpx.HTTPStatusError as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "path": path,
+                "contents": [],
+                "error": f"GitHub returned {exc.response.status_code}",
+            }
+        except Exception as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "path": path,
+                "contents": [],
+                "error": f"Failed to list contents: {str(exc)}",
+            }
+
+    async def _get_file_content(
+        self, owner: str, repo: str, path: str, max_bytes: int = 102400
+    ) -> Dict[str, Any]:
+        """
+        Get content of a specific file from a GitHub repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            path: Path to file
+            max_bytes: Maximum content size (default 100KB)
+
+        Returns:
+            Dict with file content and metadata
+        """
+        try:
+            headers = self._get_headers()
+            url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+
+            async with await self._http_client() as client:
+                resp = await client.get(url, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+            # Check if it's a file
+            if data.get("type") != "file":
+                return {
+                    "repository": f"{owner}/{repo}",
+                    "path": path,
+                    "content": "",
+                    "error": f"Path is a {data.get('type')}, not a file",
+                }
+
+            # Decode base64 content
+            try:
+                content = base64.b64decode(data["content"]).decode("utf-8")
+            except UnicodeDecodeError:
+                # Binary file
+                return {
+                    "repository": f"{owner}/{repo}",
+                    "path": path,
+                    "content": "",
+                    "error": "File appears to be binary",
+                    "size_bytes": data.get("size", 0),
+                    "encoding": data.get("encoding"),
+                }
+
+            # Truncate if needed
+            truncated = False
+            if len(content.encode("utf-8")) > max_bytes:
+                encoded = content.encode("utf-8")[:max_bytes]
+                while len(encoded) > 0:
+                    try:
+                        content = encoded.decode("utf-8")
+                        break
+                    except UnicodeDecodeError:
+                        encoded = encoded[:-1]
+                truncated = True
+
+            return {
+                "repository": f"{owner}/{repo}",
+                "path": path,
+                "content": content,
+                "size_bytes": len(content.encode("utf-8")),
+                "truncated": truncated,
+                "sha": data.get("sha"),
+                "url": data.get("html_url"),
+            }
+
+        except httpx.HTTPStatusError as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "path": path,
+                "content": "",
+                "error": f"GitHub returned {exc.response.status_code}",
+            }
+        except Exception as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "path": path,
+                "content": "",
+                "error": f"Failed to get file content: {str(exc)}",
+            }
+
+    async def _get_repo_tree(
+        self, owner: str, repo: str, recursive: bool = False, max_items: int = 1000
+    ) -> Dict[str, Any]:
+        """
+        Get the full file tree of a GitHub repository.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            recursive: Whether to get full tree recursively
+            max_items: Maximum number of items to return
+
+        Returns:
+            Dict with file tree structure
+        """
+        try:
+            headers = self._get_headers()
+
+            # First get the default branch
+            repo_url = f"https://api.github.com/repos/{owner}/{repo}"
+            async with await self._http_client() as client:
+                repo_resp = await client.get(repo_url, headers=headers)
+                repo_resp.raise_for_status()
+                repo_data = repo_resp.json()
+                default_branch = repo_data.get("default_branch", "main")
+
+            # Get the tree
+            tree_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}"
+            if recursive:
+                tree_url += "?recursive=1"
+
+            async with await self._http_client() as client:
+                resp = await client.get(tree_url, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+            tree_items = data.get("tree", [])[:max_items]
+
+            tree = []
+            for item in tree_items:
+                tree.append({
+                    "path": item.get("path"),
+                    "type": item.get("type"),  # "blob" (file) or "tree" (dir)
+                    "size": item.get("size"),
+                    "sha": item.get("sha"),
+                    "url": item.get("url"),
+                })
+
+            return {
+                "repository": f"{owner}/{repo}",
+                "branch": default_branch,
+                "tree": tree,
+                "count": len(tree),
+                "truncated": data.get("truncated", False) or len(tree_items) >= max_items,
+            }
+
+        except httpx.HTTPStatusError as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "tree": [],
+                "error": f"GitHub returned {exc.response.status_code}",
+            }
+        except Exception as exc:
+            return {
+                "repository": f"{owner}/{repo}",
+                "tree": [],
+                "error": f"Failed to get repository tree: {str(exc)}",
+            }
+
+    def get_tools(self) -> Dict[str, Callable]:
+        """Return MCP tool functions."""
+
+        async def github_repo_search(
+            query: str, limit: int = 5, language: Optional[str] = "Python"
+        ) -> CallToolResult:
+            """
+            Search for GitHub repositories by keyword or topic.
+
+            USE THIS WHEN: You need to find repositories for a library, framework, or topic.
+
+            BEST FOR: Discovering which repository contains a specific project.
+            Returns repository names, descriptions, stars, and URLs - but NOT the code itself.
+
+            To explore code after finding a repo, use:
+            - get_repo_tree() to see all files
+            - list_repo_contents() to browse directories
+            - get_file_content() to read specific files
+
+            Args:
+                query: Search keywords (e.g., "machine learning", "web framework")
+                limit: Maximum number of results (default 5)
+                language: Filter by programming language (default "Python")
+
+            Example: github_repo_search("requests") → Finds psf/requests repository
+            """
+            result = await self._search_repos(query, limit=limit, language=language)
+            return serialize_response_with_meta(result)
+
+        async def github_code_search(
+            query: str, repo: Optional[str] = None, limit: int = 5
+        ) -> CallToolResult:
+            """
+            Search for code snippets across GitHub or within a specific repository.
+
+            USE THIS WHEN: You need to find code examples, function definitions, or usage patterns.
+
+            RETURNS: File paths and locations where code was found - NOT the actual file contents.
+            To read the files, use get_file_content() with the returned paths.
+
+            NOTE: Requires authentication - rate limited without GITHUB_TOKEN.
+
+            Args:
+                query: Code search query (e.g., "def parse_args", "class HTTPClient")
+                repo: Optional repository filter in "owner/repo" format
+                limit: Maximum number of results (default 5)
+
+            Example: github_code_search("async def fetch", repo="psf/requests")
+            """
+            result = await self._search_code(query, repo=repo, limit=limit)
+            return serialize_response_with_meta(result)
+
+        async def fetch_github_readme(repo: str, max_bytes: int = 20480) -> CallToolResult:
+            """
+            Fetch README file from a GitHub repository.
+
+            USE THIS WHEN: You need the project overview, quick start, or basic documentation.
+
+            BEST FOR: Getting a high-level understanding of a project.
+            The README typically contains installation, usage examples, and project description.
+
+            For deeper code exploration, use:
+            - get_repo_tree() to see the complete file structure
+            - get_file_content() to read specific source files
+
+            Args:
+                repo: Repository in "owner/repo" format (e.g., "psf/requests")
+                max_bytes: Maximum content size, default 20KB
+
+            Returns: JSON with README content, size, and metadata
+
+            Example: fetch_github_readme("psf/requests") → Returns the requests README
+            """
+            # Parse owner/repo format
+            parts = repo.split("/", 1)
+            if len(parts) != 2:
+                error_result = {
+                    "repository": repo,
+                    "content": "",
+                    "error": "Invalid repo format. Use 'owner/repo'",
+                    "size_bytes": 0,
+                    "source": None,
+                }
+                return serialize_response_with_meta(error_result)
+
+            owner, repo_name = parts
+            result = await self._fetch_github_readme(owner, repo_name, max_bytes)
+            return serialize_response_with_meta(result)
+
+        async def list_repo_contents(repo: str, path: str = "") -> CallToolResult:
+            """
+            List contents of a directory in a GitHub repository.
+
+            USE THIS WHEN: You need to browse or explore the structure of a repository directory.
+
+            BEST FOR: Discovering what files and folders exist in a specific location.
+            Returns names, paths, types (file/dir), sizes for each item.
+
+            Common workflow:
+            1. Use github_repo_search() to find the repository
+            2. Use get_repo_tree() to see the overall structure
+            3. Use list_repo_contents() to browse specific directories
+            4. Use get_file_content() to read individual files
+
+            Args:
+                repo: Repository in format "owner/repo" (e.g., "psf/requests")
+                path: Path to directory (empty string for root, e.g., "src/utils")
+
+            Returns:
+                JSON with list of files and directories with metadata
+
+            Example: list_repo_contents("psf/requests", "requests") → Lists files in requests/ directory
+            """
+            parts = repo.split("/", 1)
+            if len(parts) != 2:
+                error_result = {
+                    "repository": repo,
+                    "path": path,
+                    "contents": [],
+                    "error": "Invalid repo format. Use 'owner/repo'",
+                }
+                return serialize_response_with_meta(error_result)
+
+            owner, repo_name = parts
+            result = await self._list_repo_contents(owner, repo_name, path)
+            return serialize_response_with_meta(result)
+
+        async def get_file_content(
+            repo: str, path: str, max_bytes: int = 102400
+        ) -> CallToolResult:
+            """
+            Get content of a specific file from a GitHub repository.
+
+            USE THIS WHEN: You need to read the actual source code or contents of a specific file.
+
+            BEST FOR: Examining implementation details, understanding how code works, or reading configuration files.
+            Returns the full file content (UTF-8 text only, binary files are rejected).
+
+            Automatically handles:
+            - Base64 decoding from GitHub API
+            - UTF-8 conversion with safe truncation
+            - Binary file detection
+
+            Args:
+                repo: Repository in format "owner/repo" (e.g., "psf/requests")
+                path: Path to file (e.g., "requests/api.py")
+                max_bytes: Maximum content size (default 100KB, increase for large files)
+
+            Returns:
+                JSON with file content, size, truncation status, and metadata
+
+            Example: get_file_content("psf/requests", "requests/api.py") → Returns source code of api.py
+            """
+            parts = repo.split("/", 1)
+            if len(parts) != 2:
+                error_result = {
+                    "repository": repo,
+                    "path": path,
+                    "content": "",
+                    "error": "Invalid repo format. Use 'owner/repo'",
+                }
+                return serialize_response_with_meta(error_result)
+
+            owner, repo_name = parts
+            result = await self._get_file_content(owner, repo_name, path, max_bytes)
+            return serialize_response_with_meta(result)
+
+        async def get_repo_tree(
+            repo: str, recursive: bool = False, max_items: int = 1000
+        ) -> CallToolResult:
+            """
+            Get the full file tree of a GitHub repository.
+
+            USE THIS WHEN: You need to see the overall structure and organization of a repository.
+
+            BEST FOR: Understanding project layout, finding specific files, or getting a complete directory listing.
+            Returns all file paths, types (file/directory), and sizes in a single call.
+
+            Use recursive=True for complete tree (all files in all subdirectories).
+            Use recursive=False for just top-level overview (faster, less data).
+
+            After getting the tree, use:
+            - get_file_content() to read specific files you identified
+            - list_repo_contents() to browse specific directories in detail
+
+            Args:
+                repo: Repository in format "owner/repo" (e.g., "psf/requests")
+                recursive: Whether to get full tree recursively (default False)
+                max_items: Maximum number of items to return (default 1000)
+
+            Returns:
+                JSON with complete file tree structure, branch, and count
+
+            Example: get_repo_tree("psf/requests", recursive=True) → Returns complete file listing
+            """
+            parts = repo.split("/", 1)
+            if len(parts) != 2:
+                error_result = {
+                    "repository": repo,
+                    "tree": [],
+                    "error": "Invalid repo format. Use 'owner/repo'",
+                }
+                return serialize_response_with_meta(error_result)
+
+            owner, repo_name = parts
+            result = await self._get_repo_tree(owner, repo_name, recursive, max_items)
+            return serialize_response_with_meta(result)
+
+        tools = {
+            "github_repo_search": github_repo_search,
+            "github_code_search": github_code_search,
+        }
+        if is_fetch_enabled():
+            tools["fetch_github_readme"] = fetch_github_readme
+            tools["list_repo_contents"] = list_repo_contents
+            tools["get_file_content"] = get_file_content
+            tools["get_repo_tree"] = get_repo_tree
+
+        return tools
