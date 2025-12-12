@@ -1,0 +1,1 @@
+"""Problem templates for AMN."""
