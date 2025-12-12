@@ -1,0 +1,5658 @@
+"""MapLibre GL JS implementation of the map widget.
+
+This module provides the MapLibreMap class which implements an interactive map
+widget using the MapLibre GL JS library. MapLibre GL JS is an open-source fork
+of Mapbox GL JS, providing fast vector map rendering with WebGL.
+
+Classes:
+    MapLibreMap: Main map widget class for MapLibre GL JS.
+
+Example:
+    Basic usage of MapLibreMap:
+
+    >>> from anymap.maplibre import MapLibreMap
+    >>> m = MapLibreMap(center=[-74.0, 40.7], zoom=10)
+    >>> m.add_basemap("OpenStreetMap.Mapnik")
+    >>> m
+"""
+
+import json
+import os
+import pathlib
+import requests
+import sys
+import uuid
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, Callable
+
+import ipywidgets as widgets
+import traitlets
+from IPython.display import display
+
+from .base import MapWidget
+
+
+try:
+    import geopandas as gpd
+
+    HAS_GEOPANDAS = True
+except ImportError:
+    HAS_GEOPANDAS = False
+from .maplibre_widgets import Container, LayerManagerWidget
+from . import utils
+
+# Load MapLibre-specific js and css
+with open(
+    pathlib.Path(__file__).parent / "static" / "maplibre_widget.js",
+    "r",
+    encoding="utf-8",
+) as f:
+    _esm_maplibre = f.read()
+
+with open(
+    pathlib.Path(__file__).parent / "static" / "maplibre_widget.css",
+    "r",
+    encoding="utf-8",
+) as f:
+    _css_maplibre = f.read()
+
+
+class MapLibreMap(MapWidget):
+    """MapLibre GL JS implementation of the map widget.
+
+    This class provides an interactive map widget using MapLibre GL JS,
+    an open-source WebGL-based vector map renderer. It supports various
+    data sources, custom styling, and interactive features.
+
+    Attributes:
+        style: Map style configuration (URL string or style object).
+        bearing: Map rotation in degrees (0-360).
+        pitch: Map tilt in degrees (0-60).
+        antialias: Whether to enable antialiasing for better rendering quality.
+        double_click_zoom: Whether to enable double-click to zoom interaction (default: False).
+        request_headers: Custom HTTP headers to include in tile requests (e.g., {"Authorization": "Bearer token"}).
+
+    Example:
+        Creating a basic MapLibre map:
+
+        >>> m = MapLibreMap(
+        ...     center=[40.7749, -122.4194],
+        ...     zoom=12,
+        ...     style="3d-satellite"
+        ... )
+        >>> m.add_basemap("OpenStreetMap.Mapnik")
+    """
+
+    # MapLibre-specific traits
+    style = traitlets.Union(
+        [traitlets.Unicode(), traitlets.Dict()],
+        default_value="dark-matter",
+    ).tag(sync=True)
+    bearing = traitlets.Float(0.0).tag(sync=True)
+    pitch = traitlets.Float(0.0).tag(sync=True)
+    antialias = traitlets.Bool(True).tag(sync=True)
+    double_click_zoom = traitlets.Bool(False).tag(sync=True)
+    request_headers = traitlets.Dict({}).tag(sync=True)
+    _draw_data = traitlets.Dict().tag(sync=True)
+    _terra_draw_data = traitlets.Dict().tag(sync=True)
+    _terra_draw_enabled = traitlets.Bool(False).tag(sync=True)
+    _layer_dict = traitlets.Dict().tag(sync=True)
+    clicked = traitlets.Dict().tag(sync=True)
+    _deckgl_layers = traitlets.Dict().tag(sync=True)
+    flatgeobuf_layers = traitlets.Dict({}).tag(sync=True)
+    geoman_data = traitlets.Dict({"type": "FeatureCollection", "features": []}).tag(
+        sync=True
+    )
+    geoman_status = traitlets.Dict({}).tag(sync=True)
+
+    # Define the JavaScript module path
+    _esm = _esm_maplibre
+    _css = _css_maplibre
+
+    def __init__(
+        self,
+        center: List[float] = [0, 20],
+        zoom: float = 1.0,
+        style: Union[str, Dict[str, Any]] = "dark-matter",
+        width: str = "100%",
+        height: str = "680px",
+        bearing: float = 0.0,
+        pitch: float = 0.0,
+        controls: Dict[str, str] = {
+            "navigation": "top-right",
+            "fullscreen": "top-right",
+            "scale": "bottom-left",
+            "globe": "top-right",
+            "layers": "top-right",
+        },
+        projection: str = "mercator",
+        add_sidebar: bool = False,
+        sidebar_visible: bool = False,
+        sidebar_width: int = 360,
+        sidebar_args: Optional[Dict] = None,
+        layer_manager_expanded: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize MapLibre map widget.
+
+        Args:
+            center: Map center coordinates as [longitude, latitude]. Default is [0, 20].
+            zoom: Initial zoom level (typically 0-20). Default is 1.0.
+            style: MapLibre style URL string or style object dictionary.
+            width: Widget width as CSS string (e.g., "100%", "800px").
+            height: Widget height as CSS string (e.g., "680px", "50vh").
+            bearing: Map bearing (rotation) in degrees (0-360).
+            pitch: Map pitch (tilt) in degrees (0-60).
+            controls: Dictionary of control names and their positions. Default is {
+                "navigation": "top-right",
+                "fullscreen": "top-right",
+                "scale": "bottom-left",
+                "globe": "top-right",
+                "layers": "top-right",
+            }.
+            projection: Map projection type. Can be "mercator" or "globe". Default is "mercator".
+            add_sidebar: Whether to add a sidebar to the map. Default is False.
+            sidebar_visible: Whether the sidebar is visible. Default is False.
+            sidebar_width: Width of the sidebar in pixels. Default is 360.
+            sidebar_args: Additional keyword arguments for the sidebar. Default is None.
+            layer_manager_expanded: Whether the layer manager is expanded. Default is True.
+            **kwargs: Additional keyword arguments passed to parent class.
+        """
+
+        if isinstance(style, str):
+            style = utils.construct_maplibre_style(style)
+
+        if abs(center[1]) > 90:
+            center = center[::-1]
+
+        super().__init__(
+            center=center,
+            zoom=zoom,
+            width=width,
+            height=height,
+            style=style,
+            bearing=bearing,
+            pitch=pitch,
+            **kwargs,
+        )
+
+        self.layer_dict = {}
+        self.layer_dict["Background"] = {
+            "layer": {
+                "id": "Background",
+                "type": "background",
+            },
+            "opacity": 1.0,
+            "visible": True,
+            "type": "background",
+            "color": None,
+        }
+
+        # Initialize the _layer_dict trait with the layer_dict content
+        self._layer_dict = dict(self.layer_dict)
+
+        # Initialize current state attributes
+        self._current_center = center
+        self._current_zoom = zoom
+        self._current_bearing = bearing
+        self._current_pitch = pitch
+        self._current_bounds = None  # Will be set after map loads
+
+        # Register event handler to update current state
+        self.on_map_event("moveend", self._update_current_state)
+
+        self._style = style
+        self.style_dict = {}
+        for layer in self.get_style_layers():
+            self.style_dict[layer["id"]] = layer
+        self.source_dict = {}
+
+        if projection.lower() == "globe":
+            self.set_projection(
+                {
+                    "type": [
+                        "interpolate",
+                        ["linear"],
+                        ["zoom"],
+                        10,
+                        "vertical-perspective",
+                        12,
+                        "mercator",
+                    ]
+                }
+            )
+
+        self.controls = {}
+        for control, position in controls.items():
+            if control == "layers":
+                self.add_layer_control(position)
+            elif control == "geoman":
+                self.add_geoman_control(position=position)
+                self.controls[control] = position
+            elif control == "export":
+                self.add_export_control(position=position)
+                self.controls[control] = position
+            else:
+                self.add_control(control, position)
+                self.controls[control] = position
+
+        if sidebar_args is None:
+            sidebar_args = {}
+        if "sidebar_visible" not in sidebar_args:
+            sidebar_args["sidebar_visible"] = sidebar_visible
+        if "sidebar_width" not in sidebar_args:
+            if isinstance(sidebar_width, str):
+                sidebar_width = int(sidebar_width.replace("px", ""))
+            sidebar_args["min_width"] = sidebar_width
+            sidebar_args["max_width"] = sidebar_width
+        if "expanded" not in sidebar_args:
+            sidebar_args["expanded"] = layer_manager_expanded
+        self.sidebar_args = sidebar_args
+        self.layer_manager = None
+        self.container = None
+        self._widget_control_widgets: Dict[str, widgets.Widget] = {}
+        self._flatgeobuf_defaults: Dict[str, Any] = {}
+        if add_sidebar:
+            self._ipython_display_ = self._patched_display
+        # Listen for union toggle events coming from the toolbar button in JS
+        try:
+            self.on_map_event("geoman_union_toggled", self._handle_geoman_union_toggle)
+        except Exception:
+            pass
+        # Listen for split mode events coming from the toolbar button/drawing in JS
+        try:
+            self.on_map_event("geoman_split_toggled", self._handle_geoman_split_toggle)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        try:
+            self.on_map_event("geoman_split_line", self._handle_geoman_split_line)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def get_style(self) -> Dict:
+        """
+        Get the style of the map.
+
+        Returns:
+            Dict: The style of the map.
+        """
+        if isinstance(self._style, str):
+            response = requests.get(self._style, timeout=10)
+            style = response.json()
+        elif isinstance(self._style, dict):
+            style = self._style
+        else:
+            style = {}
+        return style
+
+    def get_style_layers(self, return_ids=False, sorted=True) -> List[str]:
+        """
+        Get the names of the basemap layers.
+
+        Returns:
+            List[str]: The names of the basemap layers.
+        """
+        style = self.get_style()
+        if "layers" in style:
+            layers = style["layers"]
+            if return_ids:
+                ids = [layer["id"] for layer in layers]
+                if sorted:
+                    ids.sort()
+
+                return ids
+            else:
+                return layers
+        else:
+            return []
+
+    def find_style_layer(self, id: str) -> Optional[Dict]:
+        """
+        Searches for a style layer in the map's current style by its ID and returns it if found.
+
+        Args:
+            id (str): The ID of the style layer to find.
+
+        Returns:
+            Optional[Dict]: The style layer as a dictionary if found, otherwise None.
+        """
+        layers = self.get_style_layers()
+        for layer in layers:
+            if layer["id"] == id:
+                return layer
+        return None
+
+    def find_first_symbol_layer(self) -> Optional[Dict]:
+        """
+        Find the first symbol layer in the map's current style.
+
+        Returns:
+            Optional[Dict]: The first symbol layer as a dictionary if found, otherwise None.
+        """
+        layers = self.get_style_layers()
+        for layer in layers:
+            if layer["type"] == "symbol":
+                return layer
+        return None
+
+    @property
+    def first_symbol_layer_id(self) -> Optional[str]:
+        """
+        Get the ID of the first symbol layer in the map's current style.
+        """
+        layer = self.find_first_symbol_layer()
+        if layer is not None:
+            return layer["id"]
+        else:
+            return None
+
+    def show(
+        self,
+        sidebar_visible: bool = False,
+        min_width: int = 360,
+        max_width: int = 360,
+        sidebar_content: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Displays the map with an optional sidebar.
+
+        Args:
+            sidebar_visible (bool): Whether the sidebar is visible. Defaults to False.
+            min_width (int): Minimum width of the sidebar in pixels. Defaults to 250.
+            max_width (int): Maximum width of the sidebar in pixels. Defaults to 300.
+            sidebar_content (Optional[Any]): Content to display in the sidebar. Defaults to None.
+            **kwargs (Any): Additional keyword arguments.
+
+        Returns:
+            None
+        """
+        return Container(
+            self,
+            sidebar_visible=sidebar_visible,
+            min_width=min_width,
+            max_width=max_width,
+            sidebar_content=sidebar_content,
+            **kwargs,
+        )
+
+    def create_container(
+        self,
+        sidebar_visible: bool = None,
+        min_width: int = None,
+        max_width: int = None,
+        expanded: bool = None,
+        **kwargs: Any,
+    ):
+        """
+        Creates a container widget for the map with an optional sidebar.
+
+        This method initializes a `LayerManagerWidget` and a `Container` widget to display the map
+        alongside a sidebar. The sidebar can be customized with visibility, width, and additional content.
+
+        Args:
+            sidebar_visible (bool): Whether the sidebar is visible. Defaults to False.
+            min_width (int): Minimum width of the sidebar in pixels. Defaults to 360.
+            max_width (int): Maximum width of the sidebar in pixels. Defaults to 360.
+            expanded (bool): Whether the `LayerManagerWidget` is expanded by default. Defaults to True.
+            **kwargs (Any): Additional keyword arguments passed to the `Container` widget.
+
+        Returns:
+            Container: The created container widget with the map and sidebar.
+        """
+
+        if sidebar_visible is None:
+            sidebar_visible = self.sidebar_args.get("sidebar_visible", False)
+        if min_width is None:
+            min_width = self.sidebar_args.get("min_width", 360)
+        if max_width is None:
+            max_width = self.sidebar_args.get("max_width", 360)
+        if expanded is None:
+            expanded = self.sidebar_args.get("expanded", True)
+        if self.layer_manager is None:
+            self.layer_manager = LayerManagerWidget(self, expanded=expanded)
+
+        container = Container(
+            host_map=self,
+            sidebar_visible=sidebar_visible,
+            min_width=min_width,
+            max_width=max_width,
+            sidebar_content=[self.layer_manager],
+            **kwargs,
+        )
+        self.container = container
+        self.container.sidebar_widgets["Layers"] = self.layer_manager
+        return container
+
+    def on_interaction(
+        self,
+        callback: Callable[..., None],
+        types: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Register a unified interaction callback similar to ipyleaflet's on_interaction.
+
+        The callback will be invoked with keyword arguments like:
+            - event: 'interaction'
+            - type: event type (e.g., 'mousemove', 'mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu')
+            - coordinates: [lng, lat] when available
+
+        Example:
+            def handle_map_interaction(**kwargs):
+                print(kwargs)
+
+            m.on_interaction(handle_map_interaction)
+
+        Args:
+            callback: Function that accepts **kwargs for interaction events.
+            types: Optional list of event types to subscribe to. If None, subscribes
+                   to common pointer events.
+        """
+        default_types = [
+            "mousemove",
+            "mousedown",
+            "mouseup",
+            "click",
+            "dblclick",
+            "contextmenu",
+        ]
+        event_types = types if types is not None else default_types
+
+        def _make_wrapper(expected_type: str):
+            def _wrapper(event: Dict[str, Any]) -> None:
+                event_type = event.get("type", expected_type)
+                # Normalize coordinates to [lng, lat] to match MapLibre
+                lat = event.get("lat")
+                lng = event.get("lng")
+                coordinates: Optional[List[float]] = None
+                if lat is not None and lng is not None:
+                    coordinates = [lng, lat]
+                else:
+                    lnglat = event.get("lngLat")
+                    if (
+                        isinstance(lnglat, (list, tuple))
+                        and len(lnglat) == 2
+                        and isinstance(lnglat[0], (int, float))
+                        and isinstance(lnglat[1], (int, float))
+                    ):
+                        # lngLat is already [lng, lat] from JS
+                        coordinates = [lnglat[0], lnglat[1]]
+
+                payload: Dict[str, Any] = {"event": "interaction", "type": event_type}
+                if coordinates is not None:
+                    payload["coordinates"] = coordinates
+
+                # Prefer kwargs-style callback like ipyleaflet; fallback to single dict
+                try:
+                    callback(**payload)
+                except TypeError:
+                    callback(payload)
+
+            return _wrapper
+
+        # Keep track of wrapper functions to allow unobserve later
+        if not hasattr(self, "_interaction_wrappers"):
+            self._interaction_wrappers: Dict[
+                Callable[..., None], Dict[str, Callable[[Dict[str, Any]], None]]
+            ] = {}
+        wrapper_map: Dict[str, Callable[[Dict[str, Any]], None]] = {}
+        for etype in event_types:
+            wrapper = _make_wrapper(etype)
+            self.on_map_event(etype, wrapper)
+            wrapper_map[etype] = wrapper
+        self._interaction_wrappers[callback] = {
+            **self._interaction_wrappers.get(callback, {}),
+            **wrapper_map,
+        }
+
+    def off_interaction(
+        self,
+        callback: Callable[..., None],
+        types: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Unregister a previously registered interaction callback.
+
+        Args:
+            callback: The callback originally passed to on_interaction.
+            types: Optional list of event types to stop observing. If None, all types for this callback are removed.
+        """
+        if not hasattr(self, "_interaction_wrappers"):
+            return
+        wrapper_map = self._interaction_wrappers.get(callback, {})
+        if not wrapper_map:
+            return
+        target_types = types if types is not None else list(wrapper_map.keys())
+        for etype in target_types:
+            wrapper = wrapper_map.get(etype)
+            if wrapper is not None:
+                self.off_map_event(etype, wrapper)
+                del wrapper_map[etype]
+        if not wrapper_map:
+            # Remove the callback entry entirely when no wrappers remain
+            del self._interaction_wrappers[callback]
+
+    def get_geoman_status(self) -> Dict[str, Any]:
+        """
+        Get the current Geoman toolbar status synced from the frontend.
+
+        Returns:
+            Dict[str, Any]: Status including keys like 'activeButtons', 'isCollapsed', 'globalEditMode'.
+        """
+        return dict(self.geoman_status or {})
+
+    def refresh_geoman_status(self) -> None:
+        """
+        Request the frontend to refresh and sync the current Geoman toolbar status.
+        """
+        self.call_js_method("getGeomanStatus")
+
+    def activate_geoman_button(self, name: str) -> None:
+        """
+        Programmatically activate/click a Geoman toolbar button by name.
+
+        Args:
+            name: Button name or a unique substring of its label/title (case-insensitive).
+        """
+        self.call_js_method("activateGeomanButton", name)
+
+    def deactivate_geoman_button(self, name: str) -> None:
+        """
+        Programmatically deactivate a Geoman toolbar button by name.
+
+        Args:
+            name: Button name or a unique substring of its label/title (case-insensitive).
+        """
+        self.call_js_method("deactivateGeomanButton", name)
+
+    # ---------------------------------------------------------------------
+    def set_geoman_info_box_enabled(self, enabled: bool) -> None:
+        """
+        Enable or disable the Geoman info box at runtime.
+
+        Args:
+            enabled: True to show the info box when selecting/editing features;
+                     False to hide it.
+        """
+        self.call_js_method("setGeomanInfoBoxEnabled", bool(enabled))
+
+    # ---------------------------------------------------------------------
+    def load_osm_transport_to_geoman(
+        self,
+        bbox: Optional[List[float]] = None,
+        keys: Optional[List[str]] = None,
+        timeout: int = 25,
+    ) -> None:
+        """
+        Search OSM transportation data (node, way, relation) within a bbox and import
+        the results into the Geoman control for editing.
+
+        This triggers a frontend Overpass API query and **replaces** the current Geoman
+        editable features with the fetched GeoJSON. **This is a destructive operation:**
+        any existing editable features will be permanently removed and replaced.
+
+        Note:
+            There is currently no way to append features; this method always replaces
+            all existing Geoman editable features. If you wish to preserve your current
+            work, please save or export it before calling this method.
+        Args:
+            bbox: Optional [west, south, east, north] (WGS84). If None, uses map bounds.
+            keys: Optional list of OSM keys to include, default ['highway', 'railway'].
+            timeout: Overpass API timeout in seconds (default 25).
+        """
+        options: Dict[str, Any] = {}
+        if bbox is not None:
+            if not (isinstance(bbox, (list, tuple)) and len(bbox) == 4):
+                raise ValueError("bbox must be [west, south, east, north].")
+            options["bbox"] = list(bbox)
+        if keys:
+            options["keys"] = list(keys)
+        if timeout is not None:
+            options["timeout"] = int(timeout)
+        self.call_js_method("loadOsmTransportToGeoman", options)
+
+    # ---------------------------------------------------------------------
+    # Geoman "Union" Mode (free implementation using GeoPandas/Shapely)
+    # ---------------------------------------------------------------------
+    def _union_geoman_features_by_ids(self, feature_ids: List[Union[str, int]]) -> None:
+        """
+        Internal helper to union/merge two Geoman features by their IDs and update geoman_data.
+        Supports polygons and lines. Polygons are dissolved via unary_union.
+        Lines are merged via linemerge(unary_union(...)).
+        """
+        if not HAS_GEOPANDAS:
+            raise ImportError("GeoPandas is required for union operations.")
+
+        from shapely.geometry import shape, mapping  # type: ignore
+        from shapely.ops import unary_union, linemerge  # type: ignore
+
+        features = list(self.geoman_data.get("features", []))
+        if len(features) == 0:
+            return
+
+        # Build ID -> index map (fallback to index if 'id' missing)
+        id_to_index: Dict[Union[str, int], int] = {}
+        for idx, feat in enumerate(features):
+            fid = feat.get("id", idx)
+            id_to_index[fid] = idx
+
+        # Resolve indices and geometries
+        indices: List[int] = []
+        for fid in feature_ids:
+            if fid in id_to_index:
+                indices.append(id_to_index[fid])
+
+        if len(indices) < 2:
+            return
+
+        # Collect geometries to union/merge
+        geoms: List[Any] = []
+        props: List[Dict[str, Any]] = []
+        geom_types: List[str] = []
+        for idx in indices[:2]:
+            feat = features[idx]
+            try:
+                geom = shape(feat.get("geometry"))
+                geoms.append(geom)
+                props.append(dict(feat.get("properties", {})))
+                geom_types.append(geom.geom_type)
+            except Exception:
+                # Skip invalid geometry
+                pass
+
+        if len(geoms) < 2:
+            return
+
+        # Determine operation based on geometry type (use first as reference)
+        primary_type = geom_types[0].lower()
+        secondary_type = geom_types[1].lower()
+        # If types mismatch (e.g., line vs polygon), skip to avoid odd GeometryCollection
+        if ("line" in primary_type and "line" not in secondary_type) or (
+            "polygon" in primary_type and "polygon" not in secondary_type
+        ):
+            return
+
+        # Merge geometries
+        if "line" in primary_type:
+            merged = linemerge(unary_union(geoms))
+        else:
+            merged = unary_union(geoms)
+
+        if merged.is_empty:
+            return
+
+        # Create new feature; keep properties from the first feature
+        new_feature = {
+            "type": "Feature",
+            "id": str(uuid.uuid4()),
+            "properties": props[0] if props else {},
+            "geometry": mapping(merged),
+        }
+
+        # Remove original features and append merged
+        keep = [f for i, f in enumerate(features) if i not in indices[:2]]
+        keep.append(new_feature)
+
+        # Sync back to widget
+        self.geoman_data = {"type": "FeatureCollection", "features": keep}
+
+    def enable_geoman_union_mode(self, distance_tolerance: float = 1e-4) -> None:
+        """
+        Enable a simple 'union mode' without Geoman Pro that works for polygons and lines.
+
+        Behavior:
+            - On each map click, finds the first Geoman polygon under the click.
+            - For lines, selects the closest line within distance_tolerance degrees.
+            - When two features of the same type have been clicked, merges them into a single feature,
+              removes the originals, and adds the merged polygon back.
+        Args:
+            distance_tolerance: Max angular distance (degrees) to consider a line selected
+                                when clicking near it. Default ~1e-4 (~11 m at equator).
+        """
+        if not HAS_GEOPANDAS:
+            raise ImportError("GeoPandas is required for union mode.")
+
+        import geopandas as gpd  # type: ignore
+        from shapely.geometry import Point  # type: ignore
+
+        self._union_mode_enabled = True
+        self._union_selected_ids: List[Union[str, int]] = []
+        self._union_expected_geom_type: Optional[str] = None
+        self._union_distance_tolerance = float(distance_tolerance)
+
+        def _union_click_handler(**kwargs: Any) -> None:
+            if kwargs.get("type") != "click" or not self._union_mode_enabled:
+                return
+            coords = kwargs.get("coordinates")
+            if not coords or not isinstance(coords, (list, tuple)) or len(coords) != 2:
+                return
+            lng, lat = coords  # coordinates are [lng, lat]
+
+            features = self.geoman_data.get("features", [])
+            if not features:
+                return
+            try:
+                gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+            except Exception:
+                return
+
+            if gdf.empty or gdf.geometry.isna().all():
+                return
+
+            pt = Point(lng, lat)
+            # Prefer polygon hit-testing first
+            cand = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
+            poly_mask = cand.geometry.contains(pt) | cand.geometry.intersects(pt)
+            cand = cand[poly_mask]
+            selected_idx: Optional[int] = None
+            selected_type: Optional[str] = None
+            if not cand.empty:
+                selected_idx = int(cand.index[0])
+                selected_type = "polygon"
+            else:
+                # For lines, pick the nearest within tolerance
+                lines = gdf[
+                    gdf.geometry.geom_type.isin(["LineString", "MultiLineString"])
+                ]
+                if not lines.empty:
+                    # Compute distance to point; choose min
+                    distances = lines.geometry.distance(pt)
+                    min_dist = float(distances.min())
+                    if min_dist <= self._union_distance_tolerance:
+                        selected_idx = int(distances.idxmin())
+                        selected_type = "line"
+                    else:
+                        return
+                else:
+                    return
+
+            # Respect expected type: first selection sets it, subsequent must match
+            if self._union_expected_geom_type is None:
+                self._union_expected_geom_type = selected_type
+            elif selected_type != self._union_expected_geom_type:
+                return
+
+            idx = selected_idx
+            fid = features[idx].get("id", idx)  # type: ignore[arg-type]
+            if fid in self._union_selected_ids:
+                return
+            self._union_selected_ids.append(fid)
+            # Update visual highlight
+            try:
+                self.call_js_method("setUnionSelection", list(self._union_selected_ids))
+            except Exception:
+                pass
+
+            if len(self._union_selected_ids) >= 2:
+                try:
+                    self._union_geoman_features_by_ids(self._union_selected_ids[:2])
+                finally:
+                    self._union_selected_ids = []
+                    self._union_expected_geom_type = None
+                    try:
+                        self.call_js_method("clearUnionSelection")
+                    except Exception:
+                        pass
+
+        # Store and register the interaction handler
+        self._union_click_callback = _union_click_handler
+        self.on_interaction(self._union_click_callback, types=["click"])
+
+    def disable_geoman_union_mode(self) -> None:
+        """
+        Disable the simple 'union mode' and unregister the click handler.
+        """
+        if getattr(self, "_union_click_callback", None):
+            try:
+                self.off_interaction(self._union_click_callback, types=["click"])
+            except Exception:
+                pass
+        self._union_mode_enabled = False
+        self._union_selected_ids = []
+        self._union_expected_geom_type = None
+        try:
+            self.call_js_method("clearUnionSelection")
+        except Exception:
+            pass
+
+    # Event bridge from JS button to Python toggle
+    def _handle_geoman_union_toggle(self, event: Dict[str, Any]) -> None:
+        enabled = bool(event.get("enabled"))
+        if enabled:
+            self.enable_geoman_union_mode()
+        else:
+            self.disable_geoman_union_mode()
+
+    # ---------------------------------------------------------------------
+    # Geoman "Split" Mode (free implementation using GeoPandas/Shapely)
+    # ---------------------------------------------------------------------
+    def _split_geoman_features_by_line(self, coordinates: List[List[float]]) -> None:
+        """
+        Split polygons and lines by a user-drawn line and replace originals with parts.
+
+        Args:
+            coordinates: List of [lng, lat] pairs defining the split LineString in EPSG:4326.
+        """
+        if not HAS_GEOPANDAS:
+            raise ImportError("GeoPandas is required for split operations.")
+
+        from shapely.geometry import shape, mapping, LineString  # type: ignore
+        from shapely.ops import split as split_geom  # type: ignore
+
+        if not coordinates or len(coordinates) < 2:
+            return
+
+        try:
+            splitter = LineString(coordinates)
+        except Exception:
+            return
+
+        features = list(self.geoman_data.get("features", []))
+        if len(features) == 0:
+            return
+
+        new_features: List[Dict[str, Any]] = []
+
+        for idx, feat in enumerate(features):
+            try:
+                geom = shape(feat.get("geometry"))
+            except Exception:
+                new_features.append(feat)
+                continue
+
+            geom_type = geom.geom_type
+            # Only split polygons and lines
+            if geom_type not in (
+                "Polygon",
+                "MultiPolygon",
+                "LineString",
+                "MultiLineString",
+            ):
+                new_features.append(feat)
+                continue
+
+            try:
+                if not geom.intersects(splitter):
+                    new_features.append(feat)
+                    continue
+                result = split_geom(geom, splitter)
+            except Exception:
+                # If splitting fails, keep original
+                new_features.append(feat)
+                continue
+
+            # Collect pieces of same dimensionality as original
+            pieces: List[Any] = []
+            for g in getattr(result, "geoms", []):
+                if (
+                    geom_type in ("Polygon", "MultiPolygon")
+                    and g.geom_type == "Polygon"
+                ):
+                    if not g.is_empty and g.area > 0:
+                        pieces.append(g)
+                elif (
+                    geom_type in ("LineString", "MultiLineString")
+                    and g.geom_type == "LineString"
+                ):
+                    if not g.is_empty and g.length > 0:
+                        pieces.append(g)
+
+            if len(pieces) >= 2:
+                props = feat.get("properties", {}) or {}
+                for part in pieces:
+                    new_features.append(
+                        {
+                            "type": "Feature",
+                            "id": str(uuid.uuid4()),
+                            "properties": dict(props),
+                            "geometry": mapping(part),
+                        }
+                    )
+            else:
+                # Not effectively split; keep original
+                new_features.append(feat)
+
+        # Sync back to widget
+        self.geoman_data = {"type": "FeatureCollection", "features": new_features}
+
+    def enable_geoman_split_mode(self) -> None:
+        """Enable free split mode."""
+        if not HAS_GEOPANDAS:
+            raise ImportError("GeoPandas is required for split mode.")
+        # Turning on split mode; union off to avoid conflicts
+        try:
+            self.disable_geoman_union_mode()
+        except Exception:
+            pass
+        self._split_mode_enabled = True
+
+    def disable_geoman_split_mode(self) -> None:
+        """Disable free split mode."""
+        self._split_mode_enabled = False
+
+    def _handle_geoman_split_toggle(self, event: Dict[str, Any]) -> None:
+        enabled = bool(event.get("enabled"))
+        if enabled:
+            self.enable_geoman_split_mode()
+        else:
+            self.disable_geoman_split_mode()
+
+    def _handle_geoman_split_line(self, event: Dict[str, Any]) -> None:
+        if not getattr(self, "_split_mode_enabled", False):
+            return
+        coords = event.get("coordinates")
+        if not isinstance(coords, list) or len(coords) < 2:
+            return
+        # Basic validation of coordinate pairs
+        cleaned: List[List[float]] = []
+        for c in coords:
+            if isinstance(c, (list, tuple)) and len(c) == 2:
+                try:
+                    lng = float(c[0])
+                    lat = float(c[1])
+                except Exception:
+                    continue
+                cleaned.append([lng, lat])
+        if len(cleaned) < 2:
+            return
+        self._split_geoman_features_by_line(cleaned)
+
+    def _repr_html_(self, **kwargs: Any) -> None:
+        """
+        Displays the map in an IPython environment.
+
+        Args:
+            **kwargs (Any): Additional keyword arguments.
+
+        Returns:
+            None
+        """
+
+        filename = os.environ.get("MAPLIBRE_OUTPUT", None)
+        replace_key = os.environ.get("MAPTILER_REPLACE_KEY", False)
+        if filename is not None:
+            self.to_html(filename, replace_key=replace_key)
+
+    def _patched_display(
+        self,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Displays the map in an IPython environment with a patched display method.
+
+        Args:
+            **kwargs (Any): Additional keyword arguments.
+
+        Returns:
+            None
+        """
+
+        if self.container is not None:
+            container = self.container
+        else:
+            sidebar_visible = self.sidebar_args.get("sidebar_visible", False)
+            min_width = self.sidebar_args.get("min_width", 360)
+            max_width = self.sidebar_args.get("max_width", 360)
+            expanded = self.sidebar_args.get("expanded", True)
+            if self.layer_manager is None:
+                self.layer_manager = LayerManagerWidget(self, expanded=expanded)
+            container = Container(
+                host_map=self,
+                sidebar_visible=sidebar_visible,
+                min_width=min_width,
+                max_width=max_width,
+                sidebar_content=[self.layer_manager],
+                **kwargs,
+            )
+            container.sidebar_widgets["Layers"] = self.layer_manager
+            self.container = container
+
+        if "google.colab" in sys.modules:
+            import ipyvue as vue
+
+            display(vue.Html(children=[]), container)
+        else:
+            display(container)
+
+    def add_layer_manager(
+        self,
+        expanded: bool = True,
+        height: str = "40px",
+        layer_icon: str = "mdi-layers",
+        close_icon: str = "mdi-close",
+        label="Layers",
+        background_color: str = "#f5f5f5",
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        if self.layer_manager is None:
+            self.layer_manager = LayerManagerWidget(
+                self,
+                expanded=expanded,
+                height=height,
+                layer_icon=layer_icon,
+                close_icon=close_icon,
+                label=label,
+                background_color=background_color,
+                *args,
+                **kwargs,
+            )
+
+    def set_sidebar_content(
+        self, content: Union[widgets.VBox, List[widgets.Widget]]
+    ) -> None:
+        """
+        Replaces all content in the sidebar (except the toggle button).
+
+        Args:
+            content (Union[widgets.VBox, List[widgets.Widget]]): The new content for the sidebar.
+        """
+
+        if self.container is not None:
+            self.container.set_sidebar_content(content)
+
+    def add_to_sidebar(
+        self,
+        widget: Union[widgets.Widget, List[widgets.Widget]],
+        add_header: bool = True,
+        widget_icon: str = "mdi-tools",
+        close_icon: str = "mdi-close",
+        label: str = "My Tools",
+        background_color: str = "#f5f5f5",
+        height: str = "40px",
+        expanded: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Appends a widget to the sidebar content.
+
+        Args:
+            widget (Optional[Union[widgets.Widget, List[widgets.Widget]]]): Initial widget(s) to display in the content box.
+            widget_icon (str): Icon for the header. See https://pictogrammers.github.io/@mdi/font/7.4.47/ for available icons.
+            close_icon (str): Icon for the close button. See https://pictogrammers.github.io/@mdi/font/7.4.47/ for available icons.
+            background_color (str): Background color of the header. Defaults to "#f5f5f5".
+            label (str): Text label for the header. Defaults to "My Tools".
+            height (str): Height of the header. Defaults to "40px".
+            expanded (bool): Whether the panel is expanded by default. Defaults to True.
+            **kwargs (Any): Additional keyword arguments for the parent class.
+
+        """
+        if self.container is None:
+            self.create_container(**self.sidebar_args)
+        self.container.add_to_sidebar(
+            widget,
+            add_header=add_header,
+            widget_icon=widget_icon,
+            close_icon=close_icon,
+            label=label,
+            background_color=background_color,
+            height=height,
+            expanded=expanded,
+            host_map=self,
+            **kwargs,
+        )
+
+    def add_flatgeobuf_layer(
+        self,
+        url: str,
+        layer_id: str,
+        *,
+        layer_type: str = "fill",
+        source_id: Optional[str] = None,
+        paint: Optional[Dict[str, Any]] = None,
+        layout: Optional[Dict[str, Any]] = None,
+        filter: Optional[Any] = None,
+        bbox: Optional[List[float]] = None,
+        promote_id: Optional[Union[str, Dict[str, str]]] = None,
+        minzoom: Optional[float] = None,
+        maxzoom: Optional[float] = None,
+        before_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        name: Optional[str] = None,
+    ) -> str:
+        """
+        Add a vector layer from a FlatGeobuf dataset.
+
+        The FlatGeobuf file is streamed in the browser and converted to GeoJSON
+        before being added to the map. Rendering happens entirely client-side,
+        so very large datasets may still impact browser performance.
+
+        Args:
+            url: URL pointing to the FlatGeobuf resource.
+            layer_id: Unique identifier for the map layer.
+            layer_type: MapLibre layer type (e.g., ``'fill'``, ``'line'``, ``'circle'``).
+            source_id: Optional custom source identifier. Defaults to ``{layer_id}_source``.
+            paint: Optional paint properties dictionary.
+            layout: Optional layout properties dictionary.
+            filter: Optional MapLibre expression used to filter features.
+            bbox: Optional bounding box ``[minX, minY, maxX, maxY]`` used to limit
+                features retrieved from the dataset.
+            promote_id: Optional feature identifier promotion configuration.
+            minzoom: Optional minimum zoom level for the layer.
+            maxzoom: Optional maximum zoom level for the layer.
+            before_id: Optional layer id to insert the new layer before.
+            metadata: Optional metadata dictionary attached to the layer configuration.
+            name: Optional friendly name used in the layer manager. Defaults to ``layer_id``.
+
+        Returns:
+            str: The identifier of the layer that was registered.
+        """
+
+        if source_id is None:
+            source_id = f"{layer_id}_source"
+
+        layer_config: Dict[str, Any] = {
+            "id": layer_id,
+            "type": layer_type,
+            "source": source_id,
+        }
+        if paint:
+            layer_config["paint"] = paint
+        if layout:
+            layer_config["layout"] = layout
+        if filter is not None:
+            layer_config["filter"] = filter
+        if promote_id is not None:
+            layer_config["promoteId"] = promote_id
+        if minzoom is not None:
+            layer_config["minzoom"] = minzoom
+        if maxzoom is not None:
+            layer_config["maxzoom"] = maxzoom
+        if metadata:
+            layer_config["metadata"] = metadata
+
+        # Track the layer locally so the layer manager can interact with it.
+        current_layers = dict(self._layers)
+        current_layers[layer_id] = layer_config
+        self._layers = current_layers
+
+        display_name = name or layer_id
+        self.layer_dict[layer_id] = {
+            "layer": layer_config,
+            "opacity": 1.0,
+            "visible": True,
+            "type": "flatgeobuf",
+            "name": display_name,
+            "url": url,
+        }
+        self._update_layer_controls()
+
+        config: Dict[str, Any] = {
+            "layerId": layer_id,
+            "sourceId": source_id,
+            "url": url,
+            "layerType": layer_type,
+        }
+        if paint:
+            config["paint"] = paint
+        if layout:
+            config["layout"] = layout
+        if filter is not None:
+            config["filter"] = filter
+        if bbox is not None:
+            config["bbox"] = bbox
+        if promote_id is not None:
+            config["promoteId"] = promote_id
+        if minzoom is not None:
+            config["minzoom"] = minzoom
+        if maxzoom is not None:
+            config["maxzoom"] = maxzoom
+        if before_id is not None:
+            config["beforeId"] = before_id
+        if metadata:
+            config["metadata"] = metadata
+        if name:
+            config["name"] = display_name
+
+        flatgeobuf_layers = dict(self.flatgeobuf_layers)
+        flatgeobuf_layers[layer_id] = config
+        self.flatgeobuf_layers = flatgeobuf_layers
+
+        return layer_id
+
+    def enable_feature_popup(
+        self,
+        layer_id: str,
+        *,
+        fields: Optional[Union[Sequence[str], Dict[str, str]]] = None,
+        aliases: Optional[Dict[str, str]] = None,
+        title: Optional[str] = None,
+        title_field: Optional[str] = None,
+        max_properties: int = 25,
+        close_button: bool = True,
+        max_width: str = "320px",
+    ) -> None:
+        """
+        Enable attribute popups for a layer when users click its features.
+
+        Args:
+            layer_id: Identifier of the target layer.
+            fields: Optional ordered list of attribute keys to display. When omitted,
+                up to ``max_properties`` properties are shown.
+            aliases: Optional mapping from attribute key to display label. Only applies
+                when ``fields`` is provided.
+            title: Optional static string rendered above the attribute table.
+            title_field: Optional property key whose value should be used as the popup
+                title. Ignored when ``title`` is provided.
+            max_properties: Maximum number of properties displayed when ``fields`` is
+                not supplied. Defaults to 25.
+            close_button: Whether the popup shows a close button. Defaults to True.
+            max_width: CSS max-width applied to the popup container. Defaults to 320px.
+        """
+
+        alias_lookup: Dict[str, str] = aliases or {}
+
+        field_config: Optional[List[Dict[str, str]]] = None
+        if fields is not None:
+            if isinstance(fields, dict):
+                field_config = [
+                    {"name": str(key), "label": str(value)}
+                    for key, value in fields.items()
+                ]
+            else:
+                field_config = []
+                for name in fields:
+                    field_name = str(name)
+                    label_source = alias_lookup.get(
+                        name, alias_lookup.get(field_name, field_name)
+                    )
+                    field_config.append(
+                        {"name": field_name, "label": str(label_source)}
+                    )
+
+        config: Dict[str, Any] = {
+            "layerId": layer_id,
+            "maxProperties": max_properties,
+            "closeButton": close_button,
+            "maxWidth": max_width,
+        }
+        if field_config is not None:
+            config["fields"] = field_config
+        if title is not None:
+            config["title"] = title
+        if title_field is not None:
+            config["titleField"] = title_field
+
+        self.call_js_method("enableFeaturePopup", config)
+
+    def disable_feature_popup(self, layer_id: str) -> None:
+        """
+        Disable attribute popups for the specified layer.
+
+        Args:
+            layer_id: Identifier of the target layer.
+        """
+
+        self.call_js_method("disableFeaturePopup", {"layerId": layer_id})
+
+    def add_popup(
+        self,
+        layer_id: str,
+        prop: Optional[str] = None,
+        template: Optional[str] = None,
+        trigger: str = "click",
+    ) -> None:
+        """Add a popup to a layer.
+
+        Args:
+            layer_id: The layer to which the popup is added.
+            prop: The property of the source to be displayed. If None, all properties are displayed.
+            template: A simple template with mustache-style variable interpolation. Only
+                     `{{property_name}}` substitution is supported; sections, conditionals,
+                     and iteration are not. Example: "Name: {{name}}<br>Value: {{value}}"
+            trigger: Event that triggers the popup. Either "click" or "hover". Defaults to "click".
+        """
+        if trigger not in ["click", "hover"]:
+            raise ValueError("trigger must be either 'click' or 'hover'")
+        config: Dict[str, Any] = {"layerId": layer_id, "trigger": trigger}
+
+        if template is not None:
+            # Use template for custom formatting
+            config["template"] = template
+        elif prop is not None:
+            # Show only specific property
+            config["fields"] = [{"name": prop, "label": prop}]
+        # If both are None, show all properties (default behavior)
+
+        self.call_js_method("enableFeaturePopup", config)
+
+    def add_widget_control(
+        self,
+        widget: widgets.Widget,
+        *,
+        label: str = "Tools",
+        icon: str = "⋮",
+        position: str = "top-right",
+        collapsed: bool = True,
+        panel_width: int = 320,
+        panel_min_width: int = 220,
+        panel_max_width: int = 420,
+        panel_max_height: Optional[Union[int, str]] = None,
+        auto_panel_width: bool = False,
+        header_bg: Optional[str] = None,
+        header_text_color: Optional[str] = None,
+        control_id: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> str:
+        """
+        Add a collapsible widget control anchored to the map viewport.
+
+        The control displays as a button alongside other MapLibre controls. Clicking
+        the button expands a sidebar-style panel that renders the supplied
+        ipywidget content.
+
+        Args:
+            widget: The ipywidget instance to embed inside the collapsible panel.
+            label: Title shown at the top of the expanded panel.
+            icon: Text or icon hint shown on the toggle button. Supports unicode characters
+                (e.g., "⋮", "☰", "⚙") and Material Design Icons (e.g., "mdi-map-marker",
+                "mdi-layers", "mdi-cog"). Browse icons at https://pictogrammers.com/library/mdi/.
+                Defaults to a vertical ellipsis.
+            position: Map control corner (``'top-left'``, ``'top-right'``,
+                ``'bottom-left'``, or ``'bottom-right'``).
+            collapsed: Whether the panel starts collapsed.
+            panel_width: Default panel width in pixels.
+            panel_min_width: Minimum panel width in pixels when resized on the front-end.
+            panel_max_width: Maximum panel width in pixels when resized on the front-end.
+            panel_max_height: Maximum panel height. Can be an int (pixels) or a CSS string (e.g., '70vh', '500px').
+                Defaults to None, which uses the JavaScript default of '70vh'.
+            auto_panel_width: Whether the panel width should be automatically adjusted to the content width. Defaults to False.
+            header_bg: The background color of the header, like "linear-gradient(135deg,#444,#888)". Defaults to None.
+            header_text_color: The text color of the header, like "#fff". Defaults to None.
+            control_id: Optional identifier used for duplicate detection and later removal.
+                If omitted, a unique identifier is generated from the label.
+            description: Optional tooltip description for the toggle button.
+        Returns:
+            str: The unique identifier assigned to the widget control.
+
+        Raises:
+            TypeError: If ``widget`` is not an ipywidget instance.
+        """
+        if not isinstance(widget, widgets.Widget):
+            raise TypeError("widget must be an ipywidgets.Widget instance")
+
+        if control_id is None:
+            base_slug = "".join(
+                char.lower() if char.isalnum() else "-" for char in label
+            ).strip("-")
+            if not base_slug:
+                base_slug = "widget"
+            control_id = f"{base_slug}-{uuid.uuid4().hex[:6]}"
+
+        # Ensure uniqueness when callers supply their own identifier
+        if control_id in self._widget_control_widgets:
+            raise ValueError(f"Widget control '{control_id}' already exists")
+
+        widget_id = getattr(widget, "model_id", None)
+        if widget_id is None:
+            raise ValueError(
+                "The supplied widget does not have a model_id. Ensure it is an ipywidget "
+                "instance created within the current notebook session."
+            )
+
+        control_options: Dict[str, Any] = {
+            "position": position,
+            "label": label,
+            "icon": icon,
+            "collapsed": collapsed,
+            "panelWidth": panel_width,
+            "panelMinWidth": panel_min_width,
+            "panelMaxWidth": panel_max_width,
+            "autoWidth": auto_panel_width,
+            "headerBg": header_bg,
+            "headerTextColor": header_text_color,
+            "control_id": control_id,
+            "widget_model_id": widget_id,
+        }
+
+        if panel_max_height is not None:
+            control_options["maxHeight"] = (
+                panel_max_height
+                if isinstance(panel_max_height, str)
+                else f"{panel_max_height}px"
+            )
+
+        if description:
+            control_options["description"] = description
+
+        control_key = f"widget_panel_{control_id}"
+
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "widget_panel",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self._widget_control_widgets[control_id] = widget
+        self.call_js_method("addControl", "widget_panel", control_options)
+
+        return control_id
+
+    def remove_widget_control(self, control_id: str) -> None:
+        """Remove a previously registered widget control."""
+        if not control_id:
+            raise ValueError("control_id is required")
+
+        current_controls = dict(self._controls)
+        target_key = None
+        for key, config in current_controls.items():
+            if (
+                config.get("type") == "widget_panel"
+                and config.get("options", {}).get("control_id") == control_id
+            ):
+                target_key = key
+                break
+
+        if target_key:
+            current_controls.pop(target_key)
+            self._controls = current_controls
+
+        if control_id in self._widget_control_widgets:
+            del self._widget_control_widgets[control_id]
+
+        self.call_js_method("removeWidgetControl", control_id)
+
+    def remove_from_sidebar(
+        self, widget: widgets.Widget = None, name: str = None
+    ) -> None:
+        """
+        Removes a widget from the sidebar content.
+
+        Args:
+            widget (widgets.Widget): The widget to remove from the sidebar.
+            name (str): The name of the widget to remove from the sidebar.
+        """
+        if self.container is not None:
+            self.container.remove_from_sidebar(widget, name)
+
+    def set_sidebar_width(self, min_width: int = None, max_width: int = None) -> None:
+        """
+        Dynamically updates the sidebar's minimum and maximum width.
+
+        Args:
+            min_width (int, optional): New minimum width in pixels. If None, keep current.
+            max_width (int, optional): New maximum width in pixels. If None, keep current.
+        """
+        if self.container is None:
+            self.create_container()
+        self.container.set_sidebar_width(min_width, max_width)
+
+    @property
+    def sidebar_widgets(self) -> Dict[str, widgets.Widget]:
+        """
+        Returns a dictionary of widgets currently in the sidebar.
+
+        Returns:
+            Dict[str, widgets.Widget]: A dictionary where keys are the labels of the widgets and values are the widgets themselves.
+        """
+        return self.container.sidebar_widgets
+
+    def set_style(self, style: Union[str, Dict[str, Any]]) -> None:
+        """Set the map style.
+
+        Args:
+            style: Map style as URL string or style object dictionary.
+        """
+        if isinstance(style, str):
+            self.style = style
+        else:
+            self.call_js_method("setStyle", style)
+
+    def set_bearing(self, bearing: float) -> None:
+        """Set the map bearing (rotation).
+
+        Args:
+            bearing: Map rotation in degrees (0-360).
+        """
+        self.bearing = bearing
+
+    def set_pitch(self, pitch: float) -> None:
+        """Set the map pitch (tilt).
+
+        Args:
+            pitch: Map tilt in degrees (0-60).
+        """
+        self.pitch = pitch
+
+    def set_layout_property(self, layer_id: str, name: str, value: Any) -> None:
+        """Set a layout property for a layer.
+
+        Args:
+            layer_id: Unique identifier of the layer.
+            name: Name of the layout property to set.
+            value: Value to set for the property.
+        """
+        self.call_js_method("setLayoutProperty", layer_id, name, value)
+
+    def set_paint_property(self, layer_id: str, name: str, value: Any) -> None:
+        """Set a paint property for a layer.
+
+        Args:
+            layer_id: Unique identifier of the layer.
+            name: Name of the paint property to set.
+            value: Value to set for the property.
+        """
+        self.call_js_method("setPaintProperty", layer_id, name, value)
+
+    def set_visibility(self, layer_id: str, visible: bool) -> None:
+        """Set the visibility of a layer.
+
+        Args:
+            layer_id: Unique identifier of the layer.
+            visible: Whether the layer should be visible.
+        """
+        # Check if this is a marker group
+        if layer_id in self.layer_dict:
+            layer_type = self.layer_dict[layer_id].get("type")
+            if layer_type == "marker-group":
+                self.layer_dict[layer_id]["visible"] = visible
+                self.call_js_method("setMarkerGroupVisibility", layer_id, visible)
+                self._update_layer_controls()
+                return
+
+        if visible:
+            visibility = "visible"
+        else:
+            visibility = "none"
+
+        if layer_id == "Background":
+            for layer in self.get_style_layers():
+                self.set_layout_property(layer["id"], "visibility", visibility)
+        else:
+            self.set_layout_property(layer_id, "visibility", visibility)
+        if layer_id in self.layer_dict:
+            self.layer_dict[layer_id]["visible"] = visible
+            self._update_layer_controls()
+
+    def set_opacity(self, layer_id: str, opacity: float) -> None:
+        """Set the opacity of a layer.
+
+        Args:
+            layer_id: Unique identifier of the layer.
+            opacity: Opacity value between 0.0 (transparent) and 1.0 (opaque).
+        """
+        # Check if this is a marker group
+        if layer_id in self.layer_dict:
+            layer_type = self.layer_dict[layer_id].get("type")
+            if layer_type == "marker-group":
+                self.layer_dict[layer_id]["opacity"] = opacity
+                self.call_js_method("setMarkerGroupOpacity", layer_id, opacity)
+                self._update_layer_controls()
+                return
+
+        layer_type = self.get_layer_type(layer_id)
+
+        if layer_id == "Background":
+            for layer in self.get_style_layers():
+                layer_type = layer.get("type")
+                if layer_type != "symbol":
+                    self.set_paint_property(
+                        layer["id"], f"{layer_type}-opacity", opacity
+                    )
+                else:
+                    self.set_paint_property(layer["id"], "icon-opacity", opacity)
+                    self.set_paint_property(layer["id"], "text-opacity", opacity)
+            return
+
+        if layer_id in self.layer_dict:
+            layer_type = self.layer_dict[layer_id]["layer"]["type"]
+            prop_name = f"{layer_type}-opacity"
+            self.layer_dict[layer_id]["opacity"] = opacity
+            self._update_layer_controls()
+        elif layer_id in self.style_dict:
+            layer = self.style_dict[layer_id]
+            layer_type = layer.get("type")
+            prop_name = f"{layer_type}-opacity"
+            if "paint" in layer:
+                layer["paint"][prop_name] = opacity
+
+        if layer_type != "symbol":
+            self.set_paint_property(layer_id, f"{layer_type}-opacity", opacity)
+        else:
+            self.set_paint_property(layer_id, "icon-opacity", opacity)
+            self.set_paint_property(layer_id, "text-opacity", opacity)
+
+    def set_projection(self, projection: Dict[str, Any]) -> None:
+        """Set the map projection.
+
+        Args:
+            projection: Projection configuration dictionary.
+        """
+        # Store projection in persistent state
+        self._projection = projection
+        self.call_js_method("setProjection", projection)
+
+    def set_terrain(
+        self,
+        source: str = "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png",
+        exaggeration: float = 1.0,
+        tile_size: int = 256,
+        encoding: str = "terrarium",
+        source_id: str = "terrain-dem",
+    ) -> None:
+        """Add terrain visualization to the map.
+
+        Args:
+            source: URL template for terrain tiles. Defaults to AWS elevation tiles.
+            exaggeration: Terrain exaggeration factor. Defaults to 1.0.
+            tile_size: Tile size in pixels. Defaults to 256.
+            encoding: Encoding for the terrain tiles. Defaults to "terrarium".
+            source_id: Unique identifier for the terrain source. Defaults to "terrain-dem".
+        """
+        # Add terrain source
+        self.add_source(
+            source_id,
+            {
+                "type": "raster-dem",
+                "tiles": [source],
+                "tileSize": tile_size,
+                "encoding": encoding,
+            },
+        )
+
+        # Set terrain on the map
+        terrain_config = {"source": source_id, "exaggeration": exaggeration}
+
+        # Store terrain configuration in persistent state
+        self._terrain = terrain_config
+        self.call_js_method("setTerrain", terrain_config)
+
+    def get_layer_type(self, layer_id: str) -> Optional[str]:
+        """Get the type of a layer.
+
+        Args:
+            layer_id: Unique identifier of the layer.
+
+        Returns:
+            Layer type string, or None if layer doesn't exist.
+        """
+        if layer_id in self._layers:
+            return self._layers[layer_id]["type"]
+        else:
+            return None
+
+    def add_layer(
+        self,
+        layer: Dict[str, Any],
+        before_id: Optional[str] = None,
+        layer_id: str = None,
+        opacity: Optional[float] = 1.0,
+        visible: Optional[bool] = True,
+        overwrite: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        """Add a layer to the map.
+
+        Args:
+            layer_id: Unique identifier for the layer.
+            layer_config: Layer configuration dictionary containing
+                         properties like type, source, paint, and layout.
+            before_id: Optional layer ID to insert this layer before.
+                      If None, layer is added on top.
+        """
+
+        if isinstance(layer, dict):
+            if "minzoom" in layer:
+                layer["min-zoom"] = layer.pop("minzoom")
+            if "maxzoom" in layer:
+                layer["max-zoom"] = layer.pop("maxzoom")
+            # MapLibre expects hyphenated keys like 'source-layer', 'text-field', etc.
+            # Convert any underscore_keys to hyphen-keys recursively for JS compatibility.
+            layer = utils.replace_underscores_in_keys(layer)
+
+        if "name" in kwargs and layer_id is None:
+            layer_id = kwargs.pop("name")
+
+        if layer_id is None:
+            layer_id = utils.get_unique_name(
+                layer["id"], list(self._layers.keys()), overwrite
+            )
+
+        # Store before_id in layer metadata for restoration when displaying in multiple cells
+        if before_id is not None:
+            if "metadata" not in layer:
+                layer["metadata"] = {}
+            layer["metadata"]["beforeId"] = before_id
+
+        # Store layer in local state for persistence
+        current_layers = dict(self._layers)
+        current_layers[layer_id] = layer
+        self._layers = current_layers
+
+        # Call JavaScript method with before_id if provided
+        self.call_js_method("addLayer", layer, before_id)
+
+        self.set_visibility(layer_id, visible)
+        self.set_opacity(layer_id, opacity)
+        self.layer_dict[layer_id] = {
+            "layer": layer,
+            "opacity": opacity,
+            "visible": visible,
+            "type": layer["type"],
+            # "color": color,
+        }
+
+        # Update the _layer_dict trait to trigger JavaScript sync
+        self._layer_dict = dict(self.layer_dict)
+
+        if self.layer_manager is not None:
+            self.layer_manager.refresh()
+
+        # Update layer controls if they exist
+        self._update_layer_controls()
+
+    def add_source(self, source_id: str, source_config: Dict[str, Any]) -> None:
+        """Add a data source to the map.
+
+        This method adds a data source and tracks it in the source_dict attribute
+        for easy reference. The source can then be used by layers.
+
+        Args:
+            source_id: Unique identifier for the data source.
+            source_config: Dictionary containing source configuration.
+                          Must include a 'type' field (e.g., 'geojson', 'vector', 'raster').
+                          Additional fields depend on the source type.
+
+        Example:
+            >>> m = MapLibreMap()
+            >>> m.add_source('my-source', {
+            ...     'type': 'geojson',
+            ...     'data': {
+            ...         'type': 'Feature',
+            ...         'geometry': {'type': 'Point', 'coordinates': [0, 0]}
+            ...     }
+            ... })
+        """
+        # Store source in source_dict for local tracking
+        self.source_dict[source_id] = source_config
+
+        # Call parent class method to handle JavaScript synchronization
+        super().add_source(source_id, source_config)
+
+    def add_geojson_layer(
+        self,
+        layer_id: str,
+        geojson_data: Dict[str, Any],
+        layer_type: str = "fill",
+        paint: Optional[Dict[str, Any]] = None,
+        before_id: Optional[str] = None,
+    ) -> None:
+        """Add a GeoJSON layer to the map.
+
+        Args:
+            layer_id: Unique identifier for the layer.
+            geojson_data: GeoJSON data as a dictionary.
+            layer_type: Type of layer (e.g., 'fill', 'line', 'circle', 'symbol').
+            paint: Optional paint properties for styling the layer.
+            before_id: Optional layer ID to insert this layer before.
+        """
+        source_id = f"{layer_id}_source"
+
+        # Add source
+        self.add_source(source_id, {"type": "geojson", "data": geojson_data})
+
+        # Add layer
+        layer_config = {"id": layer_id, "type": layer_type, "source": source_id}
+
+        if paint:
+            layer_config["paint"] = paint
+
+        self.add_layer(layer=layer_config, before_id=before_id, layer_id=layer_id)
+
+    def add_marker(
+        self,
+        lng: float,
+        lat: float,
+        popup: Optional[str] = None,
+        tooltip: Optional[str] = None,
+        options: Optional[Dict[str, Any]] = None,
+        scale: float = 1.0,
+        popup_max_width: str = "240px",
+        tooltip_max_width: str = "240px",
+    ) -> None:
+        """Add a marker to the map.
+
+        Args:
+            lng: Longitude coordinate for the marker.
+            lat: Latitude coordinate for the marker.
+            popup: Optional popup HTML to display when marker is clicked.
+                Supports HTML content including images.
+            tooltip: Optional tooltip HTML to display when hovering over marker.
+                Supports HTML content including images.
+            options: Optional marker options forwarded to MapLibre GL JS.
+                This supports properties like color, draggable, and opacity.
+            scale: Scale factor for marker size (default: 1.0, range: 0.1 to 3.0).
+                For example, 0.5 makes the marker half size, 2.0 makes it double size.
+            popup_max_width: Maximum width for popup (default: "240px").
+                Accepts CSS values like "300px", "20rem", or "none" for no limit.
+            tooltip_max_width: Maximum width for tooltip (default: "240px").
+                Accepts CSS values like "300px", "20rem", or "none" for no limit.
+        """
+        marker_options = dict(options) if options else {}
+        if "scale" not in marker_options:
+            marker_options["scale"] = scale
+
+        marker_data = {
+            "coordinates": [lng, lat],
+            "popup": popup,
+            "tooltip": tooltip,
+            "options": marker_options,
+            "popup_max_width": popup_max_width,
+            "tooltip_max_width": tooltip_max_width,
+        }
+        self.call_js_method("addMarker", marker_data)
+
+    def add_marker_group(
+        self,
+        layer_id: str,
+        markers: List[Dict[str, Any]],
+        name: Optional[str] = None,
+        visible: bool = True,
+        opacity: float = 1.0,
+    ) -> None:
+        """Add a group of markers as a controllable layer.
+
+        This method adds multiple markers as a single layer that can be controlled
+        through the layer control panel. All markers in the group share the same
+        visibility and opacity settings.
+
+        Args:
+            layer_id: Unique identifier for the marker group layer.
+            markers: List of marker definitions. Each marker should be a dictionary with:
+                - lng (float): Longitude coordinate
+                - lat (float): Latitude coordinate
+                - popup (str, optional): Popup HTML content
+                - tooltip (str, optional): Tooltip HTML content
+                - options (dict, optional): Marker options (color, draggable, etc.)
+                - scale (float, optional): Marker scale factor (default: 1.0)
+                - popup_max_width (str, optional): Maximum width for popup (default: "240px")
+                - tooltip_max_width (str, optional): Maximum width for tooltip (default: "240px")
+            name: Display name for the layer in the layer control.
+                If None, uses layer_id.
+            visible: Whether the marker group should be visible initially.
+            opacity: Initial opacity for all markers in the group (0.0 to 1.0).
+
+        Example:
+            >>> m = MapLibreMap()
+            >>> markers = [
+            ...     {"lng": -122.4, "lat": 37.8, "popup": "San Francisco"},
+            ...     {"lng": -118.2, "lat": 34.0, "popup": "Los Angeles"},
+            ...     {"lng": -122.3, "lat": 47.6, "popup": "Seattle"}
+            ... ]
+            >>> m.add_marker_group("cities", markers, name="West Coast Cities")
+        """
+        display_name = name if name else layer_id
+
+        # Validate markers
+        for i, marker in enumerate(markers):
+            if "lng" not in marker or "lat" not in marker:
+                raise ValueError(
+                    f"Marker at index {i} missing required 'lng' or 'lat' coordinate"
+                )
+
+        # Store in layer_dict for layer control integration
+        self.layer_dict[layer_id] = {
+            "layer": {"id": layer_id, "type": "marker-group"},
+            "visible": visible,
+            "opacity": opacity,
+            "name": display_name,
+            "type": "marker-group",
+        }
+
+        # Update layer controls
+        self._update_layer_controls()
+
+        # Send to JavaScript
+        marker_group_data = {
+            "layerId": layer_id,
+            "markers": markers,
+            "visible": visible,
+            "opacity": opacity,
+        }
+        self.call_js_method("addMarkerGroup", marker_group_data)
+
+    def fit_bounds(self, bounds: List[List[float]], padding: int = 50) -> None:
+        """Fit the map to given bounds.
+
+        Args:
+            bounds: Bounding box as [[south, west], [north, east]].
+            padding: Padding around the bounds in pixels.
+        """
+        self.call_js_method("fitBounds", bounds, {"padding": padding})
+
+    def add_geojson(
+        self,
+        data: Union[str, Dict],
+        layer_type: Optional[str] = None,
+        filter: Optional[Dict] = None,
+        paint: Optional[Dict] = None,
+        name: Optional[str] = None,
+        fit_bounds: bool = True,
+        visible: bool = True,
+        opacity: float = 1.0,
+        before_id: Optional[str] = None,
+        source_args: Optional[Dict] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Add a GeoJSON layer to the map.
+
+        This method adds a GeoJSON layer to the map. The GeoJSON data can be a
+        URL to a GeoJSON file or a GeoJSON dictionary.
+
+        Args:
+            data: The GeoJSON data. This can be a URL to a GeoJSON file or a
+                GeoJSON dictionary.
+            layer_type: The type of the layer. It can be one of the following:
+                'circle', 'fill', 'fill-extrusion', 'line', 'symbol'. If None,
+                the type is inferred from the GeoJSON data.
+            filter: The filter to apply to the layer. If None, no filter is applied.
+            paint: The paint properties to apply to the layer. If None, default
+                paint properties are applied based on geometry type.
+            name: The name of the layer. If None, 'GeoJSON' is used.
+            fit_bounds: Whether to adjust the viewport of the map to fit the
+                bounds of the GeoJSON data. Defaults to True.
+            visible: Whether the layer is visible or not. Defaults to True.
+            opacity: The opacity of the layer. Defaults to 1.0.
+            before_id: The ID of an existing layer before which the new layer
+                should be inserted.
+            source_args: Additional keyword arguments that are passed to the
+                GeoJSON source.
+            **kwargs: Additional keyword arguments that are passed to the layer.
+        """
+        import geopandas as gpd
+
+        bounds = None
+        geom_type = None
+        source_args = source_args or {}
+
+        # Load data from file or URL if necessary
+        if isinstance(data, str):
+            if os.path.isfile(data) or data.startswith("http"):
+                gdf = gpd.read_file(data)
+                data = gdf.__geo_interface__
+                if fit_bounds:
+                    bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
+            else:
+                raise ValueError(
+                    "The data must be a URL, file path, or GeoJSON dictionary."
+                )
+        elif isinstance(data, dict) and data.get("type") == "FeatureCollection":
+            if fit_bounds:
+                gdf = gpd.GeoDataFrame.from_features(data)
+                bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
+        elif not isinstance(data, dict):
+            raise ValueError(
+                "The data must be a URL, file path, or GeoJSON dictionary."
+            )
+
+        # Generate layer name if not provided
+        if name is None:
+            name = "GeoJSON"
+
+        # Infer geometry type and set default paint if not provided
+        if paint is None:
+            if "features" in data and len(data["features"]) > 0:
+                geom_type = data["features"][0]["geometry"]["type"]
+            elif "geometry" in data:
+                geom_type = data["geometry"]["type"]
+
+            if geom_type in ["Point", "MultiPoint"]:
+                if layer_type is None:
+                    layer_type = "circle"
+                paint = {
+                    "circle-radius": 5,
+                    "circle-color": "#3388ff",
+                    "circle-stroke-color": "#ffffff",
+                    "circle-stroke-width": 1,
+                }
+            elif geom_type in ["LineString", "MultiLineString"]:
+                if layer_type is None:
+                    layer_type = "line"
+                paint = {"line-color": "#3388ff", "line-width": 2}
+            elif geom_type in ["Polygon", "MultiPolygon"]:
+                if layer_type is None:
+                    layer_type = "fill"
+                paint = {
+                    "fill-color": "#3388ff",
+                    "fill-opacity": 0.5,
+                }
+
+        # Add source
+        source_id = f"{name}_source"
+        source_config = {"type": "geojson", "data": data}
+        source_config.update(source_args)
+        self.add_source(source_id, source_config)
+
+        # Prepare layer configuration
+        layer_config = {
+            "id": name,
+            "type": layer_type or "fill",
+            "source": source_id,
+        }
+
+        if filter is not None:
+            layer_config["filter"] = filter
+
+        if paint is not None:
+            layer_config["paint"] = paint
+
+        layer_config.update(kwargs)
+
+        # Add layer
+        self.add_layer(layer=layer_config, before_id=before_id, layer_id=name)
+
+        # Set visibility
+        if not visible:
+            self.set_visibility(name, False)
+
+        # Set opacity
+        if opacity < 1.0:
+            self.set_opacity(name, opacity)
+
+        # Fit bounds if requested
+        if fit_bounds and bounds is not None:
+            # Convert from [minx, miny, maxx, maxy] to [[west, south], [east, north]]
+            self.fit_bounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]])
+
+    def add_vector(
+        self,
+        data: Union[str, "gpd.GeoDataFrame"],
+        layer_type: Optional[str] = None,
+        filter: Optional[Dict] = None,
+        paint: Optional[Dict] = None,
+        name: Optional[str] = None,
+        fit_bounds: bool = True,
+        visible: bool = True,
+        opacity: float = 1.0,
+        before_id: Optional[str] = None,
+        source_args: Optional[Dict] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Add a vector layer to the map.
+
+        This method adds a vector layer to the map. The vector data can be a
+        URL or local file path to a vector file (e.g., shapefile, GeoJSON,
+        GeoPackage) or a GeoDataFrame.
+
+        Args:
+            data: The vector data. This can be a URL, local file path to a
+                vector file, or a GeoDataFrame.
+            layer_type: The type of the layer. If None, the type is inferred
+                from the GeoJSON data.
+            filter: The filter to apply to the layer. If None, no filter is applied.
+            paint: The paint properties to apply to the layer. If None, default
+                paint properties are applied.
+            name: The name of the layer. If None, a default name is generated.
+            fit_bounds: Whether to adjust the viewport of the map to fit the
+                bounds of the data. Defaults to True.
+            visible: Whether the layer is visible or not. Defaults to True.
+            opacity: The opacity of the layer. Defaults to 1.0.
+            before_id: The ID of an existing layer before which the new layer
+                should be inserted.
+            source_args: Additional keyword arguments that are passed to the
+                GeoJSON source.
+            **kwargs: Additional keyword arguments that are passed to the layer.
+        """
+        import geopandas as gpd
+
+        if not isinstance(data, gpd.GeoDataFrame):
+            if isinstance(data, str) and data.endswith(".parquet"):
+                data = gpd.read_parquet(data)
+                data = data.__geo_interface__
+            else:
+                data = gpd.read_file(data).__geo_interface__
+        else:
+            data = data.__geo_interface__
+
+        self.add_geojson(
+            data,
+            layer_type=layer_type,
+            filter=filter,
+            paint=paint,
+            name=name,
+            fit_bounds=fit_bounds,
+            visible=visible,
+            opacity=opacity,
+            before_id=before_id,
+            source_args=source_args,
+            **kwargs,
+        )
+
+    def add_raster(
+        self,
+        source,
+        indexes=None,
+        colormap=None,
+        vmin=None,
+        vmax=None,
+        nodata=None,
+        name="Raster",
+        before_id=None,
+        fit_bounds=True,
+        visible=True,
+        opacity=1.0,
+        array_args={},
+        client_args={"cors_all": True},
+        overwrite: bool = True,
+        **kwargs: Any,
+    ):
+        """Add a local raster dataset to the map.
+            If you are using this function in JupyterHub on a remote server
+            (e.g., Binder, Microsoft Planetary Computer) and if the raster
+            does not render properly, try installing jupyter-server-proxy using
+            `pip install jupyter-server-proxy`, then running the following code
+            before calling this function. For more info, see https://bit.ly/3JbmF93.
+
+            import os
+            os.environ['LOCALTILESERVER_CLIENT_PREFIX'] = 'proxy/{port}'
+
+        Args:
+            source (str): The path to the GeoTIFF file or the URL of the Cloud
+                Optimized GeoTIFF.
+            indexes (int, optional): The band(s) to use. Band indexing starts
+                at 1. Defaults to None.
+            colormap (str, optional): The name of the colormap from `matplotlib`
+                to use when plotting a single band.
+                See https://matplotlib.org/stable/gallery/color/colormap_reference.html.
+                Default is greyscale.
+            vmin (float, optional): The minimum value to use when colormapping
+                the palette when plotting a single band. Defaults to None.
+            vmax (float, optional): The maximum value to use when colormapping
+                the palette when plotting a single band. Defaults to None.
+            nodata (float, optional): The value from the band to use to interpret
+                as not valid data. Defaults to None.
+            name (str, optional): The layer name to use. Defaults to 'Raster'.
+            before_id (str, optional): The layer id to insert the layer before. Defaults to None.
+            fit_bounds (bool, optional): Whether to zoom to the extent of the
+                layer. Defaults to True.
+            visible (bool, optional): Whether the layer is visible. Defaults to True.
+            opacity (float, optional): The opacity of the layer. Defaults to 1.0.
+            array_args (dict, optional): Additional arguments to pass to
+                `array_to_memory_file` when reading the raster. Defaults to {}.
+            client_args (dict, optional): Additional arguments to pass to
+                localtileserver.TileClient. Defaults to { "cors_all": False }.
+            overwrite (bool, optional): Whether to overwrite an existing layer with the same name.
+                Defaults to True.
+            **kwargs: Additional keyword arguments to be passed to the underlying
+                `add_tile_layer` method.
+        """
+        import numpy as np
+        import xarray as xr
+
+        if "zoom_to_layer" in kwargs:
+            fit_bounds = kwargs.pop("zoom_to_layer")
+
+        if "layer_name" in kwargs:
+            name = kwargs.pop("layer_name")
+
+        if isinstance(source, np.ndarray) or isinstance(source, xr.DataArray):
+            source = utils.array_to_image(source, **array_args)
+
+        if "colormap_name" in kwargs:
+            colormap = kwargs.pop("colormap_name")
+
+        url, tile_client = utils.get_local_tile_url(
+            source,
+            indexes=indexes,
+            colormap=colormap,
+            vmin=vmin,
+            vmax=vmax,
+            nodata=nodata,
+            opacity=opacity,
+            client_args=client_args,
+            return_client=True,
+            **kwargs,
+        )
+
+        self.add_tile_layer(
+            layer_id=name,
+            source_url=url,
+            opacity=opacity,
+            visible=visible,
+            before_id=before_id,
+            overwrite=overwrite,
+        )
+
+        bounds = tile_client.bounds()  # [ymin, ymax, xmin, xmax]
+        bounds = [[bounds[2], bounds[0]], [bounds[3], bounds[1]]]
+        # [minx, miny, maxx, maxy]
+        if fit_bounds:
+            self.fit_bounds(bounds)
+
+    def add_tile_layer(
+        self,
+        layer_id: str,
+        source_url: str,
+        attribution: Optional[str] = None,
+        opacity: Optional[float] = 1.0,
+        visible: Optional[bool] = True,
+        minzoom: Optional[int] = None,
+        maxzoom: Optional[int] = None,
+        paint: Optional[Dict[str, Any]] = None,
+        layout: Optional[Dict[str, Any]] = None,
+        before_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Add a raster tile layer to the map.
+
+        Args:
+            layer_id: Unique identifier for the layer.
+            source_url: URL template for the tile source (e.g., 'https://example.com/{z}/{x}/{y}.png').
+            attribution: Optional attribution text for the tile source.
+            opacity: Layer opacity between 0.0 and 1.0.
+            visible: Whether the layer should be visible initially.
+            minzoom: Minimum zoom level for the layer.
+            maxzoom: Maximum zoom level for the layer.
+            paint: Optional paint properties for the layer.
+            layout: Optional layout properties for the layer.
+            before_id: Optional layer ID to insert this layer before.
+            **kwargs: Additional source configuration options.
+        """
+        source_id = f"{layer_id}_source"
+
+        # Build source configuration
+        source_config = {"type": "raster", "tiles": [source_url], "tileSize": 256}
+
+        if attribution is not None:
+            source_config["attribution"] = attribution
+
+        # Add any additional source options from kwargs
+        source_config.update(kwargs)
+
+        # Add raster source
+        self.add_source(source_id, source_config)
+
+        # Add raster layer
+        layer_config = {"id": layer_id, "type": "raster", "source": source_id}
+
+        # Add minzoom/maxzoom if specified
+        if minzoom is not None:
+            layer_config["minzoom"] = minzoom
+        if maxzoom is not None:
+            layer_config["maxzoom"] = maxzoom
+
+        if paint:
+            layer_config["paint"] = paint
+        if layout:
+            layer_config["layout"] = layout
+
+        self.add_layer(
+            layer=layer_config,
+            before_id=before_id,
+            layer_id=layer_id,
+            opacity=opacity,
+            visible=visible,
+        )
+
+    def add_vector_layer(
+        self,
+        layer_id: str,
+        source_url: str,
+        source_layer: str,
+        layer_type: str = "fill",
+        paint: Optional[Dict[str, Any]] = None,
+        layout: Optional[Dict[str, Any]] = None,
+        before_id: Optional[str] = None,
+    ) -> None:
+        """Add a vector tile layer to the map.
+
+        Args:
+            layer_id: Unique identifier for the layer.
+            source_url: URL for the vector tile source.
+            source_layer: Name of the source layer within the vector tiles.
+            layer_type: Type of layer (e.g., 'fill', 'line', 'circle', 'symbol').
+            paint: Optional paint properties for styling the layer.
+            layout: Optional layout properties for the layer.
+            before_id: Optional layer ID to insert this layer before.
+        """
+        source_id = f"{layer_id}_source"
+
+        # Add vector source
+        self.add_source(source_id, {"type": "vector", "url": source_url})
+
+        # Add vector layer
+        layer_config = {
+            "id": layer_id,
+            "type": layer_type,
+            "source": source_id,
+            "source-layer": source_layer,
+        }
+
+        if paint:
+            layer_config["paint"] = paint
+        if layout:
+            layer_config["layout"] = layout
+
+        self.add_layer(layer=layer_config, before_id=before_id, layer_id=layer_id)
+
+    def add_image_layer(
+        self,
+        layer_id: str,
+        image_url: str,
+        coordinates: List[List[float]],
+        paint: Optional[Dict[str, Any]] = None,
+        before_id: Optional[str] = None,
+    ) -> None:
+        """Add an image layer to the map.
+
+        Args:
+            layer_id: Unique identifier for the layer.
+            image_url: URL of the image to display.
+            coordinates: Corner coordinates of the image as [[top-left], [top-right], [bottom-right], [bottom-left]].
+                        Each coordinate should be [longitude, latitude].
+            paint: Optional paint properties for the image layer.
+            before_id: Optional layer ID to insert this layer before.
+        """
+        source_id = f"{layer_id}_source"
+
+        # Add image source
+        self.add_source(
+            source_id, {"type": "image", "url": image_url, "coordinates": coordinates}
+        )
+
+        # Add raster layer for the image
+        layer_config = {"id": layer_id, "type": "raster", "source": source_id}
+
+        if paint:
+            layer_config["paint"] = paint
+
+        self.add_layer(layer=layer_config, before_id=before_id, layer_id=layer_id)
+
+    def add_control(
+        self,
+        control_type: str,
+        position: str = "top-right",
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a control to the map.
+
+        Args:
+            control_type: Type of control ('navigation', 'scale', 'fullscreen', 'geolocate', 'attribution', 'globe')
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            options: Additional options for the control
+        """
+        control_options = options or {}
+        control_options["position"] = position
+
+        # Store control in persistent state
+        control_key = f"{control_type}_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": control_type,
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", control_type, control_options)
+
+    def add_html(
+        self,
+        html: str,
+        bg_color: str = "white",
+        position: str = "bottom-right",
+        control_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Add an HTML element to the map.
+
+        Args:
+            html: HTML string to display
+            bg_color: Background color for the HTML container (default: 'white')
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            control_id: Optional unique identifier for the control. If not provided, one will be generated.
+            **kwargs: Additional options passed to the control
+        """
+        # Generate control_id if not provided
+        if control_id is None:
+            control_id = f"html_{position}_{uuid.uuid4().hex[:6]}"
+
+        # Check if control already exists and remove it first
+        current_controls = dict(self._controls)
+        control_key = f"html_{control_id}"
+        if control_key in current_controls:
+            self.remove_html(control_id)
+            current_controls = dict(self._controls)
+
+        control_options = dict(kwargs)
+        control_options.update(
+            {
+                "html": html,
+                "bgColor": bg_color,
+                "position": position,
+                "control_id": control_id,
+            }
+        )
+
+        # Store control in persistent state
+        current_controls[control_key] = {
+            "type": "html",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "html", control_options)
+
+    def update_html(
+        self,
+        control_id: str,
+        html: str,
+        bg_color: Optional[str] = None,
+    ) -> None:
+        """Update an existing HTML control.
+
+        Args:
+            control_id: The control ID used when adding the HTML control
+            html: New HTML string to display
+            bg_color: Optional new background color for the HTML container
+        """
+        # Update persistent state
+        control_key = f"html_{control_id}"
+        current_controls = dict(self._controls)
+        if control_key in current_controls:
+            current_controls[control_key]["options"]["html"] = html
+            if bg_color is not None:
+                current_controls[control_key]["options"]["bgColor"] = bg_color
+            self._controls = current_controls
+
+        self.call_js_method("updateHTML", control_key, html, bg_color)
+
+    def remove_html(
+        self,
+        control_id: str,
+    ) -> None:
+        """Remove an HTML control from the map.
+
+        Args:
+            control_id: The control ID used when adding the HTML control
+        """
+        # Remove from persistent state
+        control_key = f"html_{control_id}"
+        current_controls = dict(self._controls)
+        if control_key in current_controls:
+            del current_controls[control_key]
+            self._controls = current_controls
+
+        self.call_js_method("removeHTML", control_key)
+
+    def remove_control(
+        self,
+        control_type: str,
+        position: str = "top-right",
+    ) -> None:
+        """Remove a control from the map.
+
+        Args:
+            control_type: Type of control to remove ('navigation', 'scale', 'fullscreen', 'geolocate', 'attribution', 'globe')
+            position: Position where the control was added ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+        """
+        # Remove control from persistent state
+        control_key = f"{control_type}_{position}"
+        current_controls = dict(self._controls)
+        if control_key in current_controls:
+            del current_controls[control_key]
+            self._controls = current_controls
+
+        self.call_js_method("removeControl", control_type, position)
+
+    def add_layer_control(
+        self,
+        position: str = "top-right",
+        collapsed: bool = True,
+        layers: Optional[List[str]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a collapsible layer control panel to the map.
+
+        The layer control is a collapsible panel that allows users to toggle
+        visibility and adjust opacity of map layers. It displays as an icon
+        similar to other controls, and expands when clicked.
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            collapsed: Whether the control starts collapsed
+            layers: List of layer IDs to include. If None, includes all layers
+            options: Additional options for the control
+        """
+        control_options = options or {}
+        control_options.update(
+            {
+                "position": position,
+                "collapsed": collapsed,
+                "layers": layers,
+            }
+        )
+
+        # Get current layer states for initialization
+        layer_states = {}
+        target_layers = layers if layers is not None else list(self.layer_dict.keys())
+
+        # Always include Background layer for controlling map style layers
+        if layers is None or "Background" in layers:
+            layer_states["Background"] = {
+                "visible": True,
+                "opacity": 1.0,
+                "name": "Background",
+            }
+
+        for layer_id in target_layers:
+            if layer_id in self.layer_dict and layer_id != "Background":
+                layer_info = self.layer_dict[layer_id]
+                layer_states[layer_id] = {
+                    "visible": layer_info.get("visible", True),
+                    "opacity": layer_info.get("opacity", 1.0),
+                    "name": layer_info.get("name", layer_id),
+                    "type": layer_info.get("type"),
+                }
+
+        control_options["layerStates"] = layer_states
+
+        # Store control in persistent state
+        control_key = f"layer_control_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "layer_control",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "layer_control", control_options)
+
+    def add_geocoder_control(
+        self,
+        position: str = "top-left",
+        api_config: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+        collapsed: bool = True,
+    ) -> None:
+        """Add a geocoder control to the map for searching locations.
+
+        The geocoder control allows users to search for locations using a geocoding service.
+        By default, it uses the Nominatim (OpenStreetMap) geocoding API.
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            api_config: Configuration for the geocoding API. If None, uses default Nominatim config
+            options: Additional options for the geocoder control
+            collapsed: If True, shows only search icon initially. Click to expand input box.
+        """
+        if api_config is None:
+            # Default configuration using Nominatim API
+            api_config = {
+                "forwardGeocode": True,
+                "reverseGeocode": False,
+                "placeholder": "Search for places...",
+                "limit": 5,
+                "api_url": "https://nominatim.openstreetmap.org/search",
+            }
+
+        control_options = options or {}
+        control_options.update(
+            {
+                "position": position,
+                "api_config": api_config,
+                "collapsed": collapsed,
+            }
+        )
+
+        # Store control in persistent state
+        control_key = f"geocoder_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "geocoder",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "geocoder", control_options)
+
+    def add_maplibre_geocoder(
+        self,
+        position: str = "top-left",
+        api_key: Optional[str] = None,
+        maplibre_api: str = "maptiler",
+        language: Optional[str] = None,
+        placeholder: str = "Search",
+        proximity: Optional[List[float]] = None,
+        bbox: Optional[List[float]] = None,
+        country: Optional[str] = None,
+        types: Optional[str] = None,
+        limit: int = 5,
+        marker: bool = True,
+        show_result_markers: bool = True,
+        collapsed: bool = False,
+        clear_on_blur: bool = False,
+        clear_and_blur_on_esc: bool = False,
+        enable_event_logging: bool = False,
+        min_length: int = 2,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add MapLibre GL Geocoder control to the map.
+
+        The MapLibre GL Geocoder is a geocoder control for MapLibre GL that supports
+        various geocoding APIs including Maptiler, Mapbox, and others. It provides a
+        search interface for finding locations and can display markers for search results.
+
+        See: https://github.com/maplibre/maplibre-gl-geocoder
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            api_key: API key for the geocoding service (required for most services)
+            maplibre_api: Geocoding API to use ('maptiler', 'mapbox', or custom)
+            language: Language code for results (e.g., 'en', 'es', 'fr')
+            placeholder: Placeholder text in the search input
+            proximity: [lng, lat] to bias results towards this location
+            bbox: [minLng, minLat, maxLng, maxLat] to limit results to this bounding box
+            country: Country code(s) to limit results (e.g., 'us' or 'us,ca')
+            types: Comma-separated types to filter results (e.g., 'country,region,place')
+            limit: Maximum number of results to return
+            marker: Whether to add a marker at the geocoded location
+            show_result_markers: Whether to show markers for all search results
+            collapsed: Whether the control should start collapsed
+            clear_on_blur: Clear the input when it loses focus
+            clear_and_blur_on_esc: Clear input and remove focus when ESC is pressed
+            enable_event_logging: Enable console logging of geocoder events
+            min_length: Minimum number of characters to trigger search
+            options: Additional options passed to the MaplibreGeocoder constructor
+
+        Example:
+            ```python
+            m = MapLibreMap(center=[-87.61694, 41.86625], zoom=10)
+            m.add_maplibre_geocoder(
+                position="top-left",
+                api_key="your_api_key",
+                maplibre_api="maptiler",
+                language="en",
+                country="us"
+            )
+            ```
+        """
+        geocoder_config: Dict[str, Any] = options or {}
+
+        # Build configuration
+        geocoder_config.update(
+            {
+                "position": position,
+                "maplibregl": True,  # Signal to use maplibregl
+                "placeholder": placeholder,
+                "limit": limit,
+                "marker": marker,
+                "showResultMarkers": show_result_markers,
+                "collapsed": collapsed,
+                "clearOnBlur": clear_on_blur,
+                "clearAndBlurOnEsc": clear_and_blur_on_esc,
+                "enableEventLogging": enable_event_logging,
+                "minLength": min_length,
+            }
+        )
+
+        if api_key:
+            geocoder_config["apiKey"] = api_key
+
+        if maplibre_api:
+            geocoder_config["maplibreApi"] = maplibre_api
+
+        if language:
+            geocoder_config["language"] = language
+
+        if proximity:
+            if len(proximity) != 2:
+                raise ValueError(
+                    "proximity must be a list of two floats: [longitude, latitude]"
+                )
+            geocoder_config["proximity"] = proximity
+
+        if bbox:
+            if len(bbox) != 4:
+                raise ValueError(
+                    "bbox must be a list of four floats: [minLng, minLat, maxLng, maxLat]"
+                )
+            geocoder_config["bbox"] = bbox
+
+        if country:
+            geocoder_config["country"] = country
+
+        if types:
+            geocoder_config["types"] = types
+
+        # Store control state
+        control_key = f"maplibre_geocoder_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "maplibre_geocoder",
+            "position": position,
+            "options": geocoder_config,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "maplibre_geocoder", geocoder_config)
+
+    def add_export_control(
+        self,
+        position: str = "top-right",
+        filename: str = "map",
+        page_size: Optional[Sequence[Union[int, float]]] = None,
+        page_orientation: str = "landscape",
+        default_format: str = "pdf",
+        dpi: int = 300,
+        allowed_sizes: Optional[Sequence[str]] = None,
+        crosshair: bool = False,
+        printable_area: bool = False,
+        locale: str = "en",
+        options: Optional[Dict[str, Any]] = None,
+        collapsed: bool = True,
+    ) -> None:
+        """Add an export control for saving the map as images or PDF.
+
+        This control leverages the `@watergis/maplibre-gl-export` plugin to provide an
+        interactive, collapsible button that lets users export the current map view as
+        PNG, JPEG, PDF, or SVG files. The control appears alongside other MapLibre
+        controls and opens a small panel when toggled.
+
+        Args:
+            position: Placement of the control on the map container.
+            filename: Default filename (without extension) suggested for exports.
+            page_size: Size of the export page in millimetres as [width, height]. If
+                omitted, the plugin defaults to A4.
+            page_orientation: Page orientation, either ``"landscape"`` or ``"portrait"``.
+            default_format: Default export format (``"pdf"``, ``"png"``, ``"jpg"``, ``"svg"``).
+            dpi: Dots per inch used when rendering the export.
+            allowed_sizes: Optional whitelist of page sizes (e.g. ``["A4", "LETTER"]``).
+            crosshair: Whether to show the crosshair overlay when the panel is open.
+            printable_area: Whether to show the printable area overlay when the panel is open.
+            locale: Two-letter locale code for the control's UI language.
+            options: Extra keyword arguments forwarded to the export plugin.
+            collapsed: Whether the control should start collapsed (button only).
+        """
+
+        orientation_value = page_orientation.lower()
+        if orientation_value not in {"landscape", "portrait"}:
+            raise ValueError("page_orientation must be 'landscape' or 'portrait'")
+
+        format_value = default_format.lower()
+        if format_value not in {"png", "jpg", "jpeg", "pdf", "svg"}:
+            raise ValueError(
+                "default_format must be one of {'png', 'jpg', 'jpeg', 'pdf', 'svg'}"
+            )
+        # Normalise JPEG alias
+        if format_value == "jpeg":
+            format_value = "jpg"
+
+        control_options: Dict[str, Any] = dict(options or {})
+        clean_filename = (
+            filename.strip() if isinstance(filename, str) else str(filename)
+        )
+        clean_locale = (
+            locale.strip().lower() if isinstance(locale, str) else str(locale).lower()
+        )
+
+        control_options["position"] = position
+        control_options.setdefault("Filename", clean_filename or "map")
+        control_options.setdefault("PageOrientation", orientation_value)
+        control_options.setdefault("Format", format_value)
+        control_options.setdefault("DPI", int(dpi))
+        control_options.setdefault("Crosshair", bool(crosshair))
+        control_options.setdefault("PrintableArea", bool(printable_area))
+        control_options.setdefault("Locale", clean_locale or "en")
+        control_options["collapsed"] = collapsed
+
+        if page_size is not None:
+            page_size_values = list(page_size)
+            if len(page_size_values) != 2:
+                raise ValueError(
+                    "page_size must contain exactly two values [width, height]"
+                )
+            control_options["PageSize"] = [
+                float(page_size_values[0]),
+                float(page_size_values[1]),
+            ]
+
+        if allowed_sizes is not None:
+            control_options["AllowedSizes"] = [
+                size.upper() for size in allowed_sizes if isinstance(size, str)
+            ]
+
+        control_key = f"export_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "export",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "export", control_options)
+
+    def add_geogrid_control(
+        self,
+        position: str = "top-left",
+        before_layer_id: Optional[str] = None,
+        zoom_level_range: Optional[Sequence[Union[int, float]]] = None,
+        grid_style: Optional[Dict[str, Any]] = None,
+        label_style: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a geographic grid (graticule) with labeled coordinates to the map.
+
+        This control uses the `geogrid-maplibre-gl` plugin to display latitude/longitude
+        grid lines with customizable styling and formatting. The grid dynamically adjusts
+        based on zoom level and supports globe projection (MapLibre GL 5.x).
+
+        Args:
+            position: Placement of the control on the map container (not applicable
+                for this plugin, but kept for API consistency).
+            before_layer_id: ID of the layer to insert the grid beneath. If None,
+                the grid is added as the top layer.
+            zoom_level_range: Tuple of [min_zoom, max_zoom] defining visibility range.
+                If None, the grid is visible at all zoom levels.
+            grid_style: Styling options for grid lines. Supports both MapLibre paint
+                properties (``line-color``, ``line-width``, ``line-dasharray``,
+                ``line-opacity``) and GeoGrid native properties (``color``, ``width``,
+                ``dasharray``, ``opacity``). MapLibre properties are automatically
+                converted to GeoGrid format.
+            label_style: Styling options for coordinate labels. Supports CSS properties
+                like ``color``, ``fontSize``, ``textShadow``, etc.
+            options: Additional configuration options passed directly to the GeoGrid
+                constructor. Can include custom ``gridDensity`` or ``formatLabels`` functions.
+
+        Example:
+            >>> m = MapLibreMap(center=[0, 20], zoom=2)
+            >>> # Using MapLibre paint properties
+            >>> m.add_geogrid_control(grid_style={'line-color': '#ff0000', 'line-width': 2})
+            >>> # Using GeoGrid native properties
+            >>> m.add_geogrid_control(grid_style={'color': 'red', 'width': 2})
+        """
+
+        control_options: Dict[str, Any] = dict(options or {})
+        control_options["position"] = position
+
+        if before_layer_id is not None:
+            control_options["beforeLayerId"] = before_layer_id
+
+        if zoom_level_range is not None:
+            zoom_range = list(zoom_level_range)
+            if len(zoom_range) != 2:
+                raise ValueError(
+                    "zoom_level_range must contain exactly two values [min_zoom, max_zoom]"
+                )
+            control_options["zoomLevelRange"] = [
+                float(zoom_range[0]),
+                float(zoom_range[1]),
+            ]
+
+        if grid_style is not None:
+            control_options["gridStyle"] = dict(grid_style)
+
+        if label_style is not None:
+            control_options["labelStyle"] = dict(label_style)
+
+        control_key = f"geogrid_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "geogrid",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "geogrid", control_options)
+
+    def remove_geogrid_control(self, position: str = "top-left") -> None:
+        """Remove the GeoGrid control from the map."""
+
+        control_key = f"geogrid_{position}"
+        current_controls = dict(self._controls)
+        if control_key in current_controls:
+            current_controls.pop(control_key)
+            self._controls = current_controls
+        self.call_js_method("removeControl", "geogrid", position)
+
+    def add_geoman_control(
+        self,
+        position: str = "top-left",
+        geoman_options: Optional[Dict[str, Any]] = None,
+        settings: Optional[Dict[str, Any]] = None,
+        controls: Optional[Dict[str, Any]] = None,
+        collapsed: Optional[bool] = False,
+        show_info_box: Optional[bool] = None,
+        info_box_mode: str = "click",
+        info_box_tolerance: Optional[int] = None,
+        paint: Optional[Dict[str, Any]] = None,
+        paint_above_geoman: bool = False,
+    ) -> None:
+        """Add the MapLibre-Geoman drawing and editing toolkit.
+
+        Args:
+            position: Where to dock the Geoman toolbar on the map.
+            geoman_options: Raw configuration dictionary passed directly to the
+                ``Geoman`` constructor.
+            settings: Optional convenience overrides merged into
+                ``geoman_options['settings']``.
+            controls: Optional overrides for toolbar sections such as ``draw``,
+                ``edit``, or ``helper``. Each key should map to a dictionary of
+                button configuration overrides.
+            collapsed: Whether the toolbar UI should start collapsed. Use
+                ``None`` to defer to the underlying configuration.
+            show_info_box: If True, show an info box that displays the properties
+                of the currently selected feature when clicking or hovering over any feature
+                in the Geoman layer, not just during editing. Defaults to None (no change in frontend default).
+            info_box_mode: 'click' to show info only after clicking a feature (default),
+                or 'hover' to show on mouse hover.
+            info_box_tolerance: Pixel search tolerance when detecting a feature
+                under the pointer. Larger values make selection easier (default 8 for
+                click, 6 for hover if not specified).
+            paint: Optional styling config for a mirrored, read-only GeoJSON layer
+                that reflects the current ``geoman_data`` for visualization. All keys
+                are optional. Structure:
+                {
+                    "line": { ... MapLibre line paint ... },     # For LineString/MultiLineString
+                    "fill": { ... MapLibre fill paint ... },     # For Polygon/MultiPolygon
+                    "point": { ... MapLibre circle paint ... }   # For Point/MultiPoint
+                }
+                The mirrored layer shows the final saved geometry, not intermediate
+                editing states. You can use data-driven expressions here, e.g.
+                line color by ["get","highway"]. Note: If your paint styles are too
+                similar to Geoman's default editing styles, features may be visually
+                difficult to distinguish during editing.
+            paint_above_geoman: If True (default), place the mirrored style layers
+                above Geoman’s edit layers; set False to draw beneath them.
+        """
+
+        geoman_config: Dict[str, Any] = dict(geoman_options or {})
+
+        if settings:
+            geoman_settings = geoman_config.setdefault("settings", {})
+            geoman_settings.update(settings)
+
+        # Enable snapping by default
+        geoman_controls = geoman_config.setdefault("controls", {})
+        helper_controls = geoman_controls.setdefault("helper", {})
+        snapping_config = helper_controls.setdefault("snapping", {})
+        if "active" not in snapping_config:
+            snapping_config["active"] = True
+
+        if controls:
+            for section, section_options in controls.items():
+                if isinstance(section_options, dict):
+                    section_config = geoman_controls.setdefault(section, {})
+                    section_config.update(section_options)
+                else:
+                    geoman_controls[section] = section_options
+
+        control_options: Dict[str, Any] = {"position": position}
+        if geoman_config:
+            control_options["geoman_options"] = geoman_config
+        if show_info_box is not None:
+            control_options["show_info_box"] = bool(show_info_box)
+        if info_box_mode:
+            control_options["info_box_mode"] = str(info_box_mode)
+        if info_box_tolerance is not None:
+            control_options["info_box_tolerance"] = int(info_box_tolerance)
+        if paint:
+            control_options["geoman_paint"] = dict(paint)
+            control_options["geoman_paint_above"] = bool(paint_above_geoman)
+
+        control_key = f"geoman_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "geoman",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+        self.controls["geoman"] = position
+
+        self.call_js_method("addControl", "geoman", control_options)
+
+        # If Geoman is already initialized, ensure the info box setting is applied at runtime
+        if show_info_box is not None:
+            try:
+                self.call_js_method("setGeomanInfoBoxEnabled", bool(show_info_box))
+            except Exception:
+                pass
+
+        if collapsed is not None:
+            if collapsed:
+                self.collapse_geoman_control()
+            else:
+                # If an explicit method to uncollapse exists, call it here.
+                # For now, this is a placeholder for future logic.
+                pass
+
+    def remove_geoman_control(self, position: str = "top-left") -> None:
+        """Remove the Geoman control toolbar."""
+
+        control_key = f"geoman_{position}"
+        current_controls = dict(self._controls)
+        if control_key in current_controls:
+            current_controls.pop(control_key)
+            self._controls = current_controls
+        self.controls.pop("geoman", None)
+        self.call_js_method("removeControl", "geoman", position)
+
+    def set_geoman_data(self, data: Dict[str, Any]) -> None:
+        """Replace the current Geoman feature collection."""
+
+        self.geoman_data = data or {"type": "FeatureCollection", "features": []}
+
+    def clear_geoman_data(self) -> None:
+        """Clear all Geoman-managed features."""
+
+        self.set_geoman_data({"type": "FeatureCollection", "features": []})
+
+    def get_geoman_data(
+        self,
+    ) -> Dict[str, Any]:
+        """Return the current Geoman feature collection.
+
+        Returns:
+            A GeoJSON FeatureCollection containing all Geoman-managed features.
+
+        """
+
+        return self.geoman_data
+
+    def get_geoman_data_as_gdf(self, crs: str = "EPSG:4326") -> gpd.GeoDataFrame:
+        """Return the current Geoman feature collection as a GeoDataFrame.
+
+        Args:
+            crs: The CRS of the GeoDataFrame. Defaults to "EPSG:4326".
+        Returns:
+            A GeoDataFrame containing the current Geoman feature collection.
+        """
+
+        return gpd.GeoDataFrame.from_features(self.geoman_data["features"], crs=crs)
+
+    def collapse_geoman_control(self) -> None:
+        """Collapse the Geoman draw control toolbar."""
+
+        self.call_js_method("collapseGeomanControl")
+
+    def expand_geoman_control(self) -> None:
+        """Expand the Geoman draw control toolbar."""
+
+        self.call_js_method("expandGeomanControl")
+
+    def toggle_geoman_control(self) -> None:
+        """Toggle the Geoman draw control toolbar between collapsed and expanded states."""
+
+        self.call_js_method("toggleGeomanControl")
+
+    def add_vector_editor(
+        self,
+        filename: Union[str, Dict[str, Any], "gpd.GeoDataFrame"],
+        properties: Optional[Dict[str, Any]] = None,
+        out_dir: Optional[str] = None,
+        filename_prefix: str = "",
+        time_format: str = "%Y%m%dT%H%M%S",
+        file_ext: str = "geojson",
+        controls: Optional[Dict[str, Any]] = None,
+        geoman_position: str = "top-left",
+        widget_position: str = "top-right",
+        widget_label: str = "Vector Editor",
+        widget_icon: str = "✎",
+        fit_bounds_options: Optional[Dict] = None,
+        **kwargs: Any,
+    ) -> str:
+        """Add an interactive vector editor with property assignment capabilities.
+
+        This method creates an interactive interface for editing vector features and
+        assigning properties to them. It loads existing vector data, adds a Geoman
+        drawing control, and provides a widget panel for editing feature properties.
+
+        Args:
+            filename: Vector data source - can be:
+                - File path (GeoJSON, shapefile, etc.)
+                - URL to remote GeoJSON
+                - GeoJSON dictionary
+                - GeoDataFrame
+            properties: Dictionary defining editable properties where keys are property
+                names and values define the input type:
+                - List/tuple: Creates dropdown with these options
+                - int: Creates integer input with this default value
+                - float: Creates float input with this default value
+                - str: Creates text input with this default value
+                If None, properties are inferred from the data.
+            out_dir: Directory for exported files. Defaults to current directory.
+            filename_prefix: Prefix for exported filenames.
+            time_format: Format string for timestamp in exported filenames.
+            file_ext: File extension for exports (default: "geojson").
+            controls: Dictionary specifying Geoman drawing controls to enable. The dictionary should have keys such as "draw", "edit", and "helper", each mapping to a list of control names to enable.
+                Defaults to:
+                    {
+                        "draw": ["point", "polygon", "line_string"],
+                        "edit": ["edit", "cut", "copy", "merge", "split"],
+                        "helper": ["trash"]
+                    }
+                Example:
+                    controls = {
+                        "draw": ["point", "polygon", "line_string"],
+                        "edit": ["edit", "cut", "copy", "merge", "split"],
+                        "helper": ["trash"]
+                    }
+            geoman_position: Position of Geoman control on map.
+            widget_position: Position of property editor widget on map.
+            widget_label: Label for the property editor widget panel.
+            widget_icon: Icon for the property editor toggle button.
+            fit_bounds_options: Options passed to fit_bounds().
+            **kwargs: Additional arguments passed to add_geoman_control().
+
+        Returns:
+            str: The control ID of the added widget control.
+
+        Example:
+            >>> m = MapLibreMap()
+            >>> m.add_basemap("Esri.WorldImagery")
+            >>> url = "https://example.com/buildings.geojson"
+            >>> properties = {
+            ...     "class": ["residential", "commercial", "industrial"],
+            ...     "height": 0.0,
+            ...     "floors": 1
+            ... }
+            >>> control_id = m.add_vector_editor(url, properties=properties)
+        """
+        from datetime import datetime
+        import os
+
+        if not HAS_GEOPANDAS:
+            raise ImportError(
+                "geopandas is required for add_vector_editor. "
+                "Install it with: pip install geopandas"
+            )
+
+        import geopandas as gpd
+
+        # Load vector data
+        if isinstance(filename, str):
+            # Check if it's a URL or file path
+            if filename.startswith(("http://", "https://")):
+                gdf = gpd.read_file(filename)
+            else:
+                _, ext = os.path.splitext(filename)
+                ext = ext.lower()
+                if ext in [".parquet", ".pq", ".geoparquet"]:
+                    gdf = gpd.read_parquet(filename)
+                else:
+                    gdf = gpd.read_file(filename)
+        elif isinstance(filename, dict):
+            gdf = gpd.GeoDataFrame.from_features(filename, crs="EPSG:4326")
+        elif isinstance(filename, gpd.GeoDataFrame):
+            gdf = filename
+        else:
+            raise ValueError(
+                "filename must be a string (path/URL), dict (GeoJSON), or GeoDataFrame"
+            )
+
+        # Ensure WGS84
+        gdf = gdf.to_crs(epsg=4326)
+
+        # Set output directory
+        if out_dir is None:
+            out_dir = os.getcwd()
+
+        # Infer properties from GeoDataFrame if not provided
+        if properties is None:
+            properties = {}
+            dtypes = gdf.dtypes.to_dict()
+            for key, value in dtypes.items():
+                if key != "geometry":
+                    if value == "object":
+                        if gdf[key].nunique() < 10:
+                            properties[key] = gdf[key].unique().tolist()
+                        else:
+                            properties[key] = ""
+                    elif value in ["int32", "int64"]:
+                        properties[key] = 0
+                    elif value in ["float32", "float64"]:
+                        properties[key] = 0.0
+                    elif value == "bool":
+                        properties[key] = gdf[key].unique().tolist()
+                    else:
+                        properties[key] = ""
+
+        # Select only property columns plus geometry
+        columns = list(properties.keys())
+        gdf = gdf[columns + ["geometry"]]
+        geojson = gdf.__geo_interface__
+
+        # Get bounds and fit map
+        bounds = utils.geojson_bounds(geojson)
+        if bounds is not None:
+            # Transform flat bounds [minx, miny, maxx, maxy] to [[minx, miny], [maxx, maxy]]
+            self.fit_bounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]])
+        # else: bounds is None, skip fitting bounds
+        # Prepare GeoJSON features for Geoman with proper IDs
+        geoman_geojson = {"type": "FeatureCollection", "features": []}
+
+        for idx, feature in enumerate(geojson["features"]):
+            # Create a unique ID for each feature
+            feature_id = f"feature-{uuid.uuid4().hex[:8]}"
+
+            # Determine the Geoman shape type from geometry
+            geom_type = feature["geometry"]["type"]
+            if geom_type == "Point":
+                gm_shape = "marker"
+            elif geom_type in ["Polygon", "MultiPolygon"]:
+                gm_shape = "polygon"
+            elif geom_type in ["LineString", "MultiLineString"]:
+                gm_shape = "line"
+            else:
+                gm_shape = "polygon"
+
+            # Create Geoman-compatible feature with preserved properties
+            # Start with original properties, then add Geoman-specific ones
+            feature_properties = feature.get("properties", {}).copy()
+            feature_properties["__gm_id"] = feature_id
+            feature_properties["__gm_shape"] = gm_shape
+
+            geoman_feature = {
+                "type": "Feature",
+                "id": feature_id,
+                "properties": feature_properties,
+                "geometry": feature["geometry"],
+            }
+
+            geoman_geojson["features"].append(geoman_feature)
+
+        # Set default controls if not provided
+        if controls is None:
+            controls = {
+                "draw": {
+                    "point": {"active": True},
+                    "polygon": {"active": True},
+                    "line_string": {"active": True},
+                },
+                "edit": {
+                    "change": {"active": False},  # Disable edit mode button
+                    "trash": {"active": True},  # Keep delete button
+                },
+                "helper": {
+                    "click_to_edit": {"active": True}  # Enable click-to-edit mode
+                },
+            }
+
+        # Add Geoman control first
+        self.add_geoman_control(position=geoman_position, controls=controls, **kwargs)
+
+        # Now load the features into Geoman (will be editable with JS fix)
+        self.set_geoman_data(geoman_geojson)
+
+        # Initialize feature properties storage
+        # Map Geoman feature IDs to properties from GeoDataFrame
+        draw_features = {}
+        for idx, (row_idx, row) in enumerate(gdf.iterrows()):
+            # Get the corresponding Geoman feature ID
+            feature_id = geoman_geojson["features"][idx]["id"]
+
+            feature_props = {}
+            for prop in properties.keys():
+                if prop in gdf.columns:
+                    val = row[prop]
+                    # Convert numpy/pandas types to Python native types
+                    if hasattr(val, "item"):
+                        val = val.item()
+                    feature_props[prop] = val
+                else:
+                    # Use default value from properties
+                    if isinstance(properties[prop], (list, tuple)):
+                        feature_props[prop] = properties[prop][0]
+                    else:
+                        feature_props[prop] = properties[prop]
+            draw_features[feature_id] = feature_props
+
+        # Store on map instance
+        if not hasattr(self, "draw_features"):
+            self.draw_features = {}
+        self.draw_features.update(draw_features)
+
+        # Expand dropdown options to include values from loaded GeoDataFrame
+        for key, values in properties.items():
+            if isinstance(values, (list, tuple)) and key in gdf.columns:
+                # Get unique values from the loaded data
+                existing_values = set(gdf[key].dropna().unique())
+
+                # Merge with provided options
+                options_set = set(values)
+                merged_options = options_set.union(existing_values)
+                merged_list = [val for val in values if val in merged_options]
+                for val in sorted(existing_values):
+                    if val not in options_set:
+                        merged_list.append(val)
+                properties[key] = merged_list
+
+        # Create property editing widgets
+        prop_widgets = widgets.VBox()
+        output = widgets.Output()
+
+        # Add a label to show which feature is selected
+        feature_label = widgets.HTML(
+            value="<p style='margin:5px 0; color:#666; font-size:12px;'>No feature selected</p>"
+        )
+
+        for key, values in properties.items():
+            if isinstance(values, (list, tuple)):
+                prop_widget = widgets.Dropdown(
+                    options=values,
+                    description=key,
+                    style={"description_width": "initial"},
+                )
+            elif isinstance(values, int):
+                prop_widget = widgets.IntText(
+                    value=values,
+                    description=key,
+                    style={"description_width": "initial"},
+                )
+            elif isinstance(values, float):
+                prop_widget = widgets.FloatText(
+                    value=values,
+                    description=key,
+                    style={"description_width": "initial"},
+                )
+            else:
+                prop_widget = widgets.Text(
+                    value=str(values),
+                    description=key,
+                    style={"description_width": "initial"},
+                )
+            prop_widgets.children += (prop_widget,)
+
+        # Create buttons
+        button_layout = widgets.Layout(width="100px")
+        save_btn = widgets.Button(
+            description="Save",
+            button_style="primary",
+            layout=button_layout,
+            tooltip="Save current feature properties",
+        )
+        export_btn = widgets.Button(
+            description="Export",
+            button_style="success",
+            layout=button_layout,
+            tooltip="Export all features to file",
+        )
+        reset_btn = widgets.Button(
+            description="Reset",
+            button_style="warning",
+            layout=button_layout,
+            tooltip="Reset to default values",
+        )
+
+        # Track currently selected feature for property editing
+        current_feature_id = {"id": None}
+
+        # Create a dropdown to select features
+        feature_selector = widgets.Dropdown(
+            options=[],
+            description="Select Feature:",
+            style={"description_width": "initial"},
+            layout=widgets.Layout(width="100%", margin="5px 0"),
+        )
+
+        # Update feature selector when geoman_data changes
+        def update_feature_list(change):
+            """Update the feature dropdown when features change."""
+            geoman_data = change["new"]
+            if geoman_data and "features" in geoman_data:
+                features = geoman_data["features"]
+                if len(features) > 0:
+                    # Create options: (label, feature_id)
+                    options = [
+                        (f"Feature {idx + 1}", f.get("id"))
+                        for idx, f in enumerate(features)
+                        if f.get("id")
+                    ]
+                    feature_selector.options = options
+
+                    # If no feature selected yet, select the first one
+                    if current_feature_id["id"] is None and len(options) > 0:
+                        feature_selector.value = options[0][1]
+                else:
+                    feature_selector.options = []
+                    current_feature_id["id"] = None
+                    feature_label.value = "<p style='margin:5px 0; color:#666; font-size:12px;'>No features available</p>"
+            else:
+                feature_selector.options = []
+                current_feature_id["id"] = None
+                feature_label.value = "<p style='margin:5px 0; color:#666; font-size:12px;'>No features available</p>"
+
+        self.observe(update_feature_list, names="geoman_data")
+
+        # When user selects a feature from dropdown
+        def on_feature_selected(change):
+            """Update property widgets when user selects a feature."""
+            feature_id = change["new"]
+            if not feature_id:
+                return
+
+            current_feature_id["id"] = feature_id
+            feature_label.value = f"<p style='margin:5px 0; color:#0066cc; font-size:12px;'><b>Editing:</b> {feature_id}</p>"
+
+            # Initialize properties for new features
+            if feature_id not in self.draw_features:
+                self.draw_features[feature_id] = {}
+                for key, values in properties.items():
+                    if isinstance(values, (list, tuple)):
+                        self.draw_features[feature_id][key] = values[0]
+                    else:
+                        self.draw_features[feature_id][key] = values
+
+            # Update widgets with feature's current properties
+            feature_props = self.draw_features[feature_id]
+            for prop_widget in prop_widgets.children:
+                key = prop_widget.description
+                if key in feature_props:
+                    value = feature_props[key]
+                    # For dropdowns, only set if value is in options
+                    if hasattr(prop_widget, "options"):
+                        if value in prop_widget.options:
+                            prop_widget.value = value
+                        elif len(prop_widget.options) > 0:
+                            prop_widget.value = prop_widget.options[0]
+                    else:
+                        prop_widget.value = value
+
+        feature_selector.observe(on_feature_selected, names="value")
+
+        # Trigger initial update
+        update_feature_list({"new": self.geoman_data})
+
+        # Save button handler
+        def on_save_click(b):
+            output.clear_output()
+            feature_id = current_feature_id["id"]
+            if feature_id is not None:
+                # Save widget values to feature properties
+                for prop_widget in prop_widgets.children:
+                    key = prop_widget.description
+                    self.draw_features[feature_id][key] = prop_widget.value
+                with output:
+                    print("✓ Feature properties saved")
+            else:
+                with output:
+                    print(
+                        "⚠ No feature selected. Click on a feature to edit it or draw a new one."
+                    )
+
+        save_btn.on_click(on_save_click)
+
+        # Export button handler
+        def on_export_click(b):
+            output.clear_output()
+            current_time = datetime.now().strftime(time_format)
+            export_filename = os.path.join(
+                out_dir, f"{filename_prefix}{current_time}.{file_ext}"
+            )
+
+            # Update feature collection with saved properties
+            geoman_data = self.geoman_data
+            if geoman_data and "features" in geoman_data:
+                for idx, feature in enumerate(geoman_data["features"]):
+                    feature_id = feature.get("id")
+                    if feature_id and feature_id in self.draw_features:
+                        # Merge Geoman properties with our custom properties
+                        props = dict(feature.get("properties", {}))
+                        props.update(self.draw_features[feature_id])
+                        geoman_data["features"][idx]["properties"] = props
+
+                # Export to file
+                export_gdf = gpd.GeoDataFrame.from_features(
+                    geoman_data, crs="EPSG:4326"
+                )
+                export_gdf.to_file(export_filename, driver="GeoJSON")
+
+                with output:
+                    print(f"✓ Exported: {os.path.basename(export_filename)}")
+            else:
+                with output:
+                    print("⚠ No features to export")
+
+        export_btn.on_click(on_export_click)
+
+        # Reset button handler
+        def on_reset_click(b):
+            output.clear_output()
+            for prop_widget in prop_widgets.children:
+                key = prop_widget.description
+                if key in properties:
+                    if isinstance(properties[key], (list, tuple)):
+                        prop_widget.value = properties[key][0]
+                    else:
+                        prop_widget.value = properties[key]
+            with output:
+                print("✓ Reset to defaults")
+
+        reset_btn.on_click(on_reset_click)
+
+        # Create main widget container
+        info_label = widgets.HTML(
+            value="<i>Select a feature from the dropdown to edit its properties</i>",
+            layout=widgets.Layout(margin="0 0 5px 0"),
+        )
+
+        button_box = widgets.HBox(
+            [save_btn, export_btn, reset_btn],
+            layout=widgets.Layout(margin="10px 0"),
+        )
+
+        main_widget = widgets.VBox(
+            [
+                info_label,
+                feature_selector,
+                feature_label,
+                prop_widgets,
+                button_box,
+                output,
+            ],
+            layout=widgets.Layout(padding="10px"),
+        )
+
+        # Add widget control to map
+        control_id = self.add_widget_control(
+            main_widget,
+            label=widget_label,
+            icon=widget_icon,
+            position=widget_position,
+            collapsed=True,
+            panel_width=320,
+        )
+
+        return control_id
+
+    def add_measures_control(
+        self,
+        position: str = "top-left",
+        units: str = "metric",
+        area_button_title: Optional[str] = None,
+        length_button_title: Optional[str] = None,
+        clear_button_title: Optional[str] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add the MapLibre GL Measures control for distance and area measurement.
+
+        This control allows users to measure distances along lines and calculate areas
+        within polygons on the map.
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            units: Unit system for measurements, either 'metric' or 'imperial'
+            area_button_title: Custom title for the area measurement button
+            length_button_title: Custom title for the length measurement button
+            clear_button_title: Custom title for the clear measurements button
+            options: Additional options for the measures control (styling, callbacks, etc.)
+        """
+        if units not in {"metric", "imperial"}:
+            raise ValueError("units must be either 'metric' or 'imperial'")
+
+        measures_config: Dict[str, Any] = dict(options or {})
+
+        # Set unit system
+        measures_config["units"] = units
+
+        # Set custom button titles if provided
+        if area_button_title is not None:
+            measures_config["areaMeasurementButtonTitle"] = area_button_title
+        if length_button_title is not None:
+            measures_config["lengthMeasurementButtonTitle"] = length_button_title
+        if clear_button_title is not None:
+            measures_config["clearMeasurementsButtonTitle"] = clear_button_title
+
+        control_options: Dict[str, Any] = {
+            "position": position,
+            "measures_options": measures_config,
+        }
+
+        control_key = f"measures_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "measures",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+        self.controls["measures"] = position
+
+        self.call_js_method("addControl", "measures", control_options)
+
+    def remove_measures_control(self, position: str = "top-left") -> None:
+        """Remove the Measures control."""
+
+        control_key = f"measures_{position}"
+        current_controls = dict(self._controls)
+        if control_key in current_controls:
+            current_controls.pop(control_key)
+            self._controls = current_controls
+        self.controls.pop("measures", None)
+        self.call_js_method("removeControl", "measures", position)
+
+    def add_google_streetview(
+        self,
+        position: str = "top-left",
+        api_key: Optional[str] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a Google Street View control to the map.
+
+        This method adds a Google Street View control that allows users to view
+        street-level imagery at clicked locations on the map.
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            api_key: Google Maps API key. If None, retrieves from GOOGLE_MAPS_API_KEY environment variable
+            options: Additional options for the Street View control
+
+        Raises:
+            ValueError: If no API key is provided and none can be found in environment variables
+        """
+        if api_key is None:
+            api_key = utils.get_env_var("GOOGLE_MAPS_API_KEY")
+            if api_key is None:
+                raise ValueError(
+                    "Google Maps API key is required. Please provide it as a parameter "
+                    "or set the GOOGLE_MAPS_API_KEY environment variable."
+                )
+
+        control_options = options or {}
+        control_options.update(
+            {
+                "position": position,
+                "api_key": api_key,
+            }
+        )
+
+        # Store control in persistent state
+        control_key = f"google_streetview_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "google_streetview",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "google_streetview", control_options)
+
+    def _update_layer_controls(self) -> None:
+        """Update all existing layer controls with the current layer state."""
+        # Find all layer controls in the _controls dictionary
+        for control_key, control_config in self._controls.items():
+            if control_config.get("type") == "layer_control":
+                # Update the layerStates in the control options
+                control_options = control_config.get("options", {})
+                layers_filter = control_options.get("layers")
+
+                # Get current layer states for this control
+                layer_states = {}
+                target_layers = (
+                    layers_filter
+                    if layers_filter is not None
+                    else list(self.layer_dict.keys())
+                )
+
+                # Always include Background layer for controlling map style layers
+                if layers_filter is None or "Background" in layers_filter:
+                    layer_states["Background"] = {
+                        "visible": True,
+                        "opacity": 1.0,
+                        "name": "Background",
+                    }
+
+                for layer_id in target_layers:
+                    if layer_id in self.layer_dict and layer_id != "Background":
+                        layer_info = self.layer_dict[layer_id]
+                        layer_states[layer_id] = {
+                            "visible": layer_info.get("visible", True),
+                            "opacity": layer_info.get("opacity", 1.0),
+                            "name": layer_info.get("name", layer_id),
+                            "type": layer_info.get("type"),
+                        }
+
+                # Update the control options with new layer states
+                control_options["layerStates"] = layer_states
+
+                # Update the control configuration
+                control_config["options"] = control_options
+
+        # Trigger the JavaScript layer control to check for new layers
+        # by updating the _layer_dict trait that the JS listens to
+        self._layer_dict = dict(self.layer_dict)
+
+    def remove_layer(self, layer_id: str) -> None:
+        """Remove a layer from the map.
+
+        Args:
+            layer_id: Unique identifier for the layer to remove.
+        """
+        # Check if this is a marker group
+        if layer_id in self.layer_dict:
+            layer_type = self.layer_dict[layer_id].get("type")
+            if layer_type == "marker-group":
+                self.call_js_method("removeMarkerGroup", layer_id)
+                del self.layer_dict[layer_id]
+                self._update_layer_controls()
+                return
+
+        # Remove from JavaScript map
+        self.call_js_method("removeLayer", layer_id)
+
+        # Remove from local state
+        if layer_id in self._layers:
+            current_layers = dict(self._layers)
+            del current_layers[layer_id]
+            self._layers = current_layers
+
+        # Remove FlatGeobuf metadata if present
+        if layer_id in self.flatgeobuf_layers:
+            self.call_js_method("removeFlatGeobufLayer", layer_id)
+            flatgeobuf_layers = dict(self.flatgeobuf_layers)
+            del flatgeobuf_layers[layer_id]
+            self.flatgeobuf_layers = flatgeobuf_layers
+
+        # Remove from layer_dict
+        if layer_id in self.layer_dict:
+            del self.layer_dict[layer_id]
+
+        # Update layer controls if they exist
+        self._update_layer_controls()
+
+    def add_cog_layer(
+        self,
+        layer_id: str,
+        cog_url: str,
+        opacity: Optional[float] = 1.0,
+        visible: Optional[bool] = True,
+        paint: Optional[Dict[str, Any]] = None,
+        before_id: Optional[str] = None,
+        titiler_endpoint: Optional[str] = None,
+        fit_bounds: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        """Add a Cloud Optimized GeoTIFF (COG) layer to the map.
+
+        This method supports COGs in any coordinate reference system (CRS). For COGs
+        in EPSG:3857, it uses the maplibre-cog-protocol for direct rendering. For COGs
+        in other CRS, it uses TiTiler to reproject on-the-fly.
+
+        Args:
+            layer_id: Unique identifier for the COG layer.
+            cog_url: URL to the COG file.
+            opacity: Layer opacity between 0.0 and 1.0.
+            visible: Whether the layer should be visible initially.
+            paint: Optional paint properties for the layer.
+            before_id: Optional layer ID to insert this layer before.
+            titiler_endpoint: Optional TiTiler endpoint URL. If None, checks COG CRS
+                and uses TiTiler automatically for non-EPSG:3857 COGs. Set to a TiTiler
+                URL (e.g., "https://giswqs-titiler-endpoint.hf.space") to force using TiTiler.
+            fit_bounds: If True, automatically fit map bounds to COG extent.
+            **kwargs: Additional parameters passed to TiTiler (e.g., rescale, colormap,
+                bidx for band selection).
+
+        Example:
+            >>> m = MapLibreMap()
+            >>> # COG in EPSG:3857 (uses cog:// protocol)
+            >>> m.add_cog_layer("cog1", "https://example.com/data_3857.tif")
+            >>>
+            >>> # COG in any other CRS (uses TiTiler)
+            >>> m.add_cog_layer("cog2", "https://example.com/data_4326.tif")
+            >>>
+            >>> # Force TiTiler with custom endpoint
+            >>> m.add_cog_layer(
+            ...     "cog3",
+            ...     "https://example.com/data.tif",
+            ...     titiler_endpoint="https://giswqs-titiler-endpoint.hf.space",
+            ...     rescale="0,255",
+            ...     colormap="viridis"
+            ... )
+        """
+        source_id = f"{layer_id}_source"
+
+        # Check if we should use TiTiler
+        use_titiler = titiler_endpoint is not None
+
+        if not use_titiler:
+            # Auto-detect if TiTiler is needed by checking COG CRS
+            try:
+                metadata = self.get_cog_metadata(cog_url, crs=None)
+                if metadata and metadata.get("crs"):
+                    cog_crs = metadata["crs"]
+                    # Use TiTiler if COG is not in EPSG:3857
+                    if cog_crs != "EPSG:3857":
+                        use_titiler = True
+                        print(f"COG is in {cog_crs}, using TiTiler for reprojection")
+            except Exception as e:
+                print(f"Could not determine COG CRS, trying cog:// protocol: {e}")
+
+        if use_titiler:
+            # Use TiTiler for on-the-fly reprojection
+            if titiler_endpoint is None:
+                titiler_endpoint = "https://giswqs-titiler-endpoint.hf.space"
+
+            # Build TiTiler tile URL
+            from urllib.parse import urlencode, quote
+
+            # Encode the COG URL
+            encoded_url = quote(cog_url, safe="")
+
+            # Build query parameters
+            params = {
+                "url": cog_url,
+                "TileMatrixSetId": "WebMercatorQuad",  # Reproject to Web Mercator
+            }
+
+            # Add any additional TiTiler parameters
+            for key, value in kwargs.items():
+                params[key] = value
+
+            query_string = urlencode({k: v for k, v in params.items() if k != "url"})
+
+            # TiTiler tile URL format: {endpoint}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}
+            tile_url = f"{titiler_endpoint}/cog/tiles/WebMercatorQuad/{{z}}/{{x}}/{{y}}?url={encoded_url}"
+            if query_string:
+                tile_url += f"&{query_string}"
+
+            # print(f"Using TiTiler: {titiler_endpoint}")
+            # print(f"Tile URL pattern: {tile_url[:100]}...")
+
+            self.add_source(
+                source_id,
+                {
+                    "type": "raster",
+                    "tiles": [tile_url],
+                    "tileSize": 256,
+                    "attribution": "TiTiler",
+                },
+            )
+
+        else:
+            # Use cog:// protocol for EPSG:3857 COGs
+            cog_source_url = f"cog://{cog_url}"
+
+            self.add_source(
+                source_id,
+                {
+                    "type": "raster",
+                    "url": cog_source_url,
+                    "tileSize": 256,
+                },
+            )
+
+        # Add raster layer
+        layer_config = {"id": layer_id, "type": "raster", "source": source_id}
+
+        if paint:
+            layer_config["paint"] = paint
+
+        self.add_layer(
+            layer=layer_config,
+            before_id=before_id,
+            layer_id=layer_id,
+            opacity=opacity,
+            visible=visible,
+        )
+
+        # Optionally fit bounds to COG extent
+        if fit_bounds:
+            try:
+                metadata = self.get_cog_metadata(cog_url, crs="EPSG:4326")
+                if metadata and metadata.get("bbox"):
+                    bbox = metadata["bbox"]
+                    bounds = [[bbox[0], bbox[1]], [bbox[2], bbox[3]]]
+                    self.fit_bounds(bounds, padding=50)
+                    # print(f"Map fitted to COG bounds: {bounds}")
+            except Exception as e:
+                print(f"Could not fit bounds to COG extent: {e}")
+
+    def add_pmtiles(
+        self,
+        pmtiles_url: str,
+        layer_id: Optional[str] = None,
+        layers: Optional[List[Dict[str, Any]]] = None,
+        opacity: Optional[float] = 1.0,
+        visible: Optional[bool] = True,
+        before_id: Optional[str] = None,
+    ) -> None:
+        """Add PMTiles vector tiles to the map.
+
+        Args:
+            pmtiles_url: URL to the PMTiles file.
+            layer_id: Optional unique identifier for the layer. If None, uses filename.
+            layers: Optional list of layer configurations for rendering. If None, creates default layers.
+            opacity: Layer opacity between 0.0 and 1.0.
+            visible: Whether the layer should be visible initially.
+            before_id: Optional layer ID to insert this layer before.
+        """
+        if layer_id is None:
+            layer_id = pmtiles_url.split("/")[-1].replace(".pmtiles", "")
+
+        source_id = f"{layer_id}_source"
+
+        # Add PMTiles source using pmtiles:// protocol
+        pmtiles_source_url = f"pmtiles://{pmtiles_url}"
+
+        self.add_source(
+            source_id,
+            {
+                "type": "vector",
+                "url": pmtiles_source_url,
+                "attribution": "PMTiles",
+            },
+        )
+
+        # Add default layers if none provided
+        if layers is None:
+            url_lower = pmtiles_url.lower()
+            # Heuristic defaults:
+            # - If this looks like an Overture Buildings dataset, add only the buildings layer.
+            # - Otherwise, fall back to a simple protomaps-style set.
+            if "buildings" in url_lower:
+                layers = [
+                    {
+                        "id": f"{layer_id}_buildings",
+                        "source": source_id,
+                        "source-layer": "buildings",
+                        "type": "fill",
+                        "paint": {"fill-color": "gray", "fill-opacity": 0.7},
+                    }
+                ]
+            else:
+                layers = [
+                    {
+                        "id": f"{layer_id}_landuse",
+                        "source": source_id,
+                        "source-layer": "landuse",
+                        "type": "fill",
+                        "paint": {"fill-color": "steelblue", "fill-opacity": 0.5},
+                    },
+                    {
+                        "id": f"{layer_id}_roads",
+                        "source": source_id,
+                        "source-layer": "roads",
+                        "type": "line",
+                        "paint": {"line-color": "black", "line-width": 1},
+                    },
+                    {
+                        "id": f"{layer_id}_buildings",
+                        "source": source_id,
+                        "source-layer": "buildings",
+                        "type": "fill",
+                        "paint": {"fill-color": "gray", "fill-opacity": 0.7},
+                    },
+                    {
+                        "id": f"{layer_id}_water",
+                        "source": source_id,
+                        "source-layer": "water",
+                        "type": "fill",
+                        "paint": {"fill-color": "lightblue", "fill-opacity": 0.8},
+                    },
+                ]
+
+        # Add all layers
+        for layer_config in layers:
+            self.add_layer(
+                layer=layer_config,
+                before_id=before_id,
+                layer_id=layer_config["id"],
+                opacity=opacity,
+                visible=visible,
+            )
+
+    def add_basemap(
+        self,
+        basemap: str,
+        layer_id: Optional[str] = None,
+        before_id: Optional[str] = None,
+        visible: Optional[bool] = True,
+        **kwargs: Any,
+    ) -> None:
+        """Add a basemap to the map using xyzservices providers.
+
+        Args:
+            basemap: Name of the basemap from xyzservices (e.g., "Esri.WorldImagery").
+                    Use available_basemaps to see all available options.
+            layer_id: Optional ID for the basemap layer. If None, uses basemap name.
+            before_id: Optional layer ID to insert this layer before.
+                      If None, layer is added on top.
+            visible: Whether the layer should be visible initially.
+            **kwargs: Additional parameters passed to the basemap layer.
+
+        Raises:
+            ValueError: If the specified basemap is not available.
+        """
+        from .basemaps import available_basemaps
+
+        if basemap not in available_basemaps:
+            available_names = list(available_basemaps.keys())
+            raise ValueError(
+                f"Basemap '{basemap}' not found. Available basemaps: {available_names}"
+            )
+
+        basemap_config = available_basemaps[basemap]
+
+        # Convert xyzservices URL template to tile URL
+        tile_url = basemap_config.build_url()
+
+        # Get attribution if available
+        attribution = basemap_config.get("attribution", "")
+        if layer_id is None:
+            layer_id = basemap
+
+        # Add as raster layer
+        self.add_tile_layer(
+            layer_id=layer_id,
+            source_url=tile_url,
+            paint={"raster-opacity": 1.0},
+            before_id=before_id,
+            visible=visible,
+            **kwargs,
+        )
+
+    def add_draw_control(
+        self,
+        position: str = "top-left",
+        controls: Optional[Dict[str, bool]] = None,
+        default_mode: str = "simple_select",
+        keybindings: bool = True,
+        touch_enabled: bool = True,
+        preserve_selection_on_edit: bool = True,
+        styles: Optional[List[Dict[str, Any]]] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Add a draw control to the map for drawing and editing geometries.
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            controls: Dictionary specifying which drawing tools to show.
+                     Defaults to {'point': True, 'line_string': True, 'polygon': True, 'trash': True}
+            default_mode: Initial interaction mode ('simple_select', 'direct_select', 'draw_point', etc.)
+            keybindings: Whether to enable keyboard shortcuts
+            touch_enabled: Whether to enable touch interactions
+            preserve_selection_on_edit: Whether to keep features selected during vertex editing/moving.
+                                       If True, features remain selected after editing. If False, uses
+                                       default MapboxDraw behavior (deselection after edit).
+            styles: Optional list of custom MapboxDraw style objects. If None, uses default styles.
+                   Each style should be a dict with 'id', 'type', 'filter', and 'paint'/'layout' properties.
+                   See MapboxDraw documentation for style object format.
+            **kwargs: Additional options to pass to MapboxDraw constructor
+        """
+        if controls is None:
+            controls = {
+                "point": True,
+                "line_string": True,
+                "polygon": True,
+                "trash": True,
+            }
+
+        draw_options = {
+            "displayControlsDefault": False,
+            "controls": controls,
+            "defaultMode": default_mode,
+            "keybindings": keybindings,
+            "touchEnabled": touch_enabled,
+            "position": position,
+            "preserveSelectionOnEdit": preserve_selection_on_edit,
+            "customStyles": styles,
+            **kwargs,
+        }
+
+        # Store draw control configuration
+        current_controls = dict(self._controls)
+        draw_key = f"draw_{position}"
+        current_controls[draw_key] = {
+            "type": "draw",
+            "position": position,
+            "options": draw_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addDrawControl", draw_options)
+
+    # Draw styles moved to draw_styles.py module
+
+    def load_draw_data(self, geojson_data: Union[Dict[str, Any], str]) -> None:
+        """Load GeoJSON data into the draw control.
+
+        Args:
+            geojson_data: GeoJSON data as dictionary or JSON string
+        """
+        if isinstance(geojson_data, str):
+            geojson_data = json.loads(geojson_data)
+
+        # Update the trait immediately to ensure consistency
+        self._draw_data = geojson_data
+
+        # Send to JavaScript
+        self.call_js_method("loadDrawData", geojson_data)
+
+    def add_draw_data(self, geojson_data: Union[Dict[str, Any], str]) -> None:
+        """Add GeoJSON features to the existing draw control data.
+
+        This method appends new features to the draw control without clearing
+        existing drawn features, unlike load_draw_data which replaces all data.
+
+        Args:
+            geojson_data: GeoJSON data as dictionary or JSON string. Can be a
+                         FeatureCollection or a single Feature.
+        """
+        if isinstance(geojson_data, str):
+            geojson_data = json.loads(geojson_data)
+
+        # Normalize input to FeatureCollection if it's a single Feature
+        if geojson_data.get("type") == "Feature":
+            geojson_data = {"type": "FeatureCollection", "features": [geojson_data]}
+
+        # Send to JavaScript - it will handle adding features and syncing back the data
+        self.call_js_method("addDrawData", geojson_data)
+
+    def get_draw_data(self) -> Dict[str, Any]:
+        """Get all drawn features as GeoJSON.
+
+        Returns:
+            Dict containing GeoJSON FeatureCollection with drawn features
+        """
+        # Try to get current data first
+        if self._draw_data:
+            return self._draw_data
+
+        # If no data in trait, call JavaScript to get fresh data
+        self.call_js_method("getDrawData")
+        # Give JavaScript time to execute and sync data
+        import time
+
+        time.sleep(0.2)
+
+        # Return the synced data or empty FeatureCollection if nothing
+        return (
+            self._draw_data
+            if self._draw_data
+            else {"type": "FeatureCollection", "features": []}
+        )
+
+    @property
+    def draw_data(self) -> Dict[str, Any]:
+        """Get the current draw data as GeoJSON."""
+        return self.get_draw_data()
+
+    def clear_draw_data(self) -> None:
+        """Clear all drawn features from the draw control."""
+        # Clear the trait data immediately
+        self._draw_data = {"type": "FeatureCollection", "features": []}
+
+        # Clear in JavaScript
+        self.call_js_method("clearDrawData")
+
+    def delete_draw_features(self, feature_ids: List[str]) -> None:
+        """Delete specific features from the draw control.
+
+        Args:
+            feature_ids: List of feature IDs to delete
+        """
+        self.call_js_method("deleteDrawFeatures", feature_ids)
+
+    def set_draw_mode(self, mode: str) -> None:
+        """Set the draw control mode.
+
+        Args:
+            mode: Draw mode ('simple_select', 'direct_select', 'draw_point',
+                 'draw_line_string', 'draw_polygon', 'static')
+        """
+        self.call_js_method("setDrawMode", mode)
+
+    def save_draw_data(self, filepath: str, driver: Optional[str] = None) -> None:
+        """Save drawn features to a file in various formats.
+
+        Args:
+            filepath: Path where to save the file. The file extension determines
+                     the output format if driver is not specified.
+            driver: GeoPandas driver name (e.g., 'GeoJSON', 'ESRI Shapefile', 'GPKG').
+                   If None, inferred from file extension.
+
+        Raises:
+            ImportError: If geopandas is not installed.
+            ValueError: If no drawn features exist or invalid driver/format.
+
+        Note:
+            For shapefiles, all features must have the same geometry type.
+            Use GeoJSON or GPKG formats for mixed geometry types.
+        """
+        if not HAS_GEOPANDAS:
+            raise ImportError(
+                "geopandas is required for save_draw_data. "
+                "Install it with: pip install geopandas"
+            )
+
+        # Get the drawn features
+        draw_data = self.get_draw_data()
+
+        if not draw_data or not draw_data.get("features"):
+            raise ValueError("No drawn features to save")
+
+        # Convert to GeoDataFrame
+        gdf = gpd.GeoDataFrame.from_features(draw_data["features"])
+
+        # Set a default CRS if not present
+        if gdf.crs is None:
+            gdf.set_crs("EPSG:4326", inplace=True)
+
+        # Save to file
+        try:
+            gdf.to_file(filepath, driver=driver)
+        except Exception as e:
+            # Provide helpful error message for common shapefile issues
+            if "shapefile" in str(e).lower() or (
+                driver and "shapefile" in driver.lower()
+            ):
+                geometry_types = gdf.geometry.geom_type.unique()
+                if len(geometry_types) > 1:
+                    raise ValueError(
+                        f"Cannot save mixed geometry types {list(geometry_types)} to shapefile. "
+                        "Use GeoJSON (.geojson) or GeoPackage (.gpkg) format instead."
+                    ) from e
+            raise e
+
+    def add_terra_draw(
+        self,
+        position: str = "top-left",
+        modes: Optional[List[str]] = None,
+        open: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        """Add a Terra Draw control to the map for drawing and editing geometries.
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            modes: List of drawing modes to enable. Available modes:
+                  ['render', 'point', 'linestring', 'polygon', 'rectangle', 'circle',
+                   'freehand', 'angled-rectangle', 'sensor', 'sector', 'select',
+                   'delete-selection', 'delete', 'download']
+                  Defaults to all modes except 'render'
+            open: Whether the draw control panel should be open by default
+            **kwargs: Additional options to pass to Terra Draw constructor
+        """
+        if modes is None:
+            modes = [
+                # 'render',  # Commented out to always show drawing tool
+                "point",
+                "linestring",
+                "polygon",
+                "rectangle",
+                "circle",
+                "freehand",
+                "angled-rectangle",
+                "sensor",
+                "sector",
+                "select",
+                "delete-selection",
+                "delete",
+                "download",
+            ]
+
+        terra_draw_options = {
+            "modes": modes,
+            "open": open,
+            "position": position,
+            **kwargs,
+        }
+
+        # Mark that Terra Draw is enabled
+        self._terra_draw_enabled = True
+
+        # Store Terra Draw control configuration
+        current_controls = dict(self._controls)
+        terra_draw_key = f"terra_draw_{position}"
+        current_controls[terra_draw_key] = {
+            "type": "terra_draw",
+            "position": position,
+            "options": terra_draw_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addTerraDrawControl", terra_draw_options)
+
+    def get_terra_draw_data(self) -> Dict[str, Any]:
+        """Get all Terra Draw features as GeoJSON.
+
+        Returns:
+            Dict containing GeoJSON FeatureCollection with drawn features
+        """
+        # Try to get current data first
+        if self._terra_draw_data:
+            return self._terra_draw_data
+
+        # If no data in trait, call JavaScript to get fresh data
+        self.call_js_method("getTerraDrawData")
+        # Give JavaScript time to execute and sync data
+        import time
+
+        time.sleep(0.2)
+
+        # Return the synced data or empty FeatureCollection if nothing
+        return (
+            self._terra_draw_data
+            if self._terra_draw_data
+            else {"type": "FeatureCollection", "features": []}
+        )
+
+    def clear_terra_draw_data(self) -> None:
+        """Clear all Terra Draw features from the draw control."""
+        # Clear the trait data immediately
+        self._terra_draw_data = {"type": "FeatureCollection", "features": []}
+
+        # Clear in JavaScript
+        self.call_js_method("clearTerraDrawData")
+
+    def load_terra_draw_data(self, geojson_data: Union[Dict[str, Any], str]) -> None:
+        """Load GeoJSON data into the Terra Draw control.
+
+        Args:
+            geojson_data: GeoJSON data as dictionary or JSON string
+        """
+        if isinstance(geojson_data, str):
+            geojson_data = json.loads(geojson_data)
+
+        # Update the trait immediately to ensure consistency
+        self._terra_draw_data = geojson_data
+
+        # Send to JavaScript
+        self.call_js_method("loadTerraDrawData", geojson_data)
+
+    def _generate_html_template(
+        self, map_state: Dict[str, Any], title: Optional[str], **kwargs: Any
+    ) -> str:
+        """Generate HTML template for MapLibre GL JS.
+
+        Args:
+            map_state: Dictionary containing the current map state including
+                      center, zoom, style, layers, and sources.
+            title: Title for the HTML page. If None, no title is displayed.
+            **kwargs: Additional arguments for template customization.
+
+        Returns:
+            Complete HTML string for a standalone MapLibre GL JS map.
+        """
+        import os
+
+        # Get the directory of the current file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(current_dir, "templates", "maplibre_template.html")
+
+        # Read the template file
+        with open(template_path, "r", encoding="utf-8") as f:
+            template_content = f.read()
+
+        # Normalize double braces used to escape Python str.format in template assets.
+        # We now do manual placeholder substitution, so convert '{{' -> '{' and '}}' -> '}'.
+        # This fixes invalid CSS/JS like 'body {{ ... }}' and '${{x}}' in the exported HTML.
+        template_content = template_content.replace("{{", "{").replace("}}", "}")
+
+        # Serialize map state for JavaScript
+        map_state_json = json.dumps(map_state, indent=2)
+
+        # Replace placeholders with actual values using safe string replacement
+        # to avoid conflicts with single-brace usage throughout the template.
+        html_template = template_content
+        # Handle title - if None, use empty string which will hide the h1 element
+        html_template = html_template.replace("{title}", str(title) if title else "")
+        html_template = html_template.replace("{width}", str(map_state["width"]))
+        html_template = html_template.replace("{height}", str(map_state["height"]))
+        html_template = html_template.replace("{map_state_json}", map_state_json)
+
+        return html_template
+
+    def _update_current_state(self, event: Dict[str, Any]) -> None:
+        """Update current state attributes from moveend event."""
+        if "center" in event:
+            self._current_center = event["center"]
+        if "zoom" in event:
+            self._current_zoom = event["zoom"]
+        if "bearing" in event:
+            self._current_bearing = event["bearing"]
+        if "pitch" in event:
+            self._current_pitch = event["pitch"]
+        if "bounds" in event:
+            self._current_bounds = event["bounds"]
+
+    def set_center(self, lng: float, lat: float) -> None:
+        """Set the map center coordinates.
+
+        Args:
+            lng: Longitude coordinate.
+            lat: Latitude coordinate.
+        """
+        self.center = [lng, lat]
+        self._current_center = [lng, lat]
+
+    def set_zoom(self, zoom: float) -> None:
+        """Set the map zoom level.
+
+        Args:
+            zoom: Zoom level (typically 0-20).
+        """
+        self.zoom = zoom
+        self._current_zoom = zoom
+
+    @property
+    def current_center(self) -> List[float]:
+        """Get the current map center coordinates as [longitude, latitude]."""
+        return self._current_center
+
+    @property
+    def current_zoom(self) -> float:
+        """Get the current map zoom level."""
+        return self._current_zoom
+
+    @property
+    def current_bounds(self) -> Optional[List[List[float]]]:
+        """Get the current map bounds as [[lng, lat], [lng, lat]] (southwest, northeast)."""
+        return self._current_bounds
+
+    @property
+    def viewstate(self) -> Dict[str, Any]:
+        """Get the current map viewstate including center, zoom, bearing, pitch, and bounds."""
+        return {
+            "center": self._current_center,
+            "zoom": self._current_zoom,
+            "bearing": self._current_bearing,
+            "pitch": self._current_pitch,
+            "bounds": self._current_bounds,
+        }
+
+    def get_cog_metadata(
+        self, url: str, crs: str = "EPSG:4326"
+    ) -> Optional[Dict[str, Any]]:
+        """Retrieve metadata from a Cloud Optimized GeoTIFF (COG) file.
+
+        This method fetches metadata from a COG file. It uses rasterio if available,
+        which provides comprehensive metadata extraction capabilities.
+
+        Note:
+            This feature corresponds to the getCogMetadata function in maplibre-cog-protocol,
+            which is marked as [unstable]. Some metadata internals may change in future releases.
+
+        Args:
+            url (str): The URL of the COG file to retrieve metadata from.
+            crs (str, optional): The coordinate reference system to use for the output bbox.
+                Defaults to "EPSG:4326" (WGS84 lat/lon). Set to None to use the COG's native CRS.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing COG metadata with keys such as:
+                - bbox: Bounding box coordinates [west, south, east, north] in the specified CRS
+                - bounds: BoundingBox in native CRS
+                - width: Width of the raster in pixels
+                - height: Height of the raster in pixels
+                - crs: Original coordinate reference system of the COG
+                - output_crs: CRS of the returned bbox
+                - transform: Affine transformation matrix
+                - count: Number of bands
+                - dtypes: Data types for each band
+                - nodata: NoData value
+                - scale: Scale value (if available)
+                - offset: Offset value (if available)
+            Returns None if metadata retrieval fails.
+
+        Example:
+            >>> m = MapLibreMap()
+            >>> url = "https://example.com/data.tif"
+            >>> # Get metadata with bbox in WGS84 (default)
+            >>> metadata = m.get_cog_metadata(url)
+            >>> if metadata:
+            ...     print(f"Bounding box (WGS84): {metadata.get('bbox')}")
+            ...     # Fit bounds using WGS84 coordinates
+            ...     bbox = metadata['bbox']
+            ...     m.fit_bounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]])
+            >>>
+            >>> # Get metadata in native CRS
+            >>> metadata = m.get_cog_metadata(url, crs=None)
+            >>> if metadata:
+            ...     print(f"Native CRS: {metadata.get('crs')}")
+        """
+        return utils.get_cog_metadata(url, crs=crs)
+
+    def add_basemap_control(
+        self,
+        position: str = "top-right",
+        basemaps: Optional[List[str]] = None,
+        labels: Optional[Dict[str, str]] = None,
+        initial_basemap: Optional[str] = None,
+        expand_direction: str = "down",
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a basemap control to the map for switching between different basemaps.
+
+        The basemap control allows users to switch between different basemap providers
+        using a dropdown or expandable control. It uses the maplibre-gl-basemaps library.
+
+        Args:
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            basemaps: List of basemap names to include. If None, uses a default set.
+                     Available basemaps can be found in anymap.basemaps.available_basemaps
+            labels: Dictionary mapping basemap names to display labels. If None, uses basemap names.
+            initial_basemap: Name of the initial basemap to show. If None, uses the first basemap.
+            expand_direction: Direction to expand the control ('up', 'down', 'left', 'right')
+            options: Additional options for the basemap control
+
+        Example:
+            >>> m = MapLibreMap()
+            >>> m.add_basemap_control(
+            ...     position="top-right",
+            ...     basemaps=["OpenStreetMap.Mapnik", "Esri.WorldImagery", "CartoDB.DarkMatter"],
+            ...     labels={"OpenStreetMap.Mapnik": "OpenStreetMap", "Esri.WorldImagery": "Satellite"},
+            ...     initial_basemap="OpenStreetMap.Mapnik"
+            ... )
+        """
+        from .basemaps import available_basemaps
+
+        # Default basemaps if none provided
+        if basemaps is None:
+            basemaps = [
+                "OpenStreetMap.Mapnik",
+                "Esri.WorldImagery",
+                "CartoDB.DarkMatter",
+                "CartoDB.Positron",
+            ]
+
+        # Filter available basemaps to only include those that exist
+        valid_basemaps = [name for name in basemaps if name in available_basemaps]
+        if not valid_basemaps:
+            raise ValueError(
+                f"No valid basemaps found. Available basemaps: {list(available_basemaps.keys())}"
+            )
+
+        # Set initial basemap if not provided
+        if initial_basemap is None:
+            initial_basemap = valid_basemaps[0]
+        elif initial_basemap not in valid_basemaps:
+            raise ValueError(
+                f"Initial basemap '{initial_basemap}' not found in provided basemaps"
+            )
+
+        # Create basemap configurations for the control
+        basemap_configs = []
+        for basemap_name in valid_basemaps:
+            basemap_provider = available_basemaps[basemap_name]
+            tile_url = basemap_provider.build_url()
+            attribution = basemap_provider.get("attribution", "")
+
+            # Use custom label if provided, otherwise use basemap name
+            display_label = (
+                labels.get(basemap_name, basemap_name) if labels else basemap_name
+            )
+
+            basemap_config = {
+                "id": basemap_name,
+                "tiles": [tile_url],
+                "sourceExtraParams": {
+                    "tileSize": 256,
+                    "attribution": attribution,
+                    "minzoom": basemap_provider.get("min_zoom", 0),
+                    "maxzoom": basemap_provider.get("max_zoom", 22),
+                },
+                "label": display_label,
+            }
+            basemap_configs.append(basemap_config)
+
+        control_options = options or {}
+        control_options.update(
+            {
+                "position": position,
+                "basemaps": basemap_configs,
+                "initialBasemap": initial_basemap,
+                "expandDirection": expand_direction,
+            }
+        )
+
+        # Store control in persistent state
+        control_key = f"basemap_control_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "basemap_control",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "basemap_control", control_options)
+
+    def add_temporal_control(
+        self,
+        frames: List[Dict[str, Any]],
+        position: str = "top-right",
+        interval: int = 1000,
+        performance: bool = False,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a temporal control to the map for animating time-series data.
+
+        The temporal control enables animation of map layers across time, allowing
+        users to visualize changes over time with playback controls. It uses the
+        maplibre-gl-temporal-control plugin.
+
+        Args:
+            frames: List of frame configurations. Each frame is a dictionary with:
+                - title: Display name for the frame (e.g., "2020-01-01")
+                - layers: List of layer IDs to show in this frame
+            position: Position on map ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+            interval: Duration to display each frame in milliseconds. Default is 1000 (1 second).
+            performance: Enable performance mode for slower systems. Default is False.
+            options: Additional options for the temporal control
+
+        Example:
+            >>> m = MapLibreMap()
+            >>> # Add layers for different time periods
+            >>> m.add_geojson_layer("data-2020", geojson_2020, "circle", paint={"circle-color": "red"})
+            >>> m.add_geojson_layer("data-2021", geojson_2021, "circle", paint={"circle-color": "blue"})
+            >>> m.add_geojson_layer("data-2022", geojson_2022, "circle", paint={"circle-color": "green"})
+            >>>
+            >>> # Configure temporal frames
+            >>> frames = [
+            ...     {"title": "2020", "layers": ["data-2020"]},
+            ...     {"title": "2021", "layers": ["data-2021"]},
+            ...     {"title": "2022", "layers": ["data-2022"]},
+            ... ]
+            >>>
+            >>> # Add temporal control
+            >>> m.add_temporal_control(
+            ...     frames=frames,
+            ...     position="top-right",
+            ...     interval=2000  # 2 seconds per frame
+            ... )
+        """
+        if not frames:
+            raise ValueError("At least one frame must be provided")
+
+        control_options = options or {}
+        control_options.update(
+            {
+                "position": position,
+                "frames": frames,
+                "interval": interval,
+                "performance": performance,
+            }
+        )
+
+        # Store control in persistent state
+        control_key = f"temporal_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "temporal",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "temporal", control_options)
+
+    def add_infobox_control(
+        self,
+        position: str = "top-right",
+        layer_id: Optional[str] = None,
+        formatter: Optional[Union[str, Any]] = None,
+        collapsed: bool = True,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add an InfoBox control (mapbox-gl-infobox) to display feature attributes.
+
+        Args:
+            position: Control position ('top-left', 'top-right', 'bottom-left', 'bottom-right').
+            layer_id: Optional target layer id to listen for hover/click features.
+            formatter: Either an HTML template string (e.g., "<b>{{name}}</b>") or a callable
+                taking a properties dict and returning HTML. Strings will be templated against
+                feature properties; unknown keys render as empty.
+            collapsed: Whether the control starts collapsed.
+            options: Additional plugin options passed through.
+        """
+        control_options: Dict[str, Any] = dict(options or {})
+        control_options.update(
+            {
+                "position": position,
+                "collapsed": collapsed,
+            }
+        )
+        if layer_id is not None:
+            control_options["layerId"] = layer_id
+        if formatter is not None:
+            # Strings are handled as templates in JS; callables cannot be serialized
+            if isinstance(formatter, str):
+                control_options["formatter"] = formatter
+            else:
+                # Best-effort stringification to avoid non-serializable objects
+                control_options["formatter_template"] = str(formatter)
+
+        control_key = f"infobox_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "infobox",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "infobox", control_options)
+
+    def add_gradientbox_control(
+        self,
+        position: str = "top-right",
+        layer_id: Optional[str] = None,
+        weight_property: Optional[str] = None,
+        min_value: Optional[float] = None,
+        max_value: Optional[float] = None,
+        colors: Optional[List[str]] = None,
+        collapsed: bool = True,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a GradientBox control (mapbox-gl-infobox) to show value legend.
+
+        Args:
+            position: Control position.
+            layer_id: Optional target layer id used for value extraction.
+            weight_property: Feature property name used to compute weights.
+            min_value: Minimum value for gradient legend.
+            max_value: Maximum value for gradient legend.
+            collapsed: Whether the control starts collapsed.
+            options: Additional plugin options.
+        """
+        control_options: Dict[str, Any] = dict(options or {})
+        control_options.update(
+            {
+                "position": position,
+                "collapsed": collapsed,
+            }
+        )
+        if layer_id is not None:
+            control_options["layerId"] = layer_id
+        if weight_property is not None:
+            control_options["weight_property"] = weight_property
+        if min_value is not None or max_value is not None:
+            # JS layer will normalize into minMaxValues
+            control_options["min_value"] = min_value
+            control_options["max_value"] = max_value
+        if colors is not None:
+            control_options["colors"] = colors
+
+        control_key = f"gradientbox_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "gradientbox",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "gradientbox", control_options)
+
+    def add_legend_control(
+        self,
+        position: str = "bottom-left",
+        show_default: bool = True,
+        show_checkbox: bool = True,
+        only_rendered: bool = False,
+        reverse_order: bool = False,
+        options: Optional[Dict[str, Any]] = None,
+        targets: Optional[Dict[str, str]] = None,
+        label_overrides: Optional[Dict[str, str]] = None,
+        max_height: Optional[Union[int, float, str]] = None,
+        toggle_icon: Optional[str] = None,
+    ) -> None:
+        """Add a Legend control (watergis/mapbox-gl-legend) to the map.
+
+        The legend control inspects map layers and renders a legend UI. It works
+        best when layers include helpful `metadata` such as a human-readable
+        name, unit, or labels.
+
+        Args:
+            position: Control position ('top-left', 'top-right', 'bottom-left', 'bottom-right').
+            show_default: Whether to show default legend items inferred from layers.
+            show_checkbox: Whether to include visibility checkboxes per item.
+            only_rendered: If True, only include layers currently rendered in viewport.
+            reverse_order: If True, reverse the legend item order.
+            options: Additional plugin options forwarded to LegendControl.
+            targets: Optional mapping of layer IDs to include in the legend. When
+                provided, only these layers will appear (matching plugin behaviour).
+            label_overrides: Optional mapping of layer IDs to custom legend labels.
+                When omitted, labels are derived from layer metadata and fall back
+                to layer ids. This does not restrict which layers are shown.
+            max_height: Optional CSS size (e.g. 320, "320px", "60vh") used to cap the
+                legend panel height. When provided, a scrollbar appears if content
+                exceeds this limit.
+            toggle_icon: Optional HTML string or Unicode glyph for the collapsed
+                legend toggle button. Defaults to a list-style icon if omitted.
+        """
+
+        def _derive_labels() -> Dict[str, str]:
+            derived: Dict[str, str] = {}
+            for layer_id, layer_info in self.layer_dict.items():
+                layer_config = layer_info.get("layer", {})
+                if not isinstance(layer_config, dict):
+                    continue
+
+                if layer_config.get("type") == "background":
+                    continue
+
+                if not layer_info.get("visible", True):
+                    continue
+
+                metadata = layer_config.get("metadata") or {}
+                legend_meta = metadata.get("legend") or {}
+                if legend_meta.get("exclude"):
+                    continue
+
+                label = (
+                    legend_meta.get("label")
+                    or legend_meta.get("title")
+                    or metadata.get("name")
+                    or legend_meta.get("name")
+                    or layer_info.get("name")
+                    or layer_config.get("id")
+                    or layer_id
+                )
+                derived[layer_id] = label
+
+            return derived
+
+        control_options: Dict[str, Any] = dict(options or {})
+        control_options.update(
+            {
+                "position": position,
+                "showDefault": show_default,
+                "showCheckbox": show_checkbox,
+                "onlyRendered": only_rendered,
+                "reverseOrder": reverse_order,
+            }
+        )
+
+        if targets is not None:
+            control_options["targets"] = dict(targets)
+
+        if max_height is not None:
+            if isinstance(max_height, (int, float)):
+                max_height_value = f"{max_height}px"
+            else:
+                max_height_value = str(max_height)
+            control_options["maxHeight"] = max_height_value
+
+        if toggle_icon is not None:
+            control_options["toggleIcon"] = str(toggle_icon)
+
+        auto_labels = _derive_labels()
+        merged_labels: Dict[str, str] = dict(auto_labels)
+        for label_map in (
+            control_options.get("label_overrides"),
+            control_options.get("labelOverrides"),
+            label_overrides,
+        ):
+            if label_map:
+                merged_labels.update(label_map)
+
+        if merged_labels:
+            control_options["label_overrides"] = merged_labels
+
+        control_key = f"legend_{position}"
+        current_controls = dict(self._controls)
+        current_controls[control_key] = {
+            "type": "legend",
+            "position": position,
+            "options": control_options,
+        }
+        self._controls = current_controls
+
+        self.call_js_method("addControl", "legend", control_options)
+
+    def _process_deckgl_props(self, props: Dict[str, Any]) -> Dict[str, Any]:
+        """Process DeckGL properties to handle lambda functions and other non-serializable objects.
+
+        Args:
+            props: Dictionary of DeckGL layer properties.
+
+        Returns:
+            Processed properties dictionary with serializable values.
+        """
+        processed_props = {}
+
+        for key, value in props.items():
+            if callable(value):
+                # Handle lambda functions and other callables
+                if hasattr(value, "__name__") and value.__name__ == "<lambda>":
+                    # For lambda functions, we'll need to convert them to accessor strings
+                    # This is a simplified approach - in practice, you might want to
+                    # inspect the lambda to generate appropriate accessors
+                    processed_props[key] = f"@@=d => d.{key.replace('get', '').lower()}"
+                else:
+                    # For named functions, convert to string representation
+                    processed_props[key] = str(value)
+            else:
+                # Keep other values as-is
+                processed_props[key] = value
+
+        return processed_props
+
+    def add_deckgl_layer(
+        self,
+        layer_id: str,
+        layer_type: str,
+        data: Union[List[Dict], Dict[str, Any]],
+        props: Optional[Dict[str, Any]] = None,
+        visible: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        """Add a DeckGL layer to the map.
+
+        This method adds a DeckGL layer overlay to the MapLibre map. DeckGL provides
+        high-performance visualization of large datasets with WebGL-powered layers.
+
+        Args:
+            layer_id: Unique identifier for the DeckGL layer.
+            layer_type: Type of DeckGL layer (e.g., 'ScatterplotLayer', 'PathLayer', 'GeoJsonLayer').
+            data: Data for the layer. Can be a list of objects or GeoJSON-like structure.
+            props: Layer-specific properties for styling and behavior.
+            visible: Whether the layer should be visible initially.
+            **kwargs: Additional layer properties.
+
+        Example:
+            >>> m = MapLibreMap()
+            >>>
+            >>> # Add a scatterplot layer
+            >>> data = [
+            ...     {"position": [-122.4, 37.8], "radius": 100, "color": [255, 0, 0]},
+            ...     {"position": [-74.0, 40.7], "radius": 150, "color": [0, 255, 0]}
+            ... ]
+            >>> m.add_deckgl_layer(
+            ...     "my_points",
+            ...     "ScatterplotLayer",
+            ...     data,
+            ...     props={
+            ...         "getPosition": "position",
+            ...         "getRadius": "radius",
+            ...         "getFillColor": "color",
+            ...         "pickable": True
+            ...     }
+            ... )
+        """
+        if props is None:
+            props = {}
+
+        # Merge kwargs into props
+        layer_props = {**props, **kwargs}
+
+        # Convert lambda functions to JavaScript-compatible strings
+        layer_props = self._process_deckgl_props(layer_props)
+
+        layer_config = {
+            "id": layer_id,
+            "type": layer_type,
+            "data": data,
+            "props": layer_props,
+            "visible": visible,
+        }
+
+        # Store layer in local state
+        current_layers = dict(self._deckgl_layers)
+        current_layers[layer_id] = layer_config
+        self._deckgl_layers = current_layers
+
+        # Send to JavaScript
+        self.call_js_method("addDeckGLLayer", layer_config)
+
+    def remove_deckgl_layer(self, layer_id: str) -> None:
+        """Remove a DeckGL layer from the map.
+
+        Args:
+            layer_id: Unique identifier of the DeckGL layer to remove.
+        """
+        # Remove from local state
+        if layer_id in self._deckgl_layers:
+            current_layers = dict(self._deckgl_layers)
+            del current_layers[layer_id]
+            self._deckgl_layers = current_layers
+
+        # Send to JavaScript
+        self.call_js_method("removeDeckGLLayer", layer_id)
+
+    def update_deckgl_layer(
+        self,
+        layer_id: str,
+        data: Optional[Union[List[Dict], Dict[str, Any]]] = None,
+        props: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Update a DeckGL layer's data or properties.
+
+        Args:
+            layer_id: Unique identifier of the DeckGL layer to update.
+            data: New data for the layer. If None, data is not updated.
+            props: New or updated properties for the layer.
+            **kwargs: Additional layer properties to update.
+        """
+        if layer_id not in self._deckgl_layers:
+            raise ValueError(f"DeckGL layer '{layer_id}' not found")
+
+        # Get current layer config
+        current_layers = dict(self._deckgl_layers)
+        layer_config = current_layers[layer_id].copy()
+
+        # Update data if provided
+        if data is not None:
+            layer_config["data"] = data
+
+        # Update properties if provided
+        if props is not None or kwargs:
+            current_props = layer_config.get("props", {})
+            if props:
+                current_props.update(props)
+            if kwargs:
+                current_props.update(kwargs)
+            # Process the updated props to handle lambda functions
+            layer_config["props"] = self._process_deckgl_props(current_props)
+
+        # Store updated config
+        current_layers[layer_id] = layer_config
+        self._deckgl_layers = current_layers
+
+        # Send to JavaScript
+        self.call_js_method("updateDeckGLLayer", layer_config)
+
+    def set_deckgl_layer_visibility(self, layer_id: str, visible: bool) -> None:
+        """Set the visibility of a DeckGL layer.
+
+        Args:
+            layer_id: Unique identifier of the DeckGL layer.
+            visible: Whether the layer should be visible.
+        """
+        if layer_id in self._deckgl_layers:
+            current_layers = dict(self._deckgl_layers)
+            current_layers[layer_id]["visible"] = visible
+            self._deckgl_layers = current_layers
+
+            # Send to JavaScript
+            self.call_js_method("setDeckGLLayerVisibility", layer_id, visible)
+
+    def get_deckgl_layers(self) -> Dict[str, Dict[str, Any]]:
+        """Get all DeckGL layers currently on the map.
+
+        Returns:
+            Dictionary mapping layer IDs to their configurations.
+        """
+        return dict(self._deckgl_layers)
+
+    def clear_deckgl_layers(self) -> None:
+        """Remove all DeckGL layers from the map."""
+        # Clear local state
+        self._deckgl_layers = {}
+
+        # Send to JavaScript
+        self.call_js_method("clearDeckGLLayers")
+
+    # Three.js / MapLibre Three Plugin methods
+
+    def init_three_scene(self) -> None:
+        """Initialize the MapLibre Three.js scene.
+
+        This must be called before adding any 3D models or lights.
+        It initializes the MapScene object that connects MapLibre GL JS with Three.js.
+
+        Example:
+            >>> m = MapLibreMap(center=[148.9819, -35.3981], zoom=18, pitch=60)
+            >>> m.init_three_scene()
+            >>> m.add_three_light(light_type='ambient')
+        """
+        self.call_js_method("initMapScene")
+
+    def add_three_model(
+        self,
+        model_id: str,
+        url: str,
+        coordinates: List[float],
+        scale: Union[float, List[float]] = 1.0,
+        rotation: Optional[List[float]] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Add a 3D GLTF model to the map using Three.js.
+
+        Args:
+            model_id: Unique identifier for the 3D model.
+            url: URL to the GLTF/GLB model file.
+            coordinates: Geographic coordinates [longitude, latitude] where the model should be placed.
+            scale: Scale factor for the model. Can be a single number or [x, y, z] list.
+            rotation: Optional rotation in radians as [x, y, z].
+            **kwargs: Additional options for the model.
+
+        Example:
+            >>> m = MapLibreMap(center=[148.9819, -35.3981], zoom=18, pitch=60)
+            >>> m.init_three_scene()
+            >>> m.add_three_light(type='ambient')
+            >>> m.add_three_model(
+            ...     model_id='my_model',
+            ...     url='https://example.com/model.gltf',
+            ...     coordinates=[148.9819, -35.3981],
+            ...     scale=100,
+            ...     rotation=[0, 0, 0]
+            ... )
+        """
+        model_config = {
+            "id": model_id,
+            "url": url,
+            "coordinates": coordinates,
+            "scale": scale,
+            "options": kwargs,
+        }
+
+        if rotation is not None:
+            model_config["rotation"] = rotation
+
+        self.call_js_method("addThreeModel", model_config)
+
+    def add_three_light(
+        self,
+        light_type: str = "ambient",
+        color: int = 0xFFFFFF,
+        intensity: float = 1.0,
+        position: Optional[List[float]] = None,
+        light_id: Optional[str] = None,
+        target: Optional[List[float]] = None,
+        cast_shadow: Optional[bool] = None,
+        shadow_options: Optional[Dict[str, Any]] = None,
+        sun_options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Add a light to the Three.js scene.
+
+        Args:
+            light_type: Type of light ('ambient', 'directional', or 'sun').
+            color: Hexadecimal color value for the light (e.g., 0xffffff for white).
+            intensity: Light intensity value.
+            position: Optional position for directional lights as [x, y, z].
+            light_id: Optional identifier for the light so it can be updated or removed later.
+            target: Optional target position for directional lights as [x, y, z].
+            cast_shadow: Whether the light should cast shadows (if supported by the light type).
+            shadow_options: Additional shadow configuration such as map size or clipping planes.
+            sun_options: Additional options when using the `sun` light type (e.g., ``{"current_time": "2024-01-01T12:00:00Z"}``).
+
+        Example:
+            >>> m = MapLibreMap(center=[148.9819, -35.3981], zoom=18, pitch=60)
+            >>> m.init_three_scene()
+            >>> m.add_three_light(light_type='ambient', intensity=0.5)
+            >>> m.add_three_light(light_type='directional', position=[1, 1, 1])
+            >>> m.add_three_light(light_type='sun')
+        """
+        light_config: Dict[str, Any] = {
+            "type": light_type,
+            "color": color,
+            "intensity": intensity,
+        }
+
+        if position is not None:
+            light_config["position"] = position
+        if light_id is not None:
+            light_config["id"] = light_id
+        if target is not None:
+            light_config["target"] = target
+        if cast_shadow is not None:
+            light_config["castShadow"] = cast_shadow
+        if shadow_options:
+            light_config["shadowOptions"] = shadow_options
+        if sun_options:
+            light_config["sunOptions"] = sun_options
+
+        self.call_js_method("addThreeLight", light_config)
+
+    def update_three_light(
+        self,
+        light_id: str,
+        *,
+        color: Optional[int] = None,
+        intensity: Optional[float] = None,
+        position: Optional[List[float]] = None,
+        target: Optional[List[float]] = None,
+        cast_shadow: Optional[bool] = None,
+        shadow_options: Optional[Dict[str, Any]] = None,
+        sun_options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Update properties of an existing Three.js light."""
+
+        update_config: Dict[str, Any] = {"id": light_id}
+
+        if color is not None:
+            update_config["color"] = color
+        if intensity is not None:
+            update_config["intensity"] = intensity
+        if position is not None:
+            update_config["position"] = position
+        if target is not None:
+            update_config["target"] = target
+        if cast_shadow is not None:
+            update_config["castShadow"] = cast_shadow
+        if shadow_options:
+            update_config["shadowOptions"] = shadow_options
+        if sun_options:
+            update_config["sunOptions"] = sun_options
+
+        self.call_js_method("updateThreeLight", update_config)
+
+    def remove_three_light(self, light_id: str) -> None:
+        """Remove a Three.js light from the scene."""
+
+        self.call_js_method("removeThreeLight", light_id)
+
+    def remove_three_model(self, model_id: str) -> None:
+        """Remove a 3D model from the scene.
+
+        Args:
+            model_id: Unique identifier of the model to remove.
+
+        Example:
+            >>> m.remove_three_model('my_model')
+        """
+        self.call_js_method("removeThreeModel", model_id)
+
+    def update_three_model(
+        self,
+        model_id: str,
+        position: Optional[List[float]] = None,
+        scale: Optional[Union[float, List[float]]] = None,
+        rotation: Optional[List[float]] = None,
+    ) -> None:
+        """Update properties of an existing 3D model.
+
+        Args:
+            model_id: Unique identifier of the model to update.
+            position: Optional new position as [x, y, z].
+            scale: Optional new scale. Can be a single number or [x, y, z] list.
+            rotation: Optional new rotation in radians as [x, y, z].
+
+        Example:
+            >>> m.update_three_model('my_model', scale=200, rotation=[0, 1.57, 0])
+        """
+        update_config = {"id": model_id}
+
+        if position is not None:
+            update_config["position"] = position
+        if scale is not None:
+            update_config["scale"] = scale
+        if rotation is not None:
+            update_config["rotation"] = rotation
+
+        self.call_js_method("updateThreeModel", update_config)
+
+    # 3D Tiles helpers
+
+    def add_three_tileset(
+        self,
+        tileset_id: str,
+        *,
+        asset_id: Optional[Union[int, str]] = None,
+        url: Optional[str] = None,
+        ion_token: Optional[str] = None,
+        auto_refresh_token: bool = True,
+        auto_disable_renderer_culling: bool = True,
+        fetch_options: Optional[Dict[str, Any]] = None,
+        lru_cache: Optional[Dict[str, Any]] = None,
+        draco_decoder_path: Optional[str] = None,
+        ktx2_transcoder_path: Optional[str] = None,
+        use_debug: bool = False,
+        use_fade: bool = False,
+        use_unload: bool = False,
+        use_update: bool = False,
+        height_offset: float = 0.0,
+        fly_to: bool = True,
+    ) -> None:
+        """Add a 3D Tiles dataset to the scene using TilesRenderer."""
+
+        if asset_id is None and url is None:
+            raise ValueError(
+                "Either asset_id or url must be provided for add_three_tileset"
+            )
+
+        config: Dict[str, Any] = {
+            "id": tileset_id,
+            "assetId": asset_id,
+            "url": url,
+            "ionToken": ion_token,
+            "autoRefreshToken": auto_refresh_token,
+            "autoDisableRendererCulling": auto_disable_renderer_culling,
+            "fetchOptions": fetch_options,
+            "lruCache": lru_cache,
+            "dracoDecoderPath": draco_decoder_path,
+            "ktx2TranscoderPath": ktx2_transcoder_path,
+            "useDebug": use_debug,
+            "useFade": use_fade,
+            "useUnload": use_unload,
+            "useUpdate": use_update,
+            "heightOffset": height_offset,
+            "flyTo": fly_to,
+        }
+
+        # Remove None values to keep payload minimal
+        payload = {key: value for key, value in config.items() if value is not None}
+        self.call_js_method("addThreeTileset", payload)
+
+    def remove_three_tileset(self, tileset_id: str) -> None:
+        """Remove a 3D Tiles dataset from the scene."""
+
+        self.call_js_method("removeThreeTileset", tileset_id)
+
+    def set_three_tileset_height(self, tileset_id: str, height: float) -> None:
+        """Adjust the height offset applied to a 3D Tiles dataset."""
+
+        self.call_js_method(
+            "setThreeTilesetHeight", {"id": tileset_id, "height": height}
+        )
+
+    def fly_to_three_tileset(self, tileset_id: str) -> None:
+        """Animate the camera to frame a 3D Tiles dataset."""
+
+        self.call_js_method("flyToThreeTileset", tileset_id)
+
+    def to_html(
+        self,
+        filename: Optional[str] = None,
+        title: Optional[str] = None,
+        width: str = "100%",
+        height: str = "100vh",
+        **kwargs: Any,
+    ) -> str:
+        """Export the map to a standalone HTML file with DeckGL layers.
+
+        This method extends the base to_html method to include DeckGL layer state.
+
+        Args:
+            filename: Optional filename to save the HTML. If None, returns HTML string.
+            title: Title for the HTML page. If None, no title is displayed.
+            width: Width of the map container as CSS string (default: "100%").
+            height: Height of the map container as CSS string (default: "100vh").
+            **kwargs: Additional arguments passed to the HTML template.
+
+        Returns:
+            HTML string content of the exported map.
+        """
+        # Get the current map state
+        map_state = {
+            "center": self.center,
+            "zoom": self.zoom,
+            "width": width,
+            "height": height,
+            "style": self.style,
+            "_layers": dict(self._layers),
+            "_sources": dict(self._sources),
+            "_controls": dict(self._controls),
+            "_terrain": dict(self._terrain),
+            "_deckgl_layers": dict(self._deckgl_layers),  # Include DeckGL layers
+            # Include recorded JS calls so we can faithfully reconstruct dynamic elements
+            "_js_calls": list(self._js_calls),
+        }
+
+        # Add class-specific attributes
+        if hasattr(self, "style"):
+            map_state["style"] = self.style
+        if hasattr(self, "bearing"):
+            map_state["bearing"] = self.bearing
+        if hasattr(self, "pitch"):
+            map_state["pitch"] = self.pitch
+        if hasattr(self, "antialias"):
+            map_state["antialias"] = self.antialias
+        if hasattr(self, "_draw_data"):
+            map_state["_draw_data"] = dict(self._draw_data)
+        if hasattr(self, "_terra_draw_data"):
+            map_state["_terra_draw_data"] = dict(self._terra_draw_data)
+        # Persist Geoman data if available
+        if hasattr(self, "geoman_data"):
+            try:
+                map_state["geoman_data"] = dict(self.geoman_data)
+            except Exception:
+                # Best-effort; skip if not serializable
+                pass
+        # Extract last requested fitBounds to guarantee initial viewport in export
+        try:
+            last_fit = None
+            for call in self._js_calls:  # type: ignore[attr-defined]
+                if isinstance(call, dict) and call.get("method") == "fitBounds":
+                    last_fit = call
+            if last_fit:
+                args = last_fit.get("args") or []
+                if isinstance(args, (list, tuple)) and len(args) >= 1:
+                    map_state["_initial_fit_bounds"] = args[0]
+                    if len(args) >= 2 and isinstance(args[1], dict):
+                        map_state["_initial_fit_bounds_options"] = args[1]
+        except Exception:
+            # Non-fatal if inspection fails
+            pass
+
+        # Generate HTML content
+        html_content = self._generate_html_template(map_state, title, **kwargs)
+
+        # Save to file if filename provided
+        if filename:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(html_content)
+        else:
+            return html_content
+
+    def add_legend(
+        self,
+        title: str = "Legend",
+        legend_dict: Optional[Dict[str, str]] = None,
+        labels: Optional[List[str]] = None,
+        colors: Optional[List[str]] = None,
+        fontsize: int = 15,
+        bg_color: str = "white",
+        icon: str = "≡",
+        position: str = "bottom-right",
+        collapsed: bool = True,
+        builtin_legend: Optional[str] = None,
+        shape_type: str = "rectangle",
+        header_color: Optional[str] = None,
+        header_text_color: Optional[str] = None,
+        responsive: Optional[bool] = True,
+        max_height: int = 380,
+        **kwargs: Union[str, int, float],
+    ) -> None:
+        """
+        Adds a legend to the map.
+
+        This method allows for the addition of a legend to the map. The legend can be customized with a title,
+        labels, colors, and more. A built-in legend can also be specified.
+
+        Args:
+            title (str, optional): The title of the legend. Defaults to "Legend".
+            legend_dict (Optional[Dict[str, str]], optional): A dictionary with legend items as keys and colors as values.
+                If provided, `labels` and `colors` will be ignored. Defaults to None.
+            labels (Optional[List[str]], optional): A list of legend labels. Defaults to None.
+            colors (Optional[List[str]], optional): A list of colors corresponding to the labels. Defaults to None.
+            fontsize (int, optional): The font size of the legend text. Defaults to 15.
+            bg_color (str, optional): The background color of the legend. Defaults to "white".
+                To make the background transparent, set this to "transparent".
+                To make the background half transparent, set this to "rgba(255, 255, 255, 0.5)".
+            icon (str, optional): The icon of the legend. Defaults to "≡".
+            position (str, optional): The position of the legend on the map. Can be one of "top-left",
+                "top-right", "bottom-left", "bottom-right". Defaults to "bottom-right".
+            collapsed (bool, optional): Whether the legend is collapsed by default. Defaults to True.
+            builtin_legend (Optional[str], optional): The name of a built-in legend to use. Available options: "NLCD", "NWI". Defaults to None.
+            shape_type (str, optional): The shape type of the legend items. Can be one of "rectangle", "circle", or "line". Defaults to "rectangle".
+            header_color (str, optional): The background color of the legend header, like "linear-gradient(135deg,#444,#888)". Defaults to None.
+            header_text_color (str, optional): The text color of the legend header, like "#fff". Defaults to None.
+            responsive (bool, optional): Whether the legend is responsive. Defaults to True.
+            max_height (int, optional): Maximum height of the legend content area in pixels. Defaults to 380.
+            **kwargs: Any
+        """
+        if shape_type is not None and shape_type not in ["rectangle", "circle", "line"]:
+            raise ValueError(
+                "shape_type must be one of 'rectangle', 'circle', or 'line'"
+            )
+        import html as html_module
+        from ipywidgets import widgets
+
+        # Built-in legend presets
+        BUILTIN_LEGENDS = {
+            "NLCD": {
+                "11 Open Water": "466b9f",
+                "12 Perennial Ice/Snow": "d1def8",
+                "21 Developed, Open Space": "dec5c5",
+                "22 Developed, Low Intensity": "d99282",
+                "23 Developed, Medium Intensity": "eb0000",
+                "24 Developed High Intensity": "ab0000",
+                "31 Barren Land (Rock/Sand/Clay)": "b3ac9f",
+                "41 Deciduous Forest": "68ab5f",
+                "42 Evergreen Forest": "1c5f2c",
+                "43 Mixed Forest": "b5c58f",
+                "51 Dwarf Scrub": "af963c",
+                "52 Shrub/Scrub": "ccb879",
+                "71 Grassland/Herbaceous": "dfdfc2",
+                "72 Sedge/Herbaceous": "d1d182",
+                "73 Lichens": "a3cc51",
+                "74 Moss": "82ba9e",
+                "81 Pasture/Hay": "dcd939",
+                "82 Cultivated Crops": "ab6c28",
+                "90 Woody Wetlands": "b8d9eb",
+                "95 Emergent Herbaceous Wetlands": "6c9fb8",
+            },
+            "NWI": {
+                "Freshwater Forested/Shrub Wetland": "#008837",
+                "Freshwater Emergent Wetland": "#7FC31C",
+                "Freshwater Pond": "#688CC0",
+                "Estuarine and Marine Wetland": "#66C2A5",
+                "Riverine": "#0190BF",
+                "Lake": "#13007C",
+                "Estuarine and Marine Deepwater": "#007C88",
+                "Other": "#B28656",
+            },
+        }
+
+        # Use builtin legend if specified
+        if builtin_legend is not None:
+            if builtin_legend not in BUILTIN_LEGENDS:
+                print(
+                    f"Warning: builtin_legend '{builtin_legend}' not found. Available: {list(BUILTIN_LEGENDS.keys())}"
+                )
+                return
+            legend_dict = BUILTIN_LEGENDS[builtin_legend]
+
+        # Determine legend items
+        if legend_dict is not None:
+            labels = list(legend_dict.keys())
+            colors = [legend_dict[label] for label in labels]
+        elif labels is not None and colors is not None:
+            if len(labels) != len(colors):
+                print("Error: labels and colors must have the same length")
+                return
+        else:
+            print(
+                "Error: Either legend_dict or both labels and colors must be provided"
+            )
+            return
+
+        # Normalize colors (add # if not present)
+        colors = [f"#{c}" if not c.startswith("#") else c for c in colors]
+
+        # Build legend items as a list of HTML widgets (no title needed - it's in the panel header)
+        legend_items = []
+
+        # Add each legend item
+        for label, color in zip(labels, colors):
+            if shape_type == "circle":
+                shape_html = f'<span style="display: inline-block; width: 20px; height: 20px; background-color: {color}; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>'
+            elif shape_type == "line":
+                shape_html = f'<span style="display: inline-block; width: 20px; height: 3px; background-color: {color}; margin-right: 8px; vertical-align: middle;"></span>'
+            else:  # rectangle
+                shape_html = f'<span style="display: inline-block; width: 20px; height: 20px; background-color: {color}; margin-right: 8px; vertical-align: middle;"></span>'
+
+            # Validate fontsize before using it in CSS
+            try:
+                safe_fontsize = int(fontsize)
+                if not (1 <= safe_fontsize <= 100):
+                    safe_fontsize = 14  # default value
+            except (ValueError, TypeError):
+                safe_fontsize = 14  # default value
+
+            item_html = widgets.HTML(
+                value=f'<div style="margin: 0; padding: 0; line-height: 1.4; white-space: nowrap; font-size: {safe_fontsize}px;">{shape_html}{html_module.escape(label)}</div>',
+                layout=widgets.Layout(
+                    margin="0 0 4px 0"
+                ),  # Control spacing between items
+            )
+            legend_items.append(item_html)
+
+        # Create a VBox container for legend items
+        # Subtract space for panel header (~60px) from panel_max_height
+        # This ensures the legend content scrolls properly within the panel
+        legend_content_height = max(100, max_height - 60)
+        legend_vbox = widgets.VBox(
+            legend_items,
+            layout=widgets.Layout(
+                width="fit-content",
+                max_height=f"{legend_content_height}px",
+                overflow_y="auto",
+                overflow_x="hidden",
+                padding="8px",
+                border="2px solid grey",
+                border_radius="5px",
+                background_color=bg_color,
+            ),
+        )
+
+        # Determine responsiveness: default to responsive unless user supplied panel_width
+        if responsive is None:
+            auto_flag = "panel_width" not in kwargs and "auto_panel_width" not in kwargs
+        else:
+            auto_flag = bool(responsive)
+
+        # Build options
+        control_kwargs: Dict[str, Union[str, int, float, bool]] = dict(kwargs)
+        control_kwargs.update(
+            {
+                "position": position,
+                "label": title,
+                "icon": icon,
+                "collapsed": collapsed,
+                "header_bg": header_color,
+                "header_text_color": header_text_color,
+                "panel_max_height": max_height,
+            }
+        )
+
+        # Configure width behavior based on responsive setting
+        if auto_flag:
+            # Responsive mode: use auto width with min/max constraints
+            control_kwargs.setdefault(
+                "panel_min_width", 100
+            )  # Minimum width for legend items (reduced for short text)
+            control_kwargs.setdefault(
+                "panel_max_width", 500
+            )  # Reasonable maximum width
+            control_kwargs["auto_panel_width"] = True
+        else:
+            # Fixed width mode: ensure auto_panel_width is False
+            control_kwargs["auto_panel_width"] = False
+            # Use default panel_width if not specified
+            control_kwargs.setdefault("panel_width", 320)
+
+        # Extract parameters for add_widget_control
+        widget_control_params = {
+            "label": control_kwargs.pop("label"),
+            "icon": control_kwargs.pop("icon"),
+            "position": control_kwargs.pop("position"),
+            "collapsed": control_kwargs.pop("collapsed"),
+            "auto_panel_width": control_kwargs.pop("auto_panel_width"),
+            "header_bg": control_kwargs.pop("header_bg", None),
+            "header_text_color": control_kwargs.pop("header_text_color", None),
+        }
+
+        # Add panel width parameters if specified
+        if "panel_width" in control_kwargs:
+            widget_control_params["panel_width"] = control_kwargs.pop("panel_width")
+        if "panel_min_width" in control_kwargs:
+            widget_control_params["panel_min_width"] = control_kwargs.pop(
+                "panel_min_width"
+            )
+        if "panel_max_width" in control_kwargs:
+            widget_control_params["panel_max_width"] = control_kwargs.pop(
+                "panel_max_width"
+            )
+        if "panel_max_height" in control_kwargs:
+            widget_control_params["panel_max_height"] = control_kwargs.pop(
+                "panel_max_height"
+            )
+
+        # Add legend as a widget control at the specified position
+        self.add_widget_control(
+            legend_vbox,
+            **widget_control_params,
+        )

@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{title}</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+        <link
+            href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css"
+            rel="stylesheet"
+        />
+        <script src="https://unpkg.com/deck.gl@9.0.0/dist.min.js"></script>
+        <!-- Loaders.gl for LAZ/LAS file support -->
+        <script src="https://unpkg.com/@loaders.gl/core@4.2.0/dist/dist.min.js"></script>
+        <script src="https://unpkg.com/@loaders.gl/las@4.2.0/dist/dist.min.js"></script>
+        <style>
+            body {{
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
+            }}
+
+            /* Only add padding when title is present */
+            body:has(h1:not(:empty)) {{
+                padding: 20px;
+            }}
+
+            #map {{
+                width: {width};
+                height: {height};
+            }}
+
+            /* Add border when title is present */
+            body:has(h1:not(:empty)) #map {{
+                border: 1px solid #ccc;
+            }}
+
+            /* Force default cursor for all map interactions */
+            .maplibregl-canvas {{
+                cursor: default !important;
+            }}
+
+            .maplibregl-map {{
+                cursor: default !important;
+            }}
+
+            .maplibregl-ctrl-group button {{
+                cursor: default !important;
+            }}
+
+            .maplibregl-ctrl button {{
+                cursor: default !important;
+            }}
+
+            .maplibregl-ctrl-draw {{
+                cursor: default !important;
+            }}
+
+            .maplibregl-ctrl-draw button {{
+                cursor: default !important;
+            }}
+
+            .maplibregl-popup-anchor {{
+                cursor: default !important;
+            }}
+
+            .maplibregl-marker {{
+                cursor: default !important;
+            }}
+
+            /* Marker tooltip styles */
+            .marker-tooltip .maplibregl-popup-content {{
+                padding: 8px 10px;
+                font-size: 12px;
+                line-height: 1.3;
+            }}
+
+            .marker-tooltip .maplibregl-popup-tip {{
+                display: block;
+            }}
+
+            /* Constrain images and other content within popups */
+            .maplibregl-popup-content img {{
+                max-width: 100% !important;
+                height: auto !important;
+                display: block;
+            }}
+
+            .maplibregl-popup-content {{
+                box-sizing: border-box;
+                max-width: 100%;
+                overflow-wrap: break-word;
+                word-wrap: break-word;
+            }}
+
+            .maplibregl-popup-content img,
+            .maplibregl-popup-content video,
+            .maplibregl-popup-content table,
+            .maplibregl-popup-content svg {{
+                max-width: 100%;
+                box-sizing: border-box;
+            }}
+
+            h1 {{
+                margin-top: 0;
+                color: #333;
+            }}
+
+            /* Hide title when empty */
+            h1:empty {{
+                display: none;
+            }}
+
+            /* Layer control styles to match notebook appearance */
+            .maplibregl-ctrl-layer-control {{
+                background: #fff;
+                border-radius: 4px;
+                box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }}
+
+            .maplibregl-ctrl-layer-control button {{
+                background: none;
+                border: none;
+                padding: 0;
+                width: 29px;
+                height: 29px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: default !important;
+                outline: none;
+            }}
+
+            .maplibregl-ctrl-layer-control button:hover {{
+                background-color: rgba(0, 0, 0, 0.05);
+            }}
+
+            .maplibregl-ctrl-layer-control .layer-control-icon {{
+                width: 20px;
+                height: 20px;
+                background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7L12 12L22 7L12 2Z"/><path d="M2 17L12 22L22 17"/><path d="M2 12L12 17L22 12"/></svg>');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+            }}
+
+            .layer-control-panel {{
+                position: absolute;
+                top: 100%;
+                margin-top: 5px;
+                background: #fff;
+                border-radius: 4px;
+                box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+                min-width: 200px;
+                max-width: 280px;
+                max-height: 300px;
+                overflow-y: auto;
+                z-index: 1000;
+                padding: 8px;
+                font-size: 12px;
+                line-height: 1.4;
+                display: none;
+            }}
+
+            /* Panel positioning based on parent control position */
+            .maplibregl-ctrl-top-left .layer-control-panel,
+            .maplibregl-ctrl-bottom-left .layer-control-panel {{
+                left: 0;
+            }}
+
+            .maplibregl-ctrl-top-right .layer-control-panel,
+            .maplibregl-ctrl-bottom-right .layer-control-panel {{
+                right: 0;
+            }}
+
+            .layer-control-panel.expanded {{
+                display: block;
+            }}
+
+            .layer-control-item {{
+                display: flex;
+                align-items: center;
+                padding: 4px 0;
+                border-bottom: 1px solid #f0f0f0;
+            }}
+
+            .layer-control-item:last-child {{
+                border-bottom: none;
+            }}
+
+            .layer-control-gear {{
+                width: 16px;
+                height: 16px;
+                margin-left: 6px;
+                opacity: 0.8;
+                background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23333"><path d="M19.14,12.94a7.43,7.43,0,0,0,.05-.94,7.43,7.43,0,0,0-.05-.94l2.11-1.65a.5.5,0,0,0,.12-.64l-2-3.46a.5.5,0,0,0-.6-.22l-2.49,1a7.37,7.37,0,0,0-1.63-.94L14.5,2.5a.5.5,0,0,0-.5-.5H10a.5.5,0,0,0-.5.5l-.28,2.59a7.37,7.37,0,0,0-1.63.94l-2.49-1a.5.5,0,0,0-.6.22l-2,3.46a.5.5,0,0,0,.12.64L2.73,11.06a7.43,7.43,0,0,0-.05.94,7.43,7.43,0,0,0,.05.94L.62,14.59a.5.5,0,0,0-.12.64l2,3.46a.5.5,0,0,0,.6.22l2.49-1a7.37,7.37,0,0,0,1.63.94L9.5,21.5a.5.5,0,0,0,.5.5h4a.5.5,0,0,0,.5-.5l.28-2.59a7.37,7.37,0,0,0,1.63-.94l2.49,1a.5.5,0,0,0,.6-.22l2-3.46a.5.5,0,0,0-.12-.64ZM12,15.5A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>');
+                background-repeat: no-repeat;
+                background-position: center;
+                background-size: 16px 16px;
+            }}
+
+            .layer-control-width {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 0 4px 0;
+                font-size: 12px;
+                color: #333;
+            }}
+
+            .layer-control-width .width-slider {{
+                flex: 1;
+                height: 16px;
+                margin: 0;
+            }}
+
+            .layer-control-width .width-value {{
+                width: 42px;
+                text-align: right;
+                color: #666;
+            }}
+
+            .layer-control-menu {{
+                position: absolute;
+                right: 0;
+                top: 100%;
+                margin-top: 4px;
+                background: #fff;
+                border-radius: 4px;
+                box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+                display: none;
+                min-width: 140px;
+                font-size: 12px;
+                color: #333;
+                overflow: hidden;
+            }}
+            .layer-control-menu.open {{
+                display: block;
+            }}
+            .layer-control-menu button {{
+                display: block;
+                width: 100%;
+                text-align: left;
+                background: none;
+                border: none;
+                padding: 8px 10px;
+                cursor: default !important;
+            }}
+            .layer-control-menu button:hover {{
+                background: rgba(0, 0, 0, 0.05);
+            }}
+
+            .layer-control-checkbox {{
+                margin-right: 8px;
+                cursor: default !important;
+            }}
+
+            .layer-control-name {{
+                flex: 1;
+                margin-right: 8px;
+                font-weight: 500;
+                color: #333;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+
+            .layer-control-opacity {{
+                width: 60px;
+                height: 16px;
+                margin: 0;
+                cursor: default !important;
+                background: linear-gradient(to right, #ddd 0%, #333 100%);
+                border-radius: 8px;
+                appearance: none;
+                outline: none;
+            }}
+
+            .layer-control-opacity::-webkit-slider-thumb {{
+                appearance: none;
+                width: 16px;
+                height: 16px;
+                background: #fff;
+                border: 2px solid #333;
+                border-radius: 50%;
+                cursor: default !important;
+            }}
+
+            .layer-control-opacity::-moz-range-thumb {{
+                width: 16px;
+                height: 16px;
+                background: #fff;
+                border: 2px solid #333;
+                border-radius: 50%;
+                cursor: default !important;
+            }}
+
+            .layer-control-panel-header {{
+                font-weight: 600;
+                color: #333;
+                padding: 4px 0 8px 0;
+                border-bottom: 1px solid #e0e0e0;
+                margin-bottom: 8px;
+            }}
+
+            .layer-control-panel::-webkit-scrollbar {{
+                width: 6px;
+            }}
+
+            .layer-control-panel::-webkit-scrollbar-track {{
+                background: #f1f1f1;
+                border-radius: 3px;
+            }}
+
+            .layer-control-panel::-webkit-scrollbar-thumb {{
+                background: #c1c1c1;
+                border-radius: 3px;
+            }}
+
+            .layer-control-panel::-webkit-scrollbar-thumb:hover {{
+                background: #a8a8a8;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>{title}</h1>
+        <div id="map"></div>
+
+        <script src="https://unpkg.com/@geomatico/maplibre-cog-protocol@0.4.0/dist/index.js"></script>
+        <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
+        <script src="https://www.unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://www.unpkg.com/@mapbox/mapbox-gl-draw@1.5.0/dist/mapbox-gl-draw.css"
+        />
+        <!-- MapLibre Geoman (drawing/editing) -->
+        <script src="https://cdn.jsdelivr.net/npm/@geoman-io/maplibre-geoman-free@2.10.0/dist/maplibre-geoman.umd.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@geoman-io/maplibre-geoman-free@2.10.0/dist/maplibre-geoman.css"
+        />
+        <!-- Terra Draw libraries -->
+        <script src="https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.umd.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.css"
+        />
+        <!-- MapLibre GL Geocoder -->
+        <script src="https://unpkg.com/@maplibre/maplibre-gl-geocoder@1.5.0/dist/maplibre-gl-geocoder.min.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/@maplibre/maplibre-gl-geocoder@1.5.0/dist/maplibre-gl-geocoder.css"
+        />
+        <!-- MapLibre GL Basemaps Control -->
+        <script src="https://unpkg.com/maplibre-gl-basemaps@0.1.3/lib/index.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/maplibre-gl-basemaps@0.1.3/lib/basemaps.css"
+        />
+        <script>
+            // Register COG protocol
+            maplibregl.addProtocol("cog", MaplibreCOGProtocol.cogProtocol);
+
+            // Register PMTiles protocol
+            const pmtilesProtocol = new pmtiles.Protocol();
+            maplibregl.addProtocol("pmtiles", pmtilesProtocol.tile);
+
+            // Configure MapboxDraw for MapLibre compatibility
+            if (typeof MapboxDraw !== 'undefined') {{
+                MapboxDraw.constants.classes.CANVAS = 'maplibregl-canvas';
+                MapboxDraw.constants.classes.CONTROL_BASE = 'maplibregl-ctrl';
+                MapboxDraw.constants.classes.CONTROL_PREFIX = 'maplibregl-ctrl-';
+                MapboxDraw.constants.classes.CONTROL_GROUP = 'maplibregl-ctrl-group';
+                MapboxDraw.constants.classes.ATTRIBUTION = 'maplibregl-ctrl-attrib';
+
+                // Create custom styles for MapLibre compatibility
+                window.MapLibreDrawStyles = [
+                    // Point styles
+                    {{
+                        "id": "gl-draw-point-point-stroke-inactive",
+                        "type": "circle",
+                        "filter": ["all", ["==", "active", "false"], ["==", "$type", "Point"], ["==", "meta", "feature"], ["!=", "mode", "static"]],
+                        "paint": {{
+                            "circle-radius": 5,
+                            "circle-opacity": 1,
+                            "circle-color": "#000"
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-point-inactive",
+                        "type": "circle",
+                        "filter": ["all", ["==", "active", "false"], ["==", "$type", "Point"], ["==", "meta", "feature"], ["!=", "mode", "static"]],
+                        "paint": {{
+                            "circle-radius": 3,
+                            "circle-color": "#3bb2d0"
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-point-stroke-active",
+                        "type": "circle",
+                        "filter": ["all", ["==", "active", "true"], ["!=", "meta", "midpoint"], ["==", "$type", "Point"]],
+                        "paint": {{
+                            "circle-radius": 7,
+                            "circle-color": "#000"
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-point-active",
+                        "type": "circle",
+                        "filter": ["all", ["==", "active", "true"], ["!=", "meta", "midpoint"], ["==", "$type", "Point"]],
+                        "paint": {{
+                            "circle-radius": 5,
+                            "circle-color": "#fbb03b"
+                        }}
+                    }},
+                    // Line styles - fixed for MapLibre
+                    {{
+                        "id": "gl-draw-line-inactive",
+                        "type": "line",
+                        "filter": ["all", ["==", "active", "false"], ["==", "$type", "LineString"], ["!=", "mode", "static"]],
+                        "layout": {{
+                            "line-cap": "round",
+                            "line-join": "round"
+                        }},
+                        "paint": {{
+                            "line-color": "#3bb2d0",
+                            "line-width": 2
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-line-active",
+                        "type": "line",
+                        "filter": ["all", ["==", "active", "true"], ["==", "$type", "LineString"]],
+                        "layout": {{
+                            "line-cap": "round",
+                            "line-join": "round"
+                        }},
+                        "paint": {{
+                            "line-color": "#fbb03b",
+                            "line-width": 2,
+                            "line-dasharray": ["literal", [0.2, 2]]
+                        }}
+                    }},
+                    // Polygon fill
+                    {{
+                        "id": "gl-draw-polygon-fill-inactive",
+                        "type": "fill",
+                        "filter": ["all", ["==", "active", "false"], ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+                        "paint": {{
+                            "fill-color": "#3bb2d0",
+                            "fill-outline-color": "#3bb2d0",
+                            "fill-opacity": 0.1
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-polygon-fill-active",
+                        "type": "fill",
+                        "filter": ["all", ["==", "active", "true"], ["==", "$type", "Polygon"]],
+                        "paint": {{
+                            "fill-color": "#fbb03b",
+                            "fill-outline-color": "#fbb03b",
+                            "fill-opacity": 0.1
+                        }}
+                    }},
+                    // Polygon stroke
+                    {{
+                        "id": "gl-draw-polygon-stroke-inactive",
+                        "type": "line",
+                        "filter": ["all", ["==", "active", "false"], ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+                        "layout": {{
+                            "line-cap": "round",
+                            "line-join": "round"
+                        }},
+                        "paint": {{
+                            "line-color": "#3bb2d0",
+                            "line-width": 2
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-polygon-stroke-active",
+                        "type": "line",
+                        "filter": ["all", ["==", "active", "true"], ["==", "$type", "Polygon"]],
+                        "layout": {{
+                            "line-cap": "round",
+                            "line-join": "round"
+                        }},
+                        "paint": {{
+                            "line-color": "#fbb03b",
+                            "line-width": 2,
+                            "line-dasharray": ["literal", [0.2, 2]]
+                        }}
+                    }},
+                    // Vertices (corner points) for editing
+                    {{
+                        "id": "gl-draw-polygon-and-line-vertex-stroke-inactive",
+                        "type": "circle",
+                        "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["!=", "mode", "static"]],
+                        "paint": {{
+                            "circle-radius": 5,
+                            "circle-color": "#fff"
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-polygon-and-line-vertex-inactive",
+                        "type": "circle",
+                        "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["!=", "mode", "static"]],
+                        "paint": {{
+                            "circle-radius": 3,
+                            "circle-color": "#fbb03b"
+                        }}
+                    }},
+                    // Midpoint
+                    {{
+                        "id": "gl-draw-polygon-midpoint",
+                        "type": "circle",
+                        "filter": ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]],
+                        "paint": {{
+                            "circle-radius": 3,
+                            "circle-color": "#fbb03b"
+                        }}
+                    }},
+                    // Active line vertex styles
+                    {{
+                        "id": "gl-draw-line-vertex-stroke-active",
+                        "type": "circle",
+                        "filter": ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"], ["!=", "meta", "midpoint"]],
+                        "paint": {{
+                            "circle-radius": 7,
+                            "circle-color": "#fff"
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-line-vertex-active",
+                        "type": "circle",
+                        "filter": ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"], ["!=", "meta", "midpoint"]],
+                        "paint": {{
+                            "circle-radius": 5,
+                            "circle-color": "#fbb03b"
+                        }}
+                    }},
+                    // Polygon vertex styles for direct select mode
+                    {{
+                        "id": "gl-draw-polygon-vertex-stroke-active",
+                        "type": "circle",
+                        "filter": ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"], ["!=", "meta", "midpoint"]],
+                        "paint": {{
+                            "circle-radius": 7,
+                            "circle-color": "#fff"
+                        }}
+                    }},
+                    {{
+                        "id": "gl-draw-polygon-vertex-active",
+                        "type": "circle",
+                        "filter": ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"], ["!=", "meta", "midpoint"]],
+                        "paint": {{
+                            "circle-radius": 5,
+                            "circle-color": "#fbb03b"
+                        }}
+                    }}
+                ];
+
+                console.log('MapboxDraw configured for MapLibre compatibility with custom styles');
+            }}
+
+            // LayerControl class for HTML export
+            class LayerControl {{
+                constructor(options, map, model = null) {{
+                    this.options = options;
+                    this.map = map;
+                    this.model = model; // Can be null in HTML export
+                    this.collapsed = options.collapsed !== false;
+                    this.layerStates = options.layerStates || {{}};
+                    this.targetLayers = options.layers || Object.keys(this.layerStates);
+
+                    // Create control container
+                    this.container = document.createElement('div');
+                    this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group maplibregl-ctrl-layer-control';
+
+                    // Create toggle button
+                    this.button = document.createElement('button');
+                    this.button.type = 'button';
+                    this.button.title = 'Layer Control';
+                    this.button.setAttribute('aria-label', 'Layer Control');
+
+                    // Create icon (proper layers icon)
+                    const icon = document.createElement('span');
+                    icon.className = 'layer-control-icon';
+                    this.button.appendChild(icon);
+
+                    // Create panel
+                    this.panel = document.createElement('div');
+                    this.panel.className = 'layer-control-panel';
+
+                    if (!this.collapsed) {{
+                        this.panel.classList.add('expanded');
+                    }}
+
+                    // Add header
+                    const header = document.createElement('div');
+                    header.className = 'layer-control-panel-header';
+                    header.textContent = 'Layers';
+                    this.panel.appendChild(header);
+
+                    // Width slider row
+                    const widthRow = document.createElement('div');
+                    widthRow.className = 'layer-control-width';
+                    const widthLabel = document.createElement('span');
+                    widthLabel.textContent = 'Width';
+                    const widthSlider = document.createElement('input');
+                    widthSlider.type = 'range';
+                    widthSlider.min = '220';
+                    widthSlider.max = '420';
+                    widthSlider.step = '10';
+                    // Initialize from current computed width or fallback
+                    const initialWidth = Math.max(220, Math.min(420, Math.round(this.panel.getBoundingClientRect().width || 320)));
+                    widthSlider.value = String(initialWidth);
+                    const widthValue = document.createElement('span');
+                    widthValue.className = 'width-value';
+                    widthValue.textContent = `${initialWidth}px`;
+                    widthSlider.className = 'width-slider';
+                    widthSlider.addEventListener('input', () => {{
+                        const w = parseInt(widthSlider.value, 10);
+                        this.panel.style.minWidth = `${w}px`;
+                        this.panel.style.maxWidth = `${w}px`;
+                        widthValue.textContent = `${w}px`;
+                    }});
+                    widthRow.appendChild(widthLabel);
+                    widthRow.appendChild(widthSlider);
+                    widthRow.appendChild(widthValue);
+                    this.panel.appendChild(widthRow);
+
+                    // Build layer items
+                    this.buildLayerItems();
+
+                    // Add event listeners
+                    this.button.addEventListener('click', (e) => {{
+                        e.stopPropagation();
+                        this.toggle();
+                    }});
+
+                    // Assemble control
+                    this.container.appendChild(this.button);
+                    this.container.appendChild(this.panel);
+
+                    // Click outside to close
+                    document.addEventListener('click', (e) => {{
+                        if (!this.container.contains(e.target)) {{
+                            this.collapse();
+                        }}
+                    }});
+                }}
+
+                buildLayerItems() {{
+                    // Clear existing items first (in case of rebuild)
+                    const existingItems = this.panel.querySelectorAll('.layer-control-item');
+                    existingItems.forEach(item => item.remove());
+
+                    // Add items for all layers in our state
+                    Object.entries(this.layerStates).forEach(([layerId, state]) => {{
+                        if (this.targetLayers.includes(layerId)) {{
+                            this.addLayerItem(layerId, state);
+                        }}
+                    }});
+                }}
+
+                toggle() {{
+                    if (this.collapsed) {{
+                        this.expand();
+                    }} else {{
+                        this.collapse();
+                    }}
+                }}
+
+                expand() {{
+                    this.collapsed = false;
+                    this.panel.classList.add('expanded');
+                }}
+
+                collapse() {{
+                    this.collapsed = true;
+                    this.panel.classList.remove('expanded');
+                }}
+
+                addLayerItem(layerId, state) {{
+                    const item = document.createElement('div');
+                    item.className = 'layer-control-item';
+                    item.setAttribute('data-layer-id', layerId);
+
+                    // Checkbox for visibility
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'layer-control-checkbox';
+                    checkbox.checked = state.visible;
+                    checkbox.addEventListener('change', () => {{
+                        if (layerId === 'Background') {{
+                            this.toggleBackgroundVisibility(checkbox.checked);
+                        }} else {{
+                            this.toggleLayerVisibility(layerId, checkbox.checked);
+                        }}
+                    }});
+
+                    // Layer name
+                    const name = document.createElement('span');
+                    name.className = 'layer-control-name';
+                    name.textContent = layerId === 'Background' ? 'Background' : (state.name || layerId);
+
+                    // Opacity slider
+                    const opacity = document.createElement('input');
+                    opacity.type = 'range';
+                    opacity.className = 'layer-control-opacity';
+                    opacity.min = '0';
+                    opacity.max = '1';
+                    opacity.step = '0.01';
+                    opacity.value = state.opacity;
+                    opacity.title = `Opacity: ${{Math.round(state.opacity * 100)}}%`;
+                    opacity.addEventListener('input', () => {{
+                        if (layerId === 'Background') {{
+                            this.changeBackgroundOpacity(parseFloat(opacity.value));
+                        }} else {{
+                            this.changeLayerOpacity(layerId, parseFloat(opacity.value));
+                        }}
+                        opacity.title = `Opacity: ${{Math.round(opacity.value * 100)}}%`;
+                    }});
+
+                    // Gear icon (decorative / placeholder)
+                    const gear = document.createElement('span');
+                    gear.className = 'layer-control-gear';
+                    gear.title = 'Layer options';
+                gear.style.position = 'relative';
+
+                // Simple popup menu
+                const menu = document.createElement('div');
+                menu.className = 'layer-control-menu';
+                const zoomBtn = document.createElement('button');
+                zoomBtn.type = 'button';
+                zoomBtn.textContent = 'Zoom to layer';
+                zoomBtn.addEventListener('click', () => {{
+                    try {{
+                        // Check if this is a marker-group type
+                        if (this.layerStates[layerId] && this.layerStates[layerId].type === 'marker-group') {{
+                            // Handle marker group zoom
+                            const markerGroups = window.__anymap_marker_groups__ || {{}};
+                            const group = markerGroups[layerId];
+                            if (group && group.items.length > 0) {{
+                                // Compute bounding box for all markers
+                                let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+                                group.items.forEach((marker) => {{
+                                    const lngLat = marker.getLngLat();
+                                    if (lngLat.lng < minLng) minLng = lngLat.lng;
+                                    if (lngLat.lat < minLat) minLat = lngLat.lat;
+                                    if (lngLat.lng > maxLng) maxLng = lngLat.lng;
+                                    if (lngLat.lat > maxLat) maxLat = lngLat.lat;
+                                }});
+                                if (minLng !== Infinity) {{
+                                    const bbox = [[minLng, minLat], [maxLng, maxLat]];
+                                    this.map.fitBounds(bbox, {{ padding: 50 }});
+                                }}
+                            }}
+                            menu.classList.remove('open');
+                            return;
+                        }}
+
+                        // Find the source for regular layers
+                        const layer = this.map.getStyle().layers.find(l => l.id === layerId);
+                        const sourceId = layer && layer.source;
+                        if (!sourceId) {{
+                            console.warn('No source for layer', layerId);
+                            return;
+                        }}
+                        const srcCfg = (mapState._sources || {{}})[sourceId];
+                        if (!srcCfg) {{
+                            console.warn('No source config found for', sourceId);
+                            return;
+                        }}
+                        if (srcCfg.type === 'geojson' && srcCfg.data) {{
+                            const bbox = (function computeBbox(geojson) {{
+                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                                function processCoords(coords) {{
+                                    for (let i = 0; i < coords.length; i++) {{
+                                        const c = coords[i];
+                                        if (Array.isArray(c) && typeof c[0] === 'number' && typeof c[1] === 'number') {{
+                                            const x = c[0], y = c[1];
+                                            if (x < minX) minX = x;
+                                            if (y < minY) minY = y;
+                                            if (x > maxX) maxX = x;
+                                            if (y > maxY) maxY = y;
+                                        }} else if (Array.isArray(c)) {{
+                                            processCoords(c);
+                                        }}
+                                    }}
+                                }}
+                                function walk(g) {{
+                                    if (!g) return;
+                                    const type = g.type;
+                                    if (type === 'FeatureCollection') {{
+                                        (g.features || []).forEach(f => walk(f));
+                                    }} else if (type === 'Feature') {{
+                                        walk(g.geometry);
+                                    }} else {{
+                                        processCoords(g.coordinates || []);
+                                    }}
+                                }}
+                                walk(geojson);
+                                if (minX === Infinity) return null;
+                                return [[minX, minY], [maxX, maxY]];
+                            }})(srcCfg.data);
+                            if (bbox) {{
+                                this.map.fitBounds(bbox, {{ padding: 50 }});
+                            }} else {{
+                                console.warn('Could not compute bbox for layer', layerId);
+                            }}
+                        }} else {{
+                            // Fallback: try the map API in case source is not GeoJSON
+                            console.warn('Zoom to layer currently supports GeoJSON sources only.');
+                        }}
+                    }} catch (e) {{
+                        console.warn('Failed to zoom to layer:', e);
+                    }} finally {{
+                        menu.classList.remove('open');
+                    }}
+                }});
+                menu.appendChild(zoomBtn);
+                gear.appendChild(menu);
+                gear.addEventListener('click', (ev) => {{
+                    ev.stopPropagation();
+                    document.querySelectorAll('.layer-control-menu.open').forEach(m => m.classList.remove('open'));
+                    menu.classList.toggle('open');
+                }});
+                document.addEventListener('click', () => {{
+                    menu.classList.remove('open');
+                }});
+
+                    item.appendChild(checkbox);
+                    item.appendChild(name);
+                    item.appendChild(opacity);
+                    item.appendChild(gear);
+
+                    this.panel.appendChild(item);
+                }}
+
+                toggleLayerVisibility(layerId, visible) {{
+                    // Update local state
+                    if (this.layerStates[layerId]) {{
+                        this.layerStates[layerId].visible = visible;
+                    }}
+
+                    // Check if this is a marker-group type
+                    if (this.layerStates[layerId] && this.layerStates[layerId].type === 'marker-group') {{
+                        // Handle marker group visibility
+                        const markerGroups = window.__anymap_marker_groups__ || {{}};
+                        const group = markerGroups[layerId];
+                        if (group) {{
+                            group.visible = visible;
+                            group.items.forEach((marker) => {{
+                                const el = marker.getElement();
+                                if (el) {{
+                                    el.style.display = visible ? '' : 'none';
+                                }}
+                            }});
+                        }}
+                    }} else {{
+                        // Call map's visibility method for regular layers
+                        this.map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+                    }}
+                }}
+
+                changeLayerOpacity(layerId, opacity) {{
+                    // Update local state
+                    if (this.layerStates[layerId]) {{
+                        this.layerStates[layerId].opacity = opacity;
+                    }}
+
+                    // Check if this is a marker-group type
+                    if (this.layerStates[layerId] && this.layerStates[layerId].type === 'marker-group') {{
+                        // Handle marker group opacity
+                        const markerGroups = window.__anymap_marker_groups__ || {{}};
+                        const group = markerGroups[layerId];
+                        if (group) {{
+                            group.opacity = opacity;
+                            group.items.forEach((marker) => {{
+                                const el = marker.getElement();
+                                if (el) {{
+                                    el.style.opacity = String(opacity);
+                                }}
+                            }});
+                        }}
+                    }} else {{
+                        // Apply opacity to map layer
+                        const layer = this.map.getLayer(layerId);
+                        if (layer) {{
+                            const layerType = layer.type;
+                            let opacityProperty;
+
+                            switch (layerType) {{
+                                case 'fill':
+                                    opacityProperty = 'fill-opacity';
+                                    break;
+                                case 'line':
+                                    opacityProperty = 'line-opacity';
+                                    break;
+                                case 'circle':
+                                    opacityProperty = 'circle-opacity';
+                                    break;
+                                case 'symbol':
+                                    this.map.setPaintProperty(layerId, 'icon-opacity', opacity);
+                                    this.map.setPaintProperty(layerId, 'text-opacity', opacity);
+                                    return;
+                                case 'raster':
+                                    opacityProperty = 'raster-opacity';
+                                    break;
+                                case 'background':
+                                    opacityProperty = 'background-opacity';
+                                    break;
+                                default:
+                                    opacityProperty = `${{layerType}}-opacity`;
+                            }}
+
+                            this.map.setPaintProperty(layerId, opacityProperty, opacity);
+                        }}
+                    }}
+                }}
+
+                toggleBackgroundVisibility(visible) {{
+                    // Update local state
+                    if (this.layerStates['Background']) {{
+                        this.layerStates['Background'].visible = visible;
+                    }}
+
+                    // Apply to all style layers (Background layers)
+                    const styleLayers = this.map.getStyle().layers || [];
+                    styleLayers.forEach(layer => {{
+                        // Skip user-added layers
+                        if (!this.layerStates[layer.id] || layer.id === 'Background') {{
+                            this.map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+                        }}
+                    }});
+                }}
+
+                changeBackgroundOpacity(opacity) {{
+                    // Update local state
+                    if (this.layerStates['Background']) {{
+                        this.layerStates['Background'].opacity = opacity;
+                    }}
+
+                    // Apply to all style layers (Background layers)
+                    const styleLayers = this.map.getStyle().layers || [];
+                    styleLayers.forEach(styleLayer => {{
+                        // Skip user-added layers
+                        if (!this.layerStates[styleLayer.id] || styleLayer.id === 'Background') {{
+                            const layer = this.map.getLayer(styleLayer.id);
+                            if (layer) {{
+                                const layerType = layer.type;
+                                let opacityProperty;
+
+                                switch (layerType) {{
+                                    case 'fill':
+                                        opacityProperty = 'fill-opacity';
+                                        break;
+                                    case 'line':
+                                        opacityProperty = 'line-opacity';
+                                        break;
+                                    case 'circle':
+                                        opacityProperty = 'circle-opacity';
+                                        break;
+                                    case 'symbol':
+                                        this.map.setPaintProperty(styleLayer.id, 'icon-opacity', opacity);
+                                        this.map.setPaintProperty(styleLayer.id, 'text-opacity', opacity);
+                                        return;
+                                    case 'raster':
+                                        opacityProperty = 'raster-opacity';
+                                        break;
+                                    case 'background':
+                                        opacityProperty = 'background-opacity';
+                                        break;
+                                    default:
+                                        opacityProperty = `${{layerType}}-opacity`;
+                                }}
+
+                                if (opacityProperty) {{
+                                    this.map.setPaintProperty(styleLayer.id, opacityProperty, opacity);
+                                }}
+                            }}
+                        }}
+                    }});
+                }}
+
+                onAdd(map) {{
+                    return this.container;
+                }}
+
+                onRemove() {{
+                    this.container.parentNode.removeChild(this.container);
+                }}
+            }}
+
+            // Map state from Python
+            const mapState = {map_state_json};
+
+            // Initialize MapLibre map
+            const map = new maplibregl.Map({{
+                container: 'map',
+                style: mapState.style || 'https://demotiles.maplibre.org/style.json',
+                center: [mapState.center[0], mapState.center[1]], // Convert [lat, lng] to [lng, lat]
+                zoom: mapState.zoom || 2,
+                bearing: mapState.bearing || 0,
+                pitch: mapState.pitch || 0,
+                antialias: mapState.antialias !== undefined ? mapState.antialias : true
+            }});
+
+            // Force default cursor for all map interactions
+            map.on('load', function() {{
+                const canvas = map.getCanvas();
+                canvas.style.cursor = 'default';
+            }});
+
+            // Restore layers and sources after map loads
+            map.on('load', function() {{
+                // Add sources first
+                const sources = mapState._sources || {{}};
+                Object.entries(sources).forEach(([sourceId, sourceConfig]) => {{
+                    try {{
+                        map.addSource(sourceId, sourceConfig);
+                    }} catch (error) {{
+                        console.warn(`Failed to add source ${{sourceId}}:`, error);
+                    }}
+                }});
+
+                // Then add layers
+                const layers = mapState._layers || {{}};
+                Object.entries(layers).forEach(([layerId, layerConfig]) => {{
+                    try {{
+                        map.addLayer(layerConfig);
+                    }} catch (error) {{
+                        console.warn(`Failed to add layer ${{layerId}}:`, error);
+                    }}
+                }});
+
+                // Set terrain if it exists
+                const terrain = mapState._terrain || {{}};
+                if (Object.keys(terrain).length > 0) {{
+                    try {{
+                        map.setTerrain(terrain);
+                        console.log('Terrain restored successfully:', terrain);
+                    }} catch (error) {{
+                        console.warn('Failed to restore terrain:', error);
+                    }}
+                }}
+            }});
+
+            // Add controls from map state
+            const controls = mapState._controls || {{}};
+            Object.entries(controls).forEach(([controlKey, controlConfig]) => {{
+                try {{
+                    const {{ type: controlType, position, options: controlOptions }} = controlConfig;
+                    let control;
+
+                    switch (controlType) {{
+                        case 'navigation':
+                            control = new maplibregl.NavigationControl(controlOptions || {{}});
+                            break;
+                        case 'scale':
+                            control = new maplibregl.ScaleControl(controlOptions || {{}});
+                            break;
+                        case 'fullscreen':
+                            control = new maplibregl.FullscreenControl(controlOptions || {{}});
+                            break;
+                        case 'geolocate':
+                            control = new maplibregl.GeolocateControl(controlOptions || {{}});
+                            break;
+                        case 'attribution':
+                            control = new maplibregl.AttributionControl(controlOptions || {{}});
+                            break;
+                        case 'globe':
+                            control = new maplibregl.GlobeControl(controlOptions || {{}});
+                            break;
+                        case 'draw':
+                            // Handle draw control restoration
+                            if (typeof MapboxDraw !== 'undefined') {{
+                                // Use custom styles for MapLibre compatibility
+                                const drawOptions = {{
+                                    ...controlOptions,
+                                    styles: window.MapLibreDrawStyles || undefined
+                                }};
+                                control = new MapboxDraw(drawOptions);
+
+                                // Store reference for data loading
+                                window.drawControl = control;
+
+                                // Set up draw event handlers
+                                map.on('draw.create', function(e) {{
+                                    console.log('Draw created:', e.features);
+                                }});
+                                map.on('draw.update', function(e) {{
+                                    console.log('Draw updated:', e.features);
+                                }});
+                                map.on('draw.delete', function(e) {{
+                                    console.log('Draw deleted:', e.features);
+                                }});
+                                map.on('draw.selectionchange', function(e) {{
+                                    console.log('Draw selection changed:', e.features);
+                                }});
+
+                                console.log('Draw control restored successfully with custom styles');
+
+                                // Load saved draw data if it exists
+                                const savedDrawData = mapState._draw_data;
+                                if (savedDrawData && savedDrawData.features && savedDrawData.features.length > 0) {{
+                                    try {{
+                                        control.set(savedDrawData);
+                                        console.log('Saved draw data loaded successfully:', savedDrawData);
+                                    }} catch (error) {{
+                                        console.error('Failed to load saved draw data:', error);
+                                    }}
+                                }}
+                            }} else {{
+                                console.warn('MapboxDraw not available during restore');
+                                return;
+                            }}
+                            break;
+                        case 'terra_draw':
+                            // Handle Terra Draw control restoration
+                            if (typeof MaplibreTerradrawControl !== 'undefined') {{
+                                const terraDrawOptions = {{
+                                    ...controlOptions
+                                }};
+                                control = new MaplibreTerradrawControl.MaplibreTerradrawControl(terraDrawOptions);
+
+                                // Store reference for data operations
+                                window.terraDrawControl = control;
+
+                                console.log('Terra Draw control restored successfully');
+
+                                // Load saved Terra Draw data if it exists
+                                const savedTerraDrawData = mapState._terra_draw_data;
+                                if (savedTerraDrawData && savedTerraDrawData.features && savedTerraDrawData.features.length > 0) {{
+                                    try {{
+                                        // Terra Draw data loading would need to be implemented based on the library's API
+                                        console.log('Saved Terra Draw data found:', savedTerraDrawData);
+                                    }} catch (error) {{
+                                        console.error('Failed to load saved Terra Draw data:', error);
+                                    }}
+                                }}
+                            }} else {{
+                                console.warn('MaplibreTerradrawControl not available during restore');
+                                return;
+                            }}
+                            break;
+                        case 'layer_control':
+                            // Handle layer control restoration
+                            control = new LayerControl(controlOptions || {{}}, map);
+                            break;
+                        case 'html':
+                            (function() {{
+                                const opts = controlOptions || {{}};
+                                const container = document.createElement('div');
+                                container.className = 'maplibregl-ctrl';
+                                container.style.background = (opts.bgColor || 'white');
+                                container.style.padding = '6px';
+                                container.style.borderRadius = '4px';
+                                if (opts.html) {{
+                                    container.innerHTML = opts.html;
+                                }} else {{
+                                    container.textContent = opts.text || '';
+                                }}
+                                control = {{
+                                    onAdd: function() {{ return container; }},
+                                    onRemove: function() {{ if (container.parentNode) {{ container.parentNode.removeChild(container); }} }}
+                                }};
+                            }})();
+                            break;
+                        case 'geoman':
+                            (function() {{
+                                try {{
+                                    const GeomanConstructor = (window.Geoman && (window.Geoman.Geoman || window.Geoman)) || null;
+                                    if (!GeomanConstructor) {{
+                                        console.warn('Geoman constructor unavailable; skipping geoman control restore');
+                                        return;
+                                    }}
+                                    const gmOptions = (controlOptions && controlOptions.geoman_options) || {{}};
+                                    const settings = gmOptions.settings || {{}};
+                                    if (!settings.position && controlOptions && controlOptions.position) {{
+                                        gmOptions.settings = {{ ...settings, position: controlOptions.position }};
+                                    }}
+                                    new GeomanConstructor(map, gmOptions);
+                                    if (mapState.geoman_data && map && map.gm && map.gm.features && typeof map.gm.features.importGeoJson === 'function') {{
+                                        try {{
+                                            map.gm.features.importGeoJson(mapState.geoman_data);
+                                        }} catch (e) {{
+                                            console.warn('Failed to import saved geoman_data:', e);
+                                        }}
+                                    }}
+                                    control = {{
+                                        onAdd: function() {{ return document.createElement('div'); }},
+                                        onRemove: function() {{}}
+                                    }};
+                                }} catch (e) {{
+                                    console.warn('Failed to initialize Geoman control in export:', e);
+                                    return;
+                                }}
+                            }})();
+                            break;
+                        case 'geocoder':
+                            // Handle geocoder control restoration
+                            if (typeof MaplibreGeocoder !== 'undefined') {{
+                                const apiConfig = controlOptions.api_config || {{}};
+
+                                // Create geocoder API implementation
+                                const geocoderApi = {{
+                                    forwardGeocode: async (config) => {{
+                                        const features = [];
+                                        try {{
+                                            const request = `${{apiConfig.api_url || 'https://nominatim.openstreetmap.org/search'}}?q=${{config.query}}&format=geojson&polygon_geojson=1&addressdetails=1&limit=${{apiConfig.limit || 5}}`;
+                                            const response = await fetch(request);
+                                            const geojson = await response.json();
+
+                                            for (const feature of geojson.features) {{
+                                                const center = [
+                                                    feature.bbox[0] + (feature.bbox[2] - feature.bbox[0]) / 2,
+                                                    feature.bbox[1] + (feature.bbox[3] - feature.bbox[1]) / 2,
+                                                ];
+                                                const point = {{
+                                                    type: "Feature",
+                                                    geometry: {{
+                                                        type: "Point",
+                                                        coordinates: center,
+                                                    }},
+                                                    place_name: feature.properties.display_name,
+                                                    properties: feature.properties,
+                                                    text: feature.properties.display_name,
+                                                    place_type: ["place"],
+                                                    center,
+                                                }};
+                                                features.push(point);
+                                            }}
+                                        }} catch (e) {{
+                                            console.error(`Failed to forwardGeocode with error: ${{e}}`);
+                                        }}
+
+                                        return {{ features }};
+                                    }},
+                                }};
+
+                                // Create geocoder control
+                                const geocoderOptions = {{
+                                    maplibregl: maplibregl,
+                                    placeholder: apiConfig.placeholder || 'Search for places...',
+                                    collapsed: controlOptions.collapsed !== false,
+                                    ...controlOptions
+                                }};
+                                delete geocoderOptions.api_config; // Remove from options passed to geocoder
+                                delete geocoderOptions.position; // Remove position from geocoder options
+
+                                control = new MaplibreGeocoder(geocoderApi, geocoderOptions);
+                                console.log('Geocoder control restored successfully');
+                            }} else {{
+                                console.warn('MaplibreGeocoder not available during restore');
+                                return;
+                            }}
+                            break;
+                        case 'basemap_control':
+                            // Handle basemap control restoration
+                            if (typeof MaplibreGLBasemapsControl !== 'undefined') {{
+                                const basemapsOptions = {{
+                                    basemaps: controlOptions.basemaps || [],
+                                    initialBasemap: controlOptions.initialBasemap,
+                                    expandDirection: controlOptions.expandDirection || 'down',
+                                    ...controlOptions
+                                }};
+                                delete basemapsOptions.position; // Remove position from options passed to control
+
+                                control = new MaplibreGLBasemapsControl(basemapsOptions);
+                                console.log('Basemap control restored successfully');
+                            }} else {{
+                                console.warn('MaplibreGLBasemapsControl not available during restore');
+                                return;
+                            }}
+                            break;
+                        default:
+                            console.warn(`Unknown control type during restore: ${{controlType}}`);
+                            return;
+                    }}
+
+                    map.addControl(control, position);
+                }} catch (error) {{
+                    console.warn(`Failed to add control ${{controlKey}}:`, error);
+                }}
+            }});
+
+            // Apply initial fit bounds if present (ensures viewport even if replay fails)
+            const initialBounds = mapState._initial_fit_bounds;
+            if (initialBounds && Array.isArray(initialBounds) && initialBounds.length === 2) {{
+                try {{
+                    const initialOptions = mapState._initial_fit_bounds_options || {{}};
+                    map.fitBounds(initialBounds, initialOptions);
+                }} catch (e) {{
+                    console.warn('Failed to apply initial fit bounds:', e);
+                }}
+            }}
+
+            // Initialize DeckGL layers if present
+            const deckglLayers = mapState._deckgl_layers || {{}};
+            if (Object.keys(deckglLayers).length > 0) {{
+                // Helper function to process DeckGL properties
+                function processDecKGLProps(props) {{
+                    const processed = {{}};
+
+                    for (const [key, value] of Object.entries(props)) {{
+                        if (typeof value === 'string') {{
+                            // Handle coordinate system constants
+                            if (key === 'coordinateSystem' && value.startsWith('COORDINATE_SYSTEM.')) {{
+                                try {{
+                                    // Convert string like "COORDINATE_SYSTEM.METER_OFFSETS" to actual constant
+                                    const constantName = value.replace('COORDINATE_SYSTEM.', '');
+                                    if (deck && deck.COORDINATE_SYSTEM && deck.COORDINATE_SYSTEM[constantName] !== undefined) {{
+                                        processed[key] = deck.COORDINATE_SYSTEM[constantName];
+                                        console.log(`Converted coordinate system: ${{value}} -> ${{deck.COORDINATE_SYSTEM[constantName]}}`);
+                                    }} else {{
+                                        console.warn(`Unknown coordinate system: ${{value}}, using as-is`);
+                                        processed[key] = value;
+                                    }}
+                                }} catch (e) {{
+                                    console.warn(`Failed to parse coordinate system: ${{value}}`, e);
+                                    processed[key] = value;
+                                }}
+                            }}
+                            // Handle different string accessor patterns
+                            else if (key.startsWith('get') && !value.startsWith('@@=')) {{
+                                // Convert simple property names to accessor functions
+                                // Special cases for common property names
+                                if (value === 'position') {{
+                                    processed[key] = d => d.position;
+                                }} else if (value === 'color') {{
+                                    processed[key] = d => d.color;
+                                }} else if (value === 'normal') {{
+                                    processed[key] = d => d.normal;
+                                }} else {{
+                                    processed[key] = d => d[value];
+                                }}
+                            }} else if (value.startsWith('@@=')) {{
+                                // Handle JavaScript expressions
+                                try {{
+                                    const expression = value.substring(3); // Remove '@@='
+                                    processed[key] = new Function('d', `return ${{expression}}`);
+                                }} catch (e) {{
+                                    console.warn(`Failed to parse expression: ${{value}}`, e);
+                                    processed[key] = value;
+                                }}
+                            }} else {{
+                                processed[key] = value;
+                            }}
+                        }} else {{
+                            processed[key] = value;
+                        }}
+                    }}
+
+                    return processed;
+                }}
+
+                map.on('load', function() {{
+                    try {{
+                        // Create DeckGL overlay
+                        const layers = [];
+
+                        Object.entries(deckglLayers).forEach(([layerId, layerConfig]) => {{
+                            try {{
+                                const LayerClass = deck[layerConfig.type];
+                                if (!LayerClass) {{
+                                    console.error(`Unknown DeckGL layer type: ${{layerConfig.type}}`);
+                                    return;
+                                }}
+
+                                // Process props to convert string accessors to functions
+                                const processedProps = processDecKGLProps(layerConfig.props);
+
+                                // Add LASLoader for PointCloudLayer if loaders.gl is available
+                                const layerOptions = {{
+                                    id: layerConfig.id,
+                                    data: layerConfig.data,
+                                    visible: layerConfig.visible !== false,
+                                    ...processedProps
+                                }};
+
+                                // If this is a PointCloudLayer and loaders.gl LAS is available, add the loader
+                                if (layerConfig.type === 'PointCloudLayer' && typeof loaders !== 'undefined' && loaders.LASLoader) {{
+                                    layerOptions.loaders = [loaders.LASLoader];
+                                    // Add fp64 support for LAZ files to fix floating point precision issues
+                                    // This is critical for proper 3D elevation rendering with LNGLAT coordinates
+                                    if (!layerOptions.loadOptions) {{
+                                        layerOptions.loadOptions = {{}};
+                                    }}
+                                    if (!layerOptions.loadOptions.las) {{
+                                        layerOptions.loadOptions.las = {{}};
+                                    }}
+                                    layerOptions.loadOptions.las.fp64 = true;
+                                    console.log('Added LASLoader to PointCloudLayer with fp64 precision');
+                                }}
+
+                                const deckLayer = new LayerClass(layerOptions);
+
+                                layers.push(deckLayer);
+                                console.log(`Added DeckGL layer: ${{layerConfig.id}}`);
+                            }} catch (error) {{
+                                console.error(`Failed to create DeckGL layer ${{layerId}}:`, error);
+                            }}
+                        }});
+
+                        if (layers.length > 0) {{
+                            const deckglOverlay = new deck.MapboxOverlay({{
+                                layers: layers
+                            }});
+                            map.addControl(deckglOverlay);
+                            console.log(`Added ${{layers.length}} DeckGL layers to map`);
+                        }}
+                    }} catch (error) {{
+                        console.error('Failed to initialize DeckGL layers:', error);
+                    }}
+                }});
+            }}
+
+            // Log map events for debugging
+            map.on('click', function(e) {{
+                console.log('Map clicked at:', e.lngLat);
+            }});
+
+            map.on('load', function() {{
+                console.log('Map loaded successfully');
+            }});
+
+            map.on('error', function(e) {{
+                console.error('Map error:', e);
+            }});
+
+            // Replay essential JavaScript calls recorded from the Python session
+            (function replayJsCalls() {{
+                const jsCalls = mapState._js_calls || [];
+                if (!Array.isArray(jsCalls) || jsCalls.length === 0) {{
+                    return;
+                }}
+
+                // Simple marker and marker-group support for export
+                const markerGroups = {{}};
+                window.__anymap_marker_groups__ = markerGroups;
+
+                function createMarker(opts) {{
+                    const markerOpts = (opts && opts.options) || {{}};
+                    // Extract scale if present (not a native MapLibre option)
+                    const markerScale = markerOpts.scale || 1.0;
+                    const markerOptsClean = {{ ...markerOpts }};
+                    delete markerOptsClean.scale;
+
+                    const m = new maplibregl.Marker(markerOptsClean)
+                        .setLngLat(opts.coordinates);
+
+                    // Apply scale to the marker's inner element
+                    if (markerScale !== 1.0) {{
+                        const markerElement = m.getElement();
+                        const markerInner = markerElement.querySelector('svg') || markerElement.firstElementChild;
+                        if (markerInner) {{
+                            markerInner.style.transform = `scale(${{markerScale}})`;
+                            markerInner.style.transformOrigin = 'center center';
+                        }}
+                    }}
+
+                    // Add popup if provided
+                    if (opts.popup) {{
+                        try {{
+                            const popupOptions = {{}};
+                            if (opts.popup_max_width) {{
+                                popupOptions.maxWidth = opts.popup_max_width;
+                            }}
+                            m.setPopup(new maplibregl.Popup(popupOptions).setHTML(String(opts.popup)));
+                        }} catch (e) {{
+                            console.warn('Failed to attach popup to marker:', e);
+                        }}
+                    }}
+
+                    // Add tooltip support (shows on hover)
+                    if (opts.tooltip) {{
+                        try {{
+                            const tooltipOptions = {{
+                                closeButton: false,
+                                closeOnClick: false,
+                                className: 'marker-tooltip'
+                            }};
+                            if (opts.tooltip_max_width) {{
+                                tooltipOptions.maxWidth = opts.tooltip_max_width;
+                            }}
+                            const tooltip = new maplibregl.Popup(tooltipOptions).setHTML(String(opts.tooltip));
+
+                            const markerElement = m.getElement();
+                            // Define named event listener functions
+                            function onMouseEnter() {{
+                                tooltip.setLngLat(opts.coordinates).addTo(map);
+                            }}
+                            function onMouseLeave() {{
+                                tooltip.remove();
+                            }}
+                            markerElement.addEventListener('mouseenter', onMouseEnter);
+                            markerElement.addEventListener('mouseleave', onMouseLeave);
+                            // Store cleanup function on marker object
+                            m._cleanupTooltip = function() {{
+                                markerElement.removeEventListener('mouseenter', onMouseEnter);
+                                markerElement.removeEventListener('mouseleave', onMouseLeave);
+                                tooltip.remove();
+                            }};
+                        }} catch (e) {{
+                            console.warn('Failed to attach tooltip to marker:', e);
+                        }}
+                    }}
+
+                    m.addTo(map);
+
+                    if (opts.options && typeof opts.options.opacity === 'number') {{
+                        try {{
+                            m.getElement().style.opacity = String(opts.options.opacity);
+                        }} catch (e) {{}}
+                    }}
+
+                    return m;
+                }}
+
+                function handleAddMarker(args) {{
+                    const data = (args && args[0]) || null;
+                    if (!data || !Array.isArray(data.coordinates)) return;
+                    createMarker(data);
+                }}
+
+                function handleAddMarkerGroup(args) {{
+                    const cfg = (args && args[0]) || null;
+                    if (!cfg || !cfg.layerId) return;
+                    const items = [];
+                    (cfg.markers || []).forEach((mk) => {{
+                        try {{
+                            // Transform marker data from {lng, lat} to {coordinates: [lng, lat]}
+                            const markerData = {{
+                                coordinates: [mk.lng, mk.lat],
+                                popup: mk.popup,
+                                tooltip: mk.tooltip,
+                                options: mk.options,
+                                popup_max_width: mk.popup_max_width,
+                                tooltip_max_width: mk.tooltip_max_width
+                            }};
+                            items.push(createMarker(markerData));
+                        }} catch (e) {{
+                            console.warn('Failed to create marker in group:', e);
+                        }}
+                    }});
+                    markerGroups[cfg.layerId] = {{
+                        items,
+                        visible: cfg.visible !== false,
+                        opacity: (typeof cfg.opacity === 'number' ? cfg.opacity : 1.0),
+                    }};
+                    // Apply initial visibility/opacity
+                    items.forEach((m) => {{
+                        const el = m.getElement();
+                        if (el) {{
+                            el.style.display = (cfg.visible === false) ? 'none' : '';
+                            el.style.opacity = String(markerGroups[cfg.layerId].opacity);
+                        }}
+                    }});
+                }}
+
+                function handleSetMarkerGroupVisibility(args) {{
+                    const id = args && args[0];
+                    const visible = args && args[1];
+                    const group = markerGroups[id];
+                    if (!group) return;
+                    group.visible = !!visible;
+                    group.items.forEach((m) => {{
+                        const el = m.getElement();
+                        if (el) el.style.display = visible ? '' : 'none';
+                    }});
+                }}
+
+                function handleSetMarkerGroupOpacity(args) {{
+                    const id = args && args[0];
+                    const opacity = args && args[1];
+                    const group = markerGroups[id];
+                    if (!group || typeof opacity !== 'number') return;
+                    group.opacity = opacity;
+                    group.items.forEach((m) => {{
+                        const el = m.getElement();
+                        if (el) el.style.opacity = String(opacity);
+                    }});
+                }}
+
+                function handleUpdateHTML(args) {{
+                    // args: [control_key, html, bg_color]
+                    try {{
+                        const html = args && args[1];
+                        if (!html) return;
+                        // Try to find our control container by content match heuristic
+                        const ctrls = document.querySelectorAll('.maplibregl-ctrl');
+                        for (const c of ctrls) {{
+                            // Update only simple HTML controls we created
+                            if (!c.querySelector('.maplibregl-ctrl-group') && c.innerHTML) {{
+                                c.innerHTML = html;
+                            }}
+                        }}
+                    }} catch (e) {{
+                        console.warn('Failed to update HTML control during replay:', e);
+                    }}
+                }}
+
+                function handleFitBounds(args) {{
+                    try {{
+                        const bounds = args && args[0];
+                        const options = args && args[1];
+                        if (Array.isArray(bounds) && bounds.length === 2) {{
+                            map.fitBounds(bounds, options || {{}});
+                        }}
+                    }} catch (e) {{
+                        console.warn('Failed to apply fitBounds during replay:', e);
+                    }}
+                }}
+
+                map.on('load', function() {{
+                    jsCalls.forEach((call) => {{
+                        try {{
+                            const name = call && call.method;
+                            const args = (call && Array.isArray(call.args)) ? call.args : [];
+                            switch (name) {{
+                                case 'addMarker':
+                                    handleAddMarker(args);
+                                    break;
+                                case 'addMarkerGroup':
+                                    handleAddMarkerGroup(args);
+                                    break;
+                                case 'setMarkerGroupVisibility':
+                                    handleSetMarkerGroupVisibility(args);
+                                    break;
+                                case 'setMarkerGroupOpacity':
+                                    handleSetMarkerGroupOpacity(args);
+                                    break;
+                                case 'updateHTML':
+                                    handleUpdateHTML(args);
+                                    break;
+                                case 'fitBounds':
+                                    handleFitBounds(args);
+                                    break;
+                                default:
+                                    // No-op for calls already covered by serialized state (addSource/addLayer/addControl/etc.)
+                                    break;
+                            }}
+                        }} catch (e) {{
+                            console.warn('Failed to replay JS call:', call, e);
+                        }}
+                    }});
+                }});
+            }})();
+        </script>
+    </body>
+</html>
