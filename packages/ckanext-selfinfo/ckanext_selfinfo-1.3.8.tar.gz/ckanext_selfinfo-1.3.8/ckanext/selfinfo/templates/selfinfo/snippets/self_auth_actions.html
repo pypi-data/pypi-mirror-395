@@ -1,0 +1,37 @@
+<div class="my-3">
+    <i class="fas fa-exclamation-triangle text-warning"></i> - Missing docstring.
+    <i class="fas fa-info-circle text-info"></i> - Chained.
+</div>
+<input type="text" class="form-control mx-0 mb-3" placeholder="Search items..." data-module="search-through-content" data-module-target="#auth-accrd-parent .accordion-item">
+<div>
+    <div class="accordion row" id="auth-accrd-parent">
+        {% for auth in data.auth_actions %}
+        <div class="accordion-item border-0 col-lg-6 pb-3">
+          <div class="border">
+            <h2 class="accordion-header" id="auth-{{auth.func_name}}-heading">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auth-{{auth.func_name}}" aria-expanded="false" aria-controls="auth-{{auth.func_name}}">
+                <div class="d-flex">
+                    <span class="h4 mb-0">{{ auth.func_name }}</span>
+                    {% if not auth.docstring %}
+                        <i class="fas fa-exclamation-triangle text-warning ms-2"></i>
+                    {% endif %}
+                    {% if auth.chained %}
+                        <i class="fas fa-info-circle text-info ms-2"></i>
+                    {% endif %}
+                </div>
+              </button>
+            </h2>
+            <div id="auth-{{auth.func_name}}" class="accordion-collapse collapse" aria-labelledby="auth-{{auth.func_name}}-heading">
+              <div class="accordion-body">
+                {% if auth.docstring %}
+                    <pre>{{ auth.docstring }}</pre>
+                {% else %}
+                    <p>Missing docstring for this Auth action.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>

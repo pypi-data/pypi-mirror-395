@@ -1,0 +1,156 @@
+[build-system]
+requires = [
+    "setuptools>=61.2",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ckanext-selfinfo"
+version = "1.3.8"
+requires-python = ">=3.8"
+description = "Web based Sys Admin server statistics"
+classifiers = ["Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = [
+    "CKAN",
+]
+dependencies = [
+    "prettytable>=3.10.0",
+    "psutil>=7.0.0",
+    "GitPython>=3.1.32",
+    "distro>=1.9.0",
+    "cryptography>=44.0.2",
+    "pip>=21.0.0"
+]
+authors = [
+    {name = "DataShades", email = "datashades@linkdigital.com.au"},
+    { name = "Yan R", email = "yan.rudenko@linkdigital.com.au" },
+]
+maintainers = [
+    {name = "DataShades", email = "datashades@linkdigital.com.au"},
+    {name = "Engerrs", email = "datashades@linkdigital.com.au"},
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+Homepage = "https://github.com/DataShades/ckanext-selfinfo"
+
+[project.entry-points."ckan.plugins"]
+selfinfo = "ckanext.selfinfo.plugin:SelfinfoPlugin"
+selftools = "ckanext.selftools.plugin:SelftoolsPlugin"
+selftracking = "ckanext.selftracking.plugin:SelftrackingPlugin"
+
+[project.entry-points."babel.extractors"]
+ckan = "ckan.lib.extract:extract_ckan"
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]"
+]
+test = [
+    "pytest-ckan",
+    "junit2html==31.0.2"
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+addopts = "--ckan-ini test.ini"
+
+
+[tool.pyright]
+pythonVersion = "3.9"
+include = ["ckanext"]
+extraPaths = ["ckan"]
+
+exclude = [
+    "**/test*",
+    "**/migration",
+]
+strict = []
+
+strictParameterNoneValue = true # type must be Optional if default value is None
+
+# Check the meaning of rules here
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md
+reportFunctionMemberAccess = true # non-standard member accesses for functions
+reportMissingImports = true
+reportMissingModuleSource = true
+reportMissingTypeStubs = false
+reportImportCycles = false
+reportUnusedImport = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+reportOptionalSubscript = true
+reportOptionalMemberAccess = true
+reportOptionalCall = true
+reportOptionalIterable = true
+reportOptionalContextManager = true
+reportOptionalOperand = true
+# We are using Context in a way that conflicts with this check
+reportTypedDictNotRequiredAccess = false
+reportConstantRedefinition = true
+reportIncompatibleMethodOverride = false
+reportIncompatibleVariableOverride = false
+reportOverlappingOverload = true
+reportUntypedFunctionDecorator = false
+reportUnknownParameterType = true
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportUnknownMemberType = false
+reportMissingTypeArgument = true
+reportInvalidTypeVarUse = true
+reportCallInDefaultInitializer = true
+reportUnknownVariableType = false
+reportUntypedBaseClass = true
+reportUnnecessaryIsInstance = true
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+reportAssertAlwaysTrue = true
+reportSelfClsParameterName = true
+reportUnusedCallResult = false # allow function calls for side-effect only (like logic.check_acces)
+useLibraryCodeForTypes = true
+reportGeneralTypeIssues = true
+reportPropertyTypeMismatch = true
+reportWildcardImportFromLibrary = true
+reportUntypedClassDecorator = false # authenticator relies on repoze.who class-decorator
+reportUntypedNamedTuple = true
+reportPrivateUsage = false # TODO: do not access private members in CKAN's codebase
+reportPrivateImportUsage = true
+reportInconsistentConstructor = true
+reportMissingSuperCall = false
+reportUninitializedInstanceVariable = false
+reportInvalidStringEscapeSequence = true
+reportMissingParameterType = true
+reportImplicitStringConcatenation = false
+reportUndefinedVariable = true
+reportUnboundVariable = true
+reportInvalidStubStatement = true
+reportIncompleteStub = true
+reportUnsupportedDunderAll = true
+reportUnusedCoroutine = true
+reportUnnecessaryTypeIgnoreComment = true
+reportMatchNotExhaustive = true

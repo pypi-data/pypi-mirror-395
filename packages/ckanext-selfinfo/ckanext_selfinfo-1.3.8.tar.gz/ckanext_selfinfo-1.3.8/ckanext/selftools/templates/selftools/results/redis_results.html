@@ -1,0 +1,51 @@
+<div class="table-responsive">
+    <div class="d-flex justify-content-between mb-3 align-items-center">
+        <div class="fw-bold fs-3">
+            <span class="me-2">{{ _('Items') }} : {{ data.results | length }}</span>
+            <input type="text" id="selftools-redis-query-table-search" class="form-control" placeholder="Search..."
+                data-module="search-through-table" data-module-target-table="selftools-redis-query-results-rows">
+        </div>
+        <button class="btn btn-dark" onclick="copyTableJsonToClipboard('selftools-redis-query-results-rows')">
+            Copy as JSON
+        </button>
+    </div>
+    <table id="selftools-redis-query-results-rows" class="table table-striped table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th scope="col">{{ _('key') }}</th>
+                <th scope="col">{{ _('type') }}</th>
+                <th scope="col">{{ _('value') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data.results %}
+            <tr>
+                <td>{{ row.key }}</td>
+                <td>{{ row.type }}</td>
+                <td>{{ row.value }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    var dataTable =  new DataTable('#selftools-redis-query-results-rows', {
+        layout: {
+          topStart: {
+              pageLength: {
+                  menu: [ 10, 25, 50, 100, 1000, 10000 ]
+              },
+              buttons: [
+                'csv'
+              ],  
+          },
+          topEnd: {
+            searchBuilder: {},
+              search: {
+                  placeholder: 'Search here'
+              }
+          },
+        }
+    });
+</script>
