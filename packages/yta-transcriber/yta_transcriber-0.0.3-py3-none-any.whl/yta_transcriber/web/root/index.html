@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Speech To Text</title>
+    <meta charset="utf-8">
+    <!-- <link rel="stylesheet" href="x-dummy.css"> -->
+    <style>
+        /* NOT IMPORTANT - COSMETICS */
+        * {
+            font-family: Arial, Helvetica, sans-serif;
+            box-sizing: border-box;
+        }
+        body {
+            max-width: 1000px; margin: 0 auto; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+        /*#result, #toggle { width: 60%; }*/
+        #result { flex-grow: 1; resize: none; }
+        #toggle {
+            padding: 12px; border: 0;
+            color: #fff; background: #d38033;
+            cursor: pointer;
+        }
+    </style>
+    <script>
+        setStatus = (status) => {
+            document.getElementById('status').innerText = 'Status: ' + status
+        }
+        setTempTranscription = (text) => {
+            document.getElementById('temp_transcription').innerText = '-> ' + text
+        }
+        setFinalTranscription = (text) => {
+            document.getElementById('final_transcription').innerText = text
+        }
+        setNumberOfResults = (number) => {
+            document.getElementById('number_of_results').innerText = '' + number
+        }
+        resetTexts = () => {
+            setTempTranscription('')
+            setFinalTranscription('')
+        }
+
+        let hres = null
+        let htog = null
+        let sr = null
+        let listening = false
+        let numberOfResults = 0
+
+        let initializeSpeechRecognition = function() {
+            htog = document.getElementById('toggle');
+            htog.value = 'Click to start';
+            htog.disabled = false;
+            numberOfResults = 0
+
+            sr = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            sr.lang = 'es-ES'; // 'en-US'
+            // Detect audio transcription continuously
+            sr.continuous = true;
+            // Show results while they are being detected
+            sr.interimResults = true;
+
+            // The microphone started detecting audio input
+            // because 'start' button was clicked
+            sr.onstart = function() {
+                setStatus('Microphone is detecting...')
+                //resetTexts()
+            };
+
+            // The microphone ended detecting audio input
+            // because 'stop' button was clicked
+            sr.onend = function() {
+                setStatus('Microphone stopped detecting...')
+                //resetTexts()
+                numberOfResults = 0
+                setNumberOfResults(numberOfResults)
+            };
+
+            sr.onresult = e => {
+                console.log({e})
+                /*
+                We have two type of events that come here. When
+                a word is said, a fast event result come with
+                the quick word detected (confidence is low),
+                applying just the language as context, but it
+                keeps being analyzed in the backend. 
+
+                But, while there can be other results based on
+                the narrator speach and quick word detection,
+                once the backend has analyzed a previously
+                detected word and has a definitive result, it
+                comes as another event with a result that has
+                a high confidence value. These ones have been
+                processed by also using the general context of
+                the sentence (I don't know how SR works in the
+                backend but this makes sense).
+                */
+                said = ''
+                for (let i = 0; i < e.results.length; i++) {
+                    said += e.results[i][0].transcript
+                }
+                said = said.trim()
+                
+                let last_result = e.results[e.results.length - 1]
+                numberOfResults++
+
+                if (last_result.isFinal) {
+                    setFinalTranscription(said)
+                    reset()
+                } else {
+                    setTempTranscription(said)
+                    setNumberOfResults(numberOfResults)
+                }
+            };
+
+            // (B4) ON ERROR
+            sr.onerror = e => {
+                // TODO: Handle this better, an error is critical
+                // console.error(e);
+                // htog.value = "ERROR";
+                // htog.disabled = true;
+                //alert("Make sure a mic is attached and permission is granted.");
+            };
+        }
+
+        let toggleButton = function() {
+            if (listening) {
+                sr.stop();
+                htog.value = "Click to start";
+                resetTexts()
+            } else {
+                sr.start();
+                htog.value = "Click to stop";
+                resetTexts()
+            }
+            listening = !listening;
+        }
+
+        let reset = function() {
+            sr.abort();
+            initializeSpeechRecognition()
+            sr.start()
+            listening = true
+            htog.value = "Click to stop";
+            setTempTranscription('')
+        }
+
+    window.addEventListener("load", initializeSpeechRecognition);
+    </script>
+  </head>
+  <body>
+    <p id="final_transcription"></p>
+    <input type="button" id="toggle" value="Loading" onclick="toggleButton()" disabled>
+    <p id="status"></p>
+    <p id="temp_transcription"></p>
+    <p id="number_of_results">0</p>
+    <input type="button" id="reset_button" value="Reset" onclick="reset()">
+  </body>
+</html>
+
+<!-- 
+Interesantes:
+
+Web donde fakear comentarios
+- https://easycomment.ai/fake-youtube-comment-generator
+-->
