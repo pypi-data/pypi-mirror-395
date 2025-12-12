@@ -1,0 +1,128 @@
+[tool.poetry]
+name = "es-translator"
+version = "1.10.0"
+description = "A lazy yet bulletproof machine translation tool for Elasticsearch."
+authors = ["ICIJ <engineering@icij.org>"]
+readme = "README.md"
+license = "GNU AFFERO GENERAL PUBLIC LICENSE"
+packages = [{include = "es_translator"}]
+
+[tool.poetry.dependencies]
+python = "^3.9,<3.13"
+click = "^8"
+elasticsearch = ">=7.10,<7.18"
+elasticsearch-dsl = ">=7,<8.0.0"
+sh = "^1.14"
+pycountry = "^22.3"
+deb-pkg-tools = "^8.4"
+coloredlogs = "*"
+urllib3 = "^1.26"
+argostranslate = "^1.9.6"
+rich = "^13"
+celery = {extras = ["redis"], version = "^5.3.1"}
+filelock = "^3.12.2"
+torch = ">=2.3,<2.4"
+numpy = ">=1.26.0"
+
+[tool.poetry.group.dev.dependencies]
+pyyaml = "*"
+argh = "*"
+pytest = "^7.2"
+pytest-mock = "^3.11.1"
+mkdocs = "^1.5"
+mkdocs-material = "^9.5"
+mkdocstrings-python = "^1.8"
+mkdocstrings = "^0.24"
+mkdocs-exclude = "^1.0.2"
+mkdocs-minify-plugin = "^0.7"
+mkdocs-autolinks-plugin = "^0.7.0"
+cairosvg = "^2.7.0"
+ruff = "^0.14.6"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    'ignore:pkg_resources is deprecated as an API',
+    "ignore:'pipes' is deprecated:DeprecationWarning",
+]
+
+[tool.ruff]
+# Set the maximum line length to 120
+line-length = 120
+# Assume Python 3.9+
+target-version = "py39"
+# Exclude common directories
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+[tool.ruff.lint]
+# Enable pycodestyle (E, W), Pyflakes (F), isort (I), and pyupgrade (UP)
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "B008",   # Do not perform function call in argument defaults
+    "B019",   # Use of functools.lru_cache on methods (intentional caching)
+    "B904",   # Within an except clause, raise exceptions with raise ... from err
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore unused imports in __init__.py files
+"__init__.py" = ["F401"]
+# Ignore import violations in test files
+"tests/**/*.py" = ["F401", "F811"]
+# Ignore redefinition of name property in abstract interpreter
+"es_translator/interpreters/abstract.py" = ["F811"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["es_translator"]
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "single"
+# Indent with spaces
+indent-style = "space"
+# Respect magic trailing commas
+skip-magic-trailing-comma = false
+# Auto-detect line ending
+line-ending = "auto"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+    
+[tool.poetry.scripts]
+es-translator = "es_translator.cli:translate"
+es-translator-tasks = "es_translator.cli:tasks"
+es-translator-pairs = "es_translator.cli:pairs"
