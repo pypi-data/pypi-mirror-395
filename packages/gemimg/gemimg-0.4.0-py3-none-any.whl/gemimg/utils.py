@@ -1,0 +1,283 @@
+import base64
+import io
+import math
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
+
+from PIL import Image, PngImagePlugin
+
+# https://ai.google.dev/gemini-api/docs/image-generation#aspect_ratios
+# Gemini 2.5 Flash Image aspect ratios
+VALID_ASPECTS_FLASH: Dict[str, Tuple[int, int]] = {
+    "1:1": (1024, 1024),
+    "2:3": (832, 1248),
+    "3:2": (1248, 832),
+    "3:4": (864, 1184),
+    "4:3": (1184, 864),
+    "4:5": (896, 1152),
+    "5:4": (1152, 896),
+    "9:16": (768, 1344),
+    "16:9": (1344, 768),
+    "21:9": (1536, 672),
+}
+
+# Gemini 3 Pro Image aspect ratios (1K resolution)
+VALID_ASPECTS_PRO: Dict[str, Tuple[int, int]] = {
+    "1:1": (1024, 1024),
+    "2:3": (848, 1264),
+    "3:2": (1264, 848),
+    "3:4": (896, 1200),
+    "4:3": (1200, 896),
+    "4:5": (928, 1152),
+    "5:4": (1152, 928),
+    "9:16": (768, 1376),
+    "16:9": (1376, 768),
+    "21:9": (1584, 672),
+}
+
+_VALID_ASPECTS_FLASH_SET = set(VALID_ASPECTS_FLASH.keys())
+_VALID_ASPECTS_PRO_SET = set(VALID_ASPECTS_PRO.keys())
+
+# Combine all valid dimensions from both models for image validation
+_ALL_VALID_DIMS = set(VALID_ASPECTS_FLASH.values()) | set(VALID_ASPECTS_PRO.values())
+_ALL_VALID_DIMS_SET = (
+    _ALL_VALID_DIMS
+    | {(w * 2, h * 2) for w, h in _ALL_VALID_DIMS}
+    | {(w * 4, h * 4) for w, h in _ALL_VALID_DIMS}
+)
+
+
+def _validate_aspect(aspect_ratio: str, is_pro: bool = False) -> str:
+    """
+    Validate an aspect ratio for the specified model.
+
+    Args:
+        aspect_ratio: The aspect ratio string to validate (e.g., "16:9")
+        is_pro: Whether validating for Pro model. If False, validates for Flash.
+
+    Returns:
+        The validated aspect ratio string
+
+    Raises:
+        ValueError: If the aspect ratio is not supported by the model
+    """
+    valid_set = _VALID_ASPECTS_PRO_SET if is_pro else _VALID_ASPECTS_FLASH_SET
+    valid_dict = VALID_ASPECTS_PRO if is_pro else VALID_ASPECTS_FLASH
+
+    if aspect_ratio not in valid_set:
+        raise ValueError(
+            f"'{aspect_ratio}' is invalid. "
+            f"Supported aspect ratios: {', '.join(valid_dict.keys())}"
+        )
+    return aspect_ratio
+
+
+def resize_image(img: Image.Image, max_size: int = 1024) -> Image.Image:
+    """
+    Resize an image so that its maximum dimension (width or height) is `max_size`
+    while maintaining the aspect ratio.
+
+    Args:
+        img: The PIL Image to resize.
+        max_size: The maximum size for the larger dimension.
+
+    Returns:
+        The resized PIL Image.
+    """
+
+    # if the image is from the API, do not resize
+    if img.size in _ALL_VALID_DIMS_SET:
+        return img
+
+    width, height = img.size
+
+    # Determine scaling factor based on the larger dimension
+    scale_factor = max_size / max(width, height)
+
+    # Skip resizing if image is already smaller
+    if scale_factor >= 1.0:
+        return img
+
+    new_width = int(width * scale_factor)
+    new_height = int(height * scale_factor)
+    return img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+
+def img_to_b64(img: Union[str, Image.Image], resize: bool = True) -> str:
+    """
+    Convert an input image (or path to an image) to a base64-encoded string.
+
+    Args:
+        img: The image or path to the image.
+        resize: Whether to resize the image before encoding.
+
+    Returns:
+        The base64-encoded string of the image.
+    """
+    if isinstance(img, str):
+        img = Image.open(img)
+    if resize:
+        img = resize_image(img)
+
+    with io.BytesIO() as buffer:
+        img.save(buffer, format="WEBP")
+        img_bytes = buffer.getvalue()
+    return base64.b64encode(img_bytes).decode("utf-8")
+
+
+def b64_to_img(img_b64: str) -> Image.Image:
+    """
+    Convert a base64-encoded image string into a PIL Image object.
+
+    Args:
+        img_b64: The base64-encoded image string.
+
+    Returns:
+        The decoded PIL Image.
+    """
+    img_data = base64.b64decode(img_b64)
+    return Image.open(io.BytesIO(img_data))
+
+
+def img_b64_part(img_b64: str) -> dict:
+    """
+    Create the part formatting for a base64-encoded image for the Gemini API.
+
+    Args:
+        img_b64: The base64-encoded image string.
+
+    Returns:
+        A dictionary representing the API part.
+    """
+    return {"inline_data": {"mime_type": "image/webp", "data": img_b64}}
+
+
+def save_image(
+    img: Image.Image,
+    path: str,
+    store_prompt: bool = False,
+    prompt: Optional[str] = None,
+) -> None:
+    """
+    Save an image to a file path, optionally with prompt metadata for PNG files.
+
+    Args:
+        img: The PIL Image to save.
+        path: The file path where the image will be saved.
+        store_prompt: Whether to store the prompt in PNG metadata (PNG only).
+        prompt: The prompt text to store in metadata (if store_prompt=True).
+    """
+    if store_prompt and path.endswith(".png") and prompt:
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("gemimg_prompt", prompt.strip())
+        img.save(path, pnginfo=pnginfo)
+    else:
+        img.save(path)
+
+
+def save_images_batch(
+    images: List[Image.Image],
+    response_id: str,
+    save_dir: str,
+    file_extension: str,
+    store_prompt: bool = False,
+    prompt: Optional[str] = None,
+) -> List[str]:
+    """
+    Save a batch of images with consistent naming and return their paths.
+
+    Args:
+        images: List of PIL Images to save.
+        response_id: The response ID to use as filename base.
+        save_dir: Directory to save images in.
+        file_extension: File extension (e.g., "png", "webp").
+        store_prompt: Whether to store the prompt in PNG metadata.
+        prompt: The prompt text to store in metadata.
+
+    Returns:
+        List of relative image paths that were saved.
+    """
+    saved_paths = []
+    for idx, img in enumerate(images):
+        suffix = "" if len(images) == 1 else f"-{idx:02d}"
+        image_path = f"{response_id}{suffix}.{file_extension}"
+        full_path = Path(save_dir) / image_path
+        save_image(img, str(full_path), store_prompt, prompt)
+        saved_paths.append(image_path)
+    return saved_paths
+
+
+def composite_images(
+    images: List[Union[str, Image.Image]],
+    rows: Optional[int] = None,
+    cols: Optional[int] = None,
+    background_color: Union[str, Tuple[int, int, int]] = "white",
+) -> Image.Image:
+    """
+    Composite multiple images into a single grid image.
+
+    Args:
+        images: List of file paths (strings) or PIL Image objects
+        rows: Number of rows in the grid. If None, will be calculated based on cols
+        cols: Number of columns in the grid. If None, will be calculated based on rows
+        background_color: Background color for empty cells (default: "white")
+
+    Returns:
+        PIL Image object containing the composite grid
+
+    Raises:
+        ValueError: If no rows or cols specified, or if images list is empty
+        FileNotFoundError: If a file path doesn't exist
+    """
+
+    if not images:
+        raise ValueError("Images list cannot be empty")
+
+    # Load all images and ensure they're PIL Image objects
+    loaded_images: List[Image.Image] = []
+    for img in images:
+        if isinstance(img, str):
+            # It's a file path
+            loaded_images.append(Image.open(img))
+        else:
+            # It's already a PIL Image
+            loaded_images.append(img)
+
+    num_images = len(loaded_images)
+
+    # Calculate grid dimensions
+    if rows is None and cols is None:
+        # Default to roughly square grid
+        cols = math.ceil(math.sqrt(num_images))
+        rows = math.ceil(num_images / cols)
+    elif rows is None:
+        rows = math.ceil(num_images / cols)
+    elif cols is None:
+        cols = math.ceil(num_images / rows)
+
+    # Validate that grid can accommodate all images
+    if rows * cols < num_images:
+        raise ValueError(f"Grid size {rows}x{cols} too small for {num_images} images")
+
+    # Get dimensions from the first image (assuming all are equal as per requirements)
+    img_width, img_height = loaded_images[0].size
+
+    # Create the composite image
+    composite_width = cols * img_width
+    composite_height = rows * img_height
+
+    # Determine mode based on first image
+    mode = loaded_images[0].mode
+    composite = Image.new(mode, (composite_width, composite_height), background_color)
+
+    # Place images in the grid
+    for idx, img in enumerate(loaded_images):
+        row = idx // cols
+        col = idx % cols
+
+        x_offset = col * img_width
+        y_offset = row * img_height
+
+        composite.paste(img, (x_offset, y_offset))
+
+    return composite
