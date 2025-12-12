@@ -1,0 +1,122 @@
+name: Run CI
+
+on:
+  # Run job at the end of each day
+  schedule:
+      - cron: "0 0 * * *"
+  # Run job on push to main
+  push:
+    branches:
+      - main
+  # Run job on pull request to main
+  pull_request:
+    branches:
+      - main
+  # Run job manually on request
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Run Tests (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          miniforge-version: latest
+          channels: conda-forge,defaults
+          show-channel-urls: true
+
+      - name: Configure conda and install requirements
+        id: rs-install
+        shell: bash -l {0}
+        run: |
+          conda install --yes --file=requirements.txt
+          conda install --yes --file=test-requirements.txt
+          pip install lsst.resources
+          conda list rubin-scheduler | grep -v "#" | awk '{print $2}' > ${{ github.workspace }}/rs_version
+          echo "rs-version" `cat ${{ github.workspace }}/rs_version`
+          echo "rs-version=`cat ${{ github.workspace }}/rs_version`" >> $GITHUB_OUTPUT
+
+      - name: Access rubin-sched-data cache
+        id: cache-rs
+        uses: actions/cache@v4
+        env:
+          cache-name: cached-rubin-sched-data
+        with:
+          path: ~/rubin_sim_data
+          key: ${{ env.cache-name }}-v${{ steps.rs-install.outputs.rs-version }}
+          restore-keys: |
+            ${{ env.cache-name }}-v
+
+      - name: Check and update cache contents.
+        shell: bash -l {0}
+        run: |
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          scheduler_download_data --update --tdqm_disable
+          rs_download_data --update --tdqm_disable --dirs sim_baseline
+
+      - name: Install schedview
+        shell: bash -l {0}
+        run: |
+          echo `pwd`
+          python -m pip install -e . --no-deps
+
+      - name: Conda list
+        shell: bash -l {0}
+        run: conda list
+
+      - name: black format test
+        shell: bash -l {0}
+        run: black --check .
+
+      - name: Run unit tests
+        shell: bash -l {0}
+        run: |
+          export RUBIN_SIM_DATA_DIR=~/rubin_sim_data
+          python -m pytest -r a -v --cov=schedview --cov=tests --cov-report=xml --cov-report=term --cov-branch
+
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+
+  pypi:
+    name: Build and upload to PyPI
+    runs-on: ubuntu-latest
+    needs: [tests]
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need to clone everything to embed the version.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade setuptools build
+
+      - name: Build and create distribution
+        run: |
+          python -m build --skip-dependency-check
+
+      - name: Upload to lsst-sp PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.SP_PYPI_UPLOADS }}
