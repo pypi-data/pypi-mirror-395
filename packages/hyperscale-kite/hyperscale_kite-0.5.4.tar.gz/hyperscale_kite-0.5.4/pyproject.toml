@@ -1,0 +1,89 @@
+[project]
+name = "hyperscale-kite"
+version = "0.5.4"
+description = "A tool for AWS security assessments"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Andy Caine", email = "andy@hyperscale.consulting" },
+    { name = "Henry Addico", email = "henry@hyperscale.consulting" }
+]
+urls = { repository = "https://github.com/hyperscale-consulting/kite" }
+dependencies = [
+  "click>=8.0.0",
+  "rich>=10.0.0",
+  "boto3>=1.38.0",
+  "pyyaml>=6.0.0",
+  "prompt_toolkit>=3.0.0",
+  "dacite>=1.9.0",
+]
+
+[project.scripts]
+kite = "hyperscale.kite.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hyperscale"]
+
+[dependency-groups]
+dev = [
+  "ruff"
+]
+tests = [
+  "pytest",
+  "pytest-cov",
+  "pytest-mock"
+]
+pre-commit = [
+  "pre-commit",
+  "pre-commit-uv"
+]
+typing = [
+  "mypy",
+  "pyright"
+]
+
+[tool.uv]
+default-groups = ["dev", "pre-commit", "tests", "typing"]
+
+
+[tool.mypy]
+python_version = "3.10"
+show_error_codes = true
+pretty = true
+strict = true
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+
+[tool.ruff]
+fix = true
+show-fixes = true
+output-format = "full"
+
+[tool.ruff.lint]
+select = [
+    "B",  # flake8-bugbear
+    "E",  # pycodestyle error
+    "F",  # pyflakes
+    "I",  # isort
+    "UP",  # pyupgrade
+    "W",  # pycodestyle warning
+]
+ignore = [
+    "UP038",  # keep isinstance tuple
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+order-by-type = false
+
+[tool.coverage.run]
+branch = true
+source = ["kite", "tests"]
