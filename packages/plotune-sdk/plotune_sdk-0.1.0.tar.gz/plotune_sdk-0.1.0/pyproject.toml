@@ -1,0 +1,82 @@
+[project]
+name = "plotune_sdk"
+description = "Plotune SDK for developing extensions"
+authors = [{ name = "Plotune Team", email = "contact@plotune.net" }]
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "fastapi >=0.100.0,<1",
+    "uvicorn[standard] >=0.20.0,<1",
+    "httpx >=0.24.0,<1",
+    "pydantic >=2.0.0,<3",
+    "pillow >=10.0.0,<11",
+    "pystray >=0.19.5,<1",
+    "packaging >=24.0,<25",
+    "platformdirs >=4.0.0,<5",
+    "diskcache >=5.6.3,<6"
+]
+
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >=7.0.0,<8",
+    "ruff >=0.1.0,<1",
+    "black >=23.0.0,<24",
+    "mypy >=1.0.0,<2",
+    "pip-chill >=1.0.0,<2",
+    "pytest-asyncio >=0.20.0,<1",
+    "pytest-cov >=4.0.0,<5",
+    "types-httpx",
+    "types-pydantic",
+    "diskcache >=5.6.3,<6",
+]
+
+[build-system]
+requires = ["setuptools >=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["plotune_sdk*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+plotune_sdk = ["assets/*.png"]
+
+[tool.setuptools.dynamic]
+version = {attr = "plotune_sdk.__version__"}
+
+[tool.black]
+line-length = 120
+target-version = ['py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-ra --cov=plotune_sdk --cov-report=term-missing"
+asyncio_mode = "auto"
+testpaths = ["tests"]
