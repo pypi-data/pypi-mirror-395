@@ -1,0 +1,2451 @@
+Metadata-Version: 2.4
+Name: autmeopypi
+Version: 1.0.0
+Summary: Automated Python Package Publishing Tool
+Author-email: mero <mero@ps.dev>
+Maintainer-email: mero <mero@ps.dev>
+License: MIT
+Project-URL: Homepage, https://github.com/6x-u/autopypi
+Project-URL: Documentation, https://github.com/6x-u/autopypi#readme
+Project-URL: Repository, https://github.com/6x-u/autopypi
+Project-URL: Issues, https://github.com/6x-u/autopypi/issues
+Project-URL: Changelog, https://github.com/6x-u/autopypi/releases
+Keywords: pypi,upload,publish,package,build,wheel,sdist,automation,ci,cd,release,distribution
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: MacOS
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Software Distribution
+Classifier: Topic :: Utilities
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: build>=0.7.0
+Requires-Dist: twine>=4.0.0
+Requires-Dist: wheel>=0.37.0
+Requires-Dist: setuptools>=61.0
+Requires-Dist: toml>=0.10.0
+Requires-Dist: flask>=2.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Dynamic: license-file
+
+# AutoPyPI
+
+<div align="center">
+
+```
+    _         _        ____        ____ ___ 
+   / \  _   _| |_ ___ |  _ \ _   _|  _ \_ _|
+  / _ \| | | | __/ _ \| |_) | | | | |_) | | 
+ / ___ \ |_| | || (_) |  __/| |_| |  __/| | 
+/_/   \_\__,_|\__\___/|_|    \__, |_|  |___|
+                             |___/          
+```
+
+### Automated Python Package Publishing Tool
+
+[![Python](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PyPI](https://img.shields.io/badge/PyPI-autopypi-FF6F00?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/autopypi/)
+[![License](https://img.shields.io/badge/License-MIT-00C853?style=for-the-badge)](LICENSE)
+[![Termux](https://img.shields.io/badge/Termux-Supported-000000?style=for-the-badge&logo=android&logoColor=white)](https://termux.com/)
+[![GitHub](https://img.shields.io/badge/GitHub-6x--u-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/6x-u)
+
+---
+
+**The most powerful and easiest way to publish Python packages to PyPI**
+
+*Build, Check, Upload - All in One Command*
+
+---
+
+[![Telegram](https://img.shields.io/badge/Developer-@QP4RM-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://t.me/QP4RM)
+[![Email](https://img.shields.io/badge/Email-mero@ps.dev-EA4335?style=flat-square&logo=gmail&logoColor=white)](mailto:mero@ps.dev)
+
+</div>
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [One-Command Publishing](#one-command-publishing)
+- [CLI Reference](#cli-reference)
+- [Python API](#python-api)
+- [Web Interface](#web-interface)
+- [CI/CD Integration](#cicd-integration)
+- [Configuration](#configuration)
+- [Authentication](#authentication)
+- [Batch Operations](#batch-operations)
+- [Version Management](#version-management)
+- [Git Integration](#git-integration)
+- [Logging System](#logging-system)
+- [Color System](#color-system)
+- [Environment Variables](#environment-variables)
+- [Supported Platforms](#supported-platforms)
+- [Project Structure](#project-structure)
+- [FAQ](#faq)
+- [Troubleshooting](#troubleshooting)
+- [Examples](#examples)
+- [License](#license)
+
+---
+
+## Features
+
+<div align="center">
+
+| Feature | Description |
+|:-------:|:------------|
+| **One-Command Publish** | Set token and publish all packages with single command |
+| **Build Automation** | Build sdist and wheel distributions automatically |
+| **Smart Checking** | Verify packages before upload with twine check |
+| **Multi-Repository** | Support for PyPI and TestPyPI |
+| **Token Auth** | Secure token-based authentication |
+| **Credential Auth** | Username/password authentication support |
+| **Version Management** | Bump major, minor, patch, alpha, beta, rc versions |
+| **Git Integration** | Create and push version tags automatically |
+| **Batch Operations** | Build/upload multiple packages at once |
+| **Parallel Processing** | Speed up batch operations with threading |
+| **CI/CD Generation** | Auto-generate GitHub Actions and GitLab CI configs |
+| **Web Interface** | Beautiful web dashboard for all operations |
+| **Colored Output** | Rich terminal colors for better visibility |
+| **Upload History** | Track all your uploads with timestamps |
+| **Changelog Generation** | Auto-generate changelog from git commits |
+| **Cross-Platform** | Works on Linux, Windows, macOS, Termux |
+| **Python 3.9-3.14** | Support for all modern Python versions |
+
+</div>
+
+---
+
+## Installation
+
+### Using pip (Recommended)
+
+```bash
+pip install autopypi
+```
+
+### Using pip3
+
+```bash
+pip3 install autopypi
+```
+
+### Upgrade to Latest Version
+
+```bash
+pip install --upgrade autopypi
+```
+
+### Install from Source
+
+```bash
+git clone https://github.com/6x-u/autopypi.git
+cd autopypi
+pip install -e .
+```
+
+### Termux (Android)
+
+```bash
+pkg update && pkg upgrade
+pkg install python
+pip install autopypi
+```
+
+### Verify Installation
+
+```bash
+autopypi --version
+```
+
+Expected output:
+```
+AutoPyPI 1.0.0
+```
+
+---
+
+## Quick Start
+
+### Step 1: Navigate to Your Project
+
+```bash
+cd /path/to/your/python/project
+```
+
+### Step 2: Build Your Package
+
+```bash
+autopypi build
+```
+
+This creates:
+- `dist/your-package-1.0.0.tar.gz` (source distribution)
+- `dist/your-package-1.0.0-py3-none-any.whl` (wheel distribution)
+
+### Step 3: Check Your Package
+
+```bash
+autopypi check
+```
+
+This verifies:
+- Distribution files exist
+- Twine check passes
+- Metadata is valid
+- Version format is correct
+- README exists
+
+### Step 4: Upload to PyPI
+
+```bash
+autopypi upload -t YOUR_PYPI_TOKEN
+```
+
+### Step 5: Upload to TestPyPI (Optional)
+
+```bash
+autopypi upload --test -t YOUR_TEST_PYPI_TOKEN
+```
+
+---
+
+## One-Command Publishing
+
+The most powerful feature of AutoPyPI is one-command publishing. With a single command, you can:
+
+1. Discover all Python packages in a directory
+2. Build all packages (sdist + wheel)
+3. Upload all packages to PyPI
+
+### Using `start` Command
+
+```bash
+autopypi start YOUR_PYPI_TOKEN
+```
+
+### Using `token` Command
+
+```bash
+autopypi token YOUR_PYPI_TOKEN
+```
+
+### Publish to TestPyPI
+
+```bash
+autopypi start YOUR_TEST_TOKEN --test
+```
+
+### Publish from Specific Directory
+
+```bash
+autopypi start YOUR_TOKEN --dir /path/to/packages
+```
+
+### What Happens
+
+1. **Discovery**: Scans directory for `pyproject.toml` or `setup.py` files
+2. **Display**: Shows all found packages with name and version
+3. **Build**: Builds each package (sdist + wheel)
+4. **Upload**: Uploads all successful builds to PyPI/TestPyPI
+5. **Summary**: Shows success/failure count
+
+---
+
+## CLI Reference
+
+### Global Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--version` | `-v` | Show version number |
+| `--verbose` | `-V` | Enable verbose output |
+| `--path` | `-p` | Set project path (default: current directory) |
+| `--help` | `-h` | Show help message |
+
+---
+
+### `autopypi build`
+
+Build source distribution and wheel files.
+
+```bash
+autopypi build [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--sdist` | Build source distribution only |
+| `--wheel` | Build wheel distribution only |
+| `--no-clean` | Don't clean previous builds |
+
+#### Examples
+
+```bash
+# Build both sdist and wheel
+autopypi build
+
+# Build source distribution only
+autopypi build --sdist
+
+# Build wheel only
+autopypi build --wheel
+
+# Build without cleaning
+autopypi build --no-clean
+
+# Build specific project
+autopypi build -p /path/to/project
+```
+
+#### Output
+
+```
+====================
+  Building Package  
+====================
+
+[INF] Package: mypackage
+[INF] Version: 1.0.0
+● [1/4] Checking requirements
+    ✓ Project configuration found
+    ✓ Dependencies installed
+● [2/4] Cleaning previous builds
+    ✓ Cleaned 2 directories
+● [3/4] Building source distribution
+    ✓ Source distribution created (15.32 KB)
+● [4/4] Building wheel distribution
+    ✓ Wheel distribution created (18.45 KB)
+[OK] Build complete: sdist, wheel
+
+File                              Size       SHA256                
+----------------------------------------------------------------
+mypackage-1.0.0.tar.gz            15.32 KB   abc123...
+mypackage-1.0.0-py3-none-any.whl  18.45 KB   def456...
+
+[INF] Total size: 33.77 KB
+```
+
+---
+
+### `autopypi check`
+
+Verify package before uploading.
+
+```bash
+autopypi check
+```
+
+#### What it Checks
+
+1. **Distribution Files**: Ensures `dist/` contains `.tar.gz` and `.whl` files
+2. **Twine Check**: Runs `twine check` on all distribution files
+3. **Package Metadata**: Verifies required fields (name, version)
+4. **Version Format**: Checks PEP 440 compliance
+5. **README**: Ensures README file exists and is not empty
+6. **LICENSE**: Checks for LICENSE file (warning if missing)
+
+#### Output
+
+```
+====================
+  Checking Package  
+====================
+
+● [1/5] Checking distribution files
+    ✓ Found 2 distribution file(s)
+● [2/5] Running twine check
+    ✓ Twine check passed
+● [3/5] Checking package metadata
+    ✓ Required metadata present
+● [4/5] Checking version format
+    ✓ Version 1.0.0 is valid
+● [5/5] Checking README
+    ✓ Found README.md
+[OK] All checks passed
+```
+
+---
+
+### `autopypi upload`
+
+Upload package to PyPI or TestPyPI.
+
+```bash
+autopypi upload [OPTIONS]
+```
+
+#### Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--token` | `-t` | PyPI API token |
+| `--username` | `-u` | PyPI username |
+| `--password` | | PyPI password |
+| `--test` | | Upload to TestPyPI instead of PyPI |
+| `--sdist-only` | | Upload source distribution only |
+| `--wheel-only` | | Upload wheel distribution only |
+| `--skip-check` | | Skip pre-upload package check |
+
+#### Examples
+
+```bash
+# Upload with token (recommended)
+autopypi upload -t pypi-xxxxxxxxxxxxx
+
+# Upload to TestPyPI
+autopypi upload --test -t pypi-xxxxxxxxxxxxx
+
+# Upload with username/password
+autopypi upload -u myusername --password mypassword
+
+# Upload source distribution only
+autopypi upload --sdist-only -t TOKEN
+
+# Upload wheel only
+autopypi upload --wheel-only -t TOKEN
+
+# Skip pre-upload check
+autopypi upload --skip-check -t TOKEN
+```
+
+#### Output
+
+```
+=====================
+  Uploading to PyPI  
+=====================
+
+[INF] Found 2 file(s) to upload
+
+====================
+  Checking Package  
+====================
+
+● [1/5] Checking distribution files
+    ✓ Found 2 distribution file(s)
+...
+[OK] All checks passed
+● [1/1] Uploading packages
+    ✓ Successfully uploaded to PyPI
+[INF] View at: https://pypi.org/project/mypackage/
+```
+
+---
+
+### `autopypi release`
+
+Complete release workflow: bump version, build, check, upload, and tag.
+
+```bash
+autopypi release [OPTIONS]
+```
+
+#### Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--token` | `-t` | PyPI API token |
+| `--username` | `-u` | PyPI username |
+| `--password` | | PyPI password |
+| `--test` | | Upload to TestPyPI |
+| `--bump` | | Version bump type (major/minor/patch/alpha/beta/rc) |
+| `--tag` | | Create git tag |
+| `--push-tag` | | Create and push git tag |
+
+#### Examples
+
+```bash
+# Full release with version bump and git tag
+autopypi release --bump minor --tag --push-tag -t TOKEN
+
+# Release without version change
+autopypi release -t TOKEN
+
+# Release to TestPyPI
+autopypi release --test -t TOKEN
+
+# Patch release with tag
+autopypi release --bump patch --tag -t TOKEN
+```
+
+#### Workflow
+
+1. Bump version (if `--bump` specified)
+2. Build package (sdist + wheel)
+3. Check package
+4. Upload to PyPI/TestPyPI
+5. Create git tag (if `--tag` specified)
+6. Push git tag (if `--push-tag` specified)
+
+---
+
+### `autopypi start` / `autopypi token`
+
+Set token and auto-publish all packages in directory.
+
+```bash
+autopypi start TOKEN [OPTIONS]
+autopypi token TOKEN [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--test` | Upload to TestPyPI |
+| `--dir` | Directory to scan for packages |
+
+#### Examples
+
+```bash
+# Publish all packages in current directory
+autopypi start pypi-xxxxxxxxxxxxx
+
+# Publish to TestPyPI
+autopypi token pypi-xxxxxxxxxxxxx --test
+
+# Publish packages in specific directory
+autopypi start pypi-xxxxxxxxxxxxx --dir /path/to/packages
+```
+
+---
+
+### `autopypi version`
+
+Manage package version.
+
+```bash
+autopypi version [ACTION] [VALUE]
+```
+
+#### Actions
+
+| Action | Description |
+|--------|-------------|
+| `show` | Display current version and options (default) |
+| `set` | Set specific version |
+| `bump` | Bump version by type |
+
+#### Bump Types
+
+| Type | Example |
+|------|---------|
+| `patch` | 1.0.0 -> 1.0.1 |
+| `minor` | 1.0.0 -> 1.1.0 |
+| `major` | 1.0.0 -> 2.0.0 |
+| `alpha` | 1.0.0 -> 1.0.1a1 |
+| `beta` | 1.0.0 -> 1.0.1b1 |
+| `rc` | 1.0.0 -> 1.0.1rc1 |
+
+#### Examples
+
+```bash
+# Show current version and options
+autopypi version
+
+# Set specific version
+autopypi version set 2.0.0
+
+# Bump patch version
+autopypi version bump patch
+
+# Bump minor version
+autopypi version bump minor
+
+# Bump to alpha
+autopypi version bump alpha
+```
+
+#### Output
+
+```
+[INF] Current version: 1.0.0
+
+[INF] Next version options:
+[INF]   patch    -> 1.0.1
+[INF]   minor    -> 1.1.0
+[INF]   major    -> 2.0.0
+[INF]   alpha    -> 1.0.1a1
+[INF]   beta     -> 1.0.1b1
+[INF]   rc       -> 1.0.1rc1
+```
+
+---
+
+### `autopypi tag`
+
+Create and optionally push git tag.
+
+```bash
+autopypi tag [OPTIONS]
+```
+
+#### Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--push` | | Push tag to remote |
+| `--message` | `-m` | Custom tag message |
+
+#### Examples
+
+```bash
+# Create local tag
+autopypi tag
+
+# Create and push tag
+autopypi tag --push
+
+# Create tag with custom message
+autopypi tag -m "Release version 1.0.0"
+
+# Create and push with message
+autopypi tag --push -m "Major release"
+```
+
+---
+
+### `autopypi batch`
+
+Perform batch operations on multiple packages.
+
+```bash
+autopypi batch ACTION [DIRECTORY] [OPTIONS]
+```
+
+#### Actions
+
+| Action | Description |
+|--------|-------------|
+| `build` | Build all packages |
+| `upload` | Upload all packages |
+| `release` | Build and upload all packages |
+| `check` | Check all packages |
+| `clean` | Clean all build directories |
+
+#### Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--token` | `-t` | PyPI API token |
+| `--test` | | Use TestPyPI |
+| `--parallel` | | Enable parallel processing |
+
+#### Examples
+
+```bash
+# Build all packages in directory
+autopypi batch build ./packages
+
+# Build with parallel processing
+autopypi batch build ./packages --parallel
+
+# Upload all packages
+autopypi batch upload ./packages -t TOKEN
+
+# Upload to TestPyPI
+autopypi batch upload ./packages --test -t TOKEN
+
+# Full release of all packages
+autopypi batch release ./packages -t TOKEN
+
+# Check all packages
+autopypi batch check ./packages
+
+# Clean all build directories
+autopypi batch clean ./packages
+```
+
+---
+
+### `autopypi ci`
+
+Generate CI/CD configuration files.
+
+```bash
+autopypi ci [PLATFORM]
+```
+
+#### Platforms
+
+| Platform | Aliases | Description |
+|----------|---------|-------------|
+| `github` | `gh` | GitHub Actions workflow |
+| `gitlab` | `gl` | GitLab CI configuration |
+| `all` | | Both platforms (default) |
+
+#### Examples
+
+```bash
+# Generate both GitHub Actions and GitLab CI
+autopypi ci
+
+# Generate GitHub Actions only
+autopypi ci github
+autopypi ci gh
+
+# Generate GitLab CI only
+autopypi ci gitlab
+autopypi ci gl
+```
+
+#### Generated Files
+
+**GitHub Actions** (`.github/workflows/publish.yml`):
+```yaml
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - run: pip install autopypi
+      - run: autopypi build
+      - run: autopypi check
+      - run: autopypi upload --token ${{ secrets.PYPI_TOKEN }}
+```
+
+**GitLab CI** (`.gitlab-ci.yml`):
+```yaml
+publish:
+  image: python:3.11
+  stage: deploy
+  script:
+    - pip install autopypi
+    - autopypi build
+    - autopypi check
+    - autopypi upload --token $PYPI_TOKEN
+  only:
+    - tags
+```
+
+---
+
+### `autopypi server`
+
+Start web interface.
+
+```bash
+autopypi server [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--host` | 0.0.0.0 | Server host |
+| `--port` | 5000 | Server port |
+| `--debug` | false | Enable debug mode |
+
+#### Examples
+
+```bash
+# Start with defaults
+autopypi server
+
+# Custom port
+autopypi server --port 8080
+
+# Custom host and port
+autopypi server --host 127.0.0.1 --port 3000
+
+# Debug mode
+autopypi server --debug
+```
+
+---
+
+### `autopypi clean`
+
+Clean build directories.
+
+```bash
+autopypi clean
+```
+
+This removes:
+- `dist/` directory
+- `build/` directory
+- `*.egg-info/` directories
+
+---
+
+### `autopypi info`
+
+Show package information.
+
+```bash
+autopypi info
+```
+
+#### Output
+
+```
+╔═════════════════════════════════════════════════════════╗
+║ Package Info                                            ║
+╠═════════════════════════════════════════════════════════╣
+║ Name: mypackage                                         ║
+║ Version: 1.0.0                                          ║
+║ Description: My awesome package                         ║
+║ License: MIT                                            ║
+║ Python: >=3.9                                           ║
+╚═════════════════════════════════════════════════════════╝
+
+File                              Size       SHA256                
+----------------------------------------------------------------
+mypackage-1.0.0.tar.gz            15.32 KB   abc123...
+mypackage-1.0.0-py3-none-any.whl  18.45 KB   def456...
+
+[INF] Total size: 33.77 KB
+```
+
+---
+
+### `autopypi history`
+
+Show upload history.
+
+```bash
+autopypi history [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--limit` | 10 | Number of entries to show |
+
+#### Examples
+
+```bash
+# Show last 10 uploads
+autopypi history
+
+# Show last 5 uploads
+autopypi history --limit 5
+```
+
+---
+
+## Python API
+
+AutoPyPI provides a complete Python API for programmatic access.
+
+### Importing
+
+```python
+from autopypi import (
+    bld,      # Builder
+    upl,      # Uploader
+    chk,      # Checker
+    ver,      # Version manager
+    git,      # Git operations
+    bat,      # Batch operations
+    ci,       # CI/CD generation
+    srv,      # Web server
+    c,        # Colors
+    Config,   # Configuration
+    Logger,   # Logging
+    Utils     # Utilities
+)
+```
+
+---
+
+### bld (Builder)
+
+Build source distributions and wheels.
+
+```python
+from autopypi import bld
+
+# Create builder
+b = bld("/path/to/project")
+
+# Build both sdist and wheel
+result = b.run(src=True, whl=True, cln=True)
+# Returns: {"sdist": "/path/to/dist/pkg-1.0.0.tar.gz", "wheel": "/path/to/dist/pkg-1.0.0-py3-none-any.whl"}
+
+# Build source distribution only
+result = b.run(src=True, whl=False)
+
+# Build wheel only
+result = b.run(src=False, whl=True)
+
+# Build without cleaning
+result = b.run(cln=False)
+
+# Get list of distribution files
+files = b.files()
+# Returns: ["/path/to/dist/pkg-1.0.0.tar.gz", "/path/to/dist/pkg-1.0.0-py3-none-any.whl"]
+
+# Get detailed build info
+info = b.info()
+# Returns: {
+#     "dist": "/path/to/dist",
+#     "files": [
+#         {"path": "...", "name": "...", "size": 12345, "fmt": "12.06 KB", "hash": "abc123..."}
+#     ],
+#     "size": 24690,
+#     "fmt": "24.12 KB"
+# }
+
+# Display build info in terminal
+b.show()
+```
+
+---
+
+### upl (Uploader)
+
+Upload packages to PyPI or TestPyPI.
+
+```python
+from autopypi import upl
+
+# Create uploader
+u = upl("/path/to/project")
+
+# Upload with token (recommended)
+success = u.run(tok="pypi-xxxxxxxxxxxxx")
+
+# Upload to TestPyPI
+success = u.run(tok="pypi-xxxxxxxxxxxxx", test=True)
+
+# Upload with username/password
+success = u.run(usr="username", pwd="password")
+
+# Upload without pre-check
+success = u.run(tok="TOKEN", chk_first=False)
+
+# Upload specific files
+success = u.run(tok="TOKEN", fs=["/path/to/file.tar.gz"])
+
+# Upload source distribution only
+success = u.sdist_only(tok="TOKEN")
+
+# Upload wheel only
+success = u.wheel_only(tok="TOKEN")
+
+# Get upload history
+history = u.history(lim=10)
+# Returns: [
+#     {"ts": "20231215_143022", "ok": True, "repo": "PyPI", "files": ["pkg-1.0.0.tar.gz"]}
+# ]
+
+# Display upload history
+u.show_history()
+```
+
+---
+
+### chk (Checker)
+
+Verify packages before upload.
+
+```python
+from autopypi import chk
+
+# Create checker
+c = chk("/path/to/project")
+
+# Run all checks
+passed = c.run()
+
+# Access issues and warnings
+if not passed:
+    print("Issues:", c.issues)
+    print("Warnings:", c.warns)
+
+# Get report
+report = c.report()
+# Returns: {
+#     "issues": ["error1", "error2"],
+#     "warns": ["warning1"],
+#     "ok": False
+# }
+
+# Individual checks
+c.dist_files()   # Check distribution files exist
+c.twine()        # Run twine check
+c.meta()         # Check metadata
+c.ver_fmt()      # Check version format
+c.readme()       # Check README exists
+c.lic()          # Check LICENSE exists
+```
+
+---
+
+### ver (Version Manager)
+
+Manage package versions.
+
+```python
+from autopypi import ver
+
+# Create version manager
+v = ver("/path/to/project")
+
+# Get current version
+current = v.get()
+# Returns: "1.0.0"
+
+# Show version info
+v.show()
+
+# Parse version
+parsed = v.parse("1.2.3a1")
+# Returns: {
+#     "maj": 1, "min": 2, "pat": 3,
+#     "pre": "a", "pre_n": 1,
+#     "post": None, "dev": None
+# }
+
+# Calculate next version
+next_patch = v.bump("patch")   # "1.0.1"
+next_minor = v.bump("minor")   # "1.1.0"
+next_major = v.bump("major")   # "2.0.0"
+next_alpha = v.bump("alpha")   # "1.0.1a1"
+next_beta = v.bump("beta")     # "1.0.1b1"
+next_rc = v.bump("rc")         # "1.0.1rc1"
+
+# Set version in pyproject.toml
+success = v.set("2.0.0")
+
+# Bump and set in one step
+new_version = v.bump_set("minor")
+# Returns: "1.1.0" and updates pyproject.toml
+
+# Get all next version options
+options = v.next()
+# Returns: {
+#     "patch": "1.0.1",
+#     "minor": "1.1.0",
+#     "major": "2.0.0",
+#     "alpha": "1.0.1a1",
+#     "beta": "1.0.1b1",
+#     "rc": "1.0.1rc1"
+# }
+
+# Compare versions
+result = v.cmp("1.0.0", "2.0.0")  # -1 (first is older)
+result = v.cmp("2.0.0", "1.0.0")  # 1 (first is newer)
+result = v.cmp("1.0.0", "1.0.0")  # 0 (equal)
+
+# Check if version is newer
+is_newer = v.newer("2.0.0", "1.0.0")  # True
+
+# Validate version format
+is_valid = v.valid("1.0.0")      # True
+is_valid = v.valid("invalid")   # False
+
+# Get suggested bump based on commits
+suggested = v.suggest()
+# Returns: "major", "minor", or "patch" based on commit messages
+```
+
+---
+
+### git (Git Operations)
+
+Git integration for tagging and releases.
+
+```python
+from autopypi import git
+
+# Create git manager
+g = git("/path/to/project")
+
+# Check if directory is a git repo
+if g.is_repo():
+    print("This is a git repository")
+
+# Initialize git repo
+g.init()
+
+# Get current branch
+branch = g.branch()
+# Returns: "main"
+
+# Get remote URL
+remote = g.remote()
+# Returns: "https://github.com/user/repo.git"
+
+# Get all tags
+tags = g.tags()
+# Returns: ["v1.0.0", "v1.1.0", "v2.0.0"]
+
+# Get latest tag
+latest = g.latest()
+# Returns: "v2.0.0"
+
+# Create tag
+success = g.tag("v1.0.0", "Release 1.0.0")
+
+# Push tag to remote
+success = g.push("v1.0.0")
+
+# Create and push tag (release)
+success = g.release("1.0.0", "Release version 1.0.0")
+
+# Get commits since last tag
+commits = g.commits()
+# Returns: ["abc123 feat: new feature", "def456 fix: bug fix"]
+
+# Generate changelog
+changelog = g.changelog()
+# Returns markdown-formatted changelog
+
+# Check for uncommitted changes
+is_dirty = g.dirty()
+# Returns: True if there are uncommitted changes
+
+# Get GitHub info
+gh_info = g.gh_info()
+# Returns: {"owner": "user", "repo": "project", "url": "https://github.com/user/project"}
+
+# Get GitLab info
+gl_info = g.gl_info()
+# Returns: {"owner": "user", "repo": "project", "url": "https://gitlab.com/user/project"}
+```
+
+---
+
+### bat (Batch Operations)
+
+Process multiple packages at once.
+
+```python
+from autopypi import bat
+
+# Create batch processor
+b = bat("/path/to/packages")
+
+# Discover all packages in directory
+projects = b.discover()
+# Returns: ["/path/to/pkg1", "/path/to/pkg2"]
+
+# Add project manually
+b.add("/path/to/another/pkg")
+
+# Remove project
+b.remove("/path/to/pkg1")
+
+# Show all projects
+b.show()
+
+# Get project info
+info = b.info()
+# Returns: [
+#     {"path": "/path/to/pkg1", "name": "pkg1", "ver": "1.0.0"},
+#     {"path": "/path/to/pkg2", "name": "pkg2", "ver": "2.0.0"}
+# ]
+
+# Build all packages
+results = b.build_all()
+# Returns: {
+#     "/path/to/pkg1": {"ok": True, "sdist": "...", "wheel": "..."},
+#     "/path/to/pkg2": {"ok": False, "err": "error message"}
+# }
+
+# Build with parallel processing
+results = b.build_all(parallel=True)
+
+# Upload all packages
+results = b.upload_all(tok="TOKEN")
+
+# Upload to TestPyPI
+results = b.upload_all(tok="TOKEN", test=True)
+
+# Upload with parallel processing
+results = b.upload_all(tok="TOKEN", parallel=True)
+
+# Full release (build + upload)
+results = b.release_all(tok="TOKEN")
+
+# Release with git tagging
+results = b.release_all(tok="TOKEN", tag=True)
+
+# Check all packages
+results = b.check_all()
+# Returns: {
+#     "/path/to/pkg1": {"ok": True, "issues": [], "warns": []},
+#     "/path/to/pkg2": {"ok": False, "issues": ["error"], "warns": ["warning"]}
+# }
+
+# Clean all build directories
+b.clean_all()
+```
+
+---
+
+### ci (CI/CD Integration)
+
+Generate CI/CD configuration files.
+
+```python
+from autopypi import ci
+
+# Create CI manager
+c = ci("/path/to/project")
+
+# Generate GitHub Actions workflow
+path = c.github()
+# Creates: .github/workflows/publish.yml
+
+# Generate GitLab CI config
+path = c.gitlab()
+# Creates: .gitlab-ci.yml
+
+# Generate both
+paths = c.all()
+# Returns: {"gh": "...", "gl": "..."}
+
+# Detect existing CI configuration
+detection = c.detect()
+# Returns: {"has_gh": True, "has_gl": False, "in": {"gh": True}}
+
+# Check if running in CI environment
+is_ci = c.is_ci()
+# Returns: True if running in CI
+
+# Get CI environment info
+info = c.info()
+# Returns: {
+#     "plat": "gh",
+#     "repo": "user/project",
+#     "br": "main",
+#     "sha": "abc123...",
+#     "run": "12345",
+#     "usr": "github-actions"
+# }
+
+# Validate PyPI token
+is_valid = c.valid_token("pypi-xxxxxxxxxxxxx")
+# Returns: True if token format is valid
+```
+
+---
+
+### srv (Web Server)
+
+Start web interface for package management.
+
+```python
+from autopypi import srv
+
+# Create server
+s = srv(host="0.0.0.0", port=5000, path="/path/to/project")
+
+# Start server (blocking)
+s.run()
+
+# Start server in debug mode
+s.run(debug=True)
+
+# Start server in background thread
+thread = s.background()
+# Returns: Thread object
+
+# Create Flask app without running
+app = s.create()
+# Returns: Flask application instance
+```
+
+---
+
+### Config
+
+Manage project configuration.
+
+```python
+from autopypi import Config
+
+# Load configuration
+cfg = Config("/path/to/project")
+
+# Check for project files
+has_pyproject = cfg.has_pyproject()
+has_setup = cfg.has_setup_py()
+
+# Get project configuration
+project = cfg.get_project_config()
+# Returns: {
+#     "name": "mypackage",
+#     "version": "1.0.0",
+#     "description": "My package",
+#     "authors": [{"name": "Author", "email": "email@example.com"}],
+#     "license": "MIT",
+#     "requires_python": ">=3.9"
+# }
+
+# Get specific config value
+value = cfg.get("verbose")
+
+# Set config value
+cfg.set("auto_clean", True)
+cfg.set("verbose", True)
+cfg.set("skip_existing", True)
+
+# Update version in pyproject.toml
+success = cfg.update_version("2.0.0")
+
+# Get credentials
+creds = cfg.get_credentials(tok="TOKEN")
+# Returns: {"username": "__token__", "password": "TOKEN"}
+
+# Load from pypirc
+creds = cfg.get_credentials()
+# Returns credentials from ~/.pypirc if available
+
+# Save configuration
+cfg.save()
+```
+
+---
+
+### Logger
+
+Beautiful terminal logging.
+
+```python
+from autopypi import Logger
+
+# Create logger
+log = Logger(verbose=True)
+
+# Display logo
+log.logo()
+
+# Log messages
+log.inf("Information message")
+log.ok("Success message")
+log.wrn("Warning message")
+log.err("Error message")
+log.dbg("Debug message")  # Only shown in verbose mode
+
+# Display header
+log.hdr("Section Header")
+
+# Show progress steps
+log.stp(1, 5, "Starting task")
+log.res(True, "Task completed")
+log.res(False, "Task failed")
+
+# Show progress bar
+log.bar(50, 100, "Processing...")
+
+# Display table
+log.tbl(
+    ["Name", "Version", "Status"],
+    [
+        ["pkg1", "1.0.0", "OK"],
+        ["pkg2", "2.0.0", "FAIL"],
+        ["pkg3", "3.0.0", "OK"]
+    ]
+)
+
+# Display box
+log.box("Title", "Content\nLine 2\nLine 3")
+
+# Get log history
+history = log.get()
+# Returns: [{"ts": "...", "lvl": "INF", "msg": "..."}]
+
+# Get specific log level
+errors = log.get("ERR")
+
+# Save log report
+path = log.save()
+# Creates JSON report in .autopypi/logs/
+
+# Clear history
+log.clr()
+
+# Get log files
+files = log.logs(lim=10)
+# Returns: ["/path/to/log1.log", "/path/to/log2.log"]
+
+# Clean old logs
+removed = log.clean(keep=10)
+# Returns: number of files removed
+```
+
+---
+
+### c (Colors)
+
+Terminal colors and styling.
+
+```python
+from autopypi import c
+
+# Initialize colors (required on Windows)
+c.init()
+
+# Display logo
+print(c.logo())
+
+# Formatted messages
+print(c.ok("Success message"))   # [OK] Success message
+print(c.err("Error message"))    # [ERR] Error message
+print(c.wrn("Warning message"))  # [WRN] Warning message
+print(c.inf("Info message"))     # [INF] Info message
+print(c.dbg("Debug message"))    # [DBG] Debug message
+
+# Header
+print(c.hdr("Section Title"))
+
+# Progress bar
+print(c.bar(75, 100))  # [███████████████████████████░░░░░░░░░░] 75.0%
+
+# Table row
+widths = [20, 10, 10]
+print(c.row(["Column1", "Column2", "Column3"], widths))
+
+# Box
+print(c.box("Title", "Content line 1\nContent line 2"))
+
+# Gradient text
+print(c.grad("Rainbow text!", 0, 6))
+
+# Icons
+print(c.ico("ok"))   # ✓
+print(c.ico("err"))  # ✗
+print(c.ico("wrn"))  # ⚠
+print(c.ico("inf"))  # ℹ
+print(c.ico("pnd"))  # ○
+print(c.ico("run"))  # ●
+
+# Spinner characters
+spinner = c.spin()  # ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+# Direct color codes
+print(f"{c.g}Green text{c.r}")
+print(f"{c.red}Red text{c.r}")
+print(f"{c.y}Yellow text{c.r}")
+print(f"{c.blu}Blue text{c.r}")
+print(f"{c.cy}Cyan text{c.r}")
+print(f"{c.m}Magenta text{c.r}")
+print(f"{c.b}Bold text{c.r}")
+print(f"{c.d}Dim text{c.r}")
+print(f"{c.u}Underline{c.r}")
+```
+
+#### Color Codes Reference
+
+| Code | Description |
+|------|-------------|
+| `c.r` | Reset |
+| `c.b` | Bold |
+| `c.d` | Dim |
+| `c.u` | Underline |
+| `c.bl` | Blink |
+| `c.rv` | Reverse |
+| `c.h` | Hidden |
+| `c.k` | Black |
+| `c.red` | Red |
+| `c.g` | Green |
+| `c.y` | Yellow |
+| `c.blu` | Blue |
+| `c.m` | Magenta |
+| `c.cy` | Cyan |
+| `c.w` | White |
+| `c.lk` | Light Black (Gray) |
+| `c.lr` | Light Red |
+| `c.lg` | Light Green |
+| `c.ly` | Light Yellow |
+| `c.lb` | Light Blue |
+| `c.lm` | Light Magenta |
+| `c.lc` | Light Cyan |
+| `c.lw` | Light White |
+
+---
+
+### Utils
+
+Utility functions.
+
+```python
+from autopypi import Utils
+
+# File operations
+Utils.ensure_dir("/path/to/dir")
+Utils.file_exists("/path/to/file")
+Utils.dir_exists("/path/to/dir")
+content = Utils.read_file("/path/to/file")
+Utils.write_file("/path/to/file", "content")
+data = Utils.read_json("/path/to/file.json")
+Utils.write_json("/path/to/file.json", {"key": "value"})
+
+# Directory operations
+Utils.remove_dir("/path/to/dir")
+files = Utils.find_files("/path/to/dir", "*.py")
+Utils.clean_build_dirs("/path/to/project")
+
+# Command execution
+result = Utils.run_cmd(["python", "--version"])
+# Returns: CompletedProcess(returncode=0, stdout="...", stderr="...")
+
+# Size formatting
+size_str = Utils.format_size(1024)  # "1.00 KB"
+size_str = Utils.format_size(1048576)  # "1.00 MB"
+
+# Get file size
+size = Utils.get_size("/path/to/file")
+# Returns: size in bytes
+
+# File hash
+hash_str = Utils.file_hash("/path/to/file")
+# Returns: SHA256 hash
+
+# Timestamp
+ts = Utils.timestamp()
+# Returns: "20231215_143022"
+
+# Dependency management
+Utils.ensure_dependencies()
+# Ensures build, twine, wheel, setuptools are installed
+```
+
+---
+
+## Web Interface
+
+AutoPyPI includes a beautiful web interface for managing packages.
+
+### Starting the Server
+
+```bash
+autopypi server
+```
+
+Or with Python:
+
+```python
+from autopypi import srv
+s = srv(port=5000)
+s.run()
+```
+
+### Features
+
+The web interface provides:
+
+1. **Build Package**
+   - Build source distribution
+   - Build wheel
+   - Clean before build option
+
+2. **Check Package**
+   - Run all package checks
+   - View issues and warnings
+
+3. **Upload Package**
+   - Upload to PyPI or TestPyPI
+   - Token input field
+
+4. **Release**
+   - Version bump options
+   - Create git tag option
+   - One-click release
+
+5. **Version Manager**
+   - View current version
+   - Set new version
+   - View next version options
+
+6. **CI/CD**
+   - Generate GitHub Actions
+   - Generate GitLab CI
+
+### Accessing the Interface
+
+Open your browser and navigate to:
+
+```
+http://localhost:5000
+```
+
+---
+
+## CI/CD Integration
+
+### GitHub Actions
+
+AutoPyPI can generate a complete GitHub Actions workflow.
+
+```bash
+autopypi ci gh
+```
+
+This creates `.github/workflows/publish.yml`:
+
+```yaml
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      test_pypi:
+        description: 'Upload to TestPyPI'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine autopypi
+      
+      - name: Build package
+        run: autopypi build
+      
+      - name: Check package
+        run: autopypi check
+      
+      - name: Upload to TestPyPI
+        if: github.event.inputs.test_pypi == 'true'
+        env:
+          PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+        run: autopypi upload --test --token $PYPI_TOKEN
+      
+      - name: Upload to PyPI
+        if: github.event.inputs.test_pypi != 'true'
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: autopypi upload --token $PYPI_TOKEN
+```
+
+#### Required Secrets
+
+Add these secrets to your GitHub repository:
+
+- `PYPI_TOKEN`: Your PyPI API token
+- `TEST_PYPI_TOKEN`: Your TestPyPI API token (optional)
+
+### GitLab CI
+
+```bash
+autopypi ci gl
+```
+
+This creates `.gitlab-ci.yml`:
+
+```yaml
+.pypi-publish:
+  image: python:3.11
+  stage: deploy
+  before_script:
+    - pip install build twine autopypi
+  script:
+    - autopypi build
+    - autopypi check
+    - autopypi upload --token $PYPI_TOKEN
+  only:
+    - tags
+
+publish-test:
+  extends: .pypi-publish
+  script:
+    - autopypi build
+    - autopypi check
+    - autopypi upload --test --token $TEST_PYPI_TOKEN
+  only:
+    - develop
+  when: manual
+
+publish-prod:
+  extends: .pypi-publish
+  only:
+    - tags
+  when: manual
+```
+
+#### Required Variables
+
+Add these variables to your GitLab CI/CD settings:
+
+- `PYPI_TOKEN`: Your PyPI API token
+- `TEST_PYPI_TOKEN`: Your TestPyPI API token (optional)
+
+---
+
+## Configuration
+
+### Configuration File
+
+AutoPyPI stores configuration in `.autopypi/config.json`:
+
+```json
+{
+    "auto_clean": true,
+    "auto_tag": false,
+    "log_enabled": true,
+    "verbose": false,
+    "skip_existing": false,
+    "check_before_upload": true,
+    "default_repository": "pypi"
+}
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `auto_clean` | bool | true | Clean build directories before building |
+| `auto_tag` | bool | false | Automatically create git tag after upload |
+| `log_enabled` | bool | true | Enable logging to file |
+| `verbose` | bool | false | Enable verbose output |
+| `skip_existing` | bool | false | Skip upload if version exists |
+| `check_before_upload` | bool | true | Run checks before upload |
+| `default_repository` | string | "pypi" | Default repository (pypi/testpypi) |
+
+### pyproject.toml
+
+AutoPyPI reads package configuration from `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mypackage"
+version = "1.0.0"
+description = "My awesome package"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+keywords = ["python", "package"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14"
+]
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.25.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/user/mypackage"
+Repository = "https://github.com/user/mypackage"
+Issues = "https://github.com/user/mypackage/issues"
+
+[project.scripts]
+mycommand = "mypackage.cli:main"
+
+[tool.setuptools]
+packages = ["mypackage"]
+```
+
+---
+
+## Authentication
+
+### Token Authentication (Recommended)
+
+PyPI tokens are the recommended way to authenticate.
+
+#### Get a PyPI Token
+
+1. Go to https://pypi.org/manage/account/token/
+2. Create a new token
+3. Copy the token (starts with `pypi-`)
+
+#### Using Token
+
+```bash
+# Command line
+autopypi upload -t pypi-xxxxxxxxxxxxx
+
+# Environment variable
+export PYPI_TOKEN=pypi-xxxxxxxxxxxxx
+autopypi upload
+```
+
+### Username/Password Authentication
+
+```bash
+autopypi upload -u myusername --password mypassword
+```
+
+### Using ~/.pypirc
+
+Create `~/.pypirc`:
+
+```ini
+[distutils]
+index-servers =
+    pypi
+    testpypi
+
+[pypi]
+username = __token__
+password = pypi-xxxxxxxxxxxxx
+
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = pypi-xxxxxxxxxxxxx
+```
+
+Then simply run:
+
+```bash
+autopypi upload
+```
+
+---
+
+## Batch Operations
+
+Process multiple packages at once.
+
+### Directory Structure
+
+```
+packages/
+    package1/
+        pyproject.toml
+        package1/
+            __init__.py
+    package2/
+        pyproject.toml
+        package2/
+            __init__.py
+    package3/
+        pyproject.toml
+        package3/
+            __init__.py
+```
+
+### Build All
+
+```bash
+autopypi batch build ./packages
+```
+
+### Upload All
+
+```bash
+autopypi batch upload ./packages -t TOKEN
+```
+
+### Release All
+
+```bash
+autopypi batch release ./packages -t TOKEN
+```
+
+### Parallel Processing
+
+```bash
+autopypi batch build ./packages --parallel
+autopypi batch upload ./packages -t TOKEN --parallel
+```
+
+---
+
+## Version Management
+
+### Semantic Versioning
+
+AutoPyPI follows semantic versioning (SemVer):
+
+```
+MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
+```
+
+Examples:
+- `1.0.0` - Stable release
+- `1.0.1` - Patch release (bug fixes)
+- `1.1.0` - Minor release (new features)
+- `2.0.0` - Major release (breaking changes)
+- `1.0.0a1` - Alpha release
+- `1.0.0b1` - Beta release
+- `1.0.0rc1` - Release candidate
+
+### Version Bumping
+
+```bash
+# View current version
+autopypi version
+
+# Bump patch (1.0.0 -> 1.0.1)
+autopypi version bump patch
+
+# Bump minor (1.0.0 -> 1.1.0)
+autopypi version bump minor
+
+# Bump major (1.0.0 -> 2.0.0)
+autopypi version bump major
+
+# Create alpha (1.0.0 -> 1.0.1a1)
+autopypi version bump alpha
+
+# Create beta (1.0.0 -> 1.0.1b1)
+autopypi version bump beta
+
+# Create release candidate (1.0.0 -> 1.0.1rc1)
+autopypi version bump rc
+```
+
+### Set Specific Version
+
+```bash
+autopypi version set 2.0.0
+```
+
+---
+
+## Git Integration
+
+### Create Tag
+
+```bash
+# Create local tag
+autopypi tag
+
+# Create tag with message
+autopypi tag -m "Release 1.0.0"
+
+# Create and push tag
+autopypi tag --push
+```
+
+### Release with Tagging
+
+```bash
+autopypi release --bump minor --tag --push-tag -t TOKEN
+```
+
+### Changelog Generation
+
+```python
+from autopypi import git
+
+g = git(".")
+changelog = g.changelog()
+print(changelog)
+```
+
+Output:
+
+```markdown
+### Features
+- feat: add new authentication system
+- feat: implement caching
+
+### Bug Fixes
+- fix: resolve memory leak
+- fix: correct date formatting
+
+### Other Changes
+- update dependencies
+- improve documentation
+```
+
+---
+
+## Logging System
+
+### Log Location
+
+Logs are stored in `.autopypi/logs/`:
+
+```
+.autopypi/
+    logs/
+        20231215_143022.log
+        20231215_150045.log
+        rpt_20231215_143022.json
+```
+
+### Log Levels
+
+| Level | Description |
+|-------|-------------|
+| `DBG` | Debug (verbose mode only) |
+| `INF` | Information |
+| `OK` | Success |
+| `WRN` | Warning |
+| `ERR` | Error |
+| `HDR` | Header/Section |
+
+### Log Format
+
+```
+2023-12-15 14:30:22 | INFO     | Package: mypackage
+2023-12-15 14:30:22 | INFO     | Version: 1.0.0
+2023-12-15 14:30:23 | INFO     | OK: Source distribution created
+```
+
+### Report Format (JSON)
+
+```json
+{
+    "at": "2023-12-15T14:30:22",
+    "file": "/path/to/.autopypi/logs/20231215_143022.log",
+    "cnt": 15,
+    "sum": {
+        "err": 0,
+        "wrn": 1,
+        "ok": 5
+    },
+    "log": [...]
+}
+```
+
+---
+
+## Color System
+
+AutoPyPI uses ANSI colors for terminal output.
+
+### Enabling Colors
+
+Colors are automatically enabled. On Windows, call:
+
+```python
+from autopypi import c
+c.init()
+```
+
+### Message Types
+
+| Type | Color | Example |
+|------|-------|---------|
+| OK | Green | `[OK] Success` |
+| ERR | Red | `[ERR] Error` |
+| WRN | Yellow | `[WRN] Warning` |
+| INF | Cyan | `[INF] Info` |
+| DBG | Magenta | `[DBG] Debug` |
+
+### Progress Bar
+
+```
+[██████████████████████████████░░░░░░░░░░░░░░░░░░░░] 60.0%
+```
+
+### Box Display
+
+```
+╔═════════════════════════════════════╗
+║ Title                               ║
+╠═════════════════════════════════════╣
+║ Content line 1                      ║
+║ Content line 2                      ║
+╚═════════════════════════════════════╝
+```
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `PYPI_TOKEN` | PyPI API token |
+| `TEST_PYPI_TOKEN` | TestPyPI API token |
+| `TWINE_USERNAME` | PyPI username |
+| `TWINE_PASSWORD` | PyPI password |
+| `TWINE_REPOSITORY_URL` | Custom repository URL |
+| `CI` | Indicates CI environment |
+| `GITHUB_ACTIONS` | GitHub Actions environment |
+| `GITLAB_CI` | GitLab CI environment |
+| `TRAVIS` | Travis CI environment |
+| `CIRCLECI` | CircleCI environment |
+
+---
+
+## Supported Platforms
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Linux | Full Support | All distributions |
+| Windows | Full Support | Requires Python 3.9+ |
+| macOS | Full Support | Intel and Apple Silicon |
+| Android (Termux) | Full Support | Install via pip |
+| BSD | Full Support | FreeBSD, OpenBSD |
+| WSL | Full Support | Windows Subsystem for Linux |
+
+### Termux Installation
+
+```bash
+pkg update && pkg upgrade
+pkg install python
+pip install autopypi
+```
+
+---
+
+## Project Structure
+
+```
+autopypi/
+    __init__.py     # Package exports and version
+    cli.py          # Command line interface
+    bld.py          # Build operations (Builder)
+    upl.py          # Upload operations (Uploader)
+    chk.py          # Package checking (Checker)
+    cfg.py          # Configuration management
+    log.py          # Logging system
+    git.py          # Git operations
+    ver.py          # Version management
+    bat.py          # Batch operations
+    ci.py           # CI/CD generation
+    srv.py          # Web server (Flask)
+    col.py          # Terminal colors
+    utl.py          # Utility functions
+```
+
+---
+
+## FAQ
+
+### How do I get a PyPI token?
+
+1. Create account at https://pypi.org
+2. Go to Account Settings
+3. Click "Add API token"
+4. Copy the token (starts with `pypi-`)
+
+### How do I upload to TestPyPI?
+
+```bash
+autopypi upload --test -t YOUR_TEST_TOKEN
+```
+
+### Can I use username/password?
+
+Yes, but tokens are recommended:
+
+```bash
+autopypi upload -u username --password password
+```
+
+### How do I bump version and release?
+
+```bash
+autopypi release --bump minor --tag -t TOKEN
+```
+
+### How do I publish multiple packages?
+
+```bash
+autopypi start TOKEN --dir /path/to/packages
+```
+
+or
+
+```bash
+autopypi batch release /path/to/packages -t TOKEN
+```
+
+### Does it work on Android?
+
+Yes! Install Termux and run:
+
+```bash
+pip install autopypi
+```
+
+---
+
+## Troubleshooting
+
+### "No pyproject.toml or setup.py found"
+
+Ensure your project has a `pyproject.toml` file:
+
+```toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yourpackage"
+version = "1.0.0"
+```
+
+### "Authentication failed"
+
+Check your token:
+- Tokens start with `pypi-`
+- Ensure token has upload permissions
+- Check if token is for correct repository (PyPI vs TestPyPI)
+
+### "Version already exists"
+
+Either bump your version:
+
+```bash
+autopypi version bump patch
+```
+
+Or use `--skip-existing` (with twine):
+
+```bash
+# Add to config
+cfg.set("skip_existing", True)
+```
+
+### "twine check failed"
+
+Run check to see details:
+
+```bash
+autopypi check
+```
+
+Common issues:
+- Missing README
+- Invalid version format
+- Missing required metadata
+
+### Colors not showing on Windows
+
+```python
+from autopypi import c
+c.init()  # Required on Windows
+```
+
+---
+
+## Examples
+
+### Complete Release Workflow
+
+```bash
+# 1. Update code and commit
+git add .
+git commit -m "feat: add new feature"
+
+# 2. Bump version
+autopypi version bump minor
+
+# 3. Build and check
+autopypi build
+autopypi check
+
+# 4. Test on TestPyPI
+autopypi upload --test -t TEST_TOKEN
+
+# 5. Verify on TestPyPI
+pip install --index-url https://test.pypi.org/simple/ yourpackage
+
+# 6. Release to PyPI
+autopypi upload -t PYPI_TOKEN
+
+# 7. Create and push tag
+autopypi tag --push
+```
+
+### Automated Release Script
+
+```python
+#!/usr/bin/env python
+from autopypi import bld, upl, chk, ver, git
+import sys
+
+def release(token, bump_type="patch"):
+    # Bump version
+    v = ver(".")
+    new_version = v.bump_set(bump_type)
+    print(f"Version bumped to {new_version}")
+    
+    # Build
+    b = bld(".")
+    result = b.run()
+    if not result or not (result.get("sdist") or result.get("wheel")):
+        print("Build failed!")
+        return False
+    
+    # Check
+    c = chk(".")
+    if not c.run():
+        print("Check failed!")
+        return False
+    
+    # Upload
+    u = upl(".")
+    if not u.run(tok=token):
+        print("Upload failed!")
+        return False
+    
+    # Tag
+    g = git(".")
+    g.release(new_version)
+    
+    print(f"Successfully released version {new_version}!")
+    return True
+
+if __name__ == "__main__":
+    token = sys.argv[1] if len(sys.argv) > 1 else None
+    if not token:
+        print("Usage: python release.py TOKEN [bump_type]")
+        sys.exit(1)
+    
+    bump = sys.argv[2] if len(sys.argv) > 2 else "patch"
+    success = release(token, bump)
+    sys.exit(0 if success else 1)
+```
+
+### Custom Build Script
+
+```python
+from autopypi import bld, Logger
+
+log = Logger(verbose=True)
+log.logo()
+
+# Build with custom settings
+b = bld("/path/to/project", log=log)
+
+# Build only wheel
+result = b.run(src=False, whl=True, cln=True)
+
+if result and result.get("wheel"):
+    log.ok(f"Wheel created: {result['wheel']}")
+    b.show()
+else:
+    log.err("Build failed!")
+```
+
+### Batch Processing Script
+
+```python
+from autopypi import bat, Logger
+
+log = Logger()
+log.logo()
+
+# Process all packages
+b = bat("/path/to/packages", log)
+projects = b.discover()
+
+log.inf(f"Found {len(projects)} packages")
+b.show()
+
+# Build all with parallel processing
+results = b.build_all(parallel=True)
+
+# Show results
+success = sum(1 for r in results.values() if r.get("ok"))
+log.ok(f"Built {success}/{len(projects)} packages")
+```
+
+---
+
+## License
+
+MIT License
+
+```
+MIT License
+
+Copyright (c) 2024 mero
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+<div align="center">
+
+## Links
+
+[![PyPI](https://img.shields.io/badge/PyPI-autopypi-FF6F00?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/autopypi/)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/6x-u/autopypi)
+[![Documentation](https://img.shields.io/badge/Docs-README-blue?style=for-the-badge)](https://github.com/6x-u/autopypi#readme)
+
+---
+
+### Made with love by mero
+
+[![Telegram](https://img.shields.io/badge/Telegram-@QP4RM-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/QP4RM)
+[![Email](https://img.shields.io/badge/Email-mero@ps.dev-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:mero@ps.dev)
+[![GitHub](https://img.shields.io/badge/GitHub-6x--u-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/6x-u)
+
+---
+
+**AutoPyPI v1.0.0**
+
+*Python Package Publishing Made Easy*
+
+</div>
