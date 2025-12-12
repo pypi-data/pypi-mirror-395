@@ -1,0 +1,46 @@
+name: mkdocs
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/mkdocs.yml'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event.repository.fork == false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          # Note: Caching (of the packages that `uv` builds while resolving dependencies) is "enabled by default on GitHub-hosted runners."
+          #       Reference: https://github.com/astral-sh/setup-uv/blob/main/README.md#enable-caching
+          #       Here, we make it so the cache gets invalidated whenever the `uv.lock` file changes.
+          #       Reference: https://github.com/astral-sh/setup-uv/blob/main/README.md#cache-dependency-glob
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python virtual environment
+        run: uv sync --group docs
+      # Build the MkDocs site (but don't deploy it).
+      #
+      # Note: Until January 17, 2025, we would build and deploy the MkDocs website to GitHub Pages.
+      #       As of January 17, 2025, we just _build_ it — we don't deploy it.
+      #
+      #       The reason is that the NMDC has a new, centralized documentation website: https://docs.microbiomedata.org.
+      #       That website includes a copy of the Runtime documentation (it's at the path, `/runtime`). Instead of
+      #       deploying this redundant copy (being built here) to `https://microbiomedata.github.io/nmdc-runtime`,
+      #       we will (via the new `deploy-redirects.yml` workflow) deploy a bunch of HTML files that redirect visitors
+      #       from pages on `https://microbiomedata.github.io/nmdc-runtime` to their counterparts on
+      #       `https://docs.microbiomedata.org/runtime`.
+      #
+      #       This redirection is not implemented in the MkDocs site, _itself_, because those MkDocs site source files
+      #       are used to build the website hosted at `https://docs.microbiomedata.org/runtime`; and, if a page were
+      #       to redirect to itself, the result would be a circular redirect.
+      #
+      #       The reason we still bother to build the MkDocs site here is so we get an error (a failed GHA workflow run)
+      #       when the site is no longer buildable (e.g. due to someone inadvertently introducing an invalid source
+      #       file, or due to one of the dependencies becoming unavailable), which can prompt remedial action.
+      #
+      - name: Build MkDocs site
+        run: uv run --no-sync mkdocs build -f docs/mkdocs.yml
