@@ -1,0 +1,21 @@
+<html><head><base href="{{settings.SITE.server_url}}" target="_blank"></head><body>
+{% if len(messages) == 1 %}
+{% set msg = messages[0] %}
+
+{% set created = user.dt_astimezone(msg.created) %}
+({{ created.strftime("%d/%m/%Y %H:%M %Z") }})
+{#{ar.parse_memo(msg.body)}#}
+{{msg.body}}
+{% else %}
+{{_("Hi")}} {{user}},
+{{_("You have {} unseen notifications").format(len(messages))}}
+{% for msg in messages %}
+<div>
+{% set created = user.dt_astimezone(msg.created) %}
+<H3>{{ created.strftime("%d/%m/%Y %H:%M %Z") }}</H3>
+{#{ar.parse_memo(msg.body)}#}
+{{msg.body}}
+</div>
+{% endfor %}
+{% endif %}
+</body></html>

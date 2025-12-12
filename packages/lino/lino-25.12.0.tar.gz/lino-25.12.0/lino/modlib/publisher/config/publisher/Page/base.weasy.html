@@ -1,0 +1,47 @@
+{% set site_op = settings.SITE.plugins.contacts.site_owner %}
+{% set show_printed_time = False %}
+{% set show_site_op_in_footer = True %}
+{%- extends "weasyprint/base.weasy.html" -%}
+{%- block pagesize %}portrait{%- endblock %}
+
+{% if site_op  %}
+{%- block bottomleft %}
+@bottom-left {
+    vertical-align: top;
+    content: '{{", ".join(site_op.get_address_lines())}}'
+}
+{%- endblock bottomleft %}
+{%- block bottomright %}
+@bottom-right {
+    vertical-align: top;
+    white-space: pre;
+    content: '{%- block doctitle %}{{str(obj)}}{%- endblock %}'
+             '\A{{_("Page")}} ' counter(page) ' {{_("of {0}").format("")}} ' counter(pages)
+             {%- if show_printed_time -%}
+             '\A{{_("Printed")}} {{fdm(dd.today())}} {{_("at")}} {{now.time().strftime("%H:%M")}}'
+             {%- endif %};
+}
+{%- endblock bottomright %}
+{%- endif %}
+
+{%- block main %}
+
+<h1>{{obj.title}}</h1>
+<h3>{{obj.subtitle}}</h3>
+
+{% block body %}
+
+{% if obj.body %}
+<div style="height:2mm;"></div>
+{{obj.body_full_preview}}
+<div style="height:2mm;"></div>
+{% endif %}
+
+{% for item in obj.items.all() %}
+{{item.as_page_item(ar)}}
+{# {"\n".join(item.as_page(ar))} #}
+{% endfor %}
+
+{% endblock %}
+
+{%- endblock main %}

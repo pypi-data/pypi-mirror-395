@@ -1,0 +1,110 @@
+<div style="margin:5px">
+
+{% set user = ar.get_user() %}
+
+{{ before_welcome }}
+
+{% if site.readonly and site.kernel.default_renderer.is_interactive %}
+<p><b>{{_("This server is running in READONLY mode.")}}</b></p>
+{% endif %}
+
+{% if user.is_authenticated %}
+    {% block hello_user %}
+        {% if not site.plugins.system.use_dashboard_layouts or not ar.renderer.support_dashboard_layout %}
+        <p>{{_("Quick links:")}} {{site.get_quicklinks_html(ar, user)}}
+        {% endif %}
+        <p>{{_("Hi, %(user)s!") % dict(user=user)}}
+        {% for msg in site.get_welcome_messages(ar) %}
+            {{ tostring(msg) }}
+        {% endfor %}
+        </p>
+        {% block feedback %}
+        {% if site.is_demo_site %}
+        <p>
+        {{_("This is a Lino demo site.")}}
+        {{_("Try also the other <a href=\"http://lino-framework.org/demos.html\">demo sites</a>.")}}
+        {{_("Your feedback is welcome to %s or directly to the person who invited you.") % '<a href="mailto:{0}">{0}</a>'.format(settings.SITE.help_email)}}
+        {% if site.the_demo_date %}
+        <b>{{_("We are running with simulated date set to {0}.").format(
+        fdf(site.the_demo_date))}}</b>
+        {% endif %}
+        </p>
+        {% endif %}
+        {% endblock %}
+
+    {% endblock %}
+{% else %}
+  {% block hello_anonymous %}
+      {% if site.admin_prefix %}
+        <p>
+        {{_("You have entered the <b>admin</b> section.")}}
+        {{_("Unlike the <a href=\"/\">web content section</a> there is now a GUI menu bar in the upper part of the screen.")}}
+        </p>
+      {% else %}
+        <p>
+        {% if site.title %}
+        {{_("Welcome to the <b>%s</b> site.") % site.title}}
+        {% if site.verbose_name and site.url and site.version %}
+        {{_("We are running %(name)s version %(version)s") % dict(
+            name=tostring(E.a(str(site.verbose_name), href=site.url)),
+            version=site.version)}}
+        {% endif %}
+        {% endif %}
+        </p>
+      {% endif %}
+      {{ self.feedback() }}
+      {% if site.get_auth_method() %}
+      <p>
+        {{_("You will now probably want to {}.").format(
+          tostring(ar.window_action_button(
+            site.models.about.About.get_action_by_name('sign_in'),
+            label=_("sign in"), icon_name=None)))}}
+        {% if site.plugins.users.allow_online_registration %}
+        {{_("Or {}.").format(
+          tostring(ar.window_action_button(
+            site.models.about.About.get_action_by_name('create_account'),
+            label=_("register as a new user"), icon_name=None)))}}
+        {% endif %}
+        {{_("Or {}.").format(
+          tostring(ar.window_action_button(
+            site.models.about.About.get_action_by_name('reset_password'),
+            label=_("reset your password"), icon_name=None)))}}
+        {% if site.is_installed('social_auth') %}
+        {{_("Or sign in using third-party authentication:")}}
+        <div id="google-plus-button">[Google+ Sign In]</div>
+        {% endif %}
+        {% if site.social_auth_backends %}
+        {{_("Or sign in using ")}}
+        {% for e in site.get_social_auth_links() %}
+        {{tostring(e)}}
+        {% endfor %}.
+        {% endif %}
+      </p>
+        {% if site.is_demo_site %}
+            <p>
+            {{_("This demo site has %d users:") %
+            site.models.users.UsersOverview.create_request().get_total_count()}}
+            </p>
+            {% if False %}
+            <p>{{ar.show(site.models.users.UsersOverview, display_mode="ul")}}</p>
+            {% else %}
+            {{as_ul('users.UsersOverview')}}
+            {% endif %}
+            <p>{{_("The password is the same for all of them:")}}
+              "{{site.plugins.users.demo_password}}".</p>
+        {% endif %}
+      {% endif %}
+  {% endblock %}
+{% endif %}
+
+{{ after_welcome }}
+
+{% block admin_main_items %}
+{% if not ar.renderer.support_dashboard_layout %}
+{% for di in user.get_preferences().dashboard_items %}
+{{''.join(di.render(ar))}}
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+</div>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base href="file://{{settings.SITE.site_dir}}" /> {# required to render images #}
+{%- set WP = dd.plugins.weasyprint %}
+{%- block head %}
+<meta charset="UTF-8">
+<style type="text/css">
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+table, td, th {
+    border: 1px solid black;
+    padding: 2pt;
+}
+table.preamble {
+    border: none;
+    background-color: lightgray;
+    width: 100%;
+}
+table.preamble td {
+    border: none;
+    padding: 6pt;
+}
+table.footer {
+    border: none;
+    background-color: lightgray;
+    width: 100%;
+    font-size: 10pt;
+}
+table.footer td {
+    border: none;
+    padding: 6pt;
+}
+{#
+  Removed after #6179 (The footer of a multipage invoice shows the same
+  pagenumber on each page)
+
+  span.page_num_of::after {
+    content: '{{_("Page")}} ' counter(page) ' {{_("of {0}").format("")}}' counter(pages);
+  }
+
+  span.printed_time::after {
+    content: '{{_("Printed")}} {{fdm(dd.today())}} {{_("at")}} {{now.time().strftime("%H:%M")}}';
+  }
+#}
+
+body {
+    font-family: "Liberation sans", "Arial", "Helvetica";
+    font-size: 12pt;
+}
+
+table th {
+    font-size: 10pt;
+}
+p {
+    padding: 0;
+    margin: 0;
+}
+
+div.recipient {
+    position:relative; left:{{100-WP.margin_left}}mm;
+    height:30mm;
+    width:80mm;
+    border: 1px solid lightgray;
+    border-radius: 2mm;
+    background-color: lightgray;
+    padding: 1em;
+    margin: 1em;
+}
+
+.text-cell {
+    text-align: left;
+    vertical-align: top;
+}
+
+.number-cell {
+    text-align: right;
+    vertical-align: top;
+}
+
+@page {
+    size: {%- block pagesize %}landscape{%- endblock %};
+    margin: {{WP.margin}}mm;
+    margin-bottom: {{WP.margin+WP.footer_height}}mm;
+    {%- if True or WP.top_right_image -%}
+    margin-top: {{WP.margin+WP.header_height}}mm;
+    {%- endif -%}
+    margin-left: {{WP.margin_left}}mm;
+    margin-right: {{WP.margin_right}}mm;
+    {%- if WP.page_background_image -%}
+      background-image: url(file://{{WP.page_background_image}});
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      background-size: contain;
+    {%- endif -%}
+    font-family: "Liberation sans", "arial";
+    font-size: 10pt;
+
+    {%- block topright %}
+    {% if WP.top_right_image %}
+    @top-right {
+      height: {{WP.header_height}}mm;
+      width: {{WP.top_right_width}}mm;
+      padding: 0mm;
+      text-align: right;
+      background-image: url(file://{{WP.top_right_image}});
+      background-size: cover;
+      content: "";  // may be empty but must exist, otherwise bg is not rendered
+      // content: url(file://{{WP.top_right_image}});
+    }
+    {% endif %}
+    {%- endblock topright %}
+    {%- block bottomleft %}
+    @bottom-left {
+      {% if WP.bottom_left_image %}
+        height: {{WP.footer_height}}mm;
+        width: {{WP.bottom_left_width}}mm;
+        padding: 0mm;
+        text-align: right;
+        background-image: url(file://{{WP.bottom_left_image}});
+        background-size: cover;
+        content: "";  // may be empty but must exist, otherwise bg is not rendered
+      {% else %}
+        vertical-align: top;
+        content: '{{_("Printed")}} {{fdm(dd.today())}} {{_("at")}} {{now.time().strftime("%H:%M")}}';
+      {% endif %}
+    }
+    {%- endblock bottomleft %}
+    {%- block bottomright %}
+    @bottom-right {
+        vertical-align: top;
+        content: '{{_("Page")}} ' counter(page) ' {{_("of {0}").format("")}} ' counter(pages);
+    }
+    {%- endblock bottomright %}
+}
+
+@media print {
+  tr.avoid {
+    page-break-inside: avoid !important;
+  }
+}
+
+@media screen {
+    div.footer_div {
+        display: none;
+    }
+    div.header_div {
+        display: none;
+    }
+}
+@media print {
+    div.footer_div {
+        position: fixed;
+        // bottom: -5mm;
+        bottom: -{{WP.footer_height}}mm;
+        width: 100%;
+        // border-top: solid 1pt;
+        padding: 0;
+        margin: 0;
+    }
+    div.header_div {
+        position: fixed;
+        // top: -10mm;
+        top: 0;
+        width: 100%;
+        // border-bottom: solid 1pt;
+        padding: 0;
+        margin: 0;
+        // height:21mm;
+    }
+}
+</style>
+{%- endblock head %}
+</head>
+<body>
+{%- block header %}
+{% if WP.header_image %}
+<div class="header_div">
+<img src="file://{{WP.header_image}}" style="height:{{WP.header_height}}mm">
+</div>
+{% endif %}
+{% if WP.footer_image %}
+<div class="footer_div">
+<img src="file://{{WP.footer_image}}" style="height:{{WP.footer_height}}mm">
+</div>
+{% endif %}
+{%- endblock header %}
+{%- block footer %}
+{%- endblock %}
+{%- block intro %}
+{%- endblock %}
+{%- block main %}
+<p>Your template should at least override the <b>main</b> block,
+   and it should not call super() for this block.</p>
+<p>Available fields in <em>{{str(obj.__class__)}}</em>:</p>
+<ul>
+{% for fld in obj._meta.get_fields() %}
+<li>{{fld.verbose_name}} : {{getattr(obj, fld.name, "---")}}</li>
+{% endfor %}
+</ul>
+{%- endblock %}
+</body>
+</html>

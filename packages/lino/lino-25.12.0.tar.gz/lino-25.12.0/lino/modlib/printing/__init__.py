@@ -1,0 +1,29 @@
+# Copyright 2015-2019 Rumma & Ko Ltd
+# License: GNU Affero General Public License v3 (see file COPYING for details)
+"""Adds printing functionality to a Lino application.
+See :doc:`/specs/printing`.
+
+"""
+
+from lino.api import ad
+from django.utils.translation import gettext_lazy as _
+
+
+class Plugin(ad.Plugin):
+    verbose_name = _("Printing")
+    print_demo_objects = 1
+    with_pdf = False
+
+    # needs_plugins = ['lino_xl.lib.appypod']
+    # needs_plugins = ['lino.modlib.checkdata']
+
+    # we don't specify checkdata as needed plugin because checkdata would
+    # require users
+
+    def get_requirements(self, site):
+        if self.with_pdf:
+            yield "pypdf"
+
+    def post_site_startup(self, site):
+        super().post_site_startup(site)
+        site.models.printing.BuildMethods.sort()

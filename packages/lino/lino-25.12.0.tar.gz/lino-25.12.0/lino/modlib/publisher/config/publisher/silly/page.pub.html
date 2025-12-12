@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html language="{{requested_language}}"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1" />
+<title>{% block title %}{{site.title or site.verbose_name}}{% endblock %}</title>
+<link rel="stylesheet" href="{{site.plugins.bootstrap5.build_lib_url('css','bootstrap.css')}}" type="text/css">
+</head><body>
+{% block header %}
+<div class="container-fluid lino-bs-header">
+  {% if ar -%}
+    {% if isinstance(obj, rt.models.publisher.Page) -%}
+    {{obj.get_prev_link(ar)}} {{obj.get_next_link(ar)}} |
+    {% endif -%}
+    {% if dd.is_installed('react') %}
+        {% set ar_react = obj.get_default_table().request(parent=ar, permalink_uris=True, renderer=dd.plugins.react.renderer) %}
+        {% if ar_react.obj2url(obj) %}
+        {{ tostring(ar_react.obj2html(obj, text='Edit')) }} |
+        {% endif %}
+    {% endif %}
+    {% if ar.request and ar.request.path != '/' -%}
+        <a href="{{ar.get_home_url()}}">{{_("Home")}}</a>
+    {% else -%}
+        {{_("Home")}}
+    {% endif -%}
+    {% if site.kernel.editing_front_end.url_prefix -%}
+       | <a href="/{{site.kernel.editing_front_end.url_prefix}}/">{{_("Admin")}}</a>
+    {% endif -%}
+    {% if len(site.languages) > 1 -%}
+      |
+      {% for lang in site.languages -%}
+        {% if lang.django_code == requested_language -%}
+            {{lang.django_code}}
+        {% else -%} {# URL_PARAM_USER_LANGUAGE #}
+            <a href="{{ar.get_request_url(ul=lang.django_code)}}">{{lang.django_code}}</a>
+        {% endif -%}
+      {% endfor -%}
+    {% endif -%}
+    |
+    {% set user = ar.get_user() %}
+    {% if user.is_anonymous %}
+        {% if not dd.is_installed("react") %}
+            <a href="" data-bs-toggle="modal" data-bs-target="#signinModal">{{_("Sign in")}}</a>
+        {% else %}
+            <a href="/{{dd.plugins.react.url_prefix}}/#/?{{dd.plugins.react.renderer.sign_in_action_url(ar)}}">{{_("Sign in")}}</a>
+        {% endif %}
+    {% else %}
+        {{str(user)}} <a href="/logout">{{_("Sign out")}}</a>
+    {% endif %}
+    {%- if site.kernel.admin_ui -%}
+        &mdash;
+        <a href="{{site.kernel.admin_ui.build_plain_url()}}/">{{site.kernel.admin_ui.ui_label}}</a>
+    {%- endif -%}
+{% endif -%}
+
+<div class="modal fade" id="signinModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabel">{{_("Sign in form")}}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+          <form id="signinForm" action="/login" method="post">
+              <div id="signinError" class="alert alert-danger d-none" role="alert">
+                  {{_("Incorrect username or password.")}}
+              </div>
+              <div class="mb-3">
+                  <label for="signinInputUsername" class="form-label">{{_("Username")}}</label>
+                  <input type="text" name="username" class="form-control" id="signinInputUsername" aria-describedby="usernameHelp" required="true">
+<!--                  <div id="usernameHelp" class="form-text">Enter your username.</div>-->
+              </div>
+              <div class="mb-3">
+                  <label for="signinInputPassword" class="form-label">{{_("Password")}}</label>
+                  <input type="password" name="password" class="form-control" id="signinInputPassword" required="true">
+              </div>
+          </form>
+      </div>
+      <div class="modal-footer">
+        <button form="signinForm" type="submit" class="btn btn-primary">{{_("Sign in")}}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    const form = document.getElementById("signinForm");
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        fetch(form.action, {
+            method: form.method,
+            body: formData
+        }).then((resp) => {
+            if (resp.status >= 400) {
+                const eel = document.getElementById("signinError");
+                eel.innerText = "Some unknown error occured, please contact site administrator";
+                eel.classList.remove("d-none")
+                return {success: false}
+            }
+            return resp.json()
+        }).then((resp) => {
+            if (resp.success) window.location.reload()
+            else {
+                const eel = document.getElementById("signinError");
+                eel.classList.remove("d-none")
+            }
+        })
+    });
+</script>
+
+</div>
+{% endblock %}
+
+{% block navbar %}
+<nav class="navbar navbar-expand-lg bg-body-tertiary">
+  <div class="container-fluid">
+      {% set homepage, children = obj.home_and_children(ar) %}
+      <a class="navbar-brand" href="{{ar.obj2url(homepage)}}"><span class="pi pi-home"/></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#bs-navbar-collapsible-content" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="bs-navbar-collapsible-content">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              {% for child in children %}
+              <li class="nav-item">
+                  <a class="nav-link" href="{{ar.obj2url(child)}}">{{str(child)}}</a>
+              </li>
+              {% endfor %}
+          </ul>
+      </div>
+   </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row-fluid ql-editor">
+  {% for chunk in obj.as_page(ar) %}
+    {{ chunk }}
+  {% endfor %}
+</div>
+{% endblock %}
+
+<div id="footer">
+<footer class="container-fluid">
+{% block footer %}
+<p style="vertical-align: middle;">
+{% if site.copyright_name %}
+&copy; Copyright {{now.year}}
+{% if site.copyright_url %}
+<a href="{{site.copyright_url}}">{{site.copyright_name}}</a>
+{% else %}
+{{site.copyright_name}}
+{% endif %}
+|
+{% endif %}
+{{tostring(site.welcome_html())}}
+</p>
+{% endblock %}
+</footer>
+</div>
+
+</body></html>
