@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}?v=2" type="image/x-icon">
+    <title>PAINT – FAIR Concentrating Solar Power Plant Database</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" type="text/css">
+    <link href="{{ url_for('static', filename='css/paint.css') }}" rel="stylesheet" type="text/css">
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div id="dataSpinner" class="d-none justify-content-center align-items-center position-fixed top-0 start-0 w-100 h-100 bg-white" style="z-index: 1050;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+<nav class="navbar navbar-expand-custom sticky-top bg-white py-0 col-12">
+    <div class="container col-8">
+        <a class="mx-3 navbar-brand text-herman text-primary" href="/">
+            Paint Database
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-end" id="navbar">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    {% if active == "home" %}
+                    <a href="/" class="nav-link text-black p-3 d-flex align-items-center active" aria-current="page">
+                    {% else %}
+                    <a href="/" class="nav-link text-black p-3 d-flex align-items-center">
+                    {% endif %}
+                        <i class="bi bi-house-fill me-2"></i> Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% if active == "data" %}
+                    <a href="/data" class="nav-link text-black p-3 d-flex align-items-center active" aria-current="page">
+                    {% else %}
+                    <a href="/data" class="nav-link text-black p-3 d-flex align-items-center">
+                    {% endif %}
+                        <i class="bi bi-clipboard-data-fill me-2"></i> Overview
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% if active == "repository" %}
+                    <a href="/WRI1030197" id="dataNavItem" class="nav-link text-black p-3 d-flex align-items-center active" aria-current="page" onclick="checkLink(event, '/WRI1030197', '/maintenance')">
+                    {% else %}
+                    <a href="/WRI1030197" id="dataNavItem" class="nav-link text-black p-3 d-flex align-items-center" onclick="checkLink(event, '/WRI1030197', '/maintenance')">
+                    {% endif %}
+                        <i class="bi bi-database-fill me-2"></i> Data
+                    </a>
+                </li>
+                <script>
+                    function checkLink(event, primaryUrl, alternativeUrl) {
+                        event.preventDefault();  // Prevent the default link behavior.
+
+                        fetch(primaryUrl, { method: 'HEAD' })  // Use a HEAD request to check if the URL is available.
+                            .then(response => {
+                                if (response.ok) {
+                                    // If the URL is valid (status 200), navigate to it.
+                                    window.location.href = primaryUrl;
+                                } else {
+                                    // If the URL is not valid (status 403 or 404), navigate to the alternative URL.
+                                    window.location.href = alternativeUrl;
+                                }
+                            })
+                            .catch(() => {
+                                // In case of network errors, redirect to alternative.
+                                window.location.href = alternativeUrl;
+                            });
+                    }
+                </script>
+                <li class="nav-item">
+                    {% if active == "resources" %}
+                    <a href="/resources" class="nav-link text-black p-3 d-flex align-items-center active" aria-current="page">
+                    {% else %}
+                    <a href="/resources" class="nav-link text-black p-3 d-flex align-items-center">
+                    {% endif %}
+                        <i class="bi bi-link me-2"></i> Resources
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% if active == "papers" %}
+                    <a href="/papers" class="nav-link text-black p-3 d-flex align-items-center active" aria-current="page">
+                    {% else %}
+                    <a href="/papers" class="nav-link text-black p-3 d-flex align-items-center">
+                    {% endif %}
+                        <i class="bi bi-file-text-fill me-2"></i> Papers
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% if active == "partners" %}
+                    <a href="/partners" class="nav-link text-black p-3 d-flex align-items-center active" aria-current="page">
+                    {% else %}
+                    <a href="/partners" class="nav-link text-black p-3 d-flex align-items-center">
+                    {% endif %}
+                        <i class="bi bi-people-fill me-2"></i> Partners
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+    <!-- main content -->
+    <div class="container-fluid col-8">
+        {% block content %}
+        {% endblock %}
+
+        <!-- footer -->
+        <footer class="d-flex flex-column flex-md-row justify-content-between py-3 my-4 border-top">
+
+            {% if active == "privacy" %}
+            <a href="/data-privacy" class="nav-link p-3 me-5 active" aria-current="page">Data privacy protection</a>
+            {% else %}
+            <a href="/data-privacy" class="nav-link p-3 me-5">Data privacy protection</a>
+            {% endif %}
+
+            {% if active == "legal" %}
+            <a href="/legal-information" class="nav-link p-3 me-5 active" aria-current="page">Legal information</a>
+            {% else %}
+            <a href="/legal-information" class="nav-link p-3 me-5 ">Legal information</a>
+            {% endif %}
+
+            {% if active == "contact" %}
+            <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#97;&#114;&#116;&#105;&#115;&#116;&#64;&#108;&#105;&#115;&#116;&#115;&#46;&#107;&#105;&#116;&#46;&#101;&#100;&#117;" class="nav-link p-3 me-5 active" aria-current="page">Contact</a>
+            {% else %}
+            <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#97;&#114;&#116;&#105;&#115;&#116;&#64;&#108;&#105;&#115;&#116;&#115;&#46;&#107;&#105;&#116;&#46;&#101;&#100;&#117;" class="nav-link p-3 me-5 ">Contact</a>
+            {% endif %}
+
+            <span class="flex-grow-1"></span>
+            <span class="ml-auto fw-lighter p-3">© 2024 Artist Association</span>
+        </footer>
+     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get the "Data" nav item link by its ID
+        var dataNavItem = document.getElementById('dataNavItem');
+
+        // Get the spinner
+        var dataSpinner = document.getElementById('dataSpinner');
+
+        // Add click event listener to the "Data" nav item
+        dataNavItem.addEventListener('click', function(event) {
+            // Show the spinner when clicking on the Data link
+            dataSpinner.classList.remove('d-none');
+            dataSpinner.classList.add('d-flex');
+        });
+
+        // Handle the pageshow event to ensure the spinner is hidden when navigating back
+        window.addEventListener('pageshow', function(event) {
+            // If the page is loaded from the cache (back/forward navigation), hide the spinner
+            if (event.persisted) {
+                dataSpinner.classList.add('d-none');
+                dataSpinner.classList.remove('d-flex');
+            }
+        });
+    });
+</script>
+
+</body>
+
+</html>
