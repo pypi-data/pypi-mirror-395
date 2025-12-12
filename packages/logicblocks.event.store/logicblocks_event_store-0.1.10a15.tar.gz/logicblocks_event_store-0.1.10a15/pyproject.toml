@@ -1,0 +1,104 @@
+[project]
+requires-python = ">=3.13,<4.0"
+name = "logicblocks.event.store"
+version = "0.1.10a15"
+description = "Eventing infrastructure for event sourced architectures."
+authors = [
+    { name = "Toby Clemson", email = "tobyclemson@gmail.com" },
+    { name= "Jonas Svalin", email = "jonassvalin@gmail.com" }
+]
+license = "MIT"
+readme = "README.md"
+dependencies = [
+    "psycopg[binary,pool]>=3.2.3",
+    "uvloop>=0.22.1",
+    "pyheck>=0.1.5",
+    "structlog>=25.1.0",
+    "rich>=14.0.0",
+    "aiologic>=0.15.0",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.12.0",
+    "junitparser>=4.0.2",
+    "pyrefly>=0.43.1",
+    "pytest>=9.0.1",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-diff>=0.1.14",
+    "pytest-pretty>=1.2.0",
+    "pytest-repeat>=0.9.3",
+    "pytest-unordered>=0.7.0",
+    "ruff>=0.14.6",
+]
+build = [
+    "invoke>=2.2.1",
+]
+changelog = [
+    "scriv>=1.7.0",
+]
+docs = [
+    "mkdocs-material>=9.7.0",
+    "mkdocstrings[python]>=0.29.0",
+    "black>=25.11.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests/shared"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = [
+    "--import-mode=importlib",
+    "--strict-markers",
+    "--capture=no",
+    "--cov=./src"
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = ["@abstract"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.pylint]
+max-args = 7
+allow-magic-value-types = ["str", "bytes", "int"]
+
+[tool.scriv]
+version = "literal: pyproject.toml: project.version"
+format = "md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/logicblocks"]
+
+[tool.pyrefly]
+project-includes = [
+    "src",
+    "tests/shared",
+    "tests/unit",
+    "tests/integration",
+    "tests/component",
+]
+search-path = [
+    "src",
+    "tests/shared",
+]
+infer-with-first-use = false
+
+[tool.pyrefly.errors]
+deprecated = false
+
+[tool.hatch.build.targets.sdist]
+include = ["src/logicblocks"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
