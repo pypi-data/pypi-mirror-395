@@ -1,0 +1,95 @@
+Metadata-Version: 2.4
+Name: fapi-cli
+Version: 0.1.0
+Summary: Invoke FastAPI endpoints without starting a server.
+Project-URL: Homepage, https://github.com/WATA-saito/fapi-cli
+Project-URL: Repository, https://github.com/WATA-saito/fapi-cli
+Project-URL: Documentation, https://github.com/WATA-saito/fapi-cli#readme
+Project-URL: Issues, https://github.com/WATA-saito/fapi-cli/issues
+Project-URL: Bug Tracker, https://github.com/WATA-saito/fapi-cli/issues
+Author: Wataru
+License: MIT
+License-File: LICENSE
+Keywords: api-testing,cli,fastapi,http-client,testclient,testing
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: Utilities
+Requires-Python: >=3.9
+Requires-Dist: fastapi>=0.100.0
+Requires-Dist: httpx>=0.23
+Requires-Dist: typer>=0.9.0
+Provides-Extra: dev
+Requires-Dist: build>=1.2; extra == 'dev'
+Requires-Dist: packaging>=21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1; extra == 'dev'
+Requires-Dist: pytest>=7.4; extra == 'dev'
+Requires-Dist: tox>=4.0; extra == 'dev'
+Requires-Dist: twine>=5.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# fapi-cli
+
+FastAPIアプリケーションに対してサーバーを起動せずにHTTPリクエストを送信できるCLIツールです。`fastapi.testclient.TestClient`を活用して、ローカルファイルからFastAPIアプリケーションを読み込み、curlライクなインターフェースでエンドポイントを呼び出します。
+
+## 特長
+
+- `fapi-cli request` コマンドで任意のFastAPIアプリケーションにリクエストを送信
+- `-X/--method`, `-P/--path`, `-d/--data`, `-H/--header`, `-q/--query` といったcurl互換のオプション
+- JSONレスポンスを整形して標準出力に表示
+- `--include-headers` でレスポンスヘッダーも表示可能
+
+## インストール
+
+### PyPIからインストール
+
+```bash
+pip install fapi-cli
+```
+
+### pipxでインストール（推奨）
+
+```bash
+pipx install fapi-cli
+```
+
+### uvxで一時実行
+
+```bash
+uvx fapi-cli request main.py -P /
+```
+
+## 要件
+
+- Python 3.9以上
+- FastAPI 0.100.0以上
+- FastAPIアプリケーション（テスト対象）
+
+## 使い方
+
+```bash
+# アプリケーションを定義したファイルからGETリクエスト
+fapi-cli request src/main.py
+
+# POSTメソッドでJSONボディを送信
+fapi-cli request src/main.py -X POST -P /items -d '{"name": "Alice"}'
+
+# ヘッダーとクエリパラメータを付与
+fapi-cli request src/main.py -H "Authorization: Bearer token" -q "page=1"
+
+# アプリケーションの変数名が app 以外の場合
+fapi-cli request src/api.py --app-name fastapi_app
+```
+
+## ライセンス
+
+MIT License
