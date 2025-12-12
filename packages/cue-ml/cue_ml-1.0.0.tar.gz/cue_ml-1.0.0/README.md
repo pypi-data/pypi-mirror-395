@@ -1,0 +1,99 @@
+# cue
+
+[![PyPI version](https://badge.fury.io/py/cue-ml.svg)](https://badge.fury.io/py/cue-ml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+
+**Lightweight GPU job scheduler for deep learning researchers.**
+
+Stop waiting for GPUs. Stop writing bash scripts. Define your experiments in YAML and let cue handle the rest.
+
+## Why cue?
+
+You have 4 GPUs and 50 experiments to run. Cue automatically queues your jobs, assigns available GPUs, and logs everything—no daemons, no databases, just Python.
+
+## Install
+```bash
+pip install cue-ml
+```
+
+Requires Python 3.10+ and Linux with NVIDIA drivers.
+
+## Quick Start
+
+**1. Create `experiments.yaml`:**
+```yaml
+config:
+  log_dir: "logs/my_project"
+  python_cmd: "python3"
+
+experiments:
+  - name: "bert-finetune"
+    script: "train.py"
+    runs:
+      - args: "--model bert-base --lr 1e-4"
+      - args: "--model bert-large --lr 2e-5"
+        gpus: 2  # Request 2 GPUs for this run
+
+  - name: "vision-test"
+    script: "evaluate.py"
+    runs:
+      - args: "--dataset cifar10"
+```
+
+**2. Run:**
+```bash
+cue -p experiments.yaml
+```
+
+Cue launches a terminal dashboard showing job status, GPU usage, and queue depth. Each run's output is automatically logged.
+
+## Features
+
+- **Auto-GPU assignment** – Detects idle GPUs and schedules jobs
+- **Multi-GPU support** – Request 1, 2, 4, or 8 GPUs per run
+- **Live dashboard** – Monitor everything in your terminal
+- **Smart logging** – Organized stdout/stderr for every experiment
+- **No infrastructure** – Just Python, no complex setup
+- **Simulation mode** – Test configs without GPUs
+
+## Configuration
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `config.log_dir` | string | Output directory for logs (default: `./logs`) |
+| `config.python_cmd` | string | Python interpreter (default: system Python) |
+| `experiments` | list | Experiment definitions |
+| `experiments[].script` | string | Path to Python script |
+| `experiments[].runs` | list | Configurations to execute |
+| `experiments[].runs[].args` | string | Command-line arguments |
+| `experiments[].runs[].gpus` | int | GPUs required (default: 1) |
+
+## CLI Options
+```bash
+cue -p experiments.yaml [options]
+```
+
+| Option | Description |
+|--------|-------------|
+| `-p, --path` | Path to config file (required) |
+| `--gpus N` | Default GPUs per job if not specified |
+| `--fail-fast` | Stop queue if any job fails |
+| `--dry-run` | Validate config without running |
+| `--simulate N` | Test with N fake GPUs |
+| `--debug` | Verbose error output |
+
+## Testing Without GPUs
+```bash
+cue -p experiments.yaml --simulate 8
+```
+
+Simulates an 8-GPU machine for testing your pipeline.
+
+## Contributing
+
+Contributions welcome! Fork, branch, commit, push, and open a PR.
+
+## License
+
+MIT License – see [LICENSE](LICENSE) for details.
