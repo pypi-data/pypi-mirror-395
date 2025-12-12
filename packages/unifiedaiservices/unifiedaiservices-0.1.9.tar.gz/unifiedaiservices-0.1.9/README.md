@@ -1,0 +1,98 @@
+# unifiedaiservices
+
+**unifiedaiservices** is a Python package that brings together a wide range of AI tools and services in a single, easy-to-use interface.
+It allows developers to integrate language models, transcription, image generation, voice synthesis, and more into their applications quickly and modularly.
+
+---
+## Key Features
+
+* Integration with OpenAI models (including GPT, TTS, Transcribe, etc.)
+* Audio and video transcription
+* Image generation using advanced AI models
+* Predefined voices and text-to-speech (TTS) support
+* Modular architecture for easy extension and customization
+
+---
+
+## Requirements
+
+* Python 3.11 or higher
+
+---
+
+## Installation
+
+Install directly from PyPI:
+
+```bash
+pip install unifiedaiservices
+```
+
+---
+
+## Basic Usage
+
+```python
+from unifiedaiservices.client import CreateClient
+from unifiedaiservices.settings import AISettings, OpenAIProvider
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+API_KEY = os.getenv("OpenAI_API_KEY")
+
+# Initialize client
+client = CreateClient(api_key=API_KEY, provider="openai").get_client()
+
+
+# Create OpenAIProvider instance
+openai = OpenAIProvider(client)
+
+# Load settings and print available models
+AISettings(openai).print_models()
+
+# Available actions
+openai.print_models()
+openai.create_data("model", "prompts")
+openai.exists_model("model_id")
+openai.get_models()
+openai.get_model_info("model_id")
+```
+
+**Note:** You can also manually set the data:
+
+```python
+openai.data_prompt = {
+    "model": "gpt-4o",
+    "prompt": "Hello, world!",
+    "max_tokens": 50
+}
+```
+
+### Example Usage
+
+```python
+openai.generate_ai(openai.create_data(data))
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! If you have suggestions, bug fixes, or new feature ideas, please reach out via email: **[a0534123987@gmail.com](mailto:a0534123987@gmail.com)**
+
+---
+
+## License
+
+MIT License © 2025
+This license allows free use, copying, modification, and distribution of the code.
+
+---
+
+## Notes
+
+* This project is aimed at developers and AI enthusiasts who want to easily integrate multiple AI tools.
+* It is recommended to use personal API keys for OpenAI or any other external services.
+* For advanced usage, `unifiedaiservices` can be extended to suit your specific needs.
