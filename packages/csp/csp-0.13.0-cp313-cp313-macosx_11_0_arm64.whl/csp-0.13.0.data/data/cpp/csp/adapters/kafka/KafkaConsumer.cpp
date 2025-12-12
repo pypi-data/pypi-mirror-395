@@ -1,0 +1,253 @@
+#include <csp/adapters/kafka/KafkaConsumer.h>
+
+#if 0
+#define debug_printf( ... ) printf( __VA_ARGS__ )
+#else
+#define debug_printf( ... )
+#endif
+
+namespace csp::adapters::kafka
+{
+
+class RebalanceCb : public RdKafka::RebalanceCb
+{
+public:
+    RebalanceCb( KafkaConsumer & consumer ) : m_consumer( consumer ),
+                                              m_startOffset( RdKafka::Topic::OFFSET_INVALID ),
+                                              m_doneSeeking( false )
+    {
+    }
+
+    void setStartOffset( int64_t offset ) { m_startOffset = offset; }
+    void setStartTime( DateTime time )    { m_startTime = time; }
+
+    void rebalance_cb( RdKafka::KafkaConsumer *consumer,
+                       RdKafka::ErrorCode err,
+                       std::vector<RdKafka::TopicPartition*> & partitions ) override
+    {
+        if( err == RdKafka::ERR__ASSIGN_PARTITIONS )
+        {
+            if( !m_doneSeeking )
+            {
+                std::unordered_map<std::string,std::vector<int>> partitionInfo;
+                for( auto * partition : partitions )
+                    partitionInfo[ partition -> topic() ].push_back( partition -> partition() );
+
+                for( auto & entry : partitionInfo )
+                    m_consumer.setPartitions( entry.first, entry.second );
+
+                if( !m_startTime.isNone() )
+                {
+                    for( auto * partition : partitions )
+                        partition -> set_offset( m_startTime.asMilliseconds() );
+
+                    auto rc = consumer -> offsetsForTimes( partitions, 10000 );
+                    if( rc )
+                        CSP_THROW( RuntimeException, "Failed to get kafka offsets for starttime " << m_startTime << ": " << RdKafka::err2str( rc ) );
+                }
+                else if( m_startOffset != RdKafka::Topic::OFFSET_INVALID )
+                {
+                    for( auto * partition : partitions )
+                        partition -> set_offset( m_startOffset );
+                }
+
+                auto rc = consumer -> assign( partitions );
+                if( rc )
+                    CSP_THROW( RuntimeException, "Failed to get kafka offsets for starttime " << m_startTime << ": " << RdKafka::err2str( rc ) );
+
+                m_doneSeeking = true;
+            }
+            else
+                consumer -> assign( partitions );
+        }
+        else
+        {
+            consumer -> unassign();
+        }
+    }
+
+private:
+    KafkaConsumer & m_consumer;
+    DateTime        m_startTime;
+    int64_t         m_startOffset;
+    bool            m_doneSeeking;
+};
+
+KafkaConsumer::KafkaConsumer( KafkaAdapterManager * mgr, const Dictionary & properties ) : m_mgr( mgr ),
+                                                                                           m_running( false )
+{
+    m_rebalanceCb = std::make_unique<RebalanceCb>( *this );
+
+    std::string errstr;
+    auto * conf = m_mgr -> getConsumerConf();
+    if( conf -> set( "rebalance_cb", m_rebalanceCb.get(), errstr ) != RdKafka::Conf::CONF_OK )
+        CSP_THROW( RuntimeException, "Failed to set rebalance callback: " << errstr );
+
+    m_consumer.reset( RdKafka::KafkaConsumer::create( conf, errstr ) );
+
+    if( !m_consumer )
+        CSP_THROW( RuntimeException, "Failed to create consumer: " << errstr );
+}
+
+KafkaConsumer::~KafkaConsumer()
+{
+    // in case destructor is called before stop()
+    stop();
+}
+
+void KafkaConsumer::start( DateTime starttime )
+{
+    auto & startOffsetProperty = m_mgr -> startOffsetProperty();
+    if( std::holds_alternative<int64_t>( startOffsetProperty ) )
+    {
+        ReplayMode replayMode = ( ReplayMode ) std::get<int64_t>( startOffsetProperty );
+        switch( replayMode )
+        {
+            case ReplayMode::EARLIEST:   m_rebalanceCb -> setStartOffset( RdKafka::Topic::OFFSET_BEGINNING ); break;
+            case ReplayMode::LATEST:     m_rebalanceCb -> setStartOffset( RdKafka::Topic::OFFSET_END );       break;
+            case ReplayMode::START_TIME: m_rebalanceCb -> setStartTime( starttime ); break;
+
+            case ReplayMode::NUM_TYPES:                    
+            case ReplayMode::UNKNOWN:
+                CSP_THROW( ValueError, "start_offset is unset" );
+        }
+    }
+    else if( std::holds_alternative<DateTime>( startOffsetProperty ) )
+    {
+        auto dt = std::get<DateTime>( startOffsetProperty );
+        m_rebalanceCb -> setStartTime( dt );
+    }
+    else if( std::holds_alternative<TimeDelta>( startOffsetProperty ) )
+    {
+        auto delta = std::get<TimeDelta>( startOffsetProperty );
+        m_rebalanceCb -> setStartTime( starttime - delta.abs() );
+    }
+    
+    std::vector<std::string> topics;
+    for (const auto& [topic, _] : m_topics)
+        topics.emplace_back( topic );
+
+    RdKafka::ErrorCode err = m_consumer -> subscribe( topics );
+    if( err )
+        CSP_THROW( RuntimeException, "Failed to subscribe to " << m_topics.size() << " topics: " << RdKafka::err2str( err ) );
+
+    m_running = true;
+    m_pollThread = std::make_unique<std::thread>( [ this ](){ poll(); } );
+}
+
+void KafkaConsumer::stop()
+{
+    if( m_running )
+    {
+        m_running = false;
+        m_pollThread -> join();
+    }
+    if( m_consumer.get() )
+    {
+        m_consumer -> close();
+        m_consumer.reset();
+    }
+}
+
+void KafkaConsumer::addTopic( const std::string & topic )
+{
+    m_topics.emplace( topic, TopicData{} );
+}
+
+void KafkaConsumer::setPartitions( const std::string & topic, std::vector<int> partitions )
+{
+    auto & topicData = m_topics[ topic ];
+    topicData.partitionInfo.clear();
+    for( auto partition : partitions )
+    {
+        if( ( uint32_t ) partition >= topicData.partitionInfo.size() )
+            topicData.partitionInfo.resize( partition + 1, {} );
+        topicData.partitionInfo[ partition ].valid = true;
+    }
+}
+
+void KafkaConsumer::poll()
+{
+    try
+    {
+        while( m_running )
+        {
+            std::unique_ptr<RdKafka::Message> msg( m_consumer -> consume( m_mgr -> pollTimeoutMs() ) );
+
+            if( msg -> err() == RdKafka::ERR__TIMED_OUT )
+                continue;
+
+            //We tend to accumulate more cases over time of error states that leave the engine deadlocked on PushPull adapters.
+            //This section is for cases where we get an error that is not topic specific, but is consumer specific, but we know its non-recoverable
+            //if it gets too long, or we realize that ANY error here should stop the engine, we can just always make it stop
+            if( unlikely( msg -> err() == RdKafka::ERR_GROUP_AUTHORIZATION_FAILED ) )
+            {
+                m_mgr -> forceShutdown( RdKafka::err2str( msg -> err() ) + " error: " + msg -> errstr() );
+                continue;
+            }
+
+            if( msg -> err() == RdKafka::ERR_NO_ERROR && msg -> len() )
+                m_mgr -> onMessage( msg.get() );
+            //Not sure why, but it looks like we repeatedly get EOF callbacks even after the original one
+            //may want to look into this.  Not an issue in practice, but seems like unnecessary overhead
+            else if( msg -> err() == RdKafka::ERR__PARTITION_EOF )
+            {
+                auto const partition = msg -> partition();
+                auto & topicData = m_topics[ msg -> topic_name() ];
+                auto & partitionInfo = topicData.partitionInfo;
+                if( ( uint32_t ) partition >= partitionInfo.size() )
+                    partitionInfo.resize( partition + 1, {} );
+
+                if( !partitionInfo[ partition ].receivedEOF )
+                {
+                    partitionInfo[ partition ].receivedEOF = true;
+                    
+                    debug_printf( "%p [DEBUG] %s EOF on %d\n", this, DateTime::now().asString().c_str(), partition );
+                    debug_printf( "Remaining: " );
+                    for( size_t i = 0; i < partitionInfo.size(); ++i )
+                    {
+                        if( partitionInfo[i].valid && !partitionInfo[i].receivedEOF )
+                            debug_printf( "%lu, ", i );
+                    }
+                    debug_printf("\n" );
+                }
+
+                //need this gaurd since we get this repeatedly after initial EOF
+                if( !topicData.flaggedReplayComplete )
+                {
+                    bool allDone = true;
+                    for( auto & info : partitionInfo )
+                    {
+                        if( info.valid && !info.receivedEOF )
+                        {
+                            allDone = false;
+                            break;
+                        }
+                    }
+
+                    if( allDone )
+                    {
+                        m_mgr -> markConsumerReplayDone( this, msg -> topic_name() );
+                        topicData.flaggedReplayComplete = true;
+                    }
+                }
+            }
+            else
+            {
+                //In most cases we should not get here, if we do then something is wrong
+                //safest bet is to release the pull adapter so it doesnt stall the engine and
+                //we can let the error msg through
+                m_mgr -> markConsumerReplayDone( this, msg -> topic_name() );
+
+                std::string errmsg = "KafkaConsumer: Message error on topic \"" + msg -> topic_name() + "\". errcode: " + RdKafka::err2str( msg -> err() ) + " error: " + msg -> errstr();
+                m_mgr -> pushStatus( StatusLevel::ERROR, KafkaStatusMessageType::MSG_RECV_ERROR, errmsg );
+            }
+        }
+    }
+    catch( const Exception & err )
+    {
+        m_mgr -> rootEngine() -> shutdown( std::current_exception() );
+    }
+}
+
+}
