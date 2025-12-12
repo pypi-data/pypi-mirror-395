@@ -1,0 +1,237 @@
+# Color Notify
+
+[![PyPI version](https://badge.fury.io/py/color-notify.svg)](https://badge.fury.io/py/color-notify)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A desktop notification tool that detects color codes in your clipboard and displays beautiful growl-style notifications with the detected color as background.
+
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cumulus13/color-notify/master/icons/color-notify.png" alt="color-notfy" width="200">
+</p>
+<br/>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cumulus13/color-notify/master/color-notify.gif" alt="Demo">
+</p>
+
+## ✨ Features
+
+- 🎨 **Auto-detect color codes** - Supports HEX (#FF0000, #F00) and RGB (rgb(255, 0, 0))
+- 🔔 **Growl-style notifications** - Frameless, borderless, with smooth fade animations
+- 📍 **Flexible positioning** - 9 positions: left/center/right × up/center/down
+- 👁️ **Adjustable transparency** - Opacity from 0.0 to 1.0
+- ⏱️ **Configurable timeout** - Auto-hide after specified time or keep visible (0 = no auto-hide)
+- ⚙️ **INI configuration** - All settings in `.color-notify.ini` or `color-notify.ini`
+- 🖥️ **System tray integration** - Background monitoring with tray menu
+- 🔝 **Always on Top** - Optional AOT mode
+- 🌈 **Smart text color** - Auto black/white text based on luminance
+- ⏸️ **Pause/Resume** - Toggle monitoring from tray menu
+- 🖱️ **Click to dismiss** - Click notification to close it
+
+## 📦 Installation
+
+```bash
+pip install color-notify
+```
+
+## 🚀 Usage
+
+### Run the application
+
+```bash
+color-notify
+```
+
+Or run as Python module:
+
+```bash
+python -m color_notify
+```
+
+The application will start in the background with a system tray icon.
+
+### Test it
+
+1. Copy a color code to your clipboard:
+   - `#FF5733`
+   - `#F00`
+   - `rgb(255, 87, 51)`
+   - `rgb(100, 200, 150)`
+
+2. A notification will appear with the color as background!
+
+## ⚙️ Configuration
+
+Color Notify looks for configuration in:
+1. `~/.color-notify.ini` (user home directory) - **Recommended**
+2. `color-notify.ini` (current directory) - Fallback
+
+Create or edit the configuration file:
+
+```ini
+[notification]
+# Position: left_up, left_center, left_down,
+#           center_up, center_center, center_down,
+#           right_up, right_center, right_down
+position = right_center
+
+# Transparency (0.0 - 1.0)
+opacity = 0.95
+
+# Keep notification always on top
+always_on_top = True
+
+# Auto-hide timeout in milliseconds
+# 0 = no auto-hide (stays until clicked)
+timeout = 3000
+
+# Margin from screen edge in pixels
+margin = 20
+
+# Enable notification sound (not implemented yet)
+sound_enabled = False
+
+[detection]
+# Detect HEX format (#FF0000, #F00)
+detect_hex = True
+
+# Detect RGB format (rgb(255, 0, 0))
+detect_rgb = True
+
+# Detect HSL format (not implemented yet)
+detect_hsl = False
+
+# Clipboard polling interval in milliseconds
+# Lower = more responsive but may cause clipboard conflicts on Windows
+# Recommended: 1000-2000ms for Windows, 500-1000ms for Linux/macOS
+poll_interval = 1000
+```
+
+> **Note for Windows Users:** If you see clipboard warning messages, increase `poll_interval` to 1500-2000ms in the config file. This prevents conflicts with other clipboard applications.
+
+### Quick Config Access
+
+Right-click the tray icon and select **"Open Config File"** to edit settings.
+
+## 🎯 System Tray Menu
+
+- **🧪 Test Notification** - Display a random color notification
+- **⏸️ Pause/Resume Monitoring** - Toggle clipboard monitoring
+- **🔄 Reload Config** - Reload configuration without restart
+- **⚙️ Open Config File** - Open config file in default editor
+- **ℹ️ About** - Show application information
+- **❌ Exit** - Close the application
+
+## 📸 What You'll See
+
+Each notification displays:
+- **Title**: Color type and code (HEX/RGB)
+- **Body**: 
+  - RGB values
+  - Brightness classification (LIGHT/DARK)
+  - Luminance value and bar
+- **Background**: The detected color
+- **Text**: Auto-adjusted (black/white) for readability
+
+## 🔧 Examples
+
+### HEX Colors
+```
+#FF0000  → Red
+#00FF00  → Green
+#0000FF  → Blue
+#FFFF00  → Yellow
+#FF00FF  → Magenta
+#00FFFF  → Cyan
+#F0A500  → Orange
+#9B59B6  → Purple
+```
+
+### RGB Colors
+```
+rgb(255, 0, 0)      → Red
+rgb(0, 255, 0)      → Green
+rgb(100, 150, 200)  → Light Blue
+rgb(255, 87, 51)    → Coral
+```
+
+### Short HEX
+```
+#F00  → Red (#FF0000)
+#0F0  → Green (#00FF00)
+#00F  → Blue (#0000FF)
+```
+
+## 🛠️ Development
+
+### Requirements
+
+- Python 3.6+
+- PyQt5
+
+### Troubleshooting
+
+**Clipboard warnings on Windows?**
+- Increase `poll_interval` to 1500-2000ms in config
+- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for details
+
+For more help, check:
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Detailed troubleshooting guide
+- [INSTALL.md](INSTALL.md) - Installation help
+- [QUICKSTART.md](QUICKSTART.md) - Quick start guide
+
+### Local Development
+
+```bash
+# Clone repository
+git clone https://github.com/cumulus13/color-notify.git
+cd color-notify
+
+# Install in development mode
+pip install -e .
+
+# Run
+python -m color_notify
+```
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## 👤 Author
+
+**[Hadi Cahyadi](mailto:cumulus13@gmail.com)**
+    
+
+[![Buy Me a Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/cumulus13)
+
+[![Donate via Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/cumulus13)
+
+[Support me on Patreon](https://www.patreon.com/cumulus13)
+
+## 🔗 Links
+
+- **GitHub**: https://github.com/cumulus13/color-notify
+- **PyPI**: https://pypi.org/project/color-notify/
+- **Issues**: https://github.com/cumulus13/color-notify/issues
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+Feel free to check the [issues page](https://github.com/cumulus13/color-notify/issues).
+
+## ⭐ Show Your Support
+
+Give a ⭐️ if this project helped you!
+
+## 📊 Changelog
+
+### Version 1.0.0
+- Initial release
+- HEX and RGB color detection
+- Growl-style notifications
+- System tray integration
+- Configurable positioning and timeout
+- Pause/Resume monitoring
+- Click to dismiss notifications
