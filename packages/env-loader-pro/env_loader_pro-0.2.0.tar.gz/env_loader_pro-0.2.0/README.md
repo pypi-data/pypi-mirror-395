@@ -1,0 +1,260 @@
+# env-loader-pro
+
+**Typed, validated, and secure environment variable loader** with sensible defaults, secret masking, clear error messages, and advanced features.
+
+## 🚀 Key Features
+
+- ✅ **Load from `.env` + system env** with configurable priority
+- ✅ **Automatic type casting** (int, bool, list, JSON)
+- ✅ **Required/optional validation** with helpful errors
+- ✅ **Default values** support
+- ✅ **Secret masking** for safe printing/logging
+- ✅ **Environment variable expansion** (`${VAR}` syntax)
+- ✅ **Multiple environment support** (`.env.dev`, `.env.prod`, etc.)
+- ✅ **Runtime validation rules**
+- ✅ **Strict mode** for unknown variables
+- ✅ **Schema support** (Pydantic models & dataclasses)
+- ✅ **Export to JSON/YAML**
+- ✅ **Auto-generate `.env.example`**
+- ✅ **CLI tool** for common operations
+
+## 📦 Installation
+
+```bash
+pip install env-loader-pro
+```
+
+### Optional Dependencies
+
+```bash
+# For Pydantic schema support
+pip install env-loader-pro[pydantic]
+
+# For YAML export
+pip install env-loader-pro[yaml]
+
+# For everything
+pip install env-loader-pro[all]
+```
+
+## 🎯 Quickstart
+
+### Basic Usage
+
+```python
+from env_loader_pro import load_env
+
+config = load_env(
+    required=["API_KEY"],
+    types={"PORT": int, "DEBUG": bool},
+    defaults={"PORT": 8080},
+    priority="system"
+)
+
+print(config["PORT"])  # 8080 (int)
+print(config["DEBUG"])  # True (bool)
+```
+
+### Environment Variable Expansion
+
+```python
+# .env file:
+# BASE_URL=https://example.com
+# API_ENDPOINT=${BASE_URL}/api
+
+config = load_env()
+print(config["API_ENDPOINT"])  # "https://example.com/api"
+```
+
+### Multiple Environments
+
+```python
+# Loads .env.prod if exists, falls back to .env
+config = load_env(env="prod")
+```
+
+### Validation Rules
+
+```python
+config = load_env(
+    types={"PORT": int},
+    rules={
+        "PORT": lambda v: 1024 < v < 65535
+    }
+)
+```
+
+### List and JSON Parsing
+
+```python
+# .env:
+# DOMAINS=["a.com","b.com"]
+# LIMITS=10,20,400
+
+config = load_env(types={"DOMAINS": list, "LIMITS": list})
+print(config["DOMAINS"])  # ["a.com", "b.com"]
+print(config["LIMITS"])   # ["10", "20", "400"]
+```
+
+### Schema Support (Pydantic)
+
+```python
+from env_loader_pro import load_with_schema
+from pydantic import BaseModel
+
+class Config(BaseModel):
+    port: int
+    debug: bool
+    api_key: str
+
+config = load_with_schema(Config)
+print(config.port)  # Typed access
+```
+
+### Schema Support (Dataclass)
+
+```python
+from env_loader_pro import load_with_schema
+from dataclasses import dataclass
+
+@dataclass
+class Config:
+    port: int
+    debug: bool
+    api_key: str
+
+config = load_with_schema(Config)
+print(config.port)  # Typed access
+```
+
+### Export Config
+
+```python
+config = load_env()
+config.save("config.json", format="json")
+config.save("config.yaml", format="yaml")
+```
+
+### Strict Mode
+
+```python
+# Warns about unknown variables not in schema
+config = load_env(
+    required=["API_KEY"],
+    types={"PORT": int},
+    strict=True
+)
+```
+
+### Safe Representation
+
+```python
+config = load_env()
+print(config.safe_repr())  # Secrets are masked
+# {"API_KEY": "****1234", "PORT": 8080}
+```
+
+## 🛠️ CLI Tool
+
+After installation, use the `envloader` command:
+
+```bash
+# Show environment variables
+envloader show --env prod
+
+# Export to JSON
+envloader export --output config.json --format json
+
+# Validate environment
+envloader validate --required API_KEY PORT
+
+# Generate .env.example
+envloader generate-example --required API_KEY PORT --optional DEBUG
+```
+
+## 📚 Advanced Examples
+
+### Generate .env.example
+
+```python
+from env_loader_pro import generate_env_example
+
+generate_env_example(
+    required=["API_KEY", "DB_URI"],
+    optional=["DEBUG", "LOG_LEVEL"],
+    defaults={"PORT": 8080, "DEBUG": False},
+    types={"PORT": int, "DEBUG": bool},
+    output_path=".env.example"
+)
+```
+
+### Complex Validation
+
+```python
+config = load_env(
+    required=["API_KEY"],
+    types={
+        "PORT": int,
+        "TIMEOUT": int,
+        "ALLOWED_HOSTS": list
+    },
+    rules={
+        "PORT": lambda v: 1024 < v < 65535,
+        "TIMEOUT": lambda v: v > 0,
+        "ALLOWED_HOSTS": lambda hosts: len(hosts) > 0
+    },
+    defaults={"TIMEOUT": 30}
+)
+```
+
+### Multi-Environment Setup
+
+```
+.env          # Base configuration
+.env.dev      # Development overrides
+.env.staging  # Staging overrides
+.env.prod     # Production overrides
+```
+
+```python
+# Automatically loads .env.prod + .env (prod overrides base)
+config = load_env(env="prod")
+```
+
+## 🔒 Security Features
+
+- **Automatic secret masking** for keys containing: `secret`, `key`, `token`, `password`, `pwd`
+- **Safe representation** method prevents accidental log leaks
+- **Strict mode** helps catch configuration errors
+
+## 📊 Comparison with python-dotenv
+
+| Feature                      | python-dotenv | env-loader-pro |
+| ---------------------------- | ------------- | -------------- |
+| Load .env                    | ✔️            | ✔️             |
+| Type casting                 | ❌             | ✔️             |
+| Required variable validation | ❌             | ✔️             |
+| Default values               | ❌             | ✔️             |
+| Secrets masking              | ❌             | ✔️             |
+| Typed output                 | ❌             | ✔️             |
+| Variable expansion           | ❌             | ✔️             |
+| Multi-environment            | ❌             | ✔️             |
+| Validation rules             | ❌             | ✔️             |
+| Schema support               | ❌             | ✔️             |
+| CLI tool                     | ❌             | ✔️             |
+| Export to JSON/YAML          | ❌             | ✔️             |
+
+## 🧪 Testing
+
+```bash
+pip install -e ".[test]"
+pytest tests/
+```
+
+## 📝 License
+
+Apache License 2.0 - See [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or submit a PR.
