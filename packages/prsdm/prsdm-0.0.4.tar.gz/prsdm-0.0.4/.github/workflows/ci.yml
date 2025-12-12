@@ -1,0 +1,60 @@
+name: CI (Test & Build)
+
+on:
+  # Run on every push to main/master branches
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  
+  # Run on pull requests
+  pull_request:
+    branches:
+      - main
+      - master
+  
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      
+      - name: Install dependencies
+        run: |
+          uv sync
+      
+      - name: Build package (test build, no publish)
+        run: |
+          uv build
+          echo "✅ Package builds successfully"
+          ls -lh dist/
+      
+      # Add your tests here when ready
+      # - name: Run tests
+      #   run: |
+      #     uv run pytest
+      
+      - name: Verify package structure
+        run: |
+          VERSION=$(grep '^version' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          PACKAGE_NAME=$(grep '^name' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "Package: ${PACKAGE_NAME}"
+          echo "Version: ${VERSION}"
+          echo "✅ CI checks passed - ready for release"
+

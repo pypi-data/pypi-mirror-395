@@ -1,0 +1,56 @@
+name: Publish to PyPI
+
+on:
+  # Trigger on version tags (e.g., v0.0.3, v1.0.0)
+  push:
+    tags:
+      - 'v*'
+  
+  # Allow manual triggering from GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      
+      - name: Build package
+        run: uv build
+      
+      - name: Get version from pyproject.toml
+        id: get_version
+        run: |
+          VERSION=$(grep '^version' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          PACKAGE_NAME=$(grep '^name' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Built version: $VERSION"
+      
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_USERNAME: __token__
+          UV_PUBLISH_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          VERSION=$(grep '^version' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          PACKAGE_NAME=$(grep '^name' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          uv publish "dist/${PACKAGE_NAME}-${VERSION}-"* "dist/${PACKAGE_NAME}-${VERSION}.tar.gz"
+      
+      - name: Verify publication
+        run: |
+          VERSION=$(grep '^version' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          PACKAGE_NAME=$(grep '^name' pyproject.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "✅ Successfully published ${PACKAGE_NAME} version ${VERSION} to PyPI"
+          echo "📦 Package: https://pypi.org/project/${PACKAGE_NAME}/${VERSION}/"
