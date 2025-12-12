@@ -1,0 +1,47 @@
+# @package _global_
+
+defaults:
+  - override /datamodule: base/anomaly
+  - override /model: anomalib/cfa
+  - override /optimizer: null
+  - override /scheduler: null
+  - override /transforms: default_resize
+  - override /loss: null
+  - override /task: anomalib/cfa
+  - override /backbone: null
+  - override /trainer: lightning_gpu
+  - override /callbacks: default_anomalib
+  - _self_
+
+transforms:
+  input_height: 224
+  input_width: 224
+
+datamodule:
+  num_workers: 12
+  train_batch_size: 32
+  test_batch_size: 32
+  task: ${model.dataset.task}
+  phase: train
+
+callbacks:
+  early_stopping:
+    patience: 5
+    monitor: validation_image_AUROC
+    mode: max
+
+core:
+  tag: "run"
+  name: cfa_${model.model.backbone}_${trainer.max_epochs}
+  test_after_training: true
+
+logger:
+  mlflow:
+    experiment_name:
+    run_name: ${core.name}
+
+# PL Trainer Args. Don't add extra parameter here.
+trainer:
+  devices: [0]
+  check_val_every_n_epoch: 1 # Don't validate before extracting features.
+  val_check_interval: 1.0 # Don't validate before extracting features.

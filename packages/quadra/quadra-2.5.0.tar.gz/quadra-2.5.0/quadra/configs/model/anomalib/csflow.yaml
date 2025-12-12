@@ -1,0 +1,34 @@
+dataset:
+  task: segmentation
+  tiling:
+    apply: false
+    tile_size: null
+    stride: null
+    remove_border_count: 0
+    use_random_tiling: False
+    random_tile_count: 16
+
+model:
+  name: csflow
+  clamp: 3
+  input_size: [256, 256] # 768 is the dimensions used in the official implementation
+  cross_conv_hidden_channels: 1024
+  eps: 1e-04 # Adam epsilon
+  layers:
+    - 6.8
+  lr: 2e-4
+  n_coupling_blocks: 4
+  n_scales: 3
+  weight_decay: 1e-5 # Adam weight decay
+
+metrics:
+  image:
+    - F1Score
+    - AUROC
+  pixel:
+    - F1Score
+    - AUROC
+  threshold:
+    method: adaptive #options: [adaptive, manual]
+    manual_image: null
+    manual_pixel: null
