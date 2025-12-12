@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rtfd-mcp"
+version = "0.2.6"
+description = "MCP server for real-time library documentation access across multiple package ecosystems."
+authors = [{ name = "Amit Serper", email = "amit@example.com" }]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["mcp", "documentation", "pypi", "npm", "crates", "godocs", "docker", "github"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "mcp>=1.22.0",
+    "httpx>=0.28.1",
+    "beautifulsoup4>=4.14.3",
+    "markdownify>=1.2.2",
+    "docutils>=0.22.3",
+    "tiktoken>=0.12.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/aserper/RTFD"
+Repository = "https://github.com/aserper/RTFD.git"
+Issues = "https://github.com/aserper/RTFD/issues"
+Documentation = "https://github.com/aserper/RTFD#readme"
+
+[project.scripts]
+rtfd = "RTFD.server:run"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0",
+    "pytest-recording>=0.13.0",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages]
+find = { where = ["src"] }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "requires_auth: marks tests that require API authentication",
+]
