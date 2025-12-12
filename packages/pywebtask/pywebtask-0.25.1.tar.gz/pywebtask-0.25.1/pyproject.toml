@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pywebtask"
+version = "0.25.1"
+description = "LLM-powered web automation library with autonomous agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Steve Wang"},
+]
+keywords = [
+    "automation",
+    "web-automation",
+    "browser-automation",
+    "llm",
+    "ai-agent",
+    "playwright",
+    "web-agent",
+    "natural-language",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    # Core dependencies
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+
+    # LLM integrations
+    "openai>=1.0.0",
+    "google-genai>=1.0.0",
+
+    # Browser automation
+    "playwright>=1.40.0",
+    "lxml>=4.9.0",
+
+    # Token counting
+    "tiktoken>=0.5.0",
+
+    # Image processing (required for multimodal LLM support)
+    "Pillow>=10.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/steve-z-wang/webtask"
+Repository = "https://github.com/steve-z-wang/webtask"
+Issues = "https://github.com/steve-z-wang/webtask/issues"
+Documentation = "https://steve-z-wang.github.io/webtask/"
+
+[project.optional-dependencies]
+# AWS Bedrock support
+bedrock = [
+    "boto3>=1.28.0",
+]
+# MCP server support
+mcp = [
+    "mcp>=0.1.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.12.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "pdm>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+docs = [
+    "mkdocs-material>=9.5.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312", "py313", "py314"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.pdm.scripts]
+# Linting and formatting
+lint = "ruff check src/ tests/"
+format = "black src/ tests/"
+format-check = "black --check src/ tests/"
+
+# Testing
+test = "pytest tests/ -v --tb=short"
+test-cov = "pytest tests/ --cov=webtask --cov-report=html"
+test-unit = "pytest tests/unit/ -v --tb=short -m unit"
+test-integration = "pytest tests/integration/ -v --tb=short -m integration"
+test-e2e = "pytest tests/e2e/ -v --tb=short -m e2e"
+test-e2e-verbose = "pytest tests/e2e/ -v -s --tb=short -m e2e --log-cli-level=INFO"
+
+# Documentation
+docs = "mkdocs serve"
+docs-build = "mkdocs build"
+docs-deploy = "mkdocs gh-deploy"
+
+# Combined checks (auto-fixes then runs checks)
+pr = {shell = "./scripts/pr.sh"}
