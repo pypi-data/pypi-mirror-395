@@ -1,0 +1,189 @@
+Metadata-Version: 2.4
+Name: QuantumRingsLib
+Version: 0.11.2000
+Summary: A Quantum Development Library
+Author-email: "Quantum Rings Inc." <contact@quantumrings.com>
+Project-URL: Homepage, https://www.quantumrings.com
+Project-URL: Documentation, https://portal.quantumrings.com/doc/
+Project-URL: API Reference, https://portal.quantumrings.com/doc/modules.html
+Keywords: quantum,quantum circuit,quantum computing,quantum programming language,quantum register,quantum tools,tools,sdk
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: Scientific/Engineering
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Python: >=3.11
+Description-Content-Type: text/x-rst
+License-File: LICENSE.rst
+Requires-Dist: quantumrings-cpu
+Dynamic: license-file
+
+================================================
+Welcome to the Quantum Rings SDK (CPU only mode)
+================================================
+
+This document serves as a guide for installing the Quantum Rings SDK in the CPU-only mode. Before starting the installation process, please review the sections 
+that outline the minimum system requirements.
+
+Additionally, the section titled "Feedback and Getting Support" provides links for submitting feedback or obtaining further assistance.
+
+Finding the Latest Version of the SDK
+-------------------------------------
+
+The most recent versions of the SDK are:
+
+- 0.11.2311 -- For Python 3.11 based installations
+- 0.11.2312 -- For Python 3.12 based installations
+- 0.11.2313 -- For Python 3.13 based installations
+- 0.11.2314 -- For Python 3.14 based installations
+
+We recommend you to use ``pip install quantumrings[cpu]`` and allow the system to find the latest compatible version.
+
+
+Minimum System Requirements
+---------------------------
+
+A system with specifications exceeding the minimum requirements is recommended. 
+Lower specifications may limit the number of qubits supported and could result in poor performance.
+
+-  Operating systems recommended:
+
+    -  Ubuntu 22.04.4 LTS
+    -  Ubuntu 24.04.4 LTS
+    -  Windows 11 Pro
+    -  macOS 15 (Only CPU mode and official Python builds are supported. For more information, visit www.python.org.)
+    -  WSL2 based Linux instances
+
+-  64-bit Intel i9 x86 CPU (14 cores 20 logical processors recommended) or equivalent
+
+-  Intel processors or Apple Silicon on Mac Systems 
+
+-  NVIDIA Grace Blackwell 10 Superchip
+
+-  DDR5 or better memory channels recommended
+
+-  32 GB Installed physical memory
+
+-  18 GB Available physical memory (memory requirement is dependent on the quantum circuit executed)
+
+-  64-bit Python version 3.11, 3.12, 3.13, or 3.14
+
+
+======================
+Installation Procedure
+======================
+
+**STEP - 1**
+
+To obtain your license for the `Quantum Rings SDK <https://www.quantumrings.com/>`_,  register by selecting the **Login** option from the menu.
+
+If you are already registered, you can skip this step.
+
+Next, log in to the `Quantum Rings portal <https://portal.quantumrings.com/developer/>`_. To download your access keys, select the **Manage Keys** option in the left sidebar.
+
+
+**STEP - 2**
+
+Create a virtual environment for your Python version using the following example from your terminal.
+
+.. code-block:: console
+
+    virtualenv --python=/usr/bin/python3.11 myenv311
+    source myenv311/bin/activate
+
+In some installations, the virtual environment can be created as follows:
+
+.. code-block:: console
+
+    python3.11 -m venv myenv311
+    source myenv311/bin/activate
+
+Note that installing a Python virtual environment may require additional steps.
+
+You can optionally install Jupyter Notebook using the following command.
+
+.. code-block:: console
+
+    pip install notebook
+
+
+**STEP - 3**
+
+Install the Quantum Rings SDK using the following command:
+
+.. code-block:: console
+
+    pip install QuantumRingsLib
+
+or
+
+.. code-block:: console
+
+    pip install quantumrings[cpu]
+
+
+**STEP - 4**
+
+Try running the following Python program in your Jupyter notebook to ensure everything is functioning correctly.
+
+.. code-block:: python
+
+    import QuantumRingsLib
+    from QuantumRingsLib import QuantumRegister, AncillaRegister, ClassicalRegister, QuantumCircuit
+    from QuantumRingsLib import QuantumRingsProvider
+    from QuantumRingsLib import job_monitor
+    from QuantumRingsLib import JobStatus
+    from QuantumRingsLib import OptimizeQuantumCircuit
+    from matplotlib import pyplot as plt
+    import numpy as np
+    import math
+
+    provider = QuantumRingsProvider(token =<YOUR_TOKEN_HERE>, name=<YOUR_ACCOUNT_NAME_HERE>)
+    backend = provider.get_backend("scarlet_quantum_rings")
+    numberofqubits = 50
+    shots = 100
+    
+    q = QuantumRegister(numberofqubits , 'q')
+    c = ClassicalRegister(numberofqubits , 'c')
+    qc = QuantumCircuit(q, c)
+
+    qc.h(0)
+    for i in range (qc.num_qubits - 1):
+        qc.cnot(i, i + 1)
+
+    qc.measure_all()
+
+    job = backend.run(qc, shots=shots)
+    job_monitor(job)
+
+    result = job.result()
+    counts = result.get_counts()
+
+
+============================
+Feedback and getting support
+============================
+
+We love to hear from you! Please join our `Discord community <https://discord.com/invite/dZJvX5AfkS>`_ to discuss anything quantum computing.
+
+
+`SDK Documentation <https://portal.quantumrings.com/doc/>`_
+
+`FAQ <https://portal.quantumrings.com/developer/support/>`_ (Requires you to login)
+
+`Managing your license keys <https://portal.quantumrings.com/developer/keys/>`_ (Requires you to login)
+
+`Need more qubits? Request here <https://portal.quantumrings.com/developer/keys/>`_ (Requires you to login)
+
+
+
+
+
+
