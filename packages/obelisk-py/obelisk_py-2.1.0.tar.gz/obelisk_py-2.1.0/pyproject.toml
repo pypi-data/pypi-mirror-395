@@ -1,0 +1,63 @@
+[project]
+name = "obelisk-py"
+description = "The one Obelisk client to rule them all"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "ruff>=0.9.6",
+    "httpx>=0.28.1",
+    "pydantic>=2.10.6",
+]
+authors = [
+    { name="Stef Pletinck", email="Stef.Pletinck@ugent.be"},
+    { name="Pieter Moens", email="Pieter.Moens@ugent.be"},
+]
+dynamic = ["version"]
+license-files = [
+    "LICENSE"
+]
+
+[project.urls]
+source = "https://github.com/predict-idlab/obelisk-python"
+documentation = "https://predict-idlab.github.io/obelisk-python/"
+changelog = "https://github.com/predict-idlab/obelisk-python/blob/main/CHANGELOG.rst"
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+publish-url = "https://upload.pypi.org/legacy/"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+
+[tool.hatch.version]
+source = "vcs"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.25.3",
+    "mypy>=1.18.2",
+    "pdoc>=16.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/obelisk"]
+
+[tool.mypy]
+files = "src/obelisk"
+strict = true
+
+[tool.ruff]
+include = ["src/obelisk/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "ASYNC", "S", "B", "FIX", "SIM", "C90", "N", "PERF", "UP"]
+# Ignore N815, camelcase field names are usually for serialisation reasons
+ignore = ["N815"]
