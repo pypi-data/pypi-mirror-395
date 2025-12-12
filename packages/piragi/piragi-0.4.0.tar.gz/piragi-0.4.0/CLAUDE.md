@@ -1,0 +1,1 @@
+- NEVER use claude as the co-author or mention it in git commits
