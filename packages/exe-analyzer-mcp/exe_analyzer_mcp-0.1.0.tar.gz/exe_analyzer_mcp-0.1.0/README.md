@@ -1,0 +1,572 @@
+# exe-analyzer-mcp
+
+MCP server for automated analysis of Windows executable files.
+
+## Overview
+
+exe-analyzer-mcp is a Model Context Protocol (MCP) server that provides automated analysis capabilities for Windows executable files. It enables AI assistants to extract meaningful information from compiled binaries without manual reverse engineering.
+
+### Key Features
+
+- **Framework Detection**: Identifies technology stacks (.NET, Qt, Electron, wxWidgets, MFC, GTK)
+- **Library Analysis**: Extracts and categorizes imported DLLs (system, runtime, external)
+- **String Extraction**: Finds meaningful strings (URLs, file paths, registry keys, error messages)
+- **Language Inference**: Determines programming language based on compiler signatures
+
+### Target Users
+
+- Security analysts investigating executables
+- Developers understanding dependencies and licensing
+- Reverse engineers extracting semantic content
+- Malware analysts selecting appropriate analysis tools
+
+## Installation
+
+### Prerequisites
+
+- Python 3.12 or higher
+- [uv](https://docs.astral.sh/uv/) package manager
+- Windows executable files for analysis (PE format)
+
+### Setup
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd exe-analyzer-mcp
+```
+
+2. Install dependencies using uv:
+```bash
+uv sync
+```
+
+3. Verify installation:
+```bash
+uv run pytest
+```
+
+### Running the MCP Server
+
+Start the MCP server using:
+```bash
+uv run python main.py
+```
+
+The server will start and listen for MCP protocol requests via stdio.
+
+### Configuring with Claude Desktop
+
+To use this MCP server with Claude Desktop, add the following to your Claude Desktop configuration file:
+
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "exe-analyzer": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\path\\to\\exe-analyzer-mcp",
+        "run",
+        "python",
+        "main.py"
+      ]
+    }
+  }
+}
+```
+
+Replace `C:\\path\\to\\exe-analyzer-mcp` with the actual path to your installation.
+
+## Usage
+
+### MCP Tools
+
+The server provides four MCP tools that can be invoked by AI assistants:
+
+#### 1. analyze_frameworks
+
+Detects frameworks and runtime environments used in an executable.
+
+**Input:**
+```json
+{
+  "file_path": "C:\\path\\to\\executable.exe"
+}
+```
+
+**Output:**
+```json
+{
+  "frameworks": [
+    {
+      "name": ".NET Framework",
+      "version": "4.8",
+      "confidence": 0.95,
+      "indicators": ["mscoree.dll", "v4.0.30319"]
+    }
+  ]
+}
+```
+
+**Example Usage:**
+```
+Analyze the frameworks used in C:\Windows\System32\notepad.exe
+```
+
+#### 2. analyze_libraries
+
+Extracts and categorizes imported libraries (DLLs) from an executable.
+
+**Input:**
+```json
+{
+  "file_path": "C:\\path\\to\\executable.exe"
+}
+```
+
+**Output:**
+```json
+{
+  "system_libraries": [
+    {
+      "name": "kernel32.dll",
+      "category": "system",
+      "functions": ["CreateFileW", "ReadFile", "WriteFile"]
+    }
+  ],
+  "external_libraries": [
+    {
+      "name": "custom.dll",
+      "category": "external",
+      "functions": ["CustomFunction"]
+    }
+  ],
+  "total_imports": 45
+}
+```
+
+**Example Usage:**
+```
+What libraries does C:\Program Files\MyApp\app.exe import?
+```
+
+#### 3. extract_strings
+
+Extracts meaningful strings from an executable with categorization.
+
+**Input:**
+```json
+{
+  "file_path": "C:\\path\\to\\executable.exe"
+}
+```
+
+**Output:**
+```json
+{
+  "strings_by_category": {
+    "URL": [
+      {
+        "value": "https://example.com/api",
+        "category": "URL",
+        "offset": 12345,
+        "encoding": "utf-8",
+        "entropy": 3.2
+      }
+    ],
+    "FilePath": [
+      {
+        "value": "C:\\Program Files\\App\\config.ini",
+        "category": "FilePath",
+        "offset": 23456,
+        "encoding": "utf-16",
+        "entropy": 3.8
+      }
+    ],
+    "ErrorMessage": [
+      {
+        "value": "Failed to initialize component",
+        "category": "ErrorMessage",
+        "offset": 34567,
+        "encoding": "ascii",
+        "entropy": 3.5
+      }
+    ]
+  },
+  "total_count": 1247,
+  "truncated": false
+}
+```
+
+**Example Usage:**
+```
+Extract all strings from C:\suspicious\malware.exe and show me any URLs
+```
+
+#### 4. infer_language
+
+Determines the programming language used to create an executable.
+
+**Input:**
+```json
+{
+  "file_path": "C:\\path\\to\\executable.exe"
+}
+```
+
+**Output:**
+```json
+{
+  "primary_language": {
+    "language": "C++",
+    "confidence": 0.92,
+    "indicators": ["MSVC", "vcruntime140.dll", "msvcp140.dll"]
+  },
+  "alternative_languages": [
+    {
+      "language": "C",
+      "confidence": 0.45,
+      "indicators": ["msvcrt.dll"]
+    }
+  ]
+}
+```
+
+**Example Usage:**
+```
+What programming language was used to create C:\tools\utility.exe?
+```
+
+### Command-Line Interface
+
+For standalone testing, use the CLI tool:
+
+```bash
+# Analyze frameworks
+uv run python -m exe_analyzer_mcp.cli analyze-frameworks C:\path\to\app.exe
+
+# Analyze libraries
+uv run python -m exe_analyzer_mcp.cli analyze-libraries C:\path\to\app.exe
+
+# Extract strings
+uv run python -m exe_analyzer_mcp.cli extract-strings C:\path\to\app.exe
+
+# Infer language
+uv run python -m exe_analyzer_mcp.cli infer-language C:\path\to\app.exe
+
+# Verbose output
+uv run python -m exe_analyzer_mcp.cli analyze-frameworks C:\path\to\app.exe --verbose
+```
+
+## Configuration
+
+The server uses JSON configuration files located in `src/exe_analyzer_mcp/config/`:
+
+### framework_signatures.json
+
+Defines patterns for detecting frameworks in executables.
+
+**Format:**
+```json
+{
+  "frameworks": [
+    {
+      "name": "Framework Name",
+      "signatures": ["string1", "string2"],
+      "version_patterns": ["version pattern"]
+    }
+  ]
+}
+```
+
+**Example:**
+```json
+{
+  "frameworks": [
+    {
+      "name": "Qt",
+      "signatures": ["Qt5Core", "Qt6Core", "QApplication"],
+      "version_patterns": ["Qt 5.", "Qt 6."]
+    }
+  ]
+}
+```
+
+### compiler_signatures.json
+
+Maps compiler signatures to programming languages.
+
+**Format:**
+```json
+{
+  "compilers": [
+    {
+      "language": "Language Name",
+      "signatures": ["signature1", "signature2"],
+      "clr_required": false
+    }
+  ]
+}
+```
+
+**Example:**
+```json
+{
+  "compilers": [
+    {
+      "language": "Go",
+      "signatures": ["Go build ID:", "runtime.go"],
+      "clr_required": false
+    }
+  ]
+}
+```
+
+### system_libraries.json
+
+Lists known Windows system and runtime libraries.
+
+**Format:**
+```json
+{
+  "system_libraries": ["kernel32.dll", "user32.dll"],
+  "runtime_libraries": ["msvcrt.dll", "vcruntime140.dll"]
+}
+```
+
+### Customizing Configuration
+
+To add support for new frameworks or languages:
+
+1. Edit the appropriate JSON file in `src/exe_analyzer_mcp/config/`
+2. Add new entries following the existing format
+3. Restart the MCP server for changes to take effect
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=src/exe_analyzer_mcp
+
+# Run specific test file
+uv run pytest tests/test_framework_detector_unit.py
+
+# Run property-based tests only
+uv run pytest -k properties
+```
+
+### Code Quality
+
+```bash
+# Lint code
+uv run ruff check .
+
+# Format code
+uv run ruff format .
+
+# Type checking
+uv run mypy src/
+```
+
+### Project Structure
+
+```
+exe-analyzer-mcp/
+├── src/exe_analyzer_mcp/
+│   ├── config/                    # Configuration files
+│   │   ├── framework_signatures.json
+│   │   ├── compiler_signatures.json
+│   │   └── system_libraries.json
+│   ├── analysis_orchestrator.py   # Coordinates analysis workflows
+│   ├── framework_detector.py      # Framework detection logic
+│   ├── library_analyzer.py        # Library analysis logic
+│   ├── string_extractor.py        # String extraction logic
+│   ├── language_inferrer.py       # Language inference logic
+│   ├── pe_parser.py               # PE file parsing wrapper
+│   ├── mcp_server.py              # MCP protocol implementation
+│   └── cli.py                     # Command-line interface
+├── tests/                         # Test suite
+├── main.py                        # Server entry point
+└── pyproject.toml                 # Project configuration
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. "File not found" error
+
+**Problem:** The specified executable file doesn't exist or path is incorrect.
+
+**Solution:**
+- Verify the file path is correct and uses absolute paths
+- Check file permissions - ensure the file is readable
+- On Windows, use double backslashes in paths: `C:\\path\\to\\file.exe`
+
+#### 2. "Invalid PE format" error
+
+**Problem:** The file is not a valid Windows PE executable.
+
+**Solution:**
+- Verify the file is actually a Windows .exe file
+- Check if the file is corrupted
+- Ensure the file is not compressed or encrypted
+
+#### 3. "Permission denied" error
+
+**Problem:** The server doesn't have permission to read the file.
+
+**Solution:**
+- Run the server with appropriate permissions
+- Check file access rights
+- Avoid analyzing system-protected executables
+
+#### 4. No frameworks detected
+
+**Problem:** The tool returns an empty framework list.
+
+**Solution:**
+- The executable may not use any recognized frameworks
+- Check if the executable is packed or obfuscated
+- Try extracting strings first to see what's in the file
+- Consider adding custom signatures to `framework_signatures.json`
+
+#### 5. String extraction returns too few results
+
+**Problem:** Expected more strings from the executable.
+
+**Solution:**
+- The executable may be packed or compressed
+- Strings may be encrypted or obfuscated
+- Try lowering the entropy threshold (requires code modification)
+- Check if the executable uses string encryption
+
+#### 6. Language inference returns low confidence
+
+**Problem:** The tool is uncertain about the programming language.
+
+**Solution:**
+- The executable may be created with an uncommon compiler
+- Multiple languages may have been used (mixed-language project)
+- Consider the alternative languages in the result
+- Add custom compiler signatures to `compiler_signatures.json`
+
+#### 7. MCP server not responding
+
+**Problem:** The server starts but doesn't respond to requests.
+
+**Solution:**
+- Check that the server is running: `uv run python main.py`
+- Verify the MCP client configuration is correct
+- Check server logs for error messages
+- Restart the MCP client (e.g., Claude Desktop)
+
+#### 8. Memory issues with large files
+
+**Problem:** Analysis fails or is very slow with large executables.
+
+**Solution:**
+- The server limits string extraction to 10,000 entries
+- Very large files (>500MB) may not be supported
+- Try analyzing specific aspects (frameworks, libraries) instead of all at once
+- Consider analyzing the file in chunks manually
+
+### Debug Mode
+
+Enable verbose logging for troubleshooting:
+
+```bash
+# Using CLI with verbose flag
+uv run python -m exe_analyzer_mcp.cli analyze-frameworks C:\path\to\app.exe --verbose
+```
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. Check the test suite for examples: `tests/`
+2. Review the design document: `.kiro/specs/exe-analyzer-mcp/design.md`
+3. Examine the requirements: `.kiro/specs/exe-analyzer-mcp/requirements.md`
+4. Open an issue with:
+   - Error message
+   - File type being analyzed
+   - Steps to reproduce
+   - Expected vs actual behavior
+
+## Architecture
+
+The system follows a modular architecture:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    MCP Server Layer                      │
+│  (Tool Registration, Request Handling, Response Format)  │
+└────────────────┬────────────────────────────────────────┘
+                 │
+┌────────────────┴────────────────────────────────────────┐
+│                  Analysis Orchestrator                   │
+│         (Coordinates analysis workflows)                 │
+└────┬──────────┬──────────┬──────────┬──────────────────┘
+     │          │          │          │
+┌────┴───┐ ┌───┴────┐ ┌───┴────┐ ┌──┴─────────┐
+│Framework│ │Library │ │ String │ │  Language  │
+│Detector │ │Analyzer│ │Extractor│ │  Inferrer  │
+└────┬───┘ └───┬────┘ └───┬────┘ └──┬─────────┘
+     │          │          │          │
+     └──────────┴──────────┴──────────┘
+                 │
+        ┌────────┴────────┐
+        │   PE Parser     │
+        │   (pefile)      │
+        └─────────────────┘
+```
+
+## Performance Considerations
+
+- **Large Files**: Files >100MB are processed in chunks
+- **String Limits**: Maximum 10,000 strings returned per analysis
+- **Memory Usage**: Memory-mapped files used for large executables
+- **Caching**: PE structures cached for multiple operations
+
+## Security Considerations
+
+- **No Execution**: Analyzed executables are never executed
+- **Path Validation**: File paths validated to prevent directory traversal
+- **Size Limits**: Maximum file size of 500MB to prevent DoS
+- **Sandboxing**: Consider running in isolated environment for untrusted files
+
+## Requirements
+
+- Python 3.12+
+- Windows PE executable files for analysis
+- Sufficient memory for large file analysis
+
+## License
+
+TBD
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+
+- All tests pass: `uv run pytest`
+- Code is formatted: `uv run ruff format .`
+- Code is linted: `uv run ruff check .`
+- Property-based tests are included for new features
+- Documentation is updated
+
+## Acknowledgments
+
+- Built with [pefile](https://github.com/erocarrera/pefile) for PE parsing
+- Uses [Hypothesis](https://hypothesis.readthedocs.io/) for property-based testing
+- Implements the [Model Context Protocol](https://modelcontextprotocol.io/)
