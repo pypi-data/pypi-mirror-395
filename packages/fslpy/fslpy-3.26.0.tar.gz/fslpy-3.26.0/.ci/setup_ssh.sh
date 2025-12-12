@@ -1,0 +1,50 @@
+#!/usr/bin/env /bash
+
+set -e
+
+##########################################################
+# The setup_ssh script does the following:
+#
+#  - Sets up key-based SSH login, and
+#    installs the private keys, so
+#    we can connect to servers.
+#
+#  - Configures git, and adds the
+#    upstream repo as a remote
+#
+# (see https://docs.gitlab.com/ce/ci/ssh_keys/README.html)
+#
+# NOTE: It is assumed that non-docker
+#       executors are already configured
+#       (or don't need any configuration).
+##########################################################
+
+if [[ -f /.dockerenv ]]; then
+
+ eval $(ssh-agent -s);
+ mkdir -p $HOME/.ssh;
+
+ # for downloading FSL atlases/standards
+ echo "$SSH_PRIVATE_KEY_FSL_DOWNLOAD" > $HOME/.ssh/id_fsl_download;
+
+ chmod go-rwx $HOME/.ssh/id_*;
+
+ ssh-add $HOME/.ssh/id_fsl_download;
+
+ ssh-keyscan ${FSL_HOST##*@} >> $HOME/.ssh/known_hosts;
+
+ touch $HOME/.ssh/config;
+
+ echo "Host fsldownload"                            >> $HOME/.ssh/config;
+ echo "    HostName ${FSL_HOST##*@}"                >> $HOME/.ssh/config;
+ echo "    User ${FSL_HOST%@*}"                     >> $HOME/.ssh/config;
+ echo "    IdentityFile $HOME/.ssh/id_fsl_download" >> $HOME/.ssh/config;
+
+ echo "Host *"                                      >> $HOME/.ssh/config;
+ echo "    IdentitiesOnly yes"                      >> $HOME/.ssh/config;
+
+ git config --global user.name  "Gitlab CI";
+ git config --global user.email "gitlabci@localhost";
+
+ echo "Completed SSH configuration"
+fi
