@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package pearl.av.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message WheelValues {
+  double front_left = 1;
+  double front_right = 2;
+  double rear_left = 3;
+  double rear_right = 4;
+}
+
+message WheelStatusValues {
+  string front_left = 1;
+  string front_right = 2;
+  string rear_left = 3;
+  string rear_right = 4;
+}
+
+// Extra fields
+message WheelOdometryExtra {
+  // Wheel slip
+  WheelValues slip = 1;                       // per-wheel slip ratio
+
+  // Wheel status
+  WheelStatusValues movement_status = 2;      // STATIONARY, FORWARDS, BACKWARDS
+  WheelStatusValues speed_qualifier = 3;      // NORMAL, etc.
+  WheelStatusValues pulse_count_qualifier = 4;
+
+  // Steering system details
+  double road_wheel_angle = 5;               // degrees
+  string road_wheel_angle_qualifier = 6;
+  double road_wheel_angle_velocity = 7;      // degrees/s
+  string road_wheel_angle_velocity_qualifier = 8;
+  double pinion_angle = 9;                   // degrees
+  string pinion_angle_qualifier = 10;
+  double pinion_angle_velocity = 11;         // degrees/s
+  string pinion_angle_velocity_qualifier = 12;
+
+  // Torque
+  double driver_torque = 13;                 // Nm
+  string driver_torque_qualifier = 14;
+  double road_wheel_angle_motor_torque = 15; // Nm
+  string road_wheel_angle_motor_torque_qualifier = 16;
+
+  // Other status
+  string acu_l2_if_status = 17;
+}
+
+message WheelState {
+  WheelValues velocity = 1;                   // per-wheel speed (m/s)
+  double steering_tire_angle = 2;             // rad
+  double steering_tire_angle_velocity = 3;    // rad/s
+
+  // Extra diagnostic fields
+  WheelOdometryExtra extra = 4;
+}
+
+message WheelOdometry {
+  google.protobuf.Timestamp frame_timestamp = 1;
+  string frame_id = 2;
+  string device_type = 3;
+  string hashed_device_id = 4;
+  google.protobuf.Timestamp sensor_timestamp = 5;
+  string scene_id = 6;
+  string run_id = 7; // grouping key for runs
+  WheelState wheel_odometry = 8;
+}
