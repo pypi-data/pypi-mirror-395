@@ -1,0 +1,181 @@
+Metadata-Version: 2.4
+Name: mcp-server-pdf-to-markdown
+Version: 0.2.0
+Summary: 使用 DeepSeek-OCR 将 PDF 转换为 Markdown 的 MCP 工具
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: addict>=2.4.0
+Requires-Dist: easydict>=1.13
+Requires-Dist: einops>=0.8.1
+Requires-Dist: img2pdf>=0.6.3
+Requires-Dist: mcp>=1.23.1
+Requires-Dist: numpy>=2.2.6
+Requires-Dist: openai>=2.8.1
+Requires-Dist: openai-agents>=0.6.1
+Requires-Dist: pillow>=12.0.0
+Requires-Dist: pydantic>=2.12.5
+Requires-Dist: pymupdf>=1.26.6
+Requires-Dist: python-dotenv>=1.2.1
+Requires-Dist: torch==2.6.0
+Requires-Dist: torchaudio==2.6.0
+Requires-Dist: torchvision==0.21.0
+Requires-Dist: vllm==0.8.5
+Requires-Dist: tqdm>=4.66.0
+Requires-Dist: transformers>=4.40.0
+
+# PDF to Markdown MCP Server
+
+使用 DeepSeek-OCR 将 PDF 文件转换为 Markdown 格式的 MCP (Model Context Protocol) 服务。
+
+## 功能特性
+
+- **pdf_to_markdown**: 将 PDF 转换为 Markdown（图片只保留链接，不解析内容）
+- **augment_markdown_images**: 对 Markdown 中的图片链接添加 OCR 解析内容
+- **pdf_to_markdown_full**: 一站式完成 PDF 转 Markdown 并增强图片解析
+
+## 安装
+
+### 1. 创建虚拟环境
+
+```bash
+cd mcp-server-pdf_to_markdown
+uv venv
+source .venv/bin/activate  # Linux/Mac
+# 或 .venv\Scripts\activate  # Windows
+```
+
+### 2. 安装依赖
+
+```bash
+uv add mcp openai openai-agents pydantic python-dotenv
+uv add torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --find-links https://download.pytorch.org/whl/cu118
+uv add vllm==0.8.5
+uv add PyMuPDF img2pdf einops easydict addict Pillow numpy tqdm
+uv add flash-attn==2.7.3 --no-build-isolation
+```
+
+### 3. 安装项目
+
+```bash
+uv pip install -e .
+```
+
+## 使用方法
+
+### 命令行运行
+
+```bash
+# 使用默认配置
+mcp-server-pdf-to-markdown
+
+# 指定 GPU
+mcp-server-pdf-to-markdown --gpu_id 0
+
+# 指定模型路径
+mcp-server-pdf-to-markdown --model_path /path/to/DeepSeek-OCR
+```
+
+### MCP Inspector 测试
+
+```bash
+npx -y @modelcontextprotocol/inspector uv run mcp-server-pdf-to-markdown
+```
+
+### 在 Cherry Studio 中添加
+
+```
+名称: mcp-server-pdf-to-markdown
+命令: uvx
+参数:
+    mcp-server-pdf-to-markdown
+```
+
+## MCP 工具说明
+
+### 1. pdf_to_markdown
+
+将 PDF 文件转换为 Markdown 格式。
+
+**参数：**
+- `pdf_path` (str): PDF 文件的完整路径
+- `output_dir` (str): 输出目录的完整路径
+- `gpu_id` (str, 可选): 使用的 GPU ID，默认 "0"
+
+**返回：**
+- `success`: 是否成功
+- `markdown_path`: 生成的 Markdown 文件路径
+- `images_dir`: 图片保存目录
+- `page_count`: 处理的页数
+
+### 2. augment_markdown_images
+
+为 Markdown 文件中的图片链接添加 OCR 解析内容。
+
+**参数：**
+- `markdown_path` (str): 输入的 Markdown 文件路径
+- `output_path` (str, 可选): 输出文件路径
+- `image_root` (str, 可选): 图片根目录
+- `cache_json` (str, 可选): 缓存文件路径
+- `gpu_id` (str, 可选): 使用的 GPU ID
+
+**返回：**
+- `success`: 是否成功
+- `output_path`: 输出文件路径
+- `images_processed`: 处理的图片数量
+
+### 3. pdf_to_markdown_full
+
+一站式将 PDF 转换为 Markdown 并解析图片内容。
+
+**参数：**
+- `pdf_path` (str): PDF 文件的完整路径
+- `output_dir` (str): 输出目录的完整路径
+- `augment_images` (bool, 可选): 是否解析图片内容，默认 True
+- `cache_json` (str, 可选): 图片解析缓存文件路径
+- `gpu_id` (str, 可选): 使用的 GPU ID
+
+**返回：**
+- `success`: 是否成功
+- `markdown_path`: 基础 Markdown 文件路径
+- `augmented_path`: 增强后的 Markdown 文件路径
+- `images_dir`: 图片保存目录
+- `page_count`: 处理的页数
+- `images_processed`: 解析的图片数量
+
+## 模型要求
+
+本服务需要 DeepSeek-OCR 模型，默认路径为：
+```
+/home/ad/tianhaoyang/vllm_model/deepseek-ai/DeepSeek-OCR
+```
+
+可以通过 `--model_path` 参数指定自定义路径。
+
+## 示例输出
+
+转换后的 Markdown 文件结构：
+
+```markdown
+# 文档标题
+
+正文内容...
+
+![](images/0_0.jpg)
+*图片标题*
+<details><summary>图片解析</summary>
+
+- 图片内容要点1
+- 图片内容要点2
+- 图片内容要点3
+
+</details>
+
+<--- Page 1 --->
+
+下一页内容...
+```
+
+## 许可证
+
+MIT License
+
