@@ -1,0 +1,324 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mafw"
+dynamic = ["version"]
+description = 'A modular analysis framework'
+readme = "README.rst"
+requires-python = ">=3.11"
+license = "EUPL-1.2"
+license-files =  ['LICENSE.txt', 'NOTICE.txt']
+keywords = []
+authors = [
+    { name = "BULGHERONI Antonio", email = "Antonio.BULGHERONI@ec.europa.eu" },
+    { name = "KRACHLER Michael", email = "Michael.KRACHLER@ec.europa.eu"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    'pluggy>=1.5.0',
+    'click>=8.1.8',
+    'tomlkit>=0.13.3',
+    'rich>=13.9.4',
+    'peewee>=3.17.9',
+    'Deprecated>=1.2.18',
+    'typing-extensions>=4.13.0; python_version <= "3.11"'
+]
+
+[project.urls]
+homepage = "https://code.europa.eu/kada/mafw/-/blob/main/README.rst"
+Documentation = "https://mafw-e8abfd.pages.code.europa.eu/doc/"
+Issues = "https://code.europa.eu/kada/mafw/-/issues"
+Source = "https://code.europa.eu/kada/mafw"
+Changelog = "https://code.europa.eu/kada/mafw/-/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+seaborn = [
+    'seaborn>=0.13.2',
+    'pandas[hdf5]>=2.2.3',
+    'matplotlib>=3.10.1'
+]
+
+test = [
+    'pytest',
+    'pytest-datadir',
+    'pytest-integration',
+    'pytest-order'
+]
+
+
+doc = [
+    'sphinx',
+    'sphinx-copybutton',
+    'sphinx-rtd-theme',
+    'sphinxcontrib-applehelp',
+    'sphinxcontrib-devhelp',
+    'sphinxcontrib-htmlhelp',
+    'sphinxcontrib-jquery',
+    'sphinxcontrib-jsmath',
+    'sphinxcontrib-qthelp',
+    'sphinxcontrib-serializinghtml',
+    'sphinx-design',
+    'sphinxcontrib.external-links',
+    'sphinx-click',
+]
+
+all-db = [
+    'psycopg2-binary',
+    'psycopg[binary]',
+    'PyMySQL[rsa]',
+]
+
+dev = [
+    'mafw[test,doc,seaborn,all-db]',
+    'auto-changelog',
+    'ruff',
+    'pre-commit',
+]
+
+[project.scripts]
+mafw = 'mafw.scripts.mafw_exe:cli'
+update-changelog = 'mafw.scripts.update_changelog:main [dev]'
+update-notice = 'mafw.scripts.update_notice:main [dev]'
+multiversion-doc = 'mafw.scripts.doc_versioning:cli [dev]'
+
+## HATCH Enviroments
+
+# default env
+[tool.hatch.envs.default]
+type = "virtual"
+installer = 'uv'
+
+[tool.hatch.envs.default.extra-scripts]
+pip = "{env:HATCH_UV} pip {args}"
+# -----------------------
+
+# with all optional deps
+[tool.hatch.envs.optional]
+type = "virtual"
+features = ['seaborn', 'all-db']
+
+# hatch-test matrix
+[tool.hatch.envs.hatch-test]
+parallel = false # the execution time in parallel processes is only minimal
+randomize = true
+features = ['seaborn', 'test']
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.11", "3.12", "3.13"]
+
+[tool.hatch.envs.simple-test]
+features = ['seaborn', 'test']
+
+
+[tool.hatch.envs.hatch-test.scripts]
+run = "pytest{env:HATCH_TEST_ARGS:} {args}"
+run-cov = "coverage run -m pytest{env:HATCH_TEST_ARGS:} {args}"
+cov-combine = "coverage combine"
+cov-report = "coverage report"
+cov-html = "coverage html"
+cov-xml = "coverage xml "
+# -----------------------
+
+# dev matrix
+[tool.hatch.envs.dev]
+features = ['dev']
+
+[tool.hatch.envs.dev.scripts]
+doc = 'multiversion-doc current'
+multidoc = 'multiversion-doc {args}'
+change = 'update-changelog'
+ruff-check = 'ruff check --fix'
+ruff-format = 'ruff format'
+pre-push = [
+    'ruff-check',
+    'ruff-format',
+    'hatch test',
+    'hatch run types:check',
+    'doc',
+]
+
+[[tool.hatch.envs.dev.matrix]]
+python = ["3.11","3.12", "3.13"]
+
+[tool.hatch.envs.dev.extra-scripts]
+pip = "{env:HATCH_UV} pip {args}"
+# -----------------------
+
+# types env
+[tool.hatch.envs.types]
+installer = 'pip'
+extra-dependencies = [
+    "mypy>=1.0.0",
+    "no_implicit_optional"
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args}"
+
+[tool.hatch.version]
+path = "src/mafw/__about__.py"
+
+[tool.pytest.ini_options]
+addopts = "--order-scope=class"
+
+[tool.coverage.run]
+source_pkgs = ["mafw"]
+branch = true
+parallel = true
+omit = [
+    "src/mafw/__about__.py",
+    "src/mafw/__init__.py",
+    "src/mafw/db/db_types.py",
+    "tests/*",
+    "src/mafw/examples/*",
+    "src/mafw/scripts/update_changelog.py",
+    'src/mafw/scripts/update_notice.py',
+    'src/mafw/scripts/doc_versioning.py'
+]
+
+[tool.coverage.paths]
+mafw = ["src/mafw", "*/mafw/src/mafw"]
+tests = ["tests", "*/mafw/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "no cov",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+skip_empty = true
+format = "markdown"
+
+[tool.coverage.html]
+directory = 'htmlcov'
+
+[tool.mypy]
+install_types = true
+non_interactive = true
+files = [
+    'src/mafw/*.py',
+    'src/mafw/db/*.py',
+    'src/mafw/scripts/*.py',
+    'src/mafw/tools/*.py',
+    'src/mafw/ui/*.py',
+    'src/mafw/processor_library/*.py'
+]
+
+# Start off with these
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+
+# Getting these passing should be easy
+strict_equality = true
+strict_concatenate = true
+#
+## Strongly recommend enabling this one as soon as you can
+check_untyped_defs = true
+#
+## These shouldn't be too much additional work, but may be tricky to
+## get passing if you use a lot of untyped libraries
+disallow_subclassing_any = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+#
+## These next few are various gradations of forcing use of type annotations
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+#
+## This one isn't too hard to get passing, but return on investment is lower
+no_implicit_reexport = true
+#
+## This one can be tricky to get passing if you use a lot of untyped libraries
+warn_return_any = true
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+# Same as Black.
+line-length = 120
+indent-width = 4
+
+# Assume Python 3.12
+target-version = "py312"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "single"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+#
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future.
+docstring-code-format = true
+
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+#
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = 60

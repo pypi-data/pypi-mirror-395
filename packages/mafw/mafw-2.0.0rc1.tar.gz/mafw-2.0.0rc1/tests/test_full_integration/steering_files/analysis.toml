@@ -1,0 +1,77 @@
+# MAFw steering file generated on 2025-06-15 15:42:26.330503
+
+# uncomment the line below and insert the processors you want to run from the available processor list
+processors_to_run = ["TableCreator","PlugImporter","Analyser", "PlugPlotter"]
+
+# customise the name of the analysis
+analysis_name = "integration-test-p2"
+analysis_description = """Analysing data"""
+available_processors = ["AccumulatorProcessor", "GaussAdder", "ModifyLoopProcessor", "FillFileTableProcessor", "CountStandardTables", "FindNPrimeNumber", "FindPrimeNumberInRange", "ImporterExample", "TestProcessor", "GenerateDataFiles", "PlugImporter", "Analyser", "PlugPlotter"]
+new_only = true
+
+[DBConfiguration]
+URL = "sqlite:////tmp/full-int/plug.db" # Change the protocol depending on the DB type. Update this file to the path of your DB.
+
+[DBConfiguration.pragmas] # Leave these default values, unless you know what you are doing!
+journal_mode = "wal"
+cache_size = -64000
+foreign_keys = 1
+synchronous = 0
+
+[TableCreator] # Processor to create all tables in the database.
+apply_only_to_prefix = [] # Create only tables whose name start with the provided prefixes.
+force_recreate = false
+
+
+[AccumulatorProcessor] # A processor to calculate the sum of the first n values via a looping approach.
+last_value = 100 # Last value of the series
+
+[GaussAdder] # A processor to calculate the sum of the first n values via the so called *Gauss formula*.
+last_value = 100 # Last value of the series.
+
+[ModifyLoopProcessor] # Example processor demonstrating how it is possible to change the looping structure.
+item_to_abort = 65 # Item to abort
+items_to_skip = [12, 16, 25] # List of items to be skipped.
+total_item = 100 # Total item in the loop.
+
+[FillFileTableProcessor] # Processor to fill a table with the content of a directory
+root_folder = "/tmp/full-int" # The root folder for the file listing
+
+[CountStandardTables] # A processor to count the number of standard tables
+n_tables = -1 # The number of standard tables
+
+[FindNPrimeNumber] # An example of Processor to search for N prime numbers starting from a given starting integer.
+prime_num_to_find = 100 # How many prime number we have to find
+start_from = 50 # From which number to start the search
+
+[FindPrimeNumberInRange] # An example processor to find prime numbers in the defined interval from ``start_from`` to ``stop_at``.
+start_from = 50 # From which number to start the search
+stop_at = 100 # At which number to stop the search
+
+[ImporterExample] # An exemplary implementation of an importer processor.
+input_folder = "/tmp/full-int" # The input folder from where the images have to be imported.
+parser_configuration = "parser_configuration.toml" # The path to the TOML file with the filename parser configuration 
+recursive = true
+
+[TestProcessor]
+
+[GenerateDataFiles]
+intercept = 5.0 # The additive constant for the data stored in the files.
+n_files = 25 # The number of files being generated.
+output_path = "/tmp/full-int" # The path where the data files are stored.
+slope = 1.0 # The multiplication constant for the data stored in the files.
+
+[PlugImporter]
+input_folder = "/tmp/full-int/raw_data" # The input folder from where the images have to be imported.
+parser_configuration = "/tmp/full-int/importer_config.toml" # The path to the TOML file with the filename parser configuration 
+recursive = true
+
+[Analyser]
+
+[PlugPlotter]
+force_replot = false # Whether to force re-plotting even if the output file already exists
+output_folder = "/tmp/full-int" # The path where the output file will be saved
+
+[UserInterface] # Specify UI options
+interface = "rich" # Default "rich", backup "console"
+

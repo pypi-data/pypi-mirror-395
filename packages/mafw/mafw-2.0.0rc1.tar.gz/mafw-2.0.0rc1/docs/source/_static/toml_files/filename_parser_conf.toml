@@ -1,0 +1,87 @@
+# FilenameParser configuration file
+#
+# General idea:
+#
+# The file contains the information required to build all the FilenameElement requested by the importer.
+#
+# Prepare a table for each element and in each table add the regexp, the type and optionally the default.
+# Adding the default field, will make the element optional.
+#
+# Add the table name in the elements array. The order is irrelevant. The division in compulsory and optional elements
+# is also irrelevant. It is provided here just for the sake of clarity.
+#
+# You can have as many element tables as you like, but only the one listed in the elements array will be used to
+# configure the Importer.
+#
+elements = [
+    # compulsory elements:
+    'sample_name', 'com_img', 'plate_type', 'plate_num', 'resolution', 'exposure', 'extension',
+    # optional elements:
+    'side', 'int_std', 'shield', 'artefact_id', 'rep_num', 'day', 'type'
+]
+
+[sample_name]
+regexp = '^(?P<sample_name>([aA]121-\d{4}-\d{4}|[Cc][Oo][Ss][Mm][Ii][Cc]))'
+type = 'str'
+
+[com_img]
+regexp = '[-_]ci(?P<com_img>\d+)'
+type = 'int'
+
+[plate_type]
+regexp = '[-_]p(?P<plate_type>\w{3})'
+type = 'str'
+
+[plate_num]
+regexp = '[-_]pn(?P<plate_num>\d+)'
+type = 'int'
+
+[resolution]
+regexp = '[-_]r(?P<resolution>\d+)u?'
+type = 'float'
+
+[exposure]
+regexp = '[-_]exp(?P<exposure>\d+\.?\d*)h?'
+type = 'float'
+
+[extension]
+regexp = '\.(?P<extension>tiff?)$'
+type = 'str'
+
+#
+# Optional elements
+#
+[side]
+regexp = '[-_]side(?P<side>\d+)'
+type = 'int'
+default = 1
+
+[int_std]
+regexp = '[-_]is(?P<int_std>\d+)'
+type = 'int'
+default = 0
+
+[shield]
+regexp = '[-_]shield(?P<shield>\d+)'
+type = 'int'
+default = 1
+
+[artefact_id]
+regexp = '[-_]art(?P<artefact_id>\d*)'
+type = 'int'
+default = 1
+
+[rep_num]
+regexp = '[-_]rep(?P<rep_num>\d+)'
+type = 'int'
+default = 1
+
+[day]
+regexp = '[-_]day(?P<day>\d+)'
+type = 'int'
+default = 1
+
+[type]
+regexp = '[-_]type(?P<type>\d+)'
+type = 'int'
+default = 0

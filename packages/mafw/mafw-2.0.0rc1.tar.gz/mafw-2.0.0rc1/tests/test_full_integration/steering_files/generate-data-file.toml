@@ -1,0 +1,75 @@
+# MAFw steering file generated on 2025-06-15 13:48:01.916870
+
+# uncomment the line below and insert the processors you want to run from the available processor list
+processors_to_run = ["GenerateDataFiles#1", "GenerateDataFiles#2", "GenerateDataFiles#3"]
+
+# customise the name of the analysis
+analysis_name = "integration-test-p1"
+analysis_description = """Generating data files"""
+available_processors = ["AccumulatorProcessor", "GaussAdder", "ModifyLoopProcessor", "FillFileTableProcessor", "CountStandardTables", "FindNPrimeNumber", "FindPrimeNumberInRange", "ImporterExample", "TestProcessor", "GenerateDataFiles"]
+
+[DBConfiguration]
+URL = "sqlite:///:memory:" # Change the protocol depending on the DB type. Update this file to the path of your DB.
+
+[DBConfiguration.pragmas] # Leave these default values, unless you know what you are doing!
+journal_mode = "wal"
+cache_size = -64000
+foreign_keys = 1
+synchronous = 0
+
+
+[AccumulatorProcessor] # A processor to calculate the sum of the first n values via a looping approach.
+last_value = 100 # Last value of the series
+
+[GaussAdder] # A processor to calculate the sum of the first n values via the so called *Gauss formula*.
+last_value = 100 # Last value of the series.
+
+[ModifyLoopProcessor] # Example processor demonstrating how it is possible to change the looping structure.
+item_to_abort = 65 # Item to abort
+items_to_skip = [12, 16, 25] # List of items to be skipped.
+total_item = 100 # Total item in the loop.
+
+[FillFileTableProcessor] # Processor to fill a table with the content of a directory
+root_folder = "/tmp/full-int" # The root folder for the file listing
+
+[CountStandardTables] # A processor to count the number of standard tables
+n_tables = -1 # The number of standard tables
+
+[FindNPrimeNumber] # An example of Processor to search for N prime numbers starting from a given starting integer.
+prime_num_to_find = 100 # How many prime number we have to find
+start_from = 50 # From which number to start the search
+
+[FindPrimeNumberInRange] # An example processor to find prime numbers in the defined interval from ``start_from`` to ``stop_at``.
+start_from = 50 # From which number to start the search
+stop_at = 100 # At which number to stop the search
+
+[ImporterExample] # An exemplary implementation of an importer processor.
+input_folder = "/tmp/full-int" # The input folder from where the images have to be imported.
+parser_configuration = "parser_configuration.toml" # The path to the TOML file with the filename parser configuration 
+recursive = true
+
+[TestProcessor]
+
+[GenerateDataFiles]
+n_files = 25 # The number of files being generated.
+output_path = "/tmp/full-int/data" # The path where the data files are stored.
+slope = 1.0 # The multiplication constant for the data stored in the files.
+detector = 1 # The detector id being used. See the detector table for more info.
+
+["GenerateDataFiles#1"]
+intercept = 5.0 # The additive constant for the data stored in the files.
+slope = 1.0 # The multiplication constant for the data stored in the files.
+detector = 1 # The detector id being used. See the detector table for more info.
+
+["GenerateDataFiles#2"]
+intercept = 15.0 # The additive constant for the data stored in the files.
+slope = 5.0 # The multiplication constant for the data stored in the files.
+detector = 2 # The detector id being used. See the detector table for more info.
+
+["GenerateDataFiles#3"]
+intercept = 0.1 # The additive constant for the data stored in the files.
+slope = 0.2 # The multiplication constant for the data stored in the files.
+detector = 3 # The detector id being used. See the detector table for more info.
+
+[UserInterface] # Specify UI options
+interface = "rich" # Default "rich", backup "console"

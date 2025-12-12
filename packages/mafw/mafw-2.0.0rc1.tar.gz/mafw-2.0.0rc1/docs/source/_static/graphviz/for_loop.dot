@@ -1,0 +1,64 @@
+digraph execute {
+    layout = dot
+    graph [fontname = Verdana rankdir = tb]
+    node [shape = none]
+    compound = True
+    start [
+    label = <<table width="115" border="0" cellpadding="7" bgcolor="lightgreen"><tr align="left"><td>start()</td></tr></table>>
+    pos = "0,0!"
+    fixedsize = shape
+
+    ]
+
+    get_items [
+    label = <<table width="115" border="0" cellpadding="7" bgcolor="lightgreen"><tr align="left"><td>get_items()</td></tr></table>>
+    pos = "0,-1!"
+    fixedsize = shape
+    ]
+
+
+    subgraph cluster_loop {
+
+    fillcolor = "lightyellow"
+    style = dashed
+
+    label = "for loop"
+    labeljust = "left"
+    process [
+    label = <<table width="115" border="0" cellpadding="7" bgcolor="lightgreen"><tr align="left"><td>process()</td></tr></table>>
+    pos = "2,-3!"
+    fixedsize = shape
+    ]
+    accept_item [
+    label = <<table width="115" border="0" cellpadding="7" bgcolor="lightgreen"><tr align="left"><td>accept_item()</td></tr></table>>
+    pos = "1,-4.5!"
+    fixedsize = shape
+    ]
+
+    skip_item [
+    label = <<table width="115" border="0" cellpadding="7" bgcolor="lightgreen"><tr align="left"><td>skip_item()</td></tr></table>>
+    pos = "3,-4.5!"
+    fixedsize = shape
+    ]
+
+    end_loop [style = "invis", height = "0" width = "0"]
+    }
+
+
+    finish [
+    label = <<table width="115" border="0" cellpadding="7" bgcolor="lightgreen"><tr align="left"><td>finish()</td></tr></table>>
+    pos = "0,-4!"
+    ]
+
+
+
+    start -> get_items
+    get_items -> process [lhead = "cluster_loop"]
+    process -> accept_item [label = "accept"]
+    process -> skip_item [label = " skip"]
+    accept_item -> end_loop [style = "invis"]
+    skip_item -> end_loop [style = "invis"]
+    end_loop -> finish [ltail = cluster_loop]
+
+
+}
