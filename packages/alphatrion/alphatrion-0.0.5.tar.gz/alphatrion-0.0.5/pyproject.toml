@@ -1,0 +1,73 @@
+[project]
+name = "alphatrion"
+version = "0.0.5"
+description = "⚒️ AlphaTrion is an open-source framework to help build GenAI applications, including experiment tracking, adaptive model routing, prompt optimization and performance evaluation."
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "sqlalchemy (>=2.0.43,<3.0.0)",
+    "python-dotenv (>=1.1.1,<2.0.0)",
+    "oras (>=0.2.38,<0.3.0)",
+    "psycopg2-binary (>=2.9.10,<3.0.0)",
+    "pydantic (>=2.11.7,<3.0.0)",
+    "traceloop-sdk (>=0.47.5,<1.0.0)",
+    "openai (>=2.6.1,<3.0.0)",
+    "alembic (>=1.17.1,<2.0.0)",
+    "pg8000>=1.31.5",
+    "uvicorn>=0.38.0",
+    "strawberry-graphql>=0.285.0",
+    "fastapi>=0.121.2",
+    "rich>=14.2.0",
+]
+
+[dependency-groups]
+dev = [
+  {include-group = "lint"},
+  {include-group = "test"}
+]
+lint = [
+    "ruff>=0.12",
+]
+test = [
+    "pytest>=8.4",
+    "pytest-asyncio>=0.22",
+    "pytest-timeout>=2.1",
+    # Data generation
+    "faker>=37.12",
+]
+
+[project.scripts]
+alphatrion = "alphatrion.server.cmd.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Configuration for ruff linter and formatter
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+lint.select = [
+    "E",  # pycodestyle,
+    "F",  # Pyflakes
+    "UP",  # pyupgrade
+    "B",  # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",  # isort
+    "PL",  # PyLint,
+]
+lint.ignore = [
+    "PLR0913",  # Too many arguments in function definition
+    "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+]
+exclude = ["venv", "migrations", "__pycache__"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PLR2004"]
