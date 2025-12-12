@@ -1,0 +1,147 @@
+;---------------------------------------------------------------------------
+;  midas Gen Text(MGT) File.
+;  Date : 2022/1/23
+;---------------------------------------------------------------------------
+
+*VERSION
+   9.0.0
+
+*UNIT    ; Unit System
+; FORCE, LENGTH, HEAT, TEMPER
+{{ udm }}
+
+*STRUCTYPE    ; Structure Type
+; iSTYP, iMASS, iSMAS, bMASSOFFSET, bSELFWEIGHT, GRAV, TEMPER, bALIGNBEAM, bALIGNSLAB, bROTRIGID
+     1, 1, 1, NO, NO, 9.806, 0, NO, NO, NO
+
+*REBAR-MATL-CODE    ; Rebar Material Code
+; CONC_CODE, CONC_MDB, SRC_CODE, SRC_MDB
+ UNI(RC), B450C, ASTM(RC), Grade 60
+
+*NODE    ; Nodes
+; iNO, X, Y, Z
+{% for node in nodes -%}
+{{ node }}
+{% endfor %}
+
+*ELEMENT    ; Elements
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB,                     ; Frame  Element
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, ANGLE, iSUB, EXVAL, EXVAL2, bLMT ; Comp/Tens Truss
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iSUB, iWID , LCAXIS    ; Planar Element
+; iEL, TYPE, iMAT, iPRO, iN1, iN2, iN3, iN4, iN5, iN6, iN7, iN8     ; Solid  Element
+{% for element in elements -%}
+{{ element }}
+{% endfor %}
+
+*MATERIAL    ; Material
+; iMAT, TYPE, MNAME, SPHEAT, HEATCO, PLAST, TUNIT, bMASS, DAMPRATIO, [DATA1]           ; STEEL, CONC, ALUMINUM, USER
+; iMAT, TYPE, MNAME, SPHEAT, HEATCO, PLAST, TUNIT, bMASS, DAMPRATIO, [DATA2], [DATA2]  ; SRC
+; [DATA1] : 1, STANDARD, CODE/PRODUCT, DB, USEELAST, ELAST
+; [DATA1] : 2, ELAST, POISN, THERMAL, DEN, MASS
+; [DATA1] : 3, Ex, Ey, Ez, Tx, Ty, Tz, Sxy, Sxz, Syz, Pxy, Pxz, Pyz, DEN, MASS         ; Orthotropic
+; [DATA2] : 1, STANDARD, CODE/PRODUCT, DB, USEELAST, ELAST or 2, ELAST, POISN, THERMAL, DEN, MASS
+    1, CONC , C28/35            , 0, 0, , C, NO, 0.05, 1, NTC18(RC)  ,            , C28/35        , NO, 3.2308e+007
+
+*SECTION    ; Section
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE, [DATA1], [DATA2]                    ; 1st line - DB/USER
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE, BLT, D1, ..., D8, iCEL              ; 1st line - VALUE
+;       AREA, ASy, ASz, Ixx, Iyy, Izz                                               ; 2nd line
+;       CyP, CyM, CzP, CzM, QyB, QzB, PERI_OUT, PERI_IN, Cy, Cz                     ; 3rd line
+;       Y1, Y2, Y3, Y4, Z1, Z2, Z3, Z4, Zyy, Zzz                                    ; 4th line
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE, ELAST, DEN, POIS, POIC, SF, THERMAL ; 1st line - SRC
+;       D1, D2, [SRC]                                                               ; 2nd line
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE, 1, DB, NAME1, NAME2, D1, D2         ; 1st line - COMBINED
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE, 2, D11, D12, D13, D14, D15, D21, D22, D23, D24
+; iSEC, TYPE, SNAME, [OFFSET2], bSD, bWE, SHAPE, iyVAR, izVAR, STYPE                ; 1st line - TAPERED
+;       DB, NAME1, NAME2                                                            ; 2nd line(STYPE=DB)
+;       [DIM1], [DIM2]                                                              ; 2nd line(STYPE=USER)
+;       D11, D12, D13, D14, D15, D16, D17, D18                                      ; 2nd line(STYPE=VALUE)
+;       AREA1, ASy1, ASz1, Ixx1, Iyy1, Izz1                                         ; 3rd line(STYPE=VALUE)
+;       CyP1, CyM1, CzP1, CzM1, QyB1, QzB1, PERI_OUT1, PERI_IN1, Cy1, Cz1           ; 4th line(STYPE=VALUE)
+;       Y11, Y12, Y13, Y14, Z11, Z12, Z13, Z14, Zyy1, Zyy2                          ; 5th line(STYPE=VALUE)
+;       D21, D22, D23, D24, D25, D26, D27, D28                                      ; 6th line(STYPE=VALUE)
+;       AREA2, ASy2, ASz2, Ixx2, Iyy2, Izz2                                         ; 7th line(STYPE=VALUE)
+;       CyP2, CyM2, CzP2, CzM2, QyB2, QzB2, PERI_OUT2, PERI_IN2, Cy2, Cz2           ; 8th line(STYPE=VALUE)
+;       Y21, Y22, Y23, Y24, Z21, Z22, Z23, Z24, Zyy2, Zzz2                          ; 9th line(STYPE=VALUE)
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE                                      ; 1st line - COMPOSITE-B
+;       Hw, tw, B1, Bf1, tf1, B2, Bf2, tf2                                          ; 2nd line
+;       [SHAPE-NUM], [STIFF-SHAPE], [STIFF-POS] (1~4)                               ; 3rd line
+;       SW, GN, CTC, Bc, Tc, Hh, EsEc, DsDc, Ps, Pc, TsTc, bMulti, Elong, Esh       ; 4th line
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE                                      ; 1st line - COMPOSITE-I
+;       Hw, tw, B1, tf1, B2, tf2                                                    ; 2nd line
+;       [SHAPE-NUM], [STIFF-SHAPE], [STIFF-POS] (1~2)                               ; 3rd line
+;       SW, GN, CTC, Bc, Tc, Hh, EsEc, DsDc, Ps, Pc, TsTc, bMulti, Elong, Esh       ; 4th line
+; iSEC, TYPE, SNAME, [OFFSET], bSD, bWE, SHAPE                                      ; 1st line - COMPOSITE-TUB
+;       Hw, tw, B1, Bf1, tf1, B2, Bf2, tf2, Bf3, tfp                                ; 2nd line
+;       [SHAPE-NUM], [STIFF-SHAPE], [STIFF-POS] (1~3)                               ; 3rd line
+;       SW, GN, CTC, Bc, Tc, Hh, EsEc, DsDc, Ps, Pc, TsTc, bMulti, Elong, Esh       ; 4th line
+; [DATA1] : 1, DB, NAME or 2, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10
+; [DATA2] : CCSHAPE or iCEL or iN1, iN2
+; [SRC]  : 1, DB, NAME1, NAME2 or 2, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, iN1, iN2
+; [DIM1], [DIM2] : D1, D2, D3, D4, D5, D6, D7, D8
+; [OFFSET] : OFFSET, iCENT, iREF, iHORZ, HUSER, iVERT, VUSER
+; [OFFSET2]: OFFSET, iCENT, iREF, iHORZ, HUSERI, HUSERJ, iVERT, VUSERI, VUSERJ
+; [SHAPE-NUM]: SHAPE-NUM, POS, STIFF-NUM1, STIFF-NUM2, STIFF-NUM3, STIFF-NUM4
+; [STIFF-SHAPE]: SHAPE-NUM, for(SHAPE-NUM) { NAME, SIZE1~8 }
+; [STIFF-POS]: STIFF-NUM, for(STIFF-NUM) { SPACING, iSHAPE, bCALC }
+{% for s in sections -%}
+{{ s }}
+{% endfor %}
+
+*STLDCASE    ; Static Load Cases
+; LCNAME, LCTYPE, DESC
+{% for lc in loadCases -%}
+{{ lc }}
+{% endfor %}
+{% for cont in contraints -%}
+{{ cont }}
+{% endfor %}
+{% for spring in springs -%}
+{{ spring }}
+{% endfor %}
+
+*LOADCOMB    ; Combinations
+; NAME=NAME, KIND, ACTIVE, bES, iTYPE, DESC, iSERV-TYPE, nLCOMTYPE, nSEISTYPE   ; line 1
+;      ANAL1, LCNAME1, FACT1, ...                                               ; from line 2
+   NAME=SLU-DL, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1.3, ST, DL, 1.5, ST, EPL, 1.5
+   NAME=SLU-CL, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1.3, ST, DL, 1.5, ST, EPL, 1.5, ST, CL, 1.5
+   NAME=SLU-TL, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1.3, ST, DL, 1.5, ST, TL, 1.35, ST, TLC, 1.35, ST, EPL, 1.5
+        ST, CL, 1.05
+   NAME=SLU-CL-TL, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1.3, ST, DL, 1.5, ST, TL, 0.54, ST, TLC, 1.01, ST, EPL, 1.5
+        ST, CL, 1.5
+   NAME=SLV-1, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, EPL, 1, ST, E(-X), 1, ST, E(-Z), 1
+   NAME=SLV-2, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, EPL, 1, ST, E(+X), 1, ST, E(-Z), 1
+   NAME=SLV-3, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, EPL, 1, ST, E(-X), 1, ST, E(-Z), -1
+   NAME=SLV-4, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, EPL, 1, ST, E(+X), 1, ST, E(-Z), -1
+   NAME=SLE-CL-R, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, TL, 0.4, ST, TLC, 0.75, ST, EPL, 1, ST, CL, 1
+   NAME=SLE-TL-R, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, TL, 1, ST, TLC, 1, ST, EPL, 1, ST, CL, 0.7
+   NAME=SLE-CL-F, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, TL, 0.4, ST, TLC, 0.75, ST, EPL, 1
+   NAME=SLE-Q, GEN, INACTIVE, 0, 0, , 0, 0, 0
+        ST, SW, 1, ST, DL, 1, ST, EPL, 1
+   NAME=ENV-SLU, GEN, ACTIVE, 0, 1, , 0, 0, 0
+        CB, SLU-DL, 1, CB, SLU-CL, 1, CB, SLU-TL, 1, CB, SLU-CL-TL, 1
+   NAME=ENV-SLV, GEN, ACTIVE, 0, 1, , 0, 0, 0
+        CB, SLV-1, 1, CB, SLV-2, 1, CB, SLV-3, 1, CB, SLV-4, 1
+   NAME=ENV-SLE-R, GEN, ACTIVE, 0, 1, , 0, 0, 0
+        CB, SLE-CL-R, 1, CB, SLE-TL-R, 1
+   NAME=ENV-SLE-F, GEN, ACTIVE, 0, 1, , 0, 0, 0
+        CB, SLE-CL-F, 1
+   NAME=ENV-SLE-Q, GEN, ACTIVE, 0, 1, , 0, 0, 0
+        CB, SLE-Q, 1
+
+{% for lcu in loadCasesUsed -%}
+{{ lcu }}
+{% endfor %}
+
+*ENDDATA

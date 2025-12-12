@@ -1,0 +1,95 @@
+%- if shape == 'RECT'
+La sezione ha forma \textit{rettangolare} con le seguenti caratteristiche geometriche sono:
+
+\begin{align*}
+b &= \VAR{ width } \text{ \textit{mm}} & h &= \VAR{ height } \text{ \textit{mm}}
+\end{align*}
+
+ed è rappesentata nella seguente figura:
+
+\begin{figure}[!h]
+    \centering
+
+    \def\s{\VAR{ scale }}
+    \def\dimdist{ \VAR{ dimDist }}
+    \def\rectW{ \VAR{ width } }
+    \def\rectH{ \VAR{ height } }
+
+    \begin{tikzpicture}[scale=\s*10, x=1mm, y=1mm]
+    %\begin{tikzpicture}[scale=\s, show background rectangle]
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %    CONCRETE SECTION
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \tikzstyle{dimstyle} = [{<[scale=3.0, length=3, width=4]}-{>[scale=3.0, length=3, width=4]}, color=black!100, fill=black!5, thin]
+    \tikzstyle{steelstyle} = [color=black!100, fill=black!20, thick]
+
+
+    \coordinate (TL) at ( \VAR{xTL} , \VAR{yTL} );
+    \coordinate (TR) at ( \VAR{xTR} , \VAR{yTR} );
+    \coordinate (BL) at ( \VAR{xBL} , \VAR{yBL} );
+    \coordinate (BR) at ( \VAR{xBR} , \VAR{yBR} );
+
+    \draw[color=black!100, fill=black!5, thick] (TL) -- (TR) -- (BR) -- (BL) -- (TL);
+    \draw[dimstyle] ($(BL) - (0,\dimdist)$) -- ($(BR) - (0,\dimdist)$) node [midway, fill=blue!5] {\rectW};;
+    \draw[dimstyle] ($(TR) + (\dimdist,0)$) -- ($(BR) + (\dimdist,0)$) node [midway, fill=blue!5] {\rectH};;
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %       STEEL REBAR
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %- for r in rebars
+    \def\tag{ \VAR{r.id} }
+    \coordinate  (\tag) at ( \VAR{r.xPos} , \VAR{r.yPos} );
+    \def\d{ \VAR{r.diam} }
+    \filldraw[steelstyle] (\tag) circle [radius = \d/2]
+    node[above=\d/2*\s, anchor=south] {\footnotesize{\tag}};
+    %- endfor
+
+    \end{tikzpicture}.
+\end{figure}
+
+Essendo la sezione rettangolare appartenente comunque alle sezioni di tipo poligonale
+si riportano le coordinate dei vertici:
+
+\begin{longtable}[c]{|c|>{\centering\arraybackslash}p{30mm}|>{\centering\arraybackslash}p{30mm}|}
+\caption{Tabella dei vertici \label{tab:vertices}} \\
+\hline
+\multirow{2}{*}{\textbf{id}} & $\boldsymbol{X}$            & $\boldsymbol{Y}$ \bigstrut \\ \cline{2-3}
+                             & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mm]}} \\
+\endfirsthead
+
+\multicolumn{3}{c}{continuazione Tabella \ref{tab:vertices}}\\
+\hline
+\multirow{2}{*}{\textbf{id}} & $\boldsymbol{X}$            & $\boldsymbol{Y}$ \bigstrut \\ \cline{2-3}
+                             & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mm]}} \\
+\endhead
+
+\hline
+$TL$ & \VAR{xTL} & \VAR{yTL} \\\hline
+$TR$ & \VAR{xTR} & \VAR{yTR} \\\hline
+$BL$ & \VAR{xBL} & \VAR{yBL} \\\hline
+$BR$ & \VAR{xBR} & \VAR{yBR} \\\hline
+\end{longtable}
+%- endif
+
+Di seguito la tabella relativa al posizionamento degli acciai, essendo $d$ il diametro ed $A$ l'area:
+
+\begin{longtable}[c]{|c|>{\centering\arraybackslash}p{25mm}|>{\centering\arraybackslash}p{25mm}|>{\centering\arraybackslash}p{25mm}|>{\centering\arraybackslash}p{25mm}|}
+\caption{Tabella dei rinforzi \label{tab:rebars}} \\
+\hline
+\multirow{2}{*}{\textbf{id}} & $\boldsymbol{X}$            & $\boldsymbol{Y}$ & $\boldsymbol{d}$ & $\boldsymbol{A}$ \bigstrut \\ \cline{2-5}
+                             & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mmq]}} \\
+\endfirsthead
+
+\multicolumn{5}{c}{continuazione Tabella \ref{tab:rebars}}\\
+\hline
+\multirow{2}{*}{\textbf{id}} & $\boldsymbol{X}$            & $\boldsymbol{Y}$ & $\boldsymbol{d}$ & $\boldsymbol{A}$ \bigstrut \\ \cline{2-5}
+                             & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mm]}} & \footnotesize{\textit{[mmq]}} \\
+\endhead
+
+%- for r in rebars
+\hline
+\VAR{r.id} & \VAR{r.xPos} & \VAR{r.yPos} & \VAR{r.diam} & \VAR{r.area} \\
+%- endfor
+
+\hline
+\end{longtable}
