@@ -1,0 +1,113 @@
+Metadata-Version: 2.4
+Name: lux_noctis
+Version: 0.1.0
+Summary: App description
+Author-email: Pedrioli Patrick <pedrioli@gmail.com>
+License: LICENSE
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: plotly
+Requires-Dist: seaborn
+Requires-Dist: dousatsu
+Requires-Dist: rpy2<=3.5.17
+Requires-Dist: scipy
+Requires-Dist: scikit-learn
+Requires-Dist: upsetplot
+Requires-Dist: requests
+Requires-Dist: dousatsu
+Requires-Dist: pyteomics[Unimod]
+Requires-Dist: biopython
+Requires-Dist: goatools
+Provides-Extra: dev
+Requires-Dist: pre-commit; extra == "dev"
+Requires-Dist: build; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Requires-Dist: deptry; extra == "dev"
+Requires-Dist: tox; extra == "dev"
+Dynamic: license-file
+
+# lux_noctis
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+`lux_noctis` is a Python package for the quality control (QC), processing, and differential analysis of proteomics data, designed primarily to work with outputs from **FragPipe**.
+
+This package provides a comprehensive pipeline, encapsulated in the `LuxFragPipeProtein` class, to load FragPipe results, perform pre-processing (normalization, imputation), conduct statistical analysis (limma t-test), and generate a wide array of publication-ready visualizations. It also includes a `Go` class for performing Gene Ontology (GO) enrichment analysis on the results.
+
+## Core Features
+
+* **FragPipe Integration**: Natively handles FragPipe outputs for both DDA (`iq_dda`) and DIA (`diann_dia`) workflows.
+* **Data Pre-processing**: Includes methods for filtering (by peptide count, quantile threshold), log transformation, median normalization, and min-value imputation.
+* **Statistical Analysis**: Implements a wrapper for the `limma` Bayes moderated t-test to perform robust differential abundance analysis.
+* **GO Enrichment**: A dedicated `Go` class to run Gene Ontology enrichment analysis on differentially abundant protein sets, complete with helpers to download GAF and OBO files.
+* **Comprehensive Visualization**: Generates a wide range of interactive (Plotly) and static (Matplotlib/Seaborn) plots:
+    * PCA Plots
+    * Correlation Clustermaps
+    * Interactive Volcano Plots
+    * MA Plots
+    * Intensity Distribution Boxplots
+    * Coefficient of Variation (CV) Histograms
+    * Upset Plots (for protein ID distribution)
+    * Membrane Enrichment Plots
+* **Helper Utilities**: Includes functions to download the latest UniProt annotations and "Surfy" (surfaceome) protein lists.
+
+## Development Setup
+
+This repository is configured for a containerized development environment using Docker, managed by simple shell scripts. This ensures all dependencies (including Python, R, and system libraries) are correctly configured.
+
+### Requirements
+
+* **Docker**
+
+### Getting Started
+
+1.  **Clone the repository**:
+    ```bash
+    git clone [your-repo-url]
+    cd lux_noctis
+    ```
+
+2.  **Start the development container**:
+    ```bash
+    ./start_dev.sh
+    ```
+    This script builds the Docker image, sets up a user with permissions matching your host user, and drops you into a `bash` shell inside the container. The project directory is mounted at `/App`.
+
+3.  **Install pre-commit hooks (First time only)**:
+    Inside the container's shell:
+    ```bash
+    pre-commit install
+    ```
+    This will ensure your code is automatically formatted and linted (using `black`, `flake8`, `isort`, etc.) before each commit.
+
+4.  **Develop**:
+    You can now edit files on your host machine using your preferred IDE, and all changes will be reflected inside the container. Run your tests and scripts from within the container's shell.
+
+5.  **Stop the container**:
+    From your host machine (in the project directory):
+    ```bash
+    ./stop_dev.sh
+    ```
+    This script stops and removes the Docker container.
+
+## Package Installation (User)
+
+To use `lux_noctis` as a package in your own environment (outside the provided Docker setup), you will need **Python 3.13+** and **R**.
+
+You can install it directly from the source:
+
+``` bash
+# Install the package
+pip install .
+
+# Or, install in editable mode with dev dependencies
+pip install -e .[dev]
+
+```
+
+## Dependencies
+
+This package relies on [dousatsu](https://github.com/digitalproteomes/dousatsu).

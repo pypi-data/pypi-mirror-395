@@ -1,0 +1,67 @@
+[project]
+name = 'lux_noctis'
+version = '0.1.0'
+authors = [{name="Pedrioli Patrick", email="pedrioli@gmail.com"}]
+description = "App description"
+readme = "README.md"
+license = {text = "LICENSE"}
+
+# --- 'RUN' DEPENDENCIES ---
+# Things needed to *run* your project (e.g., pandas, flask)
+# These will be installed by your root Dockerfile.
+dependencies = [
+    "matplotlib", 
+    "numpy", 
+    "pandas", 
+    "plotly", 
+    "seaborn", 
+    "dousatsu", 
+    "rpy2<=3.5.17", 
+    "scipy", 
+    "scikit-learn", 
+    "upsetplot", 
+    "requests", 
+    "dousatsu", 
+    "pyteomics[Unimod]", 
+    "biopython", 
+    "goatools"
+]
+
+# --- 'DEV' DEPENDENCIES ---
+# All tools for development
+# These will be installed by your .dev/Dockerfile.dev
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "build",
+    "twine",
+    "deptry",
+    "tox"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Tell deptry that the 'dev' group contains tools that are 
+# not meant to be imported in the code.
+[tool.deptry]
+ignore_notebooks = true
+
+[tool.deptry.per_rule_ignores]
+# Ignore "Unused Dependency" (DEP002) for the dev dependencies
+DEP002 = [
+    "pre-commit", 
+    "build", 
+    "twine", 
+    "deptry", 
+    "tox"
+]
+
+[tool.deptry.package_module_name_map]
+"scikit-learn" = "sklearn"
+"biopython" = "Bio"
+"pyteomics" = "pyteomics"
