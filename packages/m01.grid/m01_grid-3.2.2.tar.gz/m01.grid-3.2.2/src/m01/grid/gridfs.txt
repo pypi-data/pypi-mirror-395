@@ -1,0 +1,105 @@
+======
+gridfs
+======
+
+Let's test the pymongo gridfs implementation. This let us see if something
+important will change in the future if we switch to a newer version of pymongo:
+
+  >>> import re
+  >>> from pprint import pprint
+  >>> import gridfs
+  >>> import m01.mongo.testing
+  >>> import m01.grid.testing
+
+Also define a normalizer:
+
+  >>> patterns = [
+  ...    (re.compile(r"datetime.datetime\([a-zA-Z0-9, ]+tzinfo=<bson.tz_util.FixedOffset[a-zA-Z0-9 ]+>\)"), "datetime(..., tzinfo=<bson.tz_util.FixedOffset ...>)"),
+  ...    (re.compile(r"datetime.datetime\([a-zA-Z0-9, ]+tzinfo=[a-zA-Z0-9>]+\)"), "datetime(..., tzinfo= ...)"),
+  ...    (re.compile(r"datetime\([a-z0-9, ]+\)"), "datetime(...)"),
+  ...    (re.compile("u'_id':"), r"'_id':"),
+  ...    (re.compile("u'_type':"), r"'_type':"),
+  ...    (re.compile("u'_pid':"), r"'_pid':"),
+  ...    (re.compile("u'_version':"), r"'_version':"),
+  ...    (re.compile("u'uploadDate':"), r"'uploadDate':"),
+  ...    (re.compile("u'chunkSize':"), r"'chunkSize':"),
+  ...    (re.compile("'length': 5L"), r"'length': 5"),
+  ...    (re.compile("u'length':"), r"'length':"),
+  ...    (re.compile("u'n':"), r"'n':"),
+  ...    (re.compile("u'md5':"), r"'md5':"),
+  ...    (re.compile(r"'md5': u'"), r"'md5': '"),
+  ...    (re.compile("u'data':"), r"'data':"),
+  ...    (re.compile("'data': b'Hello'"), r"'data': Binary('Hello', 0)"),
+  ...    (re.compile("u'files_id':"), r"'files_id':"),
+  ...    ]
+  >>> reNormalizer = m01.mongo.testing.RENormalizer(patterns)
+
+Test the grid storage:
+
+  >>> db = m01.grid.testing.getTestDatabase()
+
+And setup a grid storage:
+
+
+GridFS
+------
+
+  >>> grid = gridfs.GridFS(db)
+  >>> grid
+  <gridfs.GridFS object at ...>
+
+
+put
+---
+
+First put a simple string into the grid. Use a known _id:
+
+  >>> i = m01.mongo.getObjectId(1)
+  >>> _id = grid.put(b'Hello', _id=i)
+  >>> _id
+  ObjectId('000000010000000000000000')
+
+
+read
+----
+
+Let's read our file data:
+
+  >>> fd = grid.get(_id)
+  >>> print(fd.read().decode('utf-8'))
+  Hello
+
+check the internals:
+
+  >>> db.fs.files.count_documents({})
+  1
+
+  >>> for d in db.fs.files.find():
+  ...     reNormalizer.pprint(d)
+  {'_id': ObjectId('000000010000000000000000'),
+   'chunkSize': 261120,
+   'length': 5,
+   'md5': '8b1a9953c4611296a827abf8c47804d7',
+   'uploadDate': datetime(..., tzinfo=<bson.tz_util.FixedOffset ...>)}
+
+  >>> db.fs.chunks.count_documents({})
+  1
+
+  >>> for d in db.fs.chunks.find():
+  ...     reNormalizer.pprint(d)
+  {'_id': ObjectId('...'),
+   'data': Binary('Hello', 0),
+   'files_id': ObjectId('000000010000000000000000'),
+   'n': 0}
+
+
+delete
+------
+
+  >>> grid.delete(_id)
+
+  >>> db.fs.files.count_documents({})
+  0
+
+  >>> db.fs.chunks.count_documents({})
+  0
