@@ -1,0 +1,158 @@
+Metadata-Version: 2.3
+Name: running-stats
+Version: 0.2.0
+Summary: Library for computing linear statistics.
+Author: Språkbanken Text
+Author-email: Språkbanken Text <sb-info@svenska.gu.se>
+License: MIT
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: Unix
+Classifier: Operating System :: POSIX
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Utilities
+Requires-Dist: attrs>=25.1.0
+Requires-Python: >=3.10
+Project-URL: Homepage, https://spraakbanken.gu.se
+Project-URL: Issues, https://github.com/spraakbanken/running-stats-py/issues
+Project-URL: Repository, https://github.com/spraakbanken/running-stats-py
+Description-Content-Type: text/markdown
+
+# running-stats
+
+[![PyPI version](https://img.shields.io/pypi/v/running-stats/0.2.0.svg?style=flat-square&colorB=dfb317)](https://pypi.org/project/running-stats/)
+[![PyPI license](https://img.shields.io/pypi/l/running-stats/0.2.0.svg)](https://pypi.org/project/running-stats/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/running-stats/0.2.0.svg)](https://pypi.org/project/running-stats)
+
+[![Maturity badge - level 2](https://img.shields.io/badge/Maturity-Level%202%20--%20First%20Release-yellowgreen.svg)](https://github.com/spraakbanken/getting-started/blob/main/scorecard.md)
+[![Stage](https://img.shields.io/pypi/status/running-stats/0.2.0.svg)](https://pypi.org/project/running-stats/)
+
+[![Code Coverage](https://codecov.io/gh/spraakbanken/running-stats-py/g/branch/master/graph/badge.svg)](https://codecov.io/gh/spraakbanken/running-stats-py)
+[![Maintainability](https://qlty.sh/badges/6581c0f9-f9d8-4104-ba06-f8e61a4f3677/maintainability.svg)](https://qlty.sh/gh/spraakbanken/projects/running-stats-py)
+
+[![CI(check)](https://github.com/spraakbanken/running-stats-py/actions/workflows/check.yml/badge.svg)](https://github.com/spraakbanken/running-stats-py/actions/workflows/check.yml)
+[![CI(release)](https://github.com/spraakbanken/running-stats-py/actions/workflows/release.yml/badge.svg)](https://github.com/spraakbanken/running-stats-py/actions/workflows/release.yml)
+[![CI(rolling)](https://github.com/spraakbanken/running-stats-py/actions/workflows/rolling.yml/badge.svg)](https://github.com/spraakbanken/running-stats-py/actions/workflows/rolling.yml)
+[![CI(test)](https://github.com/spraakbanken/running-stats-py/actions/workflows/test.yml/badge.svg)](https://github.com/spraakbanken/running-stats-py/actions/workflows/test.yml)
+
+Inspired by [John D. Cook's blog](https://www.johndcook.com/blog/skewness_kurtosis/)
+
+## Add to your project
+
+### `uv`
+
+To add `running-stats` to your project:
+
+```bash
+uv add running-stats
+```
+
+## Usage
+
+To compute running mean and variance, use `RunningMeanVar`.
+Numerical stable.
+
+```python
+
+mean_var = RunningMeanVar()
+
+for value in floats_from_somewhere():
+    mean_var.push(value)
+    # you can read values during iteration
+    # print(mean_var.mean())
+    # print(mean_var.variance())
+
+# Let's print mean and variance of all values
+print(mean_var.mean())
+print(mean_var.variance())
+```
+
+You can also combine two `RunningMeanVar`:s.
+
+```python
+
+mean_var1 = RunningMeanVar()
+
+for value in floats_from_somewhere1():
+    mean_var1.push(value)
+
+mean_var2 = RunningMeanVar()
+
+for value in floats_from_somewhere2():
+    mean_var2.push(value)
+
+combined = mean_var1 + mean_var2
+
+# Let's print mean and variance of all values
+print(combined.mean())
+print(combined.variance())
+```
+
+## Minimum Supported Python Version Policy
+
+The Minimum Supported Python Version is fixed for a given minor (1.x)
+version. However it can be increased when bumping minor versions, i.e. going
+from 1.0 to 1.1 allows us to increase the Minimum Supported Python Version. Users unable to increase their
+Python version can use an older minor version instead. Below is a list of running-stats versions
+and their Minimum Supported Python Version:
+
+- v0.2: Python 3.10.
+- v0.1: Python 3.9.
+
+Note however that running-stats also has dependencies, which might have different MSPV
+policies. We try to stick to the above policy when updating dependencies, but
+this is not always possible.
+
+## Changelog
+
+This project keeps a [changelog](https://github.com/spraakbanken/running-stats-py/blob/0.2.0/CHANGELOG.md).
+
+## License
+
+This repository is licensed under the [MIT](https://github.com/spraakbanken/running-stats-py/blob/0.2.0/LICENSE) license.
+
+## Development
+
+### Development prerequisites
+
+- [`uv`](https://docs.astral.sh/uv/)
+- [`pre-commit`](https://pre-commit.org)
+
+For starting to develop on this repository:
+
+- Clone the repo (in one of the ways below):
+  - `git clone git@github.com:spraakbanken/running-stats-py.git`
+  - `git clone https://github.com/spraakbanken/running-stats-py.git`
+- Setup environment: `make dev`
+- Install `pre-commit` hooks: `pre-commit install`
+
+Do your work.
+
+Tasks to do:
+
+- Test the code with `make test` or `make test-w-coverage`.
+- Lint the code with `make lint`.
+- Check formatting with `make check-fmt`.
+- Format the code with `make fmt`.
+- Type-check the code with `make type-check`.
+
+This repo uses [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
+
+### Release a new version
+
+- Prepare the CHANGELOG: `make prepare-release`.
+- Edit `CHANGELOG.md` to your liking.
+- Add to git: `git add --update`
+- Commit with `git commit -m 'chore(release): prepare release'` or `cog commit chore 'prepare release' release`.
+- Bump version (depends on [`bump-my-version](https://callowayproject.github.io/bump-my-version/))
+  - Major: `make bumpversion part=major`
+  - Minor: `make bumpversion part=minor`
+  - Patch: `make bumpversion part=patch` or `make bumpversion`
+- Push `main` and tags to GitHub: `git push main --tags` or `make publish`
+  - [GitHub Actions workflow](https://github.com/spraakbanken/running-stats-py/blob/0.2.0/.github/workflows/release.yaml) will build, test and publish the package to [PyPi](https://pypi.prg).
