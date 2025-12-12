@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prompt Versioner Dashboard</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- CSS Modules -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/prompts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/versions.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/metrics.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/annotations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ab-testing.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alerts.css') }}">
+</head>
+<body>
+    <!-- Improved Header -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1 class="header-title">
+                    <span class="header-icon">🚀</span>
+                    Prompt Versioner
+                </h1>
+                <span class="header-subtitle">AI Prompt Management Dashboard</span>
+            </div>
+            <div class="header-right">
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Enhanced Stats Cards -->
+        <div class="stats" id="stats">
+            <div class="stat-card stat-card-prompts">
+                <div class="stat-icon">📝</div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Prompts</div>
+                    <div class="stat-value" id="total-prompts">-</div>
+                </div>
+            </div>
+            <div class="stat-card stat-card-versions">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Versions</div>
+                    <div class="stat-value" id="total-versions">-</div>
+                </div>
+            </div>
+            <div class="stat-card stat-card-cost">
+                <div class="stat-icon">💰</div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Cost</div>
+                    <div class="stat-value" id="total-cost">-</div>
+                    <div class="stat-sublabel">EUR</div>
+                </div>
+            </div>
+            <div class="stat-card stat-card-tokens">
+                <div class="stat-icon">🔤</div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Tokens</div>
+                    <div class="stat-value" id="total-tokens">-</div>
+                </div>
+            </div>
+            <div class="stat-card stat-card-calls">
+                <div class="stat-icon">📞</div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Calls</div>
+                    <div class="stat-value" id="total-calls">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modern Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" data-tab="prompts" onclick="switchTab('prompts')">
+                <span class="tab-icon">📝</span>
+                <span class="tab-label">Prompts</span>
+            </button>
+            <button class="tab-btn" data-tab="ab-testing" onclick="switchTab('ab-testing')">
+                <span class="tab-icon">🧪</span>
+                <span class="tab-label">A/B Testing</span>
+            </button>
+            <button class="tab-btn" data-tab="compare" onclick="switchTab('compare')">
+                <span class="tab-icon">🆚</span>
+                <span class="tab-label">Compare</span>
+            </button>
+            <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">
+                <span class="tab-icon">⚠️</span>
+                <span class="tab-label">Alerts</span>
+                <span class="tab-badge" id="alerts-badge" style="display: none;">0</span>
+            </button>
+        </div>
+
+        <!-- Tab Content Container -->
+        <div class="tab-content-container">
+
+            <!-- Prompts Tab Content -->
+            <div class="tab-content active" id="tab-prompts">
+                <section class="prompts-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <span class="section-icon">📝</span>
+                            Prompts
+                        </h2>
+                        <div class="section-actions">
+                            <button class="btn btn-icon" onclick="exportAll()" title="Export All">
+                                📦
+                            </button>
+                            <!-- <button class="btn btn-icon" onclick="document.getElementById('import-file').click()" title="Import">
+                                📥
+                            </button> -->
+                            <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importPrompt()" />
+                        </div>
+                    </div>
+                    <p class="section-description">Manage and organize your prompt templates with version control</p>
+
+                    <!-- Minimal Search Bar -->
+                    <div class="search-bar">
+                        <input
+                            type="text"
+                            id="search-input"
+                            placeholder="Search prompts..."
+                            oninput="filterPrompts()"
+                            class="search-input-minimal"
+                        />
+                        <select id="sort-select" onchange="sortPrompts()" class="sort-select-minimal">
+                            <option value="name-asc">A-Z</option>
+                            <option value="name-desc">Z-A</option>
+                            <option value="date-desc">Recent</option>
+                            <option value="versions-desc">Most versions</option>
+                        </select>
+                    </div>
+
+                    <!-- Two Column Layout -->
+                    <div class="prompts-layout">
+                        <!-- Left: Prompt List -->
+                        <div class="prompts-sidebar">
+                            <div class="prompt-list-minimal" id="prompt-list">
+                                <div class="loading">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Version Details -->
+                        <div class="versions-panel" id="version-section">
+                            <div class="versions-placeholder">
+                                <div class="placeholder-icon">📂</div>
+                                <h3>Select a prompt</h3>
+                                <p>Choose a prompt from the left to view its versions</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- A/B Testing Tab Content -->
+            <div class="tab-content" id="tab-ab-testing">
+                <section class="ab-testing-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <span class="section-icon">🧪</span>
+                            A/B Testing Comparison
+                        </h2>
+                        <div class="section-actions">
+                            <button class="btn btn-primary" onclick="ABTesting.createNewTest()" title="Create New Test">
+                                ➕ New Test
+                            </button>
+                        </div>
+                    </div>
+                    <p class="section-description">Compare different prompt versions to measure performance improvements</p>
+
+                    <!-- Quick Test Setup -->
+                    <div class="ab-test-setup">
+                        <div class="setup-row">
+                            <div class="setup-field">
+                                <label>Prompt</label>
+                                <select id="ab-prompt-select" onchange="ABTesting.loadVersionsForAB()">
+                                    <option value="">Select prompt...</option>
+                                </select>
+                            </div>
+                            <div class="setup-field">
+                                <label>📊 Baseline Version</label>
+                                <select id="ab-version-a-select">
+                                    <option value="">Select baseline...</option>
+                                </select>
+                            </div>
+                            <div class="setup-vs">vs</div>
+                            <div class="setup-field">
+                                <label>🆚 Test Version</label>
+                                <select id="ab-version-b-select">
+                                    <option value="">Select test version...</option>
+                                </select>
+                            </div>
+                            <div class="setup-field">
+                                <label>Metric</label>
+                                <select id="ab-metric-select">
+                                    <option value="quality_score">Quality Score</option>
+                                    <option value="cost">Cost (USD)</option>
+                                    <option value="latency">Latency (ms)</option>
+                                    <option value="accuracy">Accuracy</option>
+                                </select>
+                            </div>
+                            <div class="setup-action">
+                                <button class="btn btn-primary" onclick="ABTesting.runABTest()">
+                                    🚀 Run Test
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- A/B Test Results -->
+                    <div id="ab-test-results" class="ab-results-container">
+                        <div class="empty-state">
+                            <div class="empty-content">
+                                <div class="empty-icon">🧪</div>
+                                <h3>Ready for A/B Testing</h3>
+                                <p>Select prompts and versions above to run comparison tests</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Compare Versions Tab Content -->
+            <div class="tab-content" id="tab-compare">
+                <section class="compare-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <span class="section-icon">🆚</span>
+                            Version Comparison
+                        </h2>
+                        <div class="section-actions">
+                            <button class="btn btn-secondary" onclick="DiffComparison.clearComparison()" title="Clear Selection">
+                                🗑️ Clear
+                            </button>
+                        </div>
+                    </div>
+                    <p class="section-description">Analyze differences between prompt versions with detailed change tracking</p>
+
+                    <!-- Quick Compare Setup -->
+                    <div class="compare-setup">
+                        <div class="setup-row">
+                            <div class="setup-field">
+                                <label>Prompt</label>
+                                <select id="diff-prompt-select" onchange="loadVersionsForDiff()">
+                                    <option value="">Select prompt...</option>
+                                </select>
+                            </div>
+                            <div class="setup-field">
+                                <label>📊 Baseline Version</label>
+                                <select id="diff-version-a-select">
+                                    <option value="">Select baseline...</option>
+                                </select>
+                            </div>
+                            <div class="setup-vs">vs</div>
+                            <div class="setup-field">
+                                <label>🆚 Comparison Version</label>
+                                <select id="diff-version-b-select">
+                                    <option value="">Select comparison...</option>
+                                </select>
+                            </div>
+                            <div class="setup-action">
+                                <button class="btn btn-primary" onclick="DiffComparison.compareDiffVersions()">
+                                    🔍 Compare
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Results -->
+                    <div id="diff-results" class="diff-results-container">
+                        <div class="empty-state">
+                            <div class="empty-content">
+                                <div class="empty-icon">🆚</div>
+                                <h3>Ready for Comparison</h3>
+                                <p>Select two versions above to see detailed differences</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Alerts Tab Content -->
+            <div class="tab-content" id="tab-alerts">
+                <section class="alerts-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <span class="section-icon">⚠️</span>
+                            Performance Alerts
+                        </h2>
+                        <div class="section-actions">
+                            <button class="btn btn-secondary" onclick="refreshAlerts()" title="Refresh Alerts">
+                                🔄 Refresh
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearAllAlerts()" title="Clear All">
+                                🗑️ Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <p class="section-description">Monitor prompt performance metrics and receive automated alerts for issues</p>
+
+                    <!-- Alert Filters -->
+                    <div class="alert-filters">
+                        <div class="filter-group">
+                            <label>Severity</label>
+                            <select id="alert-severity-filter">
+                                <option value="all">All Severities</option>
+                                <option value="critical">Critical</option>
+                                <option value="warning">Warning</option>
+                                <option value="info">Info</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Type</label>
+                            <select id="alert-type-filter">
+                                <option value="all">All Types</option>
+                                <option value="performance">Performance</option>
+                                <option value="cost">Cost</option>
+                                <option value="quality">Quality</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Alerts Container -->
+                    <div id="alerts-container" class="alerts-container">
+                        <div class="empty-state">
+                            <div class="empty-content">
+                                <div class="empty-icon">✅</div>
+                                <h3>No Active Alerts</h3>
+                                <p>All systems are running normally</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- HTML Templates -->
+    <template id="prompt-item-template">
+        <div class="prompt-item-minimal">
+            <div class="prompt-info">
+                <div class="prompt-name-minimal"></div>
+                <div class="prompt-meta-minimal"></div>
+            </div>
+            <div class="prompt-actions-minimal">
+                <button class="btn-icon btn-icon-small delete-prompt-btn" title="Elimina prompt">
+                    🗑️
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <template id="version-item-template">
+        <div class="version-item-clean">
+            <div class="version-item-header">
+                <span class="version-tag-clean"></span>
+                <div class="version-actions">
+                    <button class="btn-icon btn-icon-small view-details-btn" title="Visualizza dettagli">
+                        👁️
+                    </button>
+                    <button class="btn-icon btn-icon-small export-version-btn" title="Esporta versione">
+                        📦
+                    </button>
+                    <button class="btn-icon btn-icon-small delete-version-btn" title="Elimina versione">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+            <div class="version-meta"></div>
+            <div class="version-metrics-container"></div>
+        </div>
+    </template>
+
+    <template id="version-modal-template">
+        <div id="versionModal" class="modal-overlay">
+            <div class="modal-content">
+                <button class="modal-close-btn">✕ Close</button>
+
+                <div class="modal-header">
+                    <h2 class="modal-title">
+                        <span class="modal-icon">📄</span>
+                        <span class="modal-prompt-name"></span>
+                        <span class="modal-version-number"></span>
+                    </h2>
+                </div>
+
+                <div class="modal-body">
+                    <div class="system-prompt-section">
+                        <h3 class="section-title">🧠 System Prompt</h3>
+                        <div class="prompt-content system-prompt-content"></div>
+                    </div>
+
+                    <div class="user-prompt-section">
+                        <h3 class="section-title">💬 User Prompt</h3>
+                        <div class="prompt-content user-prompt-content"></div>
+                    </div>
+
+                    <div class="created-by-section" style="display: none;">
+                        <h4>👨‍💻 Creato da</h4>
+                        <p class="created-by"></p>
+                    </div>
+
+                    <div class="metadata-json-section" style="display: none;">
+                        <h3 class="section-title">⚙️ Metadata</h3>
+                        <div class="metadata-json"></div>
+                    </div>
+
+                    <div class="metrics-section">
+                        <!-- Metrics will be populated here -->
+                    </div>
+
+
+
+
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="empty-state-template">
+        <div class="empty-state">
+            <div class="empty-icon"></div>
+            <h3 class="empty-title"></h3>
+            <p class="empty-message"></p>
+        </div>
+    </template>
+
+    <template id="loading-state-template">
+        <div class="loading-state">
+            <div class="loading-icon">⏳</div>
+            <p>Loading...</p>
+        </div>
+    </template>
+
+    <template id="error-state-template">
+        <div class="error-state">
+            <div class="error-icon">⚠️</div>
+            <h3 class="error-title">Errore</h3>
+            <p class="error-message"></p>
+            <button class="retry-btn">🔄 Riprova</button>
+        </div>
+    </template>
+
+    <template id="metrics-row-template">
+        <div class="version-metrics">
+            <div class="metrics-row">
+                <span class="metric-item metric-calls">📞 <span class="value"></span>&nbsp;calls</span>
+                <span class="metric-item metric-tokens">🔤 <span class="value"></span>&nbsp;avg tokens</span>
+                <span class="metric-item metric-cost">💰 €<span class="value"></span></span>
+                <span class="metric-item metric-latency">⚡ <span class="value"></span>&nbsp;ms</span>
+                <span class="metric-item metric-quality">⭐ <span class="value"></span>&nbsp;quality</span>
+                <span class="metric-item metric-success">✅ <span class="value"></span>% success</span>
+            </div>
+        </div>
+    </template>
+
+    <template id="no-metrics-template">
+        <div class="no-metrics">📊 No metrics available</div>
+    </template>
+
+    <template id="modal-metrics-section-template">
+        <div>
+            <h3 class="section-title metrics-title">📊 Performance Metrics</h3>
+            <div class="modal-metrics-section">
+                <div class="metrics-container">
+                    <div class="metrics-grid">
+                        <div class="metric-card metric-calls">
+                            <div class="metric-icon">📞</div>
+                            <div class="metric-value"></div>
+                            <div class="metric-label">Total Calls</div>
+                        </div>
+                        <div class="metric-card metric-tokens">
+                            <div class="metric-icon">🔤</div>
+                            <div class="metric-value"></div>
+                            <div class="metric-label">Avg Tokens</div>
+                        </div>
+                        <div class="metric-card metric-cost">
+                        <div class="metric-icon">💰</div>
+                        <div class="metric-value"></div>
+                        <div class="metric-label">Total Cost</div>
+                    </div>
+                    <div class="metric-card metric-latency">
+                        <div class="metric-icon">⚡</div>
+                        <div class="metric-value"></div>
+                        <div class="metric-label">Avg Latency</div>
+                    </div>
+                    <div class="metric-card metric-quality">
+                        <div class="metric-icon">⭐</div>
+                        <div class="metric-value"></div>
+                        <div class="metric-label">Avg Quality</div>
+                    </div>
+                    <div class="metric-card metric-success">
+                        <div class="metric-icon">✅</div>
+                        <div class="metric-value"></div>
+                        <div class="metric-label">Success Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Model Comparison Card Template -->
+    <template id="model-card-template">
+        <div class="model-card">
+            <div class="model-badges">
+                <!-- Best badges will be added here dynamically -->
+            </div>
+            <div class="model-card-header">
+                <span class="model-name"></span>
+                <span class="model-badge"></span>
+            </div>
+            <div class="model-metrics">
+                <div class="model-metric-row metric-total-cost">
+                    <span class="metric-label">💸 Total Cost</span>
+                    <span class="metric-value"></span>
+                </div>
+                <div class="model-metric-row metric-latency-range">
+                    <span class="metric-label">📊 Latency Range</span>
+                    <span class="metric-value"></span>
+                </div>
+                <div class="model-metric-row metric-avg-tokens">
+                    <span class="metric-label">🔢 Avg Tokens</span>
+                    <span class="metric-value"></span>
+                </div>
+                <div class="model-metric-row metric-avg-quality">
+                    <span class="metric-label">⭐ Avg Quality</span>
+                    <span class="metric-value"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Best Badge Template -->
+    <template id="best-badge-template">
+        <span class="best-badge"></span>
+    </template>
+
+    <!-- Version Header Template -->
+    <template id="version-header-template">
+        <div class="version-header">
+            <h3>
+                <span class="version-header-icon">📄</span>
+                <span class="version-header-name"></span>
+                <span class="version-header-count"></span>
+            </h3>
+        </div>
+        <div class="version-list-clean" id="versionListClean"></div>
+    </template>
+
+    <!-- Model Comparison Section Template -->
+    <template id="model-comparison-section-template">
+        <h3 class="section-title metrics-title">
+                🤖 Model Performance Comparison
+        </h3>
+        <div class="model-comparison-section">
+
+            <div id="model-comparison-grid" class="model-comparison-grid">
+                <div class="model-comparison-loading">Loading model comparison...</div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Model Comparison Empty State Template -->
+    <template id="model-comparison-empty-template">
+        <div class="model-comparison-empty">
+            <span class="empty-icon-large"></span>
+            <p class="empty-message-primary"></p>
+            <p class="empty-message-secondary"></p>
+        </div>
+    </template>
+
+    <!-- No Metrics Message Template -->
+    <template id="no-metrics-message-template">
+        <p style="color: #64748b; margin: 0; font-style: italic; text-align: center;">No metrics data available for this version</p>
+    </template>
+
+    <!-- Model Comparison Loading Template -->
+    <template id="model-comparison-loading-template">
+        <div class="model-comparison-loading">Loading model comparison...</div>
+    </template>
+
+    <!-- Diff Comparison Templates -->
+    <template id="diff-comparison-template">
+        <div class="diff-comparison-container">
+            <div class="diff-versions-grid">
+                <div class="diff-version-card baseline">
+                    <h3 class="diff-version-title">
+                        📊 BASELINE Version <span class="version-number"></span>
+                        <span class="version-date"></span>
+                        <span class="version-model-badge"></span>
+                    </h3>
+                    <div class="diff-version-content">
+                        <h4>System Prompt:</h4>
+                        <pre class="system-prompt-content"></pre>
+                        <h4>User Prompt:</h4>
+                        <pre class="user-prompt-content"></pre>
+                    </div>
+                </div>
+
+                <div class="diff-version-card comparison">
+                    <h3 class="diff-version-title">
+                        🆚 COMPARISON Version <span class="version-number"></span>
+                        <span class="version-date"></span>
+                        <span class="version-model-badge"></span>
+                    </h3>
+                    <div class="diff-version-content">
+                        <h4>System Prompt:</h4>
+                        <pre class="system-prompt-content"></pre>
+                        <h4>User Prompt:</h4>
+                        <pre class="user-prompt-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="diff-changes-section"></div>
+        </div>
+    </template>
+
+    <template id="diff-no-changes-template">
+        <div class="diff-no-changes">
+            <h3>✅ No Changes Detected</h3>
+            <p>The prompts are identical between these versions.</p>
+        </div>
+    </template>
+
+    <template id="diff-changes-template">
+        <div class="diff-changes-container">
+            <h3>📊 Changes from BASELINE to COMPARISON</h3>
+
+            <div class="system-changes-section" style="display: none;">
+                <h4>🤖 System Prompt Changes:</h4>
+                <div class="diff-content system-changes"></div>
+            </div>
+
+            <div class="user-changes-section" style="display: none;">
+                <h4>👤 User Prompt Changes:</h4>
+                <div class="diff-content user-changes"></div>
+            </div>
+
+            <div class="similarity-section" style="display: none;">
+                <h4>📈 Similarity Analysis:</h4>
+                <div class="similarity-stats">
+                    <div class="similarity-stat">
+                        <div class="stat-label">System Similarity</div>
+                        <div class="stat-value system-similarity"></div>
+                    </div>
+                    <div class="similarity-stat">
+                        <div class="stat-label">User Similarity</div>
+                        <div class="stat-value user-similarity"></div>
+                    </div>
+                    <div class="similarity-stat">
+                        <div class="stat-label">Overall Similarity</div>
+                        <div class="stat-value total-similarity"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metrics-comparison-section">
+                <h4>📊 Metrics Comparison:</h4>
+                <div class="metrics-comparison-grid">
+                    <div class="metric-comparison-item">
+                        <div class="metric-comparison-label">💰 Cost</div>
+                        <div class="metric-comparison-values">
+                            <span class="baseline-value cost-baseline">--</span>
+                            <span class="comparison-arrow">→</span>
+                            <span class="comparison-value cost-comparison">--</span>
+                            <span class="metric-change cost-change"></span>
+                        </div>
+                    </div>
+
+                    <div class="metric-comparison-item">
+                        <div class="metric-comparison-label">🔤 Avg Input Tokens</div>
+                        <div class="metric-comparison-values">
+                            <span class="baseline-value input-tokens-baseline">--</span>
+                            <span class="comparison-arrow">→</span>
+                            <span class="comparison-value input-tokens-comparison">--</span>
+                            <span class="metric-change input-tokens-change"></span>
+                        </div>
+                    </div>
+
+                    <div class="metric-comparison-item">
+                        <div class="metric-comparison-label">🔤 Avg Output Tokens</div>
+                        <div class="metric-comparison-values">
+                            <span class="baseline-value output-tokens-baseline">--</span>
+                            <span class="comparison-arrow">→</span>
+                            <span class="comparison-value output-tokens-comparison">--</span>
+                            <span class="metric-change output-tokens-change"></span>
+                        </div>
+                    </div>
+
+                    <div class="metric-comparison-item">
+                        <div class="metric-comparison-label">⚡ Latency</div>
+                        <div class="metric-comparison-values">
+                            <span class="baseline-value latency-baseline">--</span>
+                            <span class="comparison-arrow">→</span>
+                            <span class="comparison-value latency-comparison">--</span>
+                            <span class="metric-change latency-change"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- A/B Testing Templates -->
+    <template id="ab-results-template">
+        <div class="ab-results-container">
+            <h3 class="ab-results-title">A/B Test Results</h3>
+
+            <div class="ab-results-grid">
+                <div class="ab-version-result-card">
+                    <h4 class="ab-version-subtitle">📊 Version A (Baseline)</h4>
+                    <div class="ab-version-number"></div>
+                    <div class="ab-metric-value"></div>
+                    <div class="ab-model-info"></div>
+                </div>
+
+                <div class="ab-version-result-card">
+                    <h4 class="ab-version-subtitle">🆚 Version B (Comparison)</h4>
+                    <div class="ab-version-number"></div>
+                    <div class="ab-metric-value"></div>
+                    <div class="ab-model-info"></div>
+                </div>
+            </div>
+
+            <div class="ab-summary">
+                <div class="ab-winner-text"></div>
+                <div class="ab-improvement-text"></div>
+            </div>
+        </div>
+    </template>
+
+    <template id="ab-error-template">
+        <div class="ab-error">
+            <span class="error-message"></span>
+        </div>
+    </template>
+
+    <!-- Alert Templates -->
+    <template id="alert-item-template">
+        <div class="alert-item">
+            <div class="alert-header">
+                <h4 class="alert-title"></h4>
+                <span class="alert-severity-badge"></span>
+            </div>
+            <p class="alert-message"></p>
+            <small class="alert-timestamp"></small>
+        </div>
+    </template>
+
+    <template id="alerts-empty-template">
+        <div class="alerts-empty">No alerts at this time</div>
+    </template>
+
+    <template id="alerts-error-template">
+        <div class="alerts-error">Error loading alerts</div>
+    </template>
+
+    <!-- Word-level Diff Template -->
+    <template id="word-level-diff-template">
+        <div class="word-level-diff">
+            <div class="diff-content"></div>
+            <div class="diff-summary">
+                <strong>Summary:</strong>
+                <span class="added-words"></span>
+                <span class="removed-words"></span>
+            </div>
+        </div>
+    </template>
+
+    <!-- No Changes Template -->
+    <template id="no-changes-template">
+        <div class="no-changes-message">
+            <div class="no-changes-icon">✅</div>
+            <div class="no-changes-title">No Changes Detected</div>
+            <div class="no-changes-text">The prompts are identical between these versions.</div>
+        </div>
+    </template>
+
+    <!-- Error Message Template -->
+    <template id="error-message-template">
+        <div class="error-message">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title"></div>
+            <div class="error-text"></div>
+        </div>
+    </template>
+
+    <!-- Loading Message Template -->
+    <template id="loading-message-template">
+        <div class="loading-message">
+            <div class="loading-icon">🔄</div>
+            <div class="loading-text"></div>
+        </div>
+    </template>
+
+    <!-- No Content Template -->
+    <template id="no-content-template">
+        <div class="no-content-message">
+            <div class="no-content-icon">📝</div>
+            <div class="no-content-text"></div>
+        </div>
+    </template>
+
+    <!-- JavaScript Modules -->
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/prompts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/versions.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ab-testing.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/export-import.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/diff-comparison.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
