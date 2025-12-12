@@ -1,0 +1,131 @@
+# GENERAL
+input  <- scope PEG_EOF
+scope <- item*
+item  <- whitespace / macro / block_python / inline_python / reference / breakpoint / argument_reference /
+         verbatim / comment / node / standard_literal
+inargument_scope <- inargument_item*
+inargument_item  <- whitespace / macro / block_python / inline_python / reference / breakpoint /
+                    argument_reference / verbatim / comment / node / signature_literal
+
+# NODE
+node  <- node_type whitespace?
+         (OPEN_BRAC whitespace? node_name whitespace? CLOSE_BRAC whitespace?)?
+         (OPEN_CURL whitespace?
+            node_tag whitespace? (whitespace? COMMA whitespace? node_tag)* 
+         (whitespace? COMMA)? whitespace? CLOSE_CURL whitespace?)?
+         whitespace? OPEN scope CLOSE
+    node_type <- word_literal
+    node_name <- word_literal (whitespace word_literal)*
+    node_tag  <- word_literal (whitespace word_literal)*
+
+# COMMENT
+comment <- COMMENT_DELIMITER comment_literal PEG_EOL
+
+# VERBATIM
+verbatim <- VERBATIM_DELIMITER verbatim_literal* VERBATIM_DELIMITER
+
+# BLOCK PYTHON
+block_python <- BLOCK_DELIMITER
+                python_code
+                BLOCK_DELIMITER
+
+
+# BREAKPOINT
+breakpoint <- REFERENCE_DELIMITER "breakpoint"
+
+# ARGUMENT REFERENCE
+argument_reference <- REFERENCE_DELIMITER OPEN_PAREN inargument_scope CLOSE_PAREN
+
+# INLINE PYTHON
+inline_python <- inline_call / inline_access
+    inline_access   <- inline_delimiter word_literal
+    inline_call     <- inline_delimiter word_literal
+                       OPEN_PAREN whitespace?
+                       (python_argument (whitespace? COMMA whitespace? python_argument)* 
+                       (whitespace? COMMA)?)? whitespace? CLOSE_PAREN
+        python_argument <- (python_argument_name whitespace? EQUAL whitespace?)?
+                            python_argument_value
+            python_argument_name  <- word_literal
+            python_argument_value <- brac_group / curl_group / paren_group / 
+                                     string / (word_literal+)
+                brac_group   <- OPEN_BRAC (brac_group / (!CLOSE_BRAC "."))* CLOSE_BRAC
+                curl_group   <- OPEN_CURL (curl_group / (!CLOSE_CURL "."))* CLOSE_CURL
+                paren_group  <- OPEN_PAREN (paren_group / (!CLOSE_PAREN "."))* CLOSE_PAREN
+
+# REFERENCE
+reference <- REFERENCE_DELIMITER (OPEN_BRAC whitespace? (INDEX / node_name / special_ref) whitespace? CLOSE_BRAC)
+                                 (OPEN_BRAC whitespace? (INDEX / node_name) whitespace? CLOSE_BRAC)*
+        special_ref <- PROJECT_ROOT / LOCAL_ROOT / PARENT_NODE
+# MACRO
+macro <- macro_call / macro_definition
+    macro_definition <- standard_definition
+    standard_definition <- macro_open (whitespace? definition_item)+
+                           whitespace?
+                           RIGHT_ASSIGN
+                           scope
+                           whitespace? macro_close
+        definition_item <- argument_list / signature_literal
+    macro_call       <- short_call / long_call
+        short_call       <- BACKTICK signature_literal # notice no space after macro open
+        long_call        <- macro_open (whitespace? call_item)+
+                            whitespace? macro_close
+            call_item    <- argument_list / signature_literal
+                argument_list <- OPEN_PAREN whitespace?
+                                 argument? (whitespace? COMMA whitespace? argument)* 
+                                 (whitespace? COMMA)? whitespace? CLOSE_PAREN
+                    argument <- (argument_name whitespace? LEFT_ASSIGN whitespace?)?
+                                     argument_value
+        argument_name    <- inargument_scope
+        argument_value   <- inargument_scope
+
+
+# EFFECTIVE TERMINALS
+string <- (QUOTES string_literal_1 QUOTES) / (QUOTE string_literal_2 QUOTE)
+python_code         <- (!macro_close !BLOCK_DELIMITER any)*
+word_literal        <- "\w"+
+signature_literal   <- "\w"+ / (!"\w"+ !RIGHT_ASSIGN !LEFT_ASSIGN
+                       ("\\<" / "\\>" / "\\#" / "\\`" / "\\\$" / "\\@" /
+                       "\\:" / "\\," / "\\\(" / "\\\)" /
+                       "[^\s<>#`@\$:,()]"))+
+standard_literal    <- "\w"+ / (!"\w"+ !BLOCK_DELIMITER
+                       ("\\<" / "\\>" / "\\#" / "\\`" / "\\\$" / "\\@" /
+                       "[^\s<>#`@\$]"))+
+verbatim_literal    <- ("\\\`" / "[^`]")+
+comment_literal     <- "."*
+whitespace          <- "\s"+
+string_literal_1    <- ('\\"' / '[^"]')+
+string_literal_2    <- ("\\'" / "[^']")+
+macro_open          <- !macro_close MACRO_DELIMITER
+macro_close         <- MACRO_DELIMITER MACRO_DELIMITER
+colon               <- !BLOCK_DELIMITER ":"
+any                 <- "." / PEG_EOL
+inline_delimiter    <- !BLOCK_DELIMITER "::"
+
+# TERMINALS
+PROJECT_ROOT        <- "\^\^\^"
+LOCAL_ROOT          <- "\^\^"
+PARENT_NODE         <- "\^"
+
+STARSTAR            <- "\*\*"
+STAR                <- "\*"
+COMMA               <- ","
+OPEN                <- "<"
+CLOSE               <- ">"
+RIGHT_ASSIGN        <- ">>"
+LEFT_ASSIGN         <- "<<"
+INDEX               <- "\d+"
+MACRO_DELIMITER     <- "\$"
+VERBATIM_DELIMITER  <- "``"
+BACKTICK            <- "`"
+COMMENT_DELIMITER   <- "#"
+REFERENCE_DELIMITER <- "@"
+BLOCK_DELIMITER     <- ":::"
+OPEN_BRAC           <- "\["
+CLOSE_BRAC          <- "\]"
+OPEN_PAREN          <- "\("
+CLOSE_PAREN         <- "\)"
+OPEN_CURL           <- "{"
+QUOTES              <- '"'
+QUOTE               <- "'"
+CLOSE_CURL          <- "}"
+EQUAL               <- "="
