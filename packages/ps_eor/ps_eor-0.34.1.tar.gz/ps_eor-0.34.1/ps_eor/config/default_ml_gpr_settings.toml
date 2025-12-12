@@ -1,0 +1,52 @@
+pre_proc_remove_freq_mean = false
+
+kern.uv_bins_du = 20
+kern.uv_bins_n_uni = 0
+kern.fg = ['fg_int', 'fg_mix']
+kern.eor = ['eor_exp']
+
+gp.use_uv_weight = true
+
+sampler_method = 'mcmc'
+
+mcmc.n_steps = 500
+mcmc.n_walkers = 50
+mcmc.n_burn = 300
+mcmc.move = 'kde'
+
+nested.nlive = 500
+nested.bound = 'multi'
+nested.sample = 'auto'
+
+[fg_int]
+type = 'MRBF'
+variance.prior = 'Uniform(0.8, 1.2)'
+lengthscale.prior = 'Uniform(2, 60)'
+ls_alpha.prior = 'Fixed(0)'
+var_alpha.prior = 'Fixed(0)'
+
+[fg_mix]
+type = 'MMat32'
+variance.prior = 'Log10Uniform(-3, -0.5)'
+variance.log_scale = true
+lengthscale.prior = 'Uniform(2, 60)'
+ls_alpha.prior = 'Uniform(0, 1.5)'
+var_alpha.prior = 'Fixed(0)'
+
+[eor_exp]
+type = 'MExponential'
+variance.prior = 'Log10Uniform(-5, -1)'
+variance.log_scale = true
+lengthscale.prior = 'Uniform(0.2, 2)'
+ls_alpha.prior = 'Uniform(0, 2)'
+var_alpha.prior = 'Uniform(-3, 0)'
+
+[kern.noise]
+alpha.prior = 'Uniform(0.9, 1.6)'
+use_simulated_noise_cube = true
+use_sefd_freqs_estimate = false
+use_noise_std = false
+estimate_baseline_noise_from_stokes = 'V'
+estimate_baseline_noise_remove_n_pca = 0
+estimate_baseline_noise_from_channel_diff = true
+scale_baseline_noise = true
