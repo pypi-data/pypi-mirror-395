@@ -1,0 +1,27 @@
+defaults:
+  - _self_
+
+data:
+  url: "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
+  cache_dir: ${hydra:runtime.cwd}/data  # Use original working directory
+  max_length: 20000  # Using first 1000 characters for quick testing
+  seq_length: 64
+
+model:
+  hidden_size: 16
+  num_layers: 2
+  num_points: 128
+  position_init: random #uniform
+  
+training:
+  batch_size: 128
+  num_epochs: 10
+  learning_rate: 0.001
+  checkpoint_every: 1  # Save checkpoint every N epochs
+  sample_every: 1     # Generate sample text every N epochs
+  move_every_n_batches: 100  # Call move_smoothest every N batches
+  adapt: move # null
+  
+generation:
+  max_length: 200
+  temperature: 0.8

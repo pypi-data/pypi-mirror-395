@@ -1,0 +1,58 @@
+# Configuration for implicit 3D representation
+# This config is used by the implicit_3d.py script
+
+# URL to download the 3D model
+model_url: "https://graphics.stanford.edu/~mdfisher/Data/Meshes/bunny.obj"  # Stanford bunny model
+
+# Device to use for training
+device: "cuda"  # Use "cuda" for GPU, "cpu" for CPU
+
+# Model configuration
+hidden_layers: [40, 40]  # Sizes of hidden layers
+rotations: 2              # Number of rotations in the rotation layer
+rotation_layers: 1
+num_points: 30                # Initial number of points for piecewise functions
+position_range: [-1, 1]      # Range of positions for piecewise functions
+anti_periodic: false          # Whether to use anti-periodic boundary conditions
+position_init: "random"      # Initialization method for positions
+
+# Point cloud generation
+num_mesh_points: 1000000            # Number of points to sample from the mesh
+
+# Training configuration
+epochs: 100                  # Number of training epochs
+batch_size: 1024             # Batch size for training
+learning_rate: 1e-5         # Learning rate
+optimizer: lion            # Optimizer (lion or adam)
+
+# Adaptive configuration
+adaptive: true               # Whether to use adaptive point management
+adaptive_frequency: 1       # Apply adaptation every N batches
+move_smoothest: true         # Whether to move smoothest points
+move_smoothest_after: 0     # Start moving smoothest points after N epochs
+
+# Mesh extraction configuration
+extract_mesh: true           # Whether to extract meshes during training
+mesh_resolution: 64          # Resolution of the grid for marching cubes
+mesh_threshold: 0.0        # Threshold for the isosurface (median of SDF values)
+
+# High-resolution rendering configuration
+render_high_res: false      # Whether to render a high-resolution mesh at the end of training
+render_only: false          # Only render from a pre-trained model (no training)
+model_path: null            # Path to a pre-trained model to load (null = don't load)
+high_res_resolution: 256    # Resolution for high-resolution rendering
+render_output_file: "high_res_render.png"  # Output file for high-resolution render
+
+# Visualization and saving configuration
+save_frequency: 10           # Save progress image and mesh every N epochs
+checkpoint_frequency: 20     # Save checkpoint every N epochs
+
+# Hydra configuration
+hydra:
+  run:
+    dir: outputs/implicit_3d/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: multirun/implicit_3d/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+  job:
+    chdir: True

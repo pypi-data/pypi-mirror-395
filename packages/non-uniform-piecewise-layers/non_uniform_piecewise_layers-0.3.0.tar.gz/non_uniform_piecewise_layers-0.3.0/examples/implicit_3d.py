@@ -1,0 +1,906 @@
+import os
+import math
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import matplotlib.pyplot as plt
+from omegaconf import DictConfig, OmegaConf
+import hydra
+from hydra.core.hydra_config import HydraConfig
+import logging
+import trimesh
+from PIL import Image
+from torch.utils.data import TensorDataset, DataLoader
+from lion_pytorch import Lion
+from torch.utils.tensorboard import SummaryWriter
+import requests
+from io import BytesIO
+from tqdm import tqdm
+import mcubes
+from skimage import measure
+import open3d as o3d
+
+from non_uniform_piecewise_layers import AdaptivePiecewiseMLP
+from non_uniform_piecewise_layers.rotation_layer import fixed_rotation_layer
+from non_uniform_piecewise_layers.utils import largest_error
+
+logger = logging.getLogger(__name__)
+
+# Set random seeds for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+
+
+def download_model(url, save_path=None):
+    """
+    Download a 3D model from a URL.
+    
+    Args:
+        url: URL to download from
+        save_path: Path to save the downloaded model
+        
+    Returns:
+        Path to the downloaded model
+    """
+    if save_path and os.path.exists(save_path):
+        logger.info(f"Model already exists at {save_path}, skipping download")
+        return save_path
+    
+    logger.info(f"Downloading model from {url}")
+    response = requests.get(url)
+    response.raise_for_status()
+    
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, 'wb') as f:
+            f.write(response.content)
+        return save_path
+    else:
+        return BytesIO(response.content)
+
+
+def load_mesh(file_path):
+    """
+    Load a 3D mesh from a file.
+    
+    Args:
+        file_path: Path to the mesh file
+        
+    Returns:
+        Trimesh object
+    """
+    logger.info(f"Loading mesh from {file_path}")
+    mesh = trimesh.load(file_path)
+    return mesh
+
+
+def generate_point_cloud(mesh, num_points=10000, signed_distance=True, normalize=True):
+    """
+    Generate a point cloud from a mesh with signed distance values.
+    
+    Args:
+        mesh: Trimesh mesh
+        num_points: Number of points to sample
+        signed_distance: Whether to compute signed distance values
+        normalize: Whether to normalize coordinates to [-1, 1]
+        
+    Returns:
+        Tuple of (points, sdf_values)
+    """
+    # Sample points on the surface
+    surface_points_readonly, _ = trimesh.sample.sample_surface(mesh, num_points // 2)
+    surface_points = surface_points_readonly.copy()
+
+    # Sample points in the volume
+    # Create a slightly larger bounding box
+    bounds = mesh.bounding_box.bounds
+    min_bound, max_bound = bounds.copy()
+    padding = (max_bound - min_bound) * 0.1
+    min_bound -= padding
+    max_bound += padding
+    
+    # Sample random points in the volume
+    volume_points = np.random.uniform(min_bound, max_bound, size=(num_points // 2, 3))
+    
+    # Combine points
+    points = np.vstack([surface_points, volume_points])
+    
+    # Compute signed distance values
+    if signed_distance:
+        # Positive outside, negative inside
+        sdf_values = np.zeros(points.shape[0])
+        
+        # Surface points have distance close to 0
+        sdf_values[:num_points // 2] = 0.0 #np.random.normal(0, 0.01, size=num_points // 2)
+        
+        # Volume points need distance computation - batched vectorized approach
+        volume_points = points[num_points // 2:]
+        num_volume_points = volume_points.shape[0]
+        
+        # Process in batches to avoid memory issues
+        max_batch_size = 100000  # Maximum batch size to avoid memory issues
+        logger.info(f"Processing {num_volume_points} volume points in batches of {max_batch_size}")
+        
+        for batch_start in range(0, num_volume_points, max_batch_size):
+            batch_end = min(batch_start + max_batch_size, num_volume_points)
+            batch_size = batch_end - batch_start
+            
+            logger.info(f"Processing batch {batch_start//max_batch_size + 1}: points {batch_start} to {batch_end-1}")
+            
+            # Get current batch of points
+            batch_points = volume_points[batch_start:batch_end]
+            
+            # Compute closest points and distances for this batch
+            _, batch_distances, _ = trimesh.proximity.closest_point(mesh, batch_points)
+            
+            # Check which points are inside the mesh (vectorized)
+            batch_inside = mesh.contains(batch_points)
+            
+            # Apply sign based on inside/outside (vectorized)
+            batch_distances[batch_inside] *= -1  # Negative distance for inside points
+            
+            # Assign to sdf_values
+            sdf_values[num_points // 2 + batch_start:num_points // 2 + batch_end] = batch_distances
+            
+        logger.info(f"Finished processing all {num_volume_points} volume points")
+    else:
+        # Just use 1 for surface, 0 for non-surface
+        sdf_values = np.zeros(points.shape[0])
+        sdf_values[:num_points // 2] = 1.0
+    
+    # Normalize coordinates to [-1, 1]
+    if normalize:
+        center = (min_bound + max_bound) / 2
+        scale = np.max(max_bound - min_bound) / 2
+        points = (points - center) / scale
+    
+    # Convert to torch tensors
+    points_tensor = torch.from_numpy(points).float()
+    sdf_values_tensor = torch.from_numpy(sdf_values).float().unsqueeze(1)
+    
+    return points_tensor, sdf_values_tensor
+
+
+class Implicit3DNetwork(nn.Module):
+    """
+    Neural network for implicit 3D representation.
+    Uses a rotation layer followed by an adaptive MLP.
+    """
+    def __init__(
+        self,
+        input_dim=3,
+        output_dim=1,
+        hidden_layers=[64, 64, 64],
+        rotations=4,
+        num_points=5,
+        position_range=(-1, 1),
+        anti_periodic=True,
+        position_init='random',
+        rotation_layers=1 # 1 or 2
+    ):
+        """
+        Initialize the network.
+        
+        Args:
+            input_dim: Dimension of input (typically 3 for x,y,z coordinates)
+            output_dim: Output dimension (typically 1 for SDF values)
+            hidden_layers: List of hidden layer sizes
+            rotations: Number of rotations in the rotation layer
+            num_points: Number of points for each piecewise function
+            position_range: Range of positions for the piecewise functions
+            anti_periodic: Whether to use anti-periodic boundary conditions
+        """
+        super(Implicit3DNetwork, self).__init__()
+        
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.rotation_layers = rotation_layers
+
+        # Create the rotation layer
+        self.rotation_layer, rotation_output_dim = fixed_rotation_layer(
+            n=input_dim, 
+            rotations=rotations, 
+            normalize=True
+        )
+        
+        if self.rotation_layers==2:
+            self.second_rotation_layer, second_rotation_output_dim = fixed_rotation_layer(
+                n=rotation_output_dim, 
+                rotations=rotations, 
+                normalize=True
+            )
+
+        if self.rotation_layers==1:
+            # Create the adaptive MLP
+            mlp_widths = [rotation_output_dim] + hidden_layers + [output_dim]
+            self.mlp = AdaptivePiecewiseMLP(
+                width=mlp_widths,
+                num_points=num_points,
+                position_range=position_range,
+                anti_periodic=anti_periodic,
+                position_init=position_init,
+                normalization="maxabs"
+            )
+        elif self.rotation_layers==2:
+            # Create the adaptive MLP
+            mlp_widths = [second_rotation_output_dim] + hidden_layers + [output_dim]
+            self.mlp = AdaptivePiecewiseMLP(
+                width=mlp_widths,
+                num_points=num_points,
+                position_range=position_range,
+                anti_periodic=anti_periodic,
+                position_init=position_init,
+                normalization="maxabs"
+            )
+    
+    def forward(self, x):
+        """
+        Forward pass through the network.
+        
+        Args:
+            x: Input tensor of shape (batch_size, input_dim)
+            
+        Returns:
+            Output tensor of shape (batch_size, output_dim)
+        """
+        if self.rotation_layers==1:
+            # Apply rotation layer
+            x = self.rotation_layer(x)
+            
+            # Apply MLP
+            x = self.mlp(x)
+        elif self.rotation_layers==2:
+            # Apply rotation layer
+            x = self.rotation_layer(x)
+            
+            x = self.second_rotation_layer(x)
+            
+            # Apply MLP
+            x = self.mlp(x)
+        
+        return x
+    
+    def global_error(self, error, x):
+        """
+        Find the input x value that corresponds to the largest error and add a point there.
+        
+        Args:
+            error: Error tensor of shape (batch_size, output_dim)
+            x: Input tensor of shape (batch_size, input_dim)
+        """
+        # Make sure inputs are on the same device as the model
+        device = next(self.parameters()).device
+        if error.device != device:
+            error = error.to(device)
+        if x.device != device:
+            x = x.to(device)
+            
+        # Apply rotation to get the rotated positions
+        rotated_x = self.rotation_layer(x)
+        
+        # Find the largest error and add a point
+        new_value = largest_error(error, rotated_x)
+        if new_value is not None:
+            logger.debug(f'New value: {new_value}')
+            self.mlp.remove_add(new_value)
+    
+    def move_smoothest(self):
+        """
+        Move the smoothest point in the network to improve fitting.
+        """
+        self.mlp.move_smoothest()
+
+
+def batch_predict(model, inputs, batch_size=1024):
+    """
+    Run predictions in batches to avoid memory issues.
+    
+    Args:
+        model: The model to use for predictions
+        inputs: Input tensor
+        batch_size: Batch size for predictions
+        
+    Returns:
+        Tensor of predictions
+    """
+    model.eval()
+    predictions = []
+    num_samples = inputs.size(0)
+    
+    with torch.no_grad():
+        for i in range(0, num_samples, batch_size):
+            batch_inputs = inputs[i:i+batch_size]
+            batch_predictions = model(batch_inputs)
+            predictions.append(batch_predictions)
+    
+    return torch.cat(predictions, dim=0)
+
+
+def extract_mesh(model, resolution=64, threshold=0.0, device='cpu'):
+    """
+    Extract a mesh from the implicit function using marching cubes.
+    
+    Args:
+        model: The neural network model
+        resolution: Grid resolution for marching cubes
+        threshold: Isosurface threshold
+        device: Device to run the model on
+        
+    Returns:
+        Tuple of (vertices, faces)
+    """
+    # Create a grid of points
+    x = np.linspace(-1, 1, resolution)
+    y = np.linspace(-1, 1, resolution)
+    z = np.linspace(-1, 1, resolution)
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    
+    # Reshape to a list of points
+    points = np.stack([X.flatten(), Y.flatten(), Z.flatten()], axis=1)
+    points_tensor = torch.from_numpy(points).float().to(device)
+    
+    # Predict SDF values
+    sdf_values = batch_predict(model, points_tensor).cpu().numpy().reshape(resolution, resolution, resolution)
+    
+    # Debug information about SDF values
+    logger.info(f"SDF values - min: {np.min(sdf_values)}, max: {np.max(sdf_values)}, mean: {np.mean(sdf_values)}")
+    logger.info(f"Number of values below threshold {threshold}: {np.sum(sdf_values < threshold)}")
+    logger.info(f"Number of values above threshold {threshold}: {np.sum(sdf_values > threshold)}")
+    
+    
+    
+    # Extract mesh using marching cubes
+    try:
+        vertices, faces = mcubes.marching_cubes(sdf_values, threshold)
+        logger.info(f"Mesh extracted: {len(vertices)} vertices, {len(faces)} faces")
+    except Exception as e:
+        logger.error(f"Error in marching cubes: {str(e)}")
+        return np.array([]), np.array([])  # Return empty arrays on error
+    
+    # Check if mesh is empty
+    if len(vertices) == 0 or len(faces) == 0:
+        logger.warning("Generated mesh is empty!")
+        return np.array([]), np.array([])
+    
+    # Rescale vertices to [-1, 1]
+    vertices = vertices / (resolution - 1) * 2 - 1
+    
+    return vertices, faces
+
+
+def save_mesh(vertices, faces, filename):
+    """
+    Save a mesh to an OBJ file.
+    
+    Args:
+        vertices: Mesh vertices
+        faces: Mesh faces
+        filename: Output filename
+        
+    Returns:
+        The saved mesh as an Open3D mesh object if successful, None otherwise
+    """
+    if len(vertices) == 0 or len(faces) == 0:
+        logger.warning(f"Cannot save empty mesh to {filename}")
+        # Create an empty file with a comment explaining why it's empty
+        with open(filename, 'w') as f:
+            f.write("# Empty mesh - no isosurface found\n")
+        return None
+    
+    logger.info(f"Saving mesh with {len(vertices)} vertices and {len(faces)} faces to {filename}")
+    mcubes.export_obj(vertices, faces, filename)
+    
+    # Also create an Open3D mesh for rendering
+    mesh = o3d.geometry.TriangleMesh()
+    mesh.vertices = o3d.utility.Vector3dVector(vertices)
+    mesh.triangles = o3d.utility.Vector3iVector(faces)
+    mesh.compute_vertex_normals()
+    
+    return mesh
+
+
+def render_high_res_mesh(mesh, output_file, width=1200, height=900, background_color=[1, 1, 1]):
+    """
+    Render a high-resolution image of a mesh and save it to a file.
+    
+    Args:
+        mesh: Open3D mesh object
+        output_file: Output filename for the rendered image
+        width: Width of the output image in pixels
+        height: Height of the output image in pixels
+        background_color: Background color as RGB list [r, g, b] in range [0, 1]
+    """
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
+    # Create a visualizer
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(width=width, height=height, visible=False)
+    
+    # Add the mesh to the visualizer
+    vis.add_geometry(mesh)
+    
+    # Set rendering options
+    opt = vis.get_render_option()
+    opt.background_color = np.array(background_color)
+    opt.point_size = 5.0
+    opt.light_on = True
+    opt.mesh_show_back_face = False
+    
+    # Set camera position for a good view
+    ctr = vis.get_view_control()
+    ctr.set_zoom(0.8)
+    ctr.set_front([0, 0, -1])  # Look at the front of the object
+    ctr.set_lookat([0, 0, 0])  # Look at the center
+    ctr.set_up([0, 1, 0])      # Set up direction
+    
+    # Update and render
+    vis.update_geometry(mesh)
+    vis.poll_events()
+    vis.update_renderer()
+    
+    # Capture and save image
+    image = vis.capture_screen_float_buffer(do_render=True)
+    image_np = np.asarray(image)
+    plt.imsave(output_file, image_np)
+    
+    # Close the visualizer
+    vis.destroy_window()
+    
+    logger.info(f"Saved high-resolution render to {output_file}")
+
+
+def add_mesh_to_tensorboard(writer, vertices, faces, epoch, tag="mesh"):
+    """
+    Add a 3D mesh to TensorBoard using PyTorch's native TensorBoard mesh visualization.
+    
+    Args:
+        writer: TensorBoard SummaryWriter
+        vertices: Mesh vertices as numpy array (should be on CPU)
+        faces: Mesh faces as numpy array (should be on CPU)
+        epoch: Current epoch
+        tag: Tag for the mesh in TensorBoard
+    """
+    if vertices is None or faces is None or len(vertices) == 0 or len(faces) == 0:
+        logger.warning(f"Cannot add empty or invalid mesh '{tag}' to TensorBoard")
+        return
+    
+    # --- SOLUTION: Ensure we work with a CPU Open3D TriangleMesh --- 
+    # Explicitly create a standard CPU mesh and copy data.
+    # This avoids potential issues with implicit CUDA mesh creation.
+    logger.info(f"Creating CPU mesh for '{tag}'...")
+    
+    # Ensure input arrays are numpy arrays on CPU
+    if isinstance(vertices, torch.Tensor):
+        vertices_np = vertices.detach().cpu().numpy()
+    else:
+        vertices_np = np.asarray(vertices)
+        
+    if isinstance(faces, torch.Tensor):
+        faces_np = faces.detach().cpu().numpy()
+    else:
+        faces_np = np.asarray(faces)
+        
+    # Fix inside-out rendering by reversing face orientations
+    # Swap the order of indices in each face (e.g., [0,1,2] becomes [0,2,1])
+    logger.info(f"Reversing face orientations for '{tag}' to fix inside-out rendering...")
+    reversed_faces_np = faces_np.copy()
+    # Swap the second and third vertex indices for each face
+    reversed_faces_np[:, [1, 2]] = reversed_faces_np[:, [2, 1]]
+    # Use the reversed faces
+    faces_np = reversed_faces_np
+    
+    # Skip the Open3D mesh creation and orientation entirely
+    # Just prepare the data for TensorBoard directly
+    
+    # Create default colors based on vertex positions for visualization
+    # Normalize vertex positions to [0,1] range for coloring
+    min_vals = np.min(vertices_np, axis=0)
+    max_vals = np.max(vertices_np, axis=0)
+    range_vals = max_vals - min_vals
+    # Avoid division by zero
+    range_vals[range_vals == 0] = 1.0
+    
+    # Use normalized XYZ coordinates as RGB colors
+    colors = (vertices_np - min_vals) / range_vals
+    # Scale to [0, 255] for TensorBoard
+    colors = (colors * 255).astype(np.uint8)
+    
+    # Convert to PyTorch tensors and add batch dimension
+    vertices_tensor = torch.tensor(vertices_np).float().unsqueeze(0)  # [1, N, 3]
+    faces_tensor = torch.tensor(faces_np).int().unsqueeze(0)          # [1, F, 3]
+    colors_tensor = torch.tensor(colors).byte().unsqueeze(0)          # [1, N, 3]
+    
+    # Add to TensorBoard
+    try:
+        writer.add_mesh(
+            tag=tag,
+            vertices=vertices_tensor,
+            faces=faces_tensor,
+            colors=colors_tensor,
+            global_step=epoch
+        )
+        logger.info(f"Mesh '{tag}' added to TensorBoard.")
+    except Exception as e:
+        logger.error(f"Failed to add mesh '{tag}' to TensorBoard: {e}")
+
+
+def save_progress_image(model, points, sdf_values, epoch, loss, output_dir, batch_size=512, writer=None):
+    """
+    Save a plot showing the current state of the approximation.
+    
+    Args:
+        model: The neural network model
+        points: Input coordinates
+        sdf_values: Ground truth SDF values
+        epoch: Current epoch
+        loss: Current loss value
+        output_dir: Directory to save the image
+        batch_size: Batch size for prediction to avoid memory issues
+        writer: TensorBoard SummaryWriter for logging
+    """
+    # Create a figure with 2 subplots
+    fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+    
+    # Get model predictions
+    predictions = batch_predict(model, points, batch_size=batch_size)
+    
+    # Convert tensors to numpy for plotting
+    points_np = points.cpu().numpy()
+    sdf_values_np = sdf_values.cpu().numpy()
+    predictions_np = predictions.cpu().numpy()
+    
+    # Plot ground truth
+    sc1 = axs[0].scatter(points_np[:, 0], points_np[:, 1], c=sdf_values_np, cmap='viridis', s=1)
+    axs[0].set_title(f'Ground Truth')
+    axs[0].set_xlabel('X')
+    axs[0].set_ylabel('Y')
+    fig.colorbar(sc1, ax=axs[0])
+    
+    # Plot predictions
+    sc2 = axs[1].scatter(points_np[:, 0], points_np[:, 1], c=predictions_np, cmap='viridis', s=1)
+    axs[1].set_title(f'Prediction (Epoch {epoch}, Loss {loss:.6f})')
+    axs[1].set_xlabel('X')
+    axs[1].set_ylabel('Y')
+    fig.colorbar(sc2, ax=axs[1])
+    
+    # Save the figure
+    plt.tight_layout()
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, f'progress_epoch_{epoch:04d}.png'), dpi=150)
+    plt.close(fig)
+    
+    # Log to TensorBoard if writer is provided
+    if writer is not None:
+        writer.add_scalar('Loss/train', loss, epoch)
+
+
+def generate_optimizer(parameters, learning_rate, name="lion"):
+    """
+    Generate an optimizer for training.
+    
+    Args:
+        parameters: Model parameters to optimize
+        learning_rate: Learning rate for the optimizer
+        name: Optimizer name (lion or adam)
+        
+    Returns:
+        Optimizer instance
+    """
+    if name.lower() == "lion":
+        return Lion(parameters, lr=learning_rate, weight_decay=0)
+    else:
+        return optim.Adam(parameters, lr=learning_rate, weight_decay=0)
+
+
+@hydra.main(config_path="config", config_name="implicit_3d")
+def main(cfg: DictConfig):
+    """
+    Main function for training an implicit 3D representation or rendering from a pre-trained model.
+    
+    Args:
+        cfg: Hydra configuration
+    """
+    # Get output directory from Hydra
+    output_dir = HydraConfig.get().runtime.output_dir
+    
+    # Set up logging
+    logging.basicConfig(level=logging.INFO)
+    logger.info(f"Config: {OmegaConf.to_yaml(cfg)}")
+    logger.info(f"Output directory: {output_dir}")
+    
+    # Set device
+    device = torch.device(cfg.device if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
+    
+    # Download and load 3D model
+    model_path = download_model(cfg.model_url, os.path.join(output_dir, "model.obj"))
+    mesh = load_mesh(model_path)
+    
+    # Create model
+    model = Implicit3DNetwork(
+        input_dim=3,
+        output_dim=1,
+        hidden_layers=cfg.hidden_layers,
+        rotations=cfg.rotations,
+        num_points=cfg.num_points,
+        position_range=cfg.position_range,
+        anti_periodic=cfg.anti_periodic,
+        position_init=cfg.position_init,
+        rotation_layers=cfg.rotation_layers,
+    ).to(device)
+    
+    # In render_only mode, try to load the original config first
+    if cfg.render_only and cfg.model_path is not None:
+        model_dir = os.path.dirname(os.path.abspath(cfg.model_path))
+        hydra_config_path = os.path.join(model_dir, ".hydra", "config.yaml")
+        
+        if os.path.exists(hydra_config_path):
+            logger.info(f"Loading original config from {hydra_config_path}")
+            try:
+                # Load the original config
+                original_cfg = OmegaConf.load(hydra_config_path)
+                
+                # Update model configuration from original config
+                # This ensures we use the same model architecture as during training
+                for key in ['hidden_layers', 'rotations', 'rotation_layers', 'num_points', 
+                           'position_range', 'anti_periodic', 'position_init', 'mesh_threshold']:
+                    if key in original_cfg:
+                        setattr(cfg, key, original_cfg[key])
+                        logger.info(f"Using original config value for {key}: {original_cfg[key]}")
+            except Exception as e:
+                logger.warning(f"Failed to load or apply original config: {e}")
+                logger.warning("Continuing with current config")
+        else:
+            logger.warning(f"Original config not found at {hydra_config_path}")
+    
+    # Recreate the model with the potentially updated config
+    model = Implicit3DNetwork(
+        input_dim=3,
+        output_dim=1,
+        hidden_layers=cfg.hidden_layers,
+        rotations=cfg.rotations,
+        num_points=cfg.num_points,
+        position_range=cfg.position_range,
+        anti_periodic=cfg.anti_periodic,
+        position_init=cfg.position_init,
+        rotation_layers=cfg.rotation_layers,
+    ).to(device)
+    
+    # Now load the pre-trained model if specified
+    if cfg.model_path is not None:
+        logger.info(f"Loading pre-trained model from {cfg.model_path}")
+        try:
+            model.load_state_dict(torch.load(cfg.model_path, map_location=device))
+            logger.info("Model loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load model: {e}")
+            if cfg.render_only:
+                logger.error("Cannot continue in render_only mode without a valid model")
+                return
+    
+    # Create TensorBoard writer
+    writer = SummaryWriter(log_dir=os.path.join(output_dir, "tensorboard"))
+    
+    # If render_only mode, skip training and just render high-res mesh
+    if cfg.render_only:
+        logger.info("Running in render-only mode (no training)")
+        model.eval()
+        
+        # Determine output directory - use the same directory as the model file if provided
+        if cfg.model_path is not None:
+            # Use the directory of the model file for outputs
+            model_dir = os.path.dirname(os.path.abspath(cfg.model_path))
+            if model_dir:
+                output_dir = model_dir
+                logger.info(f"Using model directory for outputs: {output_dir}")
+        
+        # Extract high-resolution mesh
+        logger.info(f"Extracting high-resolution mesh with resolution {cfg.high_res_resolution}...")
+        vertices, faces = extract_mesh(
+            model, 
+            resolution=cfg.high_res_resolution, 
+            threshold=cfg.mesh_threshold,
+            device=device
+        )
+        
+        # Get base filename from model path if available
+        if cfg.model_path is not None:
+            base_filename = os.path.splitext(os.path.basename(cfg.model_path))[0]
+            high_res_mesh_file = os.path.join(output_dir, f"{base_filename}_high_res.obj")
+            render_output_file = os.path.join(output_dir, f"{base_filename}_{cfg.render_output_file}")
+        else:
+            high_res_mesh_file = os.path.join(output_dir, "high_res_mesh.obj")
+            render_output_file = os.path.join(output_dir, cfg.render_output_file)
+        
+        # Save mesh
+        mesh = save_mesh(vertices, faces, high_res_mesh_file)
+        
+        if mesh is not None:
+            # Render high-resolution image
+            logger.info(f"Rendering high-resolution mesh to {render_output_file}")
+            render_high_res_mesh(mesh, render_output_file)
+        
+        return
+    
+    # For training mode, generate point cloud and create dataloader
+    logger.info("Generating point cloud for training...")
+    points, sdf_values = generate_point_cloud(
+        mesh, 
+        num_points=cfg.num_mesh_points, 
+        signed_distance=True, 
+        normalize=True
+    )
+    
+    # Move data to device
+    points = points.to(device)
+    sdf_values = sdf_values.to(device)
+    
+    # Create dataset and dataloader
+    dataset = TensorDataset(points, sdf_values)
+    dataloader = DataLoader(
+        dataset, 
+        batch_size=cfg.batch_size, 
+        shuffle=True
+    )
+    
+    # Create optimizer
+    optimizer = generate_optimizer(
+        model.parameters(), 
+        learning_rate=cfg.learning_rate,
+        name=cfg.optimizer
+    )
+    
+    # Create loss function
+    loss_fn = nn.MSELoss()
+    
+    # Training loop
+    best_loss = float('inf')
+    
+    for epoch in range(cfg.epochs):
+        model.train()
+        epoch_loss = 0.0
+        
+        # Process batches
+        for batch_idx, (batch_points, batch_sdf) in enumerate(tqdm(dataloader, desc=f"Epoch {epoch}")):
+            # Forward pass
+            predictions = model(batch_points)
+            loss = loss_fn(predictions, batch_sdf)
+            
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            # Update statistics
+            epoch_loss += loss.item()
+            
+            # Adaptive point management (every N batches)
+            if cfg.adaptive and batch_idx % cfg.adaptive_frequency == 0:
+                with torch.no_grad():
+                    # Calculate error
+                    # error = torch.abs(predictions - batch_sdf)
+                    
+                    # Find point with largest error and add a point there
+                    # model.global_error(error, batch_points)
+                    
+                    # Move smoothest point
+                    if cfg.move_smoothest and epoch > cfg.move_smoothest_after:
+                        model.move_smoothest()
+                        optimizer = generate_optimizer(
+                            parameters=model.parameters(),
+                            learning_rate=cfg.learning_rate,
+                            name=cfg.optimizer
+                        )
+        
+        # Calculate average loss for the epoch
+        avg_loss = epoch_loss / len(dataloader)
+        logger.info(f"Epoch {epoch}: Loss = {avg_loss:.6f}")
+        
+        # Log loss to TensorBoard every epoch
+        writer.add_scalar('Loss/train', avg_loss, epoch)
+        
+        # Save progress visualization
+        if epoch % cfg.save_frequency == 0:
+            save_progress_image(
+                model, 
+                points, 
+                sdf_values, 
+                epoch, 
+                avg_loss, 
+                os.path.join(output_dir, "progress"),
+                batch_size=cfg.batch_size,
+                writer=writer
+            )
+            
+            # Extract and save mesh
+            if cfg.extract_mesh:
+                vertices, faces = extract_mesh(
+                    model, 
+                    resolution=cfg.mesh_resolution, 
+                    threshold=cfg.mesh_threshold,
+                    device=device
+                )
+                save_mesh(
+                    vertices, 
+                    faces, 
+                    os.path.join(output_dir, f"mesh_epoch_{epoch:04d}.obj")
+                )
+                
+                # Add mesh to TensorBoard
+                add_mesh_to_tensorboard(
+                    writer,
+                    vertices,
+                    faces,
+                    epoch,
+                    tag="3d_mesh"  # Use consistent tag for slider effect
+                )
+        
+        # Save best model
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(model.state_dict(), os.path.join(output_dir, "best_model.pt"))
+        
+        # Save checkpoint
+        if epoch % cfg.checkpoint_frequency == 0:
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': avg_loss,
+            }, os.path.join(output_dir, f"checkpoint_epoch_{epoch:04d}.pt"))
+    
+    # Save final model
+    torch.save(model.state_dict(), os.path.join(output_dir, "final_model.pt"))
+    
+    # Extract final mesh
+    if cfg.extract_mesh:
+        vertices, faces = extract_mesh(
+            model, 
+            resolution=cfg.mesh_resolution, 
+            threshold=cfg.mesh_threshold,
+            device=device
+        )
+        mesh = save_mesh(vertices, faces, os.path.join(output_dir, "final_mesh.obj"))
+        
+        # Render high-resolution mesh if enabled
+        if cfg.render_high_res and mesh is not None:
+            logger.info("Rendering high-resolution mesh at the end of training...")
+            
+            # Extract high-resolution mesh
+            logger.info(f"Extracting high-resolution mesh with resolution {cfg.high_res_resolution}...")
+            hr_vertices, hr_faces = extract_mesh(
+                model, 
+                resolution=cfg.high_res_resolution, 
+                threshold=cfg.mesh_threshold,
+                device=device
+            )
+            
+            # Save high-resolution mesh
+            high_res_mesh_file = os.path.join(output_dir, "high_res_mesh.obj")
+            hr_mesh = save_mesh(hr_vertices, hr_faces, high_res_mesh_file)
+            
+            if hr_mesh is not None:
+                # Render high-resolution image
+                render_output_file = os.path.join(output_dir, cfg.render_output_file)
+                logger.info(f"Rendering high-resolution mesh to {render_output_file}")
+                render_high_res_mesh(hr_mesh, render_output_file)
+        
+        # Add final mesh to TensorBoard
+        add_mesh_to_tensorboard(
+            writer,
+            vertices,
+            faces,
+            cfg.epochs,
+            tag="3d_mesh"  # Use consistent tag for slider effect
+        )
+    
+    # Close TensorBoard writer
+    writer.close()
+    
+    logger.info("Training completed!")
+
+
+if __name__ == "__main__":
+    main()
