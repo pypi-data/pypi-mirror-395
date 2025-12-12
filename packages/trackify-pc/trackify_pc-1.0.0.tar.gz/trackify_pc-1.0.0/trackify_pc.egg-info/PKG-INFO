@@ -1,0 +1,277 @@
+Metadata-Version: 2.4
+Name: trackify-pc
+Version: 1.0.0
+Summary: A comprehensive PC activity tracking and productivity analysis system
+Home-page: https://github.com/yourusername/trackify
+Author: Your Name
+Author-email: Your Name <your.email@example.com>
+Maintainer-email: Your Name <your.email@example.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/yourusername/trackify
+Project-URL: Documentation, https://github.com/yourusername/trackify#readme
+Project-URL: Repository, https://github.com/yourusername/trackify
+Project-URL: Bug Tracker, https://github.com/yourusername/trackify/issues
+Keywords: activity,tracking,productivity,time-management,windows,monitoring
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: Topic :: Office/Business :: Scheduling
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn[standard]>=0.32.0
+Requires-Dist: sqlalchemy>=2.0.36
+Requires-Dist: python-multipart>=0.0.20
+Requires-Dist: pydantic>=2.10.0
+Requires-Dist: psutil>=6.1.0
+Requires-Dist: pywin32>=307
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# Trackify
+
+A comprehensive activity tracking system that monitors your computer usage, categorizes your activities, and provides detailed analytics about your productivity.
+
+## Overview
+
+Trackify consists of three main components:
+
+1. **Activity Tracker** - Background service that monitors active windows and logs activity
+2. **Backend API** - FastAPI server providing analytics endpoints
+3. **Frontend Dashboard** - React-based web interface for visualizing your activity data
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.8+ (with virtual environment recommended)
+- Node.js 16+ and npm (for frontend)
+
+### Installation
+
+1. **Clone or navigate to the project directory:**
+
+```powershell
+cd S:\Trackify
+```
+
+2. **Install backend dependencies:**
+
+```powershell
+pip install -r backend\requirements.txt
+```
+
+3. **Install frontend dependencies:**
+
+```powershell
+cd frontend
+npm install
+cd ..
+```
+
+### Running the Full System
+
+Use the provided PowerShell script to start all components:
+
+```powershell
+.\start.ps1
+```
+
+This will launch:
+- Activity tracker (background monitoring)
+- Backend API server (http://localhost:8000)
+- Frontend development server (http://localhost:5173)
+
+## Components
+
+### 1. Activity Tracker
+
+Monitors your active window every second and logs:
+- Application name (e.g., `chrome.exe`, `Code.exe`)
+- Window title
+- Duration spent
+- Auto-assigned category (Work, Learning, Entertainment, etc.)
+
+**Documentation:** See [tracker/README.md](tracker/README.md)
+
+**Manual start:**
+```powershell
+.venv\Scripts\python.exe tracker\main.py
+```
+
+### 2. Backend API
+
+FastAPI server providing RESTful endpoints for analytics:
+
+- `/api/summary?date=YYYY-MM-DD` - Daily productivity summary
+- `/api/apps?date=YYYY-MM-DD` - Time breakdown by application
+- `/api/raw?date=YYYY-MM-DD` - Raw activity logs
+- `/api/range?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` - Date range summary
+
+**Documentation:** See [backend/README.md](backend/README.md)
+
+**Manual start:**
+```powershell
+.venv\Scripts\python.exe run_backend.py
+```
+
+### 3. Frontend Dashboard
+
+Modern React + TypeScript interface with:
+- Interactive charts and visualizations
+- Date range selector
+- Productivity metrics
+- Application usage breakdown
+- Category distribution
+
+**Documentation:** See [frontend/README.md](frontend/README.md)
+
+**Manual start:**
+```powershell
+cd frontend
+npm run dev
+```
+
+## Configuration
+
+### Category Mapping
+
+Customize how applications are categorized by editing `backend/config/categories.json`:
+
+```json
+{
+  "categories": {
+    "Work": {
+      "apps": ["code.exe", "pycharm64.exe"],
+      "keywords": ["github", "jira", "documentation"]
+    },
+    "Learning": {
+      "apps": ["kindle.exe"],
+      "keywords": ["tutorial", "course", "udemy"]
+    }
+  },
+  "default_category": "Other",
+  "productivity_categories": ["Work", "Learning"]
+}
+```
+
+### Tracking Interval
+
+Adjust polling frequency in `tracker/main.py` (default: 1 second).
+
+## Data Storage
+
+- **Database:** SQLite database stored in `data/trackify.db`
+- **Schema:** Automatically created on first run
+- **Privacy:** All data is stored locally on your machine
+
+## Project Structure
+
+```
+Trackify/
+├── README.md                 # This file
+├── start.ps1                # Launch script for all components
+├── run_backend.py           # Backend entry point
+├── DEVELOPER_DOCS.md        # Developer documentation
+├── SYSTEM_OVERVIEW.md       # System architecture overview
+├── backend/                 # FastAPI server
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── config/
+│   ├── database/
+│   ├── models/
+│   ├── routes/
+│   └── services/
+├── frontend/                # React dashboard
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
+├── tracker/                 # Activity monitoring service
+│   └── main.py
+└── data/                    # SQLite database storage
+    └── trackify.db
+```
+
+## Development
+
+### Backend Development
+
+```powershell
+cd backend
+.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
+```
+
+### Frontend Development
+
+```powershell
+cd frontend
+npm run dev
+```
+
+### Testing
+
+See [QUICK_TEST.md](QUICK_TEST.md) for testing procedures.
+
+## API Documentation
+
+Once the backend is running, visit:
+- Interactive API docs: http://localhost:8000/docs
+- Alternative docs: http://localhost:8000/redoc
+
+## Features
+
+- ✅ Real-time activity tracking
+- ✅ Automatic categorization
+- ✅ Productivity scoring
+- ✅ Daily and range-based analytics
+- ✅ Visual dashboard with charts
+- ✅ Local-first data storage
+- ✅ Customizable categories
+- ✅ CORS-enabled API
+
+## Troubleshooting
+
+### Tracker not detecting windows
+- Ensure you're running with appropriate permissions
+- Check that pywin32 is properly installed
+
+### Backend API not responding
+- Verify port 8000 is not in use
+- Check `data/trackify.db` exists and is writable
+- Review console output for error messages
+
+### Frontend can't connect to backend
+- Confirm backend is running on http://localhost:8000
+- Check browser console for CORS errors
+- Verify API endpoint in `frontend/src/api.ts`
+
+## Contributing
+
+1. Review [DEVELOPER_DOCS.md](DEVELOPER_DOCS.md) for architecture details
+2. Make your changes
+3. Test thoroughly using [QUICK_TEST.md](QUICK_TEST.md)
+4. Submit pull request with clear description
+
+## License
+
+MIT License - feel free to use and modify for personal or commercial use.
+
+## Privacy
+
+All activity data is stored locally on your machine. No data is transmitted to external servers.
