@@ -1,0 +1,92 @@
+stages:
+  - unittest
+  - linting
+  - deploy
+
+.unittest_template: &unittest_template
+  stage: unittest
+  before_script:
+    - git submodule sync
+    - git config submodule.tests/data.url https://gitlab-ci-token:${CI_JOB_TOKEN}@git.astron.nl/RD/trap_test_data.git
+    - git submodule update --init --force --remote
+    - pip install --upgrade pip
+    - pip install -e ./[test,view] # install view because doctest checks all trap modules including visualize.py
+  script:
+    - python -m pytest tests trap --doctest-modules --verbose --durations=10 --cov --cov-report term --cov-report xml:coverage.xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    expire_in: 1 week
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+unittest_python3_10:
+  <<: *unittest_template
+  image: python:3.10
+
+unittest_python3_11:
+  <<: *unittest_template
+  image: python:3.11
+
+unittest_python3_12:
+  <<: *unittest_template
+  image: python:3.12
+
+mypy:
+  stage: linting
+  image: python:3.11
+  before_script:
+    - pip install --upgrade pip
+    - pip install mypy types-toml
+  script:
+    - mypy trap
+
+black:
+  stage: linting
+  image: python:3.11
+  before_script:
+    - pip install --upgrade pip
+    - pip install black
+  script:
+    - black --check trap tests
+
+isort:
+  stage: linting
+  image: python:3.11
+  before_script:
+    - pip install --upgrade pip
+    - pip install isort
+  script:
+    - isort --check-only trap tests
+
+wordwarden:
+  stage: linting
+  image: ubuntu:latest
+  script:
+    ### ============================================================ ###
+    # It looks like we run into rate limitations when using the default
+    # Ubuntu APT server, resulting in HTTP 403 errors.
+    # Use "nl.archive.ubuntu.com", instead of "archive.ubuntu.com".
+    - sed -ri "s/(archive\.ubuntu\.com)/nl.\1/" /etc/apt/sources.list
+    ### ============================================================ ###
+    - apt update
+    - apt install build-essential -y
+    - apt install curl -y
+    - curl https://sh.rustup.rs -sSf | sh -s -- -y # Install Rust
+    - . "$HOME/.cargo/env" # Source Cargo so we can call it
+    - cargo install word_warden
+    - word_warden $(ls trap/*.py tests/*.py) "breakpoint()" "set_trace()" "WIP" "nocheckin" # wordwarden:skip-line
+
+deploy:
+  stage: deploy
+  image: python:3.11
+  before_script:
+    - pip install --upgrade pip
+    - pip install -e ./[build]
+  script:
+    - python3 -m build
+    - twine upload --verbose --username __token__ --password $PyPI_DEPLOY_TOKEN dist/*
+  only:
+    - tags
+  when: on_success

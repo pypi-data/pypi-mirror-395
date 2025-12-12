@@ -1,0 +1,62 @@
+[project]
+name = "trap"
+dynamic = ["version"]
+description = """The Transients Pipeline (or 'TraP') is a Python based system for detecting and responding to transient and variable sources in a stream of astronomical images."""
+dependencies = [
+    "radio-pyse==0.7.0",
+    "numba<0.62.0", # https://github.com/transientskp/pyse/issues/165
+    "numpy",
+    "pandas",
+    "sqlalchemy",
+    "psycopg2-binary",
+    'toml; python_version < "3.11"',
+    "dask[distributed]",
+]
+authors = [{ name = "Timo Millenaar", email = "millenaar@astron.com" }]
+license = { file = "LICENSE" }
+readme = "README.md"
+keywords = ["trap", "transients", "astronomy", "tkp"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+homepage = "https://git.astron.nl/RD/trap"
+repository = "https://git.astron.nl/RD/trap"
+
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "trap/_version.py"
+
+[project.optional-dependencies]
+doc = ["sphinx", "sphinx_rtd_theme", "sphinx-gallery", "matplotlib"]
+test = ["pytest", "pytest-cov", "pre-commit", "black", "isort", "mypy", "types-toml"]
+build = ["build", "setuptools-scm", "twine"]
+view = ["matplotlib", "pygfx", "glfw", "PyQt5"]
+
+[tool.setuptools]
+packages = ["trap"]
+
+[project.scripts]
+trap-run = "trap.cli:run_batch"
+trap-view = "trap.cli:view"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["trap"]
+
+[tool.mypy]
+ignore_missing_imports = true
+allow_redefinition = true
