@@ -1,0 +1,42 @@
+[project]
+name = "virtuoso-utilities"
+version = "1.8.0"
+description = "A collection of Python utilities for interacting with OpenLink Virtuoso."
+authors = [
+    {name = "arcangelo7",email = "arcangelo.massari@unibo.it"}
+]
+license = {text = "ISC"}
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "psutil (>=7.0.0,<8.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)",
+]
+
+[project.scripts]
+virtuoso-launch = "virtuoso_utilities.launch_virtuoso:main"
+virtuoso-native-launch = "virtuoso_utilities.native_entrypoint:main"
+virtuoso-bulk-load = "virtuoso_utilities.bulk_load:main"
+virtuoso-dump = "virtuoso_utilities.dump_quadstore:main"
+virtuoso-rebuild-index = "virtuoso_utilities.rebuild_fulltext_index:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["virtuoso_utilities"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "isort>=6.1.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-timeout>=2.4.0",
+]
