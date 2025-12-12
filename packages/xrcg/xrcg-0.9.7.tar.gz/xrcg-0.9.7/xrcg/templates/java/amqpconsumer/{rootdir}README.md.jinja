@@ -1,0 +1,553 @@
+{%- import "util.jinja.include" as util -%}
+{%- import "cloudevents.jinja.include" as cloudEvents -%}
+{%- set messagegroups = root.messagegroups %}
+{% for messagegroupid, messagegroup in messagegroups.items() -%}
+{%- set groupname = messagegroupid | pascal -%}
+{%- set class_name = (groupname | strip_namespace) + "Consumer" %}
+# {{ project_name | pascal }} - AMQP 1.0 Consumer
+
+Auto-generated Java consumer for receiving CloudEvents via AMQP 1.0 protocol.
+
+## Overview
+
+This library provides a type-safe AMQP 1.0 consumer client for {{ groupname }} message group. Supports Apache Qpid Proton-J for enterprise messaging.
+
+## What is AMQP 1.0?
+
+**AMQP (Advanced Message Queuing Protocol) 1.0** is an open standard for business messaging that supports:
+- **Message queuing** for reliable asynchronous communication
+- **Request/response** and publish/subscribe patterns
+- **Message durability** with persistent storage
+- **Transactions** and flow control
+
+**Supported AMQP 1.0 Brokers:**
+- Apache ActiveMQ Artemis (native AMQP 1.0)
+- Apache Qpid (native AMQP 1.0)
+- Azure Service Bus (native AMQP 1.0)
+- RabbitMQ (with AMQP 1.0 plugin - [setup guide](https://github.com/clemensv/xregistry-cli/blob/main/docs/rabbitmq_amqp_setup.md))
+
+**Note for RabbitMQ users:** RabbitMQ requires the AMQP 1.0 plugin to be enabled. See the [RabbitMQ AMQP 1.0 Setup Guide](https://github.com/clemensv/xregistry-cli/blob/main/docs/rabbitmq_amqp_setup.md) for detailed instructions.
+
+## Quick Start
+
+### 1. Add Dependency
+
+**Maven:**
+```xml
+<dependency>
+    <groupId>{{ groupid }}</groupId>
+    <artifactId>{{ project_name | snake }}</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+**Gradle:**
+```gradle
+implementation '{{ groupid }}:{{ project_name | snake }}:1.0.0'
+```
+
+### 2. Receive Messages
+
+```java
+import {{ project_name | snake }}.{{ class_name }};
+
+String connectionString = "amqp://localhost:5672";
+String queueName = "events";
+
+{{ class_name }} consumer = new {{ class_name }}(connectionString, queueName);
+
+{%- set first_message = messagegroup.messages.items() | first %}
+{%- if first_message %}
+{%- set messageid, message = first_message %}
+{%- set messagename = messageid | pascal | strip_namespace %}
+{%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+{%- set is_cloudevent = cloudEvents.isCloudEvent(message) %}
+
+// Register handler for {{ messagename }}
+consumer.on{{ messagename }}((context, {% if is_cloudevent %}cloudEvent{% else %}message{% endif %}, data) -> {
+    // Process message
+    System.out.println("Received: " + data);
+    
+    // Accept message (removes from queue)
+    context.accept();
+});
+{%- endif %}
+
+// Start receiving
+consumer.start();
+
+// Later: stop gracefully
+consumer.stop();
+```
+
+## Available Event Handlers
+
+{% for messageid, message in messagegroup.messages.items() -%}
+{%- set messagename = messageid | pascal | strip_namespace %}
+{%- set message_body_type = util.get_data_type(data_project_name, root, message) %}
+{%- set is_cloudevent = cloudEvents.isCloudEvent(message) %}
+### on{{ messagename }}
+
+```java
+consumer.on{{ messagename }}((context, {% if is_cloudevent %}cloudEvent{% else %}message{% endif %}, data) -> {
+    // Process event: data is {{ message_body_type }}
+    context.accept();  // or context.reject() / context.release()
+});
+```
+{% if message.description %}
+{{ message.description }}
+{% endif %}
+
+{% endfor %}
+
+## Message Settlement
+
+The MessageContext parameter allows you to control message disposition:
+
+```java
+// Accept: Message processed successfully (removes from queue)
+context.accept();
+
+// Reject: Permanent failure, move to dead letter queue
+context.reject("error-condition", "Description of error");
+
+// Release: Temporary failure, return to queue for redelivery
+context.release();
+
+// Modify: Mark message as modified with delivery failure flags
+context.modify(deliveryFailed, undeliverableHere);
+```
+
+**Important:** Every handler MUST call one of these methods. If you don't, the message will be automatically rejected with an error.
+
+## Connection Management
+
+### Using try-with-resources (Recommended)
+
+The consumer implements `AutoCloseable` for automatic resource cleanup:
+
+```java
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+
+try ({{ class_name }} consumer = {{ class_name }}.createConsumer(
+    credentials,
+    options,
+    List.of(URI.create("amqp://localhost:5672/queue"))
+)) {
+    // Register handlers
+{%- if first_message %}
+    consumer.on{{ messagename }}((context, {% if is_cloudevent %}cloudEvent{% else %}message{% endif %}, data) -> {
+        System.out.println("Received: " + data);
+        context.accept();
+    });
+{%- endif %}
+    
+    // Start consuming
+    consumer.start();
+    
+    // Process messages for specified duration
+    Thread.sleep(60000); // 60 seconds
+    
+} // Consumer automatically stopped and resources released
+```
+
+### Graceful Shutdown
+
+Handle shutdown signals for clean resource cleanup:
+
+```java
+import java.util.concurrent.CountDownLatch;
+
+public class GracefulConsumer {
+    private static final CountDownLatch shutdownLatch = new CountDownLatch(1);
+    private static {{ class_name }} consumer;
+    
+    public static void main(String[] args) {
+        // Register shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("Shutdown signal received. Stopping consumer...");
+            try {
+                if (consumer != null) {
+                    consumer.stop();
+                    logger.info("Consumer stopped successfully");
+                }
+            } catch (Exception e) {
+                logger.error("Error during shutdown: " + e.getMessage(), e);
+            }
+            shutdownLatch.countDown();
+        }));
+        
+        try {
+            // Create and start consumer
+            consumer = {{ class_name }}.createConsumer(
+                credentials,
+                options,
+                endpoints
+            );
+            
+            // Register handlers
+            registerHandlers(consumer);
+            
+            // Start consuming
+            consumer.start();
+            logger.info("Consumer started. Press Ctrl+C to stop.");
+            
+            // Wait for shutdown signal
+            shutdownLatch.await();
+            
+        } catch (Exception e) {
+            logger.error("Fatal error: " + e.getMessage(), e);
+            System.exit(1);
+        }
+    }
+}
+```
+
+### Connection Pool Management
+
+For high-throughput scenarios, manage multiple consumer instances:
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class ConsumerPool {
+    private final List<{{ class_name }}> consumers = new ArrayList<>();
+    private final ExecutorService executor;
+    private final int poolSize;
+    
+    public ConsumerPool(int poolSize) {
+        this.poolSize = poolSize;
+        this.executor = Executors.newFixedThreadPool(poolSize);
+    }
+    
+    public void start() throws Exception {
+        for (int i = 0; i < poolSize; i++) {
+            {{ class_name }} consumer = {{ class_name }}.createConsumer(
+                credentials,
+                options,
+                endpoints
+            );
+            
+            // Register handlers
+            registerHandlers(consumer);
+            
+            // Start in thread pool
+            executor.submit(() -> {
+                try {
+                    consumer.start();
+                } catch (Exception e) {
+                    logger.error("Consumer " + i + " failed: " + e.getMessage(), e);
+                }
+            });
+            
+            consumers.add(consumer);
+        }
+        
+        logger.info("Started " + poolSize + " consumer instances");
+    }
+    
+    public void stop() throws Exception {
+        logger.info("Stopping consumer pool...");
+        
+        for ({{ class_name }} consumer : consumers) {
+            try {
+                consumer.stop();
+            } catch (Exception e) {
+                logger.error("Error stopping consumer: " + e.getMessage(), e);
+            }
+        }
+        
+        executor.shutdown();
+        logger.info("Consumer pool stopped");
+    }
+}
+```
+
+## Authentication
+
+### SASL PLAIN (Username/Password)
+
+```java
+EndpointCredential credential = EndpointCredential.createPlain("username", "password");
+
+{{ class_name }} consumer = {{ class_name }}.createConsumer(
+    credential,
+    options,
+    List.of(URI.create("amqp://host:5672/queue"))
+);
+```
+
+### SASL ANONYMOUS
+
+```java
+EndpointCredential credential = EndpointCredential.createAnonymous();
+
+{{ class_name }} consumer = {{ class_name }}.createConsumer(
+    credential,
+    options,
+    List.of(URI.create("amqp://host:5672/queue"))
+);
+```
+
+### TLS/SSL Connection
+
+```java
+import java.util.Map;
+
+Map<String, String> options = Map.of(
+    "sasl-mechanism", "PLAIN",
+    "transport-secure", "true"
+);
+
+EndpointCredential credential = EndpointCredential.createPlain("username", "password");
+
+{{ class_name }} consumer = {{ class_name }}.createConsumer(
+    credential,
+    options,
+    List.of(URI.create("amqps://host:5671/queue"))  // Note: amqps scheme
+);
+```
+
+## Error Handling
+
+### Message Processing Errors
+
+Handle errors within message handlers using try-catch blocks:
+
+```java
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+{%- if first_message %}
+private static final Logger logger = LogManager.getLogger();
+
+consumer.on{{ messagename }}((context, {% if is_cloudevent %}cloudEvent{% else %}message{% endif %}, data) -> {
+    try {
+        // Validate message data
+        if (data == null) {
+            logger.warn("Empty data in message");
+            context.reject("validation-error", "Data is null");
+            return;
+        }
+        
+        // Process message
+        processBusinessLogic(data);
+        
+        // Acknowledge success
+        context.accept();
+        logger.info("Successfully processed message");
+        
+    } catch (ValidationException e) {
+        // Data validation error - reject (don't retry)
+        logger.error("Invalid data: " + e.getMessage());
+        context.reject("validation-error", e.getMessage());
+        
+    } catch (TransientException e) {
+        // Transient error - release for retry
+        logger.warn("Transient error: " + e.getMessage());
+        context.release();
+        
+    } catch (Exception e) {
+        // Unknown error - log and reject
+        logger.error("Unexpected error: " + e.getMessage(), e);
+        context.reject("processing-error", e.getMessage());
+    }
+});
+{%- endif %}
+```
+
+### Connection Retry Logic
+
+Implement automatic reconnection with exponential backoff:
+
+```java
+import java.util.concurrent.TimeUnit;
+
+public class ResilientConsumer {
+    private static final int MAX_RETRIES = 5;
+    private static final long INITIAL_BACKOFF_MS = 1000;
+    
+    private {{ class_name }} consumer;
+    private int retryCount = 0;
+    
+    public void start() {
+        while (retryCount < MAX_RETRIES) {
+            try {
+                consumer = {{ class_name }}.createConsumer(
+                    credentials,
+                    options,
+                    endpoints
+                );
+                
+                // Register handlers
+                registerHandlers();
+                
+                // Start consuming
+                consumer.start();
+                
+                // Reset retry count on success
+                retryCount = 0;
+                logger.info("Consumer started successfully");
+                return;
+                
+            } catch (Exception e) {
+                retryCount++;
+                long backoff = INITIAL_BACKOFF_MS * (1L << (retryCount - 1));
+                backoff = Math.min(backoff, 60000); // Max 60 seconds
+                
+                logger.error("Connection failed (attempt " + retryCount + "/" + MAX_RETRIES + "): " + e.getMessage());
+                
+                if (retryCount < MAX_RETRIES) {
+                    logger.info("Retrying in " + backoff + "ms...");
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(backoff);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                } else {
+                    logger.error("Max retries reached. Giving up.");
+                    throw new RuntimeException("Failed to start consumer after " + MAX_RETRIES + " attempts", e);
+                }
+            }
+        }
+    }
+    
+    public void stop() throws Exception {
+        if (consumer != null) {
+            consumer.stop();
+        }
+    }
+}
+```
+
+### Dead Letter Queue Pattern
+
+Move failed messages to a dead letter queue:
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class ConsumerWithDLQ {
+    private {{ class_name }} mainConsumer;
+    private {{ class_name }} dlqProducer;
+    
+    public void setupConsumer() throws Exception {
+        mainConsumer = {{ class_name }}.createConsumer(
+            credentials,
+            options,
+            List.of(URI.create("amqp://localhost:5672/main-queue"))
+        );
+        
+{%- if first_message %}
+        mainConsumer.on{{ messagename }}((context, {% if is_cloudevent %}cloudEvent{% else %}message{% endif %}, data) -> {
+            try {
+                // Process message
+                processMessage(data);
+                context.accept();
+                
+            } catch (Exception e) {
+                logger.error("Processing failed, sending to DLQ: " + e.getMessage());
+                
+                try {
+                    // Send to dead letter queue with error metadata
+                    sendToDLQ({% if is_cloudevent %}cloudEvent{% else %}message{% endif %}, e.getMessage());
+                    
+                    // Reject original message
+                    context.reject("processing-failed", e.getMessage());
+                } catch (Exception dlqError) {
+                    logger.error("Failed to send to DLQ: " + dlqError.getMessage());
+                    // Release for retry if DLQ send fails
+                    context.release();
+                }
+            }
+        });
+{%- endif %}
+        
+        mainConsumer.start();
+    }
+    
+    private void sendToDLQ({% if is_cloudevent %}io.cloudevents.CloudEvent{% else %}org.apache.qpid.protonj2.client.Message<?>{% endif %} originalMessage, String errorMessage) throws Exception {
+        // Implementation to send message to DLQ with error metadata
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("error", errorMessage);
+        metadata.put("timestamp", System.currentTimeMillis());
+        // ... send to DLQ
+    }
+}
+```
+
+## Configuration Options
+
+```java
+{{ class_name }} consumer = {{ class_name }}.builder()
+    .connectionString("amqp://localhost:5672")
+    .queueName("events")
+    .prefetchCount(10)              // Message prefetch window
+    .maxRetries(3)                  // Reconnection attempts
+    .receiveTimeout(30000)          // Receive timeout (ms)
+    .autoAccept(false)              // Require manual settlement
+    .build();
+```
+
+## Testing
+
+```java
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+class {{ class_name }}Test {
+    @Test
+    void testReceiveMessage() throws Exception {
+        {{ class_name }} consumer = new {{ class_name }}(
+            "amqp://localhost:5672", "test-queue");
+        
+{%- if first_message %}
+        AtomicBoolean received = new AtomicBoolean(false);
+        consumer.on{{ messagename }}((context, {% if is_cloudevent %}cloudEvent{% else %}message{% endif %}, data) -> {
+            received.set(true);
+            context.accept();
+        });
+        
+        consumer.start();
+        
+        // Send test message...
+        
+        assertTrue(received.get(), "Message should be received");
+{%- endif %}
+    }
+}
+```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Connection refused | Verify broker is running and connection string is correct |
+| Authentication failed | Check username/password and SASL mechanism |
+| Messages not received | Verify queue name and message routing |
+| Memory leaks | Always call `consumer.stop()` to release resources |
+
+## Dependencies
+
+- Apache Qpid Proton-J 0.34+
+- CloudEvents Java SDK 2.5+
+- SLF4J 1.7+
+
+## Learn More
+
+- [AMQP 1.0 Specification](http://www.amqp.org/specification/1.0/amqp-org-download)
+- [Apache Qpid Proton-J](https://qpid.apache.org/proton/)
+- [CloudEvents Specification](https://cloudevents.io/)
+- [xRegistry CLI Documentation](https://github.com/xregistry/codegen)
+
+## Generated Code
+
+This code was auto-generated by [xRegistry CLI](https://github.com/xregistry/codegen).
+{% endfor %}

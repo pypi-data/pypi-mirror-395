@@ -1,0 +1,361 @@
+"""
+Dispatcher module for processing events from Apache Kafka.
+"""
+
+# pylint: disable=unused-import, line-too-long, missing-module-docstring, missing-function-docstring, missing-class-docstring, consider-using-f-string, trailing-whitespace, trailing-newlines
+
+{% import "cloudevents.jinja.include" as cloudEvents -%}
+{%- import "kafka.jinja.include" as kafka -%}
+{%- import "util.include.jinja" as util -%}
+{%- set messagegroups = root.messagegroups %}
+{%- set uses_cloudevents_message = (root | exists("envelope","CloudEvents/1.0")) %}
+{%- set uses_plain_kafka_message = (root | exists( "protocol", "kafka" )) %}
+{%- set uses_kafka_endpoint = (root | exists( "protocol", "kafka" )) %}
+{%- set function_name = project_name | pascal | strip_dots -%}
+
+import logging
+import asyncio
+from asyncio.events import AbstractEventLoop
+import threading
+from typing import Awaitable, Callable, List, Dict, Tuple
+from confluent_kafka import Consumer, KafkaException, Message
+from cloudevents.abstract import CloudEvent
+from cloudevents.kafka import from_binary, from_structured, KafkaMessage
+
+{%- set messagegroups = root.messagegroups %}
+{%- set imports = [] %}
+{%- for messagegroupid, message in messagegroups.items() -%}
+{%- set messagegroup = messagegroups[messagegroupid] -%}
+{%- for messageid, message in messagegroup.messages.items() -%}
+{%- set type_name = util.DeclareDataType(data_project_name, root, message) %}
+{%- if type_name != "object" %}
+{%- set class_name = type_name | strip_namespace %}
+{%- set import_statement = "from " + (data_project_name | dotunderscore | lower) + " import " + class_name %}
+{%- if import_statement not in imports %}
+{%- set _ = imports.append(import_statement) %}
+{{ import_statement }}
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+
+class DispatcherBase:
+    """
+    Base class for dispatching events. Handles CloudEvent detection and conversion.
+    """
+    {%- if uses_cloudevents_message %}
+    KAFKA_CLOUDEVENT_PREFIX = "ce_"
+
+    @staticmethod
+    def _is_cloud_event(headers: Dict[str, bytes]):
+        """
+        Checks if the headers indicate a CloudEvent.
+
+        Args:
+            headers: The message headers to check.
+
+        Returns:
+            True if the headers indicate a CloudEvent, False otherwise.
+        """
+        if "ce_id" in headers and "ce_type" in headers and "ce_source" in headers and "ce_specversion" in headers:
+            return True
+        elif "content-type" in headers and headers["content-type"].decode().startswith("application/cloudevents"):
+            return True
+        return False
+
+    @staticmethod
+    def _cloud_event_from_message(message: KafkaMessage) -> CloudEvent:
+        """
+        Converts message to a CloudEvent.
+
+        Args:
+            message: The Kafka message to convert.
+
+        Returns:
+            A CloudEvent object.
+        """
+        if message.headers and 'content-type' in message.headers:
+            content_type = message.headers['content-type'].decode()
+            if content_type.startswith('application/cloudevents'):
+                ce = from_structured(message)
+                if not 'datacontenttype' in ce:
+                    ce['datacontenttype'] = 'application/json'
+            else:
+                ce = from_binary(message)
+                ce['datacontenttype'] = message.headers['content-type'].decode()
+        else:
+            ce = from_binary(message)
+            ce['datacontenttype'] = 'application/json'
+        return ce
+    {%- endif %}
+
+    def parse_connection_string(self, connection_string: str) -> Tuple[Dict[str, str], str]:
+        """
+        Parse the connection string and extract bootstrap server, topic name, username, and password.
+
+        Args:
+            connection_string (str): The connection string.
+
+        Returns:
+            Tuple[Dict[str, str], str]: Kafka config, topic name
+        """
+        config_dict = {
+            'security.protocol': 'SASL_SSL',
+            'sasl.mechanisms': 'PLAIN',
+            'sasl.username': '$ConnectionString',
+            'sasl.password': connection_string.strip(),
+            'group.id': '$Default',
+            'auto.offset.reset': 'latest',
+            'enable.auto.commit': 'true'
+        }
+        kafka_topic = None
+        try:
+            for part in connection_string.split(';'):
+                if 'Endpoint' in part:
+                    config_dict['bootstrap.servers'] = part.split('=')[1].strip(
+                        '"').replace('sb://', '').replace('/', '')+':9093'
+                elif 'EntityPath' in part:
+                    kafka_topic = part.split('=')[1].strip('"')
+        except IndexError as e:
+            raise ValueError("Invalid connection string format") from e
+        return config_dict, kafka_topic
+
+    class ConsumerManager:
+        """ Manages a Kafka Consumer instance receive loop. """
+
+        def __init__(self, consumer: Consumer, dispatcher: 'DispatcherBase', topics: List[str]):
+            """ Initializes the ConsumerManager. """
+            self.consumer = consumer
+            self.dispatcher = dispatcher
+            self.topics = topics
+            self.running = False
+            self.loop: asyncio.AbstractEventLoop | None = None
+            self.thread: threading.Thread | None = None
+            self.started_event = threading.Event()
+            self.logger = logging.getLogger(__name__)
+
+        def __processing_loop(self, consumer, topics):
+            """
+            Main processing loop for the consumer.
+            """
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+            self.started_event.set()
+            self.loop.run_until_complete(self._async_processing_loop(consumer, topics))
+
+        async def _async_processing_loop(self, consumer, topics):
+            """
+            Async main processing loop for the consumer.
+            """
+            if self.running:
+                return
+            self.running = True
+
+            try:
+                consumer.subscribe(topics)
+                while self.running:
+                    msg = consumer.poll(timeout=1.0)
+                    if msg is None:
+                        continue
+                    if msg.error():
+                        raise KafkaException(msg.error())
+                    else:
+                        try:
+                            await self.dispatcher.process_message(consumer, msg)
+                        except Exception as e:
+                            logging.error(f"Error processing message: {e}")
+            finally:
+                # Close down consumer to commit final offsets.
+                consumer.close()
+
+        def run(self):
+            """ Runs the consumer in a separate thread. """
+            self.thread = threading.Thread(target=self.__processing_loop, args=(self.consumer, self.topics))
+            self.thread.start()
+            self.started_event.wait()  # Wait until the processing loop has started
+
+        def shutdown(self):
+            """ Shuts down the consumer and the event loop. """
+            self.running = False
+            if self.loop:
+                self.loop.call_soon_threadsafe(self.loop.stop)
+            if self.thread:
+                self.thread.join()
+
+        async def __aenter__(self):
+            """ Starts the consumer processing loop. """
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.run)
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            """ Handles the shutdown process. """
+            await asyncio.get_running_loop().run_in_executor(None, self.shutdown)
+
+        @classmethod
+        def create_consumer_manager(cls, kafka_config, dispatcher, topics):
+            """
+            Creates a Kafka Consumer and a ConsumerManager instance.
+
+            Args:
+                group_id: The consumer group id.
+                bootstrap_servers: The Kafka bootstrap servers.
+                dispatcher: The dispatcher instance to handle messages.
+                topics: List of topics to subscribe to.
+
+            Returns:
+                A ConsumerManager instance.
+            """
+
+
+            consumer = Consumer(kafka_config)
+            return cls(consumer, dispatcher, topics)
+
+    def create_consumer(self, kafka_config, topics: List[str]) -> ConsumerManager:
+        """
+        Creates a Kafka Consumer.
+
+        Args:
+            group_id: The consumer group id.
+            bootstrap_servers: The Kafka bootstrap servers.
+            topics: The list of topics to subscribe to.
+
+        Returns:
+            A ConsumerManager instance.
+        """
+        return DispatcherBase.ConsumerManager.create_consumer_manager(kafka_config, self, topics)
+
+    def create_consumer_from_connection_string(self, connection_string: str) -> ConsumerManager:
+        """
+        Creates a Kafka Consumer from a connection string.
+
+        Args:
+            connection_string: The connection string.
+
+        Returns:
+            A ConsumerManager instance.
+        """
+        kafka_config, kafka_topic = self.parse_connection_string(connection_string)
+        return DispatcherBase.ConsumerManager.create_consumer_manager(kafka_config, self, [kafka_topic])
+
+
+{% for messagegroupid, messagegroup in messagegroups.items() %}
+{%- set uses_cloudevents_message = (messagegroup | exists("envelope","CloudEvents/1.0")) %}
+{%- set uses_plain_kafka_message = (messagegroup | existswithout( "binding", "kafka", "format", "cloudevents" )) %}
+{%- set groupname = messagegroupid | pascal %}
+{%- set class_name = ( groupname | strip_dots )+"EventDispatcher" %}
+
+class {{ class_name }}(DispatcherBase):
+    """
+    Dispatcher for {{ groupname }} events.
+    """
+
+    def __init__(self):
+        """ Initializes the {{ groupname }} dispatcher. """
+        super().__init__()
+
+        {%- if uses_cloudevents_message %}
+        async def _unhandled_event_ce(_c, _m, _ce, _d ):
+            """ Default event handler """
+            pass
+        {%- endif %}
+
+        {%- if uses_plain_kafka_message %}
+        async def _unhandled_event(_c, _m, _d ):
+            """ Default event handler """
+            pass
+        {%- endif %}
+
+        {%- for messageid, message in messagegroup.messages.items() %}
+        {%- set dataType = util.DeclareDataType( data_project_name, root, message ) %}
+        {%- set message_id = messageid %}
+        {%- if message.description %}
+        # {{ message.description }}
+        {%- endif %}
+        {%- set isCloudEvent = (message | exists("envelope","CloudEvents/1.0")) %}
+        {%- set isKafka = (message | existswithout( "binding", "kafka", "format", "cloudevents" )) %}
+        self.{{ messageid | dotunderscore | snake }}_async: Callable[[Consumer, Message, {% if isCloudEvent %}CloudEvent, {%endif%}{{ dataType | strip_namespace }}], Awaitable[None]] = _unhandled_event{%if isCloudEvent%}_ce{%endif%}
+        {%- endfor %}
+
+    async def process_message(self, consumer: Consumer, msg: Message):
+        """
+        Processes an incoming message.
+
+        Args:
+            msg: The Kafka message to process.
+        """
+        {%- if uses_cloudevents_message %}
+        headers_dict: Dict[str, bytes] = {header[0]: header[1] for header in msg.headers()}
+        kafka_message = KafkaMessage(headers=headers_dict, key=msg.key(), value=msg.value())
+        if self._is_cloud_event(kafka_message.headers):
+            cloud_event = self._cloud_event_from_message(kafka_message)
+            await self._dispatch_cloud_event(consumer, msg, cloud_event)
+            return
+        {%- endif %}
+        {%- if uses_plain_kafka_message %}
+        await self._dispatch_message_data(consumer, msg)
+        {%- endif %}
+
+    {% if uses_cloudevents_message %}
+    async def _dispatch_cloud_event(self, consumer: Consumer, message: Message, cloud_event: CloudEvent):
+        """
+        Dispatches a CloudEvent to the appropriate handler.
+
+        Args:
+            message: The original message.
+            cloud_event: The CloudEvent object.
+        """
+        cloud_event_type = cloud_event['type']
+        switcher = {
+            {%- for messageid, message in messagegroup.messages.items() %}
+            {%- set message_id = messageid %}
+            {%- set isCloudEvent = (message | exists("envelope","CloudEvents/1.0")) %}
+            {%- set dataType = util.DeclareDataType( data_project_name, root, message ) %}
+            "{{ messageid }}": lambda: self.{{ messageid | dotunderscore | snake }}_async(consumer, message, cloud_event,
+            {%- if dataType != "object" %}
+                {{ dataType | strip_namespace }}.from_data(cloud_event.data, cloud_event["datacontenttype"])
+            {%- else %}
+            cloud_event.data
+            {%- endif %})
+            {%- if not loop.last %}
+            ,
+            {%- endif %}
+            {%- endfor %}
+        }
+        func = switcher.get(cloud_event_type, None)
+        if func:
+            await func()
+    {%- endif %}
+
+    {% if uses_plain_kafka_message %}
+    async def _dispatch_message_data(self, consumer: Consumer, message: Message):
+        """
+        Dispatches a Kafka message to the appropriate handler.
+
+        Args:
+            message: The message to dispatch.
+        """
+        
+        message_subject = message.headers.get("subject")
+        switcher = {
+            {%- for messageid, message in messagegroup.messages.items() if ((message | exists( "protocol", "kafka" )) and not (message | exists("envelope","CloudEvents/1.0"))) %}
+            {%- set message_id = messageid %}
+            {%- set isCloudEvent = (message | exists("envelope","CloudEvents/1.0")) %}
+            {%- set dataType = util.DeclareDataType( data_project_name, root, message ) %}
+            "{{ messageid }}": lambda: self.{{ messageid | dotunderscore | snake }}_async(message,
+            {%- if isCloudEvent %}None, {%- endif %}
+            {%- if dataType != "object" %}
+            {{ dataType }}.from_data(message.value(), message.headers.get('content-type'))
+            {%- else %}
+            message.value()
+            {%- endif %})
+            {%- if not loop.last %}
+            ,
+            {%- endif %}
+            {%- endfor %}
+        }
+        func = switcher.get(message_subject, None)
+        if func:
+            await func()
+    {%- endif %}
+{% endfor %}
