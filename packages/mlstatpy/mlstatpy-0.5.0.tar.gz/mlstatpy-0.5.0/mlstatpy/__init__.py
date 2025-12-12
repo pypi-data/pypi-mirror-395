@@ -1,0 +1,5 @@
+__version__ = "0.5.0"
+__author__ = "Xavier Dupré"
+__github__ = "https://github.com/sdpython/mlstatpy"
+__url__ = "https://sdpython.github.io/doc/mlstatpy/dev/"
+__license__ = "MIT License"
