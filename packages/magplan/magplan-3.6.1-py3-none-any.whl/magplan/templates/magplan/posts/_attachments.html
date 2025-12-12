@@ -1,0 +1,153 @@
+{% load filters %}
+{% load i18n %}
+
+{% if hide_upload_form is not True %}
+    <div class="row justify-content-end">
+        <div class="col-lg-8 col-xs-12">
+            <h4>Загрузить файлы</h4>
+            <p>Выберите файлы для загрузки к статье, а затем нажмите «Сохранить» внизу страницы.</p>
+        </div>
+        <div class="col-lg-4 col-xs-12">
+            <div class="card bg-light mb-3">
+                <div class="card-body">
+                    {#                                        <p class="card-text">Выберите файлы для загрузки к статье</p>#}
+                    <input type="file" name="attachments" id="customFile" multiple="true"/>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row justify-content-end">
+        <div class="col-lg-8 col-xs-12">
+            <p>Если нужно, можно загрузить заходник. Разрешены только изображения в формате JPEG. Используете
+                подготовленные изображения нужного размера.</p>
+        </div>
+        <div class="col-lg-4 col-xs-12">
+            <div class="card bg-light mb-3">
+                <div class="card-body">
+                    <input
+                            type="file"
+                            name="featured_image"
+                            id="featuredImageFile"
+                            accept="image/jpeg"
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% if hide_images is not True %}
+    {% if images|length > 0 %}
+        <section id="images">
+            <h4 style="display: inline-block;">{% trans "images" %}</h4>
+            <div class="row">
+                {% if featured_image %}
+                    <div class="col-6 col-sm-3 col-md-2 col-lg-2 col-xl-2" style="margin-bottom: 1rem;">
+
+                        <div class="card border-primary">
+                            <div class="card-img-top"
+                                 style="height: 5rem; background: url({{ image.file.url }}) 100% 100% no-repeat; background-size: cover;"
+                                 alt="Card image cap"></div>
+                            <div class="card-body  bg-light" style="padding: 0.5rem;">
+                                <p class="card-text">
+                                    <a href="{{ featured_image.file.url }}"
+                                       class="attachment-link"
+                                       data-id="{{ featured_image.id }}"
+                                       data-filename="{{ featured_image.original_filename }}"
+                                    >{{ featured_image.original_filename|trim_filename }}</a>
+                                    {% if is_locked == False %}
+                                        <a href="#" class="attachment-delete-link">&#10060;</a>
+                                        <small style="display: block">{{ featured_image.created_at }}</small>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                {% for image in images %}
+                    <div class="col-6 col-sm-3 col-md-2 col-lg-2 col-xl-2" style="margin-bottom: 1rem;">
+                        <div class="card">
+                            <div class="card-img-top"
+                                 style="height: 5rem; background: url({{ image.file.url }}) 100% 100% no-repeat; background-size: cover;"
+                                 alt="Card image cap"></div>
+                            <div class="card-body  bg-light" style="padding: 0.5rem;">
+                                <p class="card-text">
+                                    <a href="{{ image.file.url }}"
+                                       class="attachment-link"
+                                       data-id="{{ image.id }}"
+                                       data-filename="{{ image.original_filename }}"
+                                    >{{ image.original_filename|trim_filename }}</a>
+                                    {% if is_locked == False %}
+                                        <a href="#" class="attachment-delete-link">&#10060;</a>
+                                        <small style="display: block">{{ image.created_at }}</small>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+{% endif %}
+
+<div class="row">
+    <div class="col-6">
+        {% if pdfs|length > 0 %}
+            <h4>PDF</h4>
+            <table class="table table-sm">
+                <tbody>
+                {% for pdf in pdfs %}
+                    <tr>
+                        <td><a href="{{ pdf.file.url }}"
+                               class="attachment-link"
+                               data-id="{{ pdf.id }}"
+                               data-filename="{{ pdf.original_filename }}"
+                        >{{ pdf.original_filename|trim_filename }}</a>
+                            <a href="#" class="attachment-delete-link">&#10060;</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+    <div class="col-6">
+        {% if files|length > 0 %}
+            <h4>Файлы</h4>
+            <table class="table table-sm">
+                <tbody>
+                {% for file in files %}
+                    <tr>
+                        <td><a href="{{ file.file.url }}"
+                               class="attachment-link"
+                               data-id="{{ file.id }}"
+                               data-filename="{{ file.original_filename }}"
+                        >{{ file.original_filename|trim_filename }}</a>
+                            <a href="#" class="attachment-delete-link">&#10060;</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</div>
+
+
+<div id='missing_images' class="row" style="display: none; margin-bottom: 1rem;">
+    <div class="card-header text-white bg-danger">Не хватает картинок!</div>
+    <div class="card-body">
+        <ul class="card-text" style="padding-left: 20px;"></ul>
+    </div>
+</div>
+<div id='extra_images' class="row" style="display: none; margin-bottom: 1rem;">
+    <div class="card-header text-white bg-success">Лишние картинки</div>
+    <div class="card-body">
+        <ul class="card-text" style="padding-left: 20px;"></ul>
+    </div>
+</div>
+
+
