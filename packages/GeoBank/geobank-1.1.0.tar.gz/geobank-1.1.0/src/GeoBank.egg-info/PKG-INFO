@@ -1,0 +1,433 @@
+Metadata-Version: 2.4
+Name: GeoBank
+Version: 1.1.0
+Summary: A Django package for countries and cities with translations.
+Home-page: https://github.com/ali-hv/geobank
+Author: Ali Hosseinverdi
+Author-email: alihv5000@gmail.com
+License: MIT
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 3.2
+Classifier: Framework :: Django :: 4.0
+Classifier: Framework :: Django :: 4.1
+Classifier: Framework :: Django :: 4.2
+Classifier: Framework :: Django :: 5.2
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django>=3.2
+Requires-Dist: django-modeltranslation>=0.18.0
+Requires-Dist: Pillow>=9.0
+Requires-Dist: django-autoslug
+Provides-Extra: celery
+Requires-Dist: celery>=5.0; extra == "celery"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-django>=4.5; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: pre-commit>=3.0; extra == "dev"
+Dynamic: license-file
+
+<div align="center">
+
+# 🌍 GeoBank
+
+**A comprehensive Django package for countries, regions, and cities with full translation support**
+
+[![PyPI version](https://badge.fury.io/py/GeoBank.svg)](https://badge.fury.io/py/GeoBank)
+[![Python Versions](https://img.shields.io/pypi/pyversions/GeoBank.svg)](https://pypi.org/project/GeoBank/)
+[![Django Versions](https://img.shields.io/badge/Django-3.2%20%7C%204.0%20%7C%204.1%20%7C%204.2%20%7C%205.x-green.svg)](https://pypi.org/project/GeoBank/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/ali-hv/geobank/actions/workflows/tests.yml/badge.svg)](https://github.com/ali-hv/geobank/actions/workflows/tests.yml)
+
+</div>
+
+---
+
+GeoBank provides ready-to-use Django models for geographic data including **countries**, **regions/states**, and **cities** with built-in translation support using `django-modeltranslation`. It fetches data from trusted sources like [GeoNames](https://www.geonames.org/) and [REST Countries](https://restcountries.com/).
+
+## ✨ Features
+
+- 🗺️ **Comprehensive Geographic Data**
+  - 250+ countries with detailed information
+  - 4,000+ regions/states/provinces
+  - 20,000+ cities (configurable population threshold)
+
+- 🌐 **Rich Country Information**
+  - ISO Alpha-2 and Alpha-3 codes
+  - Continent classification
+  - Population data
+  - Currency with symbol
+  - Multiple calling codes
+  - Official languages
+  - Neighboring countries
+  - Flag images (PNG & SVG)
+  - Postal code format and regex
+  - Top-level domain (TLD)
+
+- 🏙️ **Detailed City Data**
+  - Geographic coordinates (latitude/longitude)
+  - Timezone information
+  - Population statistics
+  - Region/state association
+
+- 🔤 **Full Translation Support**
+  - Powered by `django-modeltranslation`
+  - Translate country, region, and city names
+  - Support for any language
+
+- ⚡ **Performance Optimized**
+  - Bulk database operations
+  - Efficient data parsing
+  - Background task support via Celery
+
+- 🧪 **Well Tested**
+  - Comprehensive unit tests
+  - Full integration tests
+  - CI/CD with GitHub Actions
+
+## 📦 Installation
+
+```bash
+pip install GeoBank
+```
+
+## 🚀 Quick Start
+
+### 1. Configure Django Settings
+
+Add `geobank` and `modeltranslation` to your `INSTALLED_APPS`:
+
+> ⚠️ **Important:** `modeltranslation` must be added **before** `django.contrib.admin`
+
+```python
+INSTALLED_APPS = [
+    'modeltranslation',  # Must be before admin
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    # ...
+    'geobank',
+]
+```
+
+### 2. Configure Languages
+
+Set up the languages you want to support:
+
+```python
+LANGUAGES = (
+    ('en', 'English'),
+    ('es', 'Spanish'),
+    ('fr', 'French'),
+    ('de', 'German'),
+    ('ar', 'Arabic'),
+    ('zh', 'Chinese'),
+    # Add more languages as needed
+)
+
+MODELTRANSLATION_DEFAULT_LANGUAGE = 'en'
+```
+
+### 3. Run Migrations
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### 4. Populate the Database
+
+```bash
+python manage.py populate_geobank
+```
+
+That's it! 🎉 Your database is now populated with geographic data.
+
+## 📖 Usage
+
+### Basic Queries
+
+```python
+from geobank.models import Country, Region, City
+
+# Get all countries
+countries = Country.objects.all()
+
+# Get a specific country
+usa = Country.objects.get(code2='US')
+print(usa.name)  # "United States"
+print(usa.code3)  # "USA"
+print(usa.population)  # 331002651
+print(usa.currency.code)  # "USD"
+print(usa.currency.symbol)  # "$"
+
+# Get country's calling codes
+for calling_code in usa.calling_codes.all():
+    print(calling_code.code)  # "1"
+
+# Get country's languages
+for language in usa.languages.all():
+    print(language.name)  # "English"
+
+# Get neighboring countries
+for neighbor in usa.neighbors.all():
+    print(neighbor.name)  # "Canada", "Mexico"
+
+# Get regions/states
+california = Region.objects.get(country=usa, code='CA')
+print(california.name)  # "California"
+
+# Get cities
+la = City.objects.get(name='Los Angeles', country=usa)
+print(la.population)  # 3979576
+print(la.timezone)  # "America/Los_Angeles"
+print(la.latitude, la.longitude)  # Coordinates
+```
+
+### Working with Translations
+
+```python
+from django.utils.translation import activate
+
+# Get country name in different languages
+usa = Country.objects.get(code2='US')
+
+activate('en')
+print(usa.name)  # "United States"
+
+activate('es')
+print(usa.name)  # "Estados Unidos"
+
+activate('ar')
+print(usa.name)  # "الولايات المتحدة"
+```
+
+### Filtering
+
+```python
+# Countries by continent
+european_countries = Country.objects.filter(continent='EU')
+
+# Cities by population
+large_cities = City.objects.filter(population__gte=1000000)
+
+# Cities in a region
+california_cities = City.objects.filter(region__code='CA', country__code2='US')
+
+# Active records only
+active_countries = Country.objects.filter(is_active=True)
+```
+
+### Using Flags
+
+```python
+usa = Country.objects.get(code2='US')
+
+# Flag URLs from REST Countries
+print(usa.flag_png)  # PNG URL
+print(usa.flag_svg)  # SVG URL
+```
+
+## ⚙️ Configuration Options
+
+### Population Command Options
+
+```bash
+# Basic population (cities with 15,000+ population)
+python manage.py populate_geobank
+
+# Include smaller cities (500, 1000, 5000, or 15000)
+python manage.py populate_geobank --population-gte 5000
+
+# Run in background with Celery
+python manage.py populate_geobank --background
+```
+
+### City Population Thresholds
+
+| Option | Cities Count | Description |
+|--------|-------------|-------------|
+| `15000` | ~25,000 | Major cities only (default) |
+| `5000` | ~50,000 | Medium-sized cities |
+| `1000` | ~140,000 | Small cities included |
+| `500` | ~200,000 | All significant settlements |
+
+## 📊 Models Reference
+
+### Country
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | CharField | Country name (translatable) |
+| `name_ascii` | CharField | ASCII-safe name |
+| `slug` | AutoSlugField | URL-friendly slug |
+| `code2` | CharField | ISO 3166-1 alpha-2 code |
+| `code3` | CharField | ISO 3166-1 alpha-3 code |
+| `fips` | CharField | FIPS code |
+| `continent` | CharField | Continent code (AF, AS, EU, NA, OC, SA, AN) |
+| `tld` | CharField | Top-level domain |
+| `population` | BigIntegerField | Population count |
+| `currency` | ForeignKey | Related Currency |
+| `languages` | ManyToManyField | Related Languages |
+| `neighbors` | ManyToManyField | Neighboring countries |
+| `flag_png` | URLField | Flag image (PNG) |
+| `flag_svg` | URLField | Flag image (SVG) |
+| `postal_code_format` | CharField | Postal code format |
+| `postal_code_regex` | CharField | Postal code validation regex |
+| `is_active` | BooleanField | Active status |
+
+### Region
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | CharField | Region name (translatable) |
+| `name_ascii` | CharField | ASCII-safe name |
+| `slug` | AutoSlugField | URL-friendly slug |
+| `code` | CharField | Region code |
+| `country` | ForeignKey | Related Country |
+| `geoname_id` | IntegerField | GeoNames ID |
+| `is_active` | BooleanField | Active status |
+
+### City
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | CharField | City name (translatable) |
+| `name_ascii` | CharField | ASCII-safe name |
+| `slug` | AutoSlugField | URL-friendly slug |
+| `country` | ForeignKey | Related Country |
+| `region` | ForeignKey | Related Region |
+| `latitude` | DecimalField | Latitude coordinate |
+| `longitude` | DecimalField | Longitude coordinate |
+| `population` | BigIntegerField | Population count |
+| `timezone` | CharField | Timezone identifier |
+| `geoname_id` | IntegerField | GeoNames ID |
+| `is_active` | BooleanField | Active status |
+
+### Currency
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | CharField | ISO 4217 code (e.g., USD) |
+| `name` | CharField | Currency name |
+| `symbol` | CharField | Currency symbol |
+| `is_active` | BooleanField | Active status |
+
+### Language
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | CharField | ISO 639-2 code (3-letter) |
+| `code2` | CharField | ISO 639-1 code (2-letter) |
+| `name` | CharField | Language name |
+| `is_active` | BooleanField | Active status |
+
+### CallingCode
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `country` | ForeignKey | Related Country |
+| `code` | CharField | Calling code (e.g., "1" for USA) |
+
+## 🔧 Requirements
+
+| Package | Version |
+|---------|---------|
+| Python | >= 3.8 |
+| Django | >= 3.2 |
+| django-modeltranslation | >= 0.18.0 |
+| Pillow | >= 9.0 |
+| django-autoslug | >= 1.9 |
+| Celery | >= 5.0 (optional) |
+
+## 🧪 Development
+
+### Setting Up Development Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/ali-hv/geobank.git
+cd geobank
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Install pre-commit hooks
+pip install pre-commit
+pre-commit install
+```
+
+### Running Tests
+
+```bash
+# Run unit tests only (fast)
+pytest src/geobank/tests/ -m "not integration" -v
+
+# Run integration tests (requires network, slower)
+pytest src/geobank/tests/ -m "integration" -v
+
+# Run all tests
+pytest src/geobank/tests/ -v
+
+# Run with coverage
+pytest src/geobank/tests/ --cov=geobank --cov-report=html
+```
+
+### Code Quality
+
+```bash
+# Run linter
+ruff check src/
+
+# Run formatter
+ruff format src/
+
+# Run pre-commit on all files
+pre-commit run --all-files
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Geographic data from [GeoNames](https://www.geonames.org/)
+- Country information from [REST Countries](https://restcountries.com/)
+- Translation support by [django-modeltranslation](https://django-modeltranslation.readthedocs.io/)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
