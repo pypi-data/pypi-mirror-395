@@ -1,0 +1,129 @@
+Metadata-Version: 2.3
+Name: commanderbot
+Version: 0.21.0
+Summary: A collection of utilities and extensions for discord.py bots.
+Keywords: discord,bot
+Author: Ersatz, Arcensoth
+Author-email: Ersatz <ersatz0077@gmail.com>, Arcensoth <arcensoth@gmail.com>
+License: MIT License
+         
+         Copyright (c) 2020-2025 Minecraft Commands
+         
+         Permission is hereby granted, free of charge, to any person obtaining a copy
+         of this software and associated documentation files (the "Software"), to deal
+         in the Software without restriction, including without limitation the rights
+         to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+         copies of the Software, and to permit persons to whom the Software is
+         furnished to do so, subject to the following conditions:
+         
+         The above copyright notice and this permission notice shall be included in all
+         copies or substantial portions of the Software.
+         
+         THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+         IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+         FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+         AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+         LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+         OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+         SOFTWARE.
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.14
+Classifier: License :: OSI Approved :: MIT License
+Requires-Dist: discord-py>=2.6.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: colorama>=0.4.0
+Requires-Dist: colorlog>=6.10.0
+Requires-Dist: aiosqlite>=0.21.0
+Requires-Dist: sqlalchemy>=1.4.0,<2.0.0
+Requires-Dist: jsonpath-ng>=1.7.0
+Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: aiohttp>=3.13.0
+Requires-Dist: emoji>=2.0.0
+Requires-Dist: allay>=1.3.0
+Requires-Dist: mccq>=1.0.0
+Requires-Dist: psutil>=7.0.0
+Requires-Python: >=3.14, <3.15
+Project-URL: Changelog, https://github.com/MinecraftCommands/commanderbot-py/blob/main/CHANGELOG.md
+Project-URL: Homepage, https://github.com/MinecraftCommands/commanderbot-py
+Project-URL: Repository, https://github.com/MinecraftCommands/commanderbot-py
+Description-Content-Type: text/markdown
+
+# commanderbot-py
+
+A collection of utilities and extensions for discord.py bots.
+
+[![uv-badge]](https://github.com/astral-sh/uv/)
+[![package-badge]](https://pypi.python.org/pypi/commanderbot/)
+[![version-badge]](https://pypi.python.org/pypi/commanderbot/)
+
+## Requirements
+
+- Python 3.14+
+- discord.py 2.6+
+
+## Running your bot
+
+You can run your own bot without writing any code.
+
+You will need the following:
+
+1. Your own [Discord Application](https://discordapp.com/developers/applications) with a bot token.
+2. A [configuration file](#configuring-your-bot) for the bot.
+3. A Python 3.14+ environment.
+   - It is recommended to use a [virtual environment](https://docs.python.org/3/tutorial/venv.html) for this.
+   - You can use [pyenv](https://github.com/pyenv/pyenv) to build and run Python 3.14.
+4. Run `pip install commanderbot` to install the bot core package.
+
+The first thing you should do is check the CLI help menu:
+
+```bash
+python -m commanderbot --help
+```
+
+There are several ways to provide a bot token:
+
+1. (Recommended) As the `BOT_TOKEN` environment variable: `BOT_TOKEN=put_your_bot_token_here`
+   - Supports `.env` files: use `.env` in the working directory or provide the `--envfile` option
+2. As a CLI option: `--token put_your_bot_token_here`
+3. As a standalone file: `--tokenfile path_to_file_with_bot_token`
+4. Manually, when prompted during start-up
+
+Here's an example that provides the bot token as an argument:
+
+```bash
+python -m commanderbot bot.json --token put_your_bot_token_here
+```
+
+## Configuring your bot
+
+The current set of configuration options is limited. The following is an example configuration that sets the command prefix, enabled privileged intents, and loads the `sudo`, `status` and `faq` extensions.
+
+> The `sudo` extension is essential to managing the bot. It can do things like syncing commands, setting the bot's profile picture, or even exporting the config.
+
+> An extension prefixed with `$` means the extension is required and cannot be managed while the bot is running. If the extension's config uses the object syntax, you can make the extension required by adding `"required": true`.
+
+> Note that with this configuration, the `faq` extension will require read-write access to `faq.json` in the working directory.
+
+```json
+{
+  "command_prefix": ".",
+  "privileged_intents": {
+    "message_content": true,
+    "members": true
+  },
+  "extensions": [
+    "$commanderbot.ext.sudo",
+    "commanderbot.ext.status",
+    {
+      "name": "commanderbot.ext.faq",
+      "options": {
+        "database": "faq.json"
+      }
+    }
+  ]
+}
+```
+
+[uv-badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json&style=flat-square
+[package-badge]: https://img.shields.io/pypi/v/commanderbot.svg?style=flat-square
+[version-badge]: https://img.shields.io/pypi/pyversions/commanderbot.svg?style=flat-square
