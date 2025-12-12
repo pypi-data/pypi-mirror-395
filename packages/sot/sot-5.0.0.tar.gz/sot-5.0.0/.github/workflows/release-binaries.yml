@@ -1,0 +1,107 @@
+name: Release Binaries
+
+on:
+  release:
+    types: [published]
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    name: Build .deb package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            python-version: "3.12"
+          - arch: arm64
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python via uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build dependencies for DEB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential fpm
+
+      - name: Build and package .deb
+        run: |
+          uv sync
+          uv run python -m build --wheel
+          VERSION=${GITHUB_REF#refs/tags/}
+          WHEEL=$(ls dist/sot-*.whl | head -1)
+          fpm -s python -t deb -v "${VERSION}" \
+            -a ${{ matrix.arch }} \
+            -n sot \
+            --python-pip pip \
+            --python-package-name-default "sot" \
+            "${WHEEL}"
+          mv *.deb "sot-${VERSION}-${{ matrix.arch }}.deb" 2>/dev/null || true
+
+      - name: Upload .deb artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "*.deb"
+          draft: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-rpm:
+    name: Build .rpm package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            python-version: "3.12"
+          - arch: aarch64
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python via uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build dependencies for RPM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential fpm rpm
+
+      - name: Build and package .rpm
+        run: |
+          uv sync
+          uv run python -m build --wheel
+          VERSION=${GITHUB_REF#refs/tags/}
+          WHEEL=$(ls dist/sot-*.whl | head -1)
+          fpm -s python -t rpm -v "${VERSION}" \
+            -a ${{ matrix.arch }} \
+            -n sot \
+            --python-pip pip \
+            --python-package-name-default "sot" \
+            "${WHEEL}"
+          mv *.rpm "sot-${VERSION}-${{ matrix.arch }}.rpm" 2>/dev/null || true
+
+      - name: Upload .rpm artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "*.rpm"
+          draft: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
