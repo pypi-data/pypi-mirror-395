@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Edit Subscriber') }} - {{ subscriber.name }}{% endblock %}
+
+{% block content %}
+<h2>{{ _('Edit Subscriber') }}</h2>
+
+{%- include "flash.html" %} {# Show flash messages #}
+
+{%- from "macros.html" import subscriber_list_buttons %}
+{{ subscriber_list_buttons(subscriber.email) }}
+
+<p>{{ _('On list: %(name)s', name=mailing_list.name) }}</p>
+
+<form method="POST">
+    {{ form.csrf_token }}
+
+    {{ form.name.label }}
+    {{ form.name }}
+    {% if form.name.errors %}
+    <div class="text-danger">
+        {% for error in form.name.errors %}
+        <small>{{ error }}</small>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {{ form.email.label }}
+    {{ form.email }}
+    {% if form.email.errors %}
+    <div class="text-danger">
+        {% for error in form.email.errors %}
+        <small>{{ error }}</small>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {{ form.comment.label }}
+    {{ form.comment }}
+    {% if form.comment.errors %}
+    <div class="text-danger">
+        {% for error in form.comment.errors %}
+        <small>{{ error }}</small>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {{ form.submit }}
+</form>
+{% endblock %}

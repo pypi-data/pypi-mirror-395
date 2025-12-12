@@ -1,0 +1,94 @@
+# SPDX-FileCopyrightText: 2025 Max Mehl <https://mehl.mx>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
+[tool.poetry]
+name = "castmail2list"
+version = "0.2.0"
+description = "Simple mailing list software with IMAP mailbox backend, web interface, and multiple list modes."
+repository = "https://github.com/mxmehl/castmail2list"
+authors = ["Max Mehl <mail@mehl.mx>"]
+readme = "README.md"
+keywords = []
+license = "GPL-3.0-only"
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Framework :: Flask",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Topic :: Communications :: Email",
+    "Topic :: Communications :: Email :: Mailing List Servers",
+    "Topic :: Communications :: Email :: Post-Office :: IMAP",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+    "Topic :: Software Development :: Libraries :: Application Frameworks"
+]
+# Add ignored files to the package
+include = ["castmail2list/translations/**/*.mo"]
+
+[tool.poetry.scripts]
+castmail2list-cli = "castmail2list.app:main"
+castmail2list = "castmail2list.wsgi:gunicorn"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^3.1.2"
+flask-sqlalchemy = "^3.1.1"
+imap-tools = "^1.11.0"
+flask-migrate = "^4.1.0"
+flask-wtf = "^1.2.2"
+email-validator = "^2.3.0"
+flask-babel = "^4.0.0"
+flufl-bounce = "^4.0"
+flask-limiter = "^4.0.0"
+flask-login = "^0.6.3"
+wtforms = { extras = ["email"], version = "^3.2.1" }
+pyyaml = "^6.0.1"
+jsonschema = "^4.25.1"
+gunicorn = "^23.0.0"
+platformdirs = "^4.5.0"
+
+[tool.poetry.group.dev.dependencies]
+isort = "^6.1.0"
+pylint = "^3.3.9"
+black = "^25.9.0"
+mypy = "^1.18.2"
+bump-my-version = "^1.2.4"
+pytest = "^8.4.2"
+beautifulsoup4 = "^4.14.2"
+pytest-cov = "^7.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# FORMATTING settings
+[tool.isort]
+profile = "black"
+skip = ["migrations"]
+
+[tool.black]
+line-length = 100
+extend-exclude = "/migrations/"
+
+# MYPY settings
+[tool.mypy]
+files = ["castmail2list/*.py", "tests/*.py"]
+disable_error_code = ["import-untyped"]
+check_untyped_defs = true
+
+# Bump-My-Version
+[tool.bumpversion]
+commit = true
+tag = true
+allow_dirty = false
+tag_name = "v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+regex = true
+search = "^version = \"{current_version}\""
+replace = "version = \"{new_version}\""
