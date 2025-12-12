@@ -1,0 +1,111 @@
+Metadata-Version: 2.4
+Name: python_lung_morphometrics
+Version: 0.4.0
+Summary: A set of tools for measuring MLI and the like.
+Author-email: "Sylvia N. Michki" <sylvia.michki@gmail.com>
+Maintainer-email: "Sylvia N. Michki" <sylvia.michki@gmail.com>
+License: GNU General Public License v3
+Project-URL: bugs, https://github.com/sylviamic/python_lung_morphometrics/issues
+Project-URL: changelog, https://github.com/sylviamic/python_lung_morphometrics/blob/master/changelog.md
+Project-URL: homepage, https://github.com/sylviamic/python_lung_morphometrics
+Classifier: Programming Language :: Python
+Classifier: Development Status :: 4 - Beta
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+License-File: AUTHORS.rst
+Requires-Dist: numpy>=2.0.0
+Requires-Dist: pandas
+Requires-Dist: scikit-image
+Requires-Dist: scikit-learn
+Requires-Dist: matplotlib
+Requires-Dist: imageio
+Requires-Dist: tifffile>=2025.2.18
+Requires-Dist: imagecodecs
+Requires-Dist: tqdm
+Requires-Dist: skops
+Requires-Dist: typer
+Requires-Dist: pytest
+Requires-Dist: tox
+Requires-Dist: build
+Requires-Dist: twine
+Provides-Extra: dev
+Requires-Dist: coverage; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Provides-Extra: cellpose
+Requires-Dist: cellpose; extra == "cellpose"
+Dynamic: license-file
+
+=========================
+python lung morphometrics
+=========================
+
+A python module for performing morphometric measurements
+on microscopy images of lung tissue. 
+
+Status
+------
+
+.. image:: https://woodpecker.sylviamichki.xyz/api/badges/1/status.svg
+   :target: https://woodpecker.sylviamichki.xyz/repos/1
+
+Run it in a container
+---------------------
+
+.. code-block:: console
+
+    $ docker run -v ./data:/data docker.io/sylviamic/python_lung_morphometrics:latest do-mli /data/image_001.tif
+
+
+Installation
+------------
+
+.. code-block:: console
+
+    $ git clone git://github.com/sylviamic/python_lung_morphometrics
+    $ cd python_lung_morphometrics
+    $ pip install -U .
+
+
+CLI usage
+---------
+
+Measure the mean linear intercept (MLI) of one image and print results to console:
+
+.. code-block:: console
+
+    $ python-lung-morphometrics do-mli image_001.tif
+
+Measure the MLI of one image and save the test chords to a file in a specific directory:
+
+.. code-block:: console
+
+    $ python-lung-morphometrics do-mli --save-chords --save-dir ./my_output_dir image_001.tif
+
+Measure the MLI of many images and save the results:
+
+.. code-block:: console
+
+    $ ls -1 ./image_*.tif | xargs -I {} python-lung-morphometrics do-mli {} > ./results.tsv
+
+Measure the MLI of many images in parallel and save the results:
+
+.. code-block:: console
+
+    $ parallel -j5 --bar python-lung-morphometrics do-mli ::: ./image_*.tif > ./results.tsv``
+
+Credits
+-------
+
+This package was created by Sylvia N. Michki.
+
+This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+
+.. _Cookiecutter: https://github.com/audreyr/cookiecutter
+.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+
+License
+-------
+
+Free software: GNU General Public License v3
