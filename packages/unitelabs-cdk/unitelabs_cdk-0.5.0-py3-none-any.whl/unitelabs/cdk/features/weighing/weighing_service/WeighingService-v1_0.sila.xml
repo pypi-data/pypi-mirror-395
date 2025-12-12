@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Feature SiLA2Version="1.0" FeatureVersion="1.0" MaturityLevel="Draft" Originator="io.unitelabs" Category="weighing"
+         xmlns="http://www.sila-standard.org"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>WeighingService</Identifier>
+  <DisplayName>Weighing Service</DisplayName>
+  <Description>
+    This feature contains commands and properties used for common functions required when weighing things.
+    The feature enables access to the current net weight (stable and dynamic) and the tare weight. Commands for zeroing
+    and taring are provided.
+  </Description>
+  <Property>
+    <Identifier>Weight</Identifier>
+    <DisplayName>Weight</DisplayName>
+    <Description>The current net weight in gram, accessed immediately.</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Constrained>
+        <DataType>
+          <Basic>Real</Basic>
+        </DataType>
+        <Constraints>
+          <Unit>
+            <Label>Gram</Label>
+            <Factor>0.001</Factor>
+            <Offset>0</Offset>
+            <UnitComponent>
+              <SIUnit>Kilogram</SIUnit>
+              <Exponent>1</Exponent>
+            </UnitComponent>
+          </Unit>
+        </Constraints>
+      </Constrained>
+    </DataType>
+    <DefinedExecutionErrors>
+      <Identifier>UnavailableError</Identifier>
+      <Identifier>OverloadError</Identifier>
+      <Identifier>UnderloadError</Identifier>
+    </DefinedExecutionErrors>
+  </Property>
+  <Property>
+    <Identifier>TareWeight</Identifier>
+    <DisplayName>Tare weight</DisplayName>
+    <Description>The stored tare weight in gram.</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Constrained>
+        <DataType>
+          <Basic>Real</Basic>
+        </DataType>
+        <Constraints>
+          <Unit>
+            <Label>Gram</Label>
+            <Factor>0.001</Factor>
+            <Offset>0</Offset>
+            <UnitComponent>
+              <SIUnit>Kilogram</SIUnit>
+              <Exponent>1</Exponent>
+            </UnitComponent>
+          </Unit>
+        </Constraints>
+      </Constrained>
+    </DataType>
+    <DefinedExecutionErrors>
+      <Identifier>UnavailableError</Identifier>
+    </DefinedExecutionErrors>
+  </Property>
+  <Command>
+    <Identifier>GetStableWeight</Identifier>
+    <DisplayName>Get Stable Weight</DisplayName>
+    <Description>Get the stable net weight in gram.</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>Weight</Identifier>
+      <DisplayName>Weight</DisplayName>
+      <Description>The stable net weight in gram.</Description>
+      <DataType>
+        <Constrained>
+          <DataType>
+            <Basic>Real</Basic>
+          </DataType>
+          <Constraints>
+            <Unit>
+              <Label>Gram</Label>
+              <Factor>0.001</Factor>
+              <Offset>0</Offset>
+              <UnitComponent>
+                <SIUnit>Kilogram</SIUnit>
+                <Exponent>1</Exponent>
+              </UnitComponent>
+            </Unit>
+          </Constraints>
+        </Constrained>
+      </DataType>
+    </Response>
+    <DefinedExecutionErrors>
+      <Identifier>UnstableError</Identifier>
+      <Identifier>UnavailableError</Identifier>
+      <Identifier>OverloadError</Identifier>
+      <Identifier>UnderloadError</Identifier>
+    </DefinedExecutionErrors>
+  </Command>
+  <Command>
+    <Identifier>Tare</Identifier>
+    <DisplayName>Tare</DisplayName>
+    <Description>Tare with the current net weight, executed immediately (Not stable).</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>TareWeight</Identifier>
+      <DisplayName>Tare weight</DisplayName>
+      <Description>The stored tare weight in gram.</Description>
+      <DataType>
+        <Constrained>
+          <DataType>
+            <Basic>Real</Basic>
+          </DataType>
+          <Constraints>
+            <Unit>
+              <Label>Gram</Label>
+              <Factor>0.001</Factor>
+              <Offset>0</Offset>
+              <UnitComponent>
+                <SIUnit>Kilogram</SIUnit>
+                <Exponent>1</Exponent>
+              </UnitComponent>
+            </Unit>
+          </Constraints>
+        </Constrained>
+      </DataType>
+    </Response>
+    <DefinedExecutionErrors>
+      <Identifier>UnavailableError</Identifier>
+    </DefinedExecutionErrors>
+  </Command>
+  <Command>
+    <Identifier>TareStable</Identifier>
+    <DisplayName>Tare Stable</DisplayName>
+    <Description>Tare with the stable net weight.</Description>
+    <Observable>No</Observable>
+    <Response>
+      <Identifier>TareWeight</Identifier>
+      <DisplayName>Tare Weight</DisplayName>
+      <Description>The stored tare weight in gram.</Description>
+      <DataType>
+        <Constrained>
+          <DataType>
+            <Basic>Real</Basic>
+          </DataType>
+          <Constraints>
+            <Unit>
+              <Label>Gram</Label>
+              <Factor>0.001</Factor>
+              <Offset>0</Offset>
+              <UnitComponent>
+                <SIUnit>Kilogram</SIUnit>
+                <Exponent>1</Exponent>
+              </UnitComponent>
+            </Unit>
+          </Constraints>
+        </Constrained>
+      </DataType>
+    </Response>
+    <DefinedExecutionErrors>
+      <Identifier>UnstableError</Identifier>
+      <Identifier>UnavailableError</Identifier>
+    </DefinedExecutionErrors>
+  </Command>
+  <Command>
+    <Identifier>SetTareWeight</Identifier>
+    <DisplayName>Set Tare Weight</DisplayName>
+    <Description>Set a new, custom tare weight in gram.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>TareWeight</Identifier>
+      <DisplayName>Tare weight</DisplayName>
+      <Description>The tare weight to be stored in gram.</Description>
+      <DataType>
+        <Constrained>
+          <DataType>
+            <Basic>Real</Basic>
+          </DataType>
+          <Constraints>
+            <Unit>
+              <Label>Gram</Label>
+              <Factor>0.001</Factor>
+              <Offset>0</Offset>
+              <UnitComponent>
+                <SIUnit>Kilogram</SIUnit>
+                <Exponent>1</Exponent>
+              </UnitComponent>
+            </Unit>
+          </Constraints>
+        </Constrained>
+      </DataType>
+    </Parameter>
+    <DefinedExecutionErrors>
+      <Identifier>UnavailableError</Identifier>
+    </DefinedExecutionErrors>
+  </Command>
+  <Command>
+    <Identifier>ClearTareWeight</Identifier>
+    <DisplayName>Clear Tare Weight</DisplayName>
+    <Description>Clears the currently stored tare weight.</Description>
+    <Observable>No</Observable>
+    <DefinedExecutionErrors>
+      <Identifier>UnavailableError</Identifier>
+    </DefinedExecutionErrors>
+  </Command>
+  <Command>
+    <Identifier>Zero</Identifier>
+    <DisplayName>Zero</DisplayName>
+    <Description>Zero the balance immediately.</Description>
+    <Observable>No</Observable>
+    <DefinedExecutionErrors>
+      <Identifier>UnavailableError</Identifier>
+    </DefinedExecutionErrors>
+  </Command>
+  <Command>
+    <Identifier>ZeroStable</Identifier>
+    <DisplayName>Zero Stable</DisplayName>
+    <Description>Zero the balance with a stable measurement.</Description>
+    <Observable>No</Observable>
+    <DefinedExecutionErrors>
+      <Identifier>UnstableError</Identifier>
+      <Identifier>UnavailableError</Identifier>
+    </DefinedExecutionErrors>
+  </Command>
+  <DefinedExecutionError>
+    <Identifier>UnstableError</Identifier>
+    <DisplayName>Unstable Error</DisplayName>
+    <Description>Command understood but timeout for stable reading was reached.</Description>
+  </DefinedExecutionError>
+  <DefinedExecutionError>
+    <Identifier>UnavailableError</Identifier>
+    <DisplayName>Unavailable Error</DisplayName>
+    <Description>The balance is currently executing another command.</Description>
+  </DefinedExecutionError>
+  <DefinedExecutionError>
+    <Identifier>OverloadError</Identifier>
+    <DisplayName>Overload Error</DisplayName>
+    <Description>Device in overload range.</Description>
+  </DefinedExecutionError>
+  <DefinedExecutionError>
+    <Identifier>UnderloadError</Identifier>
+    <DisplayName>Underload Error</DisplayName>
+    <Description>Device in underload range.</Description>
+  </DefinedExecutionError>
+</Feature>
