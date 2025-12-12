@@ -1,0 +1,42 @@
+[project]
+name = "aserpc"
+dynamic = ["version"]
+description = "ASE - Remote Procedure Call"
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "ase>=3.26.0",
+    "msgspec>=0.20.0",
+    "pyzmq>=27.1.0",
+    "rich>=12.0.0",
+    "typer>=0.20.0",
+    "uvloop>=0.22.1",
+]
+
+[project.scripts]
+aserpc = "aserpc.cli:main"
+
+[project.entry-points."aserpc.calculators"]
+aserpc = "aserpc.calculators:get_calculators"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+    "line-profiler>=5.0.0",
+    "matplotlib>=3.10.7",
+    "pytest>=9.0.1",
+    "pytest-benchmark>=5.2.3",
+    "tqdm>=4.67.1",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0.dev0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/aserpc/_version.py"
