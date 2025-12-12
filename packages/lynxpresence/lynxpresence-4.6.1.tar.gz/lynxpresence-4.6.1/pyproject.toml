@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lynxpresence"
+dynamic = ["version"]
+description = "Discord RPC client written in Python"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    {name = "C0rn3j"}
+]
+keywords = ["discord", "rich presence", "lynxpresence", "rpc", "api", "wrapper", "gamers", "chat", "irc"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Typing :: Typed",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Communications :: Chat",
+    "Framework :: AsyncIO",
+]
+
+[project.urls]
+Homepage = "https://github.com/C0rn3j/lynxpresence"
+Repository = "https://github.com/C0rn3j/lynxpresence"
+Issues = "https://github.com/C0rn3j/lynxpresence/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "isort>=5.12.0",
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+]
+
+[tool.setuptools]
+packages = ["lynxpresence"]
+zip-safe = true
+
+[tool.setuptools.dynamic]
+version = {attr = "lynxpresence.__version__"}
+
+[tool.setuptools.package-data]
+lynxpresence = ["py.typed"]
+
+[tool.black]
+extend-exclude = '''
+/(\.(git|hg|mypy_cache|tox|venv|env|.eggs|.vscode|.github|.idea)|
+ build|
+ dist|
+ \.eggs|
+ \.venv|
+ env|
+ venv|
+ __pycache__|
+ docs|
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--disable-warnings"
+]
+markers = [
+    "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "manual: marks tests that require manual setup like Discord running (deselect with '-m \"not manual\"')"
+]
+asyncio_mode = "auto"
+
+[tool.mypy]
+files = ["lynxpresence/", "examples/"]
+exclude = ["docs/*", "tests/*"]
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
