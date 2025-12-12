@@ -1,0 +1,6 @@
+from celery import shared_task
+
+@shared_task
+def check_expired_requests() -> None: ...
+@shared_task(ignore_result=True)
+def request_moderation(user_id: int | str) -> None: ...

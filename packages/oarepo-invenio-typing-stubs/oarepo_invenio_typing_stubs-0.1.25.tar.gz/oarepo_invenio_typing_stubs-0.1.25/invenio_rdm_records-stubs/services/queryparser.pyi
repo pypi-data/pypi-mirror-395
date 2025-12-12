@@ -1,0 +1,3 @@
+from luqum.tree import Word
+
+def word_internal_notes(node) -> Word: ...
