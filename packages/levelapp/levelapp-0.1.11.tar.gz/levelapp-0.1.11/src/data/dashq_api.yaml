@@ -1,0 +1,94 @@
+# api_config.yaml
+# REST API Configuration Manager - Example Configuration
+
+endpoints:
+  - name: dashq
+    base_url: https://dashq-gateway-485vb8zi.uc.gateway.dev
+    path: /api/conversations/events
+    method: POST
+    timeout: 60
+    retry_count: 3
+    retry_backoff: 0.5
+    headers:
+      - name: model_id
+        value: meta-llama/Meta-Llama-3.1-8B-Instruct
+        secure: false
+      - name: x-api-key
+        value: AIzaSyAmL8blcS2hpPrEH2b84B8ugsVoV7AXrfc
+        secure: false  # change to true later and place the value in .env file
+    request_schema:
+      - field_path: eventType
+        value: newConversation
+        value_type: static
+        required: true
+      - field_path: conversationId
+        value: conversation_id
+        value_type: dynamic
+        required: true
+      - field_path: payload.messageType
+        value: newInquiry
+        value_type: static
+        required: true
+      - field_path: payload.communityId
+        value: 3310
+        value_type: static
+        required: true
+      - field_path: payload.accountId
+        value: 1440
+        value_type: static
+        required: true
+      - field_path: payload.prospectFirstName
+        value: Kanye
+        value_type: static
+        required: true
+      - field_path: payload.prospectLastName
+        value: West
+        value_type: static
+        required: true
+      - field_path: payload.message
+        value: user_message
+        value_type: dynamic
+        required: true
+      - field_path: payload.datetime
+        value: "2025-06-25T11:12:27.245Z"
+        value_type: static
+        required: true
+      - field_path: payload.inboundChannel
+        value: text
+        value_type: static
+        required: true
+      - field_path: payload.outboundChannel
+        value: text
+        value_type: static
+        required: true
+      - field_path: payload.inquirySource
+        value: test.com
+        value_type: static
+        required: true
+    response_mapping:
+      - field_path: eventType
+        extract_as: guardrail_flag
+#      - field_path: conversationId
+#        extract_as: conversation_id
+#      - field_path: payload.accountId
+#        extract_as: account_id
+#      - field_path: payload.messageType
+#        extract_as: message_type
+      - field_path: message
+        extract_as: agent_reply
+#      - field_path: payload.datetime
+#        extract_as: datetime
+      - field_path: metadata
+        extract_as: metadata
+#      - field_path: payload.metadata.inquirySource
+#        extract_as: inquiry_source
+#      - field_path: payload.metadata.booking
+#        extract_as: booking
+#      - field_path: payload.metadata.tasks
+#        extract_as: tasks
+#      - field_path: payload.metadata.communityId
+#        extract_as: community_id
+#      - field_path: payload.handoffMetadata
+#        extract_as: handoff_metadata
+#      - field_path: payload.isConversationOver
+#        extract_as: is_conversation_over
