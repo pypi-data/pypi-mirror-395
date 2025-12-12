@@ -1,0 +1,701 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Review Hound{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-2xl font-semibold text-[var(--text-primary)]">Business Dashboard</h1>
+        <p class="text-[var(--text-muted)] mt-1">Track and analyze your business reviews</p>
+    </div>
+    <button onclick="openAddModal()" class="bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition font-medium flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Business
+    </button>
+</div>
+
+{% if businesses %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in businesses %}
+    <div class="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border)] p-6 card-hover">
+        <div class="flex justify-between items-start mb-2">
+            <div class="flex items-center gap-2">
+                <h2 class="text-xl font-semibold text-[var(--text-primary)]">{{ item.business.name }}</h2>
+                {% if item.scrape_issues %}
+                <span class="text-amber-500 dark:text-amber-400" title="Scrape issues detected">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </span>
+                {% endif %}
+            </div>
+            <div class="flex gap-1">
+                <button onclick="openEditModal({{ item.business.id }})"
+                        class="p-1.5 text-[var(--text-muted)] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition"
+                        title="Edit business">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </button>
+                <button onclick="openDeleteModal({{ item.business.id }}, '{{ item.business.name | e }}')"
+                        class="p-1.5 text-[var(--text-muted)] hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition"
+                        title="Delete business">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex items-center mb-1">
+            <span class="rating-stars text-lg">★</span>
+            <span class="ml-1 text-[var(--text-secondary)] font-medium">{{ "%.1f"|format(item.avg_rating) }}</span>
+            {% if item.trend_direction == 'up' %}
+            <span class="ml-2 text-green-600 dark:text-green-400 text-sm font-medium flex items-center">
+                <svg class="w-3.5 h-3.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                {{ "%.1f"|format(item.trend_delta|abs) }}
+            </span>
+            {% elif item.trend_direction == 'down' %}
+            <span class="ml-2 text-red-600 dark:text-red-400 text-sm font-medium flex items-center">
+                <svg class="w-3.5 h-3.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                {{ "%.1f"|format(item.trend_delta|abs) }}
+            </span>
+            {% elif item.trend_direction == 'stable' %}
+            <span class="ml-2 text-[var(--text-muted)] text-sm font-medium flex items-center">
+                <svg class="w-3.5 h-3.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+                stable
+            </span>
+            {% endif %}
+        </div>
+        <div class="text-[var(--text-muted)] text-sm mb-3">({{ item.total_reviews }} reviews)</div>
+
+        {% if item.recent_negative_count > 0 %}
+        <a href="{{ url_for('main.business_reviews', business_id=item.business.id, sentiment='negative') }}"
+           class="mb-3 flex items-center px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition">
+            <svg class="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            {{ item.recent_negative_count }} negative this week
+        </a>
+        {% endif %}
+
+        {% if item.scrape_issues %}
+        <a href="{{ url_for('main.business_detail', business_id=item.business.id) }}#scrape-history"
+           class="mb-3 flex items-center px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition">
+            <svg class="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            {% if item.scrape_issue_type == 'failed' %}
+            {{ item.scrape_issue_sources|join(', ') }} failing
+            {% else %}
+            {{ item.scrape_issue_sources|join(', ') }}: no reviews found
+            {% endif %}
+        </a>
+        {% endif %}
+
+        <div class="text-[var(--text-muted)] text-xs mb-3">
+            {% if item.recent_count > 0 %}
+            <span>{{ item.recent_count }} new this week</span>
+            {% endif %}
+            {% if item.last_review_date %}
+            {% if item.recent_count > 0 %}<span class="mx-1">•</span>{% endif %}
+            <span>Last: {{ item.last_review_date.strftime('%b %d') }}</span>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
+                <span>Sentiment</span>
+                <span>{{ "%.0f"|format(item.positive_pct) }}% positive</span>
+            </div>
+            <div class="sentiment-bar bg-[var(--bg-muted)] flex">
+                <div class="bg-green-500" style="width: {{ item.positive_pct }}%"></div>
+                <div class="bg-red-500" style="width: {{ item.negative_pct }}%"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5 text-xs">
+            {% if item.business.trustpilot_url %}
+            <span class="px-2 py-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-md">TrustPilot</span>
+            {% endif %}
+            {% if item.business.bbb_url %}
+            <span class="px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-md">BBB</span>
+            {% endif %}
+            {% if item.business.yelp_url or item.business.yelp_business_id %}
+            <span class="px-2 py-1 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-md">Yelp</span>
+            {% endif %}
+            {% if item.business.google_place_id %}
+            <span class="px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-md">Google</span>
+            {% endif %}
+        </div>
+
+        <a href="{{ url_for('main.business_detail', business_id=item.business.id) }}"
+           class="mt-4 block text-center bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 transition font-medium">
+            View Details
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border)] p-12 text-center">
+    <div class="mx-auto w-16 h-16 bg-[var(--bg-muted)] rounded-full flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
+    </div>
+    <p class="text-[var(--text-primary)] font-medium text-lg">No businesses tracked yet</p>
+    <p class="text-[var(--text-muted)] mt-1">Get started by adding your first business to track reviews.</p>
+    <button onclick="openAddModal()" class="mt-6 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition font-medium inline-flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Business
+    </button>
+</div>
+{% endif %}
+
+<!-- Step 1: Add Business Modal (Name & Address) -->
+<div id="businessModal" class="fixed inset-0 bg-black/50 dark:bg-black/70 hidden items-center justify-center z-50">
+    <div class="bg-[var(--bg-surface)] rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+        <div class="flex justify-between items-center mb-5">
+            <h2 class="text-lg font-semibold text-[var(--text-primary)]">Add Business</h2>
+            <button onclick="closeModal()" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form id="businessForm" onsubmit="submitBusinessStep1(event)">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Business Name *</label>
+                    <input type="text" id="businessName" required class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Location (optional)</label>
+                    <input type="text" id="businessLocation" placeholder="City, State" class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                    <p class="text-xs text-[var(--text-muted)] mt-1.5">Helps find the right business on review sites</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] font-medium">Cancel</button>
+                <button type="submit" id="step1SubmitBtn" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Next: Find Sources</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Step 2: Source Selection Modal -->
+<div id="sourceModal" class="fixed inset-0 bg-black/50 dark:bg-black/70 hidden items-center justify-center z-50 overflow-y-auto">
+    <div class="bg-[var(--bg-surface)] rounded-xl shadow-xl p-6 w-full max-w-2xl mx-4 my-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-[var(--text-primary)]">Find Review Sources for "<span id="sourceModalBusinessName"></span>"</h2>
+            <button onclick="closeSourceModal()" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <p class="text-[var(--text-muted)] mb-4">Select the correct business listing from each platform, or enter URLs manually.</p>
+
+        <!-- TrustPilot Section -->
+        <div class="mb-6">
+            <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center">
+                <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                TrustPilot
+            </h3>
+            <div id="trustpilotResults" class="border border-[var(--border)] rounded p-3 bg-[var(--bg-muted)]">
+                <div class="text-center text-[var(--text-muted)] py-4">
+                    <div class="animate-spin inline-block w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                    <span class="ml-2">Searching...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- BBB Section -->
+        <div class="mb-6">
+            <h3 class="font-semibold text-[var(--text-primary)] mb-2 flex items-center">
+                <span class="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                BBB
+            </h3>
+            <div id="bbbResults" class="border border-[var(--border)] rounded p-3 bg-[var(--bg-muted)]">
+                <div class="text-center text-[var(--text-muted)] py-4">
+                    <div class="animate-spin inline-block w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                    <span class="ml-2">Searching...</span>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="flex justify-end gap-3 mt-6 border-t border-[var(--border)] pt-4">
+            <button type="button" onclick="skipSources()" class="px-4 py-2.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] font-medium">Skip for now</button>
+            <button type="button" onclick="saveBusiness()" id="saveBusinessBtn" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium inline-flex items-center justify-center">Save Business</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black/50 dark:bg-black/70 hidden items-center justify-center z-50">
+    <div class="bg-[var(--bg-surface)] rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+        <div class="flex items-center mb-4">
+            <div class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h2 class="text-lg font-semibold text-[var(--text-primary)]">Delete Business</h2>
+        </div>
+        <p class="text-[var(--text-secondary)] mb-6">Are you sure you want to delete "<span id="deleteBusinessName" class="font-medium text-[var(--text-primary)]"></span>"? This will also delete all associated reviews and alerts. This action cannot be undone.</p>
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="closeDeleteModal()" class="px-4 py-2.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] font-medium">Cancel</button>
+            <button type="button" onclick="confirmDelete()" id="confirmDeleteBtn" class="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Business Modal -->
+<div id="editModal" class="fixed inset-0 bg-black/50 dark:bg-black/70 hidden items-center justify-center z-50 overflow-y-auto">
+    <div class="bg-[var(--bg-surface)] rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 my-8">
+        <div class="flex justify-between items-center mb-5">
+            <h2 class="text-lg font-semibold text-[var(--text-primary)]">Edit Business</h2>
+            <button onclick="closeEditModal()" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form id="editForm" onsubmit="submitEdit(event)">
+            <input type="hidden" id="editBusinessId">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Business Name *</label>
+                    <input type="text" id="editName" required class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Location</label>
+                    <input type="text" id="editAddress" placeholder="City, State" class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                </div>
+                <div class="border-t border-[var(--border)] pt-4 mt-4">
+                    <p class="text-sm font-medium text-[var(--text-muted)] mb-4">Review Sources</p>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">TrustPilot URL</label>
+                            <input type="url" id="editTrustpilot" placeholder="https://www.trustpilot.com/review/..." class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">BBB URL</label>
+                            <input type="url" id="editBbb" placeholder="https://www.bbb.org/..." class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Yelp URL</label>
+                            <input type="url" id="editYelp" placeholder="https://www.yelp.com/biz/..." class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                        </div>
+                    </div>
+                </div>
+                {% if has_google_api or has_yelp_api %}
+                <div class="border-t border-[var(--border)] pt-4 mt-4">
+                    <p class="text-sm font-medium text-[var(--text-muted)] mb-4">API Sources</p>
+                    <div class="space-y-4">
+                        {% if has_google_api %}
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Google Place ID</label>
+                            <input type="text" id="editGooglePlaceId" placeholder="ChIJ..." class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                        </div>
+                        {% endif %}
+                        {% if has_yelp_api %}
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Yelp Business ID</label>
+                            <input type="text" id="editYelpBusinessId" placeholder="e.g., gary-danko-san-francisco" class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg px-3 py-2.5">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] font-medium">Cancel</button>
+                <button type="submit" id="editSubmitBtn" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let pendingBusiness = { name: '', location: '' };
+let selectedSources = { trustpilot: null, bbb: null };
+
+function openAddModal() {
+    document.getElementById('businessForm').reset();
+    document.getElementById('businessModal').classList.remove('hidden');
+    document.getElementById('businessModal').classList.add('flex');
+}
+
+function closeModal() {
+    document.getElementById('businessModal').classList.add('hidden');
+    document.getElementById('businessModal').classList.remove('flex');
+}
+
+function closeSourceModal() {
+    document.getElementById('sourceModal').classList.add('hidden');
+    document.getElementById('sourceModal').classList.remove('flex');
+}
+
+async function submitBusinessStep1(event) {
+    event.preventDefault();
+
+    pendingBusiness.name = document.getElementById('businessName').value;
+    pendingBusiness.location = document.getElementById('businessLocation').value;
+
+    const btn = document.getElementById('step1SubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+
+    // Close step 1 modal, open step 2
+    closeModal();
+    document.getElementById('sourceModalBusinessName').textContent = pendingBusiness.name;
+    document.getElementById('sourceModal').classList.remove('hidden');
+    document.getElementById('sourceModal').classList.add('flex');
+
+    // Reset selected sources
+    selectedSources = { trustpilot: null, bbb: null };
+
+    // Reset results to loading state
+    ['trustpilot', 'bbb'].forEach(source => {
+        document.getElementById(`${source}Results`).innerHTML = `
+            <div class="text-center text-[var(--text-muted)] py-4">
+                <div class="animate-spin inline-block w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                <span class="ml-2">Searching...</span>
+            </div>
+        `;
+    });
+
+    // Search for sources
+    try {
+        const response = await fetch('/api/search-sources', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                query: pendingBusiness.name,
+                location: pendingBusiness.location || null
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            renderSourceResults('trustpilot', data.results.trustpilot);
+            renderSourceResults('bbb', data.results.bbb);
+        } else {
+            ['trustpilot', 'bbb'].forEach(source => {
+                document.getElementById(`${source}Results`).innerHTML = `
+                    <p class="text-red-500 py-2">Search failed. ${renderManualEntry(source)}</p>
+                `;
+            });
+        }
+    } catch (e) {
+        ['trustpilot', 'bbb'].forEach(source => {
+            document.getElementById(`${source}Results`).innerHTML = `
+                <p class="text-red-500 py-2">Search failed. ${renderManualEntry(source)}</p>
+            `;
+        });
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Next: Find Sources';
+}
+
+function renderSourceResults(source, results) {
+    const container = document.getElementById(`${source}Results`);
+
+    if (!results || results.length === 0) {
+        container.innerHTML = `
+            <p class="text-[var(--text-muted)] py-2">No results found.</p>
+            ${renderManualEntry(source)}
+        `;
+        return;
+    }
+
+    let html = '<div class="space-y-2">';
+
+    results.forEach((result, index) => {
+        const stars = result.rating ? '★'.repeat(Math.round(result.rating)) + '☆'.repeat(5 - Math.round(result.rating)) : '';
+        const ratingText = result.rating ? `${result.rating.toFixed(1)}` : '';
+        const reviewText = result.review_count ? `(${result.review_count} reviews)` : '';
+
+        html += `
+            <label class="flex items-start p-2 rounded hover:bg-[var(--bg-surface-hover)] cursor-pointer">
+                <input type="radio" name="${source}Source" value="${result.url}"
+                       onchange="selectSource('${source}', '${result.url}')"
+                       class="mt-1 mr-3">
+                <div class="flex-1">
+                    <div class="font-medium text-[var(--text-primary)]">${escapeHtml(result.name)}</div>
+                    ${result.address ? `<div class="text-sm text-[var(--text-muted)]">${escapeHtml(result.address)}</div>` : ''}
+                    ${ratingText ? `<div class="text-sm"><span class="text-yellow-500">${stars}</span> <span class="text-[var(--text-secondary)]">${ratingText} ${reviewText}</span></div>` : ''}
+                </div>
+            </label>
+        `;
+    });
+
+    html += '</div>';
+    html += renderManualEntry(source);
+
+    container.innerHTML = html;
+}
+
+function renderManualEntry(source) {
+    return `
+        <div class="mt-3 pt-3 border-t border-[var(--border)]">
+            <button type="button" onclick="toggleManualEntry('${source}')" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm">
+                Enter URL manually
+            </button>
+            <div id="${source}ManualEntry" class="hidden mt-2">
+                <input type="url" id="${source}ManualUrl" placeholder="https://..."
+                       onchange="selectSource('${source}', this.value)"
+                       class="w-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+            </div>
+        </div>
+    `;
+}
+
+function toggleManualEntry(source) {
+    const container = document.getElementById(`${source}ManualEntry`);
+    container.classList.toggle('hidden');
+    if (!container.classList.contains('hidden')) {
+        document.getElementById(`${source}ManualUrl`).focus();
+    }
+}
+
+function selectSource(source, url) {
+    selectedSources[source] = url || null;
+
+    // Uncheck radio buttons if manual URL is being used
+    if (url && document.getElementById(`${source}ManualUrl`)?.value === url) {
+        const radios = document.querySelectorAll(`input[name="${source}Source"]`);
+        radios.forEach(r => r.checked = false);
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function saveBusiness() {
+    const btn = document.getElementById('saveBusinessBtn');
+    btn.disabled = true;
+
+    // Check if any sources are selected - if so, scraping will happen
+    const hasSources = selectedSources.trustpilot || selectedSources.bbb;
+    if (hasSources) {
+        btn.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Saving & scraping reviews...
+        `;
+    } else {
+        btn.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Saving...
+        `;
+    }
+
+    const data = {
+        name: pendingBusiness.name,
+        address: pendingBusiness.location || null,
+        trustpilot_url: selectedSources.trustpilot || null,
+        bbb_url: selectedSources.bbb || null,
+    };
+
+    try {
+        const response = await fetch('/api/business', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            window.location.href = `/business/${result.business.id}`;
+        } else {
+            alert(result.error || 'Failed to save business');
+            btn.disabled = false;
+            btn.innerHTML = 'Save Business';
+        }
+    } catch (e) {
+        alert('Error saving business');
+        btn.disabled = false;
+        btn.innerHTML = 'Save Business';
+    }
+}
+
+async function skipSources() {
+    // Save business without any sources
+    selectedSources = { trustpilot: null, bbb: null };
+    await saveBusiness();
+}
+
+// Close modals on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+        closeSourceModal();
+    }
+});
+
+// Close modals on backdrop click
+document.getElementById('businessModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+document.getElementById('sourceModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSourceModal();
+});
+
+// Delete functionality
+let deleteBusinessId = null;
+
+function openDeleteModal(businessId, businessName) {
+    deleteBusinessId = businessId;
+    document.getElementById('deleteBusinessName').textContent = businessName;
+    document.getElementById('deleteModal').classList.remove('hidden');
+    document.getElementById('deleteModal').classList.add('flex');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+    document.getElementById('deleteModal').classList.remove('flex');
+    deleteBusinessId = null;
+}
+
+async function confirmDelete() {
+    if (!deleteBusinessId) return;
+
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+
+    try {
+        const response = await fetch(`/api/business/${deleteBusinessId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert(result.error || 'Failed to delete business');
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+        }
+    } catch (e) {
+        alert('Error deleting business');
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+    }
+}
+
+// Edit functionality
+let editBusinessId = null;
+
+async function openEditModal(businessId) {
+    editBusinessId = businessId;
+
+    // Clear form first
+    document.getElementById('editForm').reset();
+    document.getElementById('editBusinessId').value = businessId;
+
+    // Show modal with loading state
+    document.getElementById('editModal').classList.remove('hidden');
+    document.getElementById('editModal').classList.add('flex');
+
+    // Fetch current business data
+    try {
+        const response = await fetch(`/api/business/${businessId}`);
+        const result = await response.json();
+
+        if (result.success) {
+            const biz = result.business;
+            document.getElementById('editName').value = biz.name || '';
+            document.getElementById('editAddress').value = biz.address || '';
+            document.getElementById('editTrustpilot').value = biz.trustpilot_url || '';
+            document.getElementById('editBbb').value = biz.bbb_url || '';
+            document.getElementById('editYelp').value = biz.yelp_url || '';
+            const googleField = document.getElementById('editGooglePlaceId');
+            const yelpIdField = document.getElementById('editYelpBusinessId');
+            if (googleField) googleField.value = biz.google_place_id || '';
+            if (yelpIdField) yelpIdField.value = biz.yelp_business_id || '';
+        } else {
+            alert('Failed to load business data');
+            closeEditModal();
+        }
+    } catch (e) {
+        alert('Error loading business data');
+        closeEditModal();
+    }
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').classList.add('hidden');
+    document.getElementById('editModal').classList.remove('flex');
+    editBusinessId = null;
+}
+
+async function submitEdit(event) {
+    event.preventDefault();
+
+    const btn = document.getElementById('editSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const googleField = document.getElementById('editGooglePlaceId');
+    const yelpIdField = document.getElementById('editYelpBusinessId');
+    const data = {
+        name: document.getElementById('editName').value,
+        address: document.getElementById('editAddress').value || null,
+        trustpilot_url: document.getElementById('editTrustpilot').value || null,
+        bbb_url: document.getElementById('editBbb').value || null,
+        yelp_url: document.getElementById('editYelp').value || null,
+        google_place_id: googleField ? (googleField.value || null) : undefined,
+        yelp_business_id: yelpIdField ? (yelpIdField.value || null) : undefined
+    };
+
+    try {
+        const response = await fetch(`/api/business/${editBusinessId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert(result.error || 'Failed to save changes');
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+        }
+    } catch (e) {
+        alert('Error saving changes');
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+    }
+}
+
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+});
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+});
+
+// Add escape key handling for new modals
+const originalKeyHandler = document.onkeydown;
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+        closeEditModal();
+    }
+});
+</script>
+{% endblock %}
