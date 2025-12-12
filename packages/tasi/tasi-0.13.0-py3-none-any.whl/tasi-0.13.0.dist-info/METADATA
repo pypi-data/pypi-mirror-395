@@ -1,0 +1,85 @@
+Metadata-Version: 2.4
+Name: tasi
+Version: 0.13.0
+Summary: Library for Traffic Analysis and Situation Interpretation
+License-File: LICENSE
+Author: Lars Klitzke
+Author-email: lars.klitzke@dlr.de
+Requires-Python: >=3.11.0,<4.0.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Provides-Extra: all
+Provides-Extra: database
+Provides-Extra: geo
+Provides-Extra: io
+Provides-Extra: performance
+Provides-Extra: visualization
+Provides-Extra: wms
+Requires-Dist: coloredlogs (>=15.0.1,<16.0.0)
+Requires-Dist: dtaidistance (>=2.3.13,<3.0.0)
+Requires-Dist: folium (>=0.19.5,<0.20.0) ; extra == "visualization" or extra == "wms" or extra == "all"
+Requires-Dist: geoalchemy2 (>=0.17.1,<0.18.0)
+Requires-Dist: geojson-pydantic (>=2.0.0,<3.0.0) ; extra == "geo" or extra == "all"
+Requires-Dist: geopandas (>=1.0.1,<2.0.0) ; extra == "geo" or extra == "all"
+Requires-Dist: mapclassify (>=2.8.1,<3.0.0) ; extra == "visualization" or extra == "wms" or extra == "all"
+Requires-Dist: matplotlib (>=3.10.3,<4.0.0) ; extra == "visualization" or extra == "wms" or extra == "all"
+Requires-Dist: numba (>=0.62.1,<0.63.0) ; extra == "performance" or extra == "all"
+Requires-Dist: pandas (>=2.3.0,<3.0.0)
+Requires-Dist: psycopg[binary,pool] (>=3.2.9,<4.0.0) ; extra == "database" or extra == "all"
+Requires-Dist: pydantic (>=2.11.7,<3.0.0)
+Requires-Dist: pydantic-settings (>=2.10.1,<3.0.0) ; extra == "io" or extra == "all"
+Requires-Dist: shapely (>=2.1.0,<3.0.0) ; extra == "geo" or extra == "io" or extra == "all"
+Requires-Dist: sqlalchemy (>=2.0.41,<3.0.0) ; extra == "io" or extra == "all"
+Requires-Dist: tilemapbase (>=0.4.7,<0.5.0) ; extra == "wms" or extra == "all"
+Requires-Dist: tqdm (>=4.67.1,<5.0.0)
+Description-Content-Type: text/markdown
+
+# TrAffic Situation analysis and Interpretation
+
+[![pypi](https://img.shields.io/pypi/v/tasi.svg)](https://pypi.python.org/pypi/tasi/) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14034644.svg)](https://doi.org/10.5281/zenodo.14034644) [![DLR-TS](https://img.shields.io/badge/developed%20by-DLR%20TS-orange.svg?style=flat&colorA=E1523D&colorB=007D8A)](https://www.dlr.de/en/ts/about-us/the-institute-of-transportation-systems) [![PyPI Downloads](https://static.pepy.tech/badge/tasi)](https://pepy.tech/projects/tasi)  
+
+
+TASI is a library to provide high-performance, easy-to-use data structures and data analysis tools for Python based
+traffic situation analysis and interpretation applications.
+
+> **TASI** is backed by those wonderful libraries [`Numpy`](https://numpy.org/), [`Pandas`](https://pandas.pydata.org/),
+> and [`Numba`](http://numba.pydata.org/)
+
+## Getting started
+
+Install ``TASI`` from the PyPi registry.
+```bash
+pip install tasi
+```
+
+Download the latest DLR-UT version for demonstration purpose.
+```python
+from tasi.dlr import DLRUTDatasetManager, DLRUTVersion, 
+
+dataset = DLRUTDatasetManager(DLRUTVersion.latest)
+dataset.load()
+```
+
+and visualize the trajectories within the dataset using `matplotlib`.
+
+```python
+from tasi.dlr import DLRTrajectoryDataset
+from tasi.plotting import TrajectoryPlotter
+
+import matplotlib.pyplot as plt
+
+# load the first file of the dataset
+ds_ut = DLRTrajectoryDataset.from_csv(dataset.trajectory()[0])
+
+# plot the trajectories
+f, ax = plt.subplots()
+
+plotter = TrajectoryPlotter()
+plotter.plot(ds_ut, ax=ax)
+```
+
+![trajectory-example](etc/example.jpg)
+
