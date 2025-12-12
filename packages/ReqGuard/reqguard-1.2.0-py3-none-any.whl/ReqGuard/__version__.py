@@ -1,0 +1,12 @@
+__title__ = "ReqGuard"
+__description__ = "Python HTTP Security Library"
+__url__ = "https://github.com/x6-u/ReqGuard"
+__version__ = "1.2.0"
+__build__ = 0x010200
+__author__ = "mero"
+__author_email__ = "telegram@QP4RM"
+__license__ = "Apache-2.0"
+__copyright__ = "Copyright mero"
+__cake__ = "ReqGuard"
+__telegram__ = "QP4RM"
+__github__ = "x6-u"
