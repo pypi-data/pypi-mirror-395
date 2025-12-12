@@ -1,0 +1,109 @@
+# BP Tokenizer
+
+`bp_tokenizer` is a high-performance Python tokenizer based on **Byte-Pair Encoding (BPE)**. It supports a **100k vocabulary**, efficient text encoding/decoding, batch processing, and basic text normalization. It is designed for **NLP applications**, preprocessing pipelines, or any project that requires custom tokenization.
+
+## Features
+
+-   **Efficient Encoding**: Encode text into token IDs using BPE.
+    
+-   **Decoding**: Decode token IDs back to human-readable text.
+    
+-   **Batch Processing**: Support for encoding multiple texts at once.
+    
+-   **Special Tokens**: Built-in support for `<UNK>`, `<BOS>`, and `<EOS>`.
+    
+-   **Large Vocabulary**: Supports a vocabulary size of up to 100,000 tokens.
+    
+-   **Normalization**: Basic text normalization (lowercasing, punctuation removal).
+    
+-   **Sentence Splitting**: Simple utilities to split text into sentences.
+    
+
+## Installation
+
+You can install directly from PyPI :
+
+    pip install bp-tokenizer
+    
+
+## Quick Start
+
+### Import and Initialize
+
+    from bp_tokenizer import Tokenizer
+    
+    # Initialize tokenizer
+    tokenizer = Tokenizer()
+    
+
+### Encode a Single Text
+
+    text = "Hello world!"
+    encoded = tokenizer.encode(text)
+    print("Encoded:", encoded)
+    
+
+**Output:**
+
+    Encoded: [72, 9257, 1295, 33]
+    
+
+### Decode Token IDs
+
+    decoded = tokenizer.decode(encoded)
+    print("Decoded:", decoded)
+    
+
+**Output:**
+
+    Decoded: Hello world!
+    
+
+### Encode a Batch of Texts
+
+    texts = ["Hello world!", "Byte-Pair Encoding example."]
+    encoded_batch = tokenizer.encode_batch(texts)
+    print("Batch Encoded:", encoded_batch)
+    
+
+**Output:**
+
+    Batch Encoded: [[72, 9257, 1295, 33], [66, 121, 507, 45, 80, 937, 18258, 16022, 2461, 46]]
+
+
+### Additional Utilities
+
+    # Get number of tokens in a text
+    print(tokenizer.token_count("Hello world!"))
+    
+    # Normalize text
+    print(tokenizer.normalize_text("Hello, World!!!", lower=True, remove_punct=True))
+    
+    # Split text into words/punctuation
+    print(tokenizer.tokenize("Hello, world! How are you?"))
+    
+
+## Special Tokens
+
+These tokens are used internally to handle unknown tokens or sequence markers.
+
+| Token | ID | Description |
+| --- | --- | --- |
+| `<BOS>` | 256 | Beginning of Sequence |
+| `<EOS>` | 257 | End of Sequence |
+| `<UNK>` | 258 | Unknown Token |
+
+## Contributing
+
+If you want to improve `bp_tokenizer`:
+
+1.  **Fork** the repository.
+    
+2.  **Make** your changes.
+    
+3.  **Submit** a pull request with a clear description.
+    
+
+## License
+
+This project is licensed under the MIT License – see the [LICENSE](https://github.com/mdmohsin212/bpe_tokenizer/blob/main/LICENSE) file for details.
