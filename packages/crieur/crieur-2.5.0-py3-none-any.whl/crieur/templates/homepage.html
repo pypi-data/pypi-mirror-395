@@ -1,0 +1,103 @@
+{% extends "main.html" %}
+
+{% block extra_head %}
+  <style type="text/css">
+    .grid footer {
+      text-align: right;
+    }
+    .grid footer [role="button"] {
+      padding: calc(var(--pico-form-element-spacing-vertical) / 4) calc(var(--pico-form-element-spacing-horizontal) / 2);
+      margin: calc(var(--pico-form-element-spacing-horizontal) / 2);
+      font-weight: bold;
+    }
+    a.outline:hover {
+      text-decoration: underline;
+    }
+    .grid ul {
+      margin-top: var(--pico-typography-spacing-vertical);
+      min-height: 12rem;
+    }
+
+  </style>
+{% endblock extra_head %}
+
+{% block content %}
+  <div class="grid">
+    <article>
+      <header>
+        <h2>Derniers numéros</h2>
+      </header>
+      <ul>
+        {% for numero in numeros|reverse %}
+          {% if loop.index <= 4 %}
+            <li>
+              <a href="{{ base_url }}{{ numero.url }}">{{ numero.title_f }}</a>
+              <nobr><span class="muted"><small>({{ numero.date.strftime('%d %B %Y') }})</small></span></nobr>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+      <footer>
+        <a href="{{ base_url }}numero/" role="button" class="outline secondary">Voir les {{ numeros|length }} numéro{{ numeros|length|pluralize }}</a>
+      </footer>
+    </article>
+    <article>
+      <header>
+        <h2>Derniers articles</h2>
+      </header>
+      <ul>
+        {% for article in articles %}
+          {% if loop.index <= 4 %}
+            <li>
+              <a href="{{ base_url }}{{ article.url }}">{{ article.title_f }}</a>
+              <nobr><span class="muted"><small>({{ article.date.strftime('%d %B %Y') }})</small></span></nobr>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+      <footer>
+        <a href="{{ base_url }}blog/" role="button" class="outline secondary">Voir les {{ articles|length }} article{{ articles|length|pluralize }}</a>
+      </footer>
+    </article>
+    {% if keywords %}
+      <article>
+        <header>
+          <h2>Mots-clés populaires</h2>
+        </header>
+        <ul class="by-2">
+          {% for slug, keyword in keywords.items() %}
+            {% if loop.index <= 10 %}
+              <li>
+                <a href="{{ base_url }}{{ keyword.url }}">#{{ keyword.name }}</a>
+                <nobr><span class="muted"><small>({{ keyword.articles|length }})</small></span></nobr>
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+        <footer>
+          <a href="{{ base_url }}mot-clef/" role="button" class="outline secondary">Voir les {{ keywords|length }} mot{{ keywords|length|pluralize }}-clé{{ keywords|length|pluralize }}</a>
+        </footer>
+      </article>
+    {% endif %}
+    {% if authors %}
+      <article>
+        <header>
+          <h2>Auteur·ices prolixes <nobr><span class="muted"><small>({{ authors|length }})</small></span></nobr></h2>
+        </header>
+        <ul class="by-2">
+          {% for slug, author in authors.items() %}
+            {% if loop.index <= 10 %}
+              <li>
+                <a href="{{ base_url }}{{ author.url }}">{{ author }}</a>
+                <nobr><span class="muted"><small>({{ author.articles|length }})</small></span></nobr>
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+        <footer>
+          <a href="{{ base_url }}auteur/" role="button" class="outline secondary">Voir les {{ authors|length }} auteur·ice{{ authors|length|pluralize }}</a>
+        </footer>
+      </article>
+    {% endif %}
+  </div>
+{% endblock content %}
