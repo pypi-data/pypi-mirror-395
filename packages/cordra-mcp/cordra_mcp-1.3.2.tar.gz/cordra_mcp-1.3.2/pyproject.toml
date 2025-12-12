@@ -1,0 +1,82 @@
+[project]
+name = "cordra-mcp"
+version = "1.3.2"
+description = "MCP server for Cordra digital object repository"
+authors = [
+    {name = "Daniel Bauer", email = "github@dbauer.me"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+keywords = ["cordra", "MCP", "agent-coding", "ai", "digital-repository", "model-context-protocol"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "mcp[cli]>=1.2.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "requests>=2.25.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dnlbauer/cordra-mcp"
+Repository = "https://github.com/dnlbauer/cordra-mcp"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.6.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "loguru>=0.7.0",
+]
+production = []
+
+[project.scripts]
+cordra-mcp = "cordra_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["cordra.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v"
+
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.1",
+    "pytest-asyncio>=1.0.0",
+    "ruff>=0.12.1",
+    "types-requests>=2.32.4.20250611",
+]
