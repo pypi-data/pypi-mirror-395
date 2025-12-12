@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ghtest.test_utils &#8212; ghtest  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for ghtest.test_utils</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># coding: utf-8</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">builtins</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib.util</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">zlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapping</span> <span class="k">as</span> <span class="n">MappingABC</span><span class="p">,</span> <span class="n">Sequence</span> <span class="k">as</span> <span class="n">SequenceABC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span><span class="p">,</span> <span class="n">redirect_stdout</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="k">try</span><span class="p">:</span>  <span class="c1"># pragma: no cover - optional dependency</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span> <span class="k">as</span> <span class="n">_RequestsResponse</span>
+<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover - requests not installed</span>
+    <span class="n">_RequestsResponse</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="CaseTestResult">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.test_utils.CaseTestResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CaseTestResult</span><span class="p">:</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">return_value</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">printed</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">exception</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="ne">BaseException</span><span class="p">]</span>
+    <span class="n">file_reads</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">file_writes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">return_summary</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">volatile_return_fields</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">cassette_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="RunTestWithCassette">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.test_utils.RunTestWithCassette">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RunTestWithCassette</span><span class="p">:</span>
+    <span class="n">cassette_path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">cases</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CaseTestResult</span><span class="p">]</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_import_module_from_path</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">module_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">module_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="n">spec</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">spec_from_file_location</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot import module from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">module</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">module_from_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">module_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span>
+    <span class="n">spec</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">exec_module</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">module</span>
+
+
+<div class="viewcode-block" id="import_function">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.test_utils.import_function">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">import_function</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">qualname</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">filepath</span><span class="p">:</span>
+            <span class="k">raise</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="n">_import_module_from_path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+    <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">mod</span>
+    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">qualname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">obj</span></div>
+
+
+
+<div class="viewcode-block" id="call_with_capture">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.test_utils.call_with_capture">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">call_with_capture</span><span class="p">(</span>
+    <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">volatile_return_fields</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseTestResult</span><span class="p">:</span>
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">volatile_return_fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">volatile_fields</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_DEFAULT_VOLATILE_RESPONSE_FIELDS</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">volatile_fields</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">volatile_return_fields</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">_capture_file_access</span><span class="p">()</span> <span class="k">as</span> <span class="p">(</span><span class="n">reads</span><span class="p">,</span> <span class="n">writes</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">redirect_stdout</span><span class="p">(</span><span class="n">buf</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+                <span class="n">exc</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="ne">BaseException</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">except</span> <span class="ne">BaseException</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">exc</span> <span class="o">=</span> <span class="n">error</span>
+    <span class="n">return_summary</span> <span class="o">=</span> <span class="n">_summarize_return_value</span><span class="p">(</span><span class="n">ret</span><span class="p">,</span> <span class="n">volatile_fields</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">CaseTestResult</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+        <span class="n">return_value</span><span class="o">=</span><span class="n">ret</span><span class="p">,</span>
+        <span class="n">printed</span><span class="o">=</span><span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">(),</span>
+        <span class="n">exception</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
+        <span class="n">file_reads</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">reads</span><span class="p">),</span>
+        <span class="n">file_writes</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">writes</span><span class="p">),</span>
+        <span class="n">return_summary</span><span class="o">=</span><span class="n">return_summary</span><span class="p">,</span>
+        <span class="n">volatile_return_fields</span><span class="o">=</span><span class="n">volatile_fields</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="execute_function">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.test_utils.execute_function">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">execute_function</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">filepath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">qualname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">volatile_return_fields</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseTestResult</span><span class="p">:</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">import_function</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">qualname</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">call_with_capture</span><span class="p">(</span>
+        <span class="n">func</span><span class="p">,</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">qualname</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+        <span class="n">volatile_return_fields</span><span class="o">=</span><span class="n">volatile_return_fields</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_capture_file_access</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]:</span>
+    <span class="n">reads</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">writes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">original_open</span> <span class="o">=</span> <span class="n">builtins</span><span class="o">.</span><span class="n">open</span>
+    <span class="n">original_path_open</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">open</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_record</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">read_flag</span><span class="p">,</span> <span class="n">write_flag</span> <span class="o">=</span> <span class="n">_classify_mode</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">read_flag</span><span class="p">:</span>
+            <span class="n">reads</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">write_flag</span><span class="p">:</span>
+            <span class="n">writes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wrap_open</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_inner</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">_record</span><span class="p">(</span><span class="n">_normalize_path</span><span class="p">(</span><span class="n">file</span><span class="p">),</span> <span class="n">mode</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_inner</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wrap_path_open</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_inner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">_record</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="n">mode</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_inner</span>
+
+    <span class="n">builtins</span><span class="o">.</span><span class="n">open</span> <span class="o">=</span> <span class="n">_wrap_open</span><span class="p">(</span><span class="n">original_open</span><span class="p">)</span>
+    <span class="n">Path</span><span class="o">.</span><span class="n">open</span> <span class="o">=</span> <span class="n">_wrap_path_open</span><span class="p">(</span><span class="n">original_path_open</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">reads</span><span class="p">,</span> <span class="n">writes</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">builtins</span><span class="o">.</span><span class="n">open</span> <span class="o">=</span> <span class="n">original_open</span>
+        <span class="n">Path</span><span class="o">.</span><span class="n">open</span> <span class="o">=</span> <span class="n">original_path_open</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_classify_mode</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">mode</span><span class="p">:</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span>
+    <span class="n">read</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span> <span class="ow">in</span> <span class="n">mode</span> <span class="ow">or</span> <span class="s2">&quot;+&quot;</span> <span class="ow">in</span> <span class="n">mode</span>
+    <span class="n">write</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">flag</span> <span class="ow">in</span> <span class="n">mode</span> <span class="k">for</span> <span class="n">flag</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;+&quot;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">read</span><span class="p">,</span> <span class="n">write</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_path</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">)):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="c1"># Try to make it relative to CWD</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()))</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="n">_HEX_PTR_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot; at 0x[0-9A-Fa-f]+&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stable_repr</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">rep</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_HEX_PTR_RE</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">rep</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_type_name</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;NoneType&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">value</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">value</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_quick_hash</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">format</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">adler32</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFF</span><span class="p">,</span> <span class="s2">&quot;08x&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_literal_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">_is_literal_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_literal_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_return_value</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">volatile_fields</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">_type_name</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+        <span class="s2">&quot;repr&quot;</span><span class="p">:</span> <span class="n">_stable_repr</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">_is_literal_value</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_summarize_blob</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">)):</span>
+        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;bytes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_summarize_blob</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">if</span> <span class="n">_RequestsResponse</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_RequestsResponse</span><span class="p">):</span>
+        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;object&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;requests.Response&quot;</span>
+        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_collect_response_attributes</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">volatile_fields</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">return</span> <span class="n">summary</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_collect_response_attributes</span><span class="p">(</span>
+    <span class="n">response</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">volatile_fields</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="n">attributes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">volatile</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">volatile_fields</span> <span class="ow">or</span> <span class="p">[])</span>
+    <span class="n">candidate_names</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">candidate_names</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_RESPONSE_EXTRA_ATTRS</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">candidate_names</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">volatile</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span>
+            <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_summarize_attribute_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">attributes</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_attribute_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">_type_name</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+        <span class="s2">&quot;repr&quot;</span><span class="p">:</span> <span class="n">_stable_repr</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">_is_literal_value</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">summary</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_summarize_blob</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">)):</span>
+        <span class="n">summary</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_summarize_blob</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">MappingABC</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="n">sample</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">())[:</span><span class="mi">5</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">sample</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span> <span class="k">if</span> <span class="n">_is_literal_value</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="k">else</span> <span class="n">_stable_repr</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sample</span><span class="p">:</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sample</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">SequenceABC</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+        <span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="n">preview</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">value</span><span class="p">)[:</span><span class="mi">5</span><span class="p">]:</span>
+            <span class="n">preview</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span> <span class="k">if</span> <span class="n">_is_literal_value</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">else</span> <span class="n">_stable_repr</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">preview</span><span class="p">:</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">preview</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="k">return</span> <span class="n">summary</span>
+
+
+<span class="n">_BLOB_INLINE_LIMIT</span> <span class="o">=</span> <span class="mi">160</span>
+<span class="n">_BLOB_PREVIEW_LIMIT</span> <span class="o">=</span> <span class="mi">80</span>
+<span class="n">_RESPONSE_EXTRA_ATTRS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;content&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;elapsed&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;encoding&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;headers&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;history&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_permanent_redirect&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_redirect&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ok&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;reason&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;status_code&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;text&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;url&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">_DEFAULT_VOLATILE_RESPONSE_FIELDS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;elapsed&quot;</span><span class="p">,</span> <span class="s2">&quot;headers&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_summarize_blob</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="n">encoded</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
+        <span class="n">summary</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span>
+            <span class="s2">&quot;preview&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[:</span><span class="n">_BLOB_PREVIEW_LIMIT</span><span class="p">],</span>
+            <span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">_quick_hash</span><span class="p">(</span><span class="n">encoded</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">_BLOB_INLINE_LIMIT</span><span class="p">:</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">return</span> <span class="n">summary</span>
+    <span class="n">data_bytes</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">preview_bytes</span> <span class="o">=</span> <span class="n">data_bytes</span><span class="p">[:</span><span class="n">_BLOB_PREVIEW_LIMIT</span><span class="p">]</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_bytes</span><span class="p">),</span>
+        <span class="s2">&quot;preview&quot;</span><span class="p">:</span> <span class="n">preview_bytes</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;preview_b64&quot;</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">preview_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">_quick_hash</span><span class="p">(</span><span class="n">data_bytes</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_bytes</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">_BLOB_INLINE_LIMIT</span><span class="p">:</span>
+        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;value_b64&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">data_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">summary</span>
+
+
+<div class="viewcode-block" id="assert_return_summary">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.test_utils.assert_return_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">assert_return_summary</span><span class="p">(</span>
+    <span class="n">actual</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="n">expected</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">actual_data</span> <span class="o">=</span> <span class="n">actual</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">expected_data</span> <span class="o">=</span> <span class="n">expected</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">_compare_summary</span><span class="p">(</span><span class="n">actual_data</span><span class="p">,</span> <span class="n">expected_data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s2">&quot;return&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compare_summary</span><span class="p">(</span><span class="n">actual</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">_raise_summary_error</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">actual</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">exp_val</span> <span class="ow">in</span> <span class="n">expected</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">actual</span><span class="p">:</span>
+                <span class="n">_raise_summary_error</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exp_val</span><span class="p">,</span> <span class="s2">&quot;&lt;missing&gt;&quot;</span><span class="p">)</span>
+            <span class="n">_compare_summary</span><span class="p">(</span><span class="n">actual</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">exp_val</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">expected</span><span class="p">):</span>
+            <span class="n">_raise_summary_error</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">actual</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">act_item</span><span class="p">,</span> <span class="n">exp_item</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">)):</span>
+            <span class="n">_compare_summary</span><span class="p">(</span><span class="n">act_item</span><span class="p">,</span> <span class="n">exp_item</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="n">actual</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">:</span>
+        <span class="n">_raise_summary_error</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">actual</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_raise_summary_error</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">actual</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> return summary mismatch at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: expected </span><span class="si">{</span><span class="n">expected</span><span class="si">!r}</span><span class="s2">, got </span><span class="si">{</span><span class="n">actual</span><span class="si">!r}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;CaseTestResult&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RunTestWithCassette&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;call_with_capture&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;execute_function&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;import_function&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;assert_return_summary&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">ghtest</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, k4144.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,82 @@
+[![License](https://img.shields.io/github/license/k4144/ghtest)](https://github.com/k4144/ghtest/blob/main/LICENSE)
+[![CI](https://github.com/k4144/ghtest/actions/workflows/ci.yml/badge.svg)](https://github.com/k4144/ghtest/actions/workflows/ci.yml)
+[![PyPI](https://raw.githubusercontent.com/k4144/ghtest/main/badges/pypi.svg)](https://pypi.org/project/ghtest/)
+[![Tests](https://raw.githubusercontent.com/k4144/ghtest/main/badges/tests.svg)](https://docs.pytest.org/en/stable/)
+[![Coverage](https://raw.githubusercontent.com/k4144/ghtest/main/badges/coverage.svg)](https://docs.pytest.org/en/stable/)
+[![Bandit](https://raw.githubusercontent.com/k4144/ghtest/main/badges/bandit.svg)](https://bandit.readthedocs.io/en/latest/)
+[![Black](https://raw.githubusercontent.com/k4144/ghtest/main/badges/black.svg)](https://pypi.org/project/black/)
+[![Ruff](https://raw.githubusercontent.com/k4144/ghtest/main/badges/ruff.svg)](https://pypi.org/project/ruff/)
+[![Docs](https://raw.githubusercontent.com/k4144/ghtest/main/badges/docs.svg)](https://www.sphinx-doc.org/en/master/usage/quickstart.html)
+
+# ghtest
+
+**Coverage-Guided Test Generator for Python**
+
+`ghtest` is a test generation tool that automatically creates regression tests for your Python code. It combines static analysis with coverage-guided feedback to generate (hopefully) high-quality tests that capture the current behavior of your application.
+
+## Key Features
+
+-   **Coverage-Guided Generation**: Iteratively generates tests to target missed branches and edge cases.
+-   **VCR Integration**: Automatically records and replays external API interactions (like GitHub API calls) using `vcrpy`, making tests deterministic and offline-capable.
+-   **Scenario Support**: Detects CRUD patterns and generates stateful scenario tests (e.g., create -> read -> delete).
+-   **Smart Parameter Suggestion**: Analyzes function signatures and type hints to suggest realistic test inputs.
+-   **Portable Tests**: Generates standalone `pytest` files with relative paths, ready to be committed to your repository.
+-   **Safe Execution**: Includes an interactive mode to prevent accidental execution of destructive functions (like `delete_repo`) during test generation. Nevertheless, it is stringly recommended to run `ghtest` in a safe environment.
+
+## Installation
+
+```bash
+pip install ghtest
+```
+
+## Usage
+
+Run `ghtest` on your source directory:
+
+```bash
+ghtest src/my_project
+```
+
+This will:
+1.  Scan your code for functions.
+2.  Generate initial tests.
+3.  Run them to capture behavior (recording cassettes).
+4.  Analyze coverage to find missed branches.
+5.  Generate targeted tests to fill coverage gaps.
+6.  Output ready-to-run test files in `tests/`.
+
+### Options
+
+| Option | Description |
+| :--- | :--- |
+| `--test-dir DIR` | Directory to output generated tests (default: `tests`) |
+| `--cassette-dir DIR` | Directory to store VCR cassettes (default: `tests/cassettes`) |
+| `--unsafe` | Run potentially destructive functions without asking for permission |
+| `--interactive`, `-i` | Enable interactive mode (ask before running destructive tests) |
+| `--verbose`, `-v` | Increase verbosity level |
+| `--no-cleanup` | Do not clean up existing tests/cassettes before running |
+| `--history` | Use parameter history for suggestions |
+| `--version` | Show version number |
+
+### Example
+
+Generate tests for the current directory, asking for permission before running anything risky:
+
+```bash
+ghtest . --interactive --verbose
+```
+
+## How It Works
+
+1.  **Static Analysis**: `ghtest` parses your code to understand function signatures, types, and dependencies.
+2.  **Parameter Suggestion**: It suggests input values based on types and common patterns.
+3.  **Execution & Capture**: It runs the functions with the suggested inputs.
+    *   Return values and exceptions are captured.
+    *   File I/O is tracked.
+    *   Network requests are recorded into VCR cassettes.
+4.  **Coverage Feedback**: It measures code coverage and identifies unexecuted branches (e.g., `if x > 5:`). It then solves for inputs that would trigger those branches and generates new tests.
+5.  **Code Generation**: Finally, it writes out standard Python test files that assert the captured behavior matches the replay.
+
+## License
+
+[MIT](LICENSE)

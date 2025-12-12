@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ghtest.tests_creator &#8212; ghtest  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for ghtest.tests_creator</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># coding: utf-8</span>
+
+<span class="c1"># In[2]:</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">ast</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">textwrap</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">vcr</span>
+
+<span class="k">try</span><span class="p">:</span>  <span class="c1"># pragma: no cover - fallback for direct script usage</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.test_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">CaseTestResult</span><span class="p">,</span>
+        <span class="n">RunTestWithCassette</span><span class="p">,</span>
+        <span class="n">call_with_capture</span><span class="p">,</span>
+        <span class="c1"># execute_function,</span>
+        <span class="n">import_function</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+    <span class="n">current_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">current_dir</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">current_dir</span><span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">test_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># type: ignore</span>
+        <span class="n">CaseTestResult</span><span class="p">,</span>
+        <span class="n">RunTestWithCassette</span><span class="p">,</span>
+        <span class="n">call_with_capture</span><span class="p">,</span>
+        <span class="n">import_function</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># In[5]:</span>
+
+
+<div class="viewcode-block" id="ScenarioStep">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.tests_creator.ScenarioStep">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScenarioStep</span><span class="p">:</span>
+    <span class="n">module</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">qualname</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">expect</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cleanup</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">description</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="CrudScenario">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.tests_creator.CrudScenario">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CrudScenario</span><span class="p">:</span>
+    <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">identifier</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">steps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ScenarioStep</span><span class="p">]</span>
+    <span class="n">note</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="SuggestedFunctionTests">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.tests_creator.SuggestedFunctionTests">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SuggestedFunctionTests</span><span class="p">:</span>
+    <span class="n">module</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">qualname</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">docstring</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">param_sets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>  <span class="c1"># each dict is kwargs for a call</span>
+    <span class="n">scenario</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CrudScenario</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="GeneratedTest">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.tests_creator.GeneratedTest">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GeneratedTest</span><span class="p">:</span>
+    <span class="n">test_callable</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">RunTestWithCassette</span><span class="p">]</span>
+    <span class="n">cassette_path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Python source code of an equivalent test function</span></div>
+
+
+
+<span class="n">_DESTRUCTIVE_NAME_HINTS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;remove&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;delete&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;destroy&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;drop&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;del_&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rm_&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rmdir&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">_DESTRUCTIVE_ATTR_HINTS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="s2">&quot;os&quot;</span><span class="p">,</span> <span class="s2">&quot;remove&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;os&quot;</span><span class="p">,</span> <span class="s2">&quot;rmdir&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;os&quot;</span><span class="p">,</span> <span class="s2">&quot;unlink&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;shutil&quot;</span><span class="p">,</span> <span class="s2">&quot;rmtree&quot;</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="n">_DESTRUCTIVE_SIMPLE_CALLS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;remove&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;unlink&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rmdir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rmtree&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;delete&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;del&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rmtree&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_looks_destructive_name</span><span class="p">(</span><span class="n">qualname</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="n">lname</span> <span class="o">=</span> <span class="n">qualname</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">token</span> <span class="ow">in</span> <span class="n">lname</span> <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">_DESTRUCTIVE_NAME_HINTS</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_function_ast</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ast</span><span class="o">.</span><span class="n">Module</span><span class="p">]:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ast</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">SyntaxError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_FunctionFinder</span><span class="p">(</span><span class="n">ast</span><span class="o">.</span><span class="n">NodeVisitor</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">found</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ast</span><span class="o">.</span><span class="n">AST</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">visit_ClassDef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">ast</span><span class="o">.</span><span class="n">ClassDef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">found</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">visit_FunctionDef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">ast</span><span class="o">.</span><span class="n">FunctionDef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">found</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">+</span> <span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">found</span> <span class="o">=</span> <span class="n">node</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">visit_AsyncFunctionDef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">ast</span><span class="o">.</span><span class="n">AsyncFunctionDef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">visit_FunctionDef</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_DestructiveCallVisitor</span><span class="p">(</span><span class="n">ast</span><span class="o">.</span><span class="n">NodeVisitor</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">found</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">visit_Call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">ast</span><span class="o">.</span><span class="n">Call</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">found</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">_is_destructive_call</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">found</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_destructive_call</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="n">ast</span><span class="o">.</span><span class="n">Call</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">func</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">ast</span><span class="o">.</span><span class="n">Attribute</span><span class="p">):</span>
+        <span class="n">attr</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">attr</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">ast</span><span class="o">.</span><span class="n">Name</span><span class="p">):</span>
+            <span class="n">base_name</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">base_name</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_DESTRUCTIVE_ATTR_HINTS</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">_DESTRUCTIVE_SIMPLE_CALLS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">ast</span><span class="o">.</span><span class="n">Name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">func</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_DESTRUCTIVE_SIMPLE_CALLS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_function_body_has_destructive_calls</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">qualname</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="n">tree</span> <span class="o">=</span> <span class="n">_load_function_ast</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tree</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">finder</span> <span class="o">=</span> <span class="n">_FunctionFinder</span><span class="p">(</span><span class="n">qualname</span><span class="p">)</span>
+    <span class="n">finder</span><span class="o">.</span><span class="n">visit</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">finder</span><span class="o">.</span><span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">visitor</span> <span class="o">=</span> <span class="n">_DestructiveCallVisitor</span><span class="p">()</span>
+    <span class="n">visitor</span><span class="o">.</span><span class="n">visit</span><span class="p">(</span><span class="n">finder</span><span class="o">.</span><span class="n">found</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
+    <span class="k">return</span> <span class="n">visitor</span><span class="o">.</span><span class="n">found</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_should_confirm_execution</span><span class="p">(</span><span class="n">suggestion</span><span class="p">:</span> <span class="n">SuggestedFunctionTests</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">_looks_destructive_name</span><span class="p">(</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="n">_function_body_has_destructive_calls</span><span class="p">(</span>
+        <span class="n">suggestion</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_prompt_user_confirmation</span><span class="p">(</span><span class="n">suggestion</span><span class="p">:</span> <span class="n">SuggestedFunctionTests</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">prompt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Function </span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> may perform destructive actions.</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;Proceed with executing auto-generated tests? [y/N]: &quot;</span>
+    <span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Aborted executing potentially destructive test target.&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_step_summary</span><span class="p">(</span><span class="n">step</span><span class="p">:</span> <span class="n">ScenarioStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">param_display</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">v</span><span class="si">!r}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">step</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">param_display</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_confirm_crud_scenario</span><span class="p">(</span><span class="n">scenario</span><span class="p">:</span> <span class="n">CrudScenario</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">interactive</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="sa">f</span><span class="s2">&quot;Planned CRUD scenario for resource &#39;</span><span class="si">{</span><span class="n">scenario</span><span class="o">.</span><span class="n">resource</span><span class="si">}</span><span class="s2">&#39; as &#39;</span><span class="si">{</span><span class="n">scenario</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">&#39;:&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">scenario</span><span class="o">.</span><span class="n">steps</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">_format_step_summary</span><span class="p">(</span><span class="n">step</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">scenario</span><span class="o">.</span><span class="n">note</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Note: </span><span class="si">{</span><span class="n">scenario</span><span class="o">.</span><span class="n">note</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Proceed with the full sequence? [y/N]: &quot;</span><span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">}:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Aborted CRUD scenario execution.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_execute_scenario_step</span><span class="p">(</span>
+    <span class="n">step</span><span class="p">:</span> <span class="n">ScenarioStep</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">record</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">cassette_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cassette_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">record_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;once&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseTestResult</span><span class="p">:</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">import_function</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="n">step</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="p">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+    <span class="n">recorder</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">record</span> <span class="ow">and</span> <span class="n">cassette_dir</span> <span class="ow">and</span> <span class="n">cassette_name</span><span class="p">:</span>
+        <span class="n">recorder</span> <span class="o">=</span> <span class="n">vcr</span><span class="o">.</span><span class="n">VCR</span><span class="p">(</span>
+            <span class="n">serializer</span><span class="o">=</span><span class="s2">&quot;yaml&quot;</span><span class="p">,</span>
+            <span class="n">cassette_library_dir</span><span class="o">=</span><span class="n">cassette_dir</span><span class="p">,</span>
+            <span class="n">record_mode</span><span class="o">=</span><span class="n">record_mode</span><span class="p">,</span>
+            <span class="n">match_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span> <span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="s2">&quot;body&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">recorder</span> <span class="ow">and</span> <span class="n">record</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">recorder</span><span class="o">.</span><span class="n">use_cassette</span><span class="p">(</span><span class="n">cassette_name</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">call_with_capture</span><span class="p">(</span>
+                <span class="n">func</span><span class="p">,</span>
+                <span class="n">target</span><span class="o">=</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="p">,</span>
+                <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+                <span class="n">volatile_return_fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">cassette_dir</span> <span class="ow">and</span> <span class="n">cassette_name</span><span class="p">:</span>
+            <span class="n">cassette_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="n">cassette_name</span><span class="p">)</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">cassette_path</span> <span class="o">=</span> <span class="n">cassette_file</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cassette_file</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">cassette_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+                        <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;interactions: []</span><span class="se">\n</span><span class="s2">version: 1</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">call_with_capture</span><span class="p">(</span>
+            <span class="n">func</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+            <span class="n">volatile_return_fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">return_value</span>
+    <span class="n">exc</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">exception</span>
+    <span class="k">if</span> <span class="n">step</span><span class="o">.</span><span class="n">expect</span> <span class="o">==</span> <span class="s2">&quot;truthy&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ret</span> <span class="ow">and</span> <span class="n">exc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Expected truthy result for </span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">ret</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SCENARIO FAILURE: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">exception</span> <span class="o">=</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">step</span><span class="o">.</span><span class="n">expect</span> <span class="o">==</span> <span class="s2">&quot;falsy&quot;</span> <span class="ow">and</span> <span class="n">ret</span> <span class="ow">and</span> <span class="n">exc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Expected falsy result for </span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">ret</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SCENARIO FAILURE: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">exception</span> <span class="o">=</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SCENARIO EXCEPTION in </span><span class="si">{</span><span class="n">step</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_crud_scenario</span><span class="p">(</span>
+    <span class="n">scenario</span><span class="p">:</span> <span class="n">CrudScenario</span><span class="p">,</span>
+    <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cassette_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cassette_base</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">record_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;once&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">CaseTestResult</span><span class="p">]:</span>
+    <span class="n">assume_safe</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GHTEST_ASSUME_SAFE&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span>
+    <span class="k">if</span> <span class="n">assume_safe</span><span class="p">:</span>
+        <span class="n">confirmed</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">confirmed</span> <span class="o">=</span> <span class="n">_confirm_crud_scenario</span><span class="p">(</span><span class="n">scenario</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="n">interactive</span><span class="p">)</span>
+    <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CaseTestResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">assume_safe</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">confirmed</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">results</span>
+    <span class="n">cleanup_step</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">scenario</span><span class="o">.</span><span class="n">steps</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">cleanup</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">cleanup_executed</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">pending_error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="ne">BaseException</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cassette_base_value</span> <span class="o">=</span> <span class="n">cassette_base</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">steps</span><span class="p">):</span>
+            <span class="n">cassette_name</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">cassette_dir</span> <span class="ow">and</span> <span class="n">cassette_base_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;cleanup&quot;</span> <span class="k">if</span> <span class="n">step</span><span class="o">.</span><span class="n">cleanup</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;step_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">cassette_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cassette_base_value</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">.yaml&quot;</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">_execute_scenario_step</span><span class="p">(</span>
+                <span class="n">step</span><span class="p">,</span>
+                <span class="n">cassette_dir</span><span class="o">=</span><span class="n">cassette_dir</span><span class="p">,</span>
+                <span class="n">cassette_name</span><span class="o">=</span><span class="n">cassette_name</span><span class="p">,</span>
+                <span class="n">record_mode</span><span class="o">=</span><span class="n">record_mode</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">step</span><span class="o">.</span><span class="n">cleanup</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">exception</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">cleanup_executed</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Stop execution on failure, but pad results for remaining steps</span>
+                <span class="n">remaining_steps</span> <span class="o">=</span> <span class="n">scenario</span><span class="o">.</span><span class="n">steps</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]</span>
+                <span class="k">for</span> <span class="n">skipped_step</span> <span class="ow">in</span> <span class="n">remaining_steps</span><span class="p">:</span>
+                    <span class="n">skipped_result</span> <span class="o">=</span> <span class="n">CaseTestResult</span><span class="p">(</span>
+                        <span class="n">target</span><span class="o">=</span><span class="n">skipped_step</span><span class="o">.</span><span class="n">qualname</span><span class="p">,</span>
+                        <span class="n">params</span><span class="o">=</span><span class="n">skipped_step</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+                        <span class="n">return_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">printed</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+                        <span class="n">exception</span><span class="o">=</span><span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Skipped due to previous step failure&quot;</span><span class="p">),</span>
+                        <span class="n">return_summary</span><span class="o">=</span><span class="p">{},</span>
+                        <span class="n">volatile_return_fields</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="p">)</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">skipped_result</span><span class="p">)</span>
+                <span class="k">break</span>
+    <span class="k">except</span> <span class="ne">BaseException</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+        <span class="n">pending_error</span> <span class="o">=</span> <span class="n">exc</span>  <span class="c1"># noqa: F841</span>
+        <span class="c1"># If we crashed outside the loop or during setup, we might need more padding,</span>
+        <span class="c1"># but the break above handles the common case of step failure.</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cleanup_step</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">cleanup_executed</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cassette_name</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">cassette_dir</span> <span class="ow">and</span> <span class="n">cassette_base_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">cassette_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cassette_base_value</span><span class="si">}</span><span class="s2">.cleanup.yaml&quot;</span>
+                <span class="n">_execute_scenario_step</span><span class="p">(</span>
+                    <span class="n">cleanup_step</span><span class="p">,</span>
+                    <span class="n">record</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">cassette_dir</span><span class="o">=</span><span class="n">cassette_dir</span><span class="p">,</span>
+                    <span class="n">cassette_name</span><span class="o">=</span><span class="n">cassette_name</span><span class="p">,</span>
+                    <span class="n">record_mode</span><span class="o">=</span><span class="n">record_mode</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+    <span class="c1"># if pending_error:</span>
+    <span class="c1">#    raise pending_error</span>
+    <span class="k">return</span> <span class="n">results</span>
+
+
+<div class="viewcode-block" id="make_test_function">
+<a class="viewcode-back" href="../../ghtest.html#ghtest.tests_creator.make_test_function">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_test_function</span><span class="p">(</span>
+    <span class="n">suggestion</span><span class="p">:</span> <span class="n">SuggestedFunctionTests</span><span class="p">,</span>
+    <span class="n">cassette_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">record_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;once&quot;</span><span class="p">,</span>
+    <span class="n">volatile_response_fields</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeneratedTest</span><span class="p">:</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">func_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;test_</span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">requested_base</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">module</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+    <span class="n">cassette_base</span> <span class="o">=</span> <span class="n">_ensure_unique_cassette_base</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="n">requested_base</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cassette_base</span> <span class="o">!=</span> <span class="n">requested_base</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Existing cassette detected for </span><span class="si">{</span><span class="n">requested_base</span><span class="si">}</span><span class="s2">; &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;recording new interactions under </span><span class="si">{</span><span class="n">cassette_base</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">cassette_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cassette_base</span><span class="si">}</span><span class="s2">.yaml&quot;</span><span class="p">)</span>
+    <span class="n">scenario_cassette_base</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">scenario</span><span class="p">:</span>
+        <span class="n">requested_scenario_base</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cassette_base</span><span class="si">}</span><span class="s2">.scenario&quot;</span>
+        <span class="n">scenario_cassette_base</span> <span class="o">=</span> <span class="n">_ensure_unique_cassette_base</span><span class="p">(</span>
+            <span class="n">cassette_dir</span><span class="p">,</span> <span class="n">requested_scenario_base</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">volatile_response_fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">volatile_fields</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">volatile_fields</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">volatile_response_fields</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test</span><span class="p">(</span><span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RunTestWithCassette</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">_should_confirm_execution</span><span class="p">(</span><span class="n">suggestion</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GHTEST_ASSUME_SAFE&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">interactive</span><span class="p">:</span>
+                    <span class="n">_prompt_user_confirmation</span><span class="p">(</span><span class="n">suggestion</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="s2">&quot;aborted executing potentially destructive test target.&quot;</span>
+                    <span class="p">)</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">import_function</span><span class="p">(</span>
+            <span class="n">suggestion</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span>
+        <span class="p">)</span>
+        <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CaseTestResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">suggestion</span><span class="o">.</span><span class="n">param_sets</span><span class="p">):</span>
+            <span class="n">case_cassette</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cassette_base</span><span class="si">}</span><span class="s2">.case_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">.yaml&quot;</span>
+            <span class="n">recorder</span> <span class="o">=</span> <span class="n">vcr</span><span class="o">.</span><span class="n">VCR</span><span class="p">(</span>
+                <span class="n">serializer</span><span class="o">=</span><span class="s2">&quot;yaml&quot;</span><span class="p">,</span>
+                <span class="n">cassette_library_dir</span><span class="o">=</span><span class="n">cassette_dir</span><span class="p">,</span>
+                <span class="n">record_mode</span><span class="o">=</span><span class="n">record_mode</span><span class="p">,</span>
+                <span class="n">match_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span> <span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="s2">&quot;body&quot;</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">recorder</span><span class="o">.</span><span class="n">use_cassette</span><span class="p">(</span><span class="n">case_cassette</span><span class="p">):</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">call_with_capture</span><span class="p">(</span>
+                        <span class="n">func</span><span class="p">,</span>
+                        <span class="n">target</span><span class="o">=</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="p">,</span>
+                        <span class="n">params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">params</span><span class="p">),</span>
+                        <span class="n">volatile_return_fields</span><span class="o">=</span><span class="n">volatile_fields</span><span class="p">,</span>
+                    <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># noqa: BLE001</span>
+                <span class="k">if</span> <span class="n">_is_vcr_overwrite_error</span><span class="p">(</span><span class="n">exc</span><span class="p">):</span>
+                    <span class="n">_reraise_with_vcr_guidance</span><span class="p">(</span>
+                        <span class="n">exc</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="n">case_cassette</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="c1"># Create a failed result</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">CaseTestResult</span><span class="p">(</span>
+                    <span class="n">target</span><span class="o">=</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="p">,</span>
+                    <span class="n">params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">params</span><span class="p">),</span>
+                    <span class="n">exception</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
+                    <span class="n">return_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">printed</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="n">file_reads</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="n">file_writes</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="n">return_summary</span><span class="o">=</span><span class="p">{},</span>
+                    <span class="n">volatile_return_fields</span><span class="o">=</span><span class="n">volatile_fields</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="n">result</span><span class="o">.</span><span class="n">cassette_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="n">case_cassette</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">scenario</span><span class="p">:</span>
+            <span class="n">scenario_results</span> <span class="o">=</span> <span class="n">_run_crud_scenario</span><span class="p">(</span>
+                <span class="n">suggestion</span><span class="o">.</span><span class="n">scenario</span><span class="p">,</span>
+                <span class="n">interactive</span><span class="o">=</span><span class="n">interactive</span><span class="p">,</span>
+                <span class="n">cassette_dir</span><span class="o">=</span><span class="n">cassette_dir</span><span class="p">,</span>
+                <span class="n">cassette_base</span><span class="o">=</span><span class="n">scenario_cassette_base</span><span class="p">,</span>
+                <span class="n">record_mode</span><span class="o">=</span><span class="n">record_mode</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">scenario_results</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">RunTestWithCassette</span><span class="p">(</span>
+            <span class="n">cassette_path</span><span class="o">=</span><span class="n">cassette_path</span><span class="p">,</span>
+            <span class="n">cases</span><span class="o">=</span><span class="n">results</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">test</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="n">func_name</span>
+    <span class="k">if</span> <span class="n">suggestion</span><span class="o">.</span><span class="n">docstring</span><span class="p">:</span>
+        <span class="n">test</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Auto-generated test for </span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="si">}</span><span class="s2"> with VCR.</span><span class="se">\n\n</span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">docstring</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="n">param_sets_repr</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">suggestion</span><span class="o">.</span><span class="n">param_sets</span><span class="p">)</span>
+    <span class="n">volatile_repr</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">volatile_fields</span><span class="p">)</span>
+
+    <span class="n">source</span> <span class="o">=</span> <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&quot;&quot;import os</span>
+<span class="s2">from typing import List</span>
+
+<span class="s2">import vcr</span>
+
+<span class="s2">from ghtest.test_utils import (</span>
+<span class="s2">    CaseTestResult,</span>
+<span class="s2">    RunTestWithCassette,</span>
+<span class="s2">    call_with_capture,</span>
+<span class="s2">    import_function,</span>
+<span class="s2">)</span>
+
+
+<span class="s2">def </span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">() -&gt; RunTestWithCassette:</span>
+<span class="s2">    module = </span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">module</span><span class="si">!r}</span>
+<span class="s2">    filepath = </span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">filepath</span><span class="si">!r}</span>
+<span class="s2">    qualname = </span><span class="si">{</span><span class="n">suggestion</span><span class="o">.</span><span class="n">qualname</span><span class="si">!r}</span>
+<span class="s2">    cassette_dir = </span><span class="si">{</span><span class="n">cassette_dir</span><span class="si">!r}</span>
+<span class="s2">    cassette_base = </span><span class="si">{</span><span class="n">cassette_base</span><span class="si">!r}</span>
+<span class="s2">    cassette_path = os.path.join(cassette_dir, f&quot;</span><span class="se">{{</span><span class="s2">cassette_base</span><span class="se">}}</span><span class="s2">.yaml&quot;)</span>
+<span class="s2">    param_sets = </span><span class="si">{</span><span class="n">param_sets_repr</span><span class="si">}</span>
+<span class="s2">    volatile_fields = </span><span class="si">{</span><span class="n">volatile_repr</span><span class="si">}</span>
+
+<span class="s2">    os.makedirs(cassette_dir, exist_ok=True)</span>
+
+<span class="s2">    func = import_function(module, filepath, qualname)</span>
+<span class="s2">    results: List[CaseTestResult] = []</span>
+
+<span class="s2">    for idx, params in enumerate(param_sets):</span>
+<span class="s2">        recorder = vcr.VCR(</span>
+<span class="s2">            serializer=&quot;yaml&quot;,</span>
+<span class="s2">            cassette_library_dir=cassette_dir,</span>
+<span class="s2">            record_mode=</span><span class="si">{</span><span class="n">record_mode</span><span class="si">!r}</span><span class="s2">,</span>
+<span class="s2">            match_on=[&quot;uri&quot;, &quot;method&quot;, &quot;body&quot;],</span>
+<span class="s2">        )</span>
+<span class="s2">        cassette_name = f&quot;</span><span class="si">{</span><span class="n">cassette_base</span><span class="si">}</span><span class="s2">.case_</span><span class="se">{{</span><span class="s2">idx</span><span class="se">}}</span><span class="s2">.yaml&quot;</span>
+<span class="s2">        with recorder.use_cassette(cassette_name):</span>
+<span class="s2">            result = call_with_capture(func, target=qualname, params=params, volatile_return_fields=volatile_fields)</span>
+<span class="s2">        result.cassette_path = os.path.join(cassette_dir, cassette_name)</span>
+<span class="s2">        results.append(result)</span>
+
+<span class="s2">    return RunTestWithCassette(cassette_path=os.path.join(cassette_dir, f&quot;</span><span class="si">{</span><span class="n">cassette_base</span><span class="si">}</span><span class="s2">.yaml&quot;), cases=results)</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">GeneratedTest</span><span class="p">(</span>
+        <span class="n">test_callable</span><span class="o">=</span><span class="n">test</span><span class="p">,</span>
+        <span class="n">cassette_path</span><span class="o">=</span><span class="n">cassette_path</span><span class="p">,</span>
+        <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ensure_unique_cassette_base</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">candidate</span> <span class="o">=</span> <span class="n">base</span>
+    <span class="n">suffix</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">_cassette_artifacts_exist</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="n">candidate</span><span class="p">):</span>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">suffix</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">candidate</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cassette_artifacts_exist</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="n">cassette_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">.yaml&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cassette_file</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cassette_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">.case_*.yaml&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_reraise_with_vcr_guidance</span><span class="p">(</span><span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">cassette_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">_is_vcr_overwrite_error</span><span class="p">(</span><span class="n">exc</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;VCR refused to overwrite existing cassette &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cassette_file</span><span class="si">}</span><span class="s2">. Delete the cassette, set remove_cassettes=True, &quot;</span>
+                <span class="s2">&quot;or rerun after cleaning up the conflicting files.&quot;</span>
+            <span class="p">)</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_vcr_overwrite_error</span><span class="p">(</span><span class="n">exc</span><span class="p">:</span> <span class="ne">BaseException</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="n">errors_mod</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">vcr</span><span class="p">,</span> <span class="s2">&quot;errors&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">errors_mod</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">error_cls</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">errors_mod</span><span class="p">,</span> <span class="s2">&quot;CannotOverwriteExistingCassetteException&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">error_cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">error_cls</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="c1"># In[ ]:</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_tests</span><span class="p">(</span><span class="n">gts</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">vb</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">trs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">gt</span> <span class="ow">in</span> <span class="n">gts</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">tr</span> <span class="o">=</span> <span class="n">gt</span><span class="o">.</span><span class="n">test_callable</span><span class="p">(</span><span class="n">interactive</span><span class="o">=</span><span class="n">interactive</span><span class="p">)</span>
+            <span class="n">trs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">vb</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <span class="c1"># if tests fail, we append None so the number of items remains in sync with eg result or suggest lists</span>
+            <span class="n">trs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">trs</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">ghtest</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, k4144.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

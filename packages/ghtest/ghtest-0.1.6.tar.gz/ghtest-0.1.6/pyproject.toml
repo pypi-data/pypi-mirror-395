@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ghtest"
+version = "0.1.6"
+description = "Coverage-guided test generator for Python"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dill>=0.4.0",
+    "natsort>=8.4.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "vcrpy>=6.0.0",
+]
+
+[project.scripts]
+ghtest = "ghtest.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=ghtest --cov-report=term-missing --cov-branch"
+filterwarnings = [
+    "ignore:cannot collect test class 'TestArtifact':pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class 'TestWriterResult':pytest.PytestCollectionWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+disable_warnings = ["module-not-imported"]
+
+[tool.coverage.paths]
+source = ["src", "*/site-packages"]
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.2",
+    "black>=25.11.0",
+    "ruff>=0.14.7",
+    "sphinx>=9.0.1",
+    "sphinx-rtd-theme>=0.5.1",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".ipynb_checkpoints", "src/ghtest/.ipynb_checkpoints"]
