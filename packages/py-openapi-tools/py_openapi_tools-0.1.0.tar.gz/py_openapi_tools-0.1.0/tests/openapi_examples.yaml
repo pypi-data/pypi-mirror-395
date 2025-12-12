@@ -1,0 +1,502 @@
+openapi: 3.0.3
+info:
+  title: Comprehensive OpenAPI 3.0.3 Example
+  version: 1.0.0
+  description: |
+    A compact but comprehensive OpenAPI 3.0.3 specification demonstrating many supported features:
+    - Parameters in path, query, header, cookie with styles and explode
+    - Request bodies with JSON, XML, form, and multipart; encodings
+    - Responses with headers, links, and media-type specific examples
+    - Components: schemas (anyOf/oneOf/allOf/not, discriminator, nullable, readOnly/writeOnly, formats, constraints),
+      parameters, headers, responses, requestBodies, examples, securitySchemes
+    - Security: apiKey, http (basic/bearer), and oauth2 flows
+    - Callbacks, servers with variables, tags, externalDocs, deprecations
+externalDocs:
+  description: OpenAPI Specification 3.0.3
+  url: https://spec.openapis.org/oas/v3.0.3
+servers:
+  - url: https://api.example.com/{baseVersion}
+    description: Production server
+    variables:
+      baseVersion:
+        default: v1
+        enum: [v1, v2]
+  - url: https://staging.example.com/v1
+    description: Staging server
+tags:
+  - name: users
+    description: Operations about users
+  - name: files
+    description: File upload and download
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags: [misc]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                    example: ok
+  /users:
+    get:
+      tags: [users]
+      summary: List users with filtering and pagination
+      operationId: listUsers
+      description: Returns a paginated list of users.
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - in: query
+          name: roles
+          description: Filter by user roles
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/Role'
+            minItems: 1
+            uniqueItems: true
+          style: form
+          explode: true
+          example: [admin, editor]
+        - in: header
+          name: X-Trace-Id
+          description: Optional trace identifier
+          required: false
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9\-]{8,64}$'
+            maxLength: 64
+        - in: cookie
+          name: lastSeen
+          description: Timestamp of the last visit
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: A page of users
+          headers:
+            X-Total-Count:
+              description: Total items available
+              schema:
+                type: integer
+                minimum: 0
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, paging]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  paging:
+                    $ref: '#/components/schemas/Paging'
+              examples:
+                small:
+                  summary: Small page
+                  value:
+                    items: []
+                    paging: { limit: 10, offset: 0 }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [users]
+      summary: Create a user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/UserBase'
+                - type: object
+                  required: [password]
+                  properties:
+                    password:
+                      type: string
+                      minLength: 8
+                      maxLength: 128
+                      format: password
+                      writeOnly: true
+            examples:
+              valid:
+                summary: Valid user
+                value: { email: user@example.com, name: "Ada", role: user, password: secretPassword1 }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              description: Resource URL
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          links:
+            GetUserById:
+              operationId: getUser
+              parameters:
+                id: '$response.body#/id'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Numeric ID of the user
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 123
+    get:
+      tags: [users]
+      summary: Get a user by ID
+      operationId: getUser
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Not found
+    patch:
+      tags: [users]
+      summary: Update parts of a user
+      operationId: patchUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                role:
+                  $ref: '#/components/schemas/Role'
+                phone:
+                  type: string
+                  nullable: true
+                  pattern: '^\+?[0-9\- ]{7,20}$'
+            examples:
+              changeRole:
+                value: { role: admin }
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+  /files:
+    post:
+      tags: [files]
+      summary: Upload a file with metadata
+      operationId: uploadFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                description:
+                  type: string
+                  maxLength: 500
+                tags:
+                  type: array
+                  items: { type: string, maxLength: 32 }
+                  maxItems: 10
+            encoding:
+              description:
+                contentType: text/plain; charset=utf-8
+              tags:
+                style: form
+                explode: true
+      responses:
+        '201':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  size: { type: integer, minimum: 0 }
+  /payments/hooks:
+    post:
+      summary: Receive asynchronous payment status updates (Callback example)
+      operationId: registerPaymentCallback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                callbackUrl:
+                  type: string
+                  format: uri
+      responses:
+        '202':
+          description: Accepted; callback will be invoked
+      callbacks:
+        onPaymentStatus:
+          '{$request.body#/callbackUrl}':
+            post:
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/PaymentStatus'
+              responses:
+                '200':
+                  description: Callback processed
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BasicAuth:
+      type: http
+      scheme: basic
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.com/authorize
+          tokenUrl: https://auth.example.com/token
+          scopes:
+            users:read: Read users
+            users:write: Write users
+  parameters:
+    limit:
+      name: limit
+      in: query
+      description: Page size
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    offset:
+      name: offset
+      in: query
+      description: Offset into the results
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  examples:
+    ExampleUser:
+      summary: Example user object
+      value: { id: 1, email: john@example.com, name: John, role: user }
+  headers:
+    RateLimit-Remaining:
+      description: Requests left for the time window
+      schema: { type: integer, minimum: 0 }
+  requestBodies:
+    UserLogin:
+      description: Login payload
+      required: true
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            type: object
+            required: [username, password]
+            properties:
+              username: { type: string, minLength: 3, maxLength: 64 }
+              password: { type: string, format: password, minLength: 8 }
+          encoding:
+            password:
+              contentType: text/plain
+  schemas:
+    Role:
+      type: string
+      enum: [admin, editor, user]
+      default: user
+    Email:
+      type: string
+      format: email
+      maxLength: 254
+      example: user@example.com
+    UUID:
+      type: string
+      format: uuid
+    UserBase:
+      type: object
+      required: [email, name, role]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        role:
+          $ref: '#/components/schemas/Role'
+        phone:
+          type: string
+          nullable: true
+          pattern: '^\+?[0-9\- ]{7,20}$'
+        metadata:
+          description: Arbitrary key-value pairs
+          type: object
+          additionalProperties:
+            type: string
+            maxLength: 128
+    User:
+      description: A user entity using composition and constraints
+      allOf:
+        - $ref: '#/components/schemas/UserBase'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              format: int64
+              minimum: 1
+              readOnly: true
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+    Paging:
+      type: object
+      required: [limit, offset]
+      properties:
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, enum: [bad_request, not_found, unauthorized, forbidden, conflict] }
+        message: { type: string, minLength: 1 }
+        details:
+          type: array
+          items: { type: string }
+          nullable: true
+    PaymentStatus:
+      description: anyOf/oneOf/not and discriminator example
+      oneOf:
+        - $ref: '#/components/schemas/PaymentSucceeded'
+        - $ref: '#/components/schemas/PaymentFailed'
+        - $ref: '#/components/schemas/PaymentPending'
+      discriminator:
+        propertyName: status
+        mapping:
+          succeeded: '#/components/schemas/PaymentSucceeded'
+          failed: '#/components/schemas/PaymentFailed'
+          pending: '#/components/schemas/PaymentPending'
+    PaymentBase:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [succeeded, failed, pending]
+    PaymentSucceeded:
+      allOf:
+        - $ref: '#/components/schemas/PaymentBase'
+        - type: object
+          required: [amount]
+          properties:
+            amount:
+              type: number
+              format: float
+              minimum: 0
+              multipleOf: 0.01
+            currency:
+              type: string
+              pattern: '^[A-Z]{3}$'
+              default: USD
+    PaymentFailed:
+      allOf:
+        - $ref: '#/components/schemas/PaymentBase'
+        - type: object
+          required: [reason]
+          properties:
+            reason:
+              type: string
+              enum: [insufficient_funds, card_declined, fraud_suspected]
+            retriable:
+              type: boolean
+              default: false
+    PaymentPending:
+      allOf:
+        - $ref: '#/components/schemas/PaymentBase'
+        - type: object
+          properties:
+            etaSeconds:
+              type: integer
+              minimum: 0
+    ComplexConstraints:
+      description: Demonstrates anyOf and not
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: '^[a-z][a-z0-9_]*$'
+        age:
+          type: integer
+          minimum: 0
+          maximum: 150
+        nickname:
+          type: string
+          nullable: true
+          maxLength: 32
+      required: [username]
+      anyOf:
+        - required: [age]
+        - required: [nickname]
+      not:
+        properties:
+          username:
+            enum: [admin, root]
+        required: [username]
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
