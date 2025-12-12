@@ -1,0 +1,170 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prmxctrl"
+version = "0.1.2"
+description = "Type-safe, auto-generated Python SDK for Proxmox VE API v7.4-2"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Ganzzi", email = "boinguyen9701@gmail.com" }]
+maintainers = [{ name = "Ganzzi", email = "boinguyen9701@gmail.com" }]
+keywords = ["proxmox", "api", "sdk", "async", "pydantic", "type-safe"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic >= 2.0.0",
+    "httpx >= 0.25.0",
+    "requests>=2.32.5",
+    "dotenv>=0.9.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >= 7.4.0",
+    "pytest-asyncio >= 0.21.0",
+    "pytest-cov >= 4.1.0",
+    "mypy >= 1.5.0",
+    "ruff >= 0.1.0",
+    "black >= 23.9.0",
+    "isort >= 5.12.0",
+    "typer >= 0.9.0",
+    "jinja2 >= 3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Ganzzi/prmxctrl"
+Documentation = "https://prmxctrl.readthedocs.io/"
+Repository = "https://github.com/Ganzzi/prmxctrl"
+Issues = "https://github.com/Ganzzi/prmxctrl/issues"
+Changelog = "https://github.com/Ganzzi/prmxctrl/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["prmxctrl*"]
+exclude = ["generator*", "tools*", "tests*"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+exclude = [
+    "prmxctrl/endpoints/*/*/*", # Exclude deeply nested directories with {param} names
+    "prmxctrl/endpoints/*/{*}", # Exclude directories with {param} in name
+]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+# Exclude directories with {param} names that are not valid Python packages
+[[tool.mypy.overrides]]
+module = "prmxctrl.endpoints.*.*.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "prmxctrl.endpoints.*.*"
+ignore_errors = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**/*" = ["B011"]  # assert false
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["prmxctrl"]
+
+[tool.pytest.ini_options]
+minversion = "7.4"
+addopts = "-ra -q --strict-markers --strict-config --cov=prmxctrl --cov-report=term-missing"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["prmxctrl"]
+omit = ["*/tests/*", "*/test_*", "*/conftest.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[dependency-groups]
+dev = [
+    "jinja2>=3.1.6",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.2",
+]
