@@ -1,0 +1,30 @@
+# DeleteEntityRequest
+
+
+## Properties
+
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**workspace_id** | **int** | Workspace ID | 
+**id** | **int** | Entity ID to delete | 
+
+## Example
+
+```python
+from orbuculum_client.models.delete_entity_request import DeleteEntityRequest
+
+# TODO update the JSON string below
+json = "{}"
+# create an instance of DeleteEntityRequest from a JSON string
+delete_entity_request_instance = DeleteEntityRequest.from_json(json)
+# print the JSON string representation of the object
+print(DeleteEntityRequest.to_json())
+
+# convert the object into a dict
+delete_entity_request_dict = delete_entity_request_instance.to_dict()
+# create an instance of DeleteEntityRequest from a dict
+delete_entity_request_from_dict = DeleteEntityRequest.from_dict(delete_entity_request_dict)
+```
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+
