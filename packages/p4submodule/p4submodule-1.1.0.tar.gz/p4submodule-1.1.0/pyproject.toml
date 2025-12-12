@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: © 2025 Secret Dimension, Inc. <info@secretdimension.com>. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "p4submodule"
+version = "1.1.0"
+description = "A tool for managing git repositories inside of Perforce depots"
+authors = [
+    { name = "Colden Cullen", email = "<ccullen@secretdimension.com>" },
+]
+license = "Apache-2.0"
+readme = "README.md"
+requires-python = ">=3.11"
+dynamic = [ "classifiers" ]
+
+dependencies = [
+    "p4python (==2025.1.2767466)",
+    "pygit2 (==1.18.1)",
+    "click (==8.2.1)",
+    "tomlkit (==0.13.3)",
+    "paramiko (==4.0.0)",
+    "msgspec (==0.19.0)",
+]
+
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.urls]
+repository = "https://github.com/secretdimension/p4submodule"
+
+[tool.poetry.group.dev.dependencies]
+types-paramiko = "4.0.0.20250822"
+types-pygit2 = "1.15.0.20240822"
+pytype = "2024.10.11"
+jinja2 = "3.1.6"
+
+[project.scripts]
+p4submodule = "p4submodule.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytype]
+inputs = ['.']
+
+[tool.poetry.requires-plugins]
+poethepoet = { version = "==0.36.0", extras = ["poetry_plugin"]}
+
+[tool.poe.tasks]
+genreadme.shell = "python scripts/genreadme.py --module p4submodule.cli --template ./README.md.in --out README.md"
