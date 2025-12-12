@@ -1,0 +1,74 @@
+Metadata-Version: 2.4
+Name: hdim_opt
+Version: 1.2.1
+Summary: Optimization toolkit for high-dimensional, non-differentiable problems.
+Author-email: Julian Soltes <jsoltes@regis.edu>
+License: MIT
+Project-URL: Repository, https://github.com/jgsoltes/hdim_opt
+Keywords: optimization,high-dimensional,sampling,QUASAR,HDS
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: scipy
+Provides-Extra: hds
+Requires-Dist: pandas; extra == "hds"
+Requires-Dist: scikit-learn; extra == "hds"
+Requires-Dist: joblib; extra == "hds"
+Provides-Extra: sensitivity
+Requires-Dist: pandas; extra == "sensitivity"
+Requires-Dist: SALib; extra == "sensitivity"
+
+# hdim-opt: High-Dimensional Optimization Toolkit
+
+A modern optimization package to accelerate convergence in complex, high-dimensional problems. Includes the QUASAR evolutionary algorithm and HDS exploitative QMC sampler.
+
+All core functions, listed below, are single-line executable and require three essential parameters: [obj_function, bounds, n_samples].
+* **quasar**: QUASAR optimization for high-dimensional, non-differentiable problems.
+* **hds**: Generate an exploitative HDS sequence, to distribute samples in focused regions.
+* **sobol**: Generate a uniform Sobol sequence (via SciPy).
+* **sensitivity**: Perform Sobol sensitivity analysis to measure each variable's importance on objective function results (via SALib).
+
+---
+
+## Installation
+
+Installed via `hdim_opt` directly from PyPI:
+
+```bash
+pip install hdim_opt
+```
+
+## Example Usage:
+
+```python
+import hdim_opt as h
+
+# Parameter Space
+n_dimensions = 100
+bounds = [(-100,100)] * n_dimensions
+n_samples = 1000
+obj_func = h.test_functions.rastrigin
+
+solution, fitness = h.quasar(obj_func, bounds)
+sens_matrix = h.sensitivity(obj_func, bounds)
+hds_samples = h.hds(n_samples, bounds)
+sobol_samples = h.sobol(n_samples, bounds)
+```
+
+## QUASAR Optimizer
+**QUASAR** (Quasi-Adaptive Search with Asymptotic Reinitialization) is a quantum-inspired evolutionary algorithm, highly efficient for minimizing high-dimensional, non-differentiable, and non-parametric objective functions.
+
+* Benefit: Significant improvements in convergence speed and solution quality compared to contemporary optimizers. (Reference: [https://arxiv.org/abs/2511.13843]).
+
+## HDS Sampler (Hyperellipsoid Density Sampling)
+**HDS** is a non-uniform Quasi-Monte Carlo sampling method, specifically designed to exploit promising regions of the search space.
+
+* Benefit: Provides control over the sample distribution. Results in higher average optimization solution quality when used for population initialization compared to uniform QMC methods. (Reference: [https://arxiv.org/abs/2511.07836]).
