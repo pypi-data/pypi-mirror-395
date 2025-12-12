@@ -1,0 +1,112 @@
+hostname {{ inventory_hostname.replace("_","-") }}
+!
+logging monitor debugging
+aaa authorization exec default local
+!
+lldp run
+{% if af.ipv4|default(False) and role != 'host' %}
+ip routing
+{% else %}
+no ip routing
+{% endif %}
+{% if af.ipv6|default(False) and role != 'host' %}
+ipv6 unicast-routing
+{% else %}
+no ipv6 unicast-routing
+{% endif %}
+!
+{% if vrfs is defined %}
+{% include 'eos.vrf.j2' %}
+{% endif %}
+!
+{% for hname,hdata in hosts.items() if 'ipv4' in hdata and hname != inventory_hostname %}
+ip host {{ hname|replace('_','') }} {{ hdata.ipv4|join (' ') }}
+{% endfor %}
+{% for hname,hdata in hosts.items() if 'ipv6' in hdata and hname != inventory_hostname %}
+ipv6 host {{ hname|replace('_','') }} {{ hdata.ipv6[0] }}
+{% endfor %}
+{% if mtu is defined %}
+!
+interface defaults
+ mtu {{ mtu }}
+{% endif %}
+!
+interface {{ mgmt.ifname|default('Management1') }}
+ no lldp transmit
+ no lldp receive
+!
+{% for l in netlab_interfaces %}
+interface {{ l.ifname }}
+{% if l.virtual_interface is not defined or l.type in ['lag'] %}
+ no switchport
+{% endif %}
+{% if l.virtual_interface is not defined and netlab_phy_control|default(true) is false %}
+ platform tfa phy control-frame disabled
+{% endif %}
+{% if l.vrf is defined %}
+ vrf {{ l.vrf }}
+{% endif %}
+{% if l.mtu is defined %}
+ mtu {{ l.mtu }}
+{% endif %}
+{% if l.name is defined %}
+ description {{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}
+{% elif l.type|default("") == "stub" %}
+ description Stub interface
+{% endif %}
+{#
+    Set interface IPv4 addresses
+#}
+{% if 'ipv4' in l %}
+{%   if l.ipv4 is sameas True %}
+ ip address unnumbered {{ l._parent_intf }}
+{%   elif l.ipv4 is string and l.ipv4|ipv4 %}
+ ip address {{ l.ipv4 }}
+{%   else %}
+! Invalid IPv4 address {{ l.ipv4 }}
+{%   endif %}
+{% endif %}
+{#
+    Set interface IPv6 addresses
+#}
+{% if 'ipv6' in l %}
+{%   if role == 'router' %}
+{%     if l.ra.disable|default(false) is true %}
+ ipv6 nd ra disabled all
+{%     else %}
+ ipv6 nd ra interval 5
+{%       if 'ra' in l and l.ipv6 is string %}
+{%         if l.ra.slaac|default(true) is false %}
+ ipv6 nd prefix {{ l.ipv6|ipaddr(0) }} no-autoconfig
+{%         endif %}
+{%         if l.ra.onlink|default(true) is false %}
+ ipv6 nd prefix {{ l.ipv6|ipaddr(0) }} no-onlink
+{%         endif %}
+{%       endif %}
+{%       if l.ra.dhcp|default(false) == 'all' %}
+ ipv6 nd managed-config-flag
+{%       endif %}
+{%       if l.ra.dhcp|default(false) == 'other' %}
+ ipv6 nd other-config-flag
+{%       endif %}
+{%     endif %}
+{%   elif role == 'host' %}
+ ipv6 nd ra rx accept default-route
+{%   endif %}
+{%   if l.ipv6 is sameas True %}
+ ipv6 enable
+{%   elif l.ipv6 is string and l.ipv6|ipv6 %}
+ ipv6 address {{ l.ipv6 }}
+{%   else %}
+! Invalid IPv6 address {{ l.ipv6 }}
+{%   endif %}
+{% endif %}
+{% if l.mac_address is defined %}
+ mac-address {{ l.mac_address }}
+{% endif %}
+{% if l.virtual_interface is not defined and not l.shutdown|default(False) %}
+!
+ no shutdown
+{% endif %}
+!
+{% endfor %}

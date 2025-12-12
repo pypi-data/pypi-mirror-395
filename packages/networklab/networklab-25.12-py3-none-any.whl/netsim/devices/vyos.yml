@@ -1,0 +1,102 @@
+---
+description: VyOS VM/container
+interface_name: eth{ifindex}
+loopback_interface_name: "dum{ifindex}"
+lag_interface_name: "bond{lag.ifindex}"
+mgmt_if: eth0
+libvirt:
+  image: vyos/current
+group_vars:
+  ansible_network_os: vyos
+  ansible_connection: paramiko
+  ansible_user: vyos
+  ansible_ssh_pass: vyos
+  docker_shell: su - vyos
+features:
+  initial:
+    ipv4:
+      unnumbered: true
+    ipv6:
+      lla: True
+  bfd: true
+  bgp:
+    activate_af: true
+    ipv6_lla: true
+    local_as: true
+    vrf_local_as: true
+    import: [ ospf, ripv2, connected, static, vrf ]
+  evpn:
+    asymmetrical_irb: true
+    irb: true
+  gateway:
+    protocol: [ vrrp ]
+  isis:
+    circuit_type: true
+  lag:
+    passive: False
+  mpls:
+    ldp: true
+    vpn:
+      ipv4: true
+  ospf:
+    unnumbered: true
+    import: [ bgp, ripv2, connected, static, vrf ]
+    default: true
+  ripv2:
+    ipv4: true
+    ipv6: true
+    passive: true
+  routing:
+    policy:
+      set:
+        locpref: True
+        med: True
+        prepend: True
+        community:
+          standard: True
+          large: True
+          extended: True
+          append: True
+      delete.community: False
+      match:
+        prefix: True
+        nexthop: True
+        aspath: True
+        community:
+          standard: True
+    prefix: True
+    aspath: True
+    community:
+      standard: True
+    static:
+      vrf: True
+      inter_vrf: True
+      discard: True
+  vlan:
+    model: l3-switch
+    svi_interface_name: "br0.{vlan}"
+    subif_name: "{ifname}.{vlan.access_id}"
+    native_routed: true
+  vrf:
+    ospfv2: True
+    ospfv3: True
+    bgp: True
+  vxlan:
+    vtep6: true
+clab:
+  image: ghcr.io/sysoleg/vyos-container
+  mtu: 1500
+  kmods:
+  node:
+    kind: linux
+    binds:
+      '/lib/modules': '/lib/modules'
+  group_vars:
+    ansible_connection: docker
+    ansible_user: vyos
+  features:
+    stub_loopback: True
+
+external:
+  image: none
+graphite.icon: router

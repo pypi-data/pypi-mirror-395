@@ -1,0 +1,24 @@
+# VXLAN default settings and attributes
+#
+requires: [ vlan ]
+config_after: [ vrf, bgp ]        # VRFs must be created before L3 VXLAN, some platforms also need BGP router_id
+transform_after: [ vlan, vrf ]
+domain: global
+flooding: static
+start_vni: 100000
+attributes:
+  global:
+    domain: id
+    flooding: { type: str, valid_values: [ static, evpn ] }
+    vlans: list
+    use_v6_vtep: bool
+  node:
+    domain:
+    flooding:
+    vlans:
+  link:
+    vtep: bool
+no_propagate: [ use_v6_vtep, start_vni ]
+use_v6_vtep: false
+features:
+  vtep6: VXLAN over IPv6

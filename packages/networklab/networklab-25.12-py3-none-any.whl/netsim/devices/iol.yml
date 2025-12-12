@@ -1,0 +1,31 @@
+---
+description: Cisco IOL
+parent: ios
+interface_name: Ethernet{ifindex // 4}/{ifindex % 4}
+
+clab:
+  group_vars:
+    netlab_device_type: iol
+    netlab_check_retries: 20
+  interface.name: Ethernet{ifindex // 4}/{ifindex % 4}
+  build: https://containerlab.dev/manual/kinds/cisco_iol/
+  image: vrnetlab/cisco_iol:17.12.01
+  node:
+    kind: cisco_iol
+
+features:
+  initial:
+    min_mtu: 68
+    min_phy_mtu: 1501
+    max_mtu: 1500
+    ipv4:
+      unnumbered: true
+  sr: true
+  srv6:
+    bgp: false
+    isis: true
+    vpn: true
+  vlan:
+    model: l3-switch
+    svi_interface_name: BDI{vlan}
+    mixed_trunk: true

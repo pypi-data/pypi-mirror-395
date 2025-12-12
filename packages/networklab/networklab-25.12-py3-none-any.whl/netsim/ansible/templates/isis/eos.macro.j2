@@ -1,0 +1,54 @@
+{% import "templates/routing/_redistribute.eos.j2" as redistribute with context %}
+{% macro config(isis,interfaces,vrf='') %}
+!
+{% if 'ipv6' in isis.af %}
+ipv6 unicast-routing
+{% endif %}
+!
+router isis {{ isis.instance }}{% if vrf %} vrf {{ vrf }}{% endif +%}
+  log-adjacency-changes
+  is-hostname {{ inventory_hostname }}
+  is-type {{ isis.type }}
+  net {{ isis.net }}
+{% for afm in ['ipv4','ipv6'] if afm in isis.af %}
+{{   redistribute.config(isis,af=afm,ospf_match=['internal','external']) }}
+{% endfor %}
+{% if isis.af.ipv4 is defined %}
+  address-family ipv4 unicast
+{% endif %}
+{% if isis.af.ipv6 is defined %}
+  address-family ipv6 unicast
+    multi-topology
+{%   if isis.bfd.ipv6|default(False) %}
+    bfd all-interfaces
+{%   endif %}
+{% endif %}
+!
+{% for l in interfaces|default([]) if 'isis' in l %}
+interface {{ l.ifname }}
+! {{ l.name|default("") }}
+  isis enable {{ isis.instance }}
+{%   if l.isis.network_type is defined %}
+  isis network {{ l.isis.network_type }}
+{%   endif %}
+{% if l.isis.type is defined %}
+ isis circuit-type {{ l.isis.type }}
+{% endif %}
+{%   if l.isis.cost is defined or l.isis.metric is defined %}
+  isis metric {{ l.isis.metric|default(l.isis.cost) }}
+{%     if 'ipv6' in isis.af and 'ipv6' in l %}
+  isis ipv6 metric {{ l.isis.metric|default(l.isis.cost) }}
+{%     endif %}
+{%   endif %}
+{%   if l.isis.bfd.ipv4|default(False) %}
+  isis bfd
+{%   endif %}
+{%   if l.isis.bfd.ipv6|default(False) %}
+! BFD for IPv6 ISIS is only supported on all interfaces
+{%   endif %}
+{%   if l.isis.passive %}
+  isis passive
+{%   endif %}
+!
+{% endfor %}
+{% endmacro %}

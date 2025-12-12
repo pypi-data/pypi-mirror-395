@@ -1,0 +1,57 @@
+{% if not stp.enable|default(True) %}
+spanning-tree disable
+{% else %}
+{%  set proto_map = { 'stp': 'rstp', 'rstp': 'rstp', 'pvrst': 'rapid-pvst', 'mstp': 'mst' } %}
+{%  set mode = proto_map[stp.protocol] %}
+{# options are rstp, mst or rapid-pvst (default if not set) #}
+spanning-tree mode {{ mode }}
+
+{%  if stp.protocol=='stp' %}
+spanning-tree rstp force-version stp
+{%  endif %}
+
+{%  if 'priority' in stp %}
+spanning-tree rstp priority {{ stp.priority }}
+{%  endif %}
+
+{# Check for per-VLAN enable and priority; implies Rapid-PVST #}
+{%  if vlans is defined %}
+{%   set apply_stp_prio_per_vlan = stp.priority is defined and stp.protocol=='pvrst' %}
+{%   for vname,vdata in vlans.items() if 'stp' in vdata or apply_stp_prio_per_vlan %}
+{%    if not vdata.stp.enable|default(True) %}
+spanning-tree vlan {{ vdata.id }} disable
+{%    elif 'priority' in vdata.stp|default({}) or apply_stp_prio_per_vlan %}
+spanning-tree vlan {{ vdata.id }} priority {{ vdata.stp.priority|default(stp.priority) }}
+{%    endif %}
+{%   endfor +%}
+{%  endif %}
+
+{%  for ifdata in interfaces if 'stp' in ifdata or ifdata.vlan.trunk|default({})|dict2items|map(attribute='value')|selectattr('stp','defined') %}
+interface {{ ifdata.ifname }}
+{%   if 'stp' in ifdata %}
+{%    set _no = "" if ifdata.stp.port_type|default("normal")=='edge' else "no " %}
+ {{ _no }}spanning-tree port type edge
+{%    if not ifdata.stp.enable|default(True) %}
+ spanning-tree disable
+{%    elif 'port_priority' in ifdata.stp %}
+#
+# Use 16x port_priority to get the correct 4-bit value on the wire
+#
+{%     if stp.protocol=='pvrst' %}
+ spanning-tree vlan {{ ifdata.vlan.access_id|default(1) }} priority {{ ifdata.stp.port_priority * 16 }}
+{%     else %}
+ spanning-tree rstp priority {{ ifdata.stp.port_priority * 16 }}
+{%     endif %}
+{%    endif %} 
+{%   else %}
+{# Trunk port(s) with STP attributes #}
+{%    for id in ifdata.vlan.trunk_id %}
+{%     for vname,vdata in vlans.items() if vdata.id==id %}
+{%      if vname in ifdata.vlan.trunk and ifdata.vlan.trunk[vname].stp.port_priority is defined %}
+ spanning-tree vlan {{ id }} priority {{ ifdata.vlan.trunk[vname].stp.port_priority * 16 }}
+{%      endif %}
+{%     endfor %}
+{%    endfor %}
+{%   endif %}
+{%  endfor %}
+{% endif %}

@@ -1,0 +1,148 @@
+hostname {{ inventory_hostname }}
+!
+no ip domain lookup
+logging buffered 256000
+{% from '_debug_commands.j2' import enable_debugging %}
+{{ enable_debugging(ios.debug,prefix='do debug') }}
+!
+lldp run
+!
+{% for hname,hdata in hosts.items() if hname != inventory_hostname %}
+{%   set ipv6_addr = hdata.ipv6|default([]) if netlab_device_type not in ['iosvl2','ioll2'] else [] %}
+{%   set addr_list = hdata.ipv4|default([]) + ipv6_addr %}
+{%   if addr_list %}
+ip host {{ hname }} {{ addr_list|join (' ') }}
+{%   endif %}
+{% endfor %}
+!
+{% if af.ipv4|default(False) or role != 'host' %}
+ip routing
+{% else %}
+no ip routing
+{% endif %}
+!
+{% if af.ipv6|default(False) and role != 'host' %}
+ipv6 unicast-routing
+{% else %}
+no ipv6 unicast-routing
+{% endif %}
+!
+{% if vrfs is defined %}
+{% include 'ios.vrf.j2' +%}
+!
+{% endif %}
+{% if vlans is defined %}
+{% include [ netlab_device_type ~ '.vlan.j2', 'ios.vlan.j2' ] +%}
+!
+{% endif %}
+!
+{% if loopback is defined %}
+interface {{ loopback.ifname }}
+{%   if 'ipv4' in loopback %}
+ ip address {{ loopback.ipv4|ipaddr('address') }} {{ loopback.ipv4|ipaddr('netmask') }}
+{%   endif %}
+{%   if 'ipv6' in loopback %}
+ ipv6 address {{ loopback.ipv6|upper }}
+{%   endif %}
+{% endif %}
+!
+interface {{ mgmt.ifname|default('GigabitEthernet0/0') }}
+ no lldp transmit
+ no lldp receive
+!
+{% for l in interfaces|default([]) %}
+interface {{ l.ifname }}
+{% if l.type == 'vlan_member' and l.vlan.access_id is defined %}
+ encapsulation dot1Q {{ l.vlan.access_id }}
+{% elif l.virtual_interface is not defined and netlab_device_type in ['iosvl2','ioll2'] %}
+ no switchport
+{% endif %}
+{% if l.vrf is defined %}
+ vrf forwarding {{ l.vrf }}
+{% endif %}
+{% if l.name is defined %}
+ description {{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}
+{% elif l.type|default("") == "stub" %}
+ description Stub interface
+{% endif %}
+{% if l.bandwidth is defined %}
+ bandwidth {{ l.bandwidth  }}
+{% endif %}
+{% if l.mtu is defined %}
+{%   if l._use_ip_mtu|default(False) %}
+{%     for afm in ['ipv4','ipv6'] if afm in l %}
+ {{ 'ip' if afm == 'ipv4' else afm }} mtu {{ l.mtu }}
+{%     endfor %}
+{%   else %}
+ mtu {{ l.mtu }}
+{%   endif %}
+{% endif %}
+{#
+    Set interface addresses: IPv4
+#}
+{% if 'ipv4' in l %}
+{%   if l.ipv4 == True %}
+{%     if l.type == "tunnel" %}
+ ip unnumbered {{ l._parent_intf }}
+{%     else %}
+ ip unnumbered {{ l._parent_intf }} poll
+{%     endif %}
+{%   elif l.ipv4|ipv4 %}
+ ip address {{ l.ipv4|ipaddr('address') }} {{ l.ipv4|ipaddr('netmask') }}
+{%   else %}
+! Invalid IPv4 address {{ l.ipv4 }}
+{%   endif %}
+{% endif %}
+{#
+    Set interface addresses: IPv6
+#}
+{% if 'ipv6' in l %}
+{%   if role != 'router' %}
+ ipv6 nd ra suppress all
+{%     if role == 'host' %}
+ ipv6 nd autoconfig default-route
+{%     endif %}
+{%   else %}{# router #}
+{%     if l.ra.disable|default(false) is true %}
+ ipv6 nd ra suppress all
+{%     else %}
+ ipv6 nd ra interval 5
+{%       if 'ra' in l and l.ipv6 is string %}
+{%         if l.ra.slaac|default(true) is false %}
+ ipv6 nd prefix {{ l.ipv6|ipaddr(0) }} 30 30 no-autoconfig
+{%         endif %}
+{%         if l.ra.onlink|default(true) is false %}
+ ipv6 nd prefix {{ l.ipv6|ipaddr(0) }} 30 30 no-onlink
+{%         endif %}
+{%       endif %}
+{%       if l.ra.dhcp|default(false) == 'all' %}
+ ipv6 nd managed-config-flag
+{%       endif %}
+{%       if l.ra.dhcp|default(false) == 'other' %}
+ ipv6 nd other-config-flag
+{%       endif %}
+{%     endif %}
+{%   endif %}
+{%   if l.ipv6 == True %}
+ ipv6 enable
+{%   elif l.ipv6|ipv6 %}
+ ipv6 address {{ l.ipv6|upper }}
+{%   endif %}
+{% endif %}
+{% if l.mac_address is defined %}
+ mac-address {{ l.mac_address }}
+{% endif %}
+{%   if l.shutdown|default(False) %}
+ shutdown
+{%   else %}
+ no shutdown
+{%   endif %}
+!
+{% endfor %}
+!
+line vty 0 4
+ exec-timeout 0 0 
+!
+no banner exec
+no banner login
+no banner incoming

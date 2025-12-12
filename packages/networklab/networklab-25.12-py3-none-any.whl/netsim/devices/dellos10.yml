@@ -1,0 +1,112 @@
+---
+description: Dell OS10
+interface_name: ethernet1/1/{ifindex}
+mgmt_if: mgmt1/1/1
+loopback_interface_name: loopback{ifindex}
+lag_interface_name: "port-channel{lag.ifindex}"
+features:
+  initial:
+    system_mtu: true
+    ipv4:
+      unnumbered: true
+    ipv6:
+      lla: true
+    delay: 30
+  bfd: true
+  bgp:
+    activate_af: true
+    ipv6_lla: true
+    local_as: true
+    local_as_ibgp: false     # Device fails to send correct local AS (only)
+    vrf_local_as: true
+    import: [ ospf, connected, static, vrf ]
+    confederation: True
+  evpn:
+    asymmetrical_irb: true
+    irb: true
+  gateway:
+    protocol: [ anycast, vrrp ]
+  lag:
+    reserved_ifindex_range: [ 1000 ]
+    mlag:
+      peer:
+        mac: 0200.01a9.0000  # Base to generate a virtual MAC
+        ip: loopback.ipv4    # Use loopback.ipv4 for peer IP address
+    passive: True
+  ospf:
+    default: True
+    import: [ bgp, connected, static, vrf ]
+    timers: True
+    password: True
+    priority: True
+  routing:
+    aspath: True
+    community:
+      standard: [ standard ]
+    policy:
+      match:
+        prefix: True
+        nexthop: True
+        aspath: True
+        community:
+          standard: True
+      set:
+        locpref: True
+        med: True
+        weight: True
+        prepend: True
+        community:
+          standard: True
+          large: False
+          extended: True
+          append: True
+      delete.community: False
+    prefix: True
+    static:
+      vrf: True
+      inter_vrf: True
+      discard: True
+  stp:
+    supported_protocols: [ stp, rstp, mstp, pvrst ]
+    enable_per_port: True
+    port_type: True
+  vlan:
+    model: switch
+    svi_interface_name: vlan{vlan}
+  vrf:
+    ospfv2: True
+    bgp: True
+  vxlan: true
+mtu: 1500
+clab:
+  image: vrnetlab/vr-ftosv
+  build: https://containerlab.dev/manual/kinds/vr-ftosv/
+  node:
+    kind: vr-ftosv
+  interface:
+    name: eth{ifindex}
+  group_vars:
+    ansible_user: admin
+    ansible_ssh_pass: admin
+    netlab_check_retries: 40
+    netlab_check_delay: 10
+    netlab_initial_delay: 30
+libvirt:
+  image: dell/os10
+  build: https://netlab.tools/labs/dellos10/
+  create:
+    virt-install --connect=qemu:///system --name=vm_box --arch=x86_64 --cpu host --vcpus=2 --hvm
+      --ram=4096 --network=network:vagrant-libvirt,model=virtio --graphics none --import
+      --disk path=vm.qcow2,format=qcow2,bus=sata
+      --disk path=hdb_OS10-installer.qcow2,format=qcow2,bus=virtio
+      --disk path=hdc_OS10-platform.qcow2,format=qcow2,bus=virtio
+  pre_install: dellos10
+group_vars:
+  ansible_network_os: dellos10
+  ansible_connection: network_cli
+  ansible_user: vagrant
+  ansible_ssh_pass: vagrant
+  netlab_save_config: True   # Whether to save the initial config to startup, default True
+external:
+  image: none
+graphite.icon: switch

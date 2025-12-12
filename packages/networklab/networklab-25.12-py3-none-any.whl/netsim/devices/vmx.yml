@@ -1,0 +1,33 @@
+---
+description: Juniper vMX container
+support:
+  level: best-effort
+  caveats:
+  - vMX gets all new Junos features, but we don't test them on vMX
+parent: junos
+group_vars:
+  ansible_user: admin
+  ansible_ssh_pass: "admin@123"
+  netlab_device_type: vmx
+  netlab_check_retries: 20
+  netlab_license_url: https://www.juniper.net/content/dam/www/assets/dm/us/en/E421992502.txt
+
+features:
+  vlan:
+    model: router
+    svi_interface_name: irb.{vlan}
+    subif_name: "{ifname}.{vlan.access_id}"
+    mixed_trunk: true
+    native_routed: true
+
+clab:
+  image: vrnetlab/vr-vmx:18.2R1.9
+  build: https://containerlab.dev/manual/kinds/vr-vmx/
+  group_vars:
+    netlab_ready: [ ssh ]
+  node:
+    kind: vr-vmx
+  interface:
+    name: eth{ifindex+1}
+
+graphite.icon: router

@@ -1,0 +1,143 @@
+{% macro prepend_set(s_param,asn) -%}
+{%   if s_param.path|default('') %}
+      then as-path-prepend "{{ s_param.path }}";
+{%   elif s_param.count|default(0) %}
+      then as-path-prepend "{{ ([asn] * s_param.count)|join(" ") }}";
+{%   endif %}
+{%- endmacro %}
+
+{% macro community_set(comm,c_append=False,c_delete=False) -%}
+{% if c_delete %}
+      then community delete x_comm_del_{{ comm|replace(':', '_')|replace('.', '_') }};
+{% elif c_append %}
+      then community add x_comm_add_{{ comm|replace(':', '_')|replace('.', '_') }};
+{% else %}
+      then community set x_comm_set_{{ comm|replace(':', '_')|replace('.', '_') }};
+{% endif %}
+{%- endmacro %}
+
+{#
+   This macro generates the elements of route-map entries
+#}
+{% macro common_route_map_entry(p_entry,match_af='') -%}
+{# - SET entries #}
+{%   if 'set' in p_entry %}
+{%     if 'locpref' in p_entry.set %}
+      then local-preference {{ p_entry.set.locpref }};
+{%     endif %}
+{%     if 'med' in p_entry.set %}
+      then metric {{ p_entry.set.med }};
+{%     endif %}
+{%     if p_entry.set.community is defined %}
+{%       set cset = p_entry.set.community %}
+{%       for kw in ('standard','extended','large') if kw in cset %}
+{%         for cur_com in cset[kw] %}
+{{           community_set(cur_com,c_append=cset.append|default(not loop.first)) }}
+{%         endfor %}
+{%       endfor %}
+{%     endif %}
+{%     if 'prepend' in p_entry.set %}
+{{       prepend_set(p_entry.set.prepend,bgp.as|string) }}
+{%     endif %}
+{%   endif %}
+{# - DELETE entries #}
+{%   if p_entry.delete.community is defined %}
+{%     set dset = p_entry.delete.community %}
+{%     for kw in ('standard','extended','large') if kw in dset %}
+{%       for cur_com in dset[kw] %}
+{{         community_set(cur_com,c_delete=True) }}
+{%       endfor %}
+{%     endfor %}
+{%     if dset.list is defined %}
+{%       for kw in ('standard','extended','large') if kw in dset.list %}
+      then community delete {{ dset.list[kw] }};
+{%       endfor %}
+{%     endif %}
+{%   endif %}
+{# - MATCH entries #}
+{%   if 'match' in p_entry %}
+{%     if 'prefix' in p_entry.match %}
+      from route-filter-list {{ p_entry.match.prefix }}-{{ match_af }};
+{%     endif %}
+{%     if 'aspath' in p_entry.match %}
+      from policy x_aspath_match_{{ p_entry.match.aspath }};
+{%     endif %}
+{%     if 'community' in p_entry.match %}
+{%       for kw in ['standard','extended','large'] if kw in p_entry.match.community %}
+{# will call policy subrouting for allowing community permit/deny kind of match #}
+      from policy x_comm_match_{{ p_entry.match.community[kw] }};
+{%       endfor %}
+{%     endif %}
+{%   endif %}
+{%- endmacro %}
+
+{#
+   This macro generates the 'then' elements of policies
+#}
+{% macro common_route_map_action(p_entry) %}
+      then {
+{%     if p_entry.action|default('permit') == 'permit' %}
+        community add x-route-permit-mark;
+        next policy;
+{%     else %}
+        reject;
+{%     endif %}
+      }
+{%- endmacro %}
+
+{#
+   This macro builds a single route map and uses the callback to define a route map entry.
+#}
+{% macro build_route_map(rp_name,rp_list) -%}
+
+{# delete a previously defined route map with the same name #}
+policy-options {
+  delete: policy-statement {{ rp_name }};
+}
+
+{# policy entries #}
+policy-options {
+  policy-statement {{ rp_name }} {
+{%   for p_entry in rp_list %}
+{%     set seq = p_entry.sequence|default(loop.index * 10) %}
+{# define entry with specific actions #}
+{#  if entry contains a prefix, we must add different (term) entries for ipv4 and ipv6 #}
+{#   as per juniper documentation: Prefixes specified in a from statement must be either all IPv4 addresses or all IPv6 addresses. #}
+{%     if 'prefix' in p_entry.match|default({}) %}
+{%       for match_af in af if match_af in ['ipv4', 'ipv6'] %}
+    term seq{{seq}}_{{match_af}} {
+{{     common_route_map_entry(p_entry,match_af) }}
+{{     common_route_map_action(p_entry) }}
+    }
+{%       endfor %}
+{%     else %}
+    term seq{{seq}} {
+{{     common_route_map_entry(p_entry) }}
+{{     common_route_map_action(p_entry) }}
+    }
+{%     endif %}
+
+{%   endfor %}
+
+{# last-resort reject #}
+    term default-reject {
+      then {
+        reject;
+      }
+    }
+
+  }
+}
+
+{%- endmacro %}
+
+{#
+   This macro creates route maps from the routing.policy dictionary
+
+   The callback defines a route map entry.
+#}
+{% macro create_route_maps(rp_dict) -%}
+{%   for rp_name,rp_list in rp_dict.items() %}
+{{     build_route_map(rp_name,rp_list) }}
+{%   endfor %}
+{%- endmacro %}

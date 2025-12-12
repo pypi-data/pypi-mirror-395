@@ -1,0 +1,105 @@
+---
+description: Nokia SR OS VM in container
+support:
+  level: minimal
+  caveats:
+  - We're testing the new Nokia SR-SIM container instead of the SR OS VM-in-container
+mgmt_if: A/1
+interface_name: eth-1/1/c{ifindex}
+loopback_interface_name: >-
+  {"loopback."+str(ifindex) if ifindex else "system"}
+group_vars:
+  ansible_user: admin
+  ansible_ssh_pass: admin
+  ansible_network_os: sros
+  ansible_connection: paramiko_ssh
+  netlab_console_connection: ssh
+  sros_use_openconfig: False
+  netlab_match_protomap:
+    ospf: [ ospf, ospf3 ]
+    bgp: [ bgp ]
+    connected: [ direct ]
+    isis: [ isis ]
+sr:
+  srgb_range_start: 500000
+  srgb_range_size: 1000
+  ipv6_sid_offset: 100
+bfd:                          # SR OS supports lower BFD timers than the global default
+  min_tx: 100
+  min_rx: 100
+features:
+  initial:
+    ipv4:
+      unnumbered: True
+    ipv6:
+      lla: True
+    min_phy_mtu: 1500
+    max_mtu: 9782
+  bfd: True
+  bgp:
+    local_as: True
+    vrf_local_as: True
+    local_as_ibgp: True
+    activate_af: True
+    ipv6_lla: False
+    import: [ ospf, isis, connected, vrf, no_policy ]
+  evpn:
+    irb: True
+    asymmetrical_irb: True
+  isis:
+    circuit_type: true
+    unnumbered:
+      ipv4: True
+      ipv6: True
+      network: False          # SROS treats the interfaces as point-to-point and forms at most 1 adjacency
+    import: [ ospf, bgp, connected, vrf, no_policy ]
+  mpls:
+    ldp: True
+    bgp: True                 # BGP-LU
+    vpn: True
+    6pe: True                 # also implies BGP-LU
+  ospf:
+    unnumbered: True
+    import: [ bgp, isis, connected, vrf, no_policy ]
+    strict_bfd: True          # RFC9355 support
+  ripv2:
+    ipv4: True
+    ipv6: True
+    passive: True
+  routing:
+    policy:
+      set: [ locpref, med ]
+  gateway:
+    protocol: [ anycast, vrrp ]
+  sr: True
+  srv6:
+    bgp: True
+    isis: True
+  vlan:
+    model: router
+    svi_interface_name: "svi.{vlan}"
+    subif_name: "{ifname}/1_{vlan.access_id}"
+    mixed_trunk: True
+    native_routed: True
+  vrf:
+    ospfv2: True
+    ospfv3: True
+    isis: True
+    bgp: True
+  vxlan: True
+
+clab:
+  image: vrnetlab/vr-sros
+  build: https://containerlab.dev/manual/kinds/vr-sros/
+  mtu: 1500
+  node:
+    kind: vr-sros
+    type: sr-1                # By default emulate SR-1
+    license: /Projects/SR_OS_VSR-SIM_license.txt
+  interface:
+    name: eth{ifindex}
+  group_vars:
+    sros_grpc_port: 57400
+external:
+  image: none
+graphite.icon: router

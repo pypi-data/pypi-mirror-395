@@ -1,0 +1,55 @@
+{% import "templates/routing/_default.ios.j2" as ospf_default %}
+!
+router ospfv3 {{ pid }}
+    router-id {{ ospf.router_id }}
+{% if ospf.reference_bandwidth is defined %}
+    reference-bandwidth {{ ospf.reference_bandwidth }}
+{% endif %}
+
+{{ ospf_default.config(ospf,'ipv6') }}
+
+{% if ospf.import is defined %}
+{%   for s_proto,s_data in ospf.import.items() %}
+ redistribute {{ s_proto }}{% if 'policy' in s_data %} route-map {{ s_data.policy }}-ipv6{% endif +%}
+{%   endfor %}
+{% endif %}
+
+{# need to define all areas in advance #}
+    area {{ ospf.area }}
+{% for l in interfaces|default([]) if 'ospf' in l and 'ipv6' in l %}
+    area {{ l.ospf.area }}
+{% endfor %}
+
+!
+{% if 'ipv6' in loopback %}
+interface loopback 0
+ ipv6 ospfv3 {{ pid }} area {{ ospf.area }}
+{% endif %}
+!
+{% for l in interfaces|default([]) if 'ospf' in l and 'ipv6' in l %}
+interface {{ l.ifname }}
+! {{ l.name|default("") }}
+    ipv6 ospfv3 {{ pid }} area {{ l.ospf.area }}
+{%   if l.ospf.network_type|default("") in ["broadcast","point-to-point"] %}
+    ipv6 ospfv3 network {{ l.ospf.network_type }}
+{%   endif %}
+{%   if l.ospf.cost is defined %}
+    ipv6 ospfv3 cost {{ l.ospf.cost }}
+{%   endif %}
+{%   if l.ospf.bfd|default(False) %}
+    ipv6 ospfv3 bfd
+{%   endif %}
+{%   if l.ospf.passive|default(False) and not l.ifname.startswith('loopback') %}
+    ipv6 ospfv3 passive
+{%   endif %}
+{%   if l.ospf.timers.hello is defined %}
+    ipv6 ospfv3 hello-interval {{ l.ospf.timers.hello }}
+{%   endif %}
+{%   if l.ospf.timers.dead is defined %}
+    ipv6 ospfv3 dead-interval {{ l.ospf.timers.dead }}
+{%   endif %}
+{%   if l.ospf.priority is defined %}
+    ipv6 ospfv3 priority {{ l.ospf.priority }}
+{%   endif %}
+!
+{% endfor %}

@@ -1,0 +1,26 @@
+feature eigrp
+!
+router eigrp {{ eigrp.as }}
+{% if eigrp.router_id|ipv4 %}
+ router-id {{ eigrp.router_id }}
+{% endif %}
+{% if 'ipv6' in eigrp.af %}
+ address-family ipv6 unicast
+{% endif %}
+!
+{% for l in netlab_interfaces|default([]) if 'eigrp' in l %}
+interface {{ l.ifname }}
+{%   if 'ipv4' in l and 'ipv4' in eigrp.af %}
+ ip router eigrp {{ eigrp.as }}
+{%     if l.eigrp.passive %}
+ ip passive-interface eigrp {{ eigrp.as }}
+{%     endif %}
+{%   endif %}
+{%   if 'ipv6' in l and 'ipv6' in eigrp.af %}
+ ipv6 router eigrp {{ eigrp.as }}
+{%     if l.eigrp.passive %}
+ ipv6 passive-interface eigrp {{ eigrp.as }}
+{%     endif %}
+{%   endif %}
+!
+{% endfor %}

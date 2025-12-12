@@ -1,0 +1,64 @@
+{% import "templates/routing/_default.ios.j2" as ospf_default %}
+{% import "templates/routing/_redistribute.eos.j2" as redistribute with context %}
+!
+{% macro config(ospf_pid,ospf_vrf,ospf_data,intf_data,bgp={}) %}
+!
+! OSPFv2 configuration
+!
+{% if ospf_vrf %}
+router ospf {{ ospf_pid }} vrf {{ ospf_vrf }}
+{% else %}
+router ospf {{ ospf_pid }}
+{% endif %}
+{#
+  Get local- or global OSPF router ID. Global is always set
+#}
+{% if ospf_data.router_id|ipv4 %}
+ router-id {{ ospf_data.router_id }}
+{% endif %}
+ interface unnumbered hello mask tx 0.0.0.0
+ timers spf delay initial 100 200 500
+ timers lsa rx min interval 100
+ timers lsa tx delay initial 100 200 500
+{{ ospf_default.config(ospf_data,'ipv4') }}
+{{ redistribute.config(ospf_data,af='ipv4',vrf=ospf_vrf) }}
+{% if ospf_data.reference_bandwidth is defined %}
+ auto-cost reference-bandwidth {{ ospf_data.reference_bandwidth }}
+{% endif %}
+{% for l in intf_data if l.ospf.passive|default(False) %}
+ passive-interface {{ l.ifname }}
+{% endfor %}
+!
+{% for l in intf_data if 'ospf' in l and 'ipv4' in l %}
+interface {{ l.ifname }}
+! {{ l.name|default("") }}
+ ip ospf area {{ l.ospf.area }}
+{%   if l.ospf.network_type|default("") in ["broadcast","point-to-point"] %}
+{%     if l.ospf.network_type == "broadcast" %}
+ no ip ospf network
+{%     else %}
+ ip ospf network {{ l.ospf.network_type }}
+{%     endif %}
+{%   endif %}
+{%   if l.ospf.cost is defined %}
+ ip ospf cost {{ l.ospf.cost }}
+{%   endif %}
+{%   if l.ospf.bfd|default(False) %}
+ ip ospf neighbor bfd
+{%   endif %}
+{%   if l.ospf.timers.hello is defined %}
+ ip ospf hello-interval {{ l.ospf.timers.hello }}
+{%   endif %}
+{%   if l.ospf.timers.dead is defined %}
+ ip ospf dead-interval {{ l.ospf.timers.dead }}
+{%   endif %}
+{%   if l.ospf.priority is defined %}
+ ip ospf priority {{ l.ospf.priority }}
+{%   endif %}
+{%   if l.ospf.password is defined %}
+ ip ospf authentication-key {{ l.ospf.password }}
+ ip ospf authentication
+{%   endif %}
+!
+{% endfor %}
+{% endmacro %}

@@ -1,0 +1,103 @@
+{% macro vprn_route_leaking(vname,vdata) %}
+{%   for direction in ['import','export'] if vdata[direction]|default([]) %}
+
+- path: configure/policy-options/community[name={{ vname }}_rt_{{ direction }}]
+  val:
+{%     if direction == 'export' %}
+    member:
+{%       for rt in vdata[direction] %}
+    - member: "target:{{ rt }}"
+{%       endfor %}
+{%     else %}
+    expression:
+      expr: "{% for rt in vdata[direction] %}target:{{ rt }}{% if not loop.last %} OR {% endif %}{% endfor %}"
+{%     endif %}
+
+- path: configure/policy-options/policy-statement[name={{ vname }}_rt_{{ direction }}]
+  val:
+    entry:
+    - entry-id: 10
+{%     if direction == 'import' %}
+      from:
+        community:
+          name: "{{ vname }}_rt_{{ direction }}"
+      action:
+        action-type: accept
+{%     else %}
+      action:
+        action-type: accept
+        community:
+          add: [ {{ vname }}_rt_{{ direction }} ]
+{%     endif %}
+{%   endfor %}
+{% endmacro %}
+
+{% if 'ebgp' in mpls.vpn %}
+- path: configure/router[router-name=Base]
+  val:
+   bgp:
+    inter-as-vpn: True
+    split-horizon: True  # Prevent routes to be reflected back to best-route peer
+    # next-hop-resolution defaults to LDP for VPN routes, could enable RSVP and others
+{% endif %}
+
+{% for af in ['ipv4','ipv6'] if mpls.vpn[af] is defined %}
+{%   set vpnaf = 'vpn' + af.replace('ip','') %}
+{%   for n in bgp.neighbors if n[vpnaf] is defined and n.type in mpls.vpn[af] %}
+{#
+   The neighbor should have been configured by the BGP module, we just need to
+   enable the VPN address family
+#}
+- path: configure/router[router-name=Base]/bgp/neighbor[ip-address={{ n[vpnaf] }}]
+  val:
+    family:
+      vpn-{{ af }}: True
+{%   endfor %}
+{% endfor %}
+{% for vname,vdata in (vrfs|default({})).items() %}
+{%   if '_leaked_routes' in vdata %}
+{{     vprn_route_leaking(vname,vdata) }}
+{%   endif %}
+- path: configure/service/vprn[service-name={{ vname }}]
+  val:
+    bgp-ipvpn:
+      mpls:
+        admin-state: enable
+        route-distinguisher: "{{ vdata.rd }}"
+{%     if '_leaked_routes' in vdata %}
+{%       for direction in ['import','export'] if vdata[direction]|default() %}
+        vrf-{{ direction }}:
+          policy: [ {{ vname }}_rt_{{ direction }} ]
+{%       endfor %}
+{%     else %}
+        vrf-target:
+          export-community: "target:{{ vdata.export[0] }}" # For now a single community, TODO import policy
+          import-community: "target:{{ vdata.import[0] }}"
+{%     endif %}
+        auto-bind-tunnel:
+          resolution: "any"
+          ecmp: {{ 2 if 'ixr' in clab.type else 32 }}
+
+{%   if vdata.bgp.neighbors|default([]) %}
+- path: configure/policy-options/policy-statement[name=bgp_{{ vname }}_export]
+  val:
+    entry:
+    - entry-id: 1000
+      from:
+        protocol:
+          name: [ bgp-vpn ]
+      action:
+        action-type: accept
+{%   endif %}
+{%   if vdata.ospf is defined %}
+- path: configure/policy-options/policy-statement[name=ospf_{{ vname }}_export]
+  val:
+    entry:
+    - entry-id: 1000
+      from:
+        protocol:
+          name: [ bgp-vpn ]
+      action:
+        action-type: accept
+{%   endif %}
+{% endfor %}

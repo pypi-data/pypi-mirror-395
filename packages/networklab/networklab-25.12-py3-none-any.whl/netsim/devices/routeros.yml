@@ -1,0 +1,34 @@
+---
+description: Mikrotik RouterOS version 6
+support:
+  level: obsolete
+interface_name: ether{ifindex}
+mgmt_if: ether1
+ifindex_offset: 2
+loopback_interface_name: loopback
+libvirt:
+  image: mikrotik/chr
+  build: https://stefano.dscnet.org/a/mikrotik_vagrant/
+group_vars:
+  ansible_network_os: routeros
+  ansible_connection: network_cli
+  ansible_user: admin
+  ansible_ssh_pass: admin
+features:
+  bgp: true
+  mpls:
+    ldp: true
+    vpn: true
+  ospf: true
+  vlan:
+    model: router
+    svi_interface_name: bridge{vlan}
+    subif_name: "{ifname}-{vlan.access_id}"
+    mixed_trunk: true
+    native_routed: true
+  vrf:
+    ospfv2: True
+    bgp: True
+external:
+  image: none
+graphite.icon: router

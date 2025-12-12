@@ -1,0 +1,114 @@
+{% import "templates/bgp/junos.macro.j2" as bgpcfg with context %}
+
+{# define VRF policies #}
+
+policy-options {
+{% for vname,vdata in vrfs.items() %}
+{%   if loop.first %}
+  community x-route-permit-mark members large:65535:0:65536;
+{%   endif %}
+
+  policy-statement vrf-{{vname}}-bgp-export {
+    term redis_bgp {
+      from {
+        protocol bgp;
+      }
+      then {
+        community add x-route-permit-mark;
+        next policy;
+      }
+    }
+    term redis_direct {
+      from {
+        protocol direct;
+      }
+      then {
+        community add x-route-permit-mark;
+        next policy;
+      }
+    }
+    term redis_ospf {
+      from {
+        protocol ospf;
+      }
+      then {
+        community add x-route-permit-mark;
+        next policy;
+      }
+    }
+    term redis_ospf3 {
+      from {
+        protocol ospf3;
+      }
+      then {
+        community add x-route-permit-mark;
+        next policy;
+      }
+    }
+  }
+
+{% endfor %}
+}
+
+{# apply VRF BGP & routing settings #}
+
+routing-instances {
+{% for vname,vdata in vrfs.items() %}
+
+  {{vname}} {
+    routing-options {
+      autonomous-system {{ bgp.as }};
+{%   if bgp.router_id|ipv4 %}
+      router-id {{ vdata.bgp.router_id|default(bgp.router_id) }}
+{%   endif %}
+    }
+
+    protocols {
+      bgp {
+{%   for af in ['ipv4','ipv6'] if vdata.af[af] is defined and vdata.loopback_address[af] is defined %}
+        group ibgp-peers-{{ af }} {
+          type internal;
+          export [ 
+{%     if bgp.next_hop_self|default(false) %}
+            next-hop-ebgp-{{ af }}
+{%     endif %}
+            {{ (vdata.bgp._junos_policy.export|default([]))|join(' ') }}
+          ];
+          advertise-inactive;
+          local-address {{ vdata.loopback_address[af]|ipaddr('address') }};
+{%     if bgp.rr|default(False) %}
+          cluster {{ bgp.rr_cluster_id|default(False) or bgp.router_id }};
+{%     endif %}
+{%     for n in vdata.bgp.neighbors|default([]) if n[af] is defined and n.type == 'ibgp' %}
+          neighbor {{ n[af] }} {
+{#       apply per-neighbor policies, if defined #}
+{{       bgpcfg.bgp_neighbor_policy(n) }}
+            description {{ n.name }};
+          }
+{%     endfor %}
+        }
+{%   endfor %}
+
+        group ebgp-peers {
+          export [ {{ (vdata.bgp._junos_policy.export|default([]))|join(' ') }} ];
+          advertise-inactive;
+{%   for n in vdata.bgp.neighbors|default([]) if (n.type == 'ebgp' or n.type == 'localas_ibgp') %}
+{%     for af in ['ipv4','ipv6'] if n[af] is defined %}
+          neighbor {{ n[af] }} {
+{#       apply per-neighbor policies, if defined #}
+{{       bgpcfg.bgp_neighbor_policy(n) }}
+            peer-as {{ n.as }};
+            description {{ n.name }};
+{%       if n.local_as is defined %}
+            local-as {{ n.local_as }}{% if n.replace_global_as|default(True) %} no-prepend-global-as{% endif +%};
+{%       endif %}
+          }
+{%     endfor %}
+{%   endfor %}
+        }
+      }
+    }
+  }
+
+{% endfor %}
+}

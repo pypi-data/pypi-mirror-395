@@ -1,0 +1,38 @@
+---
+description: vJunos Switch
+parent: junos
+interface_name: ge-0/0/{ifindex}
+group_vars:
+  netlab_device_type: vjunos-switch
+
+features:
+  evpn:
+    asymmetrical_irb: true
+    irb: true
+    multi_rt: true
+    bundle: [ vlan_aware ]
+  lag:
+    passive: True
+  vlan:
+    model: l3-switch
+    svi_interface_name: irb.{vlan}
+    subif_name: "{ifname}.{vlan.access_id}"
+    native_routed: true
+  vxlan: true
+
+clab:
+  image: vrnetlab/juniper_vjunos-switch:23.4R2-S2.1
+  build: https://containerlab.dev/manual/kinds/vr-vjunosswitch/
+  mtu: 1500
+  node:
+    kind: juniper_vjunosswitch
+  interface:
+    name: eth{ifindex+1}
+  group_vars:
+    ansible_user: admin
+    ansible_ssh_pass: admin@123
+    netlab_check_retries: 40
+    netlab_check_delay: 10
+    netlab_ready: [ ssh ]
+
+graphite.icon: switch

@@ -1,0 +1,26 @@
+#!/bin/bash
+cat >/tmp/vrrp_config <<CONFIG
+{% for intf in interfaces if intf.gateway.protocol|default('') == 'vrrp' %}
+interface {{ intf.ifname }}
+  vrrp {{ intf.gateway.vrrp.group }} shutdown
+  no vrrp {{ intf.gateway.vrrp.group }} checksum-with-ipv4-pseudoheader
+{%     if 'priority' in intf.gateway.vrrp %}
+  vrrp {{ intf.gateway.vrrp.group }} priority {{ intf.gateway.vrrp.priority }}
+{%     endif %}
+{%     if intf.gateway.vrrp.preempt|default(True) %}
+  vrrp {{ intf.gateway.vrrp.group }} preempt
+{%     else %}
+  no vrrp {{ intf.gateway.vrrp.group }} preempt
+{%     endif %}
+{%   if 'ipv6' in intf.gateway %}
+{# Per RFC9568, the link-local ipv6 address MUST be included first. Required for interop with EOS (for example) #}
+  vrrp {{ intf.gateway.vrrp.group }} ipv6 {{ intf.gateway.vrrp.lla }}
+{%   endif %}
+{%   for af in 'ipv4','ipv6' if af in intf.gateway %}
+  vrrp {{ intf.gateway.vrrp.group }} {{ af|replace('ipv4','ip') }} {{ intf.gateway[af]|ipaddr('address') }}
+{%   endfor %}
+  no vrrp {{ intf.gateway.vrrp.group }} shutdown
+{% endfor %}
+do write
+CONFIG
+vtysh -f /tmp/vrrp_config

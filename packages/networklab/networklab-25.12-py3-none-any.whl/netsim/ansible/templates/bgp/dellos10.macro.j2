@@ -1,0 +1,66 @@
+{#
+  Define a BGP neighbor
+#}
+{% macro neighbor(n,ip,bgp,t_af) %}
+{%   set peer = ip if ip is string else 'interface ' + n.local_if|default('?') %}
+{%   set unnumbered = peer != n[t_af] %}
+!
+  neighbor {{ peer }}
+{%   if unnumbered %}
+! This is an unnumbered eBGP session
+! WTF Remote-AS configuration not supported for unnumbered peer
+    inherit template unnumbered_ebgp inherit-type ebgp
+{%   else %}
+    remote-as {{ n.as }}
+{%   endif %}
+    
+    description "{{ n.name }}"
+{%   if n.local_as is defined %}
+    local-as {{ n.local_as }}{{ ' no-prepend replace-as' if n.replace_global_as|default(True) else '' }}
+{%   endif %}
+{%   if n._source_intf is defined %}
+    update-source {{ n._source_intf.ifname }}
+{%   endif %}
+{%   if n.type in ['ibgp','localas_ibgp','confed_ebgp'] and bgp.next_hop_self|default(False) %}
+{#
+  In Dell OS10, next-hop-self is configured under AF
+#}
+{%     for af in ['ipv4','ipv6'] if n.activate[af]|default(False) and (af == t_af or unnumbered) %}
+!
+    address-family {{ af }} unicast
+      next-hop-self
+    exit
+{%     endfor %}
+{%   endif  %}
+{%   if 'ibgp' in n.type and bgp.rr|default('') and not n.rr|default('') %}
+    route-reflector-client
+{%   endif %}
+{%   if n.type in bgp.community %}
+{%     for comm in ['standard','extended'] %}
+{%       if comm in bgp.community[n.type] %}
+    send-community {{ comm }}
+{%       endif %}
+{%     endfor %}
+{%   endif %}
+
+{% for af in ['ipv4','ipv6'] %}
+{%   if n.activate[af]|default(False) and (af == t_af or unnumbered) %}
+!
+    address-family {{ af }} unicast
+      soft-reconfiguration inbound
+      activate
+    exit
+{%   else %}
+    address-family {{ af }} unicast
+      no activate
+    exit
+{%   endif %}
+{% endfor %}
+
+{# Override default timers of 60/180 #}
+    timers 3 9
+{# Reduce default advertisement interval of 30s to minimum 1s #}
+    advertisement-interval 1
+    no shutdown
+  exit
+{%- endmacro %}
