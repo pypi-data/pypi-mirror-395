@@ -1,0 +1,111 @@
+[project]
+name = "docnote"
+description = "A lightweight way of declaring documentation notes as annotations"
+authors = []
+dynamic = []
+requires-python = ">=3.12.0"
+readme = "README.md"
+dependencies = []
+version = "2025.12.4.0"
+
+[dependency-groups]
+test = [
+    "pytest >= 8.1.1",
+]
+lint = [
+    "ruff >= 0.3.3",
+]
+repl = [
+    "wat-inspector >= 0.3.2",
+]
+
+[tool.uv]
+default-groups = [
+    "test",
+    "lint",
+    "repl",
+]
+
+[tool.pdm.version]
+source = "scm"
+fallback_version = "0.0.0.dev"
+
+[tool.pdm.build]
+package-dir = "src_py"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = [
+    "tests_py",
+]
+addopts = "--import-mode=importlib"
+cache_dir = "/tmp/pytest_cache"
+python_files = "*.test.py"
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+dummy-variable-rgx = "^_{1,2}$"
+select = [
+    "F",
+    "E",
+    "W",
+    "C90",
+    "B",
+    "I",
+    "N",
+    "YTT",
+    "S",
+    "A",
+    "C4",
+    "ICN",
+    "Q003",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "RUF",
+]
+ignore = [
+    "S610",
+    "N818",
+    "PLR5501",
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+default-section = "third-party"
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+known-first-party = [
+    "docnote",
+]
+
+[tool.ruff.lint.pylint]
+max-args = 7
+
+[tool.ruff.lint.per-file-ignores]
+"tests_py/**" = [
+    "S101",
+    "PLR2004",
+    "N999",
+]
+
+[tool.refurb]
+ignore = []
+
+[tool.pyright]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+
+[build-system]
+requires = [
+    "pdm-backend",
+]
+build-backend = "pdm.backend"
