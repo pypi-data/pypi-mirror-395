@@ -1,0 +1,80 @@
+{#- Template for rendering Luau functions.
+
+Context:
+  data: The function data.
+  root (bool): Whether this is the root object.
+  heading_level (int): The HTML heading level to use.
+  config (dict): The configuration options.
+-#}
+
+{% block logs scoped %}
+  {{ log.debug("Rendering function " + data.path) }}
+{% endblock logs %}
+
+<div class="doc doc-object doc-function">
+  {% with obj = data, html_id = data.path %}
+
+    {% filter heading(
+        heading_level,
+        role="function",
+        id=html_id,
+        class="doc doc-heading",
+        toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + data.name,
+      ) %}
+
+      {% block heading scoped %}
+        {% if config.show_symbol_type_heading %}<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>{% endif %}
+        <span class="doc doc-object-name doc-function-name">{{ config.heading if config.heading and root else data.name }}</span>
+      {% endblock heading %}
+
+    {% endfilter %}
+
+    {% block signature scoped %}
+      <div class="doc doc-signature">
+        <code>{{ data.signature }}</code>
+      </div>
+    {% endblock signature %}
+
+    <div class="doc doc-contents {% if root %}first{% endif %}">
+      {% block contents scoped %}
+
+        {% if data.docstring %}
+          {% block docstring scoped %}
+            <div class="doc doc-docstring">
+              {{ data.docstring|convert_markdown(heading_level, html_id) }}
+            </div>
+          {% endblock docstring %}
+        {% endif %}
+
+        {% if data.parameters %}
+          {% block parameters scoped %}
+            <div class="doc doc-parameters">
+              <h{{ heading_level + 1 }}>Parameters</h{{ heading_level + 1 }}>
+              <dl>
+                {% for param in data.parameters %}
+                  <dt><code>{{ param.name }}</code>
+                    {% if param.type %}<span class="doc-param-type">: {{ param.type }}</span>{% endif %}
+                  </dt>
+                  <dd>
+                    {% if param.default %}<em>Default: <code>{{ param.default }}</code></em>{% endif %}
+                  </dd>
+                {% endfor %}
+              </dl>
+            </div>
+          {% endblock parameters %}
+        {% endif %}
+
+        {% if data.return_type %}
+          {% block returns scoped %}
+            <div class="doc doc-returns">
+              <h{{ heading_level + 1 }}>Returns</h{{ heading_level + 1 }}>
+              <p><code>{{ data.return_type }}</code></p>
+            </div>
+          {% endblock returns %}
+        {% endif %}
+
+      {% endblock contents %}
+    </div>
+
+  {% endwith %}
+</div>
