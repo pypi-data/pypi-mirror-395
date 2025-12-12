@@ -1,0 +1,1027 @@
+from collections.abc import Sequence
+from logging import getLogger
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+from sqlalchemy import Join, case, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapper
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.relationships import RelationshipProperty
+from sqlmodel import Session, SQLModel, inspect, select
+from sqlmodel.sql.expression import SelectOfScalar
+
+from querymate.core.config import settings
+from querymate.core.filter import FilterBuilder
+
+if TYPE_CHECKING:
+    from querymate.core.grouping import GroupByConfig, GroupKeyExtractor
+
+T = TypeVar("T", bound=SQLModel)
+
+# Type aliases for better readability
+FieldSelection = str | dict[str, list[str]]
+SelectResult = tuple[list[InstrumentedAttribute], list[Join]]
+
+# Configure logger
+logger = getLogger(__name__)
+logger.setLevel(settings.LOG_LEVEL)
+
+
+class QueryBuilder:
+    """
+    A flexible query builder for SQLModel with support for complex queries.
+
+    This class provides methods for building SQL queries with support for field selection,
+    filtering, sorting, and pagination. It handles relationships and nested queries.
+    It also includes built-in serialization capabilities to transform query results into
+    dictionaries with only the requested fields.
+
+    Attributes:
+        model (type[T]): The SQLModel model class to query.
+        query (SelectOfScalar): The current SQL query being built.
+        select (list[FieldSelection]): Fields to include in the response.
+        filter (dict[str, Any]): Filter conditions for the query.
+        sort (list[str]): List of fields to sort by.
+        limit (int | None): Maximum number of records to return.
+        offset (int | None): Number of records to skip.
+
+    Serialization:
+        The QueryBuilder includes built-in serialization capabilities through the `serialize` method.
+        This allows you to transform query results into dictionaries containing only the requested fields.
+        Serialization supports:
+        - Direct field selection
+        - Nested relationships
+        - Both list and non-list relationships
+        - Automatic handling of null values
+
+    Example:
+        ```python
+        # Basic usage
+        query_builder = QueryBuilder(model=User)
+        query_builder.apply_select(["id", "name"])
+        results = query_builder.fetch(db, User)
+        serialized = query_builder.serialize(results)
+
+        # With relationships
+        query_builder = QueryBuilder(model=User)
+        query_builder.apply_select(["id", "name", {"posts": ["id", "title"]}])
+        results = query_builder.fetch(db, User)
+        serialized = query_builder.serialize(results)
+        ```
+    """
+
+    model: type[SQLModel]
+    query: SelectOfScalar
+    select: list[FieldSelection]
+    filter: dict[str, Any]
+    sort: list[str | dict[str, Any]]
+    limit: int | None = settings.DEFAULT_LIMIT
+    offset: int | None = settings.DEFAULT_OFFSET
+
+    def __init__(self, model: type[T]) -> None:
+        """Initialize the QueryBuilder.
+
+        Args:
+            model (type[T]): The SQLModel model class to query.
+        """
+        self.model = model
+        self.query = select(model)
+        self.select = []
+        self.filter = {}
+        self.sort = []
+
+    def _normalize_select_fields(
+        self, model: type[SQLModel], fields: Sequence[FieldSelection]
+    ) -> list[FieldSelection]:
+        """Expand wildcard selections into explicit field lists.
+
+        Args:
+            model (type[SQLModel]): Model whose fields are being selected.
+            fields (list[FieldSelection]): Requested field selections.
+
+        Returns:
+            list[FieldSelection]: Normalized field selections with wildcards expanded.
+        """
+        if not fields:
+            return []
+
+        normalized_field_names: list[str] = []
+        normalized_relationships: list[dict[str, list[Any]]] = []
+
+        valid_model_fields: list[str] = list(model.model_fields.keys())
+        inspection: Mapper = inspect(model)
+        valid_relationships = inspection.relationships
+
+        for field in fields:
+            if isinstance(field, str):
+                if field == "*":
+                    normalized_field_names = sorted(valid_model_fields)
+                else:
+                    if field not in valid_model_fields:
+                        logger.warning(
+                            f"Invalid field: {field}. Valid fields: {valid_model_fields}"
+                        )
+                        if field not in normalized_field_names:
+                            normalized_field_names.append(field)
+                        continue
+                    if field not in normalized_field_names:
+                        normalized_field_names.append(field)
+            elif isinstance(field, dict):
+                for relationship_name, relationship_fields in field.items():
+                    relationship_property: RelationshipProperty | None = (
+                        valid_relationships.get(relationship_name)
+                    )
+                    if relationship_property is None:
+                        logger.warning(
+                            "Invalid relationship: %s. Valid relationships: %s",
+                            relationship_name,
+                            set(valid_relationships.keys()),
+                        )
+                        continue
+                    relationship_model: type[SQLModel] = (
+                        relationship_property.mapper.class_
+                    )
+                    normalized_rel_fields = self._normalize_select_fields(
+                        relationship_model, relationship_fields
+                    )
+                    normalized_relationships.append(
+                        {relationship_name: normalized_rel_fields}
+                    )
+
+        normalized: list[FieldSelection] = list(normalized_field_names)
+        normalized.extend(cast(list[FieldSelection], normalized_relationships))
+        return normalized
+
+    def _select(
+        self, model: type[SQLModel], fields: list[FieldSelection]
+    ) -> SelectResult:
+        """
+        Select fields to be returned in the query.
+
+        This method supports both direct field selection and relationship field selection
+        through nested dictionaries.
+
+        Args:
+            fields (list[FieldSelection]): List of fields to select.
+                Can include nested dictionaries for relationship fields.
+                If None, all fields are selected.
+
+        Returns:
+            SelectResult: tuple containing list of selected columns and joins.
+        """
+        select_columns: list[InstrumentedAttribute] = []
+
+        model_fields: list[str] = []
+        relationships: list[dict[str, list[Any]]] = []
+        for field in fields:
+            if isinstance(field, str):
+                if field not in model_fields:
+                    model_fields.append(field)
+            elif isinstance(field, dict):
+                relationships.append(field)
+
+        # Handling model fields
+        valid_model_fields: list[str] = list(model.model_fields.keys())
+        if "*" in model_fields:
+            model_fields = sorted(valid_model_fields)
+
+        for field in model_fields:
+            if field not in valid_model_fields:
+                logger.warning(
+                    f"Invalid field: {field}. Valid fields: {valid_model_fields}"
+                )
+            select_columns.append(getattr(model, field))
+
+        # Handling relationships
+        inspection: Mapper = inspect(model)
+        valid_relationships: set[str] = set(inspection.relationships.keys())
+        joins: list[Join] = []
+        for relationship in relationships:
+            for relationship_name, relationship_fields in relationship.items():
+                if relationship_name not in valid_relationships:
+                    logger.warning(
+                        f"Invalid relationship: {relationship_name}. Valid relationships: {valid_relationships}"
+                    )
+                relationship_property: RelationshipProperty | None = (
+                    inspection.relationships.get(relationship_name)
+                )
+                if relationship_property is None:
+                    logger.warning(f"Invalid relationship: {relationship_name}")
+                    continue
+                relationship_model: type[SQLModel] = relationship_property.mapper.class_
+                nested = self._select(relationship_model, relationship_fields)
+                select_columns.extend(nested[0])
+                joins.extend(nested[1])
+                joins.append(getattr(model, relationship_property.key))
+
+        return select_columns, joins
+
+    def apply_select(
+        self, fields: list[str | dict[str, list[str]]] | None = None
+    ) -> "QueryBuilder":
+        """
+        Select fields to be returned in the query.
+
+        This method supports both direct field selection and relationship field selection
+        through nested dictionaries.
+
+        Args:
+            fields (list[str | dict[str, list[str]]] | None): List of fields to select.
+                Can include nested dictionaries for relationship fields.
+                If None, all fields are selected.
+
+        Returns:
+            QueryBuilder: The query builder instance for method chaining.
+
+        Example:
+            ```python
+            builder.select(["name", "email", {"posts": ["title", "content"]}])
+            ```
+        """
+        if not fields:
+            fields = list(self.model.model_fields.keys())
+        normalized_fields = self._normalize_select_fields(self.model, fields)
+        self.select = normalized_fields
+        select_columns, joins = self._select(self.model, normalized_fields)
+        self.query = select(*select_columns)
+        for join in joins:
+            self.query = self.query.join(join)
+        return self
+
+    def apply_filter(self, filter_dict: dict[str, Any] | None = None) -> "QueryBuilder":
+        """Apply filter conditions to the query.
+
+        Args:
+            filter_dict (dict[str, Any] | None): Filter conditions to apply.
+
+        Returns:
+            QueryBuilder: The query builder instance for method chaining.
+
+        Example:
+            ```python
+            builder.filter({"age": {"gt": 18}, "name": {"cont": "John"}})
+            ```
+        """
+        if not filter_dict:
+            return self
+        self.filter = filter_dict
+        filter_builder = FilterBuilder(self.model)
+        filters = filter_builder.build(filter_dict)
+        if filters:
+            self.query = self.query.where(*filters)
+        return self
+
+    def apply_sort(
+        self, sort: list[str | dict[str, Any]] | None = None
+    ) -> "QueryBuilder":
+        """Apply sorting to the query.
+
+        Args:
+            sort (list[str] | None): List of fields to sort by.
+
+        Returns:
+            QueryBuilder: The query builder instance for method chaining.
+
+        Example:
+            ```python
+            builder.sort(["-name", "age", "posts.title"])  # Sort by name descending, then age ascending, then posts.title ascending
+            ```
+        """
+        if not sort:
+            return self
+        self.sort = sort
+        for sort_param in sort:
+            # Custom value order: accept {"field": [values...]} or {"field": {"values": [...]} or {"field": {"order": [...]}}
+            if isinstance(sort_param, dict):
+                # Two shapes supported: {"field": [..]} or {"field": {"values": [..]}} or {"field": {"order": [..]}}
+                if len(sort_param) == 1:
+                    field_key = next(iter(sort_param.keys()))
+                    values_candidate = sort_param[field_key]
+                    if isinstance(values_candidate, dict):
+                        order_values = values_candidate.get(
+                            "values"
+                        ) or values_candidate.get("order")
+                    else:
+                        order_values = values_candidate
+
+                    if not isinstance(order_values, list):
+                        logger.warning(
+                            "Invalid custom sort specification for %s; expected list of values",
+                            field_key,
+                        )
+                        continue
+
+                    # Resolve the column attribute from field path
+                    field_parts = field_key.split(".")
+                    current_entity = self.query.column_descriptions[0]["entity"]
+                    column_attr = None
+                    for i, part in enumerate(field_parts):
+                        if i == len(field_parts) - 1:
+                            column_attr = getattr(current_entity, part)
+                        else:
+                            current_entity = getattr(
+                                current_entity, part
+                            ).property.mapper.class_
+
+                    if column_attr is None:
+                        continue
+
+                    # Build CASE expression mapping listed values to ranks
+                    whens = [(column_attr == v, i) for i, v in enumerate(order_values)]
+                    case_expr = case(*whens, else_=len(whens) + 1)
+                    self.query = self.query.order_by(case_expr)
+                    continue
+
+                # If dict has unexpected shape, skip with warning
+                logger.warning("Unsupported sort dict format: %s", sort_param)
+                continue
+
+            # String-based sort with optional +/- prefix
+            sort_str: str = sort_param
+            if sort_str.startswith("-"):
+                field = sort_str[1:]
+                direction = "desc"
+            elif sort_str.startswith("+"):
+                field = sort_str[1:]
+                direction = "asc"
+            else:
+                field = sort_str
+                direction = "asc"
+
+            # Handle nested fields (e.g. "posts.title")
+            field_parts = field.split(".")
+            current_entity = self.query.column_descriptions[0]["entity"]
+            order_expr = None
+
+            for i, part in enumerate(field_parts):
+                if i == len(field_parts) - 1:
+                    # Last part of the path - this is the field to sort by
+                    order_expr = getattr(current_entity, part)
+                else:
+                    # Navigate through relationships
+                    current_entity = getattr(
+                        current_entity, part
+                    ).property.mapper.class_
+
+            if order_expr is not None:
+                if direction.lower() == "desc":
+                    self.query = self.query.order_by(order_expr.desc())
+                else:
+                    self.query = self.query.order_by(order_expr)
+
+        return self
+
+    def apply_limit(self, limit: int | None = None) -> "QueryBuilder":
+        """Apply limit and offset to the query.
+
+        Args:
+            limit (int | None): Maximum number of records to return.
+
+        Returns:
+            QueryBuilder: The query builder instance for method chaining.
+
+        Example:
+            ```python
+            builder.limit(10)
+            ```
+        """
+        if not limit:
+            return self
+        if limit < 0:
+            logger.warning(
+                f"Limit is negative ({limit}), using default limit ({settings.DEFAULT_LIMIT})"
+            )
+            self.limit = settings.DEFAULT_LIMIT
+        else:
+            self.limit = limit
+
+        self.query = self.query.limit(self.limit)
+        return self
+
+    def apply_offset(self, offset: int | None = None) -> "QueryBuilder":
+        """Apply offset to the query.
+
+        Args:
+            offset (int | None): Number of records to skip.
+
+        Returns:
+            QueryBuilder: The query builder instance for method chaining.
+
+        Example:
+            ```python
+            builder.offset(10)  # Skip the first 10 records
+            ```
+        """
+        if not offset:
+            return self
+        if offset < 0:
+            logger.warning(
+                f"Offset is negative ({offset}), using default offset ({settings.DEFAULT_OFFSET})"
+            )
+            self.offset = settings.DEFAULT_OFFSET
+        else:
+            self.offset = offset
+
+        self.query = self.query.offset(self.offset)
+        return self
+
+    def build(
+        self,
+        select: list[str | dict[str, list[str]]] | None = None,
+        filter: dict[str, Any] | None = None,
+        sort: list[str | dict[str, Any]] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> "QueryBuilder":
+        """Build a complete query with all parameters.
+
+        This method combines field selection, filtering, sorting, and pagination
+        into a single method call.
+
+        Args:
+            fields (list[str | dict[str, list[str]]] | None): Fields to select.
+            filter (dict[str, Any] | None): Filter conditions.
+            sort (list[str] | None): Sort parameters.
+            limit (int | None): Maximum number of records.
+            offset (int | None): Number of records to skip.
+
+        Returns:
+            QueryBuilder: The query builder instance for method chaining.
+
+        Example:
+            ```python
+            builder.build(
+                fields=["name", {"posts": ["title"]}],
+                filter={"age": {"gt": 18}},
+                sort=["-name"],
+                limit=10,
+                offset=0
+            )
+            ```
+        """
+        return (
+            self.apply_select(select)
+            .apply_filter(filter)
+            .apply_sort(sort)
+            .apply_limit(limit)
+            .apply_offset(offset)
+        )
+
+    def _serialize_object(
+        self, obj: SQLModel, fields: list[FieldSelection] | list[str]
+    ) -> dict[str, Any]:
+        """Serialize an object with only the requested fields.
+
+        Args:
+            obj (T): The object to serialize.
+            fields (list[FieldSelection] | list[str]): The fields to include in the serialization.
+
+        Returns:
+            dict[str, Any]: The serialized object with only the requested fields.
+        """
+        result: dict[str, Any] = {}
+
+        for field in fields:
+            if isinstance(field, str):
+                if hasattr(obj, field):
+                    result[field] = getattr(obj, field)
+            elif isinstance(field, dict):
+                for relation_name, relation_fields in field.items():
+                    if hasattr(obj, relation_name):
+                        related_obj = getattr(obj, relation_name)
+                        if isinstance(related_obj, list):
+                            result[relation_name] = [
+                                self._serialize_object(item, relation_fields)
+                                for item in related_obj
+                            ]
+                        else:
+                            result[relation_name] = (
+                                self._serialize_object(related_obj, relation_fields)
+                                if related_obj is not None
+                                else None
+                            )
+
+        return result
+
+    def serialize(self, objects: list[T]) -> list[dict[str, Any]]:
+        """Serialize objects with only the requested fields.
+
+        Args:
+            objects (list[T] | T): The object(s) to serialize.
+            fields (list[FieldSelection] | list[str] | None): The fields to include in the serialization.
+                If None, uses the fields from the current select parameter.
+
+        Returns:
+            list[dict[str, Any]] | dict[str, Any]: The serialized object(s) with only the requested fields.
+        """
+        return [self._serialize_object(obj, self.select) for obj in objects]
+
+    def fetch(self, db: Session, model: type[T]) -> list[T]:
+        """Execute the query and return the results.
+
+        This method executes the query and returns the raw model instances.
+        For serialized results (dictionaries with only the requested fields),
+        use the `serialize` method after fetching.
+
+        Args:
+            db (Session): The SQLModel database session.
+            model (type[T]): The SQLModel model class to query.
+
+        Returns:
+            list[T]: A list of model instances matching the query parameters.
+
+        Example:
+            ```python
+            query_builder = QueryBuilder(model=User)
+            query_builder.apply_select(["id", "name"])
+            results = query_builder.fetch(db, User)
+            # For serialized results:
+            serialized = query_builder.serialize(results)
+            ```
+        """
+        results = db.exec(self.query).all()
+        return self.reconstruct_objects(cast(list[tuple[Any, ...]], results), model)
+
+    def reconstruct_objects(
+        self, results: list[tuple[Any, ...]], model: type[T]
+    ) -> list[T]:
+        """Reconstruct model instances from query results.
+
+        Args:
+            results (list[tuple[Any, ...]]): List of query result rows.
+            model (type[T]): The SQLModel model class.
+
+        Returns:
+            list[T]: List of reconstructed model instances.
+        """
+        reconstructed: dict[int, T] = {}  # Track objects by their ID
+        mapper: Mapper = inspect(model)
+
+        id_field = next(field for field in mapper.primary_key)
+
+        for row in results:
+            field_idx = [0]
+            obj, field_idx = self.reconstruct_object(model, self.select, row, field_idx)
+
+            # Get the ID of the object
+            obj_id = getattr(obj, id_field.name)
+
+            if obj_id in reconstructed:
+                # If we've seen this object before, update its relationships
+                existing_obj = reconstructed[obj_id]
+                for relation_name in self.select:
+                    if isinstance(relation_name, dict):
+                        for rel_name in relation_name:
+                            existing_rels = getattr(existing_obj, rel_name)
+                            new_rels = getattr(obj, rel_name)
+                            # Add any new related objects that aren't already present
+                            for new_rel in new_rels:
+                                if new_rel not in existing_rels:
+                                    existing_rels.append(new_rel)
+            else:
+                # First time seeing this object, add it to our dictionary
+                reconstructed[obj_id] = obj
+
+        return list(reconstructed.values())
+
+    def exec(self, db: Session) -> list[tuple[Any, ...]]:
+        """Execute the query and return raw results.
+
+        Args:
+            db (Session): The SQLModel database session.
+
+        Returns:
+            list[tuple[Any, ...]]: Raw query results.
+        """
+        return db.exec(self.query).unique().all()  # type: ignore
+
+    def count(self, db: Session) -> int:
+        """Return the total number of root records matching current filters.
+
+        This uses a COUNT(DISTINCT <pk>) over the base model with the same
+        filter conditions. Sorting, limit, and offset are intentionally ignored
+        for the total count.
+
+        Args:
+            db (Session): The SQLModel database session.
+
+        Returns:
+            int: Total number of matching records.
+        """
+        mapper: Mapper = inspect(self.model)
+        pk_col = next(col for col in mapper.primary_key)
+
+        count_query = select(func.count(func.distinct(pk_col)))
+
+        # Rebuild filters without mutating the main query
+        if self.filter:
+            filters = FilterBuilder(self.model).build(self.filter)
+            if filters:
+                count_query = count_query.where(*filters)
+
+        # For sync sessions, exec() returns ScalarResult; use one()/first()
+        result_obj = db.exec(count_query)
+        try:
+            value_sync: int = result_obj.one()
+            return int(value_sync)
+        except Exception:
+            value_sync_opt: int | None = result_obj.first()
+            return int(value_sync_opt or 0)
+
+    def reconstruct_object(
+        self,
+        model: type[T],
+        fields: list[FieldSelection],
+        row: tuple[Any, ...],
+        field_idx: list[int],
+    ) -> tuple[T, list[int]]:
+        """Reconstruct a model instance from a query result row.
+
+        This method handles both direct fields and relationship fields.
+
+        Args:
+            model (type[T]): The SQLModel model class.
+            fields (list[FieldSelection]): Fields to include.
+            row (tuple[Any, ...]): The query result row.
+            field_idx (list[int]): Current field index for tracking position in row.
+
+        Returns:
+            tuple[T, list[int]]: The reconstructed model instance and updated field index.
+        """
+        mapper: Mapper = inspect(model)
+        obj_kwargs: dict[str, Any] = {}
+        related_objs: dict[str, list[Any]] = {}
+
+        for field in fields:
+            if isinstance(field, str):
+                obj_kwargs[field] = row[field_idx[0]]
+                field_idx[0] += 1
+            elif isinstance(field, dict):
+                for relation_name, relation_fields in field.items():
+                    relation = mapper.relationships[relation_name]
+                    related_model: type[T] = relation.mapper.class_
+                    # Recursively reconstruct related object(s)
+                    related_obj, field_idx = self.reconstruct_object(
+                        related_model,
+                        relation_fields,  # type: ignore
+                        row,
+                        field_idx,
+                    )
+                    related_objs.setdefault(relation_name, []).append(related_obj)
+
+        obj: T = model(**obj_kwargs)
+        for relation_name, rel_objs in related_objs.items():
+            relation = mapper.relationships[relation_name]
+            if relation.uselist:
+                # Many relationship (one-to-many or many-to-many)
+                setattr(obj, relation_name, rel_objs)
+            else:
+                # To-one relationship (one-to-one or many-to-one)
+                setattr(obj, relation_name, rel_objs[0] if rel_objs else None)
+        return obj, field_idx
+
+    async def fetch_async(self, db: AsyncSession, model: type[T]) -> list[T]:
+        """Execute the query asynchronously and return the results.
+
+        This method executes the query asynchronously and returns the raw model instances.
+        For serialized results (dictionaries with only the requested fields),
+        use the `serialize` method after fetching.
+
+        Args:
+            db (AsyncSession): The SQLModel async database session.
+            model (type[T]): The SQLModel model class to query.
+
+        Returns:
+            list[T]: A list of model instances matching the query parameters.
+
+        Example:
+            ```python
+            query_builder = QueryBuilder(model=User)
+            query_builder.apply_select(["id", "name"])
+            results = await query_builder.fetch_async(db, User)
+            # For serialized results:
+            serialized = query_builder.serialize(results)
+            ```
+        """
+        results = await db.execute(self.query)
+        return self.reconstruct_objects(
+            cast(list[tuple[Any, ...]], results.all()), model
+        )
+
+    async def exec_async(self, db: AsyncSession) -> list[tuple[Any, ...]]:
+        """Execute the query asynchronously and return raw results.
+
+        Args:
+            db (AsyncSession): The SQLModel async database session.
+
+        Returns:
+            list[tuple[Any, ...]]: Raw query results.
+        """
+        # Note: We use execute() instead of exec() because exec() is not available
+        # for AsyncSession. This warning is more relevant for synchronous sessions.
+        results = await db.execute(self.query)
+        return results.unique().all()  # type: ignore
+
+    async def count_async(self, db: AsyncSession) -> int:
+        """Asynchronously return the total number of root records matching filters.
+
+        Mirrors the synchronous ``count`` method.
+
+        Args:
+            db (AsyncSession): The SQLModel async database session.
+
+        Returns:
+            int: Total number of matching records.
+        """
+        mapper: Mapper = inspect(self.model)
+        pk_col = next(col for col in mapper.primary_key)
+
+        count_query = select(func.count(func.distinct(pk_col)))
+
+        if self.filter:
+            filters = FilterBuilder(self.model).build(self.filter)
+            if filters:
+                count_query = count_query.where(*filters)
+
+        results = await db.execute(count_query)
+        # Prefer scalar_one if available; otherwise fall back to scalar/first
+        try:
+            value_async: int | None = results.scalar_one()
+        except Exception:
+            value_async = results.scalar()
+        return int(value_async or 0)
+
+    # -------------------------------------------------------------------------
+    # Grouping Methods
+    # -------------------------------------------------------------------------
+
+    def _resolve_column(self, field_path: str) -> InstrumentedAttribute:
+        """Resolve a field path to a SQLAlchemy column.
+
+        Args:
+            field_path: Dot-separated path to the field.
+
+        Returns:
+            The resolved column attribute.
+        """
+        parts = field_path.split(".")
+        current: Any = self.model
+        for part in parts:
+            if hasattr(current, part):
+                attr = getattr(current, part)
+                if hasattr(attr, "property") and hasattr(attr.property, "mapper"):
+                    current = attr.property.mapper.class_
+                else:
+                    current = attr
+            else:
+                raise AttributeError(f"Field {part} not found in {current}")
+        return cast(InstrumentedAttribute[Any], current)
+
+    def get_distinct_group_keys(
+        self,
+        db: Session,
+        group_config: "GroupByConfig",
+        extractor: "GroupKeyExtractor",
+    ) -> list[tuple[Any, int]]:
+        """Get distinct group keys with counts.
+
+        Args:
+            db: Database session.
+            group_config: Grouping configuration.
+            extractor: Group key extractor for SQL expression generation.
+
+        Returns:
+            List of (group_key, count) tuples ordered naturally.
+        """
+        column = self._resolve_column(group_config.field)
+        group_expr = extractor.get_group_key_expression(column, group_config)
+
+        mapper: Mapper = inspect(self.model)
+        pk_col = next(col for col in mapper.primary_key)
+
+        # Build query for distinct keys with counts
+        keys_query = select(
+            group_expr.label("group_key"),
+            func.count(func.distinct(pk_col)).label("count"),
+        ).group_by(group_expr)
+
+        # Apply existing filters
+        if self.filter:
+            filters = FilterBuilder(self.model).build(self.filter)
+            if filters:
+                keys_query = keys_query.where(*filters)
+
+        # Order naturally (alphabetically for strings, chronologically for dates)
+        keys_query = keys_query.order_by(group_expr)
+
+        results = db.exec(keys_query).all()
+        return [(row[0], row[1]) for row in results]
+
+    async def get_distinct_group_keys_async(
+        self,
+        db: AsyncSession,
+        group_config: "GroupByConfig",
+        extractor: "GroupKeyExtractor",
+    ) -> list[tuple[Any, int]]:
+        """Get distinct group keys with counts asynchronously.
+
+        Args:
+            db: Async database session.
+            group_config: Grouping configuration.
+            extractor: Group key extractor for SQL expression generation.
+
+        Returns:
+            List of (group_key, count) tuples ordered naturally.
+        """
+        column = self._resolve_column(group_config.field)
+        group_expr = extractor.get_group_key_expression(column, group_config)
+
+        mapper: Mapper = inspect(self.model)
+        pk_col = next(col for col in mapper.primary_key)
+
+        keys_query = select(
+            group_expr.label("group_key"),
+            func.count(func.distinct(pk_col)).label("count"),
+        ).group_by(group_expr)
+
+        if self.filter:
+            filters = FilterBuilder(self.model).build(self.filter)
+            if filters:
+                keys_query = keys_query.where(*filters)
+
+        keys_query = keys_query.order_by(group_expr)
+
+        results = await db.execute(keys_query)
+        return [(row[0], row[1]) for row in results.all()]
+
+    def fetch_for_group(
+        self,
+        db: Session,
+        model: type[T],
+        group_config: "GroupByConfig",
+        extractor: "GroupKeyExtractor",
+        group_key: Any,
+        limit: int,
+        offset: int = 0,
+    ) -> list[T]:
+        """Fetch items for a specific group.
+
+        Args:
+            db: Database session.
+            model: The model class.
+            group_config: Grouping configuration.
+            extractor: Group key extractor.
+            group_key: The group key value to filter by.
+            limit: Maximum items to return.
+            offset: Number of items to skip.
+
+        Returns:
+            List of model instances for the group.
+        """
+        column = self._resolve_column(group_config.field)
+        group_expr = extractor.get_group_key_expression(column, group_config)
+
+        # Build a fresh query for this group
+        group_builder = QueryBuilder(model)
+        group_builder.apply_select(self.select if self.select else None)
+
+        # Combine existing filters with group filter
+        combined_filter = dict(self.filter) if self.filter else {}
+
+        group_builder.apply_filter(combined_filter)
+
+        # Add group key condition to the query
+        group_builder.query = group_builder.query.where(group_expr == group_key)
+
+        # Apply sorting
+        if self.sort:
+            group_builder.apply_sort(self.sort)
+
+        # Apply pagination
+        group_builder.apply_limit(limit)
+        group_builder.apply_offset(offset)
+
+        return group_builder.fetch(db, model)
+
+    async def fetch_for_group_async(
+        self,
+        db: AsyncSession,
+        model: type[T],
+        group_config: "GroupByConfig",
+        extractor: "GroupKeyExtractor",
+        group_key: Any,
+        limit: int,
+        offset: int = 0,
+    ) -> list[T]:
+        """Fetch items for a specific group asynchronously.
+
+        Args:
+            db: Async database session.
+            model: The model class.
+            group_config: Grouping configuration.
+            extractor: Group key extractor.
+            group_key: The group key value to filter by.
+            limit: Maximum items to return.
+            offset: Number of items to skip.
+
+        Returns:
+            List of model instances for the group.
+        """
+        column = self._resolve_column(group_config.field)
+        group_expr = extractor.get_group_key_expression(column, group_config)
+
+        group_builder = QueryBuilder(model)
+        group_builder.apply_select(self.select if self.select else None)
+
+        combined_filter = dict(self.filter) if self.filter else {}
+        group_builder.apply_filter(combined_filter)
+
+        group_builder.query = group_builder.query.where(group_expr == group_key)
+
+        if self.sort:
+            group_builder.apply_sort(self.sort)
+
+        group_builder.apply_limit(limit)
+        group_builder.apply_offset(offset)
+
+        return await group_builder.fetch_async(db, model)
+
+    def count_for_group(
+        self,
+        db: Session,
+        group_config: "GroupByConfig",
+        extractor: "GroupKeyExtractor",
+        group_key: Any,
+    ) -> int:
+        """Count items in a specific group.
+
+        Args:
+            db: Database session.
+            group_config: Grouping configuration.
+            extractor: Group key extractor.
+            group_key: The group key value.
+
+        Returns:
+            Total count of items in the group.
+        """
+        column = self._resolve_column(group_config.field)
+        group_expr = extractor.get_group_key_expression(column, group_config)
+
+        mapper: Mapper = inspect(self.model)
+        pk_col = next(col for col in mapper.primary_key)
+
+        count_query = select(func.count(func.distinct(pk_col)))
+
+        if self.filter:
+            filters = FilterBuilder(self.model).build(self.filter)
+            if filters:
+                count_query = count_query.where(*filters)
+
+        count_query = count_query.where(group_expr == group_key)
+
+        result = db.exec(count_query)
+        try:
+            return int(result.one())
+        except Exception:
+            value = result.first()
+            return int(value or 0)
+
+    async def count_for_group_async(
+        self,
+        db: AsyncSession,
+        group_config: "GroupByConfig",
+        extractor: "GroupKeyExtractor",
+        group_key: Any,
+    ) -> int:
+        """Count items in a specific group asynchronously.
+
+        Args:
+            db: Async database session.
+            group_config: Grouping configuration.
+            extractor: Group key extractor.
+            group_key: The group key value.
+
+        Returns:
+            Total count of items in the group.
+        """
+        column = self._resolve_column(group_config.field)
+        group_expr = extractor.get_group_key_expression(column, group_config)
+
+        mapper: Mapper = inspect(self.model)
+        pk_col = next(col for col in mapper.primary_key)
+
+        count_query = select(func.count(func.distinct(pk_col)))
+
+        if self.filter:
+            filters = FilterBuilder(self.model).build(self.filter)
+            if filters:
+                count_query = count_query.where(*filters)
+
+        count_query = count_query.where(group_expr == group_key)
+
+        result = await db.execute(count_query)
+        try:
+            return int(result.scalar_one())
+        except Exception:
+            value = result.scalar()
+            return int(value or 0)
