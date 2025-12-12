@@ -1,0 +1,112 @@
+[project]
+name = "pygcprofiler"
+version = "0.4.1"
+description = "See Python's garbage collector in action without getting in its way. Zero-overhead GC monitoring for production applications."
+readme = "README.md"
+license = "LGPL-2.1-only"
+requires-python = ">=3.10"
+authors = [
+    { name = "Akshat Kotpalliwar" , email = "akshatkot@gmail.com" }
+]
+maintainers = [
+    { name = "Akshat Kotpalliwar" , email = "akshatkot@gmail.com" }
+]
+keywords = [
+    "garbage-collection",
+    "gc",
+    "profiling",
+    "monitoring",
+    "performance",
+    "debugging",
+    "memory",
+    "observability"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Monitoring",
+    "Typing :: Typed"
+]
+dependencies = [
+    "psutil>=5.9.0",
+    "typing-extensions>=4.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "typing-extensions>=4.8.0", 
+]
+dashboard = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "httpx>=0.25.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/IntegerAlex/pygcprofiler"
+Documentation = "https://github.com/IntegerAlex/pygcprofiler#readme"
+Repository = "https://github.com/IntegerAlex/pygcprofiler.git"
+Issues = "https://github.com/IntegerAlex/pygcprofiler/issues"
+Changelog = "https://github.com/IntegerAlex/pygcprofiler/blob/main/CHANGELOG.md"
+
+[project.scripts]
+pygcprofiler = "gc_monitor.__main__:main"
+gc-monitor = "gc_monitor.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gc_monitor"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/LICENSE",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/pyproject.toml",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.uv.workspace]
+members = [
+    "pygctest",
+]
