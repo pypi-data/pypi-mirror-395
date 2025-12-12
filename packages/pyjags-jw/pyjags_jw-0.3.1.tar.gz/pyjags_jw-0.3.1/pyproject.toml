@@ -1,0 +1,99 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.10",
+  "pybind11>=2.12",
+  "numpy>=2.0",            # <-- add this
+  "packaging"
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyjags-jw"
+version = "0.3.1"
+description = "Python bindings for JAGS (modernized build so that everything 'just works' (JW))."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-2.0-only" }
+authors = [{ name = "Scout Jarman", email = "scoutjarman@yahoo.com" }]
+
+# Everything needed at runtime (no extras required)
+dependencies = [
+  "numpy>=1.23",
+  "arviz>=0.15",
+  "h5py>=3.8",
+  "pandas>=2.1",
+  "xarray>=2023.7.0",
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: C++",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Homepage = "https://github.com/scoutiii/pyjags_JW"
+Issues = "https://github.com/scoutiii/pyjags_JW/issues"
+
+[tool.scikit-build]
+# Include this Python package (the one you "import")
+wheel.packages = ["pyjags"]
+
+# Ensure C++ sources and build scripts are present when building from sdist
+sdist.include = [
+  "CMakeLists.txt",
+  "pyproject.toml",
+  "pyjags/__init__.py",
+  "pyjags/*.py",
+  "pyjags/console.cc",
+  "LICENSE",
+  "README*",
+  "test/*.py",
+  "test/models.jags"
+]
+
+# (Optional) keep builds tidy; not required
+build-dir = "build/{wheel_tag}"
+
+# Keep logging informative but not noisy
+logging.level = "INFO"
+
+[tool.scikit-build.cmake.define]
+PYJAGS_VENDOR_JAGS = true
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["test"]
+
+
+[tool.cibuildwheel]
+build = ["cp311-manylinux_*", "cp312-manylinux_*", "cp313-manylinux_*"]
+skip = ["*-musllinux_*"]                    # adjust once Alpine support is ready
+test-requires = ["pytest"]
+test-command = "bash {project}/ci/run_tests.sh {project} {tmpdir}"
+
+[tool.cibuildwheel.linux]
+before-all = "bash {project}/ci/build_jags.sh"
+archs = ["x86_64"]
+
+[tool.cibuildwheel.macos]
+before-all = "bash {project}/ci/build_jags_macos.sh"
+archs = ["arm64"]
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "15.0"
+CMAKE_OSX_DEPLOYMENT_TARGET = "15.0"
+PYJAGS_VENDOR_JAGS_ROOT = "/tmp/jags"
+PKG_CONFIG_PATH = "/tmp/jags/lib/pkgconfig:${PKG_CONFIG_PATH}"
+
+[tool.cibuildwheel.linux.environment]
+PYJAGS_VENDOR_JAGS_ROOT = "/project/vendor/jags"
+PKG_CONFIG_PATH = "/project/vendor/jags/lib/pkgconfig:${PKG_CONFIG_PATH}"
+LD_LIBRARY_PATH = "/project/vendor/jags/lib:${LD_LIBRARY_PATH}"
