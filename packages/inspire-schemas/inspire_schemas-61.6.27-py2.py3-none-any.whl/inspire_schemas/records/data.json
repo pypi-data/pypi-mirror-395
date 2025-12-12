@@ -1,0 +1,1206 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "additionalProperties": false,
+    "description": "Schema is not yet specified",
+    "properties": {
+        "$schema": {
+            "format": "uri",
+            "minLength": 1,
+            "type": "string"
+        },
+        "_bucket": {
+            "description": "Used by `invenio-records-files` to store information about the\nbucket attached to this record.\n\n.. note::\n\n    This field is maintained by `invenio-records-files` and should\n    not be edited manually.",
+            "minLength": 1,
+            "type": "string"
+        },
+        "_collections": {
+            "description": ":MARC: ``980__a``",
+            "items": {
+                "enum": [
+                    "Data"
+                ],
+                "minLength": 1,
+                "type": "string"
+            },
+            "minItems": 1,
+            "title": "Collections to which record belongs",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "abstracts": {
+            "items": {
+                "additionalProperties": false,
+                "description": "This is used to add, besides the `value`, the `source` where this value\ncame from.",
+                "properties": {
+                    "source": {
+                        "description": "Source of the information in this field. As several records can be merged,\nthis information allows us to remember where every bit of metadata came\nfrom and make decisions based on it.\n\n:MARC: Often not present.",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "value": {
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value"
+                ],
+                "type": "object"
+            },
+            "minItems": 1,
+            "title": "List of abstracts",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "accelerator_experiments": {
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "accelerator": {
+                        "description": ":MARC: ``693__a``\n\nIf present, :ref:`institution` should contain the\ninstitution where this accelerator is located.\n\n.. note::\n\n    Currently not used, see :ref:`legacy_name`.",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "curated_relation": {
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "experiment": {
+                        "description": ":MARC: not present.\n\nIf present, :ref:`institution` should contain the\ninstitution where this experiment is located and\n:ref:`accelerator` may contain the accelerator that this\nexperiment is using (if appropriate).\n\n.. note::\n\n    Currently not used, see :ref:`legacy_name`.",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "institution": {
+                        "description": ":MARC: not present.\n\n.. note::\n\n    Currently not used, see :ref:`legacy_name`.",
+                        "minLength": 1,
+                        "title": "Institution hosting the experiment",
+                        "type": "string"
+                    },
+                    "legacy_name": {
+                        "description": ":MARC: ``693__e``\n\nThis field is used when migrating from legacy instead\nof separate :ref:`institution`, :ref:`accelerator` and\n:ref:`experiment`. In the future, it will be deprecated and\nthe other fields will be used instead.\n\n:example: ``CERN-LHC-CMS``",
+                        "minLength": 1,
+                        "title": "Identifier of the experiment on legacy",
+                        "type": "string"
+                    },
+                    "record": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "$ref": {
+                                "description": "experiments record",
+                                "format": "uri",
+                                "minLength": 1,
+                                "pattern": ".*/api/experiments/\\d+$",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "$ref"
+                        ],
+                        "title": "Reference to experiment record",
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "minItems": 1,
+            "title": "List of related accelerators/experiments",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "acquisition_source": {
+            "additionalProperties": false,
+            "description": ":MARC: ``541``\n\nOnly the first source is stored: if the record later gets enriched with\nmetadata coming from a second source, the `acquisition_source` is not\nupdated.",
+            "properties": {
+                "datetime": {
+                    "description": ":MARC: ``541__d``\n\nThis does not necessarily coincide with the creation date of the\nrecord, as there might be some delay between the moment the\noriginal information is obtained and a record is finally created in\nthe system.",
+                    "format": "date-time",
+                    "minLength": 1,
+                    "title": "Date on which the metadata was obtained",
+                    "type": "string"
+                },
+                "email": {
+                    "description": ":MARC: ``541__b``\n\nThis only gets populated when `method` is `submitter`.",
+                    "format": "email",
+                    "minLength": 1,
+                    "title": "Email address associated to the submitter's account",
+                    "type": "string"
+                },
+                "internal_uid": {
+                    "description": ":MARC: ``541__a`` with ``inspire:uid:`` prefix.\n\nThis only gets populated when `method` is `submitter`.",
+                    "title": "Inspire user ID of the submitter",
+                    "type": "integer"
+                },
+                "method": {
+                    "description": "Possible values are:\n\n`submitter`\n    when obtained from a user submission. In this case, `orcid`,\n    `internal_uid` and `email` store identifiers of the submitter,\n    and `submission_number` an ID of the submission.\n\n`oai`\n    when obtained by OAI-PMH harvesting.\n\n`batchuploader`\n    when obtained through the batch uploader.\n\n`hepcrawl`\n    when obtained from a hepcrawl crawler. In this case, `source`\n    stores the publisher or the repository that was crawled.\n\n`beard`\n    when created after author disambiguation\n\n`inspirehep`\n    when obtained through an inspirehep harvest",
+                    "enum": [
+                        "submitter",
+                        "oai",
+                        "batchuploader",
+                        "hepcrawl",
+                        "beard",
+                        "inspirehep"
+                    ],
+                    "minLength": 1,
+                    "title": "How the medata was obtained",
+                    "type": "string"
+                },
+                "orcid": {
+                    "description": ":MARC: ``541__a`` with ``orcid:`` prefix\n\nThis only gets populated when `method` is `submitter`.",
+                    "minLength": 1,
+                    "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$",
+                    "title": "ORCID of the submitter",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "Source of the information in this field. As several records can be merged,\nthis information allows us to remember where every bit of metadata came\nfrom and make decisions based on it.\n\n:MARC: Often not present.",
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "submission_number": {
+                    "description": ":MARC: ``541__e``\n\nThis only gets populated when `method` is `submitter`.",
+                    "minLength": 1,
+                    "title": "Holding pen record ID of the submission",
+                    "type": "string"
+                }
+            },
+            "title": "Origin of the metadata in the record",
+            "type": "object"
+        },
+        "authors": {
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "affiliations": {
+                        "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "curated_relation": {
+                                    "type": "boolean"
+                                },
+                                "record": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "$ref": {
+                                            "description": "institutions record",
+                                            "format": "uri",
+                                            "minLength": 1,
+                                            "pattern": ".*/api/institutions/\\d+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "$ref"
+                                    ],
+                                    "title": "Reference to institution record",
+                                    "type": "object"
+                                },
+                                "value": {
+                                    "description": ":MARC: ``100/700/701__u``\n\nCurrently, the old\n:ref:`institutions.json#/properties/legacy_ICN`\nis used here. In the future, this will\nchange and become the new\n:ref:`institutions.json#/properties/ICN`.",
+                                    "minLength": 1,
+                                    "title": "ICN of affiliation",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "value"
+                            ],
+                            "type": "object"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "affiliations_identifiers": {
+                        "description": ":MARC: ``100/700/701__t``\n\nList of identifiers of this institution on external systems.",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "description": ":MARC: first part of ``100/700/701__t`` before the :",
+                                            "enum": [
+                                                "GRID"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":MARC: last part of ``100/700/701__t`` after the :",
+                                            "minLength": 1,
+                                            "pattern": "^grid\\.\\d+\\.\\w+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "GRID identifier",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "description": ":MARC: first part of ``100/700/701__t`` before the :",
+                                            "enum": [
+                                                "ROR"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":MARC: last part of ``100/700/701__t`` after the :",
+                                            "minLength": 1,
+                                            "pattern": "^https://ror\\.org/0\\w{6}\\d{2}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "ROR identifier",
+                                    "type": "object"
+                                }
+                            ]
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "alternative_names": {
+                        "items": {
+                            "description": ":MARC: ``100/700/701__q``\n:example: ``\u697c \u7acb\u6d0b``\n:example: ``Smith, Joe John``",
+                            "minLength": 1,
+                            "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "credit_roles": {
+                        "items": {
+                            "description": ":MARC: not present.\n\nRole of the author according to the `Contributor\nRoles Taxonomy (CRediT)\n<https://credit.niso.org/>`_",
+                            "enum": [
+                                "Conceptualization",
+                                "Data curation",
+                                "Formal analysis",
+                                "Funding acquisition",
+                                "Investigation",
+                                "Methodology",
+                                "Project administration",
+                                "Resources",
+                                "Software",
+                                "Supervision",
+                                "Validation",
+                                "Visualization",
+                                "Writing - original draft",
+                                "Writing - review & editing"
+                            ],
+                            "minLength": 1,
+                            "title": "CRedit role of author",
+                            "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "curated_relation": {
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "emails": {
+                        "description": ":MARC: ``100/700/701__m``",
+                        "items": {
+                            "format": "email",
+                            "minLength": 1,
+                            "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "full_name": {
+                        "description": ":MARC: ``100/700/701__a``\n\nAuthor name in Latin alphabet (may contain diacritics).\nShould be of the form 'family names, first names', and,\nexcept for a possible reordering, be exactly as on the\npaper.\n\n:example: ``Smith Davis, John F.K.``",
+                        "minLength": 1,
+                        "pattern": "^[^,]+(,[^,]+)?(,?[^,]+)?$",
+                        "title": "Author name",
+                        "type": "string"
+                    },
+                    "ids": {
+                        "description": ":MARC: ``100/700/701__i/j``",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "additionalProperties": false,
+                                    "description": "This identifier is assigned to any curated author record (HEPNAMES on\nlegacy).  It is mainly used by large collaborations (providing an\n`authors.xml` file) to uniquely identify the authors of their articles.",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "INSPIRE ID"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``INSPIRE-12345678``",
+                                            "minLength": 1,
+                                            "pattern": "^INSPIRE-\\d{8}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "Inspire ID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "The BAI (BibAuthorID) is based on the name of the author and is used as\na human-friendly unique identifier. Its general form is a\n``firstnames.lastnames.number``, where ``firstnames`` is a list of\nfirst names (or initials) separated by dots, and similarly for\n``lastnames``. Only ASCII letters (without diacritics), numbers, dashes\nand apostrophes are allowed in the names. By default, only initials of\nfirst names are used, but this may be changed at a cataloguer's\ndiscretion in order to disambiguate otherwise homonymous authors.\n\n.. note::\n\n    This identifier is not persistent, as it can be renamed to become\n    more explicit (e.g. transforming an initial into a full name), or\n    disappear when merging two different authors.",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "INSPIRE BAI"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``A.Einstein.1``",
+                                            "minLength": 1,
+                                            "pattern": "^((\\w|\\-|\\')+\\.)+\\d+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "Inspire BAI",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "`ORCID <http://orcid.org>`_ provides an identifier for individuals to\nuse with their name as they engage in research, scholarship, and\ninnovation activities.\n\nThe ORCID identifier can be resolved by prepending ``http://orcid.org``\nto the `value`, in order to get the ORCID record of the person.",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "ORCID"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``0000-0012-1234-5647``",
+                                            "format": "orcid",
+                                            "minLength": 1,
+                                            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "ORCID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "Author identfier assigned by the Joint Accelerator Conferences Website\n(`JACoW <http://jacow.org>`_).",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "JACOW"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``JACOW-12345678``",
+                                            "minLength": 1,
+                                            "pattern": "^JACoW-\\d{8}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "JACoW ID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "Author identifier assigned by the Japanese `KAKEN\n<http://kaken.nii.ac.jp>`_ grants database.",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "KAKEN"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``KAKEN-12345678``",
+                                            "minLength": 1,
+                                            "pattern": "^KAKEN-\\d{8}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "KAKEN ID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "More info at `arXiv <https://arxiv.org/help/author_identifiers>`_.",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "ARXIV"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``warner_s_1``",
+                                            "minLength": 1,
+                                            "pattern": "^\\w+_(\\w_)?\\d+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "arXiv author identifier",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "Also called CCID (e.g. on legacy).",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "CERN"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``CERN-12345``",
+                                            "minLength": 1,
+                                            "pattern": "^CERN-\\d+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "CERN institutional ID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "DESY"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``DESY-15456``",
+                                            "minLength": 1,
+                                            "pattern": "^DESY-\\d+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "DESY identifier",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "GOOGLESCHOLAR"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``AZUAeayXuibs``",
+                                            "minLength": 1,
+                                            "pattern": "^(\\w|-){12}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "Google Scholar profile identifier",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "Record ID in the Virtual International Authority File (`VIAF\n<http://viaf.org>`_).",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "VIAF"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``75121530``",
+                                            "minLength": 1,
+                                            "pattern": "^\\d{7,9}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "VIAF record ID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "RESEARCHERID"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``A-1009-2008``",
+                                            "minLength": 1,
+                                            "pattern": "^[A-z]-\\d{4}-\\d{4}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "ResearcherID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "SCOPUS"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``13245678901``",
+                                            "minLength": 1,
+                                            "pattern": "^\\d{10,11}$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "SCOPUS author identifier",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "description": "HEPNAMES entry in the old SPIRES system.",
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "SPIRES"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: HEPNAMES-123456",
+                                            "minLength": 1,
+                                            "pattern": "^HEPNAMES-\\d+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "SPIRES HEPNAMES ID",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "WIKIPEDIA"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "A page name on the English Wikipedia, i.e. the ``Page_name``\npart in http://en.wikipedia.org/wiki/Page_name.\n\n:example: ``Albert_Einstein``\n\nNon-English Wikipedia pages can be referenced by prepending the language.\n\n:example: ``it:Fabiola_Gianotti``",
+                                            "minLength": 1,
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "Wikipedia Page_name of the person",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "SLAC"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": ":example: ``SLAC-123456``",
+                                            "minLength": 1,
+                                            "pattern": "^SLAC-\\d+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "SLAC identifier",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "TWITTER"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "A twitter handle, often preceded by ``@``.\n\n:example: ``Prof_S_Hawking``",
+                                            "minLength": 1,
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "Twitter handle",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "BLUESKY"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "A Bluesky/ATProto handle, often preceded by ``@``.\n\n:example: ``kylecranmer.bsky.social``",
+                                            "minLength": 1,
+                                            "pattern": "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "Bluesky handle",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "MASTODON"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "A Mastodon/ActivityPub handle, often preceded by ``@``.\n\n:example: ``freyablekman@sciencemastodon.com``",
+                                            "minLength": 1,
+                                            "pattern": "^.+@.+$",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "Mastodon handle",
+                                    "type": "object"
+                                },
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "schema": {
+                                            "enum": [
+                                                "LINKEDIN"
+                                            ],
+                                            "minLength": 1,
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "description": "Identifier of Linkedin profile, i.e. the part after\n``linkedin.com/in/`` in the URL.\n\n:example: ``kylecranmer``",
+                                            "minLength": 1,
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "schema",
+                                        "value"
+                                    ],
+                                    "title": "LinkedIn profile",
+                                    "type": "object"
+                                }
+                            ]
+                        },
+                        "minItems": 1,
+                        "title": "Identifiers of the author",
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "inspire_roles": {
+                        "items": {
+                            "default": "author",
+                            "description": "``supervisor``\n    :MARC: ``701`` is used for supervisor metadata.\n\n    This person is a thesis supervisor. Should be\n    used together with the ``thesis``\n    :ref:`hep.json#/properties/document_type`.\n\n``editor``\n    :MARC: ``100/700__e:ed.``\n\n    This person is an editor of the conference\n    proceedings. Should be used together with the\n    ``proceedings``\n    :ref:`hep.json#/properties/document_type`.",
+                            "enum": [
+                                "author",
+                                "supervisor",
+                                "editor"
+                            ],
+                            "minLength": 1,
+                            "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "raw_affiliations": {
+                        "description": ":MARC: ``100/700/701__v``\n\nList of full affiliations, as written on the paper.",
+                        "items": {
+                            "additionalProperties": false,
+                            "description": "This is used to add, besides the `value`, the `source` where this value\ncame from.",
+                            "properties": {
+                                "source": {
+                                    "description": "Source of the information in this field. As several records can be merged,\nthis information allows us to remember where every bit of metadata came\nfrom and make decisions based on it.\n\n:MARC: Often not present.",
+                                    "minLength": 1,
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "value"
+                            ],
+                            "type": "object"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                    },
+                    "record": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "$ref": {
+                                "description": "authors record",
+                                "format": "uri",
+                                "minLength": 1,
+                                "pattern": ".*/api/authors/\\d+$",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "$ref"
+                        ],
+                        "title": "Reference to author record",
+                        "type": "object"
+                    },
+                    "signature_block": {
+                        "description": "Phonetic representation of the name, needed for author\ndisambiguation. This field should not be edited\nmanually.",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Used by the BEARD author disambiguation tool. This\nfield should not be edited manually.",
+                        "minLength": 1,
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                        "title": "UUID",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "full_name"
+                ],
+                "type": "object"
+            },
+            "minItems": 1,
+            "title": "Authors",
+            "type": "array",
+            "uniqueItems": false
+        },
+        "collaborations": {
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "record": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "$ref": {
+                                "description": "experiments record",
+                                "format": "uri",
+                                "minLength": 1,
+                                "pattern": ".*/api/experiments/\\d+$",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "$ref"
+                        ],
+                        "title": "Reference to experiment record",
+                        "type": "object"
+                    },
+                    "value": {
+                        "description": ":MARC: ``710__g``\n\nCollaboration name as it appears on the paper (with the\n``Collaboration`` suffix dropped).\n\n:example: ``ATLAS`` instead of ``ATLAS Collaboration``\n:example: ``Particle Data Group``",
+                        "minLength": 1,
+                        "title": "Collaboration name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value"
+                ],
+                "type": "object"
+            },
+            "minItems": 1,
+            "required": [
+                "value"
+            ],
+            "title": "List of collaborations",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "control_number": {
+            "description": ":MARC: ``001``\n\nRead-only field. Also called ``record ID`` or ``recid``.",
+            "title": "ID of current record",
+            "type": "integer"
+        },
+        "creation_date": {
+            "format": "date",
+            "minLength": 1,
+            "title": "Creation date of the dataset",
+            "type": "string"
+        },
+        "deleted": {
+            "description": ":MARC: ``980__a/c:deleted``",
+            "title": "Whether this record has been deleted",
+            "type": "boolean"
+        },
+        "deleted_records": {
+            "description": ":MARC: ``981__a``\n\nList of records that were deleted because they were replaced by\nthis one. This typically happens when merging two records: one of\nthem gets enriched with the information of the other one, which is\nthen superfluous and gets deleted.\n\nFor the opposite concept, see :ref:`new_record`.",
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "$ref": {
+                        "description": "data record",
+                        "format": "uri",
+                        "minLength": 1,
+                        "pattern": ".*/api/data/\\d+$",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "$ref"
+                ],
+                "title": "Reference to data record",
+                "type": "object"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+        },
+        "dois": {
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "material": {
+                        "description": "The possible values are:\n\n``addendum``\n    for a document extending the main publication.\n\n``additional material``\n    for additional material attached to the main publication, that is\n    neither the more specific ``data`` or ``software``.\n\n``data``\n    for a dataset related to the main publication (for Literature) or to\n    the dataset itself (for Data). If the data is versioned, this refers to\n    the aggregate, unversioned dataset.\n\n``erratum``\n    for a document correcting errors in the content of the main\n    publication. When the errors are not in the content but in the\n    publication process, it is considered as an ``editorial note`` instead.\n\n``editorial note``\n    for a document correcting errors in the metadata of the publication but\n    not its content. Otherwise, it is an ``erratum``.\n\n``preprint``\n    for a document that is made public (typically on `arXiv\n    <http://arxiv.org>`_) but not yet published formally.\n\n``publication``\n    for the main publication. If it's not published, it's a ``preprint``.\n\n``part``\n    for a part of the main record. This is used for subsets of datasets,\n    e.g. a single table.\n\n``reprint``\n    for a reprint of the main publication.\n\n``software``\n    for software related to the main publication.\n\n``translation``\n    for a translation of the main publication.\n\n``version``\n    for a version of the main record. This is used for example for versions of datasets.",
+                        "enum": [
+                            "addendum",
+                            "additional material",
+                            "data",
+                            "editorial note",
+                            "erratum",
+                            "part",
+                            "preprint",
+                            "publication",
+                            "reprint",
+                            "software",
+                            "translation",
+                            "version"
+                        ],
+                        "minLength": 1,
+                        "title": "Material to which the field refers",
+                        "type": "string"
+                    },
+                    "source": {
+                        "description": "Source of the information in this field. As several records can be merged,\nthis information allows us to remember where every bit of metadata came\nfrom and make decisions based on it.\n\n:MARC: Often not present.",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "value": {
+                        "description": ":MARC: ``0247_a``\n:example: ``10.1023/A:1026654312961``",
+                        "minLength": 1,
+                        "pattern": "^10\\.\\d+(\\.\\d+)?/\\S+$",
+                        "title": "DOI"
+                    }
+                },
+                "required": [
+                    "value"
+                ],
+                "type": "object"
+            },
+            "minItems": 1,
+            "title": "List of DOIs",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "keywords": {
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "source": {
+                        "description": "Source of the information in this field. As several records can be merged,\nthis information allows us to remember where every bit of metadata came\nfrom and make decisions based on it.\n\n:MARC: Often not present.",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "value": {
+                        "minLength": 1,
+                        "title": "A keyword",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value"
+                ],
+                "type": "object"
+            },
+            "minItems": 1,
+            "title": "List of keywords",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "legacy_version": {
+            "description": ":MARC: ``005``\n\nUsed to indicate the version of the record on legacy.",
+            "minLength": 1,
+            "title": "Last record update",
+            "type": "string"
+        },
+        "literature": {
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "curated_relation": {
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "doi": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "source": {
+                                "description": "Source of the information in this field. As several records can be merged,\nthis information allows us to remember where every bit of metadata came\nfrom and make decisions based on it.\n\n:MARC: Often not present.",
+                                "minLength": 1,
+                                "type": "string"
+                            },
+                            "value": {
+                                "minLength": 1,
+                                "pattern": "^10\\.\\d+(\\.\\d+)?/\\S+$",
+                                "title": "DOI",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value"
+                        ],
+                        "type": "object"
+                    },
+                    "record": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "$ref": {
+                                "description": "hep record",
+                                "format": "uri",
+                                "minLength": 1,
+                                "pattern": ".*/api/literature/\\d+$",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "$ref"
+                        ],
+                        "title": "Reference to literature record",
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "minItems": 1,
+            "title": "List of associated papers",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "new_record": {
+            "additionalProperties": false,
+            "properties": {
+                "$ref": {
+                    "description": "data record",
+                    "format": "uri",
+                    "minLength": 1,
+                    "pattern": ".*/api/data/\\d+$",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "$ref"
+            ],
+            "title": "Reference to data record",
+            "type": "object"
+        },
+        "self": {
+            "additionalProperties": false,
+            "properties": {
+                "$ref": {
+                    "description": "data record",
+                    "format": "uri",
+                    "minLength": 1,
+                    "pattern": ".*/api/data/\\d+$",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "$ref"
+            ],
+            "title": "Reference to data record",
+            "type": "object"
+        },
+        "texkeys": {
+            "description": ":MARC: ``035`` with ``9:SPIRESTeX`` or ``9:INSPIRETeX``\n\nThese keys are used to cite this record using TeX/LaTeX/BibTex. The\nfirst one is the valid one being shown in the TeX display formats,\nthe others are the obsolete ones which are kept in order to\nidentify this record by those texkeys.",
+            "items": {
+                "minLength": 1,
+                "type": "string"
+            },
+            "minItems": 1,
+            "title": "List of TeX keys",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "titles": {
+            "description": ":MARC: ``245``\n\nThere can be several because the preprint title often differs from\nthe published version. The title should be kept as on the document\nand in the same language as the document (see :ref:`languages`).\n\nTranslations go into :ref:`title_translations`.",
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "source": {
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "subtitle": {
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "title": {
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "type": "object"
+            },
+            "minItems": 1,
+            "title": "List of titles",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "urls": {
+            "description": ":MARC: ``8564``\n\nURLs to external resources related to this record.\n\n.. note::\n\n    Links to internal resources are found in :ref:`figures` or\n    :ref:`documents`.",
+            "items": {
+                "additionalProperties": false,
+                "description": ":MARC: ``8564``",
+                "properties": {
+                    "description": {
+                        "description": ":MARC: ``8654__y``",
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "value": {
+                        "description": ":MARC: ``8564_u``",
+                        "format": "uri",
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value"
+                ],
+                "title": "URL of related document",
+                "type": "object"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+        }
+    },
+    "required": [
+        "titles",
+        "dois",
+        "_collections"
+    ],
+    "title": "A data record",
+    "type": "object"
+}
