@@ -1,0 +1,97 @@
+[project]
+name = "hydev"
+version = "5.1.0"
+description = "Common tooling and configuration for pythonic development"
+authors = [{ name = "hoverhell", email = "hoverhell@gmail.com" }]
+requires-python = ">=3.11,<4"
+readme = "README.md"
+license = "MIT"
+dependencies = [
+    "click>=8.1.8,<9",
+    "pyyaml>=6.0.2,<7",
+    "toml>=0.10.2,<0.11",
+    "pre-commit>=4.2.0,<5",
+    "coloredlogs>=15.0.1,<16",
+    "ipdb>=0.13.13,<0.14",
+    "autoflake>=2.3.1,<3",
+    "isort>=6.0.1,<7",
+    "flake8>=7.2.0,<8",
+    "flake8-broken-line>=1.0.0,<2",
+    "flake8-debugger>=4.1.2,<5",
+    "flake8-mock-x2>=0.4.1,<0.5",
+    "flake8-print>=5.0.0,<6",
+    "flake8-use-fstring~=1.4",
+    "mypy>=1.15.0,<2",
+    "pytest>=8.3.5,<9",
+    "pytest-asyncio>=0.26.0,<0.27",
+    "pytest-blockage>=0.2.4,<0.3",
+    "pytest-cov>=6.1.1,<7",
+    "pytest-deadfixtures>=2.2.1,<3",
+    "pytest-env>=1.1.5,<2",
+    "pytest-timeout>=2.3.1,<3",
+    "ruff>=0.11.6",
+    "uv>=0.9.14",
+    "humanfriendly>=10.0",
+]
+
+[project.optional-dependencies]
+hydlog = ["hyapp>=4.0.1"]
+django = [
+    "django-coverage-plugin>=3.1.0,<4",
+    "django-debug-toolbar>=5.1.0,<6",
+    "django-extra-checks>=0.16.1,<0.17",
+    "django-migration-linter>=5.2.0,<6",
+    "django-querycount>=0.8.3,<0.9",
+    "django-split-settings>=1.3.2,<2",
+    "django-stubs>=5.1.3,<6",
+    "django-stubs-ext>=5.1.3,<6",
+    "django-test-migrations>=1.5.0,<2",
+    "flake8-django-hhupd>=1.4.1,<2",
+    "pytest-django>=4.11.1,<5",
+]
+limbo = [
+    "black>=25.11.0",
+    "flake8-pytest-style>=2.1.0",
+]
+
+[project.urls]
+Repository = "https://gitlab.com/hoverhell/hydev"
+
+[project.scripts]
+hydruffcheck = "hydev.main:RuffCheck.run_cli"
+hydruffformat = "hydev.main:RuffFormat.run_cli"
+hydautoflake = "hydev.main:Autoflake.run_cli"
+hydblack = "hydev.main:Black.run_cli"
+hyddeploy = "hydev.deploy:DeployManager.run_cli"
+hydflake8 = "hydev.main:Flake8.run_cli"
+hydfmt = "hydev.main:Format.run_cli"
+hydisort = "hydev.main:ISort.run_cli"
+hyd = "hydev.main:Fulltest.run_cli"
+hydmypy = "hydev.main:Mypy.run_cli"
+hydpytest = "hydev.main:Pytest.run_cli"
+hydtest = "hydev.main:Fulltest.run_cli"
+hydlog = "hydev.hydlog:main"
+
+[dependency-groups]
+dev = [
+    "types-toml>=0.10.8.20240310,<0.11",
+    "types-requests>=2.32.0.20250328,<3",
+    "types-pyyaml>=6.0.12.20250402,<7",
+    "types-humanfriendly>=10.0.1.20250319,<11",
+    "pyaux>=3.3.0",
+    "ipdb>=0.13.13",
+    "hyapp>=4.0.1",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/hydev"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/hydev"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/hydev" = "hydev"
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
