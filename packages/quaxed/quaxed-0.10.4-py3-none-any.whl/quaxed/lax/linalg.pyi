@@ -1,0 +1,15 @@
+from jax.lax.linalg import (
+    cholesky as cholesky,
+    eig as eig,
+    eigh as eigh,
+    hessenberg as hessenberg,
+    householder_product as householder_product,
+    lu as lu,
+    qdwh as qdwh,
+    qr as qr,
+    shur as shur,
+    svd as svd,
+    triangular_solve as triangular_solve,
+    tridiagonal as tridiagonal,
+    tridiagonal_solve as tridiagonal_solve,
+)
