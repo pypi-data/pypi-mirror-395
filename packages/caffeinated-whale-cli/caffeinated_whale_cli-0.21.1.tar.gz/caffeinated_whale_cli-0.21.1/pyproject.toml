@@ -1,0 +1,120 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "caffeinated-whale-cli"
+version = "0.21.1"
+authors = [
+  { name = "Christopher McKay", email = "mckay.christopher73@outlook.com" },
+]
+description = "A CLI tool to help manage Frappe Docker instances."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Build Tools",
+    "Intended Audience :: Developers",
+    "Environment :: Console",
+]
+
+dependencies = [
+    "docker>=7.1.0",
+    "typer>=0.16.0",
+    "rich>=14.0.0",
+    "questionary>=2.1.0",
+    "toml>=0.10.2",
+    "peewee>=3.17.0",
+    "black>=25.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+skip-string-normalization = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # function call in default argument (required for Typer)
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov-report=term-missing",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src/caffeinated_whale_cli"]
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+precision = 2
+show_missing = true
+
+
+[project.urls]
+Homepage = "https://github.com/karotkriss/caffeinated-whale-cli"
+Issues = "https://github.com/karotkriss/caffeinated-whale-cli/issues"
+
+[project.scripts]
+caffeinated-whale-cli = "caffeinated_whale_cli.main:cli"
+cwcli = "caffeinated_whale_cli.main:cli"
