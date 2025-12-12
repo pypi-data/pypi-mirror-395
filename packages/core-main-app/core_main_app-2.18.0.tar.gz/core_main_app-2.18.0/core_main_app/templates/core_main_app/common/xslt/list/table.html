@@ -1,0 +1,39 @@
+{% block box_title %}XSLT list{% endblock %}
+
+{% block box_tools %}
+<div class="btn-group {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+<a href="{{ data.update_url }}" class="btn btn-secondary upload-xslt-btn">
+    <i class="fas fa-upload"></i> Upload XSLT
+</a>
+</div>
+{% endblock %}
+
+{% block box_body %}
+<table class="table table-bordered table-striped table-hover">
+    <tr>
+        <th>Name</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for elt in data.xslt %}
+        <tr objectid="{{ elt.id }}">
+            <td>{{ elt.name }}</td>
+            <td>
+                <a class="btn btn-secondary edit-xslt-btn" href="#">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                <button class="btn btn-danger delete-xslt-btn">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td class="empty" colspan="2">
+                There are currently no XSLT registered. Please
+                <a href="{{ data.update_url }}" class="upload-xslt-btn">upload a new one</a>.
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}

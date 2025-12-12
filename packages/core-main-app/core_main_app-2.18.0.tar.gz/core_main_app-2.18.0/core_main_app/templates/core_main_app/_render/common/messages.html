@@ -1,0 +1,46 @@
+{% load static %}
+{% comment %}
+    Template displaying all messages in the application. Must be included on ALL pages.
+
+    Uses the notify.js library with custom styles.
+{% endcomment %}
+<div class="toast-container">
+</div>
+
+<div class="toast toast-template">
+  <div class="toast-body">
+      <span class="toast-icon
+            {% if BOOTSTRAP_VERSION|first == "4" %}mr-2
+            {% elif BOOTSTRAP_VERSION|first == "5"  %}me-2{% endif %}">
+          <i class="fas"></i>
+      </span>
+      <span class="toast-text
+            {% if BOOTSTRAP_VERSION|first == "4" %}ml-1
+            {% elif BOOTSTRAP_VERSION|first == "5"  %}ms-1{% endif %}
+            {% if BOOTSTRAP_VERSION|first == "4" %}mr-1
+            {% elif BOOTSTRAP_VERSION|first == "5"  %}me-1{% endif %}">
+      </span>
+      <button type="button"
+              class="{% if BOOTSTRAP_VERSION|first == "4" %}ml-2
+                    {% elif BOOTSTRAP_VERSION|first == "5"  %}ms-2{% endif %}
+                    {% if BOOTSTRAP_VERSION|first == "4" %}close
+                    {% elif BOOTSTRAP_VERSION|first == "5"  %}btn-close{% endif %}"
+              {% if BOOTSTRAP_VERSION|first == "4" %}data-dismiss="toast"
+              {% elif BOOTSTRAP_VERSION|first == "5"  %}data-bs-dismiss="toast"{% endif %}
+              aria-label="Close">
+          <i class="fas fa-times"></i>
+    </button>
+  </div>
+</div>
+
+<script src="{% static 'core_main_app/common/js/messages.js' %}"></script>
+{% if messages %}
+<script>
+    $( document ).ready(function() {
+        {% for message in messages %}
+            $.notify("{{ message | safe }}", "{{ message.tags }}");
+        {% endfor %}
+    });
+</script>
+{% endif %}
+

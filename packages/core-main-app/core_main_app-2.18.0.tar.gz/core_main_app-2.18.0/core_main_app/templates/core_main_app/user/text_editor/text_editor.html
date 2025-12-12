@@ -1,0 +1,92 @@
+{% load dict_key_extras %}
+{% load xsl_transform_tag %}
+{% load blob_tags %}
+
+<h2>
+    {{data.page_title}}
+</h2>
+<p>
+    Use {{data.type}} Text Editor tool to view, edit, and format {{data.type}}.
+    It shows your content side by side in a clear, editable representation.
+</p>
+
+<div class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+    <button class="btn btn-secondary download">
+        <i class="fas fa-download"></i> Download
+    </button>
+    <button class="btn btn-secondary switch-to-form-editor hidden">
+        <i class="fas fa-circle-right"></i> Switch to Form Editor
+    </button>
+</div>
+
+<h1>Title : {{data.name}}</h1>
+
+
+<div class="alert alert-danger my-2" style="display: none;" role="alert">
+    <button type="button" id="hide-alert" aria-label="Close"
+            {% if BOOTSTRAP_VERSION|first == "4" %}class="close"
+            {% elif BOOTSTRAP_VERSION|first == "5" %}class="btn-close float-end"
+            {% endif %} >
+            {% if BOOTSTRAP_VERSION|first == "4" %}
+                <span aria-hidden="true">&times;</span>
+            {% elif BOOTSTRAP_VERSION|first == "5" %}
+            {% endif %}
+        </button>
+    <div id="error_message"></div>
+</div>
+
+
+
+{% if data.TEXT_EDITOR_LIBRARY == "Monaco" %}
+<div>
+<div id="data_content" class="hidden">{{data.content}}</div>
+<div id="container" class="border rounded input"></div>
+{% else %}
+<div class="row text-editor-font m-1">
+    <div class="border {% if BOOTSTRAP_VERSION|first == "4" %}rounded-left{% elif BOOTSTRAP_VERSION|first == "5" %}rounded-start{% endif %} bg-light line-number"></div>
+    <div class="border {% if BOOTSTRAP_VERSION|first == "4" %}rounded-right{% elif BOOTSTRAP_VERSION|first == "5" %}rounded-end{% endif %} input input-text-editor col" contenteditable="true">
+        <pre class="content-highlight"><code>{{data.content}}</code></pre>
+    </div>
+
+    {% endif %}
+{% if data.type == 'XML' %}
+    <div class="border rounded bg-light representation " hidden>
+        <div class="tree m-1">
+            {% xsl_transform_detail xml_content=data.content template_id=data.template_id xslt_id=data.xsl_transformation_id request=request as xml_representation %}
+            {% if 'core_file_preview_app' in INSTALLED_APPS %}
+                {% render_blob_links_in_span xml_string=xml_representation as xml_representation %}
+            {% endif %}
+            {{ xml_representation|safe}}
+        </div>
+    </div>
+{% endif %}
+</div>
+
+<div class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} my-2">
+        {% if data.type == 'XML' %}
+            <select class="selectpicker {% if BOOTSTRAP_VERSION|first == "4" %}form-control{% elif BOOTSTRAP_VERSION|first == "5"  %}form-select{% endif %}" style="width:100px; display:inline-block" id="xslt-selector" hidden>
+                           {% if not data.template_xsl_rendering.default_detail_xslt %}  <option value={{None}}>Default</option>{% endif %}
+                           {% for xslt in data.template_xsl_rendering.list_detail_xslt.all %}
+                                <option value="{{xslt.id}}" {% if xslt.id == xslt_id %} selected {% endif %}>{{xslt.name}} {% if xslt == template_xsl_rendering.default_detail_xslt %} (default) {% endif %}</option>
+                           {% endfor %}
+            </select>
+            <button class="btn btn-secondary refresh {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}" hidden><i class="fas fa-sync" ></i> Refresh  </button>
+            <button class="btn btn-secondary display {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-eye" ></i> Display  </button>
+            <button class="btn btn-secondary generate {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-cogs " ></i> Generate </button>
+        {% endif %}
+    	<button class="btn btn-secondary format {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-highlighter"></i> Format </button>
+        <button class="btn btn-secondary validate"><i class="fas fa-file-circle-check"></i> Validate </button>
+        <button class="btn btn-primary save {% if BOOTSTRAP_VERSION|first == "4" %}mr-auto{% elif BOOTSTRAP_VERSION|first == "5"  %}me-auto{% endif %}"><i class="fas fa-save"></i> Save </button>
+
+
+</div>
+<div id="document_id" class="hidden">{{data.document_id}}</div>
+<div id="editor_format" class="hidden">{{data.type}}</div>
+<div id="text_editor_library" class="hidden">{{data.TEXT_EDITOR_LIBRARY}}</div>
+<div id="document_title" class="hidden">{{data.name}}</div>
+{% if data.template_id %}
+<div id="template_id" class="hidden">{{data.template_id}}</div>
+{% endif %}
+{% if data.document_name %}
+<div id="document_name" class="hidden">{{data.document_name}}</div>
+{% endif %}

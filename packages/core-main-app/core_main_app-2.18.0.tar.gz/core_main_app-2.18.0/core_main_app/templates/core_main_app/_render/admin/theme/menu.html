@@ -1,0 +1,60 @@
+{% load get_attribute %}
+{% load menu %}
+<section class="sidebar" id="admin-menu">
+    <ul class="sidebar-menu">
+        {% block navigation_menu %}
+            {% generate_menu %}
+
+            {% for item in menus.admin %}
+                {% if not item.url %}  {# Header element #}
+                    <li class="header">{{ item.title }}</li>
+                    {% for child in item.children %}
+                    <li {% if request.path == child.url %}class="active"{% endif %}>
+                        <a href="{{ child.url }}">
+                            <i class="fas fa-{{ child|get_attribute:'icon' }}"></i>
+                            <span>{{ child.title }}</span>
+                            {% if child.external %}
+                            <span class="pull-right-container">
+                                <span class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+                                    <i class="fas fa-external-link"></i>
+                                </span>
+                            </span>
+                            {% endif %}
+                            {% if child.item_count_url %}
+                            <span class="item_count pull-right-container">
+                                <span class="label label-default {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} badge {% if BOOTSTRAP_VERSION|first == "4" %}badge-light{% elif BOOTSTRAP_VERSION|first == "5"  %}bg-light{% endif %} hidden" id="{% url child.item_count_url %}">
+                                    N/A
+                                </span>
+                            </span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endfor %}
+                {% else %} {# Single element (direct link without parent) #}
+                    <li {% if request.path == item.url %}class="active"{% endif %}>
+                        <a href="{{ item.url }}">
+                            <i class="fas fa-{{ item|get_attribute:'icon'}}"></i>
+                            <span>
+                                {{ item.title }}
+                            </span>
+                            {% if item.external %}
+                            <span class="pull-right-container">
+                                <span class="{% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+                                    <i class="fas fa-external-link"></i>
+                                </span>
+                            </span>
+                            {% endif %}
+                            {% if item.item_count_url %}
+                            <span class="item_count pull-right-container">
+                                <span class="label label-default {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} badge {% if BOOTSTRAP_VERSION|first == "4" %}badge-light{% elif BOOTSTRAP_VERSION|first == "5"  %}bg-light{% endif %}" id="{% url item.item_count_url %}">
+                                        N/A
+                                </span>
+                            </span>
+                            {% endif %}
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        {% endblock %}
+    </ul>
+</section>

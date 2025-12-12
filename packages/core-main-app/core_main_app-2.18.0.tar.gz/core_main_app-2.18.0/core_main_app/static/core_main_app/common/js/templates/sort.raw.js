@@ -1,0 +1,2 @@
+var saveGlobalTemplateOrderingUrl = "{% url 'core_main_app_rest_global_template_version_manager_ordering' %}";
+var saveUserTemplateOrderingUrl = "{% url 'core_main_app_rest_user_template_version_manager_ordering' %}";

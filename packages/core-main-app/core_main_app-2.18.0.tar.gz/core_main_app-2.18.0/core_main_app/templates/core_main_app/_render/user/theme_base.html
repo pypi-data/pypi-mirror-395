@@ -1,0 +1,47 @@
+{% load static %}
+
+{% comment %}
+    Root file to be used in any theme. Contains all necessary (and up-to-date) libraries.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    {% block meta %}{% endblock %}
+    <title>{% block title %}{% if data.page_title%}{{data.page_title}} | {% endif %}{{ WEBSITE_SHORT_TITLE }}{% endblock %}</title>
+
+    {% block core_css %}
+        {% include 'core_main_app/_render/common/base_css.html' %}
+        <link rel="stylesheet" href="{% static 'core_main_app/common/css/table.css' %}" />
+        <link rel="stylesheet" href="{% static 'core_main_app/common/css/buttons.css' %}" />
+        <link rel="stylesheet" href="{% static 'core_main_app/common/css/fields.css' %}" />
+
+        {% if DISPLAY_NIST_HEADERS %}
+        <link rel="stylesheet" href="https://pages.nist.gov/nist-header-footer/css/nist-combined.css">
+        {% endif %}
+    {% endblock %}
+    {% block theme_css %}{% endblock %}
+    {% block app_css %}{% endblock %}
+</head>
+<body>
+    {% block body %}{% endblock %}
+    {% block app_modals %}{% endblock %}
+
+    {% block core_js %}
+        {% include 'core_main_app/_render/common/base_js.html' %}
+        <script src="{% static 'core_main_app/common/js/leave_notice.js' %}"></script>
+        {% if DISPLAY_NIST_HEADERS %}
+        <script src="https://pages.nist.gov/nist-header-footer/js/nist-header-footer.js" type="text/javascript" defer="defer"></script>
+        {% endif %}
+    {% endblock %}
+    {% block theme_js %}{% endblock %}
+    {% block app_js %}{% endblock %}
+    {% include 'core_main_app/_render/common/messages.html' %}
+
+    <!--
+    From the documentation:
+        Add the detection template tag to your site, ideally in your base layout just before the </body> tag
+    -->
+</body>
+</html>

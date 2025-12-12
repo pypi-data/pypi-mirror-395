@@ -1,0 +1,173 @@
+{% extends 'core_main_app/_render/admin/theme/tools/box.html' %} {% block box_title %}Migrate Data to a new template{% endblock %} {% block box_body %}
+<div class="alert alert-warning hidden" role="alert">
+    <i class="fas fa-circle-notch fa-spin"></i> Checking the data template compatibility ...
+</div>
+<div class="alert alert-error hidden" role="alert">
+    <i class="fas fa-circle-notch fa-spin"></i> The data are not compatible with the targeted template version
+</div>
+<div class="alert alert-success hidden" role="alert">
+    <i class="fas fa-circle-notch fa-spin"></i> The data are ready for the migration to the targeted template version
+</div>
+<p> Use the migration tool below to migrate data between template versions. Start by selecting one or more source
+    templates (Step 1). Then, select the data to migrate, or all the data for the selected templates (Step 2). Step 3
+    allows the selection of an XSLT in order to transform data from the source template into a new XML document that
+    would be valid for the destination template. And finally, select the target template for the selected data (Step 4).
+    Once the selection is done, use the "validate" button to check if the selected data can be migrated to the selected
+    target template. Use the "migrate" button to perform the migration.
+</p>
+<div>
+    <button  type="button" class="btn btn-secondary mb-2 {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %} back-to-version-manager" hidden>
+        <i class="fas fa-arrow-left"></i> Back to version manager
+    </button>
+</div>
+<div class="w-100 d-flex">
+    <div class="card list-card">
+        <div class="card-header">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <td width="20px"><input id="select-all-template" type="checkbox"></td>
+                        <td>1 - Select Source template(s)
+                            <div id="user-template-toggle" class="toggle-container">
+                                <small>Show users templates</small>
+                                <label class="show-user-template switch">
+                                    <input type="checkbox" class="switch-input"/>
+                                    <span class="switch-label"></span>
+                                    <span class="handle"></span>
+                                </label>
+                            </div>
+                        </td>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="card-body">
+            <table id="template-table" class="table table-bordered table-striped">
+                <tbody>
+                    {% if data.templates %}
+                        {% for template in data.templates %}
+                            <tr>
+                                <td width="20px"><input class="template-checkbox" type="checkbox"></td>
+                                <td data-template-id={{template.id}}>
+                                    <div>{{template.title}}</div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr class="bg-transparent text-center">
+                            <td>
+                                <strong class="text-primary">No Template available.</strong>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card list-card">
+        <div class="card-header">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <td width="20px"><input id="select-all-data" type="checkbox" disabled></td>
+                        <td>2 - Select Data</td>
+                        <td class="data-count {% if BOOTSTRAP_VERSION|first == "4" %}text-right{% elif BOOTSTRAP_VERSION|first == "5"  %}text-end{% endif %} hidden"><strong id="data-number">235</strong> data selected</td>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="card-body">
+            <table id="data-table" class="table table-bordered table-striped">
+                <tbody>
+                    <tr id="empty-data-text" class="bg-transparent text-center">
+                        <td>
+                            <strong class="text-primary">Please select source template(s)</strong>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card list-card">
+        <div class="card-header">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <td width="20px"></td>
+                        <td>3 - Select XSLT <small>(optional)</small></td>
+                        <td class="xslt-clear {% if BOOTSTRAP_VERSION|first == "4" %}text-right{% elif BOOTSTRAP_VERSION|first == "5"  %}text-end{% endif %} hidden">Clear</td>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="card-body">
+            <table id="xslt-table" class="table table-bordered table-striped">
+                <tbody id="xslt-content" class="hidden">
+                    {% if data.xslt %}
+                        {% for xsl_transformation in data.xslt %}
+                            <tr>
+                                <td width="20px"><input class="xslt-radio" name="xslt-radio" type="radio"></td>
+                                <td xslt-id={{xsl_transformation.id}}>
+                                    <div>{{xsl_transformation.name}}</div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr class="bg-transparent text-center">
+                            <td>
+                                <strong class="text-primary">No xslt available.</strong>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                <tbody id="xslt-text">
+                    <tr class="bg-transparent text-center">
+                        <td>
+                            <strong class="text-primary">Please select data to migrate</strong>
+                        </td>
+                    </tr>
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+    <div class="card list-card">
+        <div class="card-header">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <td width="20px"></td>
+                        <td>4 - Select a Target template</td>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered table-striped">
+                <tbody id="target-template-text">
+                    <tr class="bg-transparent text-center">
+                        <td>
+                            <strong class="text-primary">Please select data to migrate</strong>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="progress-container m-5 hidden">
+    <div id="progress-text"></div>
+    <div class="progress">
+        <div id="migration-progress-bar" class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+</div>
+<div class="button-container">
+    <button id="validate-button" class="btn btn-secondary action-button" disabled>
+            <i class="fas fa-check"></i> Validate
+        </button>
+    <button id="migrate-button" class="btn btn-success action-button" disabled>
+            <i class="fas fa-exchange-alt"></i> Migrate
+        </button>
+</div>
+{% endblock %}

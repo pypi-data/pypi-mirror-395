@@ -1,0 +1,981 @@
+""" REST views for the blob API
+"""
+
+from abc import abstractmethod, ABCMeta
+
+from django.http import Http404
+from drf_spectacular.utils import OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from rest_framework import status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import (
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+    IsAdminUser,
+)
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core_main_app.access_control.exceptions import AccessControlError
+from core_main_app.commons import exceptions
+from core_main_app.components.blob import api as blob_api
+from core_main_app.components.blob_processing_module import (
+    tasks as blob_processing_module_tasks,
+)
+from core_main_app.components.blob_processing_module.models import (
+    BlobProcessingModule,
+)
+from core_main_app.components.data import api as data_api
+from core_main_app.components.user import api as user_api
+from core_main_app.components.workspace import api as workspace_api
+from core_main_app.rest.blob.serializers import (
+    BlobSerializer,
+    DeleteBlobsSerializer,
+)
+from core_main_app.utils.boolean import to_bool
+from core_main_app.utils.file import get_file_http_response
+
+
+class AbstractBlobList(APIView, metaclass=ABCMeta):
+    """Abstract Blob List"""
+
+    @abstractmethod
+    def _get_blobs(self, request):
+        """Retrieve blobs
+        Args:
+            request:
+        Returns:
+        """
+        raise NotImplementedError("_get_blobs method is not implemented.")
+
+    def get(self, request):
+        """Get all Blobs
+        Url Parameters:
+            filename: document_filename
+            regex: true | false
+        Examples:
+            ../blob/
+            ../blob?filename=[filename]
+            ../blob?filename=[filename]&regex=true
+        Args:
+            request: HTTP request
+        Returns:
+            - code: 200
+              content: List of blob
+            - code: 403
+              content: Authentication error
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            blob_list = self._get_blobs(request)
+            # Apply filters
+            filename = self.request.query_params.get("filename", None)
+            if filename is not None:
+                regex = self.request.query_params.get("regex", False)
+                filename_filter = (
+                    {"filename__iregex": filename}
+                    if to_bool(regex)
+                    else {"filename": filename}
+                )
+                blob_list = blob_list.filter(**filename_filter)
+            # Serialize object
+            serializer = BlobSerializer(
+                blob_list,
+                many=True,
+                context={"request": request},
+            )
+            # Return response
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except AccessControlError as exception:
+            content = {"message": str(exception)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="List all Blobs",
+)
+class BlobListAdmin(AbstractBlobList):
+    """List all Blobs"""
+
+    permission_classes = (IsAdminUser,)
+
+    def _get_blobs(self, request):
+        """Retrieve blobs
+        Args:
+            request:
+        Returns:
+        """
+        return blob_api.get_all(request.user)
+
+    @extend_schema(
+        summary="Get all Blobs",
+        description="Get all Blobs",
+        parameters=[
+            OpenApiParameter(
+                name="filename",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Document filename",
+            ),
+            OpenApiParameter(
+                name="regex",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description="Use regex for filename",
+            ),
+        ],
+        responses={
+            200: BlobSerializer(many=True),
+            403: OpenApiResponse(description="Access Forbidden"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+        tags=["Blob"],
+    )
+    def get(self, request):
+        """Get all accessible Blob for admin user
+        Url Parameters:
+            filename: document_filename
+            regex: true | false
+        Examples:
+            ../blob/
+            ../blob?filename=[filename]
+            ../blob?filename=[filename]&regex=true
+        Args:
+            request: HTTP request
+        Returns:
+            - code: 200
+              content: List of blob
+            - code: 403
+              content: Authentication error
+            - code: 500
+              content: Internal server error
+        """
+        return super().get(request)
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="List all user Blobs, or create a new one",
+)
+class BlobList(AbstractBlobList):
+    """List all user Blobs, or create a new one"""
+
+    permission_classes = (IsAuthenticated,)
+
+    def _get_blobs(self, request):
+        """Retrieve blobs
+        Args:
+            request:
+        Returns:
+        """
+        return blob_api.get_all_by_user(user=request.user)
+
+    @extend_schema(
+        summary="Get all Blobs by user",
+        description="Get all Blobs by user",
+        parameters=[
+            OpenApiParameter(
+                name="filename",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Document filename",
+            ),
+        ],
+        responses={
+            200: BlobSerializer(many=True),
+            403: OpenApiResponse(description="Access Forbidden"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def get(self, request):
+        """Get all Blobs by user
+        Url Parameters:
+            filename: document_filename
+        Examples:
+            ../blob/
+            ../blob?filename=[filename]
+        Args:
+            request: HTTP request
+        Returns:
+            - code: 200
+              content: List of blob
+            - code: 403
+              content: Authentication error
+            - code: 500
+              content: Internal server error
+        """
+        return super().get(request)
+
+    @extend_schema(
+        summary="Create Blob",
+        description="""Create Blob.
+
+        Code snippet:
+
+            requests.post(url, files={'blob': open(BLOB_PATH, 'rb')}, ...)
+        """,
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "blob": {
+                        "type": "string",
+                        "format": "binary",
+                    },
+                },
+            }
+        },
+        responses={
+            201: BlobSerializer,
+            400: OpenApiResponse(description="Validation error"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def post(self, request):
+        """Create Blob
+        Parameters:
+            {
+              "blob": "[file]",
+            }
+        Args:
+            request: HTTP request
+        Returns:
+            - code: 201
+              content: Created blob
+            - code: 400
+              content: Validation error
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Build serializer
+            serializer = BlobSerializer(
+                data=request.data, context={"request": request}
+            )
+            # Validate data
+            serializer.is_valid(raise_exception=True)
+            # Save data
+            serializer.save(user=request.user)
+            # Return the serialized data
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as validation_exception:
+            content = {"message": validation_exception.detail}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="Retrieve, update or delete a Blob",
+)
+class BlobDetail(APIView):
+    """Retrieve, update or delete a Blob"""
+
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+
+    def get_object(self, request, pk):
+        """Get Blob from db
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            Blob
+        """
+        try:
+            return blob_api.get_by_id(pk, request.user)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    @extend_schema(
+        summary="Retrieve Blob",
+        description="Retrieve Blob",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+        ],
+        responses={
+            200: BlobSerializer,
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def get(self, request, pk):
+        """Retrieve Blob
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            - code: 200
+              content: Blob
+            - code: 403
+              content: Authentication error
+            - code: 404
+              content: Object was not found
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Get object
+            blob_object = self.get_object(request, pk)
+            # Serialize object
+            serializer = BlobSerializer(
+                blob_object, context={"request": request}
+            )
+            # Return response
+            return Response(serializer.data)
+        except AccessControlError as exception:
+            content = {"message": str(exception)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Http404:
+            content = {"message": "Blob not found."}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @extend_schema(
+        summary="Delete Blob",
+        description="Delete Blob",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+        ],
+        responses={
+            204: None,
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def delete(self, request, pk):
+        """Delete Blob
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            - code: 204
+              content: Deletion succeed
+            - code: 403
+              content: Authentication error
+            - code: 404
+              content: Object was not found
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Get object
+            blob_object = self.get_object(request, pk)
+            # delete object
+            blob_api.delete(blob_object, request.user)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except AccessControlError as exception:
+            content = {"message": str(exception)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Http404:
+            content = {"message": "Blob not found."}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="Download Blob",
+)
+class BlobDownload(APIView):
+    """Download Blob"""
+
+    def get_object(self, request, pk):
+        """Get Blob from db
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            Blob
+        """
+        try:
+            return blob_api.get_by_id(pk, request.user)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    @extend_schema(
+        summary="Download the Blob file",
+        description="Download the Blob file",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Blob file",
+                response={"application/octet-stream": {}},
+            ),
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def get(self, request, pk):
+        """Download the Blob file
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            - code: 200
+              content: Blob file
+            - code: 403
+              content: Authentication error
+            - code: 404
+              content: Object was not found
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Get object
+            blob_object = self.get_object(request, pk)
+            return get_file_http_response(
+                blob_object.blob.read(), blob_object.filename
+            )
+        except AccessControlError as exception:
+            content = {"message": str(exception)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Http404:
+            content = {"message": "Blob not found."}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="Delete a list of Blobs",
+)
+class BlobDeleteList(APIView):
+    """Delete a list of Blobs"""
+
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+
+    @extend_schema(
+        summary="Delete a list of Blobs",
+        description="Delete a list of Blobs",
+        request=DeleteBlobsSerializer(many=True),
+        responses={
+            204: None,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def patch(self, request):
+        """Delete a list of Blobs
+        Parameters:
+            [
+              {
+                "id": "blob_id",
+              },
+              {
+                "id": "blob_id",
+              }
+            ]
+        Args:
+            request: HTTP request
+        Returns:
+            - code: 204
+              content: Deletion succeed
+            - code: 400
+              content: Validation error
+            - code: 403
+              content: Authentication error
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Serialize data
+            serializer = DeleteBlobsSerializer(
+                data=request.data, many=True, context={"request": request}
+            )
+            # Validate data
+            serializer.is_valid(raise_exception=True)
+            # Get list of unique ids
+            blob_ids = set([blob["id"] for blob in serializer.validated_data])
+            for blob_id in blob_ids:
+                # Get blob with its id
+                blob = blob_api.get_by_id(blob_id, request.user)
+                # Delete blob
+                blob_api.delete(blob, request.user)
+            # Return the serialized data
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ValidationError as validation_exception:
+            content = {"message": validation_exception.detail}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+        except AccessControlError as access_control_error:
+            content = {"message": str(access_control_error)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="Assign a Blob to a Workspace",
+)
+class BlobAssign(APIView):
+    """Assign a Blob to a Workspace."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, request, pk):
+        """Get Blob from db
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            blob
+        """
+        try:
+            return blob_api.get_by_id(pk, request.user)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    def get_workspace(self, workspace_id):
+        """Retrieve a Workspace
+        Args:
+            workspace_id: ObjectId
+        Returns:
+            - code: 404
+              content: Object was not found
+        """
+        try:
+            return workspace_api.get_by_id(workspace_id)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    @extend_schema(
+        summary="Assign Blob to a Workspace",
+        description="Assign Blob to a Workspace",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+            OpenApiParameter(
+                name="workspace_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Workspace ID",
+            ),
+        ],
+        responses={
+            200: None,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def patch(self, request, pk, workspace_id):
+        """Assign Blob to a Workspace
+        Args:
+            request: HTTP request
+            pk: ObjectId
+            workspace_id: ObjectId
+        Returns:
+            - code: 200
+              content: None
+            - code: 403
+              content: Authentication error
+            - code: 404
+              content: Object was not found
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Get object
+            blob_object = self.get_object(request, pk)
+            workspace_object = self.get_workspace(workspace_id)
+            # Assign blob to workspace
+            blob_api.assign(blob_object, workspace_object, request.user)
+            return Response({}, status=status.HTTP_200_OK)
+        except Http404:
+            content = {"message": "Blob or workspace not found."}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+        except AccessControlError as ace:
+            content = {"message": str(ace)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="Change the Owner of a Blob",
+)
+class BlobChangeOwner(APIView):
+    """Change the Owner of a Blob"""
+
+    permission_classes = (IsAdminUser,)
+
+    def get_object(self, request, pk):
+        """Get blob from db
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            Blob
+        """
+        try:
+            return blob_api.get_by_id(pk, request.user)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    def get_user(self, user_id):
+        """Retrieve a User
+        Args:
+            user_id: ObjectId
+        Returns:
+            - code: 404
+              content: Object was not found
+        """
+        try:
+            return user_api.get_user_by_id(user_id)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    @extend_schema(
+        summary="Change the Owner of a Blob",
+        description="Change the Owner of a Blob",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+            OpenApiParameter(
+                name="user_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="New owner ID",
+            ),
+        ],
+        responses={
+            200: None,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def patch(self, request, pk, user_id):
+        """Change the Owner of a Blob
+        Args:
+            request: HTTP request
+            pk: ObjectId
+            user_id: ObjectId
+        Returns:
+            - code: 200
+              content: None
+            - code: 403
+              content: Authentication error
+            - code: 404
+              content: Object was not found
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # get object
+            data_object = self.get_object(request, pk)
+            user_object = self.get_user(user_id)
+            # change owner
+            blob_api.change_owner(data_object, user_object, request.user)
+            return Response({}, status=status.HTTP_200_OK)
+        except Http404:
+            content = {"message": "Blob or user not found."}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+        except AccessControlError as ace:
+            content = {"message": str(ace)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="Blob Metadata",
+)
+class BlobMetadata(APIView):
+    """Blob Metadata"""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get_blob(self, request, pk):
+        """Get Blob from db
+        Args:
+            request: HTTP request
+            pk: ObjectId
+        Returns:
+            Blob
+        """
+        try:
+            return blob_api.get_by_id(pk, request.user)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    def get_metatada(self, request, metadata_id):
+        """Get Data from db
+        Args:
+            request: HTTP request
+            metadata_id: ObjectId
+        Returns:
+            Blob
+        """
+        try:
+            return data_api.get_by_id(metadata_id, request.user)
+        except exceptions.DoesNotExist:
+            raise Http404
+
+    @extend_schema(
+        summary="Add metadata to a blob",
+        description="Add metadata to a blob",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+            OpenApiParameter(
+                name="metadata_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Metadata ID",
+            ),
+        ],
+        responses={
+            200: BlobSerializer,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def post(self, request, pk, metadata_id):
+        """Add metadata to a blob
+        Args:
+            request: HTTP request
+            pk: Blob id
+            metadata_id: Data id
+        Returns:
+            - code: 200
+              content: Blob
+            - code: 400
+              content: Validation error
+            - code: 403
+              content: Authentication error
+            - code: 404
+              content: Object was not found
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Get objects
+            blob_object = self.get_blob(request, pk)
+            metadata_object = self.get_metatada(request, metadata_id)
+            # Update
+            blob_api.add_metadata(blob_object, metadata_object, request.user)
+            return Response()
+        except AccessControlError as exception:
+            content = {"message": str(exception)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Http404:
+            content = {"message": "Blob not found."}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @extend_schema(
+        summary="Remove metadata from a blob",
+        description="Remove metadata from a blob",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+            OpenApiParameter(
+                name="metadata_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Metadata ID",
+            ),
+        ],
+        responses={
+            204: None,
+            400: OpenApiResponse(description="Validation error"),
+            403: OpenApiResponse(description="Access Forbidden"),
+            404: OpenApiResponse(description="Object was not found"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def delete(self, request, pk, metadata_id):
+        """Remove metadata from a blob
+        Args:
+            request: HTTP request
+            pk: Blob id
+            metadata_id: Data id
+        Returns:
+            - code: 204
+              content: None
+            - code: 400
+              content: Validation error
+            - code: 403
+              content: Authentication error
+            - code: 404
+              content: Object was not found
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            # Get objects
+            blob_object = self.get_blob(request, pk)
+            metadata_object = self.get_metatada(request, metadata_id)
+            # Update
+            blob_api.remove_metadata(
+                blob_object, metadata_object, request.user
+            )
+            return Response()
+        except AccessControlError as exception:
+            content = {"message": str(exception)}
+            return Response(content, status=status.HTTP_403_FORBIDDEN)
+        except Http404:
+            content = {"message": "Blob not found."}
+            return Response(content, status=status.HTTP_404_NOT_FOUND)
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@extend_schema(
+    tags=["Blob"],
+    description="View to run processing module on Blob",
+)
+class BlobRunProcessingModule(APIView):
+    """View to run processing module on Blob"""
+
+    permission_classes = (IsAuthenticated,)
+
+    @extend_schema(
+        summary="Run processing module on a given blob",
+        description="Run processing module on a given blob",
+        parameters=[
+            OpenApiParameter(
+                name="blob_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Blob ID",
+            ),
+            OpenApiParameter(
+                name="processing_module_id",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Processing module ID",
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="File processing started", response=None
+            ),
+            400: OpenApiResponse(description="Missing request parameters"),
+            403: OpenApiResponse(description="Access Forbidden"),
+            500: OpenApiResponse(description="Internal server error"),
+        },
+    )
+    def post(self, request, blob_id=None, processing_module_id=None):
+        """Run processing module on a given blob
+        Args:
+            request: HTTP request
+            blob_id: Blob object ID
+            processing_module_id: Processing module ID
+        Returns:
+            - code: 200
+              content: File processing started
+            - code: 400
+              content: Missing request parameters
+            - code: 403
+              content: Authentication error
+            - code: 500
+              content: Internal server error
+        """
+        try:
+            if not processing_module_id or not blob_id:
+                content = {
+                    "message": "Missing blob or processing module parameters."
+                }
+                return Response(content, status=status.HTTP_400_BAD_REQUEST)
+            blob_processing_module_tasks.process_blob_with_module.apply_async(
+                (
+                    processing_module_id,
+                    blob_id,
+                    BlobProcessingModule.RUN_ON_DEMAND,
+                    request.user.id,
+                )
+            )
+            return Response(
+                {"message": "File processing started!"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as api_exception:
+            content = {"message": str(api_exception)}
+            return Response(
+                content, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

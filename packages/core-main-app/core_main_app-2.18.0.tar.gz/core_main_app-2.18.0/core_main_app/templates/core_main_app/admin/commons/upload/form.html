@@ -1,0 +1,23 @@
+{% extends 'core_main_app/_render/admin/theme/tools/box.html' %}
+
+{% block box_title %}
+    Upload Form
+{% endblock %}
+
+{% block box_body %}
+<div id="upload_errors" class="alert alert-danger" style="display: {{ data.errors|yesno:',none' }};">
+    <h4><i class='fas fa-warning'></i>&nbsp;&nbsp;{{ data.errors | safe}} </h4>
+</div>
+<form id="form_start" action='{{data.url}}' method="post" enctype=multipart/form-data>
+    {% csrf_token %}
+    {{ data.upload_form }}
+    <button type="submit" class="btn btn-primary mt-3 {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5"  %}float-end{% endif %}">
+        <i class="fas fa-upload"></i> Upload
+    </button>
+</form>
+
+{% block upload_addons %}{% endblock %}
+{% endblock %}
+
+{% block box_footer %}
+{% endblock %}

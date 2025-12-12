@@ -1,0 +1,63 @@
+{% load blob_tags %}
+{% load tz %}
+
+{% with metadata=data.blob|blob_metadata:request.user %}
+{% if metadata|length > 0  %}
+
+<p>Total number of Metadata file: {{ metadata|length }}</p>
+{% endif %}
+{% endwith %}
+
+<table class="table table-bordered table-striped table-hover">
+    <thead>
+        <tr>
+            <th>Metadata file</th>
+            <th>Template</th>
+            <th>Creation date</th>
+            <th>Workspace</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for metadata in data.blob|blob_metadata:request.user %}
+        <tr class="{{ rowcolors }}" objectid="{{metadata.id}}">
+            <td>
+                <a class="blob-link"
+                   href={% if come_from_admin %}  "{% url 'core-admin:core_main_app_data_detail'%}?id={{metadata.id}}"
+                        {% else %} "{% url 'core_main_app_data_detail'%}?id={{metadata.id}}"{% endif %}>
+                    {{ metadata.title }}
+                </a>
+            </td>
+            <td>{{ metadata.template.display_name }}</td>
+            <td>{{ metadata.creation_date|localtime }}</td>
+            <td>
+                {% if metadata.workspace %}
+                    {{ metadata.workspace.title }}
+                {% else %}
+                    None
+                {% endif %}
+            </td>
+            <td>
+                <a class="btn btn-secondary" href="{% url 'core_main_app_rest_data_download' metadata.id %}">
+                    <i class="fas fa-download"></i> Download
+                </a>
+                {% if data.share_pid_button %}
+                    {% include 'core_linked_records_app/user/sharing/data_detail/button_inline.html' %}
+                {% endif %}
+                {% if data.can_write %}
+                <button class="btn btn-danger remove-metadata-btn" objectid="{{ metadata.id }}">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+                {% endif %}  
+            </td>
+        </tr>
+    {% empty%}
+    <tr>
+        <td colspan="4" style="text-align:center;">
+            No metadata files attached, or user not authorized to see them.
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<div class="hidden" id="blob_id">{{ data.blob.id }}</div>

@@ -1,0 +1,1 @@
+var privateWorkspaceUrl = "{% url 'core_main_app_rest_workspace_set_private' 'workspace_id' %}";

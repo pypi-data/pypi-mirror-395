@@ -1,0 +1,63 @@
+{% extends use_theme|yesno:"theme.html,core_main_app/_render/user/default.html" %}
+
+{% load static %}
+{% load include_static %}
+
+{% comment %}
+    Template including the necessary template and static file for a given view. The file
+    utils/rendering.py is rendering it using Django.
+{% endcomment %}
+
+{% block app_data %}
+    {% include template with data=data %}
+{% endblock %}
+
+{% block app_modals %}
+    {% for modal_file in modals %}
+        {% include modal_file %}
+    {% endfor %}
+{% endblock %}
+
+{% block app_css %}
+    {% for css_file in assets.external_css %}
+        <link rel="stylesheet"
+              href="{{ css_file.path }}"
+              integrity="{{ css_file.integrity }}"
+              crossorigin="anonymous"
+              {% for key, value in css_file.extra_args.items %}
+                  {{ key }}="{{ value }}"
+              {% endfor %}
+        >
+    {% endfor %}
+    {% for css_file in assets.css %}
+        <link rel="stylesheet" href="{% static css_file %}" />
+    {% endfor %}
+{% endblock %}
+
+{% block app_js %}
+    {% comment %}
+        The js key from the asset dict should be formated like this:
+            "js": [
+                {
+                    "path": "path/to/script.js",
+                    "is_raw": False,
+                    "is_external": True,
+                    "integrity": "sha..."
+                },
+                ...
+            ]
+
+        The order of the list is the order of inclusion of the JavaScript files.
+    {% endcomment %}
+    {% for js_file in assets.js %}
+        {% if js_file.is_raw %}
+            <script type="text/javascript">{% include_static js_file.path %}</script>
+        {% elif js_file.is_external %}
+            <script src="{{ js_file.path }}"
+                    integrity="{{ js_file.integrity }}"
+                    crossorigin="anonymous"></script>
+        {% else %}
+            <script src="{% static js_file.path %}"></script>
+        {% endif %}
+    {% endfor %}
+{% endblock %}

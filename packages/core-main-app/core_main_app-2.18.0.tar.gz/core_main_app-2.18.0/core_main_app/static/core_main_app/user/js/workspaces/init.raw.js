@@ -1,0 +1,1 @@
+var workspace_id = '{{data.workspace.id}}';
