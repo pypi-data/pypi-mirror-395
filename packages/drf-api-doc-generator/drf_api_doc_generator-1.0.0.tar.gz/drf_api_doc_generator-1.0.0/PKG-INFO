@@ -1,0 +1,318 @@
+Metadata-Version: 2.4
+Name: drf-api-doc-generator
+Version: 1.0.0
+Summary: Auto-generate production-quality API documentation (PDF, HTML, JSON/OpenAPI) for Django REST Framework with a single command
+Author-email: Ashiq <your-email@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/drf-api-doc-generator
+Project-URL: Documentation, https://github.com/yourusername/drf-api-doc-generator#readme
+Project-URL: Repository, https://github.com/yourusername/drf-api-doc-generator
+Project-URL: Issues, https://github.com/yourusername/drf-api-doc-generator/issues
+Project-URL: Changelog, https://github.com/yourusername/drf-api-doc-generator/blob/main/CHANGELOG.md
+Keywords: django,rest,api,documentation,swagger,openapi,pdf,drf,django-rest-framework,api-docs,auto-documentation,developer-tools
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 3.2
+Classifier: Framework :: Django :: 4.0
+Classifier: Framework :: Django :: 4.1
+Classifier: Framework :: Django :: 4.2
+Classifier: Framework :: Django :: 5.0
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Documentation
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Software Development :: Documentation
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django>=3.2
+Requires-Dist: djangorestframework>=3.12
+Requires-Dist: reportlab>=4.0
+Requires-Dist: Pillow>=9.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-django>=4.5; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: flake8>=6.0; extra == "dev"
+Requires-Dist: twine>=4.0; extra == "dev"
+Requires-Dist: build>=1.0; extra == "dev"
+Dynamic: license-file
+
+# DRF API Documentation Generator
+
+[![PyPI version](https://badge.fury.io/py/drf-api-doc-generator.svg)](https://badge.fury.io/py/drf-api-doc-generator)
+[![Python Versions](https://img.shields.io/pypi/pyversions/drf-api-doc-generator.svg)](https://pypi.org/project/drf-api-doc-generator/)
+[![Django Versions](https://img.shields.io/badge/Django-3.2%20%7C%204.0%20%7C%204.1%20%7C%204.2%20%7C%205.0-blue)](https://www.djangoproject.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Auto-generate production-quality API documentation for Django REST Framework with a single command!** 🚀
+
+Stop manually writing API documentation! This tool automatically discovers your DRF endpoints, serializers, authentication, and permissions, then generates beautiful documentation in PDF, HTML, or OpenAPI JSON format.
+
+---
+
+## ✨ Features
+
+- 📄 **PDF Documentation** - Professional multi-page PDF with cover page, TOC, and detailed endpoints
+- 🌐 **HTML Documentation** - Interactive dark-themed docs with sidebar navigation and syntax highlighting
+- 📋 **OpenAPI 3.0 JSON** - Swagger UI and Postman compatible specification
+- 🔍 **Auto-Discovery** - Automatically finds all API endpoints from your URL patterns
+- 🎯 **Serializer Extraction** - Extracts field types, validations, and descriptions from serializers
+- 🔐 **Auth Detection** - Documents authentication and permission requirements
+- ⚡ **One Command** - Generate complete docs with `python manage.py generate_api_docs`
+- 🎨 **Customizable** - Configure title, version, theme color, logo, and more
+
+---
+
+## 📦 Installation
+
+```bash
+pip install drf-api-doc-generator
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Add to INSTALLED_APPS
+
+```python
+# settings.py
+
+INSTALLED_APPS = [
+    # ... your other apps
+    'rest_framework',
+    'drf_api_doc_generator',  # Add this line
+]
+```
+
+### 2. Generate Documentation
+
+```bash
+# Generate PDF for a specific app
+python manage.py generate_api_docs auth
+
+# Generate for multiple apps
+python manage.py generate_api_docs auth users products
+
+# Generate all formats (PDF + HTML + JSON)
+python manage.py generate_api_docs auth --format all
+
+# Generate for all apps
+python manage.py generate_api_docs --all
+```
+
+### 3. Find Your Docs
+
+Documentation will be generated in `./api_docs/` directory:
+- `api_docs_YYYYMMDD_HHMMSS.pdf`
+- `api_docs_YYYYMMDD_HHMMSS.html`
+- `api_docs_YYYYMMDD_HHMMSS.json`
+
+---
+
+## 📖 Command Options
+
+```bash
+python manage.py generate_api_docs [OPTIONS] [APPS...]
+```
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--all` | | Generate docs for all installed apps |
+| `--format` | `-f` | Output format: `pdf`, `html`, `json`, or `all` (default: `pdf`) |
+| `--output` | `-o` | Output directory (default: `./api_docs/`) |
+| `--title` | | Custom documentation title |
+| `--api-version` | | API version string |
+| `--description` | | API description |
+| `--open` | | Open file after generation |
+| `-v 2` | | Verbose output (show all endpoints) |
+
+### Examples
+
+```bash
+# Generate PDF with custom title
+python manage.py generate_api_docs auth --title "My Awesome API"
+
+# Generate to custom directory
+python manage.py generate_api_docs auth --output ./docs/api/
+
+# Generate and open automatically
+python manage.py generate_api_docs auth --format html --open
+
+# Verbose mode - show all discovered endpoints
+python manage.py generate_api_docs auth -v 2
+```
+
+---
+
+## ⚙️ Configuration
+
+Add optional configuration to your Django settings:
+
+```python
+# settings.py
+
+API_DOCS_CONFIG = {
+    'TITLE': 'My API Documentation',
+    'VERSION': '2.0.0',
+    'DESCRIPTION': 'Complete API reference for developers',
+    'CONTACT_EMAIL': 'api@example.com',
+    'LOGO_PATH': 'path/to/logo.png',  # Optional logo for PDF cover
+    'THEME_COLOR': '#2563eb',  # Primary theme color
+}
+```
+
+---
+
+## 📊 What Gets Documented?
+
+The generator automatically extracts:
+
+### From Views/ViewSets:
+- ✅ URL paths and patterns
+- ✅ HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- ✅ View docstrings as descriptions
+- ✅ Authentication classes
+- ✅ Permission classes
+
+### From Serializers:
+- ✅ Field names and types
+- ✅ Required/optional status
+- ✅ Read-only/write-only fields
+- ✅ Field help text
+- ✅ Choices/enums
+- ✅ Validation constraints (max_length, min_value, etc.)
+- ✅ Nested serializers
+
+### From Filter Backends:
+- ✅ Filterable fields
+- ✅ Search fields
+- ✅ Ordering fields
+- ✅ Pagination parameters
+
+---
+
+## 📄 Output Formats
+
+### PDF
+Professional documentation with:
+- Cover page with title, version, and generation date
+- Table of contents
+- Detailed endpoint documentation
+- Request/response examples
+- Field tables with types and constraints
+
+### HTML
+Interactive documentation with:
+- Dark theme UI
+- Sidebar navigation
+- Syntax-highlighted JSON examples
+- Method badges (GET=green, POST=blue, etc.)
+- Responsive design
+
+### JSON (OpenAPI 3.0)
+Standard specification compatible with:
+- Swagger UI
+- Postman
+- Redoc
+- OpenAPI Generator
+- Any OpenAPI-compatible tool
+
+---
+
+## 💡 Tips for Better Documentation
+
+### 1. Add Docstrings to Views
+
+```python
+class UserView(APIView):
+    """
+    User Management Endpoint
+    
+    Handles user profile operations including retrieval and updates.
+    """
+    
+    def get(self, request):
+        """Get the current user's profile"""
+        pass
+```
+
+### 2. Add Help Text to Serializer Fields
+
+```python
+class UserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        help_text="User's email address for notifications"
+    )
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        help_text="Password must be at least 8 characters"
+    )
+```
+
+### 3. Use Descriptive Serializer Classes
+
+```python
+class LoginView(APIView):
+    serializer_class = LoginSerializer  # This gets auto-detected
+```
+
+---
+
+## 🔧 Requirements
+
+- Python 3.8+
+- Django 3.2+
+- Django REST Framework 3.12+
+- ReportLab 4.0+ (for PDF generation)
+- Pillow 9.0+ (for image handling)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built for the Django REST Framework community
+- Inspired by Swagger/OpenAPI specification
+- PDF generation powered by ReportLab
+
+---
+
+## 📧 Support
+
+- 📖 [Documentation](https://github.com/yourusername/drf-api-doc-generator#readme)
+- 🐛 [Issue Tracker](https://github.com/yourusername/drf-api-doc-generator/issues)
+- 💬 [Discussions](https://github.com/yourusername/drf-api-doc-generator/discussions)
+
+---
+
+**Made with ❤️ for Django developers**
