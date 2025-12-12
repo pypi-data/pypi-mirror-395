@@ -1,0 +1,15 @@
+PEOPLES_URL = "https://raw.githubusercontent.com/chadwickbureau/register/refs/heads/master/data/people-{num}.csv"
+RETROSHEET_KEEP_COLS = [
+    "key_fangraphs",
+    "key_mlbam",
+    "key_retro",
+    "key_bbref",
+    "name_last",
+    "name_first",
+    "name_given",
+    "name_suffix",
+    "name_matrilineal",
+    "name_nick",
+]
+
+EJECTIONS_URL = "https://raw.githubusercontent.com/chadwickbureau/retrosheet/refs/heads/master/reference/ejections.csv"
