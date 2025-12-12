@@ -1,0 +1,48 @@
+name: Generate KSP Changelog
+description: > 
+  Use Yaclog to generate a KSP changelog config file for use with KerbalChangelog
+branding:
+  icon: file-text
+  color: green
+
+inputs:
+  changelog-path:
+    description: "Path of the changelog markdown file"
+  mod-name:
+    description: "The name of your mod"
+  output-path:
+    description: "Path of the resulting changelog file"
+
+outputs:
+  output-path:
+    description: "Path of the resulting changelog file"
+    value: ${{ steps.yaclog-ksp.outputs.output-path}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup uv
+      shell: bash
+      run: | 
+        if ! command -v uv >/dev/null 2>&1; then
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+        else
+          echo "uv already installed"
+        fi
+      env:
+        UV_UNMANAGED_INSTALL: /usr/local/bin
+
+    - name: Generate KSP Changelog
+      id: yaclog-ksp
+      shell: bash
+      run: >
+        echo "output-path=$(
+        uv run -m yaclog_ksp
+        ${{ inputs.changelog-path && format('--path ''{0}''', inputs.changelog-path)  || '' }}
+        ${{ inputs.mod-name && format('--name ''{0}''', inputs.mod-name)  || '' }}
+        ${{ inputs.output-path && format('--output ''{0}''', inputs.output-path) || '' }}
+        )" >> "$GITHUB_OUTPUT"
+      env:
+        UV_PROJECT: ${{ github.action_path }}
+        UV_LINK_MODE: copy
+        UV_FROZEN: true
