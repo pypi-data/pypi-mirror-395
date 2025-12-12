@@ -1,0 +1,50 @@
+Metadata-Version: 2.4
+Name: zowe_workflows_for_zowe_sdk
+Version: 1.0.0.dev24
+Summary: Zowe Python SDK - z/OSMF Workflows package
+Home-page: https://github.com/zowe/zowe-client-python-sdk
+Author: Zowe
+Author-email: zowe.robot@gmail.com
+License: EPL-2.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: License :: OSI Approved :: Eclipse Public License 2.0 (EPL-2.0)
+Description-Content-Type: text/markdown
+Requires-Dist: zowe.core_for_zowe_sdk~=1.0.0-dev24
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: requires-dist
+Dynamic: summary
+
+z/OSMF Workflows Package
+================================
+
+Contains APIs to interact with the z/OSMF Workflows functionality (using z/OSMF REST endpoints).
+
+Examples
+------------
+
+<strong>Create a z/OSMF workflow and get it's properties</strong>  
+
+```
+from zowe.core_for_zowe_sdk import ProfileManager
+from zowe.workflows_for_zowe_sdk import Workflows
+
+profile = ProfileManager().load(profile_type="zosmf")
+workflows = Workflows(profile)
+
+created_workflow = workflows.create_workflow(
+  workflow_name="Installation Workflow",
+  workflow_definition_file="/some/valid/path",
+  system="MYSYS",
+  owner="ZOSMFAD",
+  variable_input_file="/some/valid/path",
+  workflow_archive_safid="ZOSMFAD"
+)
+created_workflow_properties = workflows.get_workflow_properties(created_workflow.workflowKey, True, True)
+```
