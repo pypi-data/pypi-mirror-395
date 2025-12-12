@@ -1,0 +1,60 @@
+[project]
+name = "pywrb"
+authors = [
+    {name = "Thijs van Winden", email = "thijs.vanwinden@whiffle.nl"},
+]
+description = "Wind Resource binary reader and writer"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.md"]
+
+dynamic = ["version"]
+
+dependencies = [
+    "numpy",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "xarray",
+    "rioxarray"
+]
+xarray = [
+    "xarray",
+    "rioxarray"
+]
+
+[project.entry-points."xarray.backends"]
+pywrb = "pywrb.xarray:WrbBackend"
+
+[tool.setuptools.packages.find]
+namespaces = true
+where = ["pywrb"]
+
+[build-system]
+requires = ["setuptools ~= 80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 120
+skip_gitignore = true
+src_paths = ["src", "tests"]
+
+[tool.pylint.BASIC]
+max-attributes=20
+
+[tool.pylint.messages_control]
+max-line-length = 120
+disable = [
+    "use-dict-literal"
+]
