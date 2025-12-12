@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.hla-compass.alithea.bio/module-manifest-v1.json",
+  "title": "HLA-Compass Module Manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "name",
+    "version",
+    "type",
+    "execution"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0"],
+      "default": "1.0"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]{1,48}[a-z0-9])?$",
+      "minLength": 3,
+      "maxLength": 50
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["no-ui", "with-ui"]
+    },
+    "computeType": {
+      "type": "string",
+      "enum": ["lambda", "fargate", "sagemaker", "batch"],
+      "default": "fargate"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 10
+    },
+    "author": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "email": {"type": "string", "format": "email"},
+        "organization": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "execution": {
+      "type": "object",
+      "required": ["entrypoint"],
+      "properties": {
+        "entrypoint": {"type": "string", "minLength": 3},
+        "supports": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["interactive", "async", "workflow"]},
+          "uniqueItems": true
+        },
+        "defaultMode": {"type": "string", "enum": ["interactive", "async", "workflow"]}
+      },
+      "additionalProperties": true
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "memory": {
+          "type": "integer",
+          "enum": [256, 512, 1024, 2048, 4096]
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 900
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {"type": ["string", "number", "boolean"]}
+        }
+      },
+      "additionalProperties": true
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["read", "write", "delete"]},
+          "uniqueItems": true
+        },
+        "storage": {"type": "boolean"},
+        "network": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "input_template": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "data_requirements": {
+      "type": "object",
+      "properties": {
+        "required_columns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "min_rows": { "type": "integer", "minimum": 0 },
+        "max_rows": { "type": "integer", "minimum": 1 },
+        "supported_formats": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["JSON", "CSV", "PARQUET"] }
+        }
+      },
+      "additionalProperties": true
+    },
+    "inputs": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "outputs": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "ui": {
+      "type": "object",
+      "properties": {
+        "bucket": {"type": "string"},
+        "bundleKey": {"type": "string"},
+        "keys": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "pricing": {
+      "type": "object",
+      "properties": {
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tier", "amountAct"],
+            "properties": {
+              "tier": {
+                "type": "string",
+                "enum": ["developer", "foundational", "advanced", "strategic"]
+              },
+              "model": {
+                "type": "string",
+                "enum": ["subscription", "usage-based"]
+              },
+              "amountAct": {"type": "number", "minimum": 0}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

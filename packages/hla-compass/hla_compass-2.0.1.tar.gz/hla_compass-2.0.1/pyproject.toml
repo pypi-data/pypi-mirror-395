@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hla-compass"
+description = "Python SDK for HLA-Compass bioinformatics platform - Build powerful modules for immuno-peptidomics analysis"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [{name = "Alithea Bio", email = "armanas.povilionis@alithea.bio"}]
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests>=2.28.0",
+    "httpx>=0.24.0",
+    "boto3>=1.26.0",
+    "click>=8.0.0",
+    "rich>=12.0.0",
+    "PyYAML>=6.0",
+    "setuptools>=45.0.0",
+    "cryptography>=41.0.0",
+    "jsonschema>=4.17.0",
+    "questionary>=2.0.0",
+    "jinja2>=3.1.0",
+    "watchdog>=3.0.0",
+    "aiohttp>=3.9.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=3.0.0",
+    "pytest-mock>=3.6.0",
+    "ruff>=0.1.0",
+    "mypy>=0.950",
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+data = [
+    "pandas>=2.2.0; python_version >= '3.9'",
+    "pandas>=1.5,<2.0; python_version < '3.9'",
+    "xlsxwriter>=3.0.0",
+    "polars>=0.20.0; python_version >= '3.9'",
+]
+ml = [
+    "scikit-learn>=1.0.0",
+    "torch>=1.10.0",
+    "transformers>=4.20.0",
+]
+
+[project.scripts]
+hla-compass = "hla_compass.cli:main"
+module-runner = "hla_compass.runtime.runner:main"
+
+[project.urls]
+"Bug Tracker" = "https://github.com/AlitheaBio/HLA-Compass-platform/issues"
+"Documentation" = "https://docs.alithea.bio"
+"Source Code" = "https://github.com/AlitheaBio/HLA-Compass-platform/tree/main/sdk/python"
+
+[tool.setuptools.dynamic]
+version = {attr = "hla_compass._version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hla_compass*"]
+
+[tool.setuptools.package-data]
+hla_compass = ["py.typed", "manifest_schema_v1.json", "data/*.json"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I"]
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--cov=hla_compass --cov-report=term-missing"
