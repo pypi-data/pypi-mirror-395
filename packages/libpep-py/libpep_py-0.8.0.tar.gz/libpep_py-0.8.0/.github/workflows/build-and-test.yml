@@ -1,0 +1,57 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+
+jobs:
+  semver-checks:
+    runs-on: ubuntu-latest
+    name: cargo semver-checks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          # Check default feature set, plus elgamal3 and legacy.
+          # python/wasm bindings are not included here (and remain mutually exclusive).
+          feature-group: default-features
+          features: elgamal3,legacy,insecure
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - ""
+          - "elgamal3"
+          - "legacy"
+          - "elgamal3,legacy"
+
+    name: cargo test (${{ matrix.features || 'default' }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --features "${{ matrix.features }}"
+
+  build-wasm:
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ "web", "nodejs" ]
+        features:
+          - "wasm"
+          - "wasm,elgamal3"
+
+    name: wasm-pack build (${{ matrix.target }}, ${{ matrix.features }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install wasm-pack
+      - run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"
