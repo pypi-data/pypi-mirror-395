@@ -1,0 +1,285 @@
+Metadata-Version: 2.4
+Name: blaze2d
+Version: 0.4.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Scientific/Engineering
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Dist: numpy>=1.20
+Requires-Dist: matplotlib>=3.5 ; extra == 'plot'
+Requires-Dist: matplotlib>=3.5 ; extra == 'all'
+Requires-Dist: pandas>=1.3 ; extra == 'all'
+Provides-Extra: plot
+Provides-Extra: all
+Summary: BLAZE - Band-structure LOBPCG Accelerated Zone Eigensolver for 2D Photonic Crystals
+Keywords: photonic-crystals,band-structure,eigensolver,LOBPCG,physics,simulation,computational-physics,materials-science
+Author-email: RnLe <rene.marcel.lehner@gmail.com>
+License: MIT
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+
+# BLAZE - Band-structure LOBPCG Accelerated Zone Eigensolver
+
+High-performance 2D photonic crystal band structure solver with Python bindings.
+Also supports Envelope Approximation (EA) eigenproblems for moiré lattice research.
+
+## Installation
+
+```bash
+pip install blaze2d
+```
+
+## Quick Start
+
+### Maxwell Mode (Photonic Crystals)
+
+```python
+from blaze2d import BulkDriver
+
+driver = BulkDriver("config.toml")
+print(f"Running {driver.job_count} jobs with {driver.solver_type} solver")
+
+# Stream results as they complete
+for result in driver.run_streaming():
+    bands = result['bands']           # [k_index][band_index] frequencies
+    sv = result['sweep_values']       # Current parameter values
+    print(f"Job {result['job_index']}: r={sv.get('atom0.radius')}, bands at Γ: {bands[0][:4]}")
+
+# Or collect all results
+results, stats = driver.run_collect()
+print(f"Completed in {stats['total_time_secs']:.2f}s")
+```
+
+### EA Mode (Envelope Approximation)
+
+```python
+from blaze2d import BulkDriver
+import numpy as np
+
+driver = BulkDriver("ea_config.toml")
+
+for result in driver.run_streaming():
+    eigenvalues = result['eigenvalues']
+    eigenvectors = result['eigenvectors']  # List of (N,2) arrays [re, im]
+    nx, ny = result['grid_dims']
+    
+    # Reshape eigenvector to 2D field
+    psi = np.array(eigenvectors[0])
+    psi_2d = (psi[:, 0] + 1j * psi[:, 1]).reshape((nx, ny))
+```
+
+## Configuration
+
+TOML configuration with ordered `[[sweeps]]` for parameter variations.
+
+### Maxwell Example
+
+```toml
+polarization = "TM"
+
+[bulk]
+threads = 4
+
+[solver]
+type = "maxwell"
+
+[geometry]
+eps_bg = 12.0
+
+[geometry.lattice]
+type = "square"
+a = 1.0
+
+[[geometry.atoms]]
+pos = [0.5, 0.5]
+radius = 0.2
+eps_inside = 1.0
+
+[grid]
+nx = 32
+ny = 32
+lx = 1.0
+ly = 1.0
+
+[path]
+preset = "square"
+segments_per_leg = 10
+
+[eigensolver]
+n_bands = 8
+tol = 1e-6
+max_iter = 200
+
+# Sweeps: outer loop first, inner loop last
+[[sweeps]]
+parameter = "atom0.radius"
+min = 0.15
+max = 0.35
+step = 0.05
+
+[[sweeps]]
+parameter = "polarization"
+values = ["TM", "TE"]
+
+[output]
+mode = "full"
+directory = "./results"
+```
+
+### EA Example
+
+```toml
+[bulk]
+threads = 4
+
+[solver]
+type = "ea"
+
+[grid]
+nx = 64
+ny = 64
+lx = 10.0
+ly = 10.0
+
+[ea]
+potential = "data/potential.bin"
+mass_inv = "data/mass_inv.bin"
+eta = 0.1
+domain_size = [10.0, 10.0]
+periodic = true
+
+[eigensolver]
+n_bands = 12
+tol = 1e-6
+max_iter = 500
+
+[output]
+mode = "full"
+directory = "./ea_output"
+```
+
+## API Reference
+
+### BulkDriver
+
+```python
+driver = BulkDriver(config_path: str, threads: int = 0)
+```
+
+| Property | Description |
+|----------|-------------|
+| `job_count` | Number of jobs to execute |
+| `solver_type` | `"maxwell"` or `"ea"` |
+
+| Method | Description |
+|--------|-------------|
+| `run_streaming()` | Iterator yielding results as computed |
+| `run_streaming_filtered(k_indices, band_indices)` | Filtered streaming (Maxwell) |
+| `run_collect()` | Returns `(results_list, stats_dict)` |
+| `dry_run()` | Preview job count without executing |
+
+### Result Dictionary
+
+**Common fields:**
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `job_index` | int | Job number (completion order) |
+| `result_type` | str | `"maxwell"` or `"ea"` |
+| `params` | dict | Full configuration snapshot |
+| `sweep_values` | dict | Current sweep parameter values |
+| `sweep_order` | str | Parseable string `"param1=val1\|param2=val2"` |
+
+**Maxwell fields:**
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `k_path` | list | K-points as `(kx, ky)` tuples (fractional) |
+| `distances` | list | Cumulative path distance (for x-axis) |
+| `bands` | list | 2D array `[k_index][band_index]` (ω/2π normalized) |
+| `num_k_points` | int | Number of k-points |
+| `num_bands` | int | Number of bands |
+
+**EA fields:**
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `eigenvalues` | list | Sorted eigenvalues |
+| `eigenvectors` | list | Each as `(N, 2)` array `[re, im]` |
+| `grid_dims` | list | `[nx, ny]` for reshaping |
+| `converged` | bool | Solver convergence status |
+
+## Sweep Parameters
+
+| Parameter | Format | Description |
+|-----------|--------|-------------|
+| `eps_bg` | range | Background dielectric |
+| `resolution` | range | Grid resolution (nx=ny) |
+| `polarization` | values | `["TM", "TE"]` |
+| `lattice_type` | values | `["square", "triangular", ...]` |
+| `atomN.radius` | range | Atom N radius |
+| `atomN.pos_x` | range | Atom N x-position |
+| `atomN.pos_y` | range | Atom N y-position |
+
+Range format: `{ min = 0.1, max = 0.5, step = 0.1 }`
+
+## Band Data Interpretation
+
+Frequencies are normalized: `ω_norm = ωa/(2πc)`
+
+Convert to physical frequency:
+```python
+a = 500e-9  # lattice constant in meters
+c = 3e8     # speed of light
+f_Hz = omega_norm * c / a
+```
+
+## Plotting Example
+
+```python
+import matplotlib.pyplot as plt
+from blaze2d import BulkDriver
+
+driver = BulkDriver("sweep.toml")
+
+for result in driver.run_streaming():
+    distances = result['distances']
+    for band_idx in range(result['num_bands']):
+        band = [result['bands'][k][band_idx] for k in range(result['num_k_points'])]
+        plt.plot(distances, band)
+    plt.xlabel('k-path')
+    plt.ylabel('ω (normalized)')
+    plt.show()
+```
+
+## EA Input Data Format
+
+EA mode requires binary input files (raw f64, little-endian, row-major):
+
+- **Potential**: `Nx × Ny` values
+- **Mass inverse**: `Nx × Ny × 4` values `[m_xx, m_xy, m_yx, m_yy]`
+- **Group velocity** (optional): `Nx × Ny × 2` values `[vg_x, vg_y]`
+
+```python
+import numpy as np
+
+nx, ny = 64, 64
+V = 0.1 * (np.cos(2*np.pi*X/Lx) + np.cos(2*np.pi*Y/Ly))
+V.astype(np.float64).tofile('potential.bin')
+```
+
+## License
+
+MIT
+
+
