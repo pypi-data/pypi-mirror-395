@@ -1,0 +1,81 @@
+Metadata-Version: 2.4
+Name: plastron-stomp
+Version: 4.6.2
+Summary: Plastron STOMP daemon
+Author-email: University of Maryland Libraries <lib-ssdr@umd.edu>, Josh Westgard <westgard@umd.edu>, Peter Eichman <peichman@umd.edu>, Mohamed Abdul Rasheed <mohideen@umd.edu>, Ben Wallberg <wallberg@umd.edu>, David Steelman <dsteelma@umd.edu>, Marc Andreu Grillo Aguilar <aguilarm@umd.edu>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: click
+Requires-Dist: BeautifulSoup4
+Requires-Dist: plastron-jobs
+Requires-Dist: plastron-models
+Requires-Dist: plastron-repo
+Requires-Dist: plastron-utils
+Requires-Dist: pyparsing
+Requires-Dist: PyYAML
+Requires-Dist: stomp.py
+Requires-Dist: watchdog
+Provides-Extra: test
+Requires-Dist: CoilMQ; extra == "test"
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-cov; extra == "test"
+
+# plastron-stomp
+
+STOMP listener client for asynchronous and synchronous operations
+
+## Running with Python
+
+As a Python module:
+
+```bash
+python -m plastron.stomp.daemon -c <config file>
+```
+
+Using the console script entrypoint:
+
+```bash
+plastrond-stomp -c <config file>
+```
+
+## Integration Tests
+
+See the [integration test README](integration-tests/README.md) for
+instructions on running the manual integration tests.
+
+## Docker Image
+
+The plastron-stomp package contains a [Dockerfile](Dockerfile) for 
+building the `plastrond-stomp` Docker image.
+
+### Building
+
+**Important:** This image **MUST** be built from the main _plastron_ 
+project directory, in order to include the other plastron packages in the 
+build context.
+
+```bash
+docker build -t docker.lib.umd.edu/plastrond-stomp:latest \
+    -f plastron-stomp/Dockerfile .
+```
+
+## STOMP Message Headers
+
+The Plastron Daemon expects the following headers to be present in messages
+received on the `JOBS` destination:
+
+* `PlastronCommand`
+* `PlastronJobId`
+
+Additional arguments for a command are sent in headers with the form `PlastronArg-{name}`.
+Many of these are specific to the command, but there is one with standard behavior across
+all commands:
+
+| Header                     | Description                                   |
+|----------------------------|-----------------------------------------------|
+| `PlastronArg-on-behalf-of` | Username to delegate repository operations to |
+
+See the [messages documentation](docs/messages.md) for details on the headers 
+and bodies of the messages the Plastron STOMP Daemon emits.
+
+[umd-fcrepo-docker]: https://github.com/umd-lib/umd-fcrepo-docker
