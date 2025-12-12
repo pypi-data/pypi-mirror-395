@@ -1,0 +1,225 @@
+Metadata-Version: 2.4
+Name: camels-attrs
+Version: 1.0.2
+Summary: Extract CAMELS-like catchment attributes for any USGS gauge site in the USA
+Author-email: Mohammad Galib <mgalib@purdue.edu>
+Maintainer-email: Mohammad Galib <mgalib@purdue.edu>
+License: MIT
+Project-URL: Homepage, https://github.com/galib9690/camels-attrs
+Project-URL: Documentation, https://github.com/galib9690/camels-attrs#readme
+Project-URL: Repository, https://github.com/galib9690/camels-attrs
+Project-URL: Issues, https://github.com/galib9690/camels-attrs/issues
+Keywords: hydrology,CAMELS,catchment,watershed,USGS,attributes
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Hydrology
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: geopandas>=0.10.0
+Requires-Dist: xarray>=0.19.0
+Requires-Dist: rioxarray>=0.11.0
+Requires-Dist: rasterio>=1.2.0
+Requires-Dist: shapely>=1.8.0
+Requires-Dist: pynhd>=0.14.0
+Requires-Dist: py3dep>=0.14.0
+Requires-Dist: xarray-spatial>=0.3.0
+Requires-Dist: pygridmet>=0.14.0
+Requires-Dist: pygeohydro>=0.14.0
+Requires-Dist: pygeoutils>=0.14.0
+Requires-Dist: pystac-client>=0.5.0
+Requires-Dist: planetary-computer>=0.4.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: hydrofunctions>=0.2.0
+Requires-Dist: matplotlib>=3.4.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: contextily>=1.2.0
+Requires-Dist: cartopy>=0.20.0
+Requires-Dist: earthengine-api
+Requires-Dist: pygeoglim>=1.0.5
+Requires-Dist: dask>=2021.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=3.0.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: flake8>=4.0.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Dynamic: license-file
+
+# CAMELS Attrs
+
+![CAMELS Attrs](assets/thumbnail.png)
+
+[![PyPI version](https://badge.fury.io/py/camels-attrs.svg)](https://pypi.org/project/camels-attrs/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://static.pepy.tech/badge/camels-attrs)](https://pepy.tech/project/camels-attrs)
+[![CI](https://github.com/galib9690/camels-attrs/actions/workflows/ci.yml/badge.svg)](https://github.com/galib9690/camels-attrs/actions/workflows/ci.yml)
+
+A Python package for extracting CAMELS-like catchment attributes and hydrometeorological timeseries for any USGS gauge in the United States.
+
+## Key Capabilities
+
+- **Automated Attribute Extraction**: Extract 60+ catchment attributes following CAMELS methodology
+- **Watershed Delineation**: Automatic watershed boundary extraction for any USGS gauge
+- **Timeseries Data**: Fetch daily hydrometeorological forcing data (precipitation, temperature, PET, etc.)
+- **Batch Processing**: Process multiple gauges simultaneously
+- **Visualization**: Create publication-ready watershed maps
+- **CLI & Python API**: Use via command-line or integrate into Python workflows
+
+## Installation
+
+```bash
+pip install camels-attrs
+```
+
+## Quick Start
+
+### Command Line
+
+```bash
+# Extract all attributes for a gauge
+camels-extract 01031500 -o attributes.csv
+
+# Extract multiple gauges
+camels-extract 01031500 02177000 06803530 -o combined.csv
+
+# Include timeseries data
+camels-extract 01031500 --timeseries -o data.csv
+
+# Custom date ranges
+camels-extract 01031500 --climate-start 2010-01-01 --climate-end 2020-12-31
+```
+
+### Python API
+
+```python
+from camels_attrs import CamelsExtractor
+
+# Single gauge extraction
+extractor = CamelsExtractor('01031500')
+attributes = extractor.extract_all()
+
+# Save to file
+extractor.save('attributes.csv')
+
+# Extract timeseries
+forcing_data = extractor.extract_timeseries(
+    start_date='2010-01-01',
+    end_date='2020-12-31'
+)
+
+# Create watershed map
+extractor.create_comprehensive_map(save_path='watershed_map.png')
+```
+
+```python
+from camels_attrs import extract_multiple_gauges
+
+# Batch processing
+gauge_list = ['01031500', '02177000', '06803530']
+df = extract_multiple_gauges(
+    gauge_list,
+    climate_start='2010-01-01',
+    climate_end='2020-12-31'
+)
+df.to_csv('batch_attributes.csv')
+```
+
+## Extracted Attributes (60+)
+
+| Category | Count | Examples |
+|----------|-------|----------|
+| **Topographic** | 7 | Elevation statistics, slope, drainage area |
+| **Climate** | 13 | Precipitation, temperature, aridity, seasonality, extremes |
+| **Soil** | 9 | Texture, depth, porosity, conductivity, water content |
+| **Vegetation** | 13 | LAI, NDVI/GVF, land cover fractions, root depth |
+| **Geological** | 7 | Lithology fractions, porosity, permeability |
+| **Hydrological** | 17 | Flow statistics, baseflow, runoff ratio, event characteristics |
+
+<details>
+<summary>View complete attribute list</summary>
+
+### Topographic
+`gauge_lat`, `gauge_lon`, `elev_mean`, `elev_min`, `elev_max`, `slope_mean`, `area_gages2`, aspect statistics
+
+### Climate  
+`p_mean`, `pet_mean`, `aridity`, `p_seasonality`, `frac_snow`, temperature statistics, `high_prec_freq`, `high_prec_dur`, `low_prec_freq`, `low_prec_dur`
+
+### Soil
+Sand/silt/clay fractions, `soil_depth_pelletier`, `soil_depth_statsgo`, `soil_porosity`, `soil_conductivity`, water content, bulk density, organic carbon
+
+### Vegetation
+`lai_max`, `lai_diff`, `gvf_max`, `gvf_diff`, `ndvi_max`, `ndvi_diff`, land cover fractions, `dom_land_cover`, `dom_land_cover_frac`
+
+### Geology
+Lithology fractions (siliciclastic, carbonate, etc.), `geol_porosity`, `geol_permeability`
+
+### Hydrology
+`q_mean`, `runoff_ratio`, `baseflow_index`, `stream_elas`, `slope_fdc`, `flow_variability`, `high_q_freq`, `high_q_dur`, `low_q_freq`, `low_q_dur`, `zero_q_freq`, `hfd_mean`, `half_flow_date_std`
+
+</details>
+
+## Data Sources
+
+| Data Type | Source | Resolution |
+|-----------|--------|------------|
+| Watershed Boundaries | USGS NLDI | Vector |
+| Topography | USGS 3DEP | 10m-30m DEM |
+| Climate | GridMET | 4km daily |
+| Soil | gNATSGO, POLARIS | 30m-90m |
+| Vegetation | MODIS, NLCD | 250m-30m |
+| Geology | GLiM, GLHYMPS | Vector |
+| Streamflow | USGS NWIS | Daily |
+
+## Development
+
+```bash
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest tests/
+
+# With coverage
+pytest tests/ --cov=camels_attrs
+```
+
+## Citation
+
+If you use this package in your research, please cite:
+
+```bibtex
+Galib, M., & Merwade, V. (2025). camels-attrs: A Python Package for Extracting 
+CAMELS-like Catchment Attributes (v1.0.2). Zenodo. 
+https://doi.org/10.5281/zenodo.17315038
+```
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17315038.svg)](https://doi.org/10.5281/zenodo.17315038)
+
+## References
+
+- Newman et al. (2015). Development of a large-sample watershed-scale hydrometeorological dataset. NCAR Technical Note
+- Addor et al. (2017). The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrology and Earth System Sciences, 21, 5293-5313
+
+## Contributing
+
+Contributions are welcome! Please submit a Pull Request or open an Issue.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contact
+
+Mohammad Galib - mgalib@purdue.edu  
+Venkatesh Merwade - vmerwade@purdue.edu
+
+Purdue University
