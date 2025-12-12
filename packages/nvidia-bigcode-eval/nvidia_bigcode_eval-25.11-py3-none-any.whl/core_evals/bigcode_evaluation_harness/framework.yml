@@ -1,0 +1,408 @@
+framework:
+  name: bigcode-evaluation-harness
+  pkg_name: bigcode_evaluation_harness
+  full_name: Code Generation LM Evaluation Harness
+  description: A framework for the evaluation of autoregressive code generation language models.
+  url: https://github.com/bigcode-project/bigcode-evaluation-harness
+defaults:
+  command: >-
+    {% if target.api_endpoint.api_key is not none %}NVCF_TOKEN=${{target.api_endpoint.api_key}}{% endif %}
+    bigcode-eval --model_type {% if target.api_endpoint.type == "completions" %}nim-base{% elif target.api_endpoint.type == "chat" %}nim-chat{% endif %}
+    --url {{target.api_endpoint.url}} --model_kwargs '{"model_name": "{{target.api_endpoint.model_id}}", "timeout": {{config.params.request_timeout}}, "connection_retries": {{config.params.max_retries}}}'
+    --out_dir {{config.output_dir}} --task {{config.params.task}} --allow_code_execution --n_samples={{config.params.extra.n_samples}} {% if config.params.limit_samples is not none %}--limit {{config.params.limit_samples}}{% endif %}
+    --max_new_tokens={{config.params.max_new_tokens}} --do_sample={{config.params.extra.do_sample}}
+    --top_p {{config.params.top_p}} --temperature {{config.params.temperature}} --async_limit {{config.params.parallelism}}{% if config.params.extra.args is defined %} {{config.params.extra.args}} {% endif %}
+  config:
+    supported_endpoint_types:
+      - completions
+    params:
+      limit_samples: null
+      max_new_tokens: 512
+      temperature: 0.0000001
+      top_p: 0.9999999
+      parallelism: 10
+      max_retries: 5
+      request_timeout: 30
+      extra:
+        do_sample: True
+        n_samples: 1
+  target:
+    api_endpoint: {} # required to add: url, model_id, api_key
+evaluations:
+  - name: HumanEval
+    description: HumanEval is used to measure functional correctness for synthesizing programs from docstrings. It consists of 164 original programming problems, assessing language comprehension, algorithms, and simple mathematics, with some comparable to simple software interview questions.
+    defaults:
+      config:
+        type: "humaneval"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "humaneval"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 20
+  - name: HumanEval-Instruct
+    description: InstructHumanEval is a modified version of OpenAI HumanEval. For a given prompt, we extracted its signature, its docstring as well as its header to create a flexing setting which would allow to evaluation instruction-tuned LLM. The delimiters used in the instruction-tuning procedure can be use to build and instruction that would allow the model to elicit its best capabilities.
+    defaults:
+      config:
+        type: "humaneval_instruct"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "instruct-humaneval-nocontext-py"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 20
+  - name: HumanEval+
+    description: HumanEvalPlus is a modified version of HumanEval containing 80x more test cases.
+    defaults:
+      config:
+        type: "humanevalplus"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "humanevalplus"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5 # fewer since HumanEval+ has more problems
+  - name: MBPP
+    description: MBPP consists of Python programming problems, designed to be solvable by entry level programmers, covering programming fundamentals, standard library functionality, and so on. Each problem consists of a task description, code solution and 3 automated test cases.
+    defaults:
+      config:
+        type: "mbpp"
+        supported_endpoint_types:
+          - completions
+          - chat
+        params:
+          task: "mbpp"
+          max_new_tokens: 2048
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 10
+  - name: MBPP+
+    description: MBPP+ is a modified version of MBPP containing 35x more test cases.
+    defaults:
+      config:
+        type: "mbppplus"
+        supported_endpoint_types:
+          - completions
+          - chat
+        params:
+          task: "mbppplus"
+          max_new_tokens: 2048
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5 # fewer since MBPP+ has more problems
+  - name: MBPP+NeMo
+    description: MBPP+NeMo is a modified version of MBPP+ that uses the NeMo alignment prompt template.
+    defaults:
+      config:
+        type: "mbppplus_nemo"
+        supported_endpoint_types:
+          - chat
+        params:
+          task: "mbppplus_nemo"
+          max_new_tokens: 2048
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5 # fewer since MBPP+ has more problems
+  - name: MultiPL-E-py
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "py" subset.
+    defaults:
+      config:
+        type: "multiple-py"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-py"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-sh
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "sh" subset.
+    defaults:
+      config:
+        type: "multiple-sh"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-sh"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-cpp
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "cpp" subset.
+    defaults:
+      config:
+        type: "multiple-cpp"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-cpp"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-cs
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "cs" subset.
+    defaults:
+      config:
+        type: "multiple-cs"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-cs"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-d
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "d" subset.
+    defaults:
+      config:
+        type: "multiple-d"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-d"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-go
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "go" subset.
+    defaults:
+      config:
+        type: "multiple-go"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-go"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-java
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "java" subset.
+    defaults:
+      config:
+        type: "multiple-java"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-java"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-js
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "js" subset.
+    defaults:
+      config:
+        type: "multiple-js"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-js"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-jl
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "jl" subset.
+    defaults:
+      config:
+        type: "multiple-jl"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-jl"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-lua
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "lua" subset.
+    defaults:
+      config:
+        type: "multiple-lua"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-lua"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-pl
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "pl" subset.
+    defaults:
+      config:
+        type: "multiple-pl"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-pl"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-php
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "php" subset.
+    defaults:
+      config:
+        type: "multiple-php"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-php"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-r
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "r" subset.
+    defaults:
+      config:
+        type: "multiple-r"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-r"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-rkt
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "rkt" subset.
+    defaults:
+      config:
+        type: "multiple-rkt"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-rkt"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-rb
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "rb" subset.
+    defaults:
+      config:
+        type: "multiple-rb"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-rb"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-rs
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "rs" subset.
+    defaults:
+      config:
+        type: "multiple-rs"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-rs"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-scala
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "scala" subset.
+    defaults:
+      config:
+        type: "multiple-scala"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-scala"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-swift
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "swift" subset.
+    defaults:
+      config:
+        type: "multiple-swift"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-swift"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5
+  - name: MultiPL-E-ts
+    description: MultiPL-E is a suite of coding tasks for many programming languages. This task covers the "ts" subset.
+    defaults:
+      config:
+        type: "multiple-ts"
+        supported_endpoint_types:
+          - completions
+        params:
+          task: "multiple-ts"
+          max_new_tokens: 1024
+          temperature: 0.1
+          top_p: 0.95
+          extra:
+            do_sample: True
+            n_samples: 5

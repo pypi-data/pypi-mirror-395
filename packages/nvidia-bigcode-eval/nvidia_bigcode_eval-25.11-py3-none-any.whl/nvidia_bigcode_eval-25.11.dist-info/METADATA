@@ -1,0 +1,238 @@
+Metadata-Version: 2.4
+Name: nvidia_bigcode_eval
+Version: 25.11
+Summary: BigCode Evaluation Harness - packaged by NVIDIA
+License: Apache 2.0
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: transformers>=4.25.1
+Requires-Dist: datasets>=2.6.1
+Requires-Dist: evaluate>=0.3.0
+Requires-Dist: sacremoses>=0.1.0
+Requires-Dist: huggingface_hub>=0.11.1
+Requires-Dist: fsspec<2023.10.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: nltk>=3.9.1
+Requires-Dist: sqlparse==0.5.0
+Requires-Dist: tree_sitter~=0.21.0
+Requires-Dist: tree-sitter-java==0.21.0
+Requires-Dist: tree-sitter-javascript==0.21.4
+Requires-Dist: pydantic>=2.8.2
+Requires-Dist: nemo-evaluator
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# NVIDIA NeMo Evaluator
+
+The goal of NVIDIA NeMo Evaluator is to advance and refine state-of-the-art methodologies for model evaluation, and deliver them as modular evaluation packages (evaluation containers and pip wheels) that teams can use as standardized building blocks.
+
+# Quick start guide
+
+NVIDIA NeMo Evaluator provide you with evaluation clients, that are specifically built to evaluate model endpoints using our Standard API.
+
+## Launching an evaluation for an LLM
+
+1. Install the package
+    ```
+    pip install nvidia-bigcode-eval
+    ```
+
+3. (Optional) Set a token to your API endpoint if it's protected
+    ```bash
+    export MY_API_KEY="your_api_key_here"
+    ```
+4. List the available evaluations:
+    ```bash
+    $ nemo-evaluator ls
+    Available tasks:
+    * humaneval (in bigcode-evaluation-harness)
+    * humaneval_instruct (in bigcode-evaluation-harness)
+    * humanevalplus (in bigcode-evaluation-harness)
+    * mbpp (in bigcode-evaluation-harness)
+    * mbppplus (in bigcode-evaluation-harness)
+    ...
+    ```
+5. Run the evaluation of your choice:
+   ```bash
+    nemo-evaluator run_eval \
+       --eval_type humaneval_instruct \
+       --model_id meta/llama-3.1-70b-instruct \
+       --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+       --model_type chat \
+       --api_key_name MY_API_KEY \
+       --output_dir /workspace/results
+   ```
+6. Gather the results
+    ```bash
+    cat /workspace/results/results.yml
+    ```
+
+# Command-Line Tool
+
+Each package comes pre-installed with a set of command-line tools, designed to simplify the execution of evaluation tasks. Below are the available commands and their usage for the `bigcode` (`bigcode-evaluation-harness`):
+
+## Commands
+
+### 1. **List Evaluation Types**
+
+```bash
+nemo-evaluator ls
+```
+
+Displays the evaluation types available within the harness.
+
+### 2. **Run an evaluation**
+
+The `nemo-evaluator run_eval` command executes the evaluation process. Below are the flags and their descriptions:
+
+### Required flags
+* `--eval_type <string>`
+The type of evaluation to perform
+* `--model_id <string>`
+The name or identifier of the model to evaluate.
+* `--model_url <url>`
+The API endpoint where the model is accessible.
+* `--model_type <string>`
+The type of the model to evaluate, currently either "chat" or "completions".
+* `--output_dir <directory>`
+The directory to use as the working directory for the evaluation. The results, including the results.yml output file, will be saved here.
+
+### Optional flags
+* `--api_key_name <string>`
+The name of the environment variable that stores the Bearer token for the API, if authentication is required.
+* `--run_config <path>`
+Specifies the path to a  YAML file containing the evaluation definition.
+
+### Example
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type humaneval_instruct \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir ./evaluation_results
+```
+
+If the model API requires authentication, set the API key in an environment variable and reference it using the `--api_key_name` flag:
+
+```bash
+export MY_API_KEY="your_api_key_here"
+
+nemo-evaluator run_eval \
+    --eval_type humaneval_instruct \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --api_key_name MY_API_KEY \
+    --output_dir ./evaluation_results
+```
+
+# Configuring evaluations via YAML
+
+Evaluations in NVIDIA NeMo Evaluator are configured using YAML files that define the parameters and settings required for the evaluation process. These configuration files follow a standard API which ensures consistency across evaluations.
+
+Example of a YAML config:
+```yaml
+config:
+  type: humaneval_instruct
+  params:
+    parallelism: 50
+    limit_samples: 20
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-8b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: NVIDIA_API_KEY
+```
+
+The priority of overrides is as follows:
+1. command line arguments
+2. user config (as seen above)
+3. task defaults (defined per task type)
+4. framework defaults 
+
+`--dry_run` option allows you to print the final run configuration and command without executing the evaluation.
+
+### Example:
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type humaneval_instruct \
+    --model_id my_model \
+    --model_type chat \
+    --model_url http://localhost:8000 \
+    --output_dir .evaluation_results \
+    --dry_run
+```
+
+Output:
+
+```bash
+Rendered config:
+
+command: '{% if target.api_endpoint.api_key is not none %}NVCF_TOKEN=${{target.api_endpoint.api_key}}{%
+  endif %} bigcode-eval --model_type {% if target.api_endpoint.type == "completions"
+  %}nim-base{% elif target.api_endpoint.type == "chat" %}nim-chat{% endif %} --url
+  {{target.api_endpoint.url}} --model_kwargs ''{"model_name": "{{target.api_endpoint.model_id}}",
+  "timeout": {{config.params.timeout}}, "connection_retries": {{config.params.max_retries}}}''
+  --out_dir {{config.output_dir}} --task {{config.params.task}} --allow_code_execution
+  --n_samples={{config.params.extra.n_samples}} {% if config.params.limit_samples
+  is not none %}--limit {{config.params.limit_samples}}{% endif %} --max_new_tokens={{config.params.max_new_tokens}}
+  --do_sample={{config.params.extra.do_sample}} --top_p {{config.params.top_p}} --temperature
+  {{config.params.temperature}}{% if config.params.extra.args is defined %} {{config.params.extra.args}}
+  {% endif %}'
+framework_name: bigcode-evaluation-harness
+pkg_name: bigcode_eval
+config:
+  output_dir: .evaluation_results
+  params:
+    limit_samples: null
+    max_new_tokens: 1024
+    max_retries: 5
+    parallelism: 10
+    task: instruct-humaneval-nocontext-py
+    temperature: 0.1
+    timeout: 30
+    top_p: 0.95
+    extra:
+      do_sample: true
+      n_samples: 20
+  supported_endpoint_types:
+  - chat
+  type: humaneval_instruct
+target:
+  api_endpoint:
+    api_key: null
+    model_id: my_model
+    stream: null
+    type: chat
+    url: http://localhost:8000
+
+
+Rendered command:
+
+ bigcode-eval --model_type nim-chat --url http://localhost:8000 --model_kwargs '{"model_name": "my_model", "timeout": 30, "connection_retries": 5}' --out_dir .evaluation_results --task instruct-humaneval-nocontext-py --allow_code_execution --n_samples=20  --max_new_tokens=1024 --do_sample=True --top_p 0.95 --temperature 0.1
+```
+
+# FAQ
+
+## Deploying a model as an endpoint
+
+NVIDIA NeMo Evaluator utilize a client-server communication architecture to interact with the model. As a prerequisite, the **model must be deployed as an endpoint with a NIM-compatible API**.
+
+Users have the flexibility to deploy their model using their own infrastructure and tooling.
+
+Servers with APIs that conform to the OpenAI/NIM API standard are expected to work seamlessly out of the box.
