@@ -1,0 +1,16 @@
+name: 'Setup Elroy Environment'
+description: 'Sets up Python and Poetry for Elroy'
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11'
+    - name: Install Dependencies
+      shell: bash
+      run: |
+        pip install --user uv
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev,docs]"

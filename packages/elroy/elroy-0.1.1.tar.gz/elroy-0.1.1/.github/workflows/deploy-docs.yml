@@ -1,0 +1,19 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - stable
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - uses: ./.github/actions/setup-elroy-env
+    - name: Deploy docs
+      run: |
+        source .venv/bin/activate
+        mkdocs gh-deploy --force
