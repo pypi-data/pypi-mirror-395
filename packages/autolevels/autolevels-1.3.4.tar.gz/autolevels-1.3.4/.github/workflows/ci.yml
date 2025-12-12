@@ -1,0 +1,63 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python package, lint, test
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      # fail-fast: false
+      fail-fast: true
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install package and all dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade flit
+        if [ "${{ matrix.python-version }}" == "3.14" ]; then
+          # nightly onnxruntime build supports python 3.14 (https://github.com/microsoft/onnxruntime/issues/26547)
+          pip install flatbuffers "numpy==2.2.6" packaging protobuf sympy
+          pip install --pre --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple/ onnxruntime
+        fi
+        flit install --symlink  # requires numpy-2.2.6 for python 3.14
+    - name: Install PyTorch
+      run: |
+        if [ "${{ matrix.python-version }}" == "3.14" ]; then
+          torchversion="2.9.1"
+        else
+          torchversion="2.5.1"
+        fi
+        if [ "${{ matrix.operating-system }}" = "macos-latest" ]; then
+          pip install torch==${torchversion}
+        elif [ "${{ matrix.operating-system }}" = "windows-latest" ]; then
+          pip install torch==${torchversion}
+        else
+          pip install torch==${torchversion} --index-url https://download.pytorch.org/whl/cpu
+        fi
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=11 --max-line-length=127 --statistics
+    - name: Test with pytest
+      run: |
+        pytest
