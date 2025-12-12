@@ -1,0 +1,134 @@
+(*
+    Imandra Inc.
+
+    cl_model_update.iml
+*)
+
+
+type frm_result = {
+    py_src : string
+    ; iml_src : string
+}
+
+(* 
+    Dictates that when the formalization result is available 
+    - agent result is outdated - the Py src code is 
+    - the IML code provided by the user is based on the model
+    that's younger 
+    - agent result is 
+    - the user hasn't made changes to the model for a while??? 
+*)
+let frm_result_current (s : state) = 
+(* 
+*)
+    true
+
+(* 
+    Figure out the conditions when we can update model to disk 
+    - 
+    - 
+    - 
+*)
+let can_write_iml (s : state) =
+(* 
+
+*)
+    1
+
+(* Let's now do this and may other things... *)
+type event = 
+    (* Dependency updates *)
+    | DepUpdate (* Update to depdendencies' logic *)
+    | DepUpdateRevert (* Update to dependencis' logic reverted *)
+
+    (* events are what the server responds to... *)
+    | UserIMLUpdate of string * int
+    | UserPyUpdate of string * int
+    | CLResultArrived of string * int
+
+    (* If the user freezes the model, then it would not be 
+    affected by the changes to the *)
+    | UserModelFreeze
+    | UserModelUnfreeze
+
+    (* This represents what the timer may do *)
+    | TimeUpdate of int
+
+(* These are actions - they're produced by the server *)
+type action = 
+    | SendCLRequest of string (* Send request to the agent to formalize the model *)
+    | KickOffFormalization of string (* Kick off autofromlization of other models *)
+    | WriteModelToDisk of string (* Write out the model to disk *)
+
+(* Let's now define the state and do something useful... *)
+type state = {
+      py_src : string (* true state of the Py source file *)
+    ; iml_src : string (* true state of the IML file *)
+
+    ; frm_result : frm_result (* Formalization result *)
+
+    ; is_frozen : bool (* If this is frozen, then we can't override the IML model *)
+    ; cl_result_available : bool (* This is the  *)
+
+    (* Action resulting in something else... *)
+    ; result_action : action option
+}
+
+(* Let's process this one_step function --> this is what will drive everything... *)
+let one_step (e : event) (s : state) = 
+    match e with
+    | DepUpdate -> 
+        (* 'DepUpdate' logic -- dependency update logic... *)
+        s
+
+    | DepUpdateRevert -> { s  } 
+
+    | UserIMLUpdate (s, t) -> 
+        (* we take the snapshot of the current state of the Python code *)
+        
+        {
+        s with iml_src = 
+    } 
+
+    (* User has updated the Python file... *)
+    | UserPyUpdate (s, t) -> { 
+
+    } 
+    
+    (* CL result has arrived - we need to update our *)
+    | CLResultArrived (s, t) -> 
+        (* We have an updated result from CL -> let's 
+        check that *)
+
+        if frozen then
+            (* Then we simply update the agent state.. *)
+            { s with agent_state = agents }
+        (* if there's no changes to the IML file and it's not frozen, then we dont *)
+        else
+            (* *)
+            begin
+
+            end 
+
+    (*  *)
+    | UserModelFreeze -> { s with is_frozen = true }
+    | UserModelUnfreeze ->
+        begin
+            if updated_iml_available then 
+                { s with is_frozen = false; action = Some WriteModelToDisk}
+            else
+                { s with is_frozen = false }
+        end
+         
+    | TimeUpdate t ->
+        begin
+            if py_file_update_good then
+                (* Let's send out the CL request to do something *)
+            else
+                (* Let's now do something else entirely... *)
+                let a = 123 in 
+                (* do something special... *)
+                begin
+                    let b = a + 123 in b
+                end
+        end

@@ -1,0 +1,20 @@
+(*
+   --------------------------------------------------------------------------
+   title: Using Assuming Parameter
+   description: Decompose under preconditions with ~assuming
+   order: 2
+   --------------------------------------------------------------------------
+
+   Example 2: Using ~assuming to decompose under preconditions
+*)
+
+let is_positive x = x > 0
+
+let safe_reciprocal x =
+  if x > 1 then
+    1.0 /. Real.of_int x
+  else if x = 1 then
+    1.0
+  else
+    0.0
+[@@decomp top ~assuming:[%id is_positive] ()]

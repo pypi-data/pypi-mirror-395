@@ -1,0 +1,28 @@
+(*
+   --------------------------------------------------------------------------
+   title: Multiple Properties
+   description: Verifying multiple properties of a function
+   order: 5
+   --------------------------------------------------------------------------
+
+   Concept: Verifying multiple properties of a function
+
+   Shows how to verify several related properties about a single function.
+   Both properties about `max_value` are proven correct.
+
+   Expected: Both properties proven ✅
+
+   ============================================================================ *)
+
+let max_value (x : int) (y : int) : int =
+  if x >= y then x else y
+
+(* Verify: max returns a value >= both inputs *)
+verify (fun x y ->
+  let result = max_value x y in
+  result >= x && result >= y)
+
+(* Verify: max must equal one of the inputs *)
+verify (fun x y ->
+  let result = max_value x y in
+  result = x || result = y)
