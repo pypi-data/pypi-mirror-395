@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Web App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        .message { margin: 1rem 0; padding: 1rem; border-radius: 0.5rem; }
+        .message.user { background: #e0f2fe; }
+        .message.assistant { background: #dcfce7; }
+        .message.error { background: #fee2e2; }
+        .alert { padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
+        .alert.success { background: #dcfce7; color: #166534; }
+        .stats { padding: 0.5rem; background: #f3f4f6; border-radius: 0.5rem; margin-top: 0.5rem; }
+        .sources { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #e5e7eb; }
+        #chat-container { height: 500px; overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-6 shadow">
+        <h1 class="text-2xl font-bold">RAG Web Application</h1>
+        <p class="text-sm mt-1">Upload markdown files and chat with them</p>
+    </header>
+
+    <div class="container mx-auto p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left: Upload -->
+            <div class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-lg font-bold mb-4">📤 Upload Files</h2>
+
+                    <form
+                        hx-post="/upload"
+                        hx-target="#upload-status"
+                        hx-encoding="multipart/form-data"
+                    >
+                        <input
+                            type="file"
+                            name="files"
+                            multiple
+                            accept=".md"
+                            class="block w-full text-sm border rounded p-2 mb-4"
+                        >
+                        <button
+                            type="submit"
+                            class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                        >
+                            Upload
+                        </button>
+                    </form>
+
+                    <div id="upload-status" class="mt-4"></div>
+                </div>
+
+                <!-- Stats -->
+                <div class="bg-white p-6 rounded-lg shadow mt-6">
+                    <h2 class="text-lg font-bold mb-4">📊 Stats</h2>
+                    {% if stats %}
+                    <p><strong>Files:</strong> {{ stats.total_files }}</p>
+                    <p><strong>Chunks:</strong> {{ stats.total_chunks }}</p>
+                    {% else %}
+                    <p class="text-gray-500">No files uploaded yet</p>
+                    {% endif %}
+                </div>
+
+                <!-- Status -->
+                <div class="bg-white p-6 rounded-lg shadow mt-6">
+                    <h2 class="text-lg font-bold mb-4">🔧 Status</h2>
+                    <p>
+                        <strong>KB:</strong>
+                        <span class="{% if has_kb %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ "Ready" if has_kb else "Not initialized" }}
+                        </span>
+                    </p>
+                    <p>
+                        <strong>Ollama:</strong>
+                        <span class="{% if has_agent %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ "Connected" if has_agent else "Not available" }}
+                        </span>
+                    </p>
+                    {% if not has_agent %}
+                    <p class="text-sm text-gray-600 mt-2">
+                        Run: <code class="bg-gray-100 px-1 rounded">ollama pull gemma3:latest</code>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Right: Chat -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow h-full flex flex-col">
+                    <div class="bg-blue-600 text-white p-4 rounded-t-lg">
+                        <h2 class="text-lg font-bold">💬 Chat</h2>
+                    </div>
+
+                    <!-- Messages -->
+                    <div id="chat-container" class="flex-1 p-4">
+                        <div class="message assistant">
+                            <strong>Assistant:</strong>
+                            <p>Upload some markdown files and ask me questions about them!</p>
+                        </div>
+                    </div>
+
+                    <!-- Input -->
+                    <div class="border-t p-4">
+                        <form
+                            hx-post="/chat"
+                            hx-target="#chat-container"
+                            hx-swap="beforeend"
+                            hx-on::after-request="this.reset(); document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;"
+                            class="flex gap-2"
+                        >
+                            <input
+                                type="text"
+                                name="message"
+                                placeholder="Ask a question..."
+                                class="flex-1 border rounded px-4 py-2"
+                                required
+                                {% if not has_kb or not has_agent %}disabled{% endif %}
+                            >
+                            <button
+                                type="submit"
+                                class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
+                                {% if not has_kb or not has_agent %}disabled{% endif %}
+                            >
+                                Send
+                            </button>
+                        </form>
+                        {% if not has_kb %}
+                        <p class="text-sm text-gray-500 mt-2 text-center">Upload files to start chatting</p>
+                        {% elif not has_agent %}
+                        <p class="text-sm text-yellow-600 mt-2 text-center">Ollama not available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

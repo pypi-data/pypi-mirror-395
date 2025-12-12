@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package ceylon;
+
+service MeshService {
+  rpc Send (Envelope) returns (Ack);
+  rpc Register (AgentInfo) returns (RegistrationResponse);
+  rpc Discover (AgentQuery) returns (AgentList);
+}
+
+message Message {
+  string id = 1;
+  string topic = 2;
+  bytes payload = 3;
+  string sender = 4;
+  map<string, string> metadata = 5;
+}
+
+message Envelope {
+  Message message = 1;
+  optional string target_agent = 2;
+  optional string target_node = 3;
+}
+
+message Ack {
+  bool success = 1;
+  string error = 2;
+}
+
+message AgentInfo {
+  string id = 1;
+  string name = 2;
+  repeated string capabilities = 3;
+  map<string, string> metadata = 4;
+}
+
+message RegistrationResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message AgentQuery {
+  string capability = 1;
+  string name_pattern = 2;
+}
+
+message AgentList {
+  repeated AgentInfo agents = 1;
+}
