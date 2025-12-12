@@ -1,0 +1,1 @@
+var deleteRepositoryPostUrl = "{% url 'core-admin:core_explore_federated_search_app_repositories_delete' %}";

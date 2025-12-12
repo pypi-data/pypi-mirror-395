@@ -1,0 +1,37 @@
+{% extends 'core_main_app/_render/admin/theme/tools/box.html' %}
+
+{% block box_title %}Add Repository{% endblock %}
+
+{% block box_body %}
+
+  <div class="col-md-6 col-sm-12">
+
+    {% if data.error %}
+      <div class="alert alert-danger alert-dismissable">
+        <a href="#" {% if BOOTSTRAP_VERSION|first == "4" %}class="close" data-dismiss="alert"{% elif BOOTSTRAP_VERSION|first == "5"  %}class="btn-close" data-bs-dismiss="alert"{% endif %} aria-label="close">{% if BOOTSTRAP_VERSION|first == "4" %}&times;{% elif BOOTSTRAP_VERSION|first == "5"  %}{% endif %}</a>
+        <strong>{{ data.error }}</strong>
+      </div>
+      <br/>
+    {% endif %}
+
+    {% if data.success %}
+      <div class="alert alert-success alert-dismissable">
+        <a href="#" {% if BOOTSTRAP_VERSION|first == "4" %}class="close" data-dismiss="alert"{% elif BOOTSTRAP_VERSION|first == "5"  %}class="btn-close" data-bs-dismiss="alert"{% endif %} aria-label="close">{% if BOOTSTRAP_VERSION|first == "4" %}&times;{% elif BOOTSTRAP_VERSION|first == "5"  %}{% endif %}</a>
+        <strong>{{ data.success }}</strong>
+      </div>
+      <br/>
+    {% endif %}
+
+    <form id="form_add_repository" action="{{ url }}" method="post" enctype=multipart/form-data>
+      {% csrf_token %}
+      {{ data.repository_form }}
+      <br/>
+      <input type="submit" class="btn btn-secondary {% if BOOTSTRAP_VERSION|first == "4" %}float-right{% elif BOOTSTRAP_VERSION|first == "5" %}float-end{% endif %}" value="Add Repository"/>
+    </form>
+
+  </div>
+
+{% endblock %}
+
+{% block box_footer %}
+{% endblock %}
