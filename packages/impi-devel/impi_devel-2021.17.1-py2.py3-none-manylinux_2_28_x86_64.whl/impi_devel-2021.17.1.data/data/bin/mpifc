@@ -1,0 +1,81 @@
+#!/bin/bash
+#
+# Copyright Intel Corporation.
+# 
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you (License). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+# 
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+#
+
+default_compiler_name="gfortran"
+user_set_compiler=0
+
+#------------------------------------------------------------------------------ 
+# Print mini-help if started without parameters
+if [ -z "$1" ] ; then
+    echo "This script invokes an appropriate specialized FORTRAN MPI compiler driver."
+    echo "The following ways (priority order) can be used for changing default" 
+    echo "compiler name (${default_compiler_name:?}):"
+    echo "   1. Command line option:  -fc=<compiler_name>"
+    echo "   2. Environment variable: I_MPI_FC (current value '$I_MPI_FC')"
+    echo "   3. Environment variable: MPICH_FC (current value '$MPICH_FC')"
+    exit 0
+fi
+
+#------------------------------------------------------------------------------ 
+dir=$(dirname "$0")
+compiler_name=${I_MPI_FC:-${MPICH_FC:-${default_compiler_name:?}}}
+
+for arg in "$@" ; do
+    case $arg in 
+        -fc=*)
+        compiler_name=`echo A$arg | sed -e 's/A-fc=//g'`
+        user_set_compiler=1
+        ;;
+    esac
+done
+
+compiler_short_name=`basename ${compiler_name:?}`
+
+opt_args=""
+if [ $# -eq 1 -a "$1" = "-v" ] ; then
+    opt_args="-nolinkage"
+fi
+
+if [ $user_set_compiler -eq 0 ]; then
+    # default compiler
+    if [ x"$opt_args" == x"" ]; then
+        "$dir"/mpif90 -fc=$compiler_name "$@"
+    else
+        "$dir"/mpif90 -fc=$compiler_name "$@" $opt_args
+    fi
+else
+    # don't need to duplicate -cc since user already provided the option
+    if [ x"$opt_args" == x"" ]; then
+        case "${compiler_short_name}" in
+        ifort|ifx)   "$dir"/mpiifx "$@" ;;
+        *g77*)       "$dir"/mpif77 "$@" ;;
+        *gfortran*)  "$dir"/mpif90 "$@" ;;
+        *)
+                echo "Error: unsupported compiler name '$compiler_name'."
+                echo "Check -fc=<compiler_name> command line option and I_MPI_FC='$I_MPI_FC' and MPICH_FC='$MPICH_FC' variables."; 
+                exit 1 ;;
+        esac
+    else
+        case "${compiler_short_name}" in
+        ifort|ifx)   "$dir"/mpiifx "$@" $opt_args ;;
+        *g77*)       "$dir"/mpif77 "$@" $opt_args ;;
+        *gfortran*)  "$dir"/mpif90 "$@" $opt_args ;;
+        *)
+                echo "Error: unsupported compiler name '$compiler_name'."
+                echo "Check -fc=<compiler_name> command line option and I_MPI_FC='$I_MPI_FC' and MPICH_FC='$MPICH_FC' variables."; 
+                exit 1 ;;
+        esac
+    fi
+fi
