@@ -1,0 +1,315 @@
+"""
+Created on 2024-05-12
+
+@author: wf
+"""
+
+import json
+import random
+from typing import Optional, Set
+import urllib.parse
+
+from ngwidgets.llm import LLM
+from ratelimit import limits, sleep_and_retry
+import requests
+from snapquery.snapquery_core import NamedQuery, NamedQueryManager, NamedQuerySet
+from snapquery.version import Version
+
+
+class ShortIds:
+    """
+    short id handling
+    """
+
+    def __init__(
+        self,
+        base_chars: str = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz$",
+    ):
+        self.base_chars = base_chars
+
+    def id_to_int(self, id_str: str) -> int:
+        """
+        Convert an ID string to an integer using my base character set.
+
+        Args:
+            id_str (str): The custom ID string to convert.
+
+        Returns:
+            int: The converted integer value.
+        """
+        base = len(self.base_chars)
+        value = 0
+
+        for char in id_str:
+            value *= base
+            value += self.base_chars.index(char)
+
+        return value
+
+    def get_random(self, k: int = 4) -> str:
+        """
+        get a random short id
+
+        Returns:
+            str: a random short id
+        """
+        short_id = "".join(random.choices(self.base_chars, k=k))
+        return short_id
+
+class Wikidata:
+    """
+    Handles rate-limited access to Wikidata and Wikimedia projects,
+    managing User-Agents and HTTP requests.
+
+    """
+    # Rate limiting constants
+    # see https://stackoverflow.com/questions/62396801/how-to-handle-too-many-requests-on-wikidata-using-sparqlwrapper
+    CALLS_PER_MINUTE = 30
+    ONE_MINUTE = 60
+
+    def __init__(self):
+        """
+        Constructor.
+        """
+        self.user_agent = self.get_user_agent()
+        self.url = None
+        self.error = None
+
+
+    @classmethod
+    def get_user_agent(cls) -> str:
+        """
+        Constructs a User-Agent string compliant with Wikimedia policy.
+        """
+        version = Version()
+        user_agent= f"{version.name}/{version.version}"
+        return user_agent
+
+    @sleep_and_retry
+    @limits(calls=CALLS_PER_MINUTE, period=ONE_MINUTE)
+    def fetch_final_url(self, url: str) -> str:
+        """
+        Follow the redirection to get the final URL with rate limiting.
+
+        Args:
+            url (str): The initial URL to fetch.
+
+        Returns:
+            str: The final URL after redirection.
+        """
+        try:
+            headers = {"User-Agent": self.user_agent}
+            response = requests.get(url, headers=headers, allow_redirects=True)
+            response.raise_for_status()
+            self.url = response.url
+        except Exception as ex:
+            self.error = ex
+        return self.url
+
+    @sleep_and_retry
+    @limits(calls=CALLS_PER_MINUTE, period=ONE_MINUTE)
+    def get_wikitext(self,url) -> str:
+        """
+        Get raw wiki text from the configured base_url.
+
+        Args:
+            url (str): The url to fetch.
+
+        Returns:
+            str: Raw wikitext of the page.
+
+        """
+        headers = {"User-Agent": self.user_agent}
+        # Append ?action=raw to fetch source text
+        fetch_url = f"{url}?action=raw"
+
+        try:
+            res = requests.get(fetch_url, headers=headers)
+            res.raise_for_status()
+            return res.text
+        except Exception as ex:
+            self.error = ex
+            raise ex
+
+
+class ShortUrl(Wikidata):
+    """
+    Handles operations related to wikidata and similar short URLs such as QLever.
+    see https://meta.wikimedia.org/wiki/Wikimedia_URL_Shortener for
+    """
+
+    def __init__(self, short_url: str, scheme: str = "https", netloc: str = "query.wikidata.org"):
+        """
+        Constructor
+
+        Args:
+            short_url (str): The URL to be processed.
+            scheme (str): URL scheme to be used (e.g., 'https' or 'http') for validating URL format.
+            netloc (str): Network location part of the URL, typically the domain name, to be used for validating URL format.
+        """
+        super().__init__()
+        self.short_url = short_url
+        self.scheme = scheme
+        self.netloc = netloc
+        self.sparql = None
+
+    @property
+    def name(self):
+        """
+        Extracts and returns the name part of the short URL.
+
+        Returns:
+            str: The name part of the short URL.
+        """
+        # Assuming the short URL ends with the name part after the last '/'
+        if self.short_url:
+            name_part = self.short_url.rsplit("/", 1)[-1]
+            return name_part
+        return None
+
+    @classmethod
+    def get_prompt_text(cls, sparql: str) -> str:
+        prompt_text = f"""give an english name, title and description in json
+for cut &paste for the SPARQL query below- the name should be less than 60 chars be a proper identifier which has no special chars so it can be used in an url without escaping. The title should be less than 80 chars and the
+description not more than three lines of 80 chars.
+A valid example result would be e.g.
+{{
+  "name": "Locations_in_Rennes_with_French_Wikipedia_Article"
+  "title": "Locations in Rennes with a French Wikipedia Article",
+  "description": "Maps locations in Rennes linked to French Wikipedia articles. It displays entities within 10 km of Rennes' center, showing their names, coordinates, and linked Wikipedia pages. The results include entities' identifiers, coordinates, and related site links."
+}}
+
+The example is just an example - do not use it's content if it does not match.
+Avoid  hallucinating and stick to the facts.
+If the you can not determine a proper name, title and description return {{}}
+SPARQL: {sparql}
+"""
+        return prompt_text
+
+    def ask_llm_for_name_and_title(self, llm: LLM, nq: NamedQuery, unique_names: Set[str]) -> Optional[NamedQuery]:
+        """
+        add name, title and description to ghe given query by
+        asking a large language model
+        """
+        llm_response = llm.ask(ShortUrl.get_prompt_text(self.sparql))
+        if llm_response:
+            response_json = json.loads(llm_response)
+            name = response_json.get("name", None)
+            if name in unique_names:
+                return None
+            if name:
+                nq.name = name
+            title = response_json.get("title", "")
+            description = response_json.get("description", "")
+            nq.title = title
+            nq.description = description
+            nq.__post_init__()
+            return nq
+        return None
+
+    @classmethod
+    def get_llm(cls) -> LLM:
+        llm = LLM(model="gpt-4")
+        return llm
+
+    @classmethod
+    def get_random_query_list(
+        cls,
+        namespace: str,
+        count: int,
+        max_postfix="9pfu",
+        nqm: NamedQueryManager = None,
+        with_llm=False,
+        with_progress: bool = False,
+        debug=False,
+    ) -> NamedQuerySet:
+        """
+        Read a specified number of random queries from a list of short URLs.
+
+        Args:
+            nqm (NamedQueryManager): optional NamedQueryManager
+            namespace (str): the name to use for the named query list
+            count (int): Number of random URLs to fetch.
+            max_postfix (str): the maximum ID to try
+            with_progress (bool): if True show progress
+
+        Returns:
+            NamedQueryList: A NamedQueryList containing the queries read from the URLs.
+        """
+        if with_llm:
+            llm = cls.get_llm()
+        short_ids = ShortIds()
+        base_url = "https://w.wiki/"
+        domain = "wikidata.org"
+        if nqm is None:
+            unique_urls = set()
+            unique_names = set()
+        else:
+            unique_urls, unique_names = nqm.get_unique_sets(namespace=namespace, domain=domain)
+
+        nq_set = NamedQuerySet(domain=domain, namespace=namespace, target_graph_name="wikidata")
+        give_up = (
+            count * 15
+        )  # heuristic factor for probability that a short url points to a wikidata entry - 14 has worked so far
+        max_short_int = short_ids.id_to_int(max_postfix)
+        while len(unique_urls) < count and give_up > 0:
+            if with_progress and not debug:
+                print(".", end="")
+                if give_up % 80 == 0:
+                    print()
+            # Generate a 4-char base36 string
+            postfix = short_ids.get_random()
+            if short_ids.id_to_int(postfix) > max_short_int:
+                continue
+            if debug:
+                print(f"{give_up:4}:{postfix}")
+            wd_short_url = f"{base_url}{postfix}"
+            short_url = cls(short_url=wd_short_url)
+            short_url.read_query()
+            if short_url.sparql and not short_url.error:
+                nq = NamedQuery(
+                    domain=nq_set.domain,
+                    name=postfix,
+                    namespace=nq_set.namespace,
+                    url=wd_short_url,
+                    sparql=short_url.sparql,
+                )
+                if with_llm:
+                    try:
+                        llm_nq = short_url.ask_llm_for_name_and_title(llm=llm, nq=nq, unique_names=unique_names)
+                        # try again with a different url to avoid name clash
+                        if llm_nq is None:
+                            give_up -= 1
+                            continue
+                    except Exception as ex:
+                        if debug:
+                            print(f"Failed to get LLM response: {str(ex)}")
+                        continue
+                nq_set.queries.append(nq)
+                unique_urls.add(nq.url)
+                unique_names.add(nq.name)
+                if debug:
+                    print(nq)
+            else:
+                give_up -= 1
+        return nq_set
+
+
+    def read_query(self) -> str:
+        """
+        Read a query from a short URL.
+
+        Returns:
+            str: The SPARQL query extracted from the short URL.
+        """
+        self.fetch_final_url(self.short_url)
+        if self.url:
+            parsed_url = urllib.parse.urlparse(self.url)
+            if parsed_url.scheme == self.scheme and parsed_url.netloc == self.netloc:
+                if parsed_url.fragment:
+                    self.sparql = urllib.parse.unquote(parsed_url.fragment)
+                else:
+                    query_params = urllib.parse.parse_qs(parsed_url.query)
+                    if "query" in query_params:
+                        self.sparql = query_params["query"][0]
+        return self.sparql
