@@ -1,0 +1,63 @@
+{#
+peakrdl-python is a tool to generate Python Register Access Layer (RAL) from SystemRDL
+Copyright (C) 2021 - 2025
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as
+published by the Free Software Foundation, either version 3 of
+the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#}
+
+{% include "header_tb.py.jinja" with context %}
+
+{% from 'template_ultilities.py.jinja' import peakrdl_python_lib with context %}
+{# the following defining the number relative steps up to the lib and sim_lib packages from the current file #}
+{% set lib_depth = 1 %}
+
+{% if legacy_block_access %}from array import array as Array{% endif %}
+{% if asyncoutput %}
+import asyncio
+{% endif %}
+import unittest
+
+
+from {{ peakrdl_python_lib(depth=lib_depth) }} import RegisterWriteVerifyError
+{% if asyncoutput %}
+from {{ peakrdl_python_lib(depth=lib_depth) }} import AsyncCallbackSet{% if legacy_block_access %}Legacy{% endif %}
+{% else %}
+from {{ peakrdl_python_lib(depth=lib_depth) }} import NormalCallbackSet{% if legacy_block_access %}Legacy{% endif %}
+{% endif %}
+
+from ._{{top_node.inst_name}}_test_base import {{top_node.inst_name}}_TestCase, {{top_node.inst_name}}_TestCase_BlockAccess
+
+from ..reg_model import RegModel
+from ..sim import Simulator
+
+{% if asyncoutput %}
+TestCaseBase = unittest.IsolatedAsyncioTestCase
+{% else %}
+TestCaseBase = unittest.TestCase
+{% endif %}
+
+class {{top_node.inst_name}}_SimTestCase_BlockAccess(TestCaseBase): # type: ignore[valid-type,misc]
+
+    def setUp(self) -> None:
+        self.sim = Simulator(address=0)
+        self.dut = RegModel(callbacks={% if asyncoutput %}AsyncCallbackSet{% else %}NormalCallbackSet{% endif %}{% if legacy_block_access %}Legacy{% endif %}(read_callback=self.sim.read,
+                                                          write_callback=self.sim.write,
+                                                          read_block_callback=self.sim.read_block,
+                                                          write_block_callback=self.sim.write_block))
+
+
+
+
+if __name__ == '__main__':
+    pass
