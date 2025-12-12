@@ -1,0 +1,5 @@
+__version__ = "0.5.2"
+__author__ = "Xavier Dupré"
+__github__ = "https://github.com/sdpython/pandas_streaming"
+__url__ = "https://sdpython.github.io/doc/pandas-streaming/dev/"
+__license__ = "MIT License"
