@@ -1,0 +1,23 @@
+# flake8: noqa
+
+# import apis into api package
+from nexium_exchanger.api.auth_entities_api import AuthEntitiesApi
+from nexium_exchanger.api.currencies_api import CurrenciesApi
+from nexium_exchanger.api.customers_api import CustomersApi
+from nexium_exchanger.api.employee_payment_methods_api import EmployeePaymentMethodsApi
+from nexium_exchanger.api.employees_api import EmployeesApi
+from nexium_exchanger.api.exchange_directions_api import ExchangeDirectionsApi
+from nexium_exchanger.api.exchange_rates_api import ExchangeRatesApi
+from nexium_exchanger.api.exchangers_api import ExchangersApi
+from nexium_exchanger.api.incoming_payment_requests_api import IncomingPaymentRequestsApi
+from nexium_exchanger.api.kyc_api import KycApi
+from nexium_exchanger.api.orders_api import OrdersApi
+from nexium_exchanger.api.outgoing_payment_requests_api import OutgoingPaymentRequestsApi
+from nexium_exchanger.api.payment_methods_api import PaymentMethodsApi
+from nexium_exchanger.api.payment_requisites_api import PaymentRequisitesApi
+from nexium_exchanger.api.payments_api import PaymentsApi
+from nexium_exchanger.api.tags_api import TagsApi
+from nexium_exchanger.api.variables_api import VariablesApi
+from nexium_exchanger.api.wallet_operations_api import WalletOperationsApi
+from nexium_exchanger.api.wallets_api import WalletsApi
+
