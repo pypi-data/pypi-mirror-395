@@ -1,0 +1,617 @@
+Metadata-Version: 2.4
+Name: shodo_ssg
+Version: 0.0.dev4
+Summary: A Python-based static site generator for building sites from Markdown and JSON files
+Author-email: Ryan Phillips <ryanphillipssoftware@gmail.com>
+License: MIT
+Project-URL: homepage, https://shodo.dev
+Project-URL: source, https://github.com/ryanmphill/shodo-static-gen
+Project-URL: issues, https://github.com/ryanmphill/shodo-static-gen/issues
+Project-URL: documentation, https://shodo.dev/docs
+Keywords: shodo,static site generator,ssg,blog,rss
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Internet
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Application Frameworks
+Classifier: Topic :: Text Processing :: Markup :: Markdown
+Classifier: Topic :: Text Processing :: Markup :: HTML
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Internet :: WWW/HTTP :: Site Management
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Jinja2>=3.1.3
+Requires-Dist: markdown2>=2.4.13
+Requires-Dist: markupsafe>=2.1.5
+Provides-Extra: dev
+Requires-Dist: black; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Dynamic: license-file
+
+ <p align="right">
+ <img alt="Netlify Status" src="https://api.netlify.com/api/v1/badges/1ed945fb-7aa0-4ebd-89c0-45450ead70aa/deploy-status">
+ <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/shodo-ssg">
+ <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/shodo-ssg">
+ <img alt="GitHub License" src="https://img.shields.io/github/license/ryanmphill/shodo-static-gen?color=purple">
+ <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ryanmphill/shodo-static-gen/python-package.yml?label=Tests">
+</p>
+
+# Shodo Static Site Generator 🪶✒️📜
+
+Shodo is a framework for rapidly building a static site from markdown files, json, and Jinja templates. Simply make changes to your site in the `src` directory, run the build command, and access the build in the `dist` directory. [Easily deploy to Netlify](#deploy-to-netlify) in just a few clicks. 
+
+
+Check out [shodo.dev](https://shodo.dev) for the latest project updates and documentation!
+
+## Why Shodo?
+There is no shortage of options out there for building websites and apps, but they can quickly feel overcomplicated when all you need is a simple website with a few reusable components, or a quick solution to setting up a blog with an RSS feed. The goal of Shodo is to make publishing content to the web as simple and elegant as possible for developers, whether it's a personal blog, a portfolio, documentation, or a professional marketing site. 
+
+**Key Features:**
+
+- ✅ Write content in Markdown with front matter support
+- ✅ Powerful Jinja2 templating with custom API functions
+- ✅ Query JSON data with filtering, sorting, and pagination
+- ✅ Automatic page generation from markdown articles
+- ✅ Built-in pagination for article listings
+- ✅ RSS/Atom feed generation support
+- ✅ Nested layouts and partial templates
+- ✅ Fast build times with automatic asset compilation
+
+## Getting Started
+
+### Installing the package
+
+1. Create a new project directory and start a virtual environment using your preferred method
+
+2. Install the `shodo_ssg` package by running one of the following commands:
+
+**Via pip**:
+```bash
+pip install shodo-ssg
+```
+
+**Via pipenv**:
+```bash
+pipenv install shodo-ssg
+```
+
+**Via Poetry**:
+```bash
+poetry add shodo-ssg
+```
+
+**Via uv**:
+```bash
+uv add shodo-ssg
+```
+
+3. Once the package is installed, you can scaffold a new project using the command
+
+```bash
+start-shodo-project <name of project directory>
+```
+
+To create the project in the current directory, run
+
+```bash
+start-shodo-project .
+```
+
+4. Build the starter site and serve it to localhost by running the following command from the root directory of the project:
+
+```bash
+python serve.py
+```
+
+You should now be able to view the site on localhost and can start by making changes to `home.jinja`. When you simply want to build the static site, run the following command from the root directory:
+
+```bash
+python site_builder.py
+```
+
+and you can find your static site located in the `dist/` directory
+
+## How it works
+
+First, there is the main home page template located at `src/theme/views/home.jinja` that can render partial sub-views, which can either be other Jinja2 templates located in `src/theme/views/partials`, or markdown files located in `src/theme/markdown`.
+
+#### Templates
+
+This project uses Jinja2 as its templating engine, so it would be beneficial to visit the Jinja [docs](https://jinja.palletsprojects.com/en/3.1.x/). This project leverages Jinja to integrate with Python and build HTML from templates that have access to functions and variables.
+
+#### Front Matter
+
+Both Jinja templates and Markdown files support front matter - metadata enclosed by `@frontmatter` and `@endfrontmatter` tags. Front matter is written in JSON format and can include:
+
+```jinja
+@frontmatter
+{
+    "title": "My Page Title",
+    "description": "Page description for SEO",
+    "author": "Your Name",
+    "body_class": "custom-page-class",
+    "body_id": "custom-page-id",
+    "keywords": ["web", "development", "shodo"],
+    "head_extra": [
+        "<link rel='stylesheet' href='/custom.css'>",
+        "<script src='/custom.js'></script>"
+    ]
+}
+@endfrontmatter
+```
+
+**Available front matter options:**
+- `title`: Page title meta (used in `<title>` tag)
+- `description`: Meta description for SEO
+- `author`: Page author meta
+- `keywords`: Array of keywords for meta tags
+- `lang`: Language code
+- `canonical`: Main site url
+- `charset`: ex. UTF-8
+- `theme_color`: Optionally render the theme-color meta tag
+- `google_font_link`: Optional link to google fonts
+- `body_class`: CSS class(es) to add to `<body>` tag
+- `body_id`: ID to add to `<body>` tag
+- `head_extra`: Array of additional custom HTML to inject in `<head>`
+- `file_type`: Specify file type other than html (e.g., `"xml"` for RSS feeds)
+- `no_wrapper`: Set to `true` to skip HTML wrapper (useful for XML/RSS)
+- `paginate`: Enable pagination (e.g., `"shodo_get_articles"`)
+- `per_page`: Number of items per page when paginating
+- OG values, including:
+     - `og_image`
+     - `og_image_alt`
+     - `og_title`
+     - `og_description`
+     - `og_type`
+     - `og_site_name`
+     - `og_url`
+     - `og_locale`
+
+**Available front matter options specifically for markdown pages:**
+_These values will get pulled from markdown page frontmatter and be included in the `article` object when the layout template is rendered._
+
+- `title`
+- `description`
+- `summary`
+- `keywords`
+- `author`
+- `category`
+- `tags`
+- `published_datetime` (will also generate `published_dt_local` if timezone is set)
+- `modified_datetime` (will also generate `modified_dt_local` if timezone is set)
+- `draft` (boolean, default false)
+- `image` (url)
+- `image_alt`
+- `extra` (optional nested json of custom metadata)
+
+`content` and `link` will be automatically generated and included in the `article` object as well.
+
+#### Pages
+
+Any template added to the `pages/` directory will be written as an index.html file in its own subfolder within the `dist` directory. When linking between pages, simply write a backslash followed by the page name, exluding any file extensions. So if you wanted to link to `pages/linked-page.jinja` from `home.jinja`, the anchor tag would be
+
+```html
+<a href="/linked-page">Click Here!</a>
+```
+
+###### Nested Pages
+
+You can create nested pages by adding a subdirectory within `pages/` with the name of the route. For routes with multiple pages, the index page of that route will need to be on the same level as the route subdirectory with the same name followed by the `.jinja` extension. For example:
+```
+__pages/
+____about.jinja (template for '/about')
+____nested.jinja (index template for '/nested')
+____nested/
+______nested-page.jinja (template for '/nested/nested-page')
+```
+
+#### Markdown
+
+##### Partial markdown content to include in templates
+
+Any markdown files added to the `/markdown/partials` directory will be exposed to Jinja templates with a variable name identical to the markdown file name, minus the extension. So, the contents of `summary.md` can be passed to the Jinja template as `{{ summary }}`, where it will be converted to HTML upon running the build script.
+
+###### Prefixed variables for nested markdown directories
+
+In order to avoid any naming conflicts, The articles further nested in directories within "articles/partials/" will have a variable prefix that is the accumulated names of the preceding directories in dot notation (excluding '/partials' and higher). 
+
+For example, a markdown file located in `markdown/partials/collections/quotes/my_quote.md`, will be exposed to all templates with the following variable using the jinja variable syntax:
+
+```
+{{ collections.quotes.my_quote }}
+```
+
+##### Generating full pages from markdown
+
+In addition to partial variables that can be included in templates, entire new pages can also be automatically be generated from markdown files added to the 
+`markdown/articles` directory. The url path to the page will match what is defined in the `markdown/articles` directory.
+
+Articles from the `markdown/articles` directory are rendered with a reusable template defined in `views/articles/` Just add a `layout.jinja` file under a subdirectory that matches the subdirectory tree used in `markdown/articles`, or simply define a `layout.jinja` at the root of `views/articles` if you want to use a single layout template for all articles. In the `layout.jinja` file, control where you would like your content to be dynamically inserted by passing in the reserved `{{ article }}` variable. More below.
+
+The site builder will always match up the layout template that is closest in the tree, so `markdown/articles/blog/updates/new-post.md` would be matched with `views/articles/blog/layout.jinja` if no layout is defined for the `updates` directory.
+
+```
+__markdown/
+____articles/
+______blog/
+________updates/
+__________new-post.md
+```
+
+```
+__views/
+____articles/
+______layout.jinja (default root layout for all markdown 'articles')
+______blog/
+________layout.jinja (Maps to markdown/articles/blog, overwrites root layout)
+________updates/
+__________layout.jinja (Maps to markdown/articles/blog/updates, overwrites other previous layouts in tree)
+```
+
+###### layout.jinja
+
+The `layout.jinja` is just a normal jinja template, but the `{{ article }}` variable has been reserved for passing in the content from each file in `markdown/articles`. Simply define whatever repeated layout you would like to wrap the `{{ article }}` content, such as a header and footer.
+
+Here is an example layout template:
+
+```jinja
+@frontmatter
+{
+    "title": "Blog Layout",
+    "body_class": "blog-page"
+}
+@endfrontmatter
+
+<div class="container">
+    <header class="page-header">
+        <h1>{{ article.title }}</h1>
+        <time datetime="{{ article.published_datetime.strftime("%Y-%m-%d %H:%M:%S") }}">
+            {{ article.published_datetime.month }}-{{ article.published_datetime.day }}-{{ article.published_datetime.year }}
+        </time>
+    </header>
+    <main>
+        {{ article.content }}
+    </main>
+    <footer>Thanks for reading</footer>
+</div>
+```
+
+### Template API Functions
+
+Shodo provides several built-in functions that can be called from within templates:
+
+#### shodo_get_articles()
+
+Query and filter articles from the `markdown/articles` directory.
+
+**Basic usage:**
+```jinja
+{% for post in shodo_get_articles() %}
+    <h2>{{ post.title }}</h2>
+    <p>{{ post.excerpt }}</p>
+    <a href="{{ post.link }}">Read more</a>
+{% endfor %}
+```
+
+**With filters:**
+```jinja
+{% for post in shodo_get_articles(filters={
+    "where": {
+        "category": "technology",
+        "tags": {"contains": "python"}
+    },
+    "order_by": {"desc": "date"},
+    "limit": 5
+}) %}
+    <article>
+        <h2>{{ post.title }}</h2>
+        <time>{{ post.date }}</time>
+        <p>{{ shodo_get_excerpt(post.content, 150) }}</p>
+    </article>
+{% endfor %}
+```
+
+**Filter operators:**
+- `equals`: Exact match
+- `contains`: Check if value is in a list
+- `starts_with`: String starts with value
+- `ends_with`: String ends with value
+- `gt`, `gte`, `lt`, `lte`: Comparison operators
+- `in`: Value is in list
+- `not_in`: Value is not in list
+- `not_equals`: Not equal to value
+- `not_contains`: Value not in list
+- `regex`: Regular expression match
+
+**Logical operators:**
+```jinja
+{% for post in shodo_get_articles(filters={
+    "where": {
+        "and": [
+            {"category": "tech"},
+            {"tags": {"contains": "python"}}
+        ],
+        "or": [
+            {"author": "John"},
+            {"author": "Jane"}
+        ]
+    }
+}) %}
+```
+
+#### shodo_query_store()
+
+Query JSON data from the `/store` directory with the same powerful filtering as `shodo_get_articles()`.
+
+```jinja
+{% for item in shodo_query_store(
+    filters={
+        "collection": "products",
+        "where": {"price": {"lt": 100}},
+        "order_by": {"asc": "name"},
+        "limit": 10
+    }
+) %}
+    <div>{{ item.name }} - ${{ item.price }}</div>
+{% endfor %}
+```
+
+#### shodo_get_excerpt()
+
+Extract a text excerpt from content with a specified character limit.
+
+```jinja
+{{ shodo_get_excerpt(article.content, 200) }}
+```
+
+#### get_rfc822()
+
+Convert a datetime to RFC 822 format (required for RSS feeds).
+
+```jinja
+<pubDate>{{ get_rfc822(article.published_datetime) }}</pubDate>
+```
+
+#### rel_to_abs()
+
+Convert relative URLs to absolute URLs (required for RSS feeds). Uses `config.url_origin` value set in `store` directory, otherwise the second argument is required with the base url origin.
+
+```jinja
+{{ rel_to_abs(article.content, "https://example.com") }}
+```
+
+#### current_dt()
+
+Get the current datetime during build.
+
+```jinja
+<lastBuildDate>{{ get_rfc822(current_dt()) }}</lastBuildDate>
+```
+
+### Pagination
+
+Shodo supports automatic pagination for article listings and store queries. Simply add pagination configuration to your template's front matter:
+
+```jinja
+@frontmatter
+{
+    "title": "Blog Archive",
+    "paginate": "shodo_get_articles",
+    "per_page": 10
+}
+@endfrontmatter
+
+<h1>Blog Posts</h1>
+
+{% for post in shodo_get_articles(filters={
+    "where": {"category": "technology"},
+    "order_by": {"desc": "date"}
+}) %}
+    <article>
+        <h2><a href="{{ post.link }}">{{ post.title }}</a></h2>
+        <p>{{ shodo_get_excerpt(post.content, 150) }}</p>
+    </article>
+{% endfor %}
+
+{# Pagination navigation is automatically injected #}
+{{ pagination.page_links|safe }}
+```
+
+The `pagination` object provides:
+- `pagination.current_page`: Current page number
+- `pagination.total_pages`: Total number of pages
+- `pagination.has_previous`: Boolean for previous page
+- `pagination.has_next`: Boolean for next page
+- `pagination.previous_page`: Previous page number
+- `pagination.next_page`: Next page number
+- `pagination.previous_page_url`: URL to previous page
+- `pagination.next_page_url`: URL to next page
+- `pagination.page_links`: HTML markup for pagination navigation
+
+Pages are automatically generated at:
+- First page: `/blog/index.html`
+- Subsequent pages: `/blog/page/2/index.html`, `/blog/page/3/index.html`, etc.
+
+### RSS/Atom Feeds
+
+Generate RSS or Atom feeds by creating an XML template with `file_type: xml` in the front matter:
+
+```jinja
+@frontmatter
+{
+    "file_type": "xml"
+}
+@endfrontmatter
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title>My Blog</title>
+        <link>https://example.com</link>
+        <description>Latest posts from my blog</description>
+        <lastBuildDate>{{ get_rfc822(current_dt()) }}</lastBuildDate>
+        
+        {% for post in shodo_get_articles(filters={
+            "order_by": {"desc": "date"},
+            "limit": 20
+        }) %}
+        <item>
+            <title>{{ post.title }}</title>
+            <link>https://example.com{{ post.link }}</link>
+            <pubDate>{{ get_rfc822(post.published_datetime) }}</pubDate>
+            <description><![CDATA[
+                {{ rel_to_abs(post.content, "https://example.com") }}
+            ]]></description>
+        </item>
+        {% endfor %}
+    </channel>
+</rss>
+```
+
+Note: Unlike the default behavior for HTML files, XML files will be rendered directly as the template name plus the `.xml` extension (instead of an index file being rendered in a directory named after the template).
+
+### JSON data in the `/store` directory
+
+For easy configuration and keeping repeated values in one place, any property defined in a `.json` file within the `/store` directory will be passed to Jinja templates with an identical variable to the property name. Each nested object can be accessed using dot notation in the templates.
+
+For example, to access the `name` value from `/store/products.json`:
+
+```json
+{
+    "my_product": {
+        "name": "wrench",
+        "category": "hardware"
+    }
+}
+```
+
+in the template, you would use the following syntax:
+
+```jinja
+{{ my_product.name }}
+```
+
+You can also query store data dynamically using `shodo_query_store()` with filtering, sorting, and pagination:
+
+```jinja
+{# Access store data directly #}
+<h1>Products</h1>
+
+{# Or query it with filters #}
+{% for product in shodo_query_store(
+    filters={
+        "collection": "products",
+        "where": {"category": "electronics"},
+        "order_by": {"asc": "price"}
+    }
+) %}
+    <div>{{ product.name }} - ${{ product.price }}</div>
+{% endfor %}
+```
+
+The `config` namespace has been reserved for setting default global values that will be used when building the site. These include any of the metadata tags that go in frontmatter, as well as a `url_origin` and `timezone` field:
+
+```json
+{
+    "config": {
+        "metadata": {
+            "title": "Default title for <head> that gets overwritten by frontmatter",
+            "description": "Default description for <head> that gets overwritten by frontmatter",
+            "author": "Default author for <head> that gets overwritten by frontmatter",
+            "google_font_link": "Default Google fonts link to optionally use across the site. Also gets overwritten by frontmatter"
+        },
+        "url_origin": "Some parts of the build process may require dynamically adding in the site url, such as building rss feeds. ex: 'https://my-shodo-site.dev'",
+        "timezone": "IANA identifier that is used if you want to display local times"
+    }
+}
+```
+
+#### build_settings.json
+
+This is where all source paths and project settings are defined.
+
+NOTE: _Any path included in `root_template_paths` will have all of its children directories recursively added to the search path for Jinja2, so only top level paths should be included in the settings. In most cases, `"root_template_paths": [ "src/theme/views/" ]` should suffice, but it would be possible to add another path to `src/theme/assets/images` for example if you wanted to use the templates for working with an SVG but still wanted to maintain separation of concerns._
+
+## CLI Commands
+
+Shodo provides helpful CLI commands:
+
+### Generate UTC Timestamp
+
+Generate an ISO 8601 formatted UTC timestamp for use in front matter or RSS feeds:
+
+```bash
+shodo now
+```
+
+Output: `2025-11-28T19:45:32Z`
+
+This is useful for setting publication dates in article front matter:
+
+```jinja
+@frontmatter
+{
+    "title": "My Article",
+    "published_datetime": "2025-11-28T19:45:32Z"
+}
+@endfrontmatter
+```
+
+## Deploy to Netlify
+1. Allow Netlify to install the project dependencies.
+_If you are using pipenv, Netflify will install dependencies directly from the `pipfile`. Otherwise, you will need to generate a `requirements.txt` file via `pip freeze > requirements.txt`, `poetry export --format=requirements.txt > requirements.txt`, `uv pip compile pyproject.toml -o requirements.txt`, or similar to allow the dependencies to be installed via pip._
+
+2. Create a new repository on GitHub and push the Shodo project up to it
+3. Now, we have everything we will need to build and deploy the static site on Netlify. We will have to make a few specifications since Netlify won't be able to autodetect everything about the build configuration
+4. Choose "Add new site" on Netlify, and select the repository with your site
+5. For the `build command`, specify `python site_builder.py`
+6. Luckily, Netlify supports Python and will be able to automatically install dependencies from either the pipfile or requirements.txt. The only extra step we need to take is to change the default python version from 3.8 to the required python version in your `requirements.txt` or `Pipfile.lock`. To do this, go to the environment variables section and add `PYTHON_VERSION` for the variable name, and update the value.
+7. Now click to deploy the site. After around a minute, verify that the build was successful, and you should be able to view the deployed site!
+
+Reference: [Netlify Python Documentation](https://docs.netlify.com/configure-builds/manage-dependencies/#python)
+
+## Project Conventions
+
+#### Jinja templates
+
+For all jinja templates, use the `.jinja` file extension. Other extensions such as `.j2` or `.jinja2` are not fully supported at this time.
+
+###### Syntax Highlighting
+If you're using VSCode, the [Better Jinja](https://marketplace.visualstudio.com/items?itemName=samuelcolvin.jinjahtml) extension is recommended for full syntax highlighting out of the box using the `.jinja` extension. Other extensions will work, although you might need to configure the settings to look for the `.jinja` extension.
+
+#### For Contributors
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+This project uses the [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter) and follows the [current style guide](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html)
+
+##### Pulling down the repository and installing locally
+
+1. Start up a virtual environment and install the dev dependencies using your preferred method after pulling down the repository
+
+2. Once your virtual environment is activated, in the root of the project directory run `pip install -e .`
+
+3. Upon successful install, navigate to an entirely separate directory and run 
+
+```bash
+start-shodo-project <name of new project directory>
+```
+
+Upon success, a new starter project template should have been set up in the specified directory
+
+Start editing by making changes to `src/theme/views/home.jinja`
+
+5. Run `Python site_builder.py` from the main project directory when your ready to generate the site
+
+Find your static site located in the `dist/` directory
+
+For development, run `Python serve.py` from the root project directory. This will build the site in the `dist` directory with the latest changes from `src` and serve it on localhost.
