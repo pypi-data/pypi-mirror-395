@@ -1,0 +1,60 @@
+{
+    "primary_database": {
+        "$mirror": "database_service",
+        "host": "valid.db.example.com",
+        "port": 5432,
+        "database_name": "valid_app"
+    },
+    "secondary_database": {
+        "$mirror": "database_service",
+        "host": "valid-secondary.db.example.com",
+        "port": 5432,
+        "database_name": "valid_secondary"
+    },
+    "user_service": {
+        "$mirror": "user_service",
+        "database": {
+            "$mirror": "database_service",
+            "host": "user.db.example.com",
+            "port": 5432,
+            "database_name": "users"
+        },
+        "cache_enabled": true
+    },
+    "microservices": [
+        {
+            "$mirror": "simple_service",
+            "name": "valid_service"
+        }
+    ],
+    "service_registry": {
+        "main": {
+            "$mirror": "simple_service",
+            "name": "main_service"
+        }
+    },
+    "orchestrator": {
+        "$mirror": "complex_service",
+        "database": {
+            "$mirror": "database_service",
+            "host": "orchestrator.db.example.com",
+            "port": 5432,
+            "database_name": "orchestrator"
+        },
+        "user_service": {
+            "$mirror": "user_service",
+            "database": {
+                "$mirror": "database_service",
+                "host": "orch-user.db.example.com",
+                "port": 5432,
+                "database_name": "orch_users"
+            },
+            "cache_enabled": true
+        },
+        "config": {
+            "valid": "true"
+        }
+    },
+    "environment": "test",
+    "debug_mode": false
+}
