@@ -1,0 +1,158 @@
+Metadata-Version: 2.4
+Name: openquantum-sdk-qiskit
+Version: 0.2.1
+Summary: Qiskit Python SDK for Open Quantum
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: openquantum-sdk>=0.3.1
+Requires-Dist: qiskit>=2.0.0
+
+# openquantum-sdk-qiskit
+
+Qiskit 2.x addon for the OpenQuantum SDK.
+
+## Installation
+
+```bash
+# Plugin (and core SDK)
+pip install openquantum-sdk-qiskit
+
+# or via extras:
+pip install "openquantum-sdk[qiskit]"
+```
+
+## Authentication
+
+The OpenQuantum Qiskit Service uses **saved accounts** for authentication.
+
+### Option 1: Saved Account (Recommended)
+
+Save your credentials once using the `ClientCredentials` model from the core SDK. This is the recommended, secure, one-time setup.
+
+```python
+from openquantum_sdk.auth import ClientCredentials
+from openquantum_sdk.qiskit import OpenQuantumService
+
+OpenQuantumService.save_account(
+    name="default", # The name to refer to this account later
+    creds=ClientCredentials(client_id="s_...", client_secret="e460c8..."),
+    use_keyring=True, # Recommended for secure storage
+)
+
+# Then, load it automatically:
+svc = OpenQuantumService()
+```
+
+### Option 2: Direct in Code
+
+You can also pass the credentials directly when instantiating the service.
+
+```python
+from openquantum.qiskit import OpenQuantumService
+from openquantum_sdk.auth import ClientCredentialsAuth, ClientCredentials
+
+auth = ClientCredentialsAuth(
+    creds=ClientCredentials(client_id="s_...", client_secret="e460c8...")
+)
+svc = OpenQuantumService(auth=auth)
+```
+
+## Quickstart: SamplerV2
+
+```python
+# 1) Imports — just change import path from qiskit.* to openquantum.qiskit for SamplerV2 and EstimatorV2
+from openquantum_sdk.qiskit import OpenQuantumService, SamplerV2, list_backends, get_backend
+
+# Qiskit tools
+from qiskit import QuantumCircuit, transpile
+from qiskit.visualization import plot_histogram
+
+# 2) Auth — load saved account
+svc = OpenQuantumService()  # auto-loads saved account by default
+
+# 3) Discover backends (client-side filters, optional)
+bks = list_backends(service = svc, name="ankaa", device_type="QPU", online=True)
+print(bks)
+
+# 4) Select a backend (by id, name, or short code)
+backend = get_backend("rigetti:ankaa-3")
+
+# 5) Build a circuit, transpile against the backend if desired
+qc = QuantumCircuit(2)
+qc.h(0)
+qc.cx(0, 1)
+qc.measure_all()
+
+tqc = transpile(
+    qc,
+    backend=backend,
+    optimization_level=1,
+)
+
+# 6) Create a Sampler and **run**
+
+CONFIG = {
+    "backend_class_id": "rigetti:ankaa-3",  # UUID or short code
+    "job_subcategory_id": "phys:hds",  # Short code for Hamiltonian Dynamics Simulation
+    "name": "bell-demo",  # optional job name prefix
+}
+
+sampler = SamplerV2(
+    backend=backend,
+    scheduler=svc.scheduler,
+    config=CONFIG,
+    export_format="qasm3",
+)
+
+# Run a job (circuit, pub for params, shots)
+job = sampler.run([(tqc, None, 1000)])
+result = job.result()
+counts = result[0].data.m.get_counts()
+print(counts)
+
+# 7) Plot
+plot_histogram(counts)
+```
+
+## EstimatorV2 Quickstart
+
+```python
+# Import EstimatorV2
+from openquantum_sdk.qiskit import EstimatorV2
+from qiskit.quantum_info import SparsePauliOp
+# Create an Estimator
+est = EstimatorV2(
+    backend=backend,
+    scheduler=svc.scheduler,
+    config=CONFIG
+)
+layout = tqc.layout
+obs = SparsePauliOp.from_list([("II", 1), ("IZ", 2), ("XI", 3)]).apply_layout(layout) # Define observations for estimator to evaluate
+# Run (circuit, observables)
+job = est.run([(tqc, obs)])
+result = job.result()
+print(f"Expectation value: {result[0].data.evs}")
+```
+
+## API Reference
+
+## API Reference
+
+### `OpenQuantumService` Helpers
+
+| Method | Description |
+|--------|-------------|
+| `OpenQuantumService()` | Main client for auth, discovery, and factory creation. |
+| `save_account(...)` | Securely save credentials for auto-loading. |
+| `list_backends(...)` | Discover available **BackendV2** objects (with client-side filters). |
+| `get_backend(...)` | Retrieve a single **BackendV2** object. |
+
+### Qiskit Primitives
+
+| Class | Description |
+|-------|-------------|
+| `SamplerV2` | Qiskit 2.x Sampler compatible primitive that submits jobs to the OpenQuantum platform. |
+| `EstimatorV2` | Qiskit 2.x Estimator compatible primitive that submits jobs to the OpenQuantum platform. |
