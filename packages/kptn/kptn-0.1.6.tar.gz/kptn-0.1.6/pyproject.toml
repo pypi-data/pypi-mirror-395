@@ -1,0 +1,55 @@
+[project]
+name = "kptn"
+version = "0.1.6"
+description = "Meta tool for managing and deploying data pipelines."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12.5",
+    "pyyaml",
+    "jinja2",
+    "requests",
+    "pydantic",
+    "jsonschema==4.20.0",
+    "sqlglot>=26.3.8",
+]
+
+[project.optional-dependencies]
+aws = ["boto3"]
+prefect = ["prefect"]
+web = [
+    "watchfiles",
+    "fastapi>=0.116.2",
+    "uvicorn>=0.35.0"]
+duckdb = ["duckdb"]
+
+[project.scripts]
+kptn = "kptn.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+    "example/nibrs",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["kptn", "kptn_server"]
+
+# [tool.hatch.build.targets.wheel.force-include]
+# "kptn_server/templates" = "kptn_server/templates"
+# "kptn_server/static" = "kptn_server/static"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.14.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "example/step_example/tests"]
