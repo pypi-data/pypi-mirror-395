@@ -1,0 +1,244 @@
+Neo4j-LiteLLM
+=============
+
+A LiteLLM LLM component for Neo4j Graph RAG (Retrieval-Augmented Generation) system.
+
+Overview
+--------
+
+``neo4j_litellm`` is a Python package that provides a unified interface for integrating various Large Language Models (LLMs) with Neo4j Graph RAG framework using the LiteLLM library. It supports both synchronous and asynchronous model invocations with chat history and system instructions.
+
+Features
+--------
+
+- **Unified LLM Interface**: Compatible with multiple LLM providers through LiteLLM
+- **Neo4j GraphRAG Integration**: Implements the ``LLMInterface`` from ``neo4j_graphrag``
+- **Sync & Async Support**: Both ``invoke()`` and ``ainvoke()`` methods available
+- **Chat History Support**: Maintain conversation context with message history
+- **System Instructions**: Support for system prompts and instructions
+- **Flexible Configuration**: Configurable provider, model, API endpoints, and keys
+
+Installation
+------------
+
+.. code-block:: bash
+
+   pip install neo4j_litellm
+
+Dependencies
+------------
+
+- ``litellm>=1.77.5`` - Unified LLM interface library
+- ``neo4j_graphrag>=1.9.0`` - Neo4j Graph RAG framework
+
+Quick Start
+-----------
+
+Basic Usage
+~~~~~~~~~~~
+
+.. code-block:: python
+
+   from neo4j_litellm import LiteLLMInterface, ChatHistory
+
+   # Initialize the LLM interface
+   llm = LiteLLMInterface(
+       provider="openai",        # LLM provider (e.g., openai, anthropic, azure, etc.)
+       model_name="gpt-3.5-turbo",  # Model name
+       base_url="https://api.openai.com/v1",  # API base URL
+       api_key="your-api-key-here"  # API key
+   )
+
+   # Simple invocation
+   response = llm.invoke("Hello, how are you?")
+   print(response.content)
+
+With Chat History
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   from neo4j_litellm import LiteLLMInterface, ChatHistory
+
+   llm = LiteLLMInterface(
+       provider="openai",
+       model_name="gpt-3.5-turbo",
+       base_url="https://api.openai.com/v1",
+       api_key="your-api-key-here"
+   )
+
+   # Create chat history
+   message_history: List[ChatHistory] = [
+       {"role": "user", "content": "What's the capital of France?"},
+       {"role": "assistant", "content": "The capital of France is Paris."}
+   ]
+
+   # Invoke with chat history
+   response = llm.invoke(
+       input="Tell me more about Paris",
+       message_history=message_history
+   )
+   print(response.content)
+
+With System Instruction
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   llm = LiteLLMInterface(
+       provider="openai",
+       model_name="gpt-3.5-turbo",
+       base_url="https://api.openai.com/v1",
+       api_key="your-api-key-here"
+   )
+
+   response = llm.invoke(
+       input="Explain quantum computing",
+       system_instruction="You are a helpful physics tutor. Provide clear explanations."
+   )
+   print(response.content)
+
+Async Usage
+~~~~~~~~~~~
+
+.. code-block:: python
+
+   import asyncio
+   from neo4j_litellm import LiteLLMInterface
+
+   async def main():
+       llm = LiteLLMInterface(
+           provider="openai",
+           model_name="gpt-3.5-turbo",
+           base_url="https://api.openai.com/v1",
+           api_key="your-api-key-here"
+       )
+       
+       response = await llm.ainvoke("Hello from async!")
+       print(response.content)
+
+   # Run async function
+   asyncio.run(main())
+
+API Reference
+-------------
+
+LiteLLMInterface Class
+~~~~~~~~~~~~~~~~~~~~~~
+
+Constructor
+^^^^^^^^^^^
+
+.. code-block:: python
+
+   LiteLLMInterface(provider: str, model_name: str, base_url: str, api_key: str)
+
+- ``provider``: LLM provider name (e.g., "openai", "anthropic", "azure", etc.)
+- ``model_name``: Specific model name (e.g., "gpt-3.5-turbo", "claude-3-sonnet")
+- ``base_url``: API endpoint URL
+- ``api_key``: Authentication API key
+
+Methods
+^^^^^^^
+
+**invoke(input: str, message_history: Optional[List[ChatHistory]] = None, system_instruction: Optional[str] = None) -> LLMResponse**
+
+Synchronous method to invoke the LLM.
+
+- ``input``: User input text
+- ``message_history``: Optional list of chat history messages
+- ``system_instruction``: Optional system prompt
+- Returns: ``LLMResponse`` object with ``content`` field
+
+**ainvoke(input: str, message_history: Optional[List[ChatHistory]] = None, system_instruction: Optional[str] = None) -> LLMResponse**
+
+Asynchronous method to invoke the LLM.
+
+- Parameters same as ``invoke()``
+- Returns: ``LLMResponse`` object with ``content`` field
+
+ChatHistory Type
+~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   class ChatHistory(TypedDict):
+       role: str    # "system", "assistant", or "user"
+       content: str # Message content
+
+Supported LLM Providers
+-----------------------
+
+This package supports all LLM providers supported by LiteLLM, including:
+
+- OpenAI
+- Anthropic
+- Azure OpenAI
+- Google AI (Gemini)
+- Cohere
+- Hugging Face
+- Dashscope
+- And many more...
+
+Refer to the `LiteLLM documentation <https://docs.litellm.ai/docs/providers>`_ for the complete list of supported providers.
+
+Integration with Neo4j GraphRAG
+-------------------------------
+
+This package implements the ``LLMInterface`` from ``neo4j_graphrag``, making it compatible with Neo4j's Graph RAG framework for building knowledge graph-powered retrieval-augmented generation applications. Here is an example of how to integrate the LiteLLM with Neo4j Graph RAG:
+
+.. code-block:: python
+    
+    from neo4j import GraphDatabase
+    from neo4j_graphrag.retrievers import VectorRetriever
+    from neo4j_litellm import LiteLLMInterface
+    from neo4j_graphrag.generation import GraphRAG
+    from neo4j_graphrag.embeddings import OpenAIEmbeddings
+
+    # 1. Neo4j driver
+    URI = "neo4j://:7687"
+    AUTH = ("neo4j", "password")
+
+    INDEX_NAME = "index-name"
+
+    # Connect to Neo4j database
+    driver = GraphDatabase.driver(URI, auth=AUTH)
+
+    # 2. Retriever
+    # Create Embedder object, needed to convert the user question (text) to a vector
+    embedder = OpenAIEmbeddings(model="text-embedding-3-large")
+
+    # Initialize the retriever
+    retriever = VectorRetriever(driver, INDEX_NAME, embedder)
+
+    # 3. LLM
+    # Note: the OPENAI_API_KEY must be in the env vars
+    llm = LiteLLMInterface(
+        provider="openai",
+        model_name="gpt-3.5-turbo",
+        base_url="https://api.openai.com/v1",
+        api_key="your-api-key-here"
+    )
+
+    # Initialize the RAG pipeline
+    rag = GraphRAG(retriever=retriever, llm=llm)
+
+    # Query the graph
+    query_text = "How do I do similarity search in Neo4j?"
+    response = rag.search(query_text=query_text, retriever_config={"top_k": 5})
+    print(response.answer)
+
+License
+-------
+
+MIT License
+
+Author
+------
+
+1Vewton.zh-n (zhanyunze0601@gmail.com)
+
+Contributing
+------------
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
