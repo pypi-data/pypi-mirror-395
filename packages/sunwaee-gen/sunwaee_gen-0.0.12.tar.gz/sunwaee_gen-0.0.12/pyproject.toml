@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sunwaee-gen"
+description = "All LLMs, one response format."
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+dynamic = ["dependencies", "version"]
+
+authors = [{name="David NAISSE"}]
+maintainers = [{name="David NAISSE"}]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov", # coverage
+    "pytest-asyncio", # async 
+    "httpx", # async api
+    "twine", # push to pypi
+    "build", # build
+]
+
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
+
+[tool.setuptools_scm]
+version_file = "version.py"
+version_scheme = "only-version"
+local_scheme = "no-local-version"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report=term-missing"
+testpaths = ["tests/"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["src/sunwaee_gen"]
