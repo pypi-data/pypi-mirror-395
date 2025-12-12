@@ -1,0 +1,116 @@
+[project]
+name = "ably"
+version = "2.1.3"
+description = "Python REST and Realtime client library SDK for Ably realtime messaging service"
+readme = "LONG_DESCRIPTION.rst"
+requires-python = ">=3.7"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "Ably", email = "support@ably.com" }
+]
+classifiers = [
+  "Development Status :: 6 - Mature",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "msgpack>=1.0.0,<2.0.0",
+  "httpx>=0.24.1,<1.0; python_version=='3.7'",
+  "httpx>=0.25.0,<1.0; python_version>='3.8'",
+  "h2>=4.1.0,<5.0.0",
+  "websockets>=10.0,<12.0; python_version=='3.7'",
+  "websockets>=12.0,<15.0; python_version=='3.8'",
+  "websockets>=15.0,<16.0; python_version>='3.9'",
+  "pyee>=9.0.4,<10.0.0; python_version=='3.7'",
+  "pyee>=11.1.0,<14.0.0; python_version>='3.8'",
+]
+
+[project.optional-dependencies]
+oldcrypto = ["pycrypto>=2.6.1,<3.0.0"]
+crypto = ["pycryptodome"]
+vcdiff = ["vcdiff-decoder>=0.1.0,<0.2.0"]
+dev = [
+  "pytest>=7.1,<8.0",
+  "mock>=4.0.3,<5.0.0",
+  "pytest-cov>=2.4,<3.0",
+  "ruff>=0.14.0,<1.0.0",
+  "pytest-xdist>=1.15,<2.0",
+  "respx>=0.20.0,<0.21.0; python_version=='3.7'",
+  "respx>=0.22.0,<0.23.0; python_version>='3.8'",
+  "importlib-metadata>=4.12,<5.0",
+  "pytest-timeout>=2.1.0,<3.0.0",
+  "pytest-rerunfailures>=13.0,<14.0; python_version=='3.7'",
+  "pytest-rerunfailures>=14.0,<15.0; python_version>='3.8'",
+  "async-case>=10.1.0,<11.0.0; python_version=='3.7'",
+  "tokenize_rt",
+  "vcdiff-decoder>=0.1.0a1",
+]
+
+[project.scripts]
+unasync = "ably.scripts.unasync:run"
+
+[project.urls]
+Homepage = "https://ably.com"
+Repository = "https://github.com/ably/ably-python"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+ignore-vcs = true
+include = [
+    "/ably",
+    "/COPYRIGHT",
+    "/README.md",
+    "/LICENSE",
+    "/LONG_DESCRIPTION.rst",
+    "/images",
+    "/setup.cfg",
+    "/pyproject.toml"
+]
+exclude = [
+    "**/*.pyc",
+    "**/__pycache__"
+]
+
+[tool.hatch.build.targets.wheel]
+ignore-vcs = true
+packages = ["ably"]
+
+[tool.pytest.ini_options]
+timeout = 30
+
+[[tool.uv.index]]
+name = "experimental"
+url = "https://test.pypi.org/simple/"
+explicit = true
+
+[tool.ruff]
+line-length = 115
+extend-exclude = [
+  "ably/sync",
+  "test/ably/sync",
+]
+
+[tool.ruff.lint]
+# Enable Pyflakes (F), pycodestyle (E, W), pep8-naming (N), isort (I), pyupgrade (UP), bugbear (B) and comprehensions (C4)
+select = ["E", "W", "F", "N", "I", "UP", "B", "C4"]
+ignore = [
+  "N818",  # exception name should end in 'Error'
+  "UP026",  # mock -> unittest.mock (need mock package for Python 3.7 AsyncMock support)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # imported but unused
