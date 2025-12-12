@@ -1,0 +1,146 @@
+{
+  "realm": "main",
+  "displayName": "Main Application Realm",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": true,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "passwordPolicy": "length(6)",
+  "attributes": {
+    "frontendUrl": "",
+    "adminEventsEnabled": "false",
+    "adminEventsDetailsEnabled": "false"
+  },
+  "clients": [
+    {
+      "clientId": "app",
+      "name": "Frontend Application Client",
+      "description": "Cliente público para aplicaciones frontend (SPA, mobile apps)",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "*",
+        "http://localhost:3000/*",
+        "http://localhost:4200/*",
+        "https://*.azurewebsites.net/*"
+      ],
+      "webOrigins": [
+        "*",
+        "http://localhost:3000",
+        "http://localhost:4200",
+        "https://*.azurewebsites.net"
+      ],
+      "defaultClientScopes": [
+        "acr",
+        "email",
+        "web-origins",
+        "profile",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "audience-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "api",
+      "name": "Backend API Client",
+      "description": "Cliente confidencial que permite autenticación de usuarios y servicio mediante client credentials",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "secret": "${KEYCLOAK_API_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "protocol": "openid-connect",
+
+      "redirectUris": [
+        "*",
+        "http://localhost:8080/*",
+        "https://*.azurewebsites.net/*"
+      ],
+      "webOrigins": [
+        "*",
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "http://localhost:5000",
+        "https://*.azurewebsites.net"
+      ],
+      "defaultClientScopes": [
+        "acr",
+        "email",
+        "web-origins",
+        "profile",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "audience-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-api",
+      "enabled": true,
+      "serviceAccountClientId": "api",
+      "clientRoles": {
+        "realm-management": ["realm-admin"]
+      }
+    }
+  ]
+}

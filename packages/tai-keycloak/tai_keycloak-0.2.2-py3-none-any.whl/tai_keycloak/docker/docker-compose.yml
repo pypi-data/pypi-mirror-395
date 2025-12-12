@@ -1,0 +1,151 @@
+# =============================================================================
+# Docker Compose Unificado para Keycloak
+# Soporta múltiples perfiles: development, development-db, azure, onpremise
+# =============================================================================
+networks:
+  keycloak-network:
+    driver: bridge
+
+volumes:
+  keycloak_data:
+    driver: local
+  traefik_logs:
+    driver: local
+  postgres_data:
+    driver: local
+
+services:
+  # ===========================================================================
+  # Keycloak Service
+  # Perfil: development (default), development-db, azure, onpremise
+  # ===========================================================================
+  keycloak:
+    container_name: keycloak
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        KEYCLOAK_VERSION: ${KEYCLOAK_VERSION:-26.4.5}
+        DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-development}
+        # Admin credentials
+        KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+        KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
+        KEYCLOAK_API_CLIENT_SECRET: ${KEYCLOAK_API_CLIENT_SECRET:-dev-secret}
+        # Database configuration (para development-db, azure, onpremise)
+        KC_DB: ${KC_DB:-postgres}
+        KC_DRIVER: ${KC_DRIVER:-postgresql}
+        KC_DB_URL_HOST: ${KC_DB_URL_HOST:-postgres}
+        KC_DB_URL_PORT: ${KC_DB_URL_PORT:-5432}
+        KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:-keycloak}
+        KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak}
+        KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+        # HTTP Configuration
+        KC_HTTP_PORT: ${KC_HTTP_PORT:-8090}
+        KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
+        # Hostname configuration (para onpremise)
+        KC_HOSTNAME: ${KC_HOSTNAME:-}
+        KC_HOSTNAME_PATH: ${KC_HOSTNAME_PATH:-/}
+        KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
+    ports:
+      - "${KC_HTTP_PORT:-8090}:${KC_HTTP_PORT:-8090}"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | head -1 | grep '200'"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    profiles:
+      - development
+      - development-docker-db
+      - development-external-db
+      - azure
+      - onpremise
+
+  # ===========================================================================
+  # Traefik Reverse Proxy
+  # Perfil: onpremise (solo se levanta en modo on-premise)
+  # ===========================================================================
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+      - "--log.filePath=/var/log/traefik/traefik.log"
+      - "--log.level=${TRAEFIK_LOG_LEVEL:-INFO}"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+    labels:
+      # Middleware para forzar SSL
+      - "traefik.http.middlewares.ssl-redirect.headers.sslforcehost=true"
+      - "traefik.http.middlewares.ssl-redirect.headers.sslhost=${KC_HOSTNAME:-localhost}"
+      # Configuración de Keycloak
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`${KC_HOSTNAME:-localhost}`) && PathPrefix(`${KC_HOSTNAME_PATH:-/keycloak}`)"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
+      - "traefik.http.routers.keycloak.tls=true"
+      - "traefik.http.routers.keycloak.priority=100"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=${KC_HTTP_PORT:-8090}"
+      # Middleware para quitar el prefijo antes de enviar a Keycloak
+      - "traefik.http.middlewares.keycloak-stripprefix.stripprefix.prefixes=${KC_HOSTNAME_PATH:-/keycloak}"
+      # Middleware para headers X-Forwarded
+      - "traefik.http.middlewares.keycloak-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.keycloak-headers.headers.customrequestheaders.X-Forwarded-Host=${KC_HOSTNAME:-localhost}"
+      - "traefik.http.middlewares.keycloak-headers.headers.customrequestheaders.X-Forwarded-Port=443"
+      - "traefik.http.routers.keycloak.middlewares=keycloak-stripprefix,keycloak-headers"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_logs:/var/log/traefik
+      - ./traefik/certs:/etc/traefik/certs:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - onpremise
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  # ===========================================================================
+  # PostgreSQL Database (opcional para desarrollo con BD externa)
+  # Perfil: development-db
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: keycloak-postgres
+    environment:
+      POSTGRES_DB: ${KC_DB_URL_DATABASE:-keycloak}
+      POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USERNAME:-keycloak} -d ${KC_DB_URL_DATABASE:-keycloak}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - development-docker-db
