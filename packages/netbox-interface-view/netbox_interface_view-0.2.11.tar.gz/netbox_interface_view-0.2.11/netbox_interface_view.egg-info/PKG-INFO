@@ -1,0 +1,146 @@
+Metadata-Version: 2.4
+Name: netbox-interface-view
+Version: 0.2.11
+Summary: NetBox Plugin for viewing interfaces in a grid layout with VLAN color-coding
+Home-page: https://github.com/ITW-Welding-AB/netbox-plugin-interface-view
+Author: Tolfx
+License: Apache 2.0
+Keywords: netbox plugin interface grid visualization
+Classifier: Development Status :: 4 - Beta
+Classifier: Framework :: Django
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: requires-python
+Dynamic: summary
+
+# netbox-interface-view
+
+NetBox Plugin for viewing device interfaces in a stylish grid layout that mimics the physical port arrangement.
+
+## Features
+
+- **Grid Visualization**: Display device interfaces in a configurable grid layout (rows × columns)
+- **Visual Connection Status**: Color-coded indicators show interface connection and enabled status
+- **VLAN Color-Coding**: Interfaces are color-coded based on their VLAN assignments
+  - Border color represents the untagged VLAN
+  - Colored dots represent tagged VLANs
+- **Interface Filtering**: Filter out specific interface types (e.g., Virtual, LAG, Loopback)
+- **Configurable Layout**: Grid dimensions can be configured per device using custom fields
+
+## Installation
+
+1. Install the plugin:
+```bash
+pip install netbox-interface-view
+```
+
+2. Add the plugin to your NetBox configuration (`configuration.py`):
+```python
+PLUGINS = [
+    'netbox_interface_view',
+]
+```
+
+3. Run database migrations:
+```bash
+cd /opt/netbox/netbox/
+python3 manage.py migrate
+```
+
+4. Restart NetBox services:
+```bash
+sudo systemctl restart netbox netbox-rq
+```
+
+## Configuration
+
+### Custom Fields Setup
+
+The plugin requires the following custom fields to be created in NetBox:
+
+#### Device Custom Fields
+
+1. **grid_rows** (Integer)
+   - Content Type: `dcim > device`
+   - Type: Integer
+   - Default: 2
+   - Description: Number of rows in the interface grid
+
+2. **grid_columns** (Integer)
+   - Content Type: `dcim > device`
+   - Type: Integer
+   - Default: 24
+   - Description: Number of columns in the interface grid
+
+#### VLAN Custom Fields
+
+1. **color** (Text)
+   - Content Type: `ipam > vlan`
+   - Type: Text
+   - Default: #cccccc
+   - Validation: Hex color code (e.g., #FF5733)
+   - Description: Color to use for VLAN visualization (hex color code)
+
+### Creating Custom Fields via NetBox UI
+
+1. Navigate to **Customization > Custom Fields**
+2. Click **Add** to create a new custom field
+3. Fill in the details as specified above
+4. Save the custom field
+
+### Creating Custom Fields via API
+
+You can also create custom fields programmatically using the NetBox API or Django shell.
+
+## Usage
+
+1. Navigate to a device detail page in NetBox
+2. Click the **"View Interface Grid"** button (appears in the device header)
+3. The grid visualization page will display:
+   - A configurable grid of interface cells
+   - Connection status indicators (green = connected, gray = disconnected, red = disabled)
+   - VLAN color coding (border = untagged VLAN, dots = tagged VLANs)
+   - Filter options to exclude specific interface types
+
+### Example Configuration
+
+For a 48-port switch with ports arranged in 2 rows:
+- Set `grid_rows` = 2
+- Set `grid_columns` = 24
+
+For a 24-port switch with ports arranged in 3 rows:
+- Set `grid_rows` = 3
+- Set `grid_columns` = 8
+
+## Legend
+
+- **Green dot (●)**: Interface is connected and enabled
+- **Gray dot (●)**: Interface is disconnected
+- **Red dot (●)**: Interface is disabled
+- **Border color**: Represents the untagged VLAN color
+- **Small colored dots**: Represent tagged VLANs
+
+## Requirements
+
+- NetBox >= 3.5.0
+- Python >= 3.8
+
+## License
+
+This project is licensed under the Apache 2.0 License.
+

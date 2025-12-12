@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rack Interface Grid - Mock Preview</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Material Design Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.3.67/css/materialdesignicons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --tblr-bg-surface-tertiary: #f8f9fa;
+      --tblr-bg-surface: #ffffff;
+      --tblr-bg-surface-secondary: #f1f5f9;
+      --tblr-border-color: #dee2e6;
+      --tblr-body-color: #1e293b;
+      --tblr-primary: #206bc4;
+    }
+
+    html[data-theme="dark"] {
+      --tblr-bg-surface-tertiary: #1e2327;
+      --tblr-bg-surface: #1a1d21;
+      --tblr-bg-surface-secondary: #242a30;
+      --tblr-border-color: #3a4249;
+      --tblr-body-color: #e0e0e0;
+      --tblr-primary: #4299e1;
+    }
+
+    html[data-theme="dark"] body {
+      background-color: #1a1d21;
+      color: #e0e0e0;
+    }
+
+    .rack-device-row {
+      border: 1px solid var(--tblr-border-color);
+      border-radius: 4px;
+      padding: 3px;
+      background-color: var(--tblr-bg-surface);
+    }
+
+    .rack-device-row:hover {
+      background-color: var(--tblr-bg-surface-secondary);
+    }
+
+    .rack-device-name {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      padding: 4px 6px;
+      margin-right: 4px;
+      font-size: 0.75em;
+      font-weight: 600;
+      color: var(--tblr-body-color);
+      text-decoration: none;
+      background-color: var(--tblr-bg-surface-secondary);
+      border-radius: 3px;
+      white-space: nowrap;
+      min-width: 20px;
+    }
+
+    .rack-device-name:hover {
+      background-color: var(--tblr-primary);
+      color: white !important;
+    }
+
+    .interface-cell {
+      transition: transform 0.1s, box-shadow 0.1s;
+      background-color: var(--tblr-bg-surface-tertiary);
+    }
+
+    .interface-cell:hover {
+      transform: scale(1.05);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+
+    /* Interface Type Visual Differentiation via Border Styling */
+
+    /* Virtual interfaces - no border radius (sharp square corners) */
+    .interface-cell[data-interface-type*="virtual"],
+    .interface-cell[data-interface-type*="lag"],
+    .interface-cell[data-interface-type*="bridge"] {
+      border-radius: 0px !important;
+      border-style: dashed !important;
+    }
+
+    /* Ethernet (fixed) - blocky/square corners (minimal radius) */
+    .interface-cell[data-interface-type*="100base"],
+    .interface-cell[data-interface-type*="1000base"],
+    .interface-cell[data-interface-type*="2.5gbase"],
+    .interface-cell[data-interface-type*="5gbase"],
+    .interface-cell[data-interface-type*="10gbase"],
+    .interface-cell[data-interface-type*="25gbase"],
+    .interface-cell[data-interface-type*="40gbase"],
+    .interface-cell[data-interface-type*="100gbase"] {
+      border-radius: 2px !important;
+    }
+
+    /* Ethernet (modular) - rounded corners (SFP, QSFP, etc.) */
+    .interface-cell[data-interface-type*="sfp"],
+    .interface-cell[data-interface-type*="qsfp"],
+    .interface-cell[data-interface-type*="xfp"],
+    .interface-cell[data-interface-type*="cfp"],
+    .interface-cell[data-interface-type*="cx4"] {
+      border-radius: 6px !important;
+    }
+
+    /* Ethernet (backplane) - medium square corners */
+    .interface-cell[data-interface-type*="backplane"] {
+      border-radius: 1px !important;
+      border-width: 4px !important;
+    }
+
+    /* Wireless - pill shape (very rounded) */
+    .interface-cell[data-interface-type*="ieee802.11"],
+    .interface-cell[data-interface-type*="80211"] {
+      border-radius: 25px !important;
+    }
+
+    /* Cellular - octagon-like (medium-high radius) */
+    .interface-cell[data-interface-type*="gsm"],
+    .interface-cell[data-interface-type*="cdma"],
+    .interface-cell[data-interface-type*="lte"],
+    .interface-cell[data-interface-type*="5g"] {
+      border-radius: 8px !important;
+      clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+    }
+
+    /* SONET/SDH - diamond shape */
+    .interface-cell[data-interface-type*="sonet"],
+    .interface-cell[data-interface-type*="sdh"] {
+      border-radius: 0px !important;
+      transform: rotate(45deg);
+    }
+
+    .interface-cell[data-interface-type*="sonet"]>*,
+    .interface-cell[data-interface-type*="sdh"]>* {
+      transform: rotate(-45deg);
+    }
+
+    /* FibreChannel - rounded square */
+    .interface-cell[data-interface-type*="fibrechannel"],
+    .interface-cell[data-interface-type*="fc"] {
+      border-radius: 6px !important;
+      border-width: 4px !important;
+    }
+
+    /* Serial - sharp with double border effect */
+    .interface-cell[data-interface-type*="t1"],
+    .interface-cell[data-interface-type*="e1"],
+    .interface-cell[data-interface-type*="t3"],
+    .interface-cell[data-interface-type*="e3"],
+    .interface-cell[data-interface-type*="serial"] {
+      border-radius: 0px !important;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Stacking - medium rounded with thicker border */
+    .interface-cell[data-interface-type*="stackwise"],
+    .interface-cell[data-interface-type*="stack"] {
+      border-radius: 4px !important;
+      border-width: 5px !important;
+    }
+
+    /* InfiniBand - hexagon-like */
+    .interface-cell[data-interface-type*="infiniband"] {
+      border-radius: 3px !important;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    }
+
+    /* Coaxial - circular */
+    .interface-cell[data-interface-type*="coaxial"] {
+      border-radius: 50% !important;
+    }
+
+    /* PON - rounded rectangle */
+    .interface-cell[data-interface-type*="pon"],
+    .interface-cell[data-interface-type*="epon"],
+    .interface-cell[data-interface-type*="gpon"] {
+      border-radius: 10px !important;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Theme Toggle Button -->
+  <button class="btn btn-dark theme-toggle" onclick="toggleTheme()">
+    <i class="mdi mdi-theme-light-dark"></i> Toggle Theme
+  </button>
+
+  <div class="container-fluid" style="position: relative; padding: 20px;">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h1>Rack Interface Grid: DC1-Rack-A01</h1>
+          <div>
+            <div class="form-check form-switch d-inline-block me-3">
+              <input class="form-check-input" type="checkbox" id="showCablesToggle">
+              <label class="form-check-label" for="showCablesToggle">Show Cables</label>
+            </div>
+            <a href="#" class="btn btn-secondary">
+              <i class="mdi mdi-arrow-left"></i> Back to Rack
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <svg id="cable-overlay"
+      style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; display: none;"></svg>
+
+    <!-- Device 1: Core Switch (device type color: blue) -->
+    <div class="rack-device-row" style="display: flex; align-items: stretch; margin-bottom: 4px; background-color: #3498dbaa;">
+      <a href="#" class="rack-device-name">Core-Switch-01</a>
+      <div class="interface-grid" id="device1-grid" style="
+        display: grid; 
+        grid-template-columns: repeat(24, minmax(40px, 80px));
+        gap: 1px;
+        width: fit-content;
+      ">
+        <!-- Interfaces will be generated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Device 2: Access Switch (device type color: green) -->
+    <div class="rack-device-row" style="display: flex; align-items: stretch; margin-bottom: 4px; background-color: #2ecc71aa;">
+      <a href="#" class="rack-device-name">Access-Switch-01</a>
+      <div class="interface-grid" id="device2-grid" style="
+        display: grid; 
+        grid-template-columns: repeat(24, minmax(40px, 80px));
+        gap: 1px;
+        width: fit-content;
+      ">
+        <!-- Interfaces will be generated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Device 3: Patch Panel (device type color: orange) -->
+    <div class="rack-device-row" style="display: flex; align-items: stretch; margin-bottom: 4px; background-color: #f39c12aa;">
+      <a href="#" class="rack-device-name">Patch-Panel-01</a>
+      <div class="interface-grid" id="device3-grid" style="
+        display: grid; 
+        grid-template-columns: repeat(12, minmax(40px, 80px));
+        gap: 1px;
+        width: fit-content;
+      ">
+        <!-- Interfaces will be generated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Device 4: Server with SFP+ (device type color: red) -->
+    <div class="rack-device-row" style="display: flex; align-items: stretch; margin-bottom: 4px; background-color: #e74c3caa;">
+      <a href="#" class="rack-device-name">Server-01</a>
+      <div class="interface-grid" id="device4-grid" style="
+        display: grid; 
+        grid-template-columns: repeat(4, minmax(40px, 80px));
+        gap: 1px;
+        width: fit-content;
+      ">
+        <!-- Interfaces will be generated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Mock Data
+    const vlanColors = {
+      'Management': '#3498db',
+      'Servers': '#e74c3c',
+      'Users': '#2ecc71',
+      'Voice': '#9b59b6',
+      'IoT': '#f39c12',
+      'Guest': '#1abc9c',
+      'Native': '#cccccc'
+    };
+
+    const interfaceTypes = [
+      '1000base-t',
+      '10gbase-t',
+      '10gbase-x-sfpp',
+      '25gbase-x-sfp28',
+      'front-port-8p8c'
+    ];
+
+    function generateInterface(index, deviceId, options = {}) {
+      const {
+        type = '1000base-t',
+        connected = Math.random() > 0.3,
+        enabled = Math.random() > 0.1,
+        untaggedVlan = null,
+        taggedVlans = [],
+        connectedEndpoints = [],
+        cableColor = null,
+        modelType = 'interface'
+      } = options;
+
+      const isCompact = type.includes('sfp') || type.includes('8p8c') || type.includes('base') || type.includes('lc') || type.includes('sc') || type.includes('mpo');
+      const statusColor = connected && enabled ? '#28a745' : (!enabled ? '#dc3545' : '#6c757d');
+      const borderColor = untaggedVlan ? vlanColors[untaggedVlan] || '#cccccc' : '#cccccc';
+
+      const id = `${modelType}-${deviceId}-${index}`;
+      const endpointsJson = JSON.stringify(connectedEndpoints.map(ep => ep.id));
+      const endpointsDisplay = connectedEndpoints.map(ep => ep.name + (ep.deviceName ? ` (${ep.deviceName})` : '')).join(', ');
+      const multiTermCount = connectedEndpoints.length;
+
+      return `
+                <a href="#" class="grid-item-wrapper" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit;">
+                    <div style="text-align: center; font-size: 0.65em; color: #495057; font-weight: 600; margin-bottom: 2px;">
+                        ${index}
+                    </div>
+                    <div class="interface-cell interface-type-${type}"
+                        id="${id}"
+                        data-connected-endpoints='${endpointsJson}'
+                        data-cable-color="${cableColor || ''}"
+                        data-interface-id="${index}"
+                        data-interface-index="${index - 1}"
+                        data-interface-name="eth${index}"
+                        data-interface-type="${type}"
+                        data-bs-toggle="tooltip"
+                        data-bs-html="true"
+                        title="<strong>Port ${index}: eth${index}</strong><br>Type: ${type}<br>${untaggedVlan ? 'Untagged: ' + untaggedVlan + '<br>' : ''}${taggedVlans.length ? 'Tagged: ' + taggedVlans.join(', ') + '<br>' : ''}${connectedEndpoints.length ? 'Connected to: ' + endpointsDisplay + '<br>' : ''}Status: ${connected && enabled ? 'Connected & Enabled' : (!enabled ? 'Disabled' : 'Disconnected')}"
+                        style="
+                            border: 3px solid ${borderColor};
+                            padding: 3px;
+                            ${isCompact ? 'height: 77px; width: 73px;' : 'min-height: 85px; max-height: 85px; width: 100%;'}
+                            display: flex;
+                            flex-direction: column;
+                            position: relative;
+                            overflow: hidden;
+                            cursor: pointer;
+                        ">
+                        <div style="position: absolute; top: 2px; right: 2px;">
+                            <span style="color: ${statusColor}; font-size: 12px;">●</span>
+                        </div>
+                        ${multiTermCount > 1 ? `
+                            <div style="position: absolute; top: 2px; left: 2px;">
+                                <span style="color: #007bff; font-size: 10px; font-weight: bold;" title="Multi-termination: ${multiTermCount} endpoints">${multiTermCount}×</span>
+                            </div>
+                        ` : ''}
+                        ${taggedVlans.length > 0 ? `
+                            <div style="position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px;">
+                                ${taggedVlans.map(v => `<span style="width: 7px; height: 7px; border-radius: 50%; background-color: ${vlanColors[v] || '#999'}; display: inline-block; border: 1px solid #333;"></span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </a>
+            `;
+    }
+
+    // Generate Device 1: Core Switch (48 ports, various VLANs)
+    const device1Grid = document.getElementById('device1-grid');
+    const vlans = ['Management', 'Servers', 'Users', 'Voice', 'IoT', 'Guest'];
+    for (let i = 1; i <= 48; i++) {
+      const vlanIndex = (i - 1) % vlans.length;
+      const taggedCount = Math.floor(Math.random() * 3);
+      const taggedVlans = vlans.slice(0, taggedCount);
+
+      // Create connections between devices
+      let connectedEndpoints = [];
+      let cableColor = null;
+
+      if (i <= 24) {
+        connectedEndpoints = [{ id: `interface-2-${i}`, name: `eth${i}`, type: 'interface', deviceName: 'Access-Switch-01' }];
+        cableColor = ['#0066cc', '#cc6600', '#00cc66', '#cc0066'][i % 4];
+      }
+
+      device1Grid.innerHTML += generateInterface(i, 1, {
+        type: i <= 44 ? '1000base-t' : '10gbase-x-sfpp',
+        untaggedVlan: vlans[vlanIndex],
+        taggedVlans: taggedVlans,
+        connected: i <= 40,
+        enabled: i !== 5 && i !== 15,
+        connectedEndpoints: connectedEndpoints,
+        cableColor: cableColor
+      });
+    }
+
+    // Generate Device 2: Access Switch (24 ports)
+    const device2Grid = document.getElementById('device2-grid');
+    for (let i = 1; i <= 24; i++) {
+      const vlanIndex = (i - 1) % vlans.length;
+
+      device2Grid.innerHTML += generateInterface(i, 2, {
+        type: '1000base-t',
+        untaggedVlan: vlans[vlanIndex],
+        taggedVlans: i % 4 === 0 ? ['Voice', 'Users'] : [],
+        connected: i <= 20,
+        enabled: true,
+        connectedEndpoints: [{ id: `interface-1-${i}`, name: `eth${i}`, type: 'interface', deviceName: 'Core-Switch-01' }],
+        cableColor: ['#0066cc', '#cc6600', '#00cc66', '#cc0066'][i % 4]
+      });
+    }
+
+    // Generate Device 3: Patch Panel (24 front ports) - includes multi-termination examples
+    const device3Grid = document.getElementById('device3-grid');
+    for (let i = 1; i <= 24; i++) {
+      let connectedEndpoints = [];
+      let cableColor = null;
+      
+      // Example: Ports 1-2 are a fiber pair going to a single SFP port (multi-termination)
+      if (i === 1) {
+        connectedEndpoints = [
+          { id: `frontport-3-2`, name: 'FP2', type: 'frontport', deviceName: 'Patch-Panel-01' }
+        ];
+        cableColor = '#ff6600';
+      } else if (i === 2) {
+        connectedEndpoints = [
+          { id: `frontport-3-1`, name: 'FP1', type: 'frontport', deviceName: 'Patch-Panel-01' }
+        ];
+        cableColor = '#ff6600';
+      }
+      // Example: Port 3 connects to multiple front ports (multi-termination: fiber breakout)
+      else if (i === 3) {
+        connectedEndpoints = [
+          { id: `interface-2-21`, name: 'eth21', type: 'interface', deviceName: 'Access-Switch-01' },
+          { id: `interface-2-22`, name: 'eth22', type: 'interface', deviceName: 'Access-Switch-01' }
+        ];
+        cableColor = '#9900cc';
+      }
+      // Example: Port 4-5 are part of a trunk cable going to server
+      else if (i === 4) {
+        connectedEndpoints = [
+          { id: `interface-4-3`, name: 'eth3', type: 'interface', deviceName: 'Server-01' },
+          { id: `interface-4-4`, name: 'eth4', type: 'interface', deviceName: 'Server-01' }
+        ];
+        cableColor = '#00cc99';
+      }
+      else if (i <= 18) {
+        connectedEndpoints = [{ id: `interface-2-${i}`, name: `eth${i}`, type: 'interface', deviceName: 'Access-Switch-01' }];
+        cableColor = '#666666';
+      }
+      
+      device3Grid.innerHTML += generateInterface(i, 3, {
+        type: 'front-port-8p8c',
+        modelType: 'frontport',
+        connected: i <= 18 || i <= 5,
+        enabled: true,
+        connectedEndpoints: connectedEndpoints,
+        cableColor: cableColor
+      });
+    }
+
+    // Generate Device 4: Server (4 SFP+ ports)
+    const device4Grid = document.getElementById('device4-grid');
+    for (let i = 1; i <= 4; i++) {
+      let connectedEndpoints = [];
+      let cableColor = null;
+      
+      if (i <= 2) {
+        connectedEndpoints = [{ id: `interface-1-${44 + i}`, name: `eth${44 + i}`, type: 'interface', deviceName: 'Core-Switch-01' }];
+        cableColor = '#00cc66';
+      } else if (i === 3 || i === 4) {
+        // These are connected via multi-termination from patch panel port 4
+        connectedEndpoints = [{ id: `frontport-3-4`, name: 'FP4', type: 'frontport', deviceName: 'Patch-Panel-01' }];
+        cableColor = '#00cc99';
+      }
+      
+      device4Grid.innerHTML += generateInterface(i, 4, {
+        type: '10gbase-x-sfpp',
+        untaggedVlan: 'Servers',
+        taggedVlans: i <= 2 ? ['Management'] : [],
+        connected: true,
+        enabled: true,
+        connectedEndpoints: connectedEndpoints,
+        cableColor: cableColor
+      });
+    }
+
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+
+    // Cable visualization
+    const toggle = document.getElementById('showCablesToggle');
+    const svg = document.getElementById('cable-overlay');
+    const container = document.querySelector('.container-fluid');
+
+    function highlightPath(path, startElem, endElem) {
+      if (!path) return;
+      path.setAttribute('stroke-width', '5');
+      path.style.opacity = '1';
+      const color = path.getAttribute('stroke');
+      startElem.style.boxShadow = '0 0 10px ' + color;
+      endElem.style.boxShadow = '0 0 10px ' + color;
+    }
+
+    function unhighlightPath(path, startElem, endElem) {
+      if (!path) return;
+      path.setAttribute('stroke-width', '2');
+      path.style.opacity = '0.6';
+      startElem.style.boxShadow = '';
+      endElem.style.boxShadow = '';
+    }
+    
+    function highlightMultiPath(paths, startElem, endElems) {
+      if (!paths || paths.length === 0) return;
+      const color = paths[0].getAttribute('stroke');
+      startElem.style.boxShadow = '0 0 10px ' + color;
+      paths.forEach((path, i) => {
+        path.setAttribute('stroke-width', '5');
+        path.style.opacity = '1';
+        if (endElems[i]) {
+          endElems[i].style.boxShadow = '0 0 10px ' + color;
+        }
+      });
+    }
+
+    function unhighlightMultiPath(paths, startElem, endElems) {
+      if (!paths || paths.length === 0) return;
+      startElem.style.boxShadow = '';
+      paths.forEach((path, i) => {
+        path.setAttribute('stroke-width', '2');
+        path.style.opacity = '0.6';
+        if (endElems[i]) {
+          endElems[i].style.boxShadow = '';
+        }
+      });
+    }
+
+    function drawCables() {
+      svg.innerHTML = '';
+      if (!toggle.checked) {
+        svg.style.display = 'none';
+        return;
+      }
+      svg.style.display = 'block';
+
+      svg.setAttribute('width', window.innerWidth);
+      svg.setAttribute('height', window.innerHeight);
+
+      const interfaces = document.querySelectorAll('.interface-cell[data-connected-endpoints]');
+      const drawnConnections = new Set();
+
+      interfaces.forEach(iface => {
+        const startId = iface.id;
+        let endpointsData = iface.dataset.connectedEndpoints;
+        
+        // Parse the endpoints array
+        let endpoints = [];
+        try {
+          endpoints = JSON.parse(endpointsData || '[]');
+        } catch (e) {
+          endpoints = [];
+        }
+
+        if (endpoints.length === 0) return;
+
+        // For multi-termination cables, we draw lines to each endpoint
+        const paths = [];
+        const targetElements = [];
+        
+        endpoints.forEach(endId => {
+          const connectionKey = [startId, endId].sort().join('-');
+          if (drawnConnections.has(connectionKey)) return;
+
+          const target = document.getElementById(endId);
+          if (target) {
+            drawnConnections.add(connectionKey);
+            const path = drawLine(iface, target, iface.dataset.cableColor);
+            paths.push(path);
+            targetElements.push(target);
+          }
+        });
+        
+        // Set up hover handlers for multi-termination highlighting
+        if (paths.length > 0) {
+          iface.onmouseenter = () => highlightMultiPath(paths, iface, targetElements);
+          iface.onmouseleave = () => unhighlightMultiPath(paths, iface, targetElements);
+          
+          // Also set up hover on each target
+          targetElements.forEach((target, i) => {
+            const originalEnter = target.onmouseenter;
+            const originalLeave = target.onmouseleave;
+            target.onmouseenter = () => {
+              highlightMultiPath(paths, iface, targetElements);
+              if (originalEnter) originalEnter();
+            };
+            target.onmouseleave = () => {
+              unhighlightMultiPath(paths, iface, targetElements);
+              if (originalLeave) originalLeave();
+            };
+          });
+        }
+      });
+    }
+
+    function drawLine(startElem, endElem, color) {
+      const startRect = startElem.getBoundingClientRect();
+      const endRect = endElem.getBoundingClientRect();
+
+      // Use viewport-relative coordinates since SVG is fixed
+      const x1 = startRect.left + startRect.width / 2;
+      const y1 = startRect.top + startRect.height / 2;
+      const x2 = endRect.left + endRect.width / 2;
+      const y2 = endRect.top + endRect.height / 2;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+      const dy = Math.abs(y2 - y1);
+      const controlPointOffset = Math.max(dy / 2, 50);
+      const d = `M ${x1} ${y1} C ${x1} ${y1 + controlPointOffset}, ${x2} ${y2 - controlPointOffset}, ${x2} ${y2}`;
+
+      path.setAttribute('d', d);
+      path.setAttribute('stroke', color || '#000000');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('style', 'pointer-events: stroke; cursor: pointer; opacity: 0.6; transition: opacity 0.2s, stroke-width 0.2s;');
+
+      path.addEventListener('mouseenter', () => highlightPath(path, startElem, endElem));
+      path.addEventListener('mouseleave', () => unhighlightPath(path, startElem, endElem));
+
+      svg.appendChild(path);
+      return path;
+    }
+
+    if (toggle) {
+      toggle.addEventListener('change', drawCables);
+    }
+    window.addEventListener('resize', drawCables);
+    window.addEventListener('scroll', drawCables);
+
+    // Theme toggle
+    function toggleTheme() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+    }
+  </script>
+</body>
+
+</html>
