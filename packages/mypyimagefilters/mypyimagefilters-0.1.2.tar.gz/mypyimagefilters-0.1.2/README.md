@@ -1,0 +1,107 @@
+# myPyImageFilters
+
+**Resumen**
+- **Propósito:** Biblioteca Python que actúa como wrapper sobre librerías nativas (C/CUDA/OpenACC) para aplicar filtros de imagen (RGB->Gris, Gaussian Blur, Sobel).
+- **Ubicación:** Código Python en `src/`. Las librerías nativas compartidas deben estar en `./bin/`.
+
+**Estructura**
+- `src/`: Contiene los wrappers Python:
+  - `cpu_image_lib.py` : wrapper para `bin/libfiltersseq.so` (implementación secuencial / CPU)
+  - `cuda_image_lib.py`: wrapper para `bin/libfilterscuda.so` (implementación usando CUDA)
+  - `openacc_image_lib.py`: wrapper para `bin/libfiltersacc.so` (implementación usando OpenACC / nvc)
+- `bin/`: Debería contener las bibliotecas compartidas `.so` generadas desde el código C/C++/CUDA/OpenACC.
+
+**Requisitos**
+- Python 3.x
+- `ctypes` (parte de la stdlib)
+- Bibliotecas nativas compiladas y colocadas en `./bin/`:
+  - `libfiltersseq.so`  (CPU)
+  - `libfilterscuda.so` (CUDA)
+  - `libfiltersacc.so`  (OpenACC)
+- Para CUDA: controlador NVIDIA y CUDA Toolkit instalados.
+- Para OpenACC (nvc): NVIDIA HPC SDK (o compilador compatible) y runtime disponibles.
+
+**Compilación (resumen)**
+- Si el proyecto incluye un `Makefile` en la raíz, prueba:
+
+```bash
+make
+```
+
+- Si no hay `Makefile`, ejemplos genéricos de compilación (ajusta según fuentes reales):
+
+```bash
+# Compilar versión secuencial (C)
+gcc -fPIC -shared -o bin/libfiltersseq.so src_c/*.c -I/path/to/include -lm
+
+# Compilar versión CUDA
+nvcc -Xcompiler -fPIC --shared -o bin/libfilterscuda.so src_cuda/*.cu src_c/*.c -I/path/to/include
+
+# Compilar versión OpenACC (nvc)
+nvc -acc -Minfo=accel -fPIC -shared -o bin/libfiltersacc.so src_openacc/*.c src_c/*.c -I/path/to/include
+```
+
+- Si usas `libfiltersacc.so`, puede ser necesario exportar `LD_LIBRARY_PATH` para encontrar dependencias en tiempo de ejecución:
+
+```bash
+export LD_LIBRARY_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/compilers/lib:$LD_LIBRARY_PATH
+```
+
+**Uso (ejemplos)**
+- Ejemplo con la implementación CPU (`src/cpu_image_lib.py`):
+
+```python
+from src.cpu_image_lib import CPUFilterLib
+
+lib = CPUFilterLib()
+lib.rgb_to_gray('input.jpg', 'out_gray.jpg')
+lib.gaussian_blur('input.jpg', 'out_blur.jpg', kernel_dim=5, stdev=2.0)
+lib.sobel('input.jpg', 'out_sobel.jpg')
+```
+
+- Ejemplo con CUDA (`src/cuda_image_lib.py`):
+
+```python
+from src.cuda_image_lib import CudaImageLib
+
+lib = CudaImageLib()
+lib.rgb_to_gray('input.jpg', 'out_gray_cuda.jpg')
+lib.gaussian_blur('input.jpg', 'out_blur_cuda.jpg', kernel_dim=7, stdev=2.0)
+lib.sobel('input.jpg', 'out_sobel_cuda.jpg')
+```
+
+- Ejemplo con OpenACC (`src/openacc_image_lib.py`):
+
+```python
+from src.openacc_image_lib import OpenACCFilterLib
+
+lib = OpenACCFilterLib()
+lib.rgb_to_gray('input.jpg', 'out_gray_acc.jpg')
+lib.gaussian_blur('input.jpg', 'out_blur_acc.jpg', kernel_dim=5, stdev=10.0)
+lib.sobel('input.jpg', 'out_sobel_acc.jpg')
+```
+
+**Detalles importantes (según wrappers)**
+- Los wrappers usan `ctypes` y esperan que las funciones C expongan estas firmas (según cada archivo):
+  - `image2arr(const char *file)` -> devuelve `Image *` (estructura CImage)
+  - `saveImg(Image *img, const char *filename)` -> void
+  - `freeImage(Image *img)` -> void (liberar memoria interna)
+  - `rgb2gray(Image *image)` -> `Image *`
+  - `GaussianBlur(Image *image, int kdim, float stdev)` -> `Image *`
+  - `Sobel(Image *image)` -> `Image *`
+
+- Asegúrate de que los nombres de las funciones y la estructura `Image` en el código nativo coincidan con las expectativas del wrapper (`CImage`).
+
+**Solución de problemas**
+- Error `FileNotFoundError` al cargar `.so`: verifica que los archivos existan en `./bin/` y que las rutas sean correctas.
+- `OSError` al cargar la librería OpenACC/CUDA: comprueba `LD_LIBRARY_PATH` y que los runtimes (CUDA, NVIDIA libs) estén disponibles.
+- Fallos en tiempo de ejecución o corrupciones de memoria: puede indicar incompatibilidad en la definición de `struct Image` entre C y el wrapper; revísala cuidadosamente.
+
+**Siguientes pasos sugeridos**
+- Añadir un `examples/` con scripts de prueba que usen cada backend.
+- Añadir un `Makefile` o `README_build.md` con instrucciones de compilación exactas según las fuentes nativas.
+
+**Contacto / Licencia**
+- Añade aquí tu información de licencia o contacto si deseas compartir el proyecto públicamente.
+
+Fin del README
