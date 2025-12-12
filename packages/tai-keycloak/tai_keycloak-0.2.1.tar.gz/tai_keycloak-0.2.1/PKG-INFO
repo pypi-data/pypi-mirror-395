@@ -1,0 +1,1518 @@
+Metadata-Version: 2.4
+Name: tai-keycloak
+Version: 0.2.1
+Summary: 
+License-File: LICENSE
+Author: MateoSaezMata
+Author-email: msaez@triplealpha.in
+Requires-Python: >=3.10,<4.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Provides-Extra: dev
+Requires-Dist: click (>=8.3.0,<9.0.0)
+Requires-Dist: pydantic (>=2.12.0,<3.0.0)
+Requires-Dist: pydantic-settings (>=2.11.0,<3.0.0)
+Requires-Dist: pytest (>=7.0.0) ; extra == "dev"
+Requires-Dist: pytest-cov (>=4.0.0) ; extra == "dev"
+Requires-Dist: pytest-mock (>=3.0.0) ; extra == "dev"
+Requires-Dist: python-keycloak (>=5.8.1,<6.0.0)
+Requires-Dist: rich (>=14.2.0,<15.0.0)
+Requires-Dist: tai-alphi (>=2.0.1,<3.0.0)
+Description-Content-Type: text/markdown
+
+# 🔐 tai-keycloak
+
+**Framework completo de desarrollo para Keycloak**: Cliente Python elegante, herramientas CLI y recursos de deployment unificados.
+
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Keycloak](https://img.shields.io/badge/keycloak-26.4.5-orange.svg)](https://www.keycloak.org/)
+
+---
+
+## 📋 Tabla de Contenidos
+
+- [Características Principales](#-características-principales)
+- [Instalación](#-instalación)
+- [Inicio Rápido](#-inicio-rápido)
+- [Arquitectura de la Librería](#-arquitectura-de-la-librería)
+  - [1. Service Layer (tai_keycloak.service)](#1-service-layer-tai_keycloakservice)
+  - [2. CLI Tools (tai-kc)](#2-cli-tools-tai-kc)
+  - [3. Docker Resources](#3-docker-resources)
+- [Guía de Uso Detallada](#-guía-de-uso-detallada)
+  - [Configuración](#configuración)
+  - [Gestión de Usuarios](#gestión-de-usuarios)
+  - [Gestión de Grupos](#gestión-de-grupos)
+  - [Gestión de Roles](#gestión-de-roles)
+  - [Gestión de Clientes](#gestión-de-clientes)
+  - [Tokens y Autenticación](#tokens-y-autenticación)
+- [Deployment](#-deployment)
+- [Arquitectura y Patrones de Diseño](#-arquitectura-y-patrones-de-diseño)
+- [Ejemplos Completos](#-ejemplos-completos)
+- [Troubleshooting](#-troubleshooting)
+
+---
+
+## ✨ Características Principales
+
+### 🔧 Service Layer Completo
+
+- **Cliente Admin** para operaciones administrativas
+- **Cliente App** para flujos OIDC (login, tokens, validación)
+- **DAOs especializados** para cada entidad (Users, Groups, Roles, Clients)
+- **DTOs tipados** con Pydantic para validación automática
+- **Manejo de errores robusto** con `OperationResult`
+- **Soporte async/sync** para operaciones concurrentes
+
+### 🛠️ CLI Tools (tai-kc)
+
+- **`tai-kc init`** - Inicialización de proyecto con recursos de Keycloak
+- **`tai-kc run`** - Levantar Keycloak con profiles (development, production, on-premise)
+- **`tai-kc api user`** - Gestión de usuarios desde CLI
+- **`tai-kc api client`** - Gestión de clientes
+- **`tai-kc api role`** - Gestión de roles
+- **`tai-kc api realm`** - Gestión de realms
+
+### 🚀 Docker Resources Unificados
+
+- **Dockerfile multi-stage** para todos los entornos
+- **Docker Compose con profiles** para desarrollo, Azure y on-premise
+- **Variables de entorno transparentes** (sin scripts opacos)
+- **GitHub Actions workflow** para CI/CD en Azure
+- **Traefik integrado** para HTTPS en on-premise
+
+---
+
+## 📦 Instalación
+
+```bash
+pip install tai-keycloak
+```
+
+### Dependencias
+
+- Python 3.10+
+- Docker 20.10+ (opcional, para deployment local)
+- Docker Compose 2.0+ (opcional)
+
+---
+
+## 🚀 Inicio Rápido
+
+### 1. Configuración Rápida
+
+La librería detecta automáticamente la configuración desde variables de entorno:
+
+```bash
+# Configuración completa
+export MAIN_KEYCLOAK_URL=admin:secret@keycloak.company.com:8080
+
+# Solo usuario (password por defecto: 'admin')
+export MAIN_KEYCLOAK_URL=myuser@keycloak.company.com:8080
+
+# Solo host y puerto (user/password por defecto: 'admin/admin')
+export MAIN_KEYCLOAK_URL=keycloak.company.com:8080
+
+# Solo host - detección inteligente de puerto/protocolo
+export MAIN_KEYCLOAK_URL=localhost                    # → http://localhost:8090
+export MAIN_KEYCLOAK_URL=myapp.azurewebsites.net      # → https://myapp.azurewebsites.net
+export MAIN_KEYCLOAK_URL=keycloak.company.com         # → https://keycloak.company.com
+```
+
+### 2. Primer Script
+
+```python
+from tai_keycloak import kc, User
+
+# Crear usuario
+new_user = User(
+    username="john.doe",
+    email="john@example.com",
+    firstName="John",
+    lastName="Doe",
+    password="SecurePass123!"
+)
+
+result = kc.admin.user.create(new_user)
+
+if result.success:
+    print(f"✅ Usuario creado: {result.data.username}")
+else:
+    print(f"❌ Error: {result.message}")
+```
+
+### 3. Levantar Keycloak Localmente
+
+```bash
+# Inicializar proyecto con recursos Docker
+tai-kc init --mode development
+
+# Levantar Keycloak
+cd keycloak/
+tai-kc run
+
+# Acceder a http://localhost:8090
+```
+
+---
+
+## 🏗️ Arquitectura de la Librería
+
+La librería está organizada en 3 capas principales:
+
+```
+tai_keycloak/
+├── service/          # Capa de servicio (API Python)
+├── cli/              # Herramientas de línea de comandos
+└── docker/           # Recursos de deployment
+```
+
+---
+
+## 1. Service Layer (tai_keycloak.service)
+
+La capa de servicio proporciona una API Python elegante y tipada para interactuar con Keycloak.
+
+### Arquitectura del Service Layer
+
+```
+service/
+├── clients/          # Clientes principales (Admin, App, API)
+│   ├── admin.py      # KeycloakAdminClient (operaciones administrativas)
+│   ├── app.py        # KeycloakAppClient (flujos OIDC)
+│   ├── api.py        # KeycloakAPIClient (API REST)
+│   └── config.py     # KeycloakConfig (configuración)
+├── daos/             # Data Access Objects (CRUD por entidad)
+│   ├── user/         # UserDAO (sync + async)
+│   ├── group/        # GroupDAO (sync + async)
+│   ├── client.py     # ClientDAO
+│   ├── realm.py      # RealmDAO
+│   ├── client_roles.py    # ClientRoleDAO
+│   ├── realm_roles.py     # RealmRoleDAO
+│   └── profile.py    # UsersProfileDAO
+├── dtos/             # Data Transfer Objects (modelos Pydantic)
+│   ├── entity.py     # User, Group, Role, Client, etc.
+│   ├── response.py   # OperationResult, ErrorResult
+│   ├── token.py      # Token, AccessToken
+│   └── base.py       # PrettyModel (base para DTOs)
+└── token/            # Gestión de tokens JWT
+    ├── syn.py        # TokenDAO (sync)
+    └── asyn.py       # TokenDAO (async)
+```
+
+### Componentes Clave
+
+#### 1.1 KeycloakAdminClient
+
+Cliente principal para operaciones administrativas con Keycloak.
+
+```python
+from tai_keycloak import kc
+
+# Singleton pattern - instancia única configurada
+admin = kc.admin
+
+# Acceso a DAOs
+admin.user      # UserDAO
+admin.group     # GroupDAO
+admin.client    # ClientDAO
+admin.realm     # RealmDAO
+admin.app_role  # ClientRoleDAO (cliente 'app')
+admin.api_role  # ClientRoleDAO (cliente 'api')
+admin.realm_role # RealmRoleDAO
+```
+
+**Características:**
+- ✅ **Singleton pattern** - Una sola conexión autenticada
+- ✅ **Lazy initialization** - Conexión bajo demanda
+- ✅ **Auto-autenticación** - Manejo automático de tokens
+- ✅ **Cambio de realm** - Trabaja con realm 'main' por defecto
+
+#### 1.2 KeycloakAppClient
+
+Cliente OIDC para flujos de autenticación tipo "human-like".
+
+```python
+from tai_keycloak import kc
+
+app = kc.app
+
+# Obtener clave pública para validar tokens
+public_key = app.public_key
+
+# Validar token
+from tai_keycloak.service.token import TokenDAO
+
+result = TokenDAO.decode(
+    token="eyJhbGc...",
+    key=public_key,
+    expected_audience="app",
+    expected_issuer="https://keycloak.company.com/realms/main"
+)
+
+if result.success:
+    access_token = result.data
+    print(f"Usuario: {access_token.preferred_username}")
+    print(f"Roles: {access_token.realm_access.roles}")
+```
+
+**Características:**
+- ✅ **Validación de tokens JWT** con jwcrypto
+- ✅ **Verificación de firma** con clave pública del realm
+- ✅ **Validación de exp, iss, aud** automática
+- ✅ **DTOs tipados** para claims del token
+
+#### 1.3 DAOs (Data Access Objects)
+
+Cada entidad de Keycloak tiene su propio DAO con operaciones CRUD.
+
+##### UserDAO
+
+```python
+from tai_keycloak import kc, User
+
+# Crear usuario
+new_user = User(
+    username="jane.smith",
+    email="jane@example.com",
+    firstName="Jane",
+    lastName="Smith",
+    password="MySecurePass123!",
+    attributes={
+        "department": "Engineering",
+        "location": "Remote"
+    }
+)
+
+result = kc.admin.user.create(new_user)
+
+# Obtener usuario
+result = kc.admin.user.get("jane.smith")
+user = result.data
+
+# Listar usuarios
+result = kc.admin.user.list(limit=50, offset=0)
+users = result.data
+
+# Actualizar usuario
+update = User(email="jane.new@example.com")
+result = kc.admin.user.update("jane.smith", update)
+
+# Eliminar usuario
+result = kc.admin.user.delete("jane.smith")
+
+# Asignar rol de cliente
+result = kc.admin.user.assign_client_role(
+    username="jane.smith",
+    client_name="api",
+    role_name="admin"
+)
+
+# Asignar rol de realm
+result = kc.admin.user.assign_realm_role(
+    username="jane.smith",
+    role_name="realm-admin"
+)
+
+# Agregar a grupo
+result = kc.admin.user.add_to_group(
+    username="jane.smith",
+    group_name="Developers"
+)
+```
+
+**Métodos disponibles:**
+- `create(user: User) -> OperationResult[User]`
+- `get(username: str) -> OperationResult[User]`
+- `list(limit: int, offset: int) -> OperationResult[List[User]]`
+- `update(username: str, payload: User) -> OperationResult[User]`
+- `delete(username: str) -> OperationResult[None]`
+- `assign_client_role(username, client_name, role_name)`
+- `assign_realm_role(username, role_name)`
+- `add_to_group(username, group_name)`
+- `remove_from_group(username, group_name)`
+
+##### GroupDAO
+
+```python
+from tai_keycloak import kc, Group
+
+# Crear grupo
+new_group = Group(
+    name="Engineering",
+    attributes={
+        "department": ["IT"],
+        "cost_center": ["1000"]
+    }
+)
+
+result = kc.admin.group.create(new_group)
+
+# Obtener grupo
+result = kc.admin.group.get("Engineering")
+group = result.data
+
+# Listar grupos
+result = kc.admin.group.list()
+groups = result.data
+
+# Actualizar grupo
+update = Group(attributes={"location": ["Remote"]})
+result = kc.admin.group.update("Engineering", update)
+
+# Eliminar grupo
+result = kc.admin.group.delete("Engineering")
+```
+
+##### ClientRoleDAO
+
+```python
+from tai_keycloak import kc, Role
+
+# Crear rol para cliente 'api'
+new_role = Role(
+    name="api-admin",
+    description="Admin del API"
+)
+
+result = kc.admin.api_role.create(new_role)
+
+# Obtener rol
+result = kc.admin.api_role.get("api-admin")
+role = result.data
+
+# Listar roles del cliente 'api'
+result = kc.admin.api_role.list()
+roles = result.data
+
+# Para cliente 'app'
+result = kc.admin.app_role.create(Role(name="app-viewer"))
+```
+
+##### RealmRoleDAO
+
+```python
+from tai_keycloak import kc, Role
+
+# Crear rol de realm
+new_role = Role(
+    name="realm-manager",
+    description="Manager de realm"
+)
+
+result = kc.admin.realm_role.create(new_role)
+
+# Listar roles de realm
+result = kc.admin.realm_role.list()
+roles = result.data
+```
+
+##### ClientDAO
+
+```python
+from tai_keycloak import kc, Client
+
+# Obtener cliente
+result = kc.admin.client.get("api")
+client = result.data
+
+# Listar clientes
+result = kc.admin.client.list()
+clients = result.data
+```
+
+#### 1.4 DTOs (Data Transfer Objects)
+
+Todos los modelos están basados en Pydantic para validación automática.
+
+##### User
+
+```python
+from tai_keycloak import User
+
+user = User(
+    username="john.doe",           # Requerido
+    email="john@example.com",      # Validación de email
+    firstName="John",
+    lastName="Doe",
+    password="secret",             # No se devuelve en get()
+    enabled=True,                  # Default: True
+    emailVerified=True,            # Default: True
+    attributes={                   # Atributos custom
+        "department": "Sales",
+        "employee_id": "12345"
+    },
+    groups=["Sales", "Managers"],  # Nombres de grupos
+    realmRoles=["user"],           # Roles de realm
+    clientRoles={                  # Roles de clientes
+        "api": ["read", "write"],
+        "app": ["viewer"]
+    }
+)
+```
+
+##### Group
+
+```python
+from tai_keycloak import Group
+
+group = Group(
+    name="Developers",             # Requerido
+    path="/Developers",            # Path completo
+    attributes={
+        "department": ["Engineering"],
+        "location": ["Remote", "Office"]
+    },
+    realmRoles=["developer"],
+    clientRoles={
+        "api": ["developer-api"]
+    },
+    subGroups=[                    # Grupos anidados
+        Group(name="Backend"),
+        Group(name="Frontend")
+    ]
+)
+```
+
+##### Role
+
+```python
+from tai_keycloak import Role
+
+role = Role(
+    name="admin",                  # Requerido
+    description="Administrator role",
+    composite=False,               # ¿Es role compuesto?
+    clientRole=True,               # ¿Es role de cliente?
+    containerId="client-uuid",
+    attributes={
+        "permissions": ["read", "write", "delete"]
+    }
+)
+```
+
+##### Client
+
+```python
+from tai_keycloak import Client, ClientProtocol, AccessType
+
+client = Client(
+    clientId="my-app",             # Requerido
+    name="My Application",
+    description="Application client",
+    protocol=ClientProtocol.OPENID_CONNECT,
+    publicClient=False,
+    bearerOnly=False,
+    enabled=True,
+    redirectUris=[
+        "https://myapp.com/callback"
+    ],
+    webOrigins=[
+        "https://myapp.com"
+    ],
+    attributes={
+        "access.token.lifespan": "1800"
+    }
+)
+```
+
+#### 1.5 OperationResult Pattern
+
+Todas las operaciones devuelven `OperationResult` para manejo consistente de errores:
+
+```python
+from tai_keycloak import kc
+
+result = kc.admin.user.create(new_user)
+
+# Verificar éxito
+if result.success:
+    user = result.data        # User object
+    print(result.message)     # "Usuario 'john.doe' creado exitosamente"
+else:
+    error = result.error      # ErrorResult object
+    print(error.message)      # Mensaje de error
+    print(error.details)      # Detalles técnicos
+    print(error.operation)    # "User.create"
+```
+
+**Estructura de OperationResult:**
+
+```python
+class OperationResult[T]:
+    success: bool              # True si operación exitosa
+    message: str               # Mensaje descriptivo
+    data: T | None             # Datos resultado (si success=True)
+    error: ErrorResult | None  # Error detallado (si success=False)
+```
+
+#### 1.6 TokenDAO
+
+Gestión de tokens JWT de Keycloak.
+
+```python
+from tai_keycloak import kc
+from tai_keycloak.service.token import TokenDAO
+
+# Obtener clave pública del realm
+public_key = kc.app.public_key
+
+# Decodificar y validar token
+result = TokenDAO.decode(
+    token="eyJhbGciOiJSUzI1NiIs...",
+    key=public_key,
+    expected_audience="api",
+    expected_issuer="https://keycloak.company.com/realms/main"
+)
+
+if result.success:
+    token = result.data
+    
+    # Claims estándar
+    print(f"Sub: {token.sub}")
+    print(f"Username: {token.preferred_username}")
+    print(f"Email: {token.email}")
+    print(f"Name: {token.name}")
+    
+    # Roles
+    print(f"Realm roles: {token.realm_access.roles}")
+    print(f"Client roles: {token.resource_access}")
+    
+    # Expiración
+    print(f"Expires at: {token.exp}")
+    print(f"Issued at: {token.iat}")
+```
+
+**Validaciones automáticas:**
+- ✅ Verificación de firma con clave pública
+- ✅ Validación de expiración (`exp`)
+- ✅ Validación de issuer (`iss`)
+- ✅ Validación de audience (`aud`)
+
+---
+
+## 2. CLI Tools (tai-kc)
+
+Herramientas de línea de comandos para gestión de Keycloak.
+
+### Comandos Principales
+
+#### tai-kc init
+
+Inicializa un proyecto con recursos de Keycloak.
+
+```bash
+# Modo desarrollo (H2 in-memory)
+tai-kc init --mode development
+
+# Modo Azure (PostgreSQL + CI/CD)
+tai-kc init --mode azure
+
+# Modo on-premise (Traefik + HTTPS)
+tai-kc init --mode onpremise
+```
+
+**Qué hace:**
+1. ✅ Crea carpeta `keycloak/` en el CWD
+2. ✅ Copia `Dockerfile` y `docker-compose.yml`
+3. ✅ Copia archivo `.env` según el modo
+4. ✅ Copia `main-realm.json` (configuración precargada)
+5. ✅ Copia GitHub Actions workflow (si `mode=azure`)
+6. ✅ Copia configuración de Traefik (si `mode=onpremise`)
+7. ✅ Muestra siguiente pasos
+
+#### tai-kc run
+
+Levanta Keycloak localmente con Docker Compose.
+
+```bash
+# Desarrollo básico (H2)
+tai-kc run
+
+# Desarrollo con PostgreSQL
+tai-kc run --profile development-db
+
+# On-premise con Traefik + HTTPS
+tai-kc run --profile onpremise
+
+# Rebuild forzado
+tai-kc run --build
+
+# Sin verificación de DB
+tai-kc run --skip-db-check
+```
+
+**Opciones:**
+- `--profile` - Profile de docker-compose (development, development-db, onpremise)
+- `--build` - Forzar rebuild de la imagen
+- `--skip-db-check` - Omitir verificación de base de datos
+
+**Qué hace:**
+1. ✅ Verifica que Docker esté corriendo
+2. ✅ Verifica conexión a base de datos (si aplica)
+3. ✅ Ejecuta `docker-compose up -d` con el profile
+4. ✅ Espera a que Keycloak esté listo
+5. ✅ Muestra información de acceso
+6. ✅ Monitorea containers y maneja Ctrl+C
+
+#### tai-kc api user
+
+Gestión de usuarios desde CLI.
+
+```bash
+# Listar usuarios
+tai-kc api user list
+
+# Crear usuario (interactivo)
+tai-kc api user create
+
+# Eliminar usuario
+tai-kc api user delete john.doe
+```
+
+#### tai-kc api client
+
+Gestión de clientes.
+
+```bash
+# Listar clientes
+tai-kc api client list
+
+# Ver detalles de cliente
+tai-kc api client get api
+```
+
+#### tai-kc api role
+
+Gestión de roles.
+
+```bash
+# Listar roles de cliente
+tai-kc api role client list --client api
+
+# Listar roles de realm
+tai-kc api role realm list
+```
+
+#### tai-kc api realm
+
+Gestión de realms.
+
+```bash
+# Ver realm actual
+tai-kc api realm get main
+
+# Listar todos los realms
+tai-kc api realm list
+```
+
+---
+
+## 3. Docker Resources
+
+Recursos unificados para deployment en múltiples entornos.
+
+### Estructura
+
+```
+docker/
+├── Dockerfile              # Multi-stage build (4 stages)
+├── docker-compose.yml      # Compose con profiles
+├── main-realm.json         # Realm precargado
+├── .env.example           # Template de variables
+├── .env.development       # Desarrollo local
+├── .env.azure             # Azure Web Apps
+├── .env.onpremise         # On-premise
+├── .gitignore
+├── README.md              # Documentación detallada
+├── workflows/
+│   ├── deploy-azure.yml   # GitHub Actions
+│   └── GITHUB_SECRETS.md  # Guía de secretos
+└── traefik/
+    ├── dynamic/
+    │   └── tls.yml        # Config TLS
+    └── certs/
+        └── README.md      # Guía certificados
+```
+
+### Dockerfile Multi-Stage
+
+4 stages para diferentes entornos:
+
+```dockerfile
+# Stage 1: base
+FROM quay.io/keycloak/keycloak:26.4.5 AS base
+# Configuración común
+
+# Stage 2: development
+FROM base AS development
+# H2 in-memory, desarrollo rápido
+
+# Stage 3: production
+FROM base AS production
+# PostgreSQL externo, KC_PROXY=edge
+
+# Stage 4: azure
+FROM base AS azure
+# Optimizado para Azure Web Apps
+```
+
+### Docker Compose Profiles
+
+Un solo archivo para todos los escenarios:
+
+```yaml
+services:
+  keycloak:
+    profiles:
+      - development
+      - development-db
+      - production
+      - onpremise
+    # ...
+  
+  postgres:
+    profiles:
+      - development-db
+    # PostgreSQL 16-alpine
+  
+  traefik:
+    profiles:
+      - onpremise
+    # Traefik v3.1 + HTTPS
+```
+
+### Variables de Entorno
+
+Todas las variables son transparentes y documentadas:
+
+```env
+# Deployment
+DEPLOYMENT_MODE=development
+KEYCLOAK_VERSION=26.4.5
+
+# Admin credentials
+KC_BOOTSTRAP_ADMIN_USERNAME=admin
+KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+KEYCLOAK_API_CLIENT_SECRET=dev-secret
+
+# Database
+KC_DB=postgres
+KC_DB_URL_HOST=localhost
+KC_DB_URL_PORT=5432
+KC_DB_URL_DATABASE=keycloak
+KC_DB_USERNAME=keycloak_user
+KC_DB_PASSWORD=keycloak_pass
+
+# HTTP
+KC_HTTP_PORT=8090
+KC_LOG_LEVEL=INFO
+
+# Hostname (production)
+KC_HOSTNAME=https://keycloak.company.com
+KC_HOSTNAME_PATH=/keycloak
+KC_PROXY_HEADERS=xforwarded
+```
+
+Ver [docker/README.md](tai_keycloak/docker/README.md) para documentación completa.
+
+---
+
+## 📖 Guía de Uso Detallada
+
+### Configuración
+
+#### Opción 1: Variable de Entorno
+
+```bash
+export MAIN_KEYCLOAK_URL=admin:secret@keycloak.company.com:8080
+```
+
+#### Opción 2: Configuración Programática
+
+```python
+from tai_keycloak import KeycloakConfig, KeycloakAdminClient
+
+config = KeycloakConfig(
+    protocol="https",
+    hostname="keycloak.company.com",
+    port=443,
+    username="admin",
+    password="secret",
+    verify_ssl=True
+)
+
+admin = KeycloakAdminClient(config)
+```
+
+#### Opción 3: Configuración Parcial con Env
+
+```python
+# Env: MAIN_KEYCLOAK_URL=keycloak.company.com:8080
+# Sobrescribir solo username/password
+
+from tai_keycloak import KeycloakConfig
+
+config = KeycloakConfig(
+    username="custom_admin",
+    password="custom_pass"
+)
+# Hereda hostname/port de env
+```
+
+### Gestión de Usuarios
+
+#### Crear Usuario Completo
+
+```python
+from tai_keycloak import kc, User
+
+user = User(
+    username="alice.wonder",
+    email="alice@example.com",
+    firstName="Alice",
+    lastName="Wonder",
+    password="MySecurePass123!",
+    enabled=True,
+    emailVerified=True,
+    attributes={
+        "department": "Marketing",
+        "employee_id": "EMP-001",
+        "cost_center": "2000"
+    }
+)
+
+result = kc.admin.user.create(user)
+
+if result.success:
+    print(f"✅ Usuario creado: {result.data.id}")
+    
+    # Asignar a grupo
+    kc.admin.user.add_to_group("alice.wonder", "Marketing")
+    
+    # Asignar rol de cliente
+    kc.admin.user.assign_client_role(
+        username="alice.wonder",
+        client_name="api",
+        role_name="viewer"
+    )
+    
+    # Asignar rol de realm
+    kc.admin.user.assign_realm_role("alice.wonder", "user")
+```
+
+#### Buscar y Actualizar Usuario
+
+```python
+# Buscar usuario
+result = kc.admin.user.get("alice.wonder")
+
+if result.success:
+    user = result.data
+    print(f"Email: {user.email}")
+    print(f"Grupos: {user.groups}")
+    print(f"Roles API: {user.clientRoles.get('api', [])}")
+    
+    # Actualizar datos
+    update = User(
+        email="alice.new@example.com",
+        attributes={
+            "phone": "+1234567890"
+        }
+    )
+    
+    result = kc.admin.user.update("alice.wonder", update)
+```
+
+#### Listar Usuarios con Paginación
+
+```python
+# Primera página (50 usuarios)
+result = kc.admin.user.list(limit=50, offset=0)
+
+if result.success:
+    users = result.data
+    print(f"Total: {len(users)} usuarios")
+    
+    for user in users:
+        print(f"- {user.username} ({user.email})")
+```
+
+### Gestión de Grupos
+
+#### Crear Jerarquía de Grupos
+
+```python
+from tai_keycloak import kc, Group
+
+# Grupo padre
+engineering = Group(
+    name="Engineering",
+    attributes={
+        "department": ["IT"],
+        "budget": ["500000"]
+    },
+    realmRoles=["developer"]
+)
+
+result = kc.admin.group.create(engineering)
+
+# Subgrupos
+backend = Group(
+    name="Backend",
+    attributes={"stack": ["Python", "Go"]}
+)
+
+frontend = Group(
+    name="Frontend",
+    attributes={"stack": ["React", "TypeScript"]}
+)
+
+kc.admin.group.create(backend, parent="Engineering")
+kc.admin.group.create(frontend, parent="Engineering")
+```
+
+### Gestión de Roles
+
+#### Roles de Cliente
+
+```python
+from tai_keycloak import kc, Role
+
+# Crear roles para cliente 'api'
+roles = [
+    Role(name="admin", description="Full access to API"),
+    Role(name="editor", description="Edit resources"),
+    Role(name="viewer", description="Read-only access")
+]
+
+for role in roles:
+    result = kc.admin.api_role.create(role)
+    if result.success:
+        print(f"✅ Role '{role.name}' creado")
+```
+
+#### Roles de Realm
+
+```python
+# Crear role de realm
+role = Role(
+    name="premium-user",
+    description="Premium subscription user"
+)
+
+result = kc.admin.realm_role.create(role)
+```
+
+### Gestión de Clientes
+
+#### Listar Clientes
+
+```python
+result = kc.admin.client.list()
+
+if result.success:
+    for client in result.data:
+        print(f"Cliente: {client.clientId}")
+        print(f"  Enabled: {client.enabled}")
+        print(f"  Protocol: {client.protocol}")
+```
+
+#### Obtener Detalles de Cliente
+
+```python
+result = kc.admin.client.get("api")
+
+if result.success:
+    client = result.data
+    print(f"Client ID: {client.clientId}")
+    print(f"Secret: {client.secret}")
+    print(f"Redirect URIs: {client.redirectUris}")
+```
+
+### Tokens y Autenticación
+
+#### Validar Token JWT
+
+```python
+from tai_keycloak import kc
+from tai_keycloak.service.token import TokenDAO
+
+# Token recibido del frontend
+token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+# Validar token
+result = TokenDAO.decode(
+    token=token,
+    key=kc.app.public_key,
+    expected_audience="api",
+    expected_issuer="https://keycloak.company.com/realms/main"
+)
+
+if result.success:
+    access_token = result.data
+    
+    # Información del usuario
+    user_id = access_token.sub
+    username = access_token.preferred_username
+    email = access_token.email
+    
+    # Verificar permisos
+    realm_roles = access_token.realm_access.roles
+    api_roles = access_token.resource_access.get("api", {}).get("roles", [])
+    
+    if "admin" in api_roles:
+        print("✅ Usuario es admin del API")
+    else:
+        print("❌ Usuario no tiene permisos de admin")
+else:
+    print(f"❌ Token inválido: {result.message}")
+```
+
+---
+
+## 🚀 Deployment
+
+### Desarrollo Local
+
+```bash
+# 1. Inicializar proyecto
+tai-kc init --mode development
+
+# 2. Levantar Keycloak
+cd keycloak/
+tai-kc run
+
+# 3. Acceder
+# URL: http://localhost:8090
+# Admin: http://localhost:8090/admin
+# Credenciales: admin / admin
+```
+
+### Azure Web Apps
+
+Ver guía completa en [docker/workflows/GITHUB_SECRETS.md](tai_keycloak/docker/workflows/GITHUB_SECRETS.md).
+
+```bash
+# 1. Inicializar proyecto
+tai-kc init --mode azure
+
+# 2. Configurar secretos en GitHub
+#    Ver keycloak/.github/workflows/GITHUB_SECRETS.md
+
+# 3. Editar keycloak/.env con valores de Azure
+
+# 4. Commit y push
+git add keycloak/
+git commit -m "Add Keycloak deployment"
+git push origin main
+
+# 5. El workflow se ejecuta automáticamente
+```
+
+### On-Premise
+
+```bash
+# 1. Inicializar proyecto
+tai-kc init --mode onpremise
+
+# 2. Colocar certificados SSL
+cp cert.pem keycloak/traefik/certs/
+cp key.pem keycloak/traefik/certs/
+
+# 3. Editar keycloak/.env
+
+# 4. Levantar con Traefik
+cd keycloak/
+tai-kc run --profile onpremise
+
+# 5. Acceder
+# URL: https://your-domain.com/keycloak
+```
+
+---
+
+## 🎨 Arquitectura y Patrones de Diseño
+
+### Patrones Implementados
+
+#### 1. Singleton Pattern
+
+`KeycloakAdminClient` y `KeycloakAppClient` son singletons para reutilizar la conexión autenticada:
+
+```python
+from tai_keycloak import kc
+
+# Todas estas referencias apuntan a la misma instancia
+admin1 = kc.admin
+admin2 = kc.admin
+assert admin1 is admin2  # True
+```
+
+#### 2. Lazy Initialization
+
+Los DAOs se inicializan solo cuando se acceden por primera vez:
+
+```python
+# No se conecta hasta que se usa
+admin = kc.admin
+
+# Aquí se conecta y autentica
+users = admin.user.list()
+```
+
+#### 3. Result Pattern
+
+Todas las operaciones devuelven `OperationResult` para manejo consistente:
+
+```python
+result = kc.admin.user.create(user)
+
+# Patrón consistente en toda la API
+if result.success:
+    data = result.data
+else:
+    error = result.error
+```
+
+#### 4. DAO Pattern
+
+Cada entidad tiene su propio Data Access Object:
+
+```python
+UserDAO       # CRUD de usuarios
+GroupDAO      # CRUD de grupos
+ClientDAO     # CRUD de clientes
+RoleDAO       # CRUD de roles
+```
+
+#### 5. DTO Pattern
+
+Data Transfer Objects con Pydantic para validación:
+
+```python
+user = User(
+    username="john",
+    email="invalid-email"  # ❌ ValidationError
+)
+```
+
+### Flujo de Datos
+
+```
+┌─────────────────────┐
+│   Tu Aplicación     │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ KeycloakAdminClient │
+│   (Singleton)       │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│   UserDAO/GroupDAO  │
+│   (Lazy Init)       │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  python-keycloak    │
+│   (SDK oficial)     │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Keycloak REST API  │
+└─────────────────────┘
+```
+
+---
+
+## 🎯 Ejemplos Completos
+
+### Ejemplo 1: Onboarding de Usuario
+
+```python
+from tai_keycloak import kc, User
+
+def onboard_employee(employee_data):
+    """Onboarding completo de un empleado nuevo."""
+    
+    # 1. Crear usuario
+    user = User(
+        username=employee_data["username"],
+        email=employee_data["email"],
+        firstName=employee_data["first_name"],
+        lastName=employee_data["last_name"],
+        password=employee_data["temp_password"],
+        attributes={
+            "employee_id": employee_data["employee_id"],
+            "department": employee_data["department"],
+            "hire_date": employee_data["hire_date"]
+        }
+    )
+    
+    result = kc.admin.user.create(user)
+    if not result.success:
+        return result
+    
+    username = result.data.username
+    
+    # 2. Asignar a grupo del departamento
+    kc.admin.user.add_to_group(username, employee_data["department"])
+    
+    # 3. Asignar roles base
+    kc.admin.user.assign_realm_role(username, "employee")
+    kc.admin.user.assign_client_role(username, "app", "viewer")
+    
+    # 4. Roles específicos según posición
+    if employee_data["position"] == "manager":
+        kc.admin.user.assign_client_role(username, "api", "manager")
+    elif employee_data["position"] == "admin":
+        kc.admin.user.assign_client_role(username, "api", "admin")
+    
+    return result
+
+# Uso
+employee = {
+    "username": "john.doe",
+    "email": "john@company.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "temp_password": "Welcome123!",
+    "employee_id": "EMP-2025-001",
+    "department": "Engineering",
+    "hire_date": "2025-01-15",
+    "position": "developer"
+}
+
+result = onboard_employee(employee)
+```
+
+### Ejemplo 2: Middleware de Autenticación
+
+```python
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from tai_keycloak import kc
+from tai_keycloak.service.token import TokenDAO
+
+app = FastAPI()
+security = HTTPBearer()
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Middleware para verificar tokens JWT."""
+    token = credentials.credentials
+    
+    result = TokenDAO.decode(
+        token=token,
+        key=kc.app.public_key,
+        expected_audience="api",
+        expected_issuer="https://keycloak.company.com/realms/main"
+    )
+    
+    if not result.success:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    return result.data
+
+def require_role(role: str):
+    """Decorator para requerir role específico."""
+    def decorator(access_token = Depends(verify_token)):
+        api_roles = access_token.resource_access.get("api", {}).get("roles", [])
+        if role not in api_roles:
+            raise HTTPException(status_code=403, detail=f"Role '{role}' required")
+        return access_token
+    return decorator
+
+@app.get("/api/protected")
+def protected_endpoint(token = Depends(verify_token)):
+    return {
+        "user": token.preferred_username,
+        "roles": token.resource_access.get("api", {}).get("roles", [])
+    }
+
+@app.post("/api/admin")
+def admin_endpoint(token = Depends(require_role("admin"))):
+    return {"message": "Admin access granted"}
+```
+
+### Ejemplo 3: Sincronización de Usuarios
+
+```python
+from tai_keycloak import kc, User
+
+def sync_users_from_external_system(external_users):
+    """Sincronizar usuarios desde sistema externo."""
+    
+    # Obtener usuarios actuales de Keycloak
+    result = kc.admin.user.list(limit=1000)
+    if not result.success:
+        print(f"Error obteniendo usuarios: {result.message}")
+        return
+    
+    kc_users = {u.username: u for u in result.data}
+    
+    for ext_user in external_users:
+        username = ext_user["username"]
+        
+        if username in kc_users:
+            # Usuario existe - actualizar
+            update = User(
+                email=ext_user["email"],
+                firstName=ext_user["first_name"],
+                lastName=ext_user["last_name"],
+                attributes={
+                    "department": ext_user["department"],
+                    "sync_date": "2025-11-25"
+                }
+            )
+            result = kc.admin.user.update(username, update)
+            status = "actualizado" if result.success else f"error: {result.message}"
+        else:
+            # Usuario nuevo - crear
+            user = User(
+                username=username,
+                email=ext_user["email"],
+                firstName=ext_user["first_name"],
+                lastName=ext_user["last_name"],
+                password=generate_temp_password(),
+                attributes={
+                    "department": ext_user["department"],
+                    "sync_date": "2025-11-25"
+                }
+            )
+            result = kc.admin.user.create(user)
+            status = "creado" if result.success else f"error: {result.message}"
+        
+        print(f"Usuario {username}: {status}")
+
+def generate_temp_password():
+    import secrets
+    return secrets.token_urlsafe(16)
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Error: "Connection refused"
+
+**Causa:** Keycloak no está corriendo o hostname/port incorrecto
+
+**Solución:**
+```bash
+# Verificar que Keycloak esté corriendo
+docker ps | grep keycloak
+
+# Verificar variables de entorno
+echo $MAIN_KEYCLOAK_URL
+
+# Levantar Keycloak
+tai-kc run
+```
+
+### Error: "Invalid credentials"
+
+**Causa:** Username/password incorrectos
+
+**Solución:**
+```python
+# Verificar credenciales en código
+config = KeycloakConfig(
+    hostname="localhost",
+    port=8090,
+    username="admin",
+    password="admin"  # Password por defecto
+)
+```
+
+### Error: "Token expired"
+
+**Causa:** Token JWT expirado
+
+**Solución:**
+```python
+# Validar expiración antes de usar
+result = TokenDAO.decode(token, key=public_key)
+
+if not result.success and "expired" in result.message:
+    # Solicitar nuevo token al usuario
+    return {"error": "Token expired, please login again"}
+```
+
+### Error: "User not found"
+
+**Causa:** Usuario no existe en Keycloak
+
+**Solución:**
+```python
+# Verificar existencia antes de operar
+result = kc.admin.user.get(username)
+
+if not result.success:
+    print(f"Usuario no existe: {username}")
+    # Crear usuario o manejar error
+```
+
+### Performance: Operaciones lentas
+
+**Causa:** Demasiadas llamadas al API
+
+**Solución:**
+```python
+# ❌ Evitar: Múltiples get() en loop
+for username in usernames:
+    user = kc.admin.user.get(username).data  # N llamadas
+
+# ✅ Mejor: Un solo list() con filtros
+users = kc.admin.user.list(limit=1000).data
+user_map = {u.username: u for u in users}
+```
+
+---
+
+## 📚 Referencias
+
+- **Keycloak Documentation**: https://www.keycloak.org/documentation
+- **python-keycloak SDK**: https://python-keycloak.readthedocs.io/
+- **Pydantic**: https://docs.pydantic.dev/
+- **Docker**: https://docs.docker.com/
+- **Traefik**: https://doc.traefik.io/traefik/
+
+---
+
+## 🤝 Contribuir
+
+Para contribuir al proyecto:
+
+1. Fork el repositorio
+2. Crear branch feature (`git checkout -b feature/amazing-feature`)
+3. Commit cambios (`git commit -m 'Add amazing feature'`)
+4. Push al branch (`git push origin feature/amazing-feature`)
+5. Abrir Pull Request
+
+---
+
+## 📄 Licencia
+
+Este proyecto está bajo la licencia MIT. Ver archivo [LICENSE](LICENSE) para más detalles.
+
+---
+
+## ✨ Autores
+
+- **MateoSaezMata** - *Desarrollo inicial* - [triplealpha-innovation](https://github.com/triplealpha-innovation)
+
+---
+
+**Versión:** 0.1.20  
+**Última actualización:** Noviembre 2025  
+**Keycloak Version:** 26.4.5
+
