@@ -1,0 +1,145 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sonora-musicpy"
+version = "1.0.0"
+description = "A full-featured Python Lavalink client for Discord music bots"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "code-xon", email = "ramkrishna@code-xon.fun"},
+]
+maintainers = [
+    {name = "Ramkrishna", email = "ramkrishna@code-xon.fun"},
+]
+keywords = ["discord", "lavalink", "music", "audio", "bot", "sonora", "code-xon"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: Players",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.8.0",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "mkdocs>=1.4.0",
+    "mkdocstrings[python]>=0.20.0",
+]
+discord = [
+    "discord.py>=2.0.0",
+]
+pycord = [
+    "py-cord>=2.0.0",
+]
+nextcord = [
+    "nextcord>=2.0.0",
+]
+
+[project.scripts]
+sonoractl = "sonora.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/code-xon/sonora"
+Documentation = "https://code-xon.github.io/sonora/"
+Repository = "https://github.com/code-xon/sonora"
+Issues = "https://github.com/code-xon/sonora/issues"
+Changelog = "https://github.com/code-xon/sonora/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sonora*"]
+
+[tool.setuptools.package-data]
+sonora = ["py.typed"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=sonora",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=85",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["sonora"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]

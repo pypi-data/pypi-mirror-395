@@ -1,0 +1,186 @@
+Metadata-Version: 2.4
+Name: sonora-musicpy
+Version: 1.0.0
+Summary: A full-featured Python Lavalink client for Discord music bots
+Author-email: code-xon <ramkrishna@code-xon.fun>
+Maintainer-email: Ramkrishna <ramkrishna@code-xon.fun>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/code-xon/sonora
+Project-URL: Documentation, https://code-xon.github.io/sonora/
+Project-URL: Repository, https://github.com/code-xon/sonora
+Project-URL: Issues, https://github.com/code-xon/sonora/issues
+Project-URL: Changelog, https://github.com/code-xon/sonora/blob/main/CHANGELOG.md
+Keywords: discord,lavalink,music,audio,bot,sonora,code-xon
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Multimedia :: Sound/Audio :: Players
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp>=3.8.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: typing-extensions>=4.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: pre-commit>=3.0.0; extra == "dev"
+Requires-Dist: mkdocs>=1.4.0; extra == "dev"
+Requires-Dist: mkdocstrings[python]>=0.20.0; extra == "dev"
+Provides-Extra: discord
+Requires-Dist: discord.py>=2.0.0; extra == "discord"
+Provides-Extra: pycord
+Requires-Dist: py-cord>=2.0.0; extra == "pycord"
+Provides-Extra: nextcord
+Requires-Dist: nextcord>=2.0.0; extra == "nextcord"
+Dynamic: license-file
+
+# Sonora
+
+[![PyPI version](https://badge.fury.io/py/sonora-musicpy.svg)](https://pypi.org/project/sonora-musicpy/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://github.com/code-xon/sonora/actions/workflows/ci.yml/badge.svg)](https://github.com/code-xon/sonora/actions)
+[![Coverage](https://codecov.io/gh/code-xon/sonora/branch/main/graph/badge.svg)](https://codecov.io/gh/code-xon/sonora)
+
+A full-featured, production-ready Python Lavalink client for building music-capable Discord bots. Equivalent to Riffy but in Python.
+
+## Features
+
+- Async-first Python library compatible with Python 3.11+
+- Full Lavalink protocol support (v3 & v4)
+- Integrations for discord.py, py-cord, and nextcord
+- Plugin system for platform adapters (YouTube, Spotify, SoundCloud)
+- Voice connection management, track loading, queue management, player controls
+- Node pooling & reconnection, autoplay, per-guild voice state resumption
+- Clean high-level API + low-level control
+- Well-documented with MkDocs
+- Thoroughly tested (coverage >= 85%)
+- Packaged for PyPI, CI/CD with GitHub Actions, Docker support
+
+## Installation
+
+```bash
+pip install sonora-musicpy
+```
+
+## Quickstart
+
+First, set up your environment variables:
+
+```bash
+cp .env.example .env
+# Edit .env with your Lavalink server details and Discord token
+```
+
+### Minimal Discord Bot Example
+
+```python
+import discord
+from discord.ext import commands
+from sonora import SonoraClient
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix='!', intents=intents)
+sonora = SonoraClient(
+    lavalink_nodes=[{"host": "127.0.0.1", "port": 2333, "password": "youshallnotpass"}],
+    node_pooling=True,
+    reconnect_policy={"max_retries": 5, "backoff": "exponential"}
+)
+
+@bot.event
+async def on_ready():
+    await sonora.start()
+    print(f'Logged in as {bot.user}')
+
+@bot.command()
+async def join(ctx):
+    if ctx.author.voice:
+        await ctx.author.voice.channel.connect()
+        player = await sonora.get_player(ctx.guild.id)
+        await ctx.send("Joined voice channel!")
+    else:
+        await ctx.send("You need to be in a voice channel!")
+
+@bot.command()
+async def play(ctx, *, query):
+    player = await sonora.get_player(ctx.guild.id)
+    track = await player.play(query)
+    await ctx.send(f"Now playing: {track.title}")
+
+bot.run(os.getenv('DISCORD_TOKEN'))
+```
+
+For more examples, see the [examples/](examples/) directory.
+
+## Configuration
+
+Sonora supports configuration via environment variables:
+
+- `LAVALINK_HOST`: Lavalink server host (default: 127.0.0.1)
+- `LAVALINK_PORT`: Lavalink server port (default: 2333)
+- `LAVALINK_PASSWORD`: Lavalink server password
+- `DISCORD_TOKEN`: Your Discord bot token
+
+See [.env.example](.env.example) for a full list.
+
+## Documentation
+
+Full documentation is available at [https://code-xon.github.io/sonora/](https://code-xon.github.io/sonora/).
+
+- [Quickstart Guide](https://code-xon.github.io/sonora/quickstart/)
+- [API Reference](https://code-xon.github.io/sonora/api/)
+- [Migration from Riffy](https://code-xon.github.io/sonora/migration/)
+
+## Development
+
+### Prerequisites
+
+- Python 3.11+
+- A Lavalink server (see [examples/docker-compose.yml](examples/docker-compose.yml) for local setup)
+
+### Setup
+
+```bash
+git clone https://github.com/code-xon/sonora.git
+cd sonora
+pip install -e .[dev]
+pre-commit install
+```
+
+### Testing
+
+```bash
+pytest
+```
+
+### Building Docs
+
+```bash
+mkdocs serve
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Contact
+
+- Lead Developer: Ramkrishna
+- Email: [ramkrishna@code-xon.fun](mailto:ramkrishna@code-xon.fun)
+- Issues: [GitHub Issues](https://github.com/code-xon/sonora/issues)
