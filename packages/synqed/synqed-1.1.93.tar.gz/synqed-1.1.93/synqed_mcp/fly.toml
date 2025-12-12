@@ -1,0 +1,40 @@
+app = "synqed"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  SYNQ_MCP_MODE = "cloud"
+  SYNQ_MCP_PORT = "8080"
+  SYNQ_MCP_HOST = "0.0.0.0"
+  REDIS_URL = "redis://synqed-redis.internal:6379"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+# Health checks for both MCP and email services
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/health"
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/mcp/tools"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
