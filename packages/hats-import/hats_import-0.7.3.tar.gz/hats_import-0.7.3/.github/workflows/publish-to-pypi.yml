@@ -1,0 +1,50 @@
+# This workflow will upload a Python Package using Twine when a release is created
+# For more information see: https://github.com/pypa/gh-action-pypi-publish#trusted-publishing
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Upload Python Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    
+permissions:
+  contents: read
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        python -m pip install --upgrade pip
+    - name: Create lock requirements file in virtual environment
+      run: |
+        python -m venv .venv
+        source .venv/bin/activate
+        python -m pip install .
+        python -m pip list --format=freeze --exclude "hats-import" --exclude pip > requirements.txt
+        python -m pip install .[dev]
+        python -m pytest tests
+        python -m pip uninstall -y hats-import
+    - name: Install build tools
+      run: pip install build
+    - name: Build package
+      run: |
+        git update-index --assume-unchanged requirements.txt
+        python -m build
+    - name: Publish package
+      uses: pypa/gh-action-pypi-publish@release/v1

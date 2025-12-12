@@ -1,0 +1,143 @@
+[project]
+name = "hats-import"
+description = "Utility for ingesting large survey data into HATS structure"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+readme = "README.md"
+authors = [
+    { name = "LINCC Frameworks", email = "lincc-frameworks-team@lists.lsst.org" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+]
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "cloudpickle>=3.0.0", # Reader serialisation, transitive dependency of Dask
+    "dask[complete]>=2025.3.0,<2025.4.0", # Includes dask expressions.
+    "deprecated",
+    "hats>=0.7.3,<0.8",
+    "nested-pandas>=0.6.3,<0.7.0",
+    "numpy>=2.2.0,<3", 
+    "pandas>=2.0",
+    "tqdm>=4.59.0",
+    "universal-pathlib",
+]
+
+# On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
+[project.optional-dependencies]
+dev = [
+    "black", # Used for static linting of files
+    "jupyter", # Clears output from Jupyter notebooks
+    "mypy", # Used for static type checking of files
+    "pre-commit", # Used to run checks before finalizing a git commit
+    "pylint", # Used for static linting of files
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-timeout",
+]
+full = [
+    "fsspec[full]", # complete file system specs.
+    "ipykernel", # Support for Jupyter notebooks
+    "ipywidgets", # useful for tqdm in notebooks.
+    "healpy", # used only in hipscat conversion
+]
+
+[build-system]
+requires = [
+    "setuptools>=62", # Used to build and package the Python project
+    "setuptools_scm>=6.2", # Gets release version from git. Makes it available programmatically
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "src/hats_import/_version.py"
+
+[tool.setuptools.package-data]
+hats_import = ["py.typed"]
+
+[tool.pytest.ini_options]
+timeout = 2
+markers = [
+    "dask: mark tests as having a dask client runtime dependency",
+]
+testpaths = [
+    "tests",
+    "src",
+    "docs",
+]
+addopts = "--doctest-modules --doctest-glob=*.rst"
+
+[tool.coverage.report]
+omit = [
+    "src/hats_import/_version.py", # auto-generated
+    "src/hats_import/pipeline.py", # too annoying to test
+]
+
+[tool.black]
+line-length = 110
+target-version = ["py38"]
+
+[tool.isort]
+profile = "black"
+line_length = 110
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # Pyflakes
+    "F",
+    # pep8-naming
+    "N",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # docstrings
+    "D101",
+    "D102",
+    "D103",
+    "D106",
+    "D206",
+    "D207",
+    "D208",
+    "D300",
+    "D417",
+    "D419",
+    # Numpy v2.0 compatibility
+    "NPY201",
+]
+
+ignore = [
+    "UP006", # Allow non standard library generics in type hints
+    "UP007", # Allow Union in type hints
+    "SIM114", # Allow if with same arms
+    "B028", # Allow default warning level
+    "SIM117", # Allow nested with
+    "UP015", # Allow redundant open parameters
+    "UP028", # Allow yield in for loop
+]
+
+[tool.coverage.run]
+omit = [
+    "src/hats_import/_version.py", # auto-generated
+    "src/hats_import/pipeline.py", # too annoying to test
+]
+
+[tool.mypy]
+disable_error_code = ["assignment"]
