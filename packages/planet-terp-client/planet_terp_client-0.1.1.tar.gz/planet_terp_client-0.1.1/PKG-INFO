@@ -1,0 +1,135 @@
+Metadata-Version: 2.4
+Name: planet-terp-client
+Version: 0.1.1
+Summary: a python client for the planet terp api
+Project-URL: Homepage, https://github.com/ynbh/planet-terp-client
+Project-URL: Repository, https://github.com/ynbh/planet-terp-client
+Project-URL: Issues, https://github.com/ynbh/planet-terp-client/issues
+Author-email: Yashas Bhat <ybhat@umd.edu>
+License: MIT License
+        
+        Copyright (c) 2025
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Requires-Python: >=3.13
+Requires-Dist: requests
+Requires-Dist: ruff>=0.14.8
+Description-Content-Type: text/markdown
+
+# planet-terp
+
+a python client for the planet terp api.
+
+## installation
+
+```bash
+uv add planet-terp-client
+```
+
+## usage
+
+### get a course
+
+```python
+from planet_terp import PlanetTerp
+
+client = PlanetTerp()
+
+course = client.course("CMSC320")
+print(course.title)
+```
+
+### get a professor
+
+```python
+professor = client.professor("Clyde Kruskal")
+print(professor.average_rating)
+# 2.75
+```
+
+### search
+
+```python
+results = client.search("CMSC320")
+for result in results:
+    print(result.name)
+```
+
+### get grades
+
+```python
+grades = client.grades(course="CMSC351", semester="202308")
+for grade in grades:
+    print(f"{grade.section}: {grade.professor}")
+```
+
+### check if instructor is ta or professor
+
+```python
+from planet_terp import TA
+
+professors = client.professors(limit=10)
+for p in professors:
+    if isinstance(p, TA):
+        print(f"{p.name} is a ta")
+    else:
+        print(f"{p.name} is a professor")
+```
+
+## advanced examples
+
+### get average rating of all professors for a course
+
+```python
+course = client.course("CMSC330")
+for name in course.professors:
+    try:
+        p = client.professor(name)
+        if p.average_rating:
+            print(f"{p.name}: {p.average_rating}")
+    except:
+        print(f"could not fetch {name}")
+```
+
+### calculate pass rate for a course
+
+```python
+grades = client.grades(course="CMSC351")
+total_students = 0
+passed_students = 0
+
+for g in grades:
+    section_total = (g.A_plus + g.A + g.A_minus + 
+                   g.B_plus + g.B + g.B_minus + 
+                   g.C_plus + g.C + g.C_minus + 
+                   g.D_plus + g.D + g.D_minus + 
+                   g.F + g.W + g.Other)
+    
+    # assuming C- or better is passing for major reqs
+    section_pass = (g.A_plus + g.A + g.A_minus + 
+                  g.B_plus + g.B + g.B_minus + 
+                  g.C_plus + g.C + g.C_minus)
+    
+    total_students += section_total
+    passed_students += section_pass
+
+if total_students > 0:
+    print(f"pass rate: {(passed_students/total_students)*100:.2f}%")
+```
