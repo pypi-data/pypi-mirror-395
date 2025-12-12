@@ -1,0 +1,399 @@
+# tcorpus - Text Corpus Analyser
+
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+A powerful, lightweight command-line tool for analyzing text corpora. Extract palindromes, anagrams, word frequencies, pattern matches, emails, and phone numbers from text files or direct input.
+
+## ✨ Features
+
+- 🔍 **Word Analysis**: Find palindromes, anagrams, and word frequencies
+- 🎯 **Pattern Matching**: Search words using wildcard patterns and masks
+- 📧 **Email Extraction**: Extract email addresses from text
+- 📱 **Phone Number Detection**: Find phone numbers in various formats
+- 🚫 **Stopword Filtering**: Filter out common words using config files or CLI options
+- 📊 **Multiple Output Formats**: Save results as JSON or CSV
+- ⚡ **Zero Dependencies**: Pure Python standard library, no external packages required
+- 🗜️ **Compressed File Support**: Automatically handles `.gz` compressed files
+
+## 📦 Installation
+
+### From PyPI (Recommended)
+
+```bash
+pip install tcorpus
+```
+
+### From Source
+
+```bash
+git clone https://github.com/Pegasus717/Text-Corpus-Analyser.git
+cd text-corpus-analyser
+pip install -e .
+```
+
+## 🚀 Quick Start
+
+```bash
+# Get help
+tcorpus --help
+
+# Analyze a text file with all features
+tcorpus all demo.txt output.json
+
+# Use direct text input
+tcorpus palindrome --text "A man a plan a canal Panama" output.json
+```
+
+## 📖 Usage
+
+### Input Options
+
+You can provide input in two ways:
+
+1. **From a file**:
+   ```bash
+   tcorpus <command> <input_file> <output_file>
+   ```
+
+2. **Direct text** (using `-t` or `--text`):
+   ```bash
+   tcorpus <command> --text "Your text here" <output_file>
+   ```
+
+### Common Options
+
+All commands support these filtering options:
+
+- `--stopwords <word1> <word2> ...` - Additional stopwords to ignore (combined with config.ini)
+- `--starts-with <letter>` - Keep only words starting with this letter
+- `--config <path>` - Path to config file for stopwords (default: `config.ini`)
+- `-pw, --print-words` - Print filtered results to terminal
+
+### Config File
+
+Create a `config.ini` file in your working directory to define default stopwords:
+
+```ini
+[stopwords]
+words = the,or,but,a,an,is,are,was,were
+```
+
+## 📋 Commands
+
+### 1. Palindrome Detection
+
+Find all palindromes (words that read the same forwards and backwards).
+
+```bash
+# From file
+tcorpus palindrome demo.txt palindromes.json
+
+# Direct text
+tcorpus palindrome --text "madam level cat radar" output.json
+
+# With filters
+tcorpus palindrome demo.txt output.json --starts-with m --print-words
+```
+
+**Output:**
+```json
+{
+  "palindromes": ["level", "madam", "radar"]
+}
+```
+
+---
+
+### 2. Anagram Detection
+
+Find groups of words that are anagrams of each other.
+
+```bash
+# Basic usage
+tcorpus anagram demo.txt anagrams.json
+
+# With direct text
+tcorpus anagram --text "cat act tac dog god" output.json
+```
+
+**Output:**
+```json
+{
+  "anagrams": [
+    ["act", "cat", "tac"],
+    ["dog", "god"]
+  ]
+}
+```
+
+---
+
+### 3. Word Frequency Analysis
+
+Count how often each word appears in the text.
+
+```bash
+# Count all words
+tcorpus freq demo.txt frequencies.json
+
+# Count specific words
+tcorpus freq demo.txt output.json --words python code program
+
+# Output as CSV
+tcorpus freq demo.txt frequencies.csv
+```
+
+**Output (JSON):**
+```json
+{
+  "frequencies": {
+    "python": 5,
+    "code": 3,
+    "program": 2
+  }
+}
+```
+
+**Output (CSV):**
+```csv
+word,count
+code,3
+program,2
+python,5
+```
+
+---
+
+### 4. Pattern Matching (Mask)
+
+Find words matching a specific pattern using wildcards and special syntax.
+
+**Pattern Syntax:**
+- `*` - Matches zero or more characters (wildcard)
+- `?` - Matches exactly one character
+- `word+` - Words starting with "word" (e.g., `ram+` matches "ram", "ramesh", "ramadan")
+- `+word` - Words ending with "word" (e.g., `+ing` matches "running", "coding")
+- `+word+` - Words containing "word" (e.g., `+ram+` matches "program", "ramesh")
+
+**Options:**
+- `--min-length <n>` - Minimum word length
+- `--max-length <n>` - Maximum word length
+- `--length <n>` - Exact word length
+- `--contains <substring>` - Word must contain this substring
+
+**Examples:**
+```bash
+# Wildcard pattern: words starting with 's' and ending with 'e'
+tcorpus mask "s*e" demo.txt output.json
+
+# Starts with pattern
+tcorpus mask "ram+" demo.txt output.json
+
+# Ends with pattern
+tcorpus mask "+ing" demo.txt output.json
+
+# With length filters
+tcorpus mask "s*e" demo.txt output.json --min-length 4 --max-length 6
+```
+
+**Output:**
+```json
+{
+  "mask_matches": ["sale", "safe", "same", "sane", "site", "size"]
+}
+```
+
+---
+
+### 5. Email Extraction
+
+Extract email addresses from text.
+
+```bash
+# From file
+tcorpus email demo.txt emails.json
+
+# Direct text
+tcorpus email --text "Contact us at info@example.com or support@test.org" output.json
+```
+
+**Output:**
+```json
+{
+  "emails": ["info@example.com", "support@test.org"]
+}
+```
+
+---
+
+### 6. Phone Number Extraction
+
+Extract phone numbers from text in various formats.
+
+```bash
+# Basic usage (default: 10 digits minimum)
+tcorpus phone demo.txt phones.json
+
+# Custom minimum digits
+tcorpus phone demo.txt output.json --digits 7
+
+# Direct text
+tcorpus phone --text "Call +1 (555) 123-4567 or 07123 456789" output.json
+```
+
+**Output:**
+```json
+{
+  "phone_numbers": ["+1 (555) 123-4567", "07123 456789"]
+}
+```
+
+---
+
+### 7. All Analyses
+
+Run all analyses at once: palindromes, anagrams, frequencies, emails, and phone numbers.
+
+```bash
+# Run all analyses
+tcorpus all demo.txt complete_analysis.json
+
+# With word frequency filter
+tcorpus all demo.txt output.json --words python code
+
+# Custom phone digit requirement
+tcorpus all demo.txt output.json --digits 7
+```
+
+**Output:**
+```json
+{
+  "palindromes": ["level", "madam"],
+  "anagrams": [["act", "cat", "tac"]],
+  "frequencies": {
+    "python": 5,
+    "code": 3
+  },
+  "emails": ["info@example.com"],
+  "phone_numbers": ["+1 (555) 123-4567"]
+}
+```
+
+## 🔧 Advanced Examples
+
+### Combining Filters
+
+```bash
+# Find palindromes starting with 'm', excluding stopwords
+tcorpus palindrome demo.txt output.json \
+  --starts-with m \
+  --stopwords the a an \
+  --print-words
+```
+
+### Processing Compressed Files
+
+The tool automatically handles `.gz` compressed files:
+
+```bash
+tcorpus all large_text.txt.gz output.json
+```
+
+### Batch Processing
+
+```bash
+# Process multiple files (Unix/Linux/Mac)
+for file in *.txt; do
+  tcorpus all "$file" "${file%.txt}_analysis.json"
+done
+
+# Windows PowerShell
+Get-ChildItem *.txt | ForEach-Object {
+  tcorpus all $_.Name ($_.BaseName + "_analysis.json")
+}
+```
+
+## 📤 Output Formats
+
+### JSON (Default)
+
+All commands output JSON by default. The structure varies by command:
+- **Single analysis**: `{"palindromes": [...]}`
+- **All analyses**: `{"palindromes": [...], "anagrams": [...], ...}`
+
+### CSV (Frequency Only)
+
+When using `freq` command with `.csv` extension, outputs CSV format suitable for spreadsheet applications.
+
+## 🛠️ Requirements
+
+- Python 3.8 or higher
+- No external dependencies (uses only Python standard library)
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## ❓ Troubleshooting
+
+### Command Not Found
+
+If `tcorpus` is not recognized after installation:
+
+1. **Check installation:**
+   ```bash
+   pip show tcorpus
+   ```
+
+2. **Verify PATH** includes Python Scripts directory:
+   ```bash
+   python -m site --user-base
+   ```
+
+3. **Use module execution:**
+   ```bash
+   python -m tcorpus --help
+   ```
+
+### Config File Not Found
+
+If `config.ini` is missing, the tool will still work but won't use default stopwords. Create a `config.ini` file in your working directory:
+
+```ini
+[stopwords]
+words = the,or,but,a,an,is,are
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 👥 Authors
+
+- **Raghu** - raghu59770@gmail.com
+
+## 👨‍💼 Maintainers
+
+- Santosh
+- Raghuram
+
+## 📄 License
+
+This project is open source and available under the MIT License.
+
+## 📌 Version
+
+Current version: **0.1.7**
+
+## 💬 Support
+
+For issues, questions, or contributions, please open an issue on the [project repository](https://github.com/Pegasus717/Text-Corpus-Analyser).
+
+---
+
+**Made with ❤️ for text analysis enthusiasts**
