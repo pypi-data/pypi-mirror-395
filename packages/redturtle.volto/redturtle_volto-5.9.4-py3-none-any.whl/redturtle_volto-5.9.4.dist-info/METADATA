@@ -1,0 +1,1313 @@
+Metadata-Version: 2.4
+Name: redturtle.volto
+Version: 5.9.4
+Summary: Helper package to setup a RedTurtle's Plone site ready to work with Volto.
+Home-page: https://github.com/collective/redturtle.volto
+Author: RedTurtle Technology
+Author-email: sviluppo@redturtle.it
+License: GPL version 2
+Project-URL: PyPI, https://pypi.python.org/pypi/redturtle.volto
+Project-URL: Source, https://github.com/RedTurtle/redturtle.volto
+Project-URL: Tracker, https://github.com/RedTurtle/redturtle.volto/issues
+Keywords: Python Plone
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Plone
+Classifier: Framework :: Plone :: Addon
+Classifier: Framework :: Plone :: 5.2
+Classifier: Framework :: Plone :: 6.0
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: GNU General Public License v2 (GPLv2)
+Requires-Python: >=3.7
+License-File: LICENSE.GPL
+License-File: LICENSE.rst
+Requires-Dist: setuptools
+Requires-Dist: collective.volto.gdprcookie
+Requires-Dist: collective.monkeypatcher
+Requires-Dist: collective.purgebyid
+Requires-Dist: kitconcept.seo>=2.0.0
+Requires-Dist: plone.volto>=4.0.0
+Requires-Dist: plone.restapi>=9.6.0
+Requires-Dist: Products.PortalTransforms>=3.2.0
+Requires-Dist: collective.volto.sitesettings
+Requires-Dist: experimental.noacquisition
+Provides-Extra: advancedquery
+Requires-Dist: dm.plone.advancedquery; extra == "advancedquery"
+Provides-Extra: test
+Requires-Dist: plone.app.testing; extra == "test"
+Requires-Dist: plone.testing>=5.0.0; extra == "test"
+Requires-Dist: plone.app.contenttypes; extra == "test"
+Requires-Dist: plone.app.robotframework[debug]; extra == "test"
+Requires-Dist: collective.MockMailHost; extra == "test"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+.. This README is meant for consumption by humans and pypi. Pypi can render rst files so please do not use Sphinx features.
+   If you want to learn more about writing documentation, please check out: http://docs.plone.org/about/documentation_styleguide.html
+   This text does not appear on pypi or github. It is a comment.
+
+===============
+redturtle.volto
+===============
+
+This is an helper package that setup a RedTurtle's Plone site ready to work with Volto.
+
+
+|python| |version| |ci| |coverage| |downloads| |license|
+
+.. |python| image:: https://img.shields.io/pypi/pyversions/redturtle.volto.svg
+  :target: https://pypi.python.org/pypi/redturtle.volto/
+
+.. |version| image:: http://img.shields.io/pypi/v/redturtle.volto.svg
+  :target: https://pypi.python.org/pypi/redturtle.volto
+
+.. |ci| image:: https://github.com/RedTurtle/redturtle.volto/actions/workflows/tests.yml/badge.svg
+  :target: https://github.com/RedTurtle/redturtle.volto/actions
+
+.. |downloads| image:: https://img.shields.io/pypi/dm/redturtle.volto.svg
+   :target: https://pypi.org/project/redturtle.volto/
+
+.. |license| image:: https://img.shields.io/pypi/l/redturtle.volto.svg
+    :target: https://pypi.org/project/redturtle.volto/
+    :alt: License
+
+.. |coverage| image:: https://coveralls.io/repos/github/RedTurtle/redturtle.volto/badge.svg?branch=master
+    :target: https://coveralls.io/github/RedTurtle/redturtle.volto?branch=master
+    :alt: Coverage
+
+Features
+========
+
+Content-types
+-------------
+
+- News Item and Event can only contain **Links**, **Images** and **Files**
+
+Blocks
+------
+
+**volto.blocks** behavior is enabled by default for these content-types:
+
+- Document
+- News Item
+- Event
+
+There are also some adapters registered for **IBlockSearchableText** to index some common blocks.
+
+Links
+-----
+
+There is a custom adapter for TextLine field that return the proper widget for **remoteUrl**.
+
+Custom blocks transformers
+--------------------------
+
+There are custom transformers for serializer and deserializer to better manage resolveuids.
+
+If a block refers to some internal content, on deserialization we only store its UID, and in serialization
+we "expand" informations with the summary-serialized content.
+
+@context-navigation endpoint
+----------------------------
+
+plone.restapi's **@navigation** endpoint always return the navigation tree from the site root.
+
+There is a **@context-navigation** endpoint that returns the contextual navigation tree:
+
+    > curl -i http://localhost:8080/Plone/folder?context-navigation -H 'Accept: application/json'
+
+This is the result::
+
+    {
+        '@id': 'http://localhost:8080/Plone/folder',
+        'items': [
+            {'@id': 'http://localhost:8080/Plone/folder/folder-a',
+                'description': '',
+                'title': 'Folder A'},
+            {'@id': 'http://localhost:8080/Plone/folder/folder-b',
+                'description': '',
+                'title': 'Folder B'},
+            {'@id': 'http://localhost:8080/Plone/folder/folder-c',
+                'description': '',
+                'title': 'Folder C'}
+        ]
+    }
+
+By default only first level is shown.
+You can pass an **expand.navigation.depth** parameter to set the depth::
+
+    > curl -i http://localhost:8080/Plone/folder?context-navigation?expand.navigation.depth=2 -H 'Accept: application/json'
+
+And this is the result::
+
+    {
+        '@id': 'http://localhost:8080/Plone/folder',
+        'items': [
+            {
+                '@id': 'http://localhost:8080/Plone/folder/folder-a',
+                'description': '',
+                'items': [
+                    {
+                        '@id': 'http://localhost:8080/Plone/folder/folder-a/folder-aa',
+                        'description': '',
+                        'title': 'Folder AA',
+                    },
+                    {
+                        '@id': 'http://localhost:8080/Plone/folder/folder-a/folder-ab',
+                        'description': '',
+                        'title': 'Folder AB',
+                    },
+                ],
+                'title': 'Folder A',
+            },
+            {
+                '@id': 'http://localhost:8080/Plone/folder/folder-b',
+                'description': '',
+                'title': 'Folder B',
+            },
+            {
+                '@id': 'http://localhost:8080/Plone/folder/folder-c',
+                'description': '',
+                'title': 'Folder C',
+            },
+        ],
+    }
+
+@site-search endpoint
+---------------------
+
+This endpoint works exactly like **@search** but take care of types not searchable settings.
+
+
+@sitemap-settings
+-----------------
+
+Endpoint that returns sitemap settings for anonymous users (that can't access registry entries).
+
+Returns a data structure like this::
+
+    {
+        'depth': 3,
+    }
+
+
+@search endpoint
+----------------
+
+We customized @search endpoint for that bug: https://github.com/plone/plone.restapi/pull/1066
+
+@querystring-search endpoint customization
+------------------------------------------
+
+If we are searching only for `Event` types, do a special search using **get_events** method to search events: that method handle recurrences and avoid wrong results.
+
+Otherwise, perform a default querystring-search.
+
+
+Disallow bot indexing
+---------------------
+
+There is a custom viewlet that add a <meta> tag in the <head> section to prevent bot indexing.
+
+For reference: https://developers.google.com/search/docs/advanced/crawling/block-indexing?visit_id=637489966041845317-1328107746&rd=1
+
+Restapi Search Limits
+---------------------
+
+Search results length is limited to 500 items by default, but you can change this limit
+using the environment variable `REDTURTLE_VOLTO_MAX_LIMIT_SEARCH`
+
+Patches
+=======
+
+Products.PortalTransforms
+-------------------------
+
+See https://github.com/plone/Products.PortalTransforms/pull/43
+
+There is a monkeypatch to apply that changes.
+
+Events recurrence
+-----------------
+
+There is a monkeypatch for Events recurrences that fix their duration.
+
+If it works well, we can make a pr in p.a.event.
+
+There is another monkeypatch for Events recurrences to change the default behavior of start index serializer.
+Now it keeps all dates even if the single date is already passed.
+
+
+Respect locally allowed types on paste
+--------------------------------------
+
+Disallow paste items that are not allowed into destination folder.
+
+
+DateTime field serializer/deserializer
+--------------------------------------
+
+Customized these adapters to correctly set effective and expires dates.
+
+Without this change, these dates will be stored with UTC hour and not with the current timezone's hour
+because behavior's `setter/getter <https://github.com/plone/plone.app.dexterity/blob/master/plone/app/dexterity/behaviors/metadata.py#L278>`_ strip timezone from the value.
+
+With this patch we will send to the setter the date with already localized hour, so even if the setter strip timezone info, we are going to save the correct date.
+
+Default ISerializeToJsonSummary adapter
+---------------------------------------
+
+This is a patch for backward compatibility for old volto templates that need a full image scales object.
+
+Authentication Header
+---------------------
+
+There is a custom event handler for IPubStart that set authorization bearer header from auth_token cookie.
+For details see the `pull-request <https://github.com/RedTurtle/redturtle.volto/pull/69>`_.
+
+This patch is not enabled by default. You need to set an environment variable to `true`: *PROXY_BEARER_AUTH*.
+
+Conditionally search for similar if nonexistent site path passed
+----------------------------------------------------------------
+
+plone.app.redirector.FourOhFourView.search_for_similar method patched to return an empty list if
+the `REDTURTLE_VOLTO_ENABLE_SEARCH_FOR_SIMILAR` environment variable is set.
+
+New Criteria
+============
+
+There is one new criteria for Collections and Listing blocks that search on **exclude_from_nav** index.
+
+
+Caching controlpanel
+====================
+
+After installation the caching control panel is populated with custom policies while caching is globally enabled by default. Please, set the caching proxies properly.
+
+
+@vocabularies permissions
+=========================
+
+According to new plone.restapi implementation, @vocabularies endpoint will check some permissions to make a vocabulary available or not.
+
+We patched PERMISSIONS variable in __init__ file to allow Keywords vocabulary to be available for anonymous users.
+
+Reference: https://github.com/plone/plone.restapi/pull/1258#issuecomment-980628982
+
+RamCache in tersecaching
+------------------------
+
+We disabled ramcache for tersecaching (plone.app.caching.terseCaching.plone.content.dynamic.ramCache) because
+it seems not correctly purged when there are more instances and a content has been modified.
+
+We need to check why it's not purged and fix it.
+
+
+Template overrides
+==================
+
+RSS.pt Template
+---------------
+There is a customization of the Products.CMFPlone.browser.syndication.templates.RSS.pt
+template to add enclosure tag to feed items.
+A record has also been added to the registry to be able to set the miniature to be
+displayed with the RSS item. This record is named redturtle.volto.rss_image_miniature
+
+Fix internal links
+==================
+
+There is a view **@@fix-links** that will check internal links into blocks and fix some links that refs to a staging
+or local development environment.
+
+Find blocks
+===========
+
+There is a view **@@find-blocks** that will return contents that have at least one block of the given type.
+
+Find broken links
+=================
+
+There is a view **@@find-broken-links** that will return a csv file with a list of contents with broken internal links in blocks.
+
+Stringinterp adapters
+=====================
+
+There is a new stringinterp adapter that can be used for example in content rules: **{volto_url}**
+
+This adapter will remove "/api" from the content's absolute_url.
+
+
+Sitemap.xml.gz view customization
+=================================
+
+There is a custom view **sitemap.xml.gz** that will return a sitemap.xml.gz file.
+
+This is a copy of the original view from plone.app.layout.sitemap.sitemap
+
+The only difference is that:
+
+    * we restrict level of depth to `plone.sitemap_depth` registry setting (default 3)
+
+    * we add content modified in the last week
+
+With Volto, for serve this file, we need to add a line like this in apache config::
+
+    RewriteRule ^/+(sitemap.xml.gz) http://127.0.0.1:8080/VirtualHostBase/https/%{SERVER_NAME}:443/Plone/VirtualHostRoot/$1 [L,P]
+
+
+Installation
+============
+
+Install redturtle.volto by adding it to your buildout::
+
+    [buildout]
+
+    ...
+
+    eggs =
+        redturtle.volto
+
+
+and then running ``bin/buildout``
+
+
+
+Contribute
+==========
+
+- Issue Tracker: https://github.com/RedTurtle/redturtle.volto/issues
+- Source Code: https://github.com/RedTurtle/redturtle.volto
+
+
+License
+=======
+
+The project is licensed under the GPLv2.
+
+Authors
+=======
+
+This product was developed by **RedTurtle Technology** team.
+
+.. image:: https://avatars1.githubusercontent.com/u/1087171?s=100&v=4
+   :alt: RedTurtle Technology Site
+   :target: http://www.redturtle.it/
+
+
+Contributors
+============
+
+- RedTurtle Technology, sviluppo@redturtle.it
+
+
+Changelog
+=========
+
+5.9.4 (2025-12-05)
+------------------
+
+- Fix bug search event restapi (#148)
+  [mamico]
+
+
+5.9.3 (2025-11-24)
+------------------
+
+- Fix on #151 changes (#152)
+  [mamico]
+
+
+5.9.2 (2025-11-20)
+------------------
+
+- Avoid acquisition problems in monkeypatch (#151).
+  [cekk]
+
+5.9.1 (2025-09-25)
+------------------
+- Exclude "teaser" to avoid block modification by resolveuidserializer
+  [mamico]
+- Fix in resolveuid serializer if block is not a dict nor dict-like 
+  [mamico]
+- Make querystringsearch endpoint more customizable: now custom_query is defined in a separate method.
+  [cekk]
+- fix file:/// as external link in summary
+  [mamico]
+- Set a default view for Plone Site different by default_view because in plone.restapi 9.15.2 is exposed and we don't need it because it broke agid layout.
+  [cekk]
+
+5.9.0 (2025-06-26)
+------------------
+
+- Fix rss feed image selection, now it uses the correct field for preview_image.
+  [mamico]
+- Fix issue with event search in @querystring-search override:
+  converting a timezone-aware DateTime to utcdatetime causes a problem when searching for
+  "today", as it shifts start=day x at 00:00 to start=day x-1 at 22:00 in GMT+2 timezone.
+  [lucabel]
+- Handle sort_on also when using AdvancedQuery.
+  [cekk]
+- Remove z3c.jbot compatibility and customize templates in standard-way.
+  [cekk]
+- Force indexing subjects in SearchableText with ICategorization to keep the old Plone functionality (remove this when the official pr is merged).
+  [cekk]
+- Enable kitconcept.seo behavior on Site Root.
+  [cekk]
+
+5.8.0 (2025-03-20)
+------------------
+
+- Add linkintegrity retriever for Link objects so when the referred object will be deleted, linkintegrity check will be raised also for Links.
+  [cekk]
+
+
+5.7.1 (2025-03-13)
+------------------
+
+- Customize serialzier for repeatableContentBlock.
+  [cekk]
+- Include experimental.noacquisition in the config.
+  Needed for pip buidls.
+  [folix-01]
+
+
+5.7.0 (2025-02-06)
+------------------
+
+- Add experimental.noacquisition as dependency.
+  [cekk]
+- Patch absolutize_path method to disable acquisition when checking aliases.
+  [cekk]
+- Update it translations
+  [lucabel]
+
+
+5.6.3 (2024-12-02)
+------------------
+
+- Add patch for blocksRetriever.
+  [eikichi18]
+- Enable blocks linkintegrity on Site Root too.
+  [cekk]
+
+5.6.2 (2024-11-28)
+------------------
+
+- Add patch for SlateBlockslinkRetriever.
+  [eikichi18]
+
+
+5.6.1 (2024-11-21)
+------------------
+
+- Add linkintegrity check also for count_down block.
+  [cekk]
+
+
+5.6.0 (2024-11-21)
+------------------
+
+- Add linkintegrity indexers for some custom blocks.
+  [cekk]
+
+
+5.5.7 (2024-10-28)
+------------------
+
+- Refactored AdvancedQuery part in @search endpoint to be more extendable.
+  [cekk]
+
+
+5.5.6 (2024-10-17)
+------------------
+
+- Remove dependency with *collective.volto.cookieconsent*.
+  [cekk]
+- Add more block indexers for SearchableText.
+  [cekk]
+
+5.5.5 (2024-09-23)
+------------------
+
+- Avoid acquisition in find-broken-links view when checking blocks.
+  [cekk]
+
+
+5.5.4 (2024-09-23)
+------------------
+
+- Fix typo in filename generation in "find-broken-links" view.
+  [cekk]
+
+
+5.5.3 (2024-09-23)
+------------------
+
+- Add view "find-broken-links" that return a csv file with a list of contents with broken links in blocks.
+  [cekk]
+
+
+5.5.2 (2024-09-05)
+------------------
+
+- Fix SummarySerializer for collection exporting
+  Links
+  [lucabel]
+- remove newsitem template override, use default dexterity view for newsitem in backend
+  [mamico]
+- Customize @@display-file to allow to download files with proper filename.
+  [cekk]
+- Add "type" to EXCLUDE_KEYS in blocks serializer/deserializer to not convert this slate attribute.
+  [cekk]
+
+5.5.1 (2024-07-22)
+------------------
+
+- Allow to select which image miniature use in
+  RSS
+  [lucabel]
+
+
+5.5.0 (2024-07-10)
+------------------
+
+- Fixed limit event occurrences to 100.
+  [eikichi18]
+- Add dependency with collective.volto.sitesettings.
+  [cekk]
+
+
+5.4.9 (2024-04-22)
+------------------
+
+- Limit event occurrences to 100.
+  [mamico]
+- Customize INameChooser adapter to check also alias ids and disallow to create contents that could override aliases.
+  [cekk]
+- Customize also `copy` and `move` endpoints to raise BadRequest if that action will override some aliases.
+  [cekk]
+- Add flag in controlpanel to enable/disable INameChooser customization.
+  [cekk]
+- Exclude bg_color from transformed fields in deserializer.
+  [cekk]
+- Uninstall collective.volto.cookieconsent (deprecated). Will be removed from dependencies in next releases.
+  [cekk]
+- Add dependency to collective.volto.gdprcookie and install it by default.
+  [cekk]
+
+5.4.8 (2024-03-19)
+------------------
+
+- Do not try to convert strings in internal paths for *form* blocks.
+- Handle None values in link integrity blocks adapter.
+- Patch in @querystring-search that avoid to search through all the site if there is an absolutePath criteria with non existing UID and b_size==1.
+  See #99 for more details.
+  [cekk]
+
+
+5.4.7 (2024-03-11)
+------------------
+
+- Add adapter handler for event in rss feed to export
+  start date instead of publication date
+  [lucabel]
+
+
+5.4.6 (2024-03-06)
+------------------
+
+- Added check if value is a dict before using get method.
+  [eikichi18]
+
+
+5.4.5 (2024-03-05)
+------------------
+
+- Update plone.restapi requirement to 9.6.0 version
+  [folix-01]
+- Removed monkeypatch for plone.restartpi.serializer.utils.RESOLVEUID_RE
+  [folix-01]
+
+5.4.4 (2024-02-20)
+------------------
+
+- Add adapters for link integrity for content-types with BlocksField fields.
+  [cekk]
+- Fix: occurrences indexing
+  [mamico]
+
+
+5.4.3 (2024-01-30)
+------------------
+
+- Upgrade step to remove all custom Googlebot rules from robots.txt
+  [mamico]
+
+- Fix: add range_start to function for calculate recurrences in the right way
+  [eikichi18]
+
+5.4.2 (2024-01-11)
+------------------
+
+- Fix deserializer for relationfield, add lstrip to path object calculation
+  [eikichi18]
+
+
+5.4.1 (2023-12-28)
+------------------
+
+- Fix deserializer for relationfield, use UID instead of @id
+  [eikichi18]
+
+- Isort
+  [folix-01]
+
+- Add monkeypatch to fix @scadeziario-day endpoint
+  [eikichi18]
+
+
+5.4.0 (2023-11-14)
+------------------
+
+- Return error instead of raise Excpetion for BadRequest in querystringsearch
+  [mamico]
+
+- Add upgrade step and setuphandler to fix robots.txt
+  original rules adding 'Allow: /*?expand*'
+  [lucabel]
+
+5.3.0 (2023-10-25)
+------------------
+
+- Fix: the 'fix-link' view has a bug that corrupts links by replacing
+  the current external URL with a URL that is always relative to the
+  site, even when requesting replacement with a link from a different
+  website.
+  [lucabel].
+
+- plone.app.redirector.FourOhFourView.search_for_similar patch to enable conditionally
+  the search for similar
+  [folix-01]
+
+- Set search/querystring-search limit patch only for anonymous users.
+  Auth users can need to perform an higher query (in contents view for example).
+  [cekk]
+
+- Re-apply context UID filter in querystringsearch service (as it is in plone.restapi).
+  [cekk]
+
+5.2.4 (2023-09-26)
+------------------
+
+- Fix the issue in the @translation GET endpoint: If this
+  endpoint is invoked, possibly by a bot, and plone.app.multilingual
+  is not installed, the call will result in an empty search query
+  on the catalog.
+  [lucabel]
+
+- backport https://github.com/plone/Products.CMFPlone/pull/3845
+  fix: avoid searching all users when many_users is flagged
+  [mamico]
+
+5.2.3 (2023-09-21)
+------------------
+
+- Max search limit became configurable by env var 'REDTURTLE_VOLTO_MAX_LIMIT_SEARCH', 500 by default.
+  [folix-01]
+
+
+5.2.2 (2023-08-29)
+------------------
+
+- Fix RESOLVEUID_RE regexp.
+  [cekk]
+
+
+5.2.1 (2023-08-29)
+------------------
+
+- Use plone.volto uid_to_url method to convert resolveuid links in summary.
+  [cekk]
+- Patch plone.restapi RESOLVEUID_RE regexp to catch more urls.
+  [cekk]
+- Ignore non-existing indexes in custom ranking.
+  [cekk]
+
+
+5.2.0 (2023-08-21)
+------------------
+
+- Add catalog and search patches to limit results.
+  [cekk]
+
+
+5.1.0 (2023-08-17)
+------------------
+
+- set authorization bearer header from auth_token cookie
+  [mamico]
+
+- Remove Patch to avoid auto-closed tags in portal transforms: https://github.com/plone/Products.PortalTransforms/pull/43
+  [mamico]
+
+- Remove Patch for folderish types migration https://github.com/plone/plone.volto/pull/86
+  [mamico]
+
+
+5.0.1 (2023-07-04)
+------------------
+
+- Custom portal url in @@fix-links
+  [mamico]
+
+
+5.0.0 (2023-04-04)
+------------------
+
+- Remove unused default text in homepage.
+  [cekk]
+
+
+5.0.0rc1 (2023-03-20)
+---------------------
+
+- Plone 6.0 support
+
+- Handle custom search ranking with AdvancedQuery.
+  [mamico]
+
+- Add controlpanel for redturtle.volto settings.
+  [cekk]
+
+4.1.3 (2023-02-12)
+------------------
+
+- sitemap.xml.gz customization.
+  [mamico]
+
+
+4.1.2 (2022-12-27)
+------------------
+
+- Customized voltobackendwarning viewlet because is broken in plone 5.2.
+  [cekk]
+
+
+4.1.1 (2022-12-23)
+------------------
+
+- Upgrade-step to remove etags list from p.a.caching terseCaching (in old Plone sites).
+  [cekk]
+
+
+4.1.0 (2022-11-22)
+------------------
+
+- Add new utility view `@@find-blocks`.
+  [cekk]
+
+
+4.0.2 (2022-08-29)
+------------------
+
+- Patch for plone.volto upgrade-step (https://github.com/plone/plone.volto/pull/86).
+  [cekk]
+
+
+4.0.1 (2022-08-12)
+------------------
+
+- Fix upgrade-step.
+  [cekk]
+- Allow add Document into News Item and Event.
+  [cekk]
+
+
+4.0.0 (2022-08-12)
+------------------
+
+- Remove content-types customizations to be aligned with plone.volto configs.
+  [cekk]
+
+
+3.12.2 (2022-05-19)
+-------------------
+
+- Add *query* to ignored keys in blocks deserializer. This avoid blocks with querystringsearch widget to be parsed (for example the search one).
+  [cekk]
+
+3.12.1 (2022-05-19)
+-------------------
+
+- Add string interp for volto_parent_url.
+  [eikichi18]
+
+
+3.12.0 (2022-04-04)
+-------------------
+
+- Add new metadata for Events dates.
+  [cekk]
+
+
+3.11.0 (2022-04-01)
+-------------------
+
+- Add stringinterp adapter to replace *{volto_url}* with the current frontend url (backend url without "/api").
+  [cekk]
+
+
+3.10.0 (2022-03-26)
+-------------------
+
+- Add Table block serializer/deserializer for internal links.
+  [cekk]
+- Add view for fix internal links.
+  [cekk]
+
+
+3.9.2 (2022-03-25)
+------------------
+
+- Fix remoteUrl serialization in summary.
+  [cekk]
+
+
+3.9.1 (2022-03-17)
+------------------
+
+- Refs serialization in blocks now uses brains instead adapted objects because brain has all catalog metadata and can get the fullobject.
+  [cekk]
+
+
+3.9.0 (2022-03-14)
+------------------
+
+- Allow to select custom miniature for RSS template
+  [lucabel]
+- Better serialize refs in blocks: now we don't serialize the full object, but only the summary (with all metadata) to decrease (A LOT) the size of the response.
+  [cekk]
+
+3.8.3 (2022-03-07)
+------------------
+
+- Fix null dates in summary serialization (now we handle differente use-cases).
+  [cekk]
+- Return remoteUrl metadata when serializing a brain for backward compatibility with non-brain serializers.
+  [cekk]
+
+
+3.8.2 (2022-02-07)
+------------------
+
+- Handle non-path values in blocks deserializer when trying to extract UIDs.
+  [cekk]
+
+
+3.8.1 (2022-01-31)
+------------------
+
+- Return null value in summary serialization for dates not set (because metadata are set with dates in the future or past for better filtering/sorting).
+  [cekk]
+
+
+3.8.0 (2022-01-26)
+------------------
+
+- Customized json summary serializer to expose image scales when requested _all metadata_fields without waking up the object.
+  [cekk]
+
+
+3.7.3 (2021-12-27)
+------------------
+
+- Upgrade-step to add default blocks in pages that don't have them.
+  [cekk]
+
+
+3.7.2 (2021-12-02)
+------------------
+
+- Customized ZCTextIndexQueryParser for https://github.com/plone/plone.restapi/pull/1209.
+  [cekk]
+
+
+3.7.1 (2021-12-01)
+------------------
+
+- Upgrade-step to reindex SearchableText for all contents with a table block (change in plone.restapi 8.16.1).
+  [cekk]
+
+3.7.0 (2021-12-01)
+------------------
+
+- Remove enabled_vocabularies implementation because in recent plone.restapi (>8.15.2) there is a standard way.
+  [cekk]
+
+3.6.2 (2021-11-09)
+------------------
+
+- Bypass plone.volto serialization for blocks right now (in monkeypatch.py).
+  [cekk]
+
+
+3.6.1 (2021-11-05)
+------------------
+
+- Fix upgrade-step for plone.volto.
+  [cekk]
+
+
+3.6.0 (2021-10-28)
+------------------
+
+- Add plone.volto dependency
+  [cekk]
+
+
+3.5.0 (2021-10-11)
+------------------
+
+- p.a.caching rules for rest api services
+  [mamico]
+
+3.4.2 (2021-10-01)
+------------------
+
+- Fix tests.
+  [cekk]
+
+3.4.1 (2021-09-30)
+------------------
+
+- Disable ramcache from tersecaching (to fix the problem with cache invalidation for balanced instances..see README).
+  [cekk]
+
+
+3.4.0 (2021-09-29)
+------------------
+
+- Better handle events searches.
+  [cekk]
+
+
+3.3.0 (2021-09-21)
+------------------
+
+- Index text from some common blocks.
+  [cekk]
+- Fix date timezones in fields.
+  [cekk]
+
+
+3.2.2 (2021-08-24)
+------------------
+
+- Customize serializer/deserializer for DateTime fields to correctly set effective and expires with right timezone delta.
+  [cekk]
+- Enable Anonymous to access Plone vocabularies with restapi. **@vocabularies** endpoint has been customized to limit the vocabularies that anonymous can actually access.
+  [cekk]
+
+3.2.1 (2021-08-04)
+------------------
+
+- Remove customized @workflow endpoint. Is now merged in plone.restapi >= 8.7.1.
+  [cekk]
+
+3.2.0 (2021-08-02)
+------------------
+
+- Customize @workflow endpoint for plone.restapi #1184 and #1190 pr.
+  [cekk]
+- Remove default cache proxy address on install.
+  [cekk]
+
+
+3.1.3 (2021-06-30)
+------------------
+
+- Fix b_size conversion in upgrade-step for Volto 13.
+  [cekk]
+
+3.1.2 (2021-06-18)
+------------------
+
+- Fix also linkMore in volto13 migration.
+  [cekk]
+
+
+3.1.1 (2021-06-17)
+------------------
+
+- Handle contents with old Richtext values in volto13 migration.
+  [cekk]
+
+
+
+3.1.0 (2021-06-17)
+------------------
+
+- [BREAKING CHANGE] Volto 13 support. The upgrade-step will update listing blocks data.
+  [cekk]
+
+
+3.0.1 (2021-06-08)
+------------------
+
+- review caching profile
+  [mamico]
+
+3.0.0 (2021-05-28)
+------------------
+
+- Provided basic setup for caching policies in control panel.
+  [daniele]
+
+2.1.2 (2021-05-11)
+------------------
+
+- Additional fix in start and end values handling in querystring-search.
+  [cekk]
+
+
+2.1.1 (2021-05-11)
+------------------
+
+- Fix start and end values handling in querystring-search.
+  [cekk]
+
+
+2.1.0 (2021-05-05)
+------------------
+
+- Compatibility with changes in plone.restapi 7.3.2.
+  [cekk]
+
+
+2.0.2 (2021-05-05)
+------------------
+
+- Handle also limit in querystringsearch patch.
+  [cekk]
+
+2.0.1 (2021-05-05)
+------------------
+
+- Handle sort order in querystringsearch patch.
+  [cekk]
+
+
+2.0.0 (2021-04-30)
+------------------
+
+- Remove @events-search endpoint and customize @querystring-search one to handle Events like @events-search.
+  [cekk]
+
+
+1.3.0 (2021-04-19)
+------------------
+
+- Monkeypatch to respect locally allowed types also on content paste.
+  [cekk]
+
+
+1.2.4 (2021-04-15)
+------------------
+
+- Customize translation for remoteUrl field description only for restapi call.
+  [cekk]
+
+
+1.2.3 (2021-04-01)
+------------------
+
+- added block type 'searchEvents' to EXCLUDE_TYPES [giuliaghisini]
+
+
+1.2.2 (2021-03-25)
+------------------
+
+- Added upgrade step to import p.a.c. profile.
+  [daniele]
+
+1.2.1 (2021-03-17)
+------------------
+
+- Monkeypatch for Events recurrences.
+  [cekk]
+- Fix profile name in upgrade-steps.
+  [cekk]
+
+1.2.0 (2021-03-02)
+------------------
+
+- New endpoint to search Events: @events-search.
+- Better handle serialization for recursion problems: now only serialize with ISerializeToJsonSummary
+  if the referred item is the current context.
+  [cekk]
+
+
+1.1.0 (2021-03-01)
+------------------
+
+- Expand uids with ISerializeToJsonSummary and not with fullobject to gain space and
+  avoid maximum recursion depth it a block has an internal reference to the current context.
+  [cekk]
+
+
+1.0.9 (2021-02-23)
+------------------
+
+- Handle unauthorized in blocks serializer.
+  [cekk]
+
+
+1.0.8 (2021-02-19)
+------------------
+
+- Fix typo.
+  [cekk]
+
+
+1.0.7 (2021-02-19)
+------------------
+
+- Do not run dependencies when upgrading plone.app.registry.
+  [cekk]
+
+1.0.6 (2021-02-15)
+------------------
+
+- Disallow Plone site indexing: add noindex in <head>
+  [cekk]
+- Revert robots.txt customization because is in conflict to noindex directive.
+  [cekk]
+
+1.0.5 (2021-02-11)
+------------------
+
+- Custom @search endpoint to fix bug with Access inactive portal content permission
+  (https://github.com/plone/plone.restapi/pull/1066)
+  [cekk]
+
+
+1.0.4 (2021-02-10)
+------------------
+
+- Customize robots.txt to disallow /api entry.
+  [cekk]
+
+1.0.3 (2021-02-09)
+------------------
+
+- Patched Products.PortalTransforms
+  (https://github.com/plone/Products.PortalTransforms/pull/43).
+  [cekk]
+
+
+
+1.0.2 (2021-02-09)
+------------------
+
+- Re-add remoteUrl field serializer.
+  [cekk]
+
+
+1.0.1 (2021-02-08)
+------------------
+
+- [new] Add here from modena the RSS.pt template override
+  [lucabel]
+- Remove text block serializer that is already merged into plone.restapi.
+  [cekk]
+- Register generic serializer also for site root.
+  [cekk]
+
+1.0.0 (2020-12-07)
+------------------
+
+- Add exclude_from_nav as Collection criteria (used also in Volto's listing blocks).
+  [cekk]
+- Add custom TextLine adapter to return the proper widget for **remoteUrl** field.
+  [cekk]
+
+0.1.6 (2020-11-25)
+------------------
+
+- Allow Products.PloneHotfix20200121 versions greater than 1.0.
+  [pnicolli]
+- Fix generic serializer/deserializer.
+  [cekk]
+- Skip also "calendar" when check for url deserializing blocks
+  [lucabel]
+- Fix document template.
+  [cekk]
+
+0.1.5 (2020-10-20)
+------------------
+
+- Remove resolveuid serializer/deserializer for blocks: now they are integrated in plone.restapi.
+  [cekk]
+- Add custom transformers for blocks to handle link in generic blocks.
+  [cekk]
+- Enable Editor and Contributor to access Plone vocabularies with restapi.
+  [cekk]
+- Add @sitemap-settings endpoint.
+  [cekk]
+
+0.1.4 (2020-07-16)
+------------------
+
+- Add keywords vocabulary patch.
+  [cekk]
+
+
+0.1.3 (2020-06-22)
+------------------
+
+- Added default homepages
+  [nzambello]
+- Added blocks behavior to LRF
+  [nzambello]
+- Made editable and viewable Plone Site with blocks behavior
+  [nzambello]
+- Remove richtext behavior from News Items, Events and Documents.
+  [cekk]
+- News Item and Event are folderish and can only contain Links, Images and Files.
+  [cekk]
+
+0.1.2 (2020-05-25)
+------------------
+
+- Revert to Event and News Item default behaviors.
+  [cekk]
+
+
+0.1.1 (2020-05-22)
+------------------
+
+- Install also collective.volto.cookieconsent.
+  [cekk]
+
+
+0.1.0 (2020-05-22)
+------------------
+
+- Initial release.
+  [cekk]
