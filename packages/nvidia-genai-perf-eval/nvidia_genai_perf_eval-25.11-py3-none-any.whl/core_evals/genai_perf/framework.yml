@@ -1,0 +1,47 @@
+framework:
+  name: genai_perf_eval
+  pkg_name: genai_perf
+  full_name: GenAI Perf
+  description: GenAI Perf is a tool to evaluate the performance of LLM endpoints.
+  url: https://github.com/triton-inference-server
+defaults:
+  command: >-
+    genai_perf_eval --model_id {{target.api_endpoint.model_id}} --url {{target.api_endpoint.url}} 
+    {% if target.api_endpoint.api_key is not none %}--api-key {{target.api_endpoint.api_key}} {% endif %}
+    --concurrencies {{config.params.parallelism}} --isl {{config.params.extra.isl}} --osl {{config.params.extra.osl}} 
+    --tokenizer {{config.params.extra.tokenizer}} --endpoint-type {{target.api_endpoint.type}} --artifact-dir {{config.output_dir}}
+    {% if target.api_endpoint.stream %}--streaming {% endif %}{% if config.params.extra.warmup %}--warmup{% endif %}
+  config:
+    supported_endpoint_types:
+    - chat
+    - completions
+    params:
+      parallelism: 1
+      extra:
+        tokenizer: null
+        warmup: true
+        isl: null
+        osl: null
+  target:
+    api_endpoint: {}  # required to add: url, model_id, api_key
+evaluations:
+- name: genai_perf_summarization
+  description: GenAI Perf speed evaluation, summarization task - long input, short output
+  defaults:
+    config:
+      type: genai_perf_summarization
+      params:
+        task: genai_perf_summarization
+        extra:
+          isl: 5000
+          osl: 500
+- name: genai_perf_generation
+  description: GenAI Perf speed evaluation, generation task - short input, long output
+  defaults:
+    config:
+      type: genai_perf_generation
+      params:
+        task: genai_perf_generation
+        extra:
+          isl: 500
+          osl: 5000
