@@ -1,0 +1,36 @@
+stages:
+  - build
+
+variables:
+  DEV_REGISTRY: "harbor.xmov.ai/xmov"
+  PRO_REGISTRY: "registry.cn-hangzhou.aliyuncs.com/xmov"
+  FS_URL: "https://open.feishu.cn/open-apis/bot/v2/hook/596839f6-7241-4e81-b8cf-bca30c299c51"
+
+build:
+  stage: build
+  only:
+    - dev
+    - qa
+    - master
+    - tags
+  script:
+    # 构建 Docker 镜像
+    - |
+      if [[ $CI_COMMIT_REF_NAME == "master" ]]
+      then
+        docker buildx build --builder newbuilder --push . -t $PRO_REGISTRY/$CI_PROJECT_NAME:latest -t $PRO_REGISTRY/$CI_PROJECT_NAME:pre
+      else
+        docker buildx build --builder newbuilder --push . -t $DEV_REGISTRY/$CI_PROJECT_NAME:$CI_COMMIT_REF_NAME
+      fi
+  tags:
+    - node-50
+
+  after_script:
+    # 发送构建结果到飞书机器人
+    - |
+      if [ $CI_JOB_STATUS == "success" ]
+      then
+        curl -X POST $FS_URL -H "Content-Type:application/json" -d '{"msg_type":"text","content":{"text":"👌构建成功：'"$CI_PROJECT_NAME"' '"$CI_COMMIT_REF_NAME"' '"$CI_COMMIT_SHORT_SHA"'，时间：'"$(date +"%Y-%m-%d %H:%M:%S")"'。"}}';
+      else
+        curl -X POST $FS_URL -H "Content-Type:application/json" -d '{"msg_type":"text","content":{"text":"💔构建失败：'"$CI_PROJECT_NAME"' '"$CI_COMMIT_REF_NAME"' '"$CI_COMMIT_SHORT_SHA"'，时间：'"$(date +"%Y-%m-%d %H:%M:%S")"'。"}}';
+      fi
