@@ -1,0 +1,2 @@
+def timestamp():
+    raise NotImplementedError
