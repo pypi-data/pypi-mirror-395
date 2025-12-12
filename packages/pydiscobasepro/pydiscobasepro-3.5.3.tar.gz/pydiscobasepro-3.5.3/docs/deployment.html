@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment - PyDiscoBasePro</title>
+    <link rel="stylesheet" href="../style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="nav-container">
+                <div class="logo">
+                    <h1><i class="fab fa-discord"></i> PyDiscoBasePro</h1>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="api.html">API</a></li>
+                    <li><a href="configuration.html">Configuration</a></li>
+                    <li><a href="deployment.html">Deployment</a></li>
+                    <li><a href="https://github.com/code-xon/pydiscobasepro" target="_blank">GitHub</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="doc-content">
+            <div class="container">
+                <h1><i class="fas fa-server"></i> Deployment Guide</h1>
+
+                <div class="doc-section">
+                    <h2>Local Development</h2>
+                    <p>For development and testing:</p>
+                    <pre><code>pip install -e .
+python bot.py</code></pre>
+                    <p>Use hot-reloading for rapid development without restarts.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Docker Deployment</h2>
+
+                    <h3>Dockerfile</h3>
+                    <pre><code>FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash botuser
+USER botuser
+
+# Expose dashboard port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8080/health')"
+
+CMD ["python", "bot.py"]</code></pre>
+
+                    <h3>Build and Run</h3>
+                    <pre><code>docker build -t pydiscobasepro .
+docker run -d --name mybot \
+  -e BOT_TOKEN=your_token_here \
+  -e MONGODB_URI=mongodb://host.docker.internal:27017 \
+  -p 8080:8080 \
+  pydiscobasepro</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>PM2 Process Manager</h2>
+
+                    <h3>Installation</h3>
+                    <pre><code>npm install -g pm2
+pm2 startup
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $USER --hp $HOME</code></pre>
+
+                    <h3>PM2 Configuration</h3>
+                    <pre><code>// ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: 'PyDiscoBasePro',
+    script: 'bot.py',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production'
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true
+  }]
+};</code></pre>
+
+                    <h3>Start with PM2</h3>
+                    <pre><code>pm2 start ecosystem.config.js
+pm2 save
+pm2 monit</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Systemd Service</h2>
+
+                    <h3>Service File</h3>
+                    <pre><code>[Unit]
+Description=PyDiscoBasePro Discord Bot
+After=network.target mongodb.service
+
+[Service]
+Type=simple
+User=botuser
+Group=botuser
+WorkingDirectory=/opt/pydiscobasepro
+Environment="PATH=/opt/pydiscobasepro/venv/bin"
+ExecStart=/opt/pydiscobasepro/venv/bin/python bot.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+                    <h3>Installation Steps</h3>
+                    <pre><code>sudo cp pydiscobasepro.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable pydiscobasepro
+sudo systemctl start pydiscobasepro
+sudo systemctl status pydiscobasepro</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Cloud Deployment</h2>
+
+                    <h3>Heroku</h3>
+                    <pre><code># requirements.txt (add gunicorn)
+gunicorn==20.1.0
+
+# Procfile
+web: python bot.py
+worker: python bot.py
+
+# Deploy
+git push heroku main</code></pre>
+
+                    <h3>DigitalOcean App Platform</h3>
+                    <p>Use the Dockerfile above and deploy directly from GitHub.</p>
+
+                    <h3>AWS EC2</h3>
+                    <pre><code># Install dependencies
+sudo apt update
+sudo apt install python3 python3-pip mongodb
+
+# Clone and setup
+git clone https://github.com/code-xon/pydiscobasepro.git
+cd pydiscobasepro
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Configure systemd service (see above)
+sudo systemctl enable pydiscobasepro
+sudo systemctl start pydiscobasepro</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Database Setup</h2>
+
+                    <h3>MongoDB Local</h3>
+                    <pre><code># Ubuntu/Debian
+sudo apt install mongodb
+sudo systemctl start mongodb
+sudo systemctl enable mongodb
+
+# macOS with Homebrew
+brew install mongodb-community
+brew services start mongodb-community
+
+# Docker
+docker run -d -p 27017:27017 --name mongodb mongo:latest</code></pre>
+
+                    <h3>MongoDB Atlas (Cloud)</h3>
+                    <ol>
+                        <li>Create account at <a href="https://cloud.mongodb.com" target="_blank">MongoDB Atlas</a></li>
+                        <li>Create a cluster</li>
+                        <li>Get connection string</li>
+                        <li>Update config.json with the URI</li>
+                    </ol>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Monitoring & Maintenance</h2>
+
+                    <h3>Log Rotation</h3>
+                    <pre><code># logrotate configuration
+/var/log/pydiscobasepro/*.log {
+    daily
+    missingok
+    rotate 7
+    compress
+    notifempty
+    create 0644 botuser botuser
+    postrotate
+        systemctl reload pydiscobasepro
+    endscript
+}</code></pre>
+
+                    <h3>Health Checks</h3>
+                    <pre><code>curl http://localhost:8080/health</code></pre>
+
+                    <h3>Backup Strategy</h3>
+                    <pre><code># MongoDB backup
+mongodump --db pydiscobasepro --out /backup/$(date +%Y%m%d)
+
+# Automated backup script
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+mongodump --db pydiscobasepro --out /backup/backup_$DATE
+find /backup -name "backup_*" -mtime +7 -delete</code></pre>
+                </div>
+
+                <div class="doc-section">
+                    <h2>Security Best Practices</h2>
+                    <ul>
+                        <li>Use environment variables for sensitive data</li>
+                        <li>Run bot as non-root user</li>
+                        <li>Enable firewall (ufw/iptables)</li>
+                        <li>Regular security updates</li>
+                        <li>Monitor logs for suspicious activity</li>
+                        <li>Use HTTPS for dashboard in production</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 PyDiscoBasePro. Made with ❤️ by Code-Xon.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../script.js"></script>
+</body>
+</html>
