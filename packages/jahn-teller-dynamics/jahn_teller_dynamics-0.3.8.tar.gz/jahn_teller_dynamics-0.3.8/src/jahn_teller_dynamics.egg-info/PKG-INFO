@@ -1,0 +1,494 @@
+Metadata-Version: 2.1
+Name: jahn-teller-dynamics
+Version: 0.3.8
+Summary: Dynamic Jahn-Teller Effect Calculator
+Home-page: https://github.com/tbalu98/Jahn-Teller-Dynamics
+Author: Balázs Tóth
+Author-email: toth.balazs@wigner.hun-ren.hu
+License: GPLv3
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+﻿# Jahn-Teller-Dynamics - Dynamic Jahn-Teller Effect Calculator
+
+
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Email](https://img.shields.io/badge/Email-toth.balazs%40wigner.hun--ren.hu-blue)](mailto:toth.balazs@wigner.hun-ren.hu)
+
+
+
+
+## Table of Contents
+
+- [About the Project](#about-the-project)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration Examples](#configuration-examples)
+- [Output Options](#output-options)
+- [Eigenstates](#eigenstates)
+
+## About the Project
+
+A Python tool for calculating dynamic Jahn-Teller effects, spin-orbit interactions, and energy splitting of degenerate electron states from DFT calculations.
+
+The `Exe.py` script calculates:
+* The E⊗e dynamic Jahn-Teller effect
+* Spin-orbit interaction
+* Energy splitting of degenerate electron states
+* ZPL (zero phonon line) shift in magnetic field
+
+
+
+This project was built with Python 3.10.
+
+## Installation
+
+
+
+### Installation directly from PyPI:
+
+```
+pip install jahn-teller-dynamics
+```
+### Installation from Github
+
+
+1. Download the project:
+   ```bash
+   git clone https://github.com/tbalu98/Jahn-Teller-Dynamics.git
+   ```
+   or download the [zip file](https://github.com/tbalu98/Jahn-Teller-Dynamics/archive/refs/heads/main.zip)
+
+2. Install dependencies:
+   ```bash
+   pip3 install -r requirements.txt
+   ```
+
+
+
+
+## Usage
+
+To run a calculation, you need to:
+
+1. Create a configuration file (.cfg) that specifies your Jahn-Teller active system parameters
+2. Run the following command, replacing configuration_file.cfg with your config file name:
+
+```bash
+Exe configuration_file.cfg
+```
+
+### Test Data
+
+To test the code, download the `config_files` and `data` folder that contains the vasprunxml files for the negatively charged tin vacancy (SnV) from:
+[Google Drive](https://drive.google.com/drive/folders/1_L-j08JW8fuGhRihFijjS_vfALAPvC43?usp=sharing)
+
+## Configuration Examples
+
+Example configuration files can be found in the `config_files` folder, which demonstrate different use cases and parameter settings.
+
+### 1. Basic Configuration with vasprunxml
+
+To perform calculations, you need at least two geometric configurations of your Jahn-Teller active system:
+- The highly symmetric geometry
+- The Jahn-Teller distorted geometry with minimum energy
+- (Optional) The saddle point geometry
+- (Optional) Spin-orbit coupling from density functional theory calculation
+
+Example configuration:
+```
+[essentials]
+maximum_number_of_vibrational_quanta = 12
+output_prefix = SnV_gnd
+output_folder = results/SnV_results
+input_folder = data/SnV_data
+eigen_states = real
+save_raw_parameters = true
+save_model_hamiltonian_cfg = true
+
+
+[system_parameters]
+saddle_point_geometry = SnV_gnd_saddle_point.xml
+global_minimum_geometry = SnV_gnd_C2h.xml
+high_symmetry_geometry = SnV_gnd_D3d.xml
+#spin-orbit coupling obtained from DFT calculation in meV:
+#This calculation modells a hole therefore, it is a negative value.
+DFT_spin-orbit_coupling = -8.3
+orbital_reduction_factor =  0.328
+
+#Optionally you may specify a magnetic field
+[magnetic_field]
+#In Tesla
+minimum = 0.0
+maximum = 10.0
+direction_vector = 1.0, 0.0, 0.0
+step_number = 11
+
+```
+On the command line it presents:
+- Jahn-Teller energy
+- barrier energy in case of a second order calculation
+- Taylor coefficients of the interaction
+- Ham reduction factor
+- theoretical enegy level splitting
+
+In the `output_folder` it saves these results into .csv format and the eigen energies and states of the system. If a magnetic field is presented than it saves them for each magnetic field strength.
+
+Example of eigenstate output format:
+
+<table>
+<thead>
+<tr>
+<th>['x', 'y', 'orbital', 'spin']</th>
+<th>eigenstate_1</th>
+<th>eigenstate_2</th><th>...<th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>|0,0,ex,up></td>
+<td>(1.4e-08-4.62e-08j)</td>
+<td>(0.6041025766+0j)</td>
+</tr>
+<tr>
+<td>|0,0,ex,down></td>
+<td>(0.6041025766+0j)</td>
+<td>(1.106e-07-5.56e-08j)</td>
+</tr>
+<tr>
+<td>|0,0,ey,up></td>
+<td>(-4.62e-08-1.4e-08j)</td>
+<td>-0.6041025676j</td>
+</tr>
+<tr>
+<td>|0,0,ey,down></td>
+<td>0.6041025676j</td>
+<td>(5.56e-08+1.106e-07j)</td>
+</tr>
+<tr>
+<td>|0,1,ex,up></td>
+<td>(-1.87e-08-5.7e-09j)</td>
+<td>-0.2439570653j</td>
+</tr>
+<tr>
+<td>|0,1,ex,down></td>
+<td>0.2439570653j</td>
+<td>(2.24e-08+4.47e-08j)</td>
+</tr>
+<tr><td>...<td></tr>
+</tbody>
+</table>
+
+The eigenstates are named eigenstate_1, eigenstate_2, etc... The corresponding eigenenergies can be found in a separate file:
+
+<table>
+<thead>
+<tr>
+<th>state_name</th>
+<th>eigenenergy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>eigenstate_1</td>
+<td>42.4731822278</td>
+</tr>
+<tr>
+<td>eigenstate_2</td>
+<td>42.4731823331</td>
+</tr>
+<tr>
+<td>eigenstate_3</td>
+<td>46.3897044769</td>
+</tr>
+<tr>
+<td>eigenstate_4</td>
+<td>46.3897045822</td>
+</tr>
+<tr><td>...</td><td>...</td></tr>
+</tbody>
+</table>
+
+
+
+
+### 2. ZPL Calculation Configuration
+
+For ZPL shift calculations, you need to specify:
+- Ground and excited states
+- Magnetic field parameters
+- Basis vectors of the E⊗e dynamic Jahn-Teller active system' spin
+
+```
+[essentials]
+maximum_number_of_vibrational_quanta = 12
+output_prefix = SnV_ZPL_shift
+output_folder = results/SnV_results
+input_folder = data/SnV_data
+#basis vectors of the Exe system's coordinate system
+basis_vector_1 = 1, -1, 0
+basis_vector_2 = 1, 1, -2
+basis_vector_3 = 1, 1, 1
+
+# It can use the model four state Hamiltonian.
+model_Hamiltonian = false
+
+
+#Saves geometries of the system in .csv files, and creates a corresponding .cfg file
+save_raw_parameters = true
+#Save a .cfg file which contains the parameters of the model Hamiltonian operator of the system
+save_model_Hamiltonian_cfg = true
+#Save a .cfg file which contains the Taylor coefficients of the electron-phonon interaction
+save_taylor_coeffs_cfg = true
+[ground_state_parameters]
+saddle_point_geometry = SnV_gnd_saddle_point.xml
+global_minimum_geometry = SnV_gnd_C2h.xml
+high_symmetry_geometry = SnV_gnd_D3d.xml
+#spin-orbit coupling obtained from DFT calculation in meV:
+DFT_spin-orbit_coupling = -8.3
+orbital_reduction_factor =  0.328
+
+
+[excited_state_parameters]
+saddle_point_geometry = SnV_ex_saddle_point.xml
+global_minimum_geometry = SnV_ex_C2h.xml
+high_symmetry_geometry = SnV_ex_D3d.xml
+#spin-orbit coupling obtained from DFT calculation in meV:
+DFT_spin-orbit_coupling = -95.9
+orbital_reduction_factor =  0.782
+
+
+[magnetic_field]
+#In Tesla
+minimum = 0.0
+maximum = 10.0
+direction_vector = 1.0, 0.0, 0.0
+step_number = 11
+
+```
+
+### 3. CSV File Configuration
+By opting for the ```save_raw_parameters = true``` the program saves the atomic locations in CSV files and creates the corresponding configurational file. It contains additional structural parameters of the lattice energies, lattice vectors, atomic masses and names. 
+
+```
+[ground_state_parameters]
+dft_spin-orbit_coupling = -8.3
+orbital_reduction_factor = 0.328
+high_symmetry_geometry = SnV_ZPL_shift_ground_state_parameters_high_symmetry_geometry.csv
+high_symmetric_geometry_energy = -5368.30679265
+global_minimum_geometry = SnV_ZPL_shift_ground_state_parameters_global_minimum_geometry.csv
+global_minimum_energy = -5368.32839163
+saddle_point_energy = -5368.32682965
+saddle_point_geometry = SnV_ZPL_shift_ground_state_parameters_saddle_point_geometry.csv
+
+[excited_state_parameters]
+dft_spin-orbit_coupling = -95.9
+orbital_reduction_factor = 0.782
+high_symmetry_geometry = SnV_ZPL_shift_excited_state_parameters_high_symmetry_geometry.csv
+high_symmetric_geometry_energy = -5366.13656085
+global_minimum_geometry = SnV_ZPL_shift_excited_state_parameters_global_minimum_geometry.csv
+global_minimum_energy = -5366.21970743
+saddle_point_energy = -5366.21291581
+saddle_point_geometry = SnV_ZPL_shift_excited_state_parameters_saddle_point_geometry.csv
+
+[atom_structure_parameters]
+masses_of_atoms = 118.71, 12.011
+names_of_atoms = Sn, C
+numbers_of_atoms = 1, 510
+basis_vector_1 = 14.17860889, 0.0, 0.0
+basis_vector_2 = 0.0, 14.17860889, 0.0
+basis_vector_3 = 0.0, 0.0, 14.17860889
+
+[essentials]
+maximum_number_of_vibrational_quanta = 12
+output_prefix = SnV_ZPL_shift
+output_folder = results/SnV_results
+input_folder = data/SnV_data
+basis_vector_1 = 1, -1, 0
+basis_vector_2 = 1, 1, -2
+basis_vector_3 = 1, 1, 1
+model_hamiltonian = false
+save_raw_parameters = false
+save_model_hamiltonian_cfg = false
+save_taylor_coeffs_cfg = true
+
+[magnetic_field]
+minimum = 0.0
+maximum = 10.0
+step_number = 11
+direction_vector = 1.0, 0.0, 0.0
+
+
+```
+
+### 4. Direct Parameter Configuration
+
+You can also specify E⊗e Jahn-Teller interaction parameters directly. There you need to give the Jahn-Teller energies, barrier energies, and the distances between the lattice configurations so the program can calculate the coeffcients of the Jahn-Teller interaction.
+
+```
+[essentials]
+maximum_number_of_vibrational_quanta = 12
+output_prefix = SnV_ZPL_shift_JT_pars
+output_folder = results/SnV_results
+spectrum_range = 50
+
+#basis vectors of the Exe system's coordinate system
+basis_vector_1 = 1, -1, 0
+basis_vector_2 = 1, 1, -2
+basis_vector_3 = 1, 1, 1
+
+
+
+[ground_state_parameters]
+Jahn-Teller_energy = 21.599
+barrier_energy = 1.562
+vibrational_energy_quantum = 79.4954
+#spin-orbit coupling obtained from DFT calculation in meV:
+DFT_spin-orbit_coupling = -8.3
+orbital_reduction_factor =  0.328
+high_symmetric_geometry-minimum_energy_geometry_distance = 0.1644
+high_symmetric_geometry-saddle_point_geometry_distance = 0.1676
+
+[excited_state_parameters]
+Jahn-Teller_energy = 83.1466
+barrier_energy = 6.7916
+vibrational_energy_quantum = 75.6121
+#spin-orbit coupling obtained from DFT calculation in meV:
+DFT_spin-orbit_coupling = -95.9
+orbital_reduction_factor =  0.782
+high_symmetric_geometry-minimum_energy_geometry_distance = 0.3407
+high_symmetric_geometry-saddle_point_geometry_distance = 0.3421
+
+
+
+[magnetic_field]
+minimum = 0.0
+maximum = 10.0
+direction_vector = 0.0, 0.0, 1.0
+step_number = 11
+#basis vector of the magnetic field (the program normalize it automatically)
+basis_vector_1 = 14.17860889, 0.0, 0.0
+basis_vector_2 = 0.0, 14.17860889, 0.0
+basis_vector_3 = 0.0, 0.0, 14.17860889
+
+```
+
+### 5. Four-State Model Configuration
+
+
+For calculations using the four-state model:
+
+```
+[essentials]
+maximum_number_of_vibrational_quanta = 12
+output_prefix = SnV_ZPL_shift
+output_folder = results/SnV_results
+input_folder = data/SnV_data
+basis_vector_1 = 1, -1, 0
+basis_vector_2 = 1, 1, -2
+basis_vector_3 = 1, 1, 1
+model_hamiltonian = false
+save_raw_parameters = false
+save_model_hamiltonian_cfg = false
+save_taylor_coeffs_cfg = true
+
+[ground_state_parameters]
+dft_spin-orbit_coupling = -8.3
+orbital_reduction_factor = 0.328
+ham_reduction_factor = 0.4706170075391288
+delta_p = 0.04700977697171288
+k_jt = 0.01040108529115713
+
+[excited_state_parameters]
+dft_spin-orbit_coupling = -95.9
+orbital_reduction_factor = 0.782
+ham_reduction_factor = 0.12550119453836145
+delta_p = 0.2967480915488183
+k_jt = 0.0644133368548232
+
+[magnetic_field]
+minimum = 0.0
+maximum = 10.0
+step_number = 11
+direction_vector = 1.0, 0.0, 0.0
+
+
+```
+
+## Output Options
+
+The tool can generate various output files based on configuration:
+
+- `save_raw_parameters = true`: Saves geometries in CSV format and generates the corresponding configuration file with atomic parameters such as chemical symbol, mass, basis vector of the supercell.
+- `save_model_hamiltonian_cfg = true`: Generates four state model Hamiltonian configuration
+- `save_taylor_coeffs_cfg = true`: Saves .cfg files that contains Taylor coefficients for the dynamic Jahn-Teller interaction
+
+## Eigenstates
+
+The script can save eigenstates in either real or complex basis:
+
+- Complex basis (e<sub>+</sub>, e<sub>-</sub>): Superpositions of degenerate orbitals (e<sub>x</sub>, e<sub>y</sub>)
+  - e<sub>+</sub> = -(e<sub>x</sub>+ie<sub>y</sub>)
+  - e<sub>-</sub> = e<sub>x</sub>-ie<sub>y</sub>
+
+To use complex eigenstates, set:
+```
+eigen_states = complex
+```
+## Directory Structure
+
+```
+Jahn-Teller-Dynamics/
+├── src/
+│   └── jahn_teller_dynamics/          # Main package
+│       ├── __init__.py
+│       ├── Exe.py                     # Main executable script
+│       ├── io/                        # Input/Output modules
+│       │   ├── __init__.py
+│       │   ├── JT_config_file_parsing.py
+│       │   ├── plotting.py
+│       │   ├── user_workflow.py
+│       │   ├── VASP.py
+│       │   └── xml_parser.py
+│       ├── math/                      # Mathematical utilities
+│       │   ├── __init__.py
+│       │   ├── matrix_mechanics.py
+│       │   ├── braket_formalism.py
+│       │   └── maths.py
+│       ├── physics/                   # Physics modules
+│       │   ├── __init__.py
+│       │   ├── jahn_teller_theory.py
+│       │   ├── quantum_physics.py
+│       │   └── quantum_system.py
+├── config_files/                      # Example configuration files
+│   ├── SnV_gnd_csv.cfg
+│   ├── SnV_ZPL_shift_csv.cfg
+│   └── ... (other config examples)
+├── data/                             # Data directory (user-provided)
+├── results/                          # Output results directory (user-provided)
+├── requirements.txt                  # Python dependencies
+├── setup.py                         # Package installation script
+└── README.md                        # This file
+```
+
+### Key Components:
+
+- **`src/jahn_teller_dynamics/`**: Main package containing all Python modules
+- **`io/`**: Input/Output modules for configuration parsing, VASP file handling, and plotting
+- **`math/`**: Mathematical utilities for braket formalism and matrix mechanics and Hilbert spaces
+- **`physics/`**: Core physics modules for Jahn-Teller theory and quantum mechanical systems
+- **`config_files/`**: Example configuration files for different calculation types
+- **`data/`**: Directory for user input data (VASP files, CSV files, etc.)
+- **`results/`**: Output directory for calculation results
+
