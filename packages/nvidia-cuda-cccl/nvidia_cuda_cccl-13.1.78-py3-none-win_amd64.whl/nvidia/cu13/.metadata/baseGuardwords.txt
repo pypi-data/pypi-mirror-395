@@ -1,0 +1,133 @@
+################################################################################
+# baseGuardwords.txt defines words that must not appear in any driver binary
+# or shipped source files.
+#
+# This list is typically used in conjunction with the nvconfig generated g_guardWords.txt.
+# That file lists the architecture/device/and feature related strings (Tesla, Fermi, Kepler etc.)
+# we wish to exclude.
+#
+# See https://wiki.nvidia.com/engwiki/index.php/Guardwords
+#
+# Include syntax: #include "file.ext"
+# file.ext can be an absolute path, or a relative path. If it is a relative path,
+# it is always taken relative to the directory of the file that includes it.
+#
+# Syntax:
+#   GUARDWORD "text"  [ caseSensitive ]  default is NOT case sensitive
+#                     [ padding=<n> ]    how many chars before OR after the search term must be 'usual' chars (like space, CRLF, lower-order ASCII 32-128) (default = 6)
+#                     [ noUnicode ]      if set, no unicode will match (only pure ascii); by default both unicode and non-unicode will match
+#   IGNORE "text"                        Any text listed on an IGNORE line will not cause a guardword violation.  Must be an exact match including case (in unicode or non-unicode).
+#
+# - Comments begin with "#" and continue to end of line
+# -
+# The default is to search for BOTH unicode and non-unicode strings.
+#
+################################################################################
+IGNORE {"qPPy0uFR3Gbb06WznT/3tIJXAT239R0dBtoVW02QI65q9eHfYT9UTqFmLdlN"}                   #false positive for t239 on fb_reaction_wow.svg. Bug 200741094
+IGNORE {"wap-wsg-idm-ecid-wtls10"}      #Bug 200590716
+IGNORE {"idm-ecid-wtls10"}              #Bug 200590716
+IGNORE {"8bvhtools10"}                  # Bug 200606173 & Bug 3145230
+IGNORE {"DagP10BasicBlock"}             # GP10B (offender: gpgpucomp)
+
+IGNORE {"GFG000=>="}                    # False positive on G000
+
+IGNORE {"g00X" ONLY_FOR='nvcompiler64.dll nvcompiler32.dll'}  # False positive reviewed in Bug 200640841
+IGNORE {"g00x" ONLY_FOR='nvcompiler64.dll nvcompiler32.dll'}  # False positive reviewed in Bug 200640841
+IGNORE {"g00x" ONLY_FOR='nvdisasm.exe nvasm.exe'}  # False positive reviewed in Bug 3106294
+IGNORE {"G00x" ONLY_FOR='nvdisasm.exe nvasm.exe'}  # False positive reviewed in Bug 3106294
+IGNORE {"FAD106B" ONLY_FOR='libcef.dll'}  #False positive reviewed in Bug 3568876
+IGNORE {"sect239k1"}                    # this is a curve name that has t239 in it
+IGNORE {"vkdev_ext239"}
+IGNORE {"jfqbh6kc0kbf0de1"}             # maybe false positive. Do we want to exclude the text that surrounds this?
+IGNORE {"IPINGIPEHABACUSEVAL"}          # False positive for ABACUS reviewed in Bug 5017944, 5058193
+GUARDWORD {"drivers/OpenGL"}            # Catch OpenGL driver paths. bug: http://nvbugs/968696
+GUARDWORD {"drivers\OpenGL"}            # Catch OpenGL driver paths. bug: http://nvbugs/968696
+
+# XXX FindGuardwords.py requires backslashes to be escaped
+GUARDWORD {"drivers\\OpenGL"}           # Catch OpenGL driver paths. bug: http://nvbugs/968696
+
+# We want to prevent leaks of profile entries, but we can't use typical guardwords from game executables
+# like hitman or witcher, since these will be caught by DRS.  Instead, create a guardword for a random
+# string that will not collide with anything, and use it like an app profile.  This way, if something
+# changes that exposes the other profiles, it will expose this as well, and be detected by the
+# guardword check.  Search the wgf2um driver for this string to see how it's used.
+GUARDWORD {"jfqbh6kc0kbf0de1"}
+
+GUARDWORD {"NVCFG" caseSensitive }      # NVCFG ifdefs not removed
+
+# FlipIndicator and other driver functionality uses "encrypted" strings (really just a mild obfuscation)
+# string encryption is handled via C++ constexpr functionality.  we do a guardword check on a few of the
+# strings in case the constexpr system breaks one day.
+GUARDWORD {"NV_FLIPDATA_PATH"}
+GUARDWORD {"T_Flip_Deferred_Time"}
+GUARDWORD {"VRR_Requested"}
+GUARDWORD {"VRR_Allowed_by_Registry"}
+
+# Our Linux kernel modules use an
+# NV_LINUX_KERNEL_MODULE_LICENSE_IS_DUAL_MIT_GPL ifdef to choose the
+# MODULE_LICENSE to advertise.  That ifdef condition must be unifdefed
+# prior to publishing the kernel module source.  We use a guardword check
+# to check that unifdefing happens.
+GUARDWORD {"NV_LINUX_KERNEL_MODULE_LICENSE_IS_DUAL_MIT_GPL"}
+
+# Confidential naming https://nvbugs/3280838
+# To reduce false positives, only guard against specific capitalizations of
+# gimle; any other capitalizations are unlikely to be human-written.
+GUARDWORD {"gimle" caseSensitive }
+GUARDWORD {"GIMLE" caseSensitive }
+GUARDWORD {"Gimle" caseSensitive }
+
+IGNORE {"HGIMLEC"} # in sw\devrel\VRWorks\graphics\rel_3_3\multiprojection_dx\doc\images\distortion-compare.psd
+IGNORE {"EGIMLE\?"} # in sw\devrel\VRWorks\graphics\rel_3_3\multiprojection_dx\doc\images\multires-compare.psd
+IGNORE {"GGIMLEG"} # in sw\devrel\VRWorks\graphics\rel_3_3\multiprojection_dx\doc\images\distortion-compare.psd
+IGNORE {"GGIMLE@"} # in sw\devrel\VRWorks\graphics\rel_3_3\multiprojection_dx\doc\images\distortion-compare.psd
+IGNORE {"FLNLHGIMLEA"} # has GIMLE in it, from mods builds /tmp/tmp.5vwjGBbGc6/pyd_org_2048x2048_8bits.bin Bug 3282906
+IGNORE {"SGIMLE"} # has GIMLE in it, from mods builds /tmp/tmp.5vwjGBbGc6/pyd_org_2048x2048_8bits.bin Bug 3282906
+
+# Extra Tegra-related guardwords and ignore
+GUARDWORD {"Tegra239" falsePositiveFilters=codeSection}
+
+# Blackwell ARCH https://nvbugs/3607790
+GUARDWORD {"64xHMMA"}
+GUARDWORD {"128xIMMA"}
+IGNORE {"RGB2020"} # False positive on GB202
+IGNORE {"GB202" ONLY_FOR='vgpuConfig-hyperv_cgpu.xml'} # Bug 4495813
+
+# Rubin ARCH
+IGNORE {"RUbin8" ONLY_FOR='libnvidia-fatbinaryloader.a'} # False positive on rubin in wsl_winnext_amd64_release/libnvidia-fatbinaryloader.a Bug 4654797
+IGNORE {"ScrubIn"} # False positive on rubin in src/kernel/gpu/mem_mgr/mem_mgr.c
+
+IGNORE {"PATTERN100"} # False positive on RN100 (rubin-next) , Bug 5052175
+
+# LS10
+IGNORE {"OPENVMTOOLS1030GANV061518"} # for nvidia-topologyd-source.tar's open-vm-tools license file
+IGNORE {"spvtools10"} # Mangled C++ symbol name from SPIR-V Tools
+IGNORE {"utils10"} # Mangled C++ symbol name from SPIR-V Tools
+IGNORE {"Symbols10"} # Mangled C++ symbol name from SPIR-V Tools
+IGNORE {"GDJYLS10"} # seen in drivers\compiler\built\assembler\x86_64_win32_devrel\bin\nvasm.exe
+
+# APM related
+IGNORE {"mapMemory"}
+IGNORE {"MapMemory"}
+
+# Guardword meant to catch any binaries meant only for internal usage on debug
+# and develop flavored builds, never for release flavored (or external) builds.
+# The suffix is meant to be used in resman builds by having Sources.def append
+# the string to bindata retrieval functions for sensitive binaries. For example,
+# we would change g_bindata_kpmuGetBinStorageUcodeRiscvElfHal_GA10X.c to
+# g_bindata_kpmuGetBinStorageUcodeRiscvElfHal_NvidiaConfidentialDoNotDistribute_GA10X.c.
+# Only the resulting function and file name to retrieve the bindata need this
+# string appended, the input files used for the bindata retrieval do not need it.
+GUARDWORD {"NvidiaConfidentialDoNotDistribute"}
+
+# Guardwords coming from Tegra, bug 4564441
+GUARDWORD {"bluefield4"}
+GUARDWORD {"catskill"}
+GUARDWORD {"connectx8"}
+GUARDWORD {"gilboa"}
+GUARDWORD {"L2 RPPG"}
+GUARDWORD {"L2-RPPG"}
+GUARDWORD {"nvcfg_global_feature_rid49379_nvn_3d_api"}
+GUARDWORD {"odin_global_external_profile"}
+
+IGNORE {"Hammarling"}
