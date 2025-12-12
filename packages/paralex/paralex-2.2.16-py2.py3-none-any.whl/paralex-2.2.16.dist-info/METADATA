@@ -1,0 +1,104 @@
+Metadata-Version: 2.1
+Name: paralex
+Version: 2.2.16
+Summary: Standard for lexicons of inflected paradigms
+Author: Sacha Beniamine
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: pandas >=2.0.3
+Requires-Dist: frictionless >=5.18.0
+Requires-Dist: colorama
+Requires-Dist: python-slugify
+Requires-Dist: hypothesis
+Requires-Dist: python-iso639
+Requires-Dist: pybtex
+Requires-Dist: seaborn
+Requires-Dist: tqdm
+Provides-Extra: docs
+Requires-Dist: mkdocs >=1.1.2 ; extra == 'docs'
+Requires-Dist: mkdocs-material ; extra == 'docs'
+Requires-Dist: mkdocs-include-markdown-plugin ; extra == 'docs'
+Requires-Dist: mkdocs-table-reader-plugin ; extra == 'docs'
+
+# Paralex: lexicons of morphological paradigms
+
+[Paralex](https://www.paralex-standard.org) is a standard for morphological lexicons which document inflectional paradigms.
+
+This package contains:
+- The paralex specification
+- The full documentation
+- Utilities to generate metadata and to validate paralex lexicons
+
+# Generating metadata
+
+To generate paralex metadata (more in the docs):
+
+
+```python title="gen-metadata.py"
+from paralex import paralex_factory
+
+package = paralex_factory("Vulcan Verbal Paradigms",
+                          {
+                              "forms": {"path": "vulcan_v_forms.csv"},
+                          }
+                          )
+package.to_json("vulcan.package.json")
+```
+
+The package returned is a [frictionless Package object](https://framework.frictionlessdata.io/docs/framework/package.html) and can be manipulated as such as needed.
+
+
+# Validation of paralex datasets
+
+To validate a paralex lexicon:
+
+~~~
+    paralex validate <mypackagename>.package.json
+~~~
+
+This checks that the data is valid using frictionless, as well as a number of statements to match the paralex standard.
+For a detailed report on frictionless metadata, do:
+
+
+~~~
+    frictionless validate <mypackagename>.package.json
+~~~
+
+# Accessing datasets
+
+Available datasets in the Zenodo community:
+
+~~~
+    paralex list
+~~~
+
+Download a dataset and extract the .zip archive:
+
+~~~
+    paralex get <ZENODO_ID>
+~~~
+
+The Zenodo ID can be found with the `paralex list` command.
+
+# Serving the paralex site
+
+First, build the standard package from files:
+
+~~~
+	paralex make_standard
+~~~
+
+Second, build the specs files from the standard package:
+
+~~~
+	paralex make_doc
+~~~
+
+Third, use mkdocs (which needs to be installed) to build this site:
+
+~~~
+	mkdocs serve
+~~~

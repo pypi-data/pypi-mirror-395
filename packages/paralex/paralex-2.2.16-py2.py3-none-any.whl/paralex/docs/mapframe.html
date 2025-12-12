@@ -1,0 +1,259 @@
+<head>
+<link href="https://unpkg.com/maplibre-gl@^4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@^4.7.1/dist/maplibre-gl.js"></script>
+<style>
+/*    .filter-ctrl {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1;
+    }
+
+    .filter-ctrl input[type='text'] {
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        width: 100%;
+        border: 0;
+        background-color: #fff;
+        margin: 0;
+        color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        width: 180px;
+    }*/
+
+    #filter-group-ul {
+        display: flex;
+        flex-flow: row wrap;
+        list-style-type: none;
+        margin: 0;
+        padding: 1em;
+        border-radius: 10px;
+        background-color: #eee;
+        margin-top: 1em;
+    }
+
+    .container {
+        font: 16px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        display: block;
+        position: relative;
+        margin: 5px 0px;
+        cursor: pointer;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        padding-left: 25px;
+        padding-right: 2em;
+        width: 250px;
+    }
+
+    /* Hide the browser's default checkbox */
+    .container input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+
+    /* Create a custom checkbox */
+    .checkmark {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 16px;
+        width: 16px;
+        background-color: #ddd;
+    }
+
+    /* On mouse-over, add a grey background color */
+    .container:hover input ~ .checkmark {
+        background-color: #ccc;
+    }
+
+    /* When the checkbox is checked, add a blue background */
+    .container input:checked ~ .checkmark {
+        background-color: var(--main-color);
+    }
+
+    /* Create the checkmark/indicator (hidden when not checked) */
+    .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+    }
+
+    dl.popup {
+        margin: 0;
+        display: flex;
+        flex-flow: row wrap;
+    }
+
+    dl.popup a {
+        text-decoration: none;
+        color: var(--main-color);
+    }
+
+    dl.popup dt {
+        flex-basis: 25%;
+        padding: 2px 4px;
+        background: var(--main-color);
+        text-align: right;
+        color: #fff;
+    }
+    dl.popup dd {
+        flex-basis: 65%;
+        flex-grow: 1;
+        margin: 0;
+        padding: 2px 4px;
+/*         border-bottom: 1px solid #999; */
+    }
+
+</style>
+</head>
+<body>
+<div id="map" style="height: 30rem;">
+<!--<div class="filter-ctrl">
+    <input
+        id="filter-input"
+        type="text"
+        name="filter"
+        placeholder="Filter by name"
+    />
+</div>-->
+</div>
+<div id="filter-group"><dl id="filter-group-ul"></dl></div>
+</body>
+<script>
+    var map = new maplibregl.Map({
+        container: 'map', // container id
+        style: 'https://tiles.openfreemap.org/styles/positron', // style URL, hosted by OpenFreeTiles
+        center: [0, 0], // starting position [lng, lat]
+        zoom: 0.5, // starting zoom
+        maxZoom: 5,
+        attributionControl: {
+            compact: true,
+            customAttribution: '🗨️ Paralex | 🌍 <a href=\"https://maplibre.org/\" target=\"_blank\">&copy; Maplibre</a>'
+            }
+    });
+    const filterGroup = document.getElementById('filter-group-ul');
+    // const filterInput = document.getElementById('filter-input');
+    const layerIDs = []; // Will contain a list used to filter against.
+
+    async function renderMap() {
+        const response = await fetch("result.geojson");
+        const json = await response.json();
+
+        map.on('load', async () => {
+            map.addSource('datasets', {
+                type: 'geojson',
+                data: json
+            });
+
+            // Add zoom and compass buttons
+            var nav = new maplibregl.NavigationControl();
+            map.addControl(nav, 'top-right');
+
+            json.features.forEach((feature) => {
+                const symbol = feature.properties['family_id'];
+                const family = feature.properties['family'];
+                const color = feature.properties['color'];
+                const layerID = `ln-${symbol}`;
+
+                // Add a layer for this symbol type if it hasn't been added already.
+                if (!map.getLayer(layerID)) {
+                    map.addLayer({
+                        'id': layerID,
+                        'type': 'circle',
+                        'source': 'datasets',
+                        'paint': {
+                            'circle-radius': 6,
+                            'circle-stroke-width': 3,
+                            'circle-color': color,
+                            'circle-stroke-color': '#fff'
+                        },
+                        'filter': ['==', 'family_id', symbol]
+                    });
+
+                    // Add checkbox and label elements for the layer.
+                    const label = document.createElement('label');
+                    label.setAttribute('for', layerID);
+                    label.textContent = family + " ("+ symbol + ")";
+                    label.classList.add('container');
+
+                    const input = document.createElement('input');
+                    const span = document.createElement('span');
+                    input.type = 'checkbox';
+                    input.id = layerID;
+                    input.checked = true;
+                    span.classList.add('checkmark');
+                    label.appendChild(input)
+                    label.appendChild(span)
+                    label.style.setProperty('--main-color', color)
+                    filterGroup.appendChild(label);
+
+                    // When the checkbox changes, update the visibility of the layer.
+                    input.addEventListener('change', (e) => {
+                        map.setLayoutProperty(
+                            layerID,
+                            'visibility',
+                            e.target.checked ? 'visible' : 'none'
+                        );
+                    });
+
+                    map.on('click', layerID, (e) => {
+                        const coordinates = e.features[0].geometry.coordinates.slice();
+                        var data = e.features[0].properties;
+
+
+                        // Ensure that if the map is zoomed out such that multiple
+                        // copies of the feature are visible, the popup appears
+                        // over the copy being pointed to.
+                        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                        }
+                        var link =  'target="_blank" rel="noopener noreferrer"'
+                        new maplibregl.Popup()
+                            .setLngLat(coordinates)
+                            .setHTML(
+                                '<dl class="popup" style="--main-color:'+ data.color+';"><dt>Title</dt><dd>' + data.title +
+                                '</dd><dt>Language</dt><dd><a ' + link + 'href="https://glottolog.org/glottolog?iso=' + data.lang + '">' + data.lang_name + "</a>" +
+                                '</dd><dt>ISO 693</dt><dd><a ' + link + 'href="https://glottolog.org/glottolog?iso=' + data.lang + '">' + data.lang + "</a>" +
+                                '</dd><dt>DOI</dt><dd><a ' + link + 'href="' + data.doi +'">'+ data.doi.split('doi.org/')[1] + "</a>" +
+                                "</dd><dt>Family</dt><dd>" + data.family +
+                                "</dd><dt>Authors</dt><dd>" + data.contributors.split(';').join('<br/>') +
+                                "</dd></dl>"
+                            )
+                            .addTo(map);
+                    });
+
+
+                    // Change the cursor to a pointer when the mouse is over the places layer.
+                    map.on('mouseenter', 'datasets-points', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    // Change it back to a pointer when it leaves.
+                    map.on('mouseleave', 'datasets-points', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                    layerIDs.push(layerID);
+                }
+                // filterInput.addEventListener('keyup', (e) => {
+                //     // If the input value matches a layerID set
+                //     // it's visibility to 'visible' or else hide it.
+                //     const value = e.target.value.trim().toLowerCase();
+                //     layerIDs.forEach((layerID) => {
+                //         map.setLayoutProperty(
+                //             layerID,
+                //             'visibility',
+                //             layerID.indexOf(value) > -1 ? 'visible' : 'none'
+                //         );
+                //     });
+                // });
+            });
+        });
+    }
+    renderMap();
+</script>
