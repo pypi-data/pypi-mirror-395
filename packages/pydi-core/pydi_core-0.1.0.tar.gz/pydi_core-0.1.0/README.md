@@ -1,0 +1,230 @@
+# PyDI
+
+A simple and lightweight dependency injection container for Python with support
+for different service lifetimes, automatic dependency resolution, and circular
+dependency detection.
+
+## Features
+
+- **Multiple Service Lifetimes**: Singleton, Scoped, and Transient
+- **Automatic Dependency Resolution**: Uses type hints to automatically inject
+  dependencies
+- **Circular Dependency Detection**: Detects and prevents circular dependencies
+  at registration time
+- **Lazy Initialization**: Services are instantiated only when needed
+- **Service Factories**: Create multiple instances on demand using
+  `ServiceFactory[T]`
+- **Type Safety**: Full type hint support for better IDE integration and type
+  checking
+
+## Installation
+
+```bash
+pip install pydi-core
+```
+
+## Quick Start
+
+```python
+from pydi_core import PyDI
+
+class Database:
+    def __init__(self):
+        self.connection = "Connected to database"
+
+class UserRepository:
+    def __init__(self, database: Database):
+        self.database = database
+    
+    def get_users(self):
+        return f"Fetching users using {self.database.connection}"
+
+class UserService:
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
+    
+    def list_users(self):
+        return self.repository.get_users()
+
+# Create container and register services
+pydi = PyDI()
+pydi.register_service(Database, PyDI.LIFETIME_SINGLETON)
+pydi.register_service(UserRepository, PyDI.LIFETIME_SCOPED)
+pydi.register_service(UserService, PyDI.LIFETIME_TRANSIENT)
+
+# Get service with dependencies automatically injected
+user_service = pydi.get_service(UserService)
+print(user_service.list_users())
+# Output: Fetching users using Connected to database
+```
+
+## Service Lifetimes
+
+### Singleton
+The service is created only once and the same instance is returned every time.
+
+```python
+pydi.register_service(Database, PyDI.LIFETIME_SINGLETON)
+```
+
+### Scoped
+The service is created once per dependency resolution scope. Within a single
+`get_service()` call, the same instance is reused for all dependencies that
+need it, but a new instance is created for each top-level `get_service()` call.
+
+```python
+pydi.register_service(UserRepository, PyDI.LIFETIME_SCOPED)
+```
+
+### Transient
+A new service instance is created every time it is requested.
+
+```python
+pydi.register_service(UserService, PyDI.LIFETIME_TRANSIENT)
+```
+
+## Service Factories
+
+Use `ServiceFactory[T]` to create multiple instances of a service on demand:
+
+```python
+from pydi_core import PyDI, ServiceFactory
+
+class Connection:
+    def __init__(self):
+        self.id = id(self)
+
+class ConnectionPool:
+    def __init__(self, connection_factory: ServiceFactory[Connection]):
+        self.factory = connection_factory
+        self.connections = [
+            self.factory.create_instance(),
+            self.factory.create_instance(),
+            self.factory.create_instance()
+        ]
+
+pydi = PyDI()
+pydi.register_service(Connection, PyDI.LIFETIME_TRANSIENT)
+pydi.register_service(ConnectionPool, PyDI.LIFETIME_SINGLETON)
+
+pool = pydi.get_service(ConnectionPool)
+# pool.connections contains 3 different Connection instances
+```
+
+## Error Handling
+
+PyDI provides specific exceptions for different error scenarios:
+
+### CircularDependencyError
+Raised when a circular dependency is detected:
+
+```python
+class ServiceA:
+    def __init__(self, service_b: 'ServiceB'):
+        self.service_b = service_b
+
+class ServiceB:
+    def __init__(self, service_a: ServiceA):
+        self.service_a = service_a
+
+pydi = PyDI()
+pydi.register_service(ServiceA, PyDI.LIFETIME_SINGLETON)
+pydi.register_service(ServiceB, PyDI.LIFETIME_SINGLETON)
+# Raises CircularDependencyError when finalized
+```
+
+### UnknownDependencyError
+Raised when a required dependency is not registered:
+
+```python
+class ServiceA:
+    def __init__(self, service_b: ServiceB):
+        self.service_b = service_b
+
+pydi = PyDI()
+pydi.register_service(ServiceA, PyDI.LIFETIME_SINGLETON)
+# Raises UnknownDependencyError - ServiceB not registered
+```
+
+### AlreadyFinalizedError
+Raised when trying to register a service after finalization:
+
+```python
+pydi = PyDI()
+pydi.register_service(ServiceA, PyDI.LIFETIME_SINGLETON)
+pydi.finalize()  # Manual finalization
+# Raises AlreadyFinalizedError if registering after this point
+```
+
+### InvalidLifetimeError
+Raised when an invalid lifetime value is provided:
+
+```python
+pydi.register_service(ServiceA, 999)  # Invalid lifetime
+# Raises InvalidLifetimeError
+```
+
+## API Reference
+
+### PyDI
+
+#### `__init__()`
+Create a new dependency injection container.
+
+#### `register_service(service: Type, lifetime: int) -> None`
+Register a service with the specified lifetime.
+
+**Parameters:**
+- `service`: The service class to register
+- `lifetime`: One of `LIFETIME_SINGLETON`, `LIFETIME_SCOPED`, or
+  `LIFETIME_TRANSIENT`
+
+**Raises:**
+- `AlreadyFinalizedError`: If called after finalization
+- `InvalidLifetimeError`: If lifetime is invalid
+- `UnknownDependencyError`: If a dependency annotation is missing
+
+#### `finalize() -> None`
+Finalize the container and validate all dependencies. This is called
+automatically when getting a service, so manual calling is optional.
+
+**Raises:**
+- `CircularDependencyError`: If a circular dependency is detected
+- `UnknownDependencyError`: If a dependency is not registered
+
+#### `get_service(service: Type[T]) -> T`
+Get an instance of the registered service with dependencies injected.
+
+**Parameters:**
+- `service`: The service class to retrieve
+
+**Returns:**
+- An instance of the service
+
+**Raises:**
+- `CircularDependencyError`: If a circular dependency is detected
+- `UnknownDependencyError`: If the service or dependency is not registered
+
+### ServiceFactory[T]
+
+#### `create_instance() -> T`
+Create a new instance of the service, respecting its registered lifetime.
+
+**Returns:**
+- A new instance of the service (or cached instance for singletons)
+
+## Requirements
+
+- Python >= 3.11
+
+## License
+
+This project is licensed under the AGPL-3.0-or-later License.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Author
+
+Lorenzo Brilli
