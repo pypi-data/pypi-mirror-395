@@ -1,0 +1,92 @@
+[build-system]
+# requires = ["setuptools >= 40.6.0", "wheel"]
+# requires = ["hatchling>=1.26.3","setuptools >= 40.6.0", "wheel"]
+requires = ["hatchling>=1.27.0", "wheel"]
+
+# build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
+
+[project]
+name="showcert"
+# license = "MIT"
+license = { file = "LICENSE" }
+dynamic = [ "version" ]
+keywords = [ "SSL", "TLS", "certificate", "verify", "remote", "local", "X.509", "X509", "simple", 
+  "openssl", "alternative", "CA", "generate", "showcert", "gencert" ]
+
+dependencies = [
+    'cryptography >= 41.0.0',
+    'pyopenssl >= 24.0.0',
+    'pem >= 23.1.0',
+    'certifi >= 2018.10.15',
+    'python-magic'
+]
+authors = [
+  { name="Yaroslav Polyakov", email="yaroslaff@gmail.com" },
+]
+description = "Simple OpenSSL for humans: all you need for X.509 TLS certificates (and nothing more)"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",    
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Security :: Cryptography"
+]
+
+[project.urls]
+Homepage = "https://github.com/yaroslaff/showcert"
+Issues = "https://github.com/yaroslaff/showcert/issues"
+
+
+[project.scripts]
+showcert = "showcert.cli.showcert_main:main"
+gencert = "showcert.cli.gencert_main:main"
+
+[tool.hatch.version]
+# path = 'showcert:showcert/__main__.py'
+path = 'showcert/__about__.py'
+
+[tool.hatch.metadata]
+# license-files = ["LICENSE"]
+
+[tool.hatch.envs]
+py38 = { python = "3.8" }
+py39 = { python = "3.9" }
+py310 = { python = "3.10" }
+py311 = { python = "3.11" }
+py312 = { python = "3.12" }
+
+[tool.hatch.envs.default]
+dependencies = [
+  "coverage[toml]>=6.5",
+  "pytest",
+]
+
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+  "coverage report -m",
+]
+cov = [
+  "test-cov",
+  "cov-report",
+]
+
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+
+
