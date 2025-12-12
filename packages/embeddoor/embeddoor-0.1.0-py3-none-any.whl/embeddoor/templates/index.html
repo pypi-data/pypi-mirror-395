@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embeddoor - Embedding Visualization</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Menu Bar -->
+        <nav class="menu-bar">
+            <div class="menu-item" id="file-menu">
+                <span>File</span>
+                <div class="dropdown-content">
+                    <a href="#" id="open-file">Open CSV/Parquet...</a>
+                    <a href="#" id="load-huggingface">Load from Huggingface...</a>
+                    <a href="#" id="save-file">Save as Parquet...</a>
+                    <a href="#" id="export-csv">Export as CSV...</a>
+                </div>
+            </div>
+            <div class="menu-item" id="embedding-menu">
+                <span>Embedding</span>
+                <div class="dropdown-content">
+                    <a href="#" id="create-embedding">Create Embedding...</a>
+                </div>
+            </div>
+            <div class="menu-item" id="dimred-menu">
+                <span>Dimensionality Reduction</span>
+                <div class="dropdown-content">
+                    <a href="#" id="apply-pca">Apply PCA...</a>
+                    <a href="#" id="apply-tsne">Apply t-SNE...</a>
+                    <a href="#" id="apply-umap">Apply UMAP...</a>
+                </div>
+            </div>
+            <div class="menu-item" id="selection-menu">
+                <span>Selection</span>
+                <div class="dropdown-content">
+                    <a href="#" id="store-selection">Store Selection...</a>
+                    <a href="#" id="restore-selection">Restore Selection...</a>
+                </div>
+            </div>
+            <div class="menu-item" id="view-menu">
+                <span>View</span>
+                <div class="dropdown-content">
+                    <a href="#" id="add-panel">Add Panel...</a>
+                    <a href="#" id="toggle-toolbar">Toggle Toolbar</a>
+                    <a href="#" id="reset-layout">Reset Layout</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Toolbar -->
+        <div class="toolbar" id="toolbar">
+            <button class="toolbar-btn" id="btn-load" title="Load Data">
+                <div class="icon">📂</div>
+                <div class="label">Load</div>
+            </button>
+            <button class="toolbar-btn" id="btn-save" title="Save Data">
+                <div class="icon">💾</div>
+                <div class="label">Save</div>
+            </button>
+            <div class="toolbar-btn-container">
+                <button class="toolbar-btn" id="btn-add-panel" title="Add Panel">
+                    <div class="icon">➕</div>
+                    <div class="label">Add Panel</div>
+                </button>
+                <div id="add-panel-popup" class="panel-type-popup">
+                    <a href="#" data-panel-type="plot">Plot</a>
+                    <a href="#" data-panel-type="table">Table</a>
+                    <a href="#" data-panel-type="wordcloud">Word Cloud</a>
+                    <a href="#" data-panel-type="images">Images</a>
+                    <a href="#" data-panel-type="heatmap-embedding">Heatmap (Embedding)</a>
+                    <a href="#" data-panel-type="heatmap-columns">Heatmap (Columns)</a>
+                    <a href="#" data-panel-type="correlation">Pairwise Correlation</a>
+                    <a href="#" data-panel-type="ridgeplot">Ridgeplot (Numeric Columns)</a>
+                    <a href="#" data-panel-type="terminal">IPython Terminal</a>
+                </div>
+            </div>
+            <button class="toolbar-btn" id="btn-refresh" title="Refresh View">
+                <div class="icon">🔄</div>
+                <div class="label">Refresh</div>
+            </button>
+            <button class="toolbar-btn" id="btn-settings" title="Settings">
+                <div class="icon">⚙️</div>
+                <div class="label">Settings</div>
+            </button>
+        </div>
+
+        <!-- Main Content Area - Floating Panels Container -->
+        <div class="main-content" id="panels-container">
+            <!-- Panels will be dynamically added here -->
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="status-text">Ready</span>
+            <span id="data-info"></span>
+        </div>
+    </div>
+
+    <!-- Modal Dialogs -->
+    <div id="embedding-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Create Embedding</h2>
+            <form id="embedding-form">
+                <label>Source Column: <select id="embed-source-column"></select></label>
+                <label>Provider: <select id="embed-provider">
+                    <option value="openai">OpenAI (text embedding)</option>
+                    <option value="huggingface">HuggingFace (text embedding)</option>
+                    <option value="clip">CLIP (image embedding)</option>
+                </select></label>
+                <label>Model: <input type="text" id="embed-model" value="default" placeholder="default or model name"></label>
+                <label>Target Column Name: <input type="text" id="embed-target-column" value="embedding"></label>
+                <div class="modal-buttons">
+                    <button type="submit">Create</button>
+                    <button type="button" id="embedding-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="pca-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apply PCA</h2>
+            <form id="pca-form">
+                <label>Source Column (Embeddings): <select id="pca-source-column"></select></label>
+                <label>Number of Components: <input type="number" id="pca-components" value="2" min="1" max="10"></label>
+                <label>Target Column Base Name: <input type="text" id="pca-target-name" value="pca"></label>
+                <div class="modal-buttons">
+                    <button type="submit">Apply</button>
+                    <button type="button" id="pca-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="tsne-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apply t-SNE</h2>
+            <form id="tsne-form">
+                <label>Source Column (Embeddings): <select id="tsne-source-column"></select></label>
+                <label>Number of Components: <input type="number" id="tsne-components" value="2" min="1" max="3"></label>
+                <label>Perplexity: <input type="number" id="tsne-perplexity" value="30" min="5" max="50" step="1"></label>
+                <label>Learning Rate: <input type="number" id="tsne-learning-rate" value="200" min="10" max="1000" step="10"></label>
+                <label>Max Iterations: <input type="number" id="tsne-max-iter" value="1000" min="250" max="5000" step="50"></label>
+                <label>Target Column Base Name: <input type="text" id="tsne-target-name" value="tsne"></label>
+                <div class="modal-buttons">
+                    <button type="submit">Apply</button>
+                    <button type="button" id="tsne-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="umap-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apply UMAP</h2>
+            <form id="umap-form">
+                <label>Source Column (Embeddings): <select id="umap-source-column"></select></label>
+                <label>Number of Components: <input type="number" id="umap-components" value="2" min="1" max="10"></label>
+                <label>Number of Neighbors: <input type="number" id="umap-n-neighbors" value="15" min="2" max="200" step="1"></label>
+                <label>Min Distance: <input type="number" id="umap-min-dist" value="0.1" min="0" max="0.99" step="0.01"></label>
+                <label>Metric: <select id="umap-metric">
+                    <option value="euclidean">Euclidean</option>
+                    <option value="cosine">Cosine</option>
+                    <option value="manhattan">Manhattan</option>
+                    <option value="chebyshev">Chebyshev</option>
+                    <option value="minkowski">Minkowski</option>
+                </select></label>
+                <label>Target Column Base Name: <input type="text" id="umap-target-name" value="umap"></label>
+                <div class="modal-buttons">
+                    <button type="submit">Apply</button>
+                    <button type="button" id="umap-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-panel-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add New Panel</h2>
+            <form id="add-panel-form">
+                <label>Panel Type:
+                    <select id="new-panel-type">
+                        <option value="plot">Plot</option>
+                        <option value="table">Table</option>
+                        <option value="wordcloud">Word Cloud</option>
+                        <option value="images">Images</option>
+                        <option value="heatmap-embedding">Heatmap (Embedding)</option>
+                        <option value="heatmap-columns">Heatmap (Columns)</option>
+                        <option value="correlation">Pairwise Correlation</option>
+                        <option value="ridgeplot">Ridgeplot (Numeric Columns)</option>
+                        <option value="terminal">IPython Terminal</option>
+                    </select>
+                </label>
+                <div class="modal-buttons">
+                    <button type="submit">Add</button>
+                    <button type="button" id="add-panel-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="huggingface-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Load Dataset from Huggingface</h2>
+            <form id="huggingface-form">
+                <label>Dataset Name:
+                    <input type="text" id="hf-dataset-name" placeholder="e.g., ScaDS-AI/dataset-name" required>
+                </label>
+                <label>Split (optional):
+                    <input type="text" id="hf-split" placeholder="e.g., train, test (default: first available)">
+                </label>
+                <div class="modal-buttons">
+                    <button type="submit">Load</button>
+                    <button type="button" id="huggingface-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="store-selection-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Store Selection</h2>
+            <form id="store-selection-form">
+                <label>Selection Name:
+                    <input type="text" id="store-selection-name" placeholder="Enter a name for this selection" required>
+                </label>
+                <div class="modal-buttons">
+                    <button type="submit">Store</button>
+                    <button type="button" id="store-selection-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="restore-selection-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Restore Selection</h2>
+            <form id="restore-selection-form">
+                <label>Select Stored Selection:
+                    <select id="restore-selection-name" required>
+                        <option value="">-- Select a stored selection --</option>
+                    </select>
+                </label>
+                <div class="modal-buttons">
+                    <button type="submit">Restore</button>
+                    <button type="button" id="restore-selection-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
