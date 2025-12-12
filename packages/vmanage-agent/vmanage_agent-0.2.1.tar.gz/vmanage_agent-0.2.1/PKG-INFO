@@ -1,0 +1,130 @@
+Metadata-Version: 2.4
+Name: vmanage-agent
+Version: 0.2.1
+Summary: Pip module for node to join salt-master
+Author-email: Phan Dang <phan.dang@usdatanetworks.com>
+Requires-Python: <3.12,>=3.10
+Requires-Dist: cryptography<42.0.0,>=41.0.7
+Requires-Dist: loguru<0.8.0,>=0.7.2
+Requires-Dist: pyjwt<3.0.0,>=2.4.0
+Requires-Dist: requests<3.0.0,>=2.27.1
+Requires-Dist: tenacity<9.0.0,>=8.3.0
+Requires-Dist: toml<0.11.0,>=0.10.2
+Requires-Dist: tox<5.0.0,>=4.14.1
+Provides-Extra: dev
+Requires-Dist: black>=22.8.0; extra == 'dev'
+Requires-Dist: flake8<6.0.0,>=5.0.4; extra == 'dev'
+Requires-Dist: isort<6.0.0,>=5.13.2; extra == 'dev'
+Requires-Dist: pre-commit<3.0.0,>=2.20.0; extra == 'dev'
+Requires-Dist: pytest<7.0.0,>=6.2.5; extra == 'dev'
+Requires-Dist: scriv[toml]<0.18.0,>=0.17.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Table of Contents
+
+-----------------
+
+* [Overview](#overview)
+* [Requirements](#requirements)
+* [Installation](#installation)
+* [Pre-requisites](#pre-requisites)
+* [Usage](#usage)
+* [File Location](#file-location)
+* [Contributing](#contributing)
+* [License](#license)
+
+## Overview
+
+Module ***vmanage-agent*** allows **node** to make request to vmanage and add this device to USDN system.
+
+### Enhanced Security Features
+
+The agent now implements **three separate cryptographic key types** for maximum security:
+
+1. **Controller WireGuard Keys** - Management plane (node ↔ controller)
+2. **Tunnel WireGuard Keys** - Data plane (node ↔ node via VPP)  
+3. **Blockchain RSA Keys** - Configuration encryption/decryption
+
+**Security Guarantee**: Private keys NEVER leave the device. Only public keys are transmitted to backend.
+
+See [SECURITY_KEY_MANAGEMENT.md](./SECURITY_KEY_MANAGEMENT.md) for complete details.
+
+## Requirements
+
+Make sure python and the package manager [pip](https://pip.pypa.io/en/stable/) are installed. Salt-minion >= 3005.1 is also required.
+
+* [python][python] >=3.10
+* [pip][pip] >= 3.10
+* [salt-minion][salt-minion] == 3005.1
+
+## Installation
+
+
+Install package with the command below:
+
+```bash
+sudo pip3 install vmanage-agent
+```
+
+## Pre-requisites
+
+### Salt-minion is running
+
+Checking if salt-minion is running
+
+```bash
+sudo systemctl status salt-minion
+```
+
+If the output return error, try to stop salt-minion and run in debug mode (salt-minion -l debug)
+
+
+## Usage
+
+### Run manually
+
+```bash
+sudo /usr/local/bin/vmanage-agent -m [master-address] -mf [master-fingerprint] -e [environment]
+```
+
+#### Arguments
+
+- `-m, --master` (required): Salt master address
+- `-mf, --master-finger` (required): Salt master fingerprint to verify master
+- `-e, --env` (optional): Environment - either `production` or `staging` (default: `production`)
+
+#### Examples
+
+**Production (default):**
+```bash
+sudo /usr/local/bin/vmanage-agent -m salt.usdatanetworks.com -mf a1:b2:c3:d4:e5:f6
+```
+
+**Staging:**
+```bash
+sudo /usr/local/bin/vmanage-agent -m salt-staging.usdatanetworks.com -mf a1:b2:c3:d4:e5:f6 -e staging
+```
+
+#### Environment-Specific API Endpoints
+
+- **Production**: `https://api.usdatanetworks.com`
+- **Staging**: `https://staging-api.usdatanetworks.com`
+
+### File Location
+
+* *Log*: /var/log/minion.log
+* *Config*: /opt/minion/config.ini
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
+
+## License
+
+[US Data Networks](https://usdatanetworks/docs/license)
+
+[python]: https://www.python.org/downloads/release/python-380/
+[pip]:https://pip.pypa.io/en/stable/installation/
+[salt-minion]:https://docs.saltproject.io/salt/install-guide/en/latest/topics/bootstrap.html#install-bootstrap
