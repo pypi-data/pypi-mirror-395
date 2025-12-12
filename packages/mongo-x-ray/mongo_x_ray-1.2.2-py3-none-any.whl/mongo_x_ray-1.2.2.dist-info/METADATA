@@ -1,0 +1,266 @@
+Metadata-Version: 2.4
+Name: mongo-x-ray
+Version: 1.2.2
+Summary: MongoDB diagnostics toolkit with health checks and log analysis
+Author: Yaoxing Zhang
+License: MIT License
+        
+        Copyright (c) 2025 MongoDB Professional Services
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/mongodb-ps/ce-mongo-x-ray
+Project-URL: Repository, https://github.com/mongodb-ps/ce-mongo-x-ray
+Project-URL: Issues, https://github.com/mongodb-ps/ce-mongo-x-ray/issues
+Keywords: mongodb,diagnostics,healthcheck,log-analysis
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: System Administrators
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Database
+Classifier: Topic :: System :: Monitoring
+Requires-Python: <4,>=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pymongo==4.15.4
+Requires-Dist: Jinja2==3.1.6
+Requires-Dist: Markdown==3.9
+Requires-Dist: MarkupSafe==3.0.3
+Requires-Dist: packaging==25
+Requires-Dist: Pygments==2.19.2
+Requires-Dist: PyYAML==6.0.3
+Requires-Dist: requests==2.32.5
+Requires-Dist: urllib3==2.5.0
+Requires-Dist: openai==2.8.1
+Requires-Dist: httpx==0.28.1
+Requires-Dist: httpcore==1.0.9
+Requires-Dist: h11==0.16.0
+Requires-Dist: certifi==2025.11.12
+Requires-Dist: idna==3.11
+Requires-Dist: sniffio==1.3.1
+Requires-Dist: anyio==4.11.0
+Provides-Extra: dev
+Requires-Dist: black==25.11.0; extra == "dev"
+Requires-Dist: pylint==3.3.9; extra == "dev"
+Requires-Dist: flake8==7.3.0; extra == "dev"
+Requires-Dist: pytest==8.4.2; extra == "dev"
+Requires-Dist: pluggy==1.6.0; extra == "dev"
+Requires-Dist: iniconfig==2.1.0; extra == "dev"
+Requires-Dist: tomli==2.3.0; extra == "dev"
+Requires-Dist: pyinstaller==6.17.0; extra == "dev"
+Requires-Dist: pyinstaller-hooks-contrib==2025.10; extra == "dev"
+Requires-Dist: macholib==1.16.4; extra == "dev"
+Requires-Dist: altgraph==0.17.5; extra == "dev"
+Provides-Extra: ai
+Requires-Dist: torch==2.8.0; extra == "ai"
+Requires-Dist: torchvision==0.23.0; extra == "ai"
+Requires-Dist: transformers==4.57.3; extra == "ai"
+Requires-Dist: accelerate==1.10.1; extra == "ai"
+Requires-Dist: bitsandbytes==0.42.0; extra == "ai"
+Requires-Dist: huggingface-hub==0.36.0; extra == "ai"
+Requires-Dist: safetensors==0.7.0; extra == "ai"
+Requires-Dist: tokenizers==0.22.1; extra == "ai"
+Requires-Dist: filelock==3.19.1; extra == "ai"
+Requires-Dist: fsspec==2025.10.0; extra == "ai"
+Requires-Dist: hf-xet==1.2.0; extra == "ai"
+Requires-Dist: numpy==2.0.2; extra == "ai"
+Requires-Dist: scipy==1.13.1; extra == "ai"
+Requires-Dist: pillow==11.3.0; extra == "ai"
+Requires-Dist: regex==2025.11.3; extra == "ai"
+Requires-Dist: tqdm==4.67.1; extra == "ai"
+Requires-Dist: pydantic==2.12.5; extra == "ai"
+Requires-Dist: pydantic_core==2.41.5; extra == "ai"
+Requires-Dist: annotated-types==0.7.0; extra == "ai"
+Requires-Dist: typing_extensions==4.15.0; extra == "ai"
+Requires-Dist: jiter==0.12.0; extra == "ai"
+Requires-Dist: psutil==7.1.3; extra == "ai"
+Requires-Dist: networkx==3.2.1; extra == "ai"
+Requires-Dist: sympy==1.14.0; extra == "ai"
+Requires-Dist: mpmath==1.3.0; extra == "ai"
+Requires-Dist: distro==1.9.0; extra == "ai"
+Requires-Dist: dnspython==2.7.0; extra == "ai"
+Requires-Dist: charset-normalizer==3.4.4; extra == "ai"
+Requires-Dist: exceptiongroup==1.3.1; extra == "ai"
+Requires-Dist: importlib_metadata==8.7.0; extra == "ai"
+Requires-Dist: typing-inspection==0.4.2; extra == "ai"
+Requires-Dist: zipp==3.23.0; extra == "ai"
+Dynamic: license-file
+
+# x-ray
+[![Makefile](https://github.com/zhangyaoxing/x-ray/actions/workflows/makefile.yml/badge.svg)](https://github.com/zhangyaoxing/x-ray/actions/workflows/makefile.yml)
+[![Release](https://github.com/zhangyaoxing/x-ray/actions/workflows/release.yml/badge.svg)](https://github.com/zhangyaoxing/x-ray/actions/workflows/release.yml)
+[![PyPI](https://img.shields.io/pypi/v/mongo-x-ray.svg)](https://pypi.org/project/mongo-x-ray/)
+
+
+This project aims to create tools for MongoDB analysis and diagnosis. So far 3 modules are being built:
+- Health check module.
+- Log analysis module.
+- `getMongoData` visualization module (Under construction).
+
+## 1 Compatibility Matrix
+### Health Check
+|  Replica Set  | Sharded Cluster | Standalone |
+| :-----------: | :-------------: | :--------: |
+| >=4.2 &check; |  >=4.2 &check;  |  &cross;   |
+
+Older versions are not tested.
+
+### Log Analysis
+Log analysis requires JSON format logs, which is supported since 4.4.
+|  Replica Set  | Sharded Cluster |  Standalone   |
+| :-----------: | :-------------: | :-----------: |
+| >=4.4 &check; |  >=4.4 &check;  | >=4.4 &check; |
+
+## 2 How to Install
+### 2.1 PyPi
+#### 2.1.1 Install with Pip
+The easiest and recommended way to install x-ray is to use `pip`:
+```bash
+pip install mongo-x-ray
+```
+
+#### 2.1.2 Build from Source
+```bash
+git clone https://github.com/zhangyaoxing/x-ray
+cd x-ray
+pip install .
+```
+
+### 2.2 PyInstaller
+#### 2.2.1 Prebuilt Binaries
+Currently the prebuilt binaries are available on 3 platforms:
+- Ubuntu 22.04 (AMD64)
+- MacOS 14 (ARM64)
+- Windows 2022 (AMD64)
+
+Download them from [Releases](https://github.com/zhangyaoxing/x-ray/releases).
+
+#### 2.2.2 Build from Source
+x-ray is tested on `Python 3.9.22`. On MacOS or Linux distributions, you can use the `make` command to build the binary:
+```bash
+git clone https://github.com/zhangyaoxing/x-ray
+cd x-ray
+make deps # if it's the first time you build the project
+make # equal to `make build` and `make build-lite`
+```
+
+There are other make targets. Use `make help` to find out.
+
+You can also build the tool with AI modules for log analysis. For more details refer to: [Build with AI Support](https://github.com/zhangyaoxing/x-ray/wiki/Build-with-AI-Support).
+
+For Windows users, if `make` command is not available. You can use Python commands to build the binary:
+```powershell
+python.exe -m venv .venv
+.venv\Scripts\python.exe -m pip install --upgrade pip
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.venv\Scripts\python.exe -m PyInstaller --onefile `
+  --name x-ray `
+  --add-data="templates;templates" `
+  --add-data="libs;libs" `
+  --icon="misc/x-ray.ico" `
+  --hidden-import=openai `
+  x-ray
+```
+
+#### 2.3 For Developers
+For developers, use `make deps` to prepare venv and dependencies
+```bash
+make deps
+```
+Or
+```bash
+python3 -m venv .venv
+python3 -m pip install --upgrade pip
+python3 -m pip install -e ".[dev]"
+```
+
+## 3 Using the Tool
+```bash
+x-ray [-h] [-q] [-c CONFIG] {healthcheck,hc,log}
+```
+| Argument         | Description                                                                                                                        |           Default           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- | :-------------------------: |
+| `-q`, `--quiet`  | Quiet mode.                                                                                                                        |           `false`           |
+| `-h`, `--help`   | Show the help message and exit.                                                                                                    |             n/a             |
+| `-c`, `--config` | Path to configuration file.                                                                                                        | Built-in `libs/config.json` |
+| `command`        | Command to run. Include:<br/>- `healthcheck` or `hc`: Health check.<br/>- `log`: Log analysis.<br/>- `version`: Show version info. |            None             |
+
+Besides, you can use environment variables to control some behaviors:
+- `ENV=development` For developing. It will change the following behaviors:
+  - Formatted the output JSON for for easier reading.
+  - The output will not create a new folder for each run but overwrite the same files.
+- `LOG_LEVEL`: Can be `DEBUG`, `ERROR` or `INFO` (default).
+
+### 3.1 Health Check Component
+#### 3.1.1 Examples
+```bash
+./x-ray healthcheck localhost:27017 # Scan the cluster with default settings.
+./x-ray hc localhost:27017 --output ./output/ # Specify output folder.
+./x-ray hc localhost:27017 --config ./config.json # Use your own configuration.
+```
+
+#### 3.1.2 Full Arguments
+```bash
+x-ray healthcheck [-h] [-s CHECKSET] [-o OUTPUT] [-f {markdown,html}] [uri]
+```
+| Argument           | Description                                 |  Default  |
+| ------------------ | ------------------------------------------- | :-------: |
+| `-s`, `--checkset` | Checkset to run.                            | `default` |
+| `-o`, `--output`   | Output folder path.                         | `output/` |
+| `-f`, `--format`   | Output format. Can be `markdown` or `html`. |  `html`   |
+| `uri`              | MongoDB database URI.                       |   None    |
+
+For security reasons you may not want to include credentials in the command. There are 2 options:
+- If the URI is not provided, user will be asked to input one.
+- If URI is provided but not username/password, user will also be asked to input them.
+
+#### 3.1.3 More Info
+Refer to the wiki for more details.
+- [Customize the thresholds](https://github.com/zhangyaoxing/x-ray/wiki/Health-Check-Configuration)
+- [Database permissions](https://github.com/zhangyaoxing/x-ray/wiki/Health-Check-Database-Permissions)
+- [Output](https://github.com/zhangyaoxing/x-ray/wiki/Health-Check-Output)
+- [Customize the output](https://github.com/zhangyaoxing/x-ray/wiki/Health-Check-Output-Template)
+
+### 3.2 Log Analysis Component
+#### 3.2.1 Examples
+```bash
+# Full analysis
+./x-ray log mongodb.log
+# For large logs, analyze a random 10% logs
+./x-ray log -r 0.1 mongodb.log
+```
+
+#### 3.2.2 Full Arguments
+```bash
+x-ray log [-h] [-s CHECKSET] [-o OUTPUT] [-f {markdown,html}] [log_file]
+```
+| Argument           | Description                                       |  Default  |
+| ------------------ | ------------------------------------------------- | :-------: |
+| `-s`, `--checkset` | Checkset to run.                                  | `default` |
+| `-o`, `--output`   | Output folder path.                               | `output/` |
+| `-f`, `--format`   | Output format. Can be `markdown` or `html`.       |  `html`   |
+| `-r`, `--rate`     | Sample rate. Only analyze a subset of logs.       |    `1`    |
+| `--top`            | When analyzing the slow queries, only list top N. |   `10`    |
