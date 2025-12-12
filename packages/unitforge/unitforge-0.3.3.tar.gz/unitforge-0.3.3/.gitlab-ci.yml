@@ -1,0 +1,49 @@
+image: "rust:latest"
+
+lint:
+  script:
+    - rustup component add clippy
+    - cargo clippy --no-deps -- -D warnings
+  allow_failure: true
+
+lint_serde:
+  script:
+    - rustup component add clippy
+    - cargo clippy -F serde --no-deps -- -D warnings
+  allow_failure: true
+
+lint_strum:
+  script:
+    - rustup component add clippy
+    - cargo clippy -F strum --no-deps -- -D warnings
+  allow_failure: true
+
+lint_pyo3:
+  script:
+    - rustup component add clippy
+    - cargo clippy -F pyo3 --no-deps -- -D warnings
+  allow_failure: true
+
+test:
+  script:
+    - rustc --version && cargo --version
+    - cargo test --workspace --verbose
+
+test_serde:
+  script:
+    - rustc --version && cargo --version
+    - cargo test -F serde --workspace
+
+test_strum:
+  script:
+    - cargo test -F strum --workspace
+
+test_pyo3:
+  script:
+    - apt-get update && apt-get install -y python3 python3-venv python3.13-dev
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install --upgrade pip setuptools wheel maturin pytest numpy
+    - maturin develop --features pyo3
+    - pytest tests
+    - deactivate
