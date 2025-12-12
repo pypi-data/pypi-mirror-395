@@ -1,0 +1,30 @@
+name: Release Drafter
+
+on:
+  push:
+    # Branches to consider in the event; optional, defaults to all
+    branches:
+      - main
+
+# Minimal permissions for release drafter without autolabeler
+permissions:
+  contents: read
+
+jobs:
+  update_release_draft:
+    # Write permission is required to create a GitHub release
+    permissions:
+      contents: write
+      # Read permission is required for the action to work
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      # Drafts your next release notes as pull requests are merged into "main"
+      - uses: release-drafter/release-drafter@v6
+        # Specify config name to use, relative to .github/
+        with:
+          config-name: release-drafter.yml
+          # Disable autolabeler to avoid pull_request event requirements
+          disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
