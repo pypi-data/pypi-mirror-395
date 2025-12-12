@@ -1,0 +1,51 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: test-env
+          init-shell: cmd.exe
+          create-args: >-
+            python
+            numpy
+            libblas=*=*openblas
+            liblapacke=*=*openblas
+            pip
+
+      - name: micromamba info (cmd.exe)
+        shell: cmd /C CALL {0}
+        run: micromamba info
+
+      - name: install pkg
+        shell: cmd /C CALL {0}
+        run: |
+          pip install . -vv
+
+      - name: create DLL
+        shell: cmd /C CALL {0}
+        run: |
+          del /Q "%CONDA_PREFIX%\\Library\\bin\\libblas.dll"
+          del /Q "%CONDA_PREFIX%\\Library\\bin\\libcblas.dll"
+          del /Q "%CONDA_PREFIX%\\Library\\bin\\liblapack.dll"
+          del /Q "%CONDA_PREFIX%\\Library\\bin\\liblapacke.dll"
+          copy "%CONDA_PREFIX%\\Library\\bin\\openblas.dll" "%CONDA_PREFIX%\\Library\\bin\\openblas.0.dll"
+          create-forwarder-dll.exe "%CONDA_PREFIX%\\Library\\bin\\openblas.0.dll" "%CONDA_PREFIX%\\Library\\bin\\libblas.dll" --no-temp-dir
+          copy "%CONDA_PREFIX%\\Library\\bin\\libblas.dll" "%CONDA_PREFIX%\\Library\\bin\\libcblas.dll"
+          copy "%CONDA_PREFIX%\\Library\\bin\\libblas.dll" "%CONDA_PREFIX%\\Library\\bin\\liblapack.dll"
+          copy "%CONDA_PREFIX%\\Library\\bin\\libblas.dll" "%CONDA_PREFIX%\\Library\\bin\\liblapacke.dll"
+
+      - name: run test
+        shell: cmd /C CALL {0}
+        run: >-
+          python -c "import numpy"
