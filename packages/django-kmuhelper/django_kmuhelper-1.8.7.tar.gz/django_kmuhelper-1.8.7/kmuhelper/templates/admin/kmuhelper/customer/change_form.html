@@ -1,0 +1,102 @@
+{% extends 'admin/kmuhelper/change_form.html' %}
+
+{% block object-tools %}
+    <ul class="object-tools">
+        {% if change %}{% if not is_popup %}
+            {% block object-tools-items %}
+                {% if original.woocommerceid %}
+                    <li><a href="{% url 'kmuhelper:wc-update-customer' object_id %}">Von WooCommerce importieren und
+                        ersetzen</a></li>
+                {% endif %}
+
+                {% if perms.kmuhelper.add_order %}
+                    <li><a href="{% url 'admin:kmuhelper_customer_create_order' object_id %}">Bestellung erstellen</a></li>
+                {% endif %}
+
+                {% if perms.kmuhelper.view_email or perms.kmuhelper.add_email %}
+                    {% load kmuhelper_tags %}
+                    {% kmuhelper_email_show_buttons as show_email_buttons %}
+                    {% if show_email_buttons %}
+
+                        <li class="dropdown">
+                            <a href="#">E-Mails</a>
+                            <div>
+                                <b>E-Mails</b>
+                                <hr>
+
+                                {% if perms.kmuhelper.view_emailtemplate and perms.kmuhelper.add_email %}
+                                    <a href="{% url 'admin:kmuhelper_emailtemplate_savevars' %}?{{ original.to_query_string }}">Zu
+                                        E-Mail-Vorlage</a>
+                                {% endif %}
+                                <hr>
+                                {% if original.email %}
+                                    {% if original.email_link_registered and perms.kmuhelper.view_email %}
+                                        <a href="{% url 'admin:kmuhelper_email_change' original.email_link_registered.pk %}">Registrierungsemail
+                                            ansehen</a>
+                                    {% endif %}
+                                    {% if perms.kmuhelper.add_email and perms.kmuhelper.change_customer %}
+                                        <a href="{% url 'admin:kmuhelper_customer_email_registered' object_id %}">Registrierungsemail
+                                            generieren</a>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="" class="disabled">Registrierungsemail</a>
+                                {% endif %}
+                            </div>
+                        </li>
+
+                    {% endif %}
+                {% endif %}
+
+                {{ block.super }}
+            {% endblock %}
+        {% endif %}{% endif %}
+    </ul>
+{% endblock %}
+
+{% block after_field_sets %}
+    {% if has_change_permission %}
+        <div id="auto-copy-form-row" class="form-row">
+            <div>
+                <div class="flex-container checkbox-row">
+                    <input type="checkbox" id="auto-copy"
+                           {% if original.addresses_are_equal %}checked="checked"{% endif %}>
+                    <label class="vCheckboxLabel" for="auto-copy">Von Rechnungsadresse übernehmen?</label>
+                </div>
+            </div>
+        </div>
+        <script>
+            ADDR_FIELDS = ['first_name', 'last_name', 'company', 'address_1', 'address_2', 'postcode', 'city', 'state', 'country', 'email', 'phone'];
+
+            $ = django.jQuery;
+
+            function copyFormIfCheck() {
+                if ($("#auto-copy").prop("checked")) {
+                    for (let field of ADDR_FIELDS) {
+                        $(`#id_addr_shipping_${field}`).val(
+                            $(`#id_addr_billing_${field}`).val()
+                        )
+                    }
+                }
+            }
+
+            function updateShippingFormVisibility() {
+                if ($("#auto-copy").prop("checked")) {
+                    $(".addr-shipping-fieldset .form-row:not(#auto-copy-form-row)").hide();
+                    copyFormIfCheck();
+                } else {
+                    $(".addr-shipping-fieldset .form-row:not(#auto-copy-form-row)").show();
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                updateShippingFormVisibility();
+                $(".addr-shipping-fieldset .form-row.field-addr_shipping_first_name").before(
+                    document.getElementById("auto-copy-form-row")
+                )
+
+                $(".addr-billing-fieldset").on("input", copyFormIfCheck);
+                $("#auto-copy").on("input", updateShippingFormVisibility);
+            });
+        </script>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+<details class="entry"{% if not closed %} open{% endif %}>
+    <summary>
+        {% if entry.id %}ID #{{ entry.id }} - {% endif %}Ref {{ entry.payment.ref }}
+    </summary>
+    <div>
+        {% if entry.order %}
+            {% include 'admin/kmuhelper/paymentimport/includes/process_table_order_payment.html' with order=entry.order payment=entry.payment %}
+        {% else %}
+            {% include 'admin/kmuhelper/paymentimport/includes/process_table_payment.html' with payment=entry.payment %}
+        {% endif %}
+
+        {% if entry.samecustomerorders %}
+            <details>
+                <summary>
+                    Andere unbezahlte Bestellungen von
+                    <a target="_blank"
+                       href="{% url 'admin:kmuhelper_customer_change' object_id=entry.order.customer.pk %}#orders-group"
+                       rel="noopener noreferrer">
+                        {{ entry.order.customer }}
+                    </a> ({{ entry.samecustomerorders|length }})
+                </summary>
+                <div>
+                    {% for order in entry.samecustomerorders %}
+                        {% include 'admin/kmuhelper/paymentimport/includes/process_table_order.html' with order=order %}
+                    {% endfor %}
+                </div>
+            </details>
+        {% endif %}
+
+        {% if entry.relatedpayments %}
+            <details>
+                <summary>
+                    Möglicherweise doppelte Zahlungen
+                    ({{ entry.relatedpayments|length }})
+                </summary>
+                <div>
+                    {% for payment in entry.relatedpayments %}
+                        {% include 'admin/kmuhelper/paymentimport/includes/process_table_payment.html' with payment=payment %}
+                    {% endfor %}
+                </div>
+            </details>
+        {% endif %}
+    </div>
+</details>

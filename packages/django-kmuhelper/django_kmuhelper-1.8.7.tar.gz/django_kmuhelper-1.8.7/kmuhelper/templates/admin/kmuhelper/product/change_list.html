@@ -1,0 +1,30 @@
+{% extends 'admin/kmuhelper/change_list.html' %}
+
+{% load kmuhelper_tags %}
+
+{% block pageinfo %}
+    <p id="pageinfo">
+        <b>Verwandte Seiten:</b>
+        <a href="{% url 'admin:kmuhelper_productcategory_changelist' %}">
+            <abbr title="Admin"><i class="fa-solid fa-key"></i></abbr> Produktkategorien
+        </a>
+        <a href="{% url 'admin:kmuhelper_app_stock_changelist' %}">
+            <abbr title="App"><i class="fa-solid fa-desktop"></i></abbr> Lagerbestand
+        </a>
+        <a href="{% docs_url 'storage' %}" target="_blank">
+            <abbr title="Dokumentation"><i class="fa-solid fa-book"></i></abbr> Lagermanagement
+        </a>
+    </p>
+{% endblock %}
+
+{% block object-tools-items %}
+    {% load kmuhelper_tags %}
+    {% kmuhelper_woocommerce_connected as woocommerce_is_connected %}
+    {% if woocommerce_is_connected and perms.kmuhelper.add_product %}
+        <li>
+            <a onclick="woocommerce_loading_swal();" href="{% url 'kmuhelper:wc-import-products' %}" class="addlink">Produkte von
+                WooCommerce importieren</a>
+        </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "kmuhelper/stats/base.html" %}
+
+{% block content %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('myChart').getContext('2d');
+
+            const product_names = {{ product_names | safe }};
+            const product_counts = {{ product_counts | safe }};
+
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Verkaufte Produkte',
+                            data: product_counts,
+                            backgroundColor: 'rgba(221,17,85,1)',
+                        },
+                    ],
+                    labels: product_names,
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    scales: {
+                        x: {
+                            position: 'top',
+                            ticks: {
+                                beginAtZero: true,
+                            },
+                        },
+                    },
+                },
+            });
+        });
+    </script>
+
+    <div style="position: relative; width: 100%;">
+        <canvas id="myChart"></canvas>
+    </div>
+
+{% endblock %}
