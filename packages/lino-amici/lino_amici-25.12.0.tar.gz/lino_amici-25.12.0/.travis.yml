@@ -1,0 +1,29 @@
+dist: bionic
+language: python
+python:
+  - "3.6"
+  - "3.7"
+
+os: linux
+sudo: required
+
+before_install:
+  - sudo apt-get install -y tidy libreoffice python3-uno
+  - libreoffice '--accept=socket,host=127.0.0.1,port=8100;urp;' &
+
+install:
+  - pip install -U setuptools
+  # - pip install coveralls
+  # - pip install -U pytest-cov
+  - pip install -e .
+  - inv install  # runs manage.py install in every demo project
+  - pip freeze
+
+script:
+  - export LINO_CACHE_ROOT=$TRAVIS_BUILD_DIR/lino_cache
+  - mkdir $LINO_CACHE_ROOT
+  - # if [[ $TRAVIS_PYTHON_VERSION == 2* ]]; then inv cov; fi
+  - inv prep test
+
+# after_success:
+#   - coveralls
