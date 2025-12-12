@@ -1,0 +1,119 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = 'phenotypic'
+dynamic = ["version"]
+
+authors = [
+    { name = 'Alexander Nguyen', email = "xander-git@protonmail.com" }
+]
+
+description = "An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing pipelines for images analysis of phenotypes."
+
+readme = "README.md"
+
+requires-python = ">=3.10, <3.13"
+
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+
+dependencies = [
+    "pandas[excel,plot,performance,output-formatting,computation,hdf5,compression]",
+    "numpy",
+    "seaborn",
+    "scikit-image",
+    "scikit-learn",
+    "scipy",
+    "opencv-python",
+    "h5py",
+    "mahotas",
+    "pillow",
+    "tqdm",
+    "mmh3",
+    "plotly-express>=0.4.1",
+    "psutil>=7.0.0",
+    "colour-science>=0.4.6",
+    "rawpy;sys_platform!='win32'",
+    "threadpoolctl>=3.6.0",
+    "pympler>=1.0.1",
+    "exifread>=3.5.1",
+    "click>=8.3.0",
+    "bm3d>=4.0.3",
+]
+
+[project.urls]
+Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
+
+[project.optional-dependencies]
+jupyter = [
+    "ipywidgets>=8.1.7",
+    "jupyter>=1.1.1",
+]
+
+[project.scripts]
+phenotypic = "phenotypic.phenotypic_cli:main"
+
+[dependency-groups]
+dev = [
+    "memory-profiler>=0.61.0",
+    "pytest>=8.4.0",
+    "pytest-cov",
+    "mypy",
+    "pytest-xdist>=3.8.0",
+    "pympler; sys_platform!='win32'",
+    "jupyter;sys_platform!='win32'",
+    "ipykernel;sys_platform!='win32'",
+    "notebook;sys_platform!='win32'",
+    "ipywidgets",
+    "black>=25.11.0",
+    "ruff>=0.14.7",
+    "isort>=7.0.0",
+]
+docs = [
+    "sphinx",
+    "sphinxcontrib-napoleon",
+    "sphinx-autodoc-typehints",
+    "sphinx-autobuild",
+    "sphinxawesome-theme",
+    "pydata-sphinx-theme",
+    "sphinx-gallery",
+    "sphinx-autosummary-accessors",
+    "sphinx-design",
+    "nbsphinx",
+    "myst-nb",
+    "sphinx-togglebutton>=0.3.2",
+    "pandoc>=2.4",
+    "myst-parser>=4.0.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["./tests/*"]
+addopts = "--verbose --capture=no"
+
+[tool.setuptools.dynamic]
+version = { attr = "phenotypic.__version__" }
+
+[tool.setuptools.package-data]
+"phenotypic" = [
+    "data/*.jpg",
+    "data/*.png"
+]
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'x86_64'",
+]
