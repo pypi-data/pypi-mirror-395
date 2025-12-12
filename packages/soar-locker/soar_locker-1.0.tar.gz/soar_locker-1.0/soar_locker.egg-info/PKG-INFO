@@ -1,0 +1,155 @@
+Metadata-Version: 2.4
+Name: soar_locker
+Version: 1.0
+Summary: SOAR - Secure Obfuscated Archive Runtime (SOAR-Locker)
+Author-email: "HuaiYu-Yang@dawlaishi122" <1710802268@qq.com>
+License: MIT
+Keywords: python encryption,secure python,code protection,machine binding,module encryption,python obfuscation,anti-tamper,aes encrypted python,python protect
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.7
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Security
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: System :: Archiving
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: cryptography>=41.0.0
+Requires-Dist: soar_core==1.0.0
+Dynamic: license-file
+
+# SOAR-Locker 1.0  
+**Secure Obfuscated Archives Repository — Python 代码加密与设备绑定执行系统**
+
+SOAR-Locker 面向工程部署场景，提供基于设备指纹的 Python 源码保护能力。  
+通过将 `.py` 文件转换为加密归档 `.soa`（Secure Obfuscated Archive）格式，使程序在目标机器上可正常运行，但源码无法直接查看，也无法被迁移到其他设备执行。
+
+适用于"只允许运行但不允许查看"、"允许部署但不允许移植"的交付要求。
+
+---
+
+## 核心特性
+
+### **可执行，但不可查看**
+`.soa` 归档中的源码经过处理，不以明文形式保存。  
+部署方可正常运行程序，但无法直接读取或恢复原始 `.py` 内容。
+
+### **仅在绑定设备可运行**
+每个 `.soa` 文件绑定生成时的设备指纹，拷贝至其他机器后将无法通过校验。
+
+### **Linux 下 shebang 仍然有效**
+加密前如包含：
+
+```bash
+#!/usr/bin/env python3
+```
+
+加密后的 .soa 仍可在 Linux 中保持可执行属性：
+```bash
+chmod +x program.soa
+./program.soa
+```
+
+适用于对 shebang 行依赖的脚本型项目。
+
+### **完整的 Python 模块支持**
+`.soa` 文件之间可以互相 import，项目结构不受影响。
+
+### **自动备份机制**
+加密过程中，原 `.py` 文件自动备份至 `bak/` 子目录，确保开发修改与调试不受影响。
+
+### **跨平台**
+支持 Windows / Linux，兼容 x86-64 与 ARM64 架构，可用于工业 PC、嵌入式设备、机器人等固定部署环境。
+
+---
+
+## 工作机制概述
+
+SOAR-Locker 的基本流程如下（不公开实现细节）：
+
+1. **采集设备特征并生成指纹**  
+   设备的若干系统属性用于生成唯一识别标识。
+
+2. **加密与归档**  
+   源码处理后以二进制归档 `.soa` 保存，包含必要的元信息与运行时组件。
+
+3. **执行时校验**  
+   加密归档在运行时检查当前设备指纹，仅在匹配时执行。
+
+4. **内存中临时解密**  
+   解密结果不落盘，执行完成即释放。
+
+该机制可有效限制源码被直接读取或在未授权设备运行。
+
+---
+
+## 安装
+
+```bash
+pip install soar-locker
+```
+
+安装后生成 `soar` 命令行工具。
+
+---
+
+## 使用方式
+
+### 加密单个 Python 文件
+
+```bash
+soar script.py
+```
+
+生成：
+- `script.soa`
+- `bak/script.py`
+
+### 加密整个目录
+
+```bash
+soar ./project/
+```
+
+所有 `.py` 文件将生成对应的 `.soa` 文件，原始文件备份至 `project/bak/`。
+
+### 运行 .soa 文件
+
+```bash
+soar program.soa
+```
+
+或 Linux 下使用 shebang：
+
+```bash
+chmod +x program.soa
+./program.soa
+```
+
+仅在绑定设备上可执行。
+
+---
+
+## 适用场景
+
+**适合：**
+- 只允许代码在目标机器执行但不允许查看源码
+- 允许部署程序但不允许复制到其他机器运行
+- 防止项目被随意传播、二次使用或工程外泄
+- 在固定设备、机器人、嵌入式平台部署 Python 工程
+
+**不适合：**
+- 需应对专业级逆向分析的高安全等级场景
+- 大规模分发的软件授权体系
+- 有严格加密法规要求的行业环境
+
+> SOAR-Locker 作为工程部署中的一项保护措施，可提升源代码的访问门槛与安全性，但不应作为唯一安全保障手段。
+
+---
+
+## 版本信息
+
+**SOAR-Locker v1.0**  
+提供代码归档加密、设备绑定、项目级加密、模块导入支持、shebang 兼容等基础能力。
