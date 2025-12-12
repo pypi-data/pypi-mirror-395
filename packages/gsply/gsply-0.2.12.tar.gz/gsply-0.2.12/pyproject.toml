@@ -1,0 +1,192 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gsply"
+version = "0.2.12"
+description = "Ultra-fast Gaussian Splatting PLY I/O library - pure Python with NumPy and Numba. Features 11x faster GPU transfers and automatic format state tracking for seamless conversions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    {name = "OpsiClear", email = "yehe@opsiclear.com"}
+]
+maintainers = [
+    {name = "OpsiClear", email = "yehe@opsiclear.com"}
+]
+keywords = ["gaussian-splatting", "ply", "3d", "point-cloud", "compression", "nerf", "3dgs"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "numpy>=1.20.0",
+    "numba>=0.59.0",
+]
+
+[project.optional-dependencies]
+sogs = [
+    "imagecodecs>=2024.0.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "build",
+    "twine",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0.0",
+]
+benchmark = [
+    "open3d>=0.17.0",
+    "plyfile>=0.9.0",
+]
+docs = [
+    "sphinx>=7.2",
+    "myst-parser>=2.0",
+    "furo>=2024.0.0",
+    "sphinx-autodoc-typehints>=2.0",
+]
+all = [
+    "imagecodecs>=2024.0.0",
+    "pytest>=7.0",
+    "pytest-cov",
+    "build",
+    "twine",
+    "open3d>=0.17.0",
+    "plyfile>=0.9.0",
+    "sphinx>=7.2",
+    "myst-parser>=2.0",
+    "furo>=2024.0.0",
+    "sphinx-autodoc-typehints>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/OpsiClear/gsply"
+Repository = "https://github.com/OpsiClear/gsply"
+Issues = "https://github.com/OpsiClear/gsply/issues"
+Documentation = "https://github.com/OpsiClear/gsply#readme"
+
+[tool.setuptools]
+packages = ["gsply", "gsply.torch"]
+package-dir = {"" = "src"}
+zip-safe = true
+
+[tool.setuptools.package-data]
+gsply = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "benchmark: marks tests as benchmark tests (deselect with '-m \"not benchmark\"')",
+]
+
+[tool.coverage.run]
+source = ["gsply"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+exclude = [
+    "benchmarks",
+]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RET",  # flake8-return
+    "PL",   # pylint
+]
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "PLR0913", # too many arguments (common in scientific code)
+    "PLR2004", # magic values (we use meaningful constants)
+    "PLR0912", # too many branches (common in JIT kernels)
+    "PLR0915", # too many statements (common in JIT kernels)
+    "PLR0911", # too many returns (common in dispatching methods like __getitem__)
+    "SIM108",  # simplify if-else (sometimes clarity over brevity)
+    "SIM116",  # use dict for if-elif (not always clearer)
+    "PLC0415", # import at top level (lazy imports for optional dependencies)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["PLR2004", "N802", "N806", "B007", "B023"]  # Allow magic values, non-snake-case, and bugbear checks in tests
+"src/gsply/gsdata.py" = ["N803", "UP038"]  # Allow include_shN parameter (scientific naming), isinstance tuples
+"src/gsply/torch/gstensor.py" = ["N803", "N806", "N815", "UP038"]  # Allow shN naming (scientific convention), isinstance tuples
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradually enable
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+extra_checks = true
+
+[[tool.mypy.overrides]]
+module = "numba.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "open3d.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "plyfile.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "torch.*"
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "imagecodecs>=2025.3.30",
+    "opencv-python>=4.12.0.88",
+    "pillow>=12.0.0",
+    "pyvips>=3.0.0",
+]
