@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MolSelector</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://unpkg.com/3dmol/build/3Dmol-min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>MolSelector</h1>
+        <p>Load molecules ({{ supported_extensions }}) and tag them as accept or decline.</p>
+      </header>
+
+      <section class="input-panel">
+        <form id="folder-form">
+          <label for="folder-input">Folder path</label>
+          <div class="input-group">
+            <input id="folder-input" type="text" placeholder="/path/to/molecules" required />
+            <button type="button" id="browse-button" class="secondary">Browse…</button>
+            <button type="submit">Load Folder</button>
+          </div>
+        </form>
+        <p id="folder-status" class="status"></p>
+      </section>
+
+      <section id="viewer-section" class="viewer hidden">
+        <div class="viewer-header">
+          <h2 id="file-name">&nbsp;</h2>
+          <div class="progress" id="progress-bar">0 / 0</div>
+        </div>
+        <div class="viewer-toolbar">
+          <div id="declined-filter" class="filter-toggle hidden">
+            <label for="declined-toggle" class="checkbox-label">
+              <input type="checkbox" id="declined-toggle" />
+              <span>Show declined only</span>
+            </label>
+            <span id="declined-count" class="pill"></span>
+          </div>
+        </div>
+        <div id="viewer" class="viewer-canvas"></div>
+        <div class="controls">
+          <button id="back-btn" class="secondary" type="button">Back</button>
+          <button id="decline-btn" class="decline" type="button">Decline</button>
+          <button id="accept-btn" class="accept" type="button">Accept</button>
+        </div>
+        <p id="decision-status" class="status"></p>
+      </section>
+    </div>
+
+    <script>
+      window.MOLSELECTOR_DEFAULT_FOLDER = {{ default_folder | tojson }};
+      window.MOLSELECTOR_FOLDER_PICKER = {{ folder_picker | tojson }};
+    </script>
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>
