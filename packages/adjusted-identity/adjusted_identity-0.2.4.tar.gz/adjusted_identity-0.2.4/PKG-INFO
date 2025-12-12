@@ -1,0 +1,738 @@
+Metadata-Version: 2.4
+Name: adjusted-identity
+Version: 0.2.4
+Summary: Adjusted Identity Calculator for DNA Sequences with MycoBLAST-style preprocessing and MSA support
+Home-page: https://github.com/joshuaowalker/adjusted-identity
+Author: Josh Walker
+Author-email: Josh Walker <joshowalker@yahoo.com>
+License: BSD 2-Clause License
+        
+        Copyright (c) 2025, Josh Walker
+        
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+        
+        1. Redistributions of source code must retain the above copyright notice, this
+           list of conditions and the following disclaimer.
+        
+        2. Redistributions in binary form must reproduce the above copyright notice,
+           this list of conditions and the following disclaimer in the documentation
+           and/or other materials provided with the distribution.
+        
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+        FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+        DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+        SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+        CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+        OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+        OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+        
+Project-URL: Homepage, https://github.com/joshuaowalker/adjusted-identity
+Project-URL: Bug Reports, https://github.com/joshuaowalker/adjusted-identity/issues
+Project-URL: Source, https://github.com/joshuaowalker/adjusted-identity
+Keywords: bioinformatics,dna,sequence,alignment,mycology,identity,barcode,MycoBLAST,ITS
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: edlib>=1.3.9
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# Adjusted Identity Calculator for DNA Sequences
+
+A Python package implementing MycoBLAST-style sequence identity calculations for DNA sequences, specifically designed for mycological DNA barcoding applications. This package provides sophisticated sequence alignment and scoring with various adjustments for homopolymer differences, IUPAC ambiguity codes, and sequencing artifacts.
+
+**Based on the MycoBLAST algorithm developed by Stephen Russell and Mycota Lab.** See the foundational article: ["Why NCBI BLAST identity scores can be misleading for fungi"](https://mycotalab.substack.com/p/why-ncbi-blast-identity-scores-can) which explains the theoretical basis and motivation for these sequence preprocessing adjustments.
+
+## Features
+
+- **Homopolymer Length Normalization**: Ignore differences in homopolymer run lengths (e.g., "AAA" vs "AAAA")
+- **Repeat Motif Adjustment**: Handle dinucleotide and longer repeat motifs (e.g., "ATATAT" vs "ATATATAT")
+- **IUPAC Ambiguity Code Handling**: Allow different ambiguity codes to match via nucleotide intersection
+- **MSA Dual-Gap Support**: Correctly handle sequences from multi-sequence alignments (MSA) where both sequences may have gaps at the same position
+- **End Trimming**: Skip mismatches in terminal regions to avoid sequencing artifacts (disabled by default, set `end_skip_distance` to enable)
+- **Indel Normalization**: Count contiguous indels as single evolutionary events
+- **Comprehensive Alignment**: Multi-stage bidirectional alignment optimization using edlib
+- **Flexible Configuration**: Enable/disable individual adjustments as needed
+
+## Installation
+
+### From GitHub
+
+```bash
+pip install git+https://github.com/joshuaowalker/adjusted-identity.git
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/joshuaowalker/adjusted-identity.git
+cd adjusted-identity
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### Option 1: Complete Solution (align + score)
+```python
+from adjusted_identity import align_and_score
+
+# For raw sequences - handles alignment and scoring
+result = align_and_score("ATCGAAAAATGTC", "ATCGAAAATGTC")
+print(f"Adjusted identity: {result.identity:.3f}")
+print(f"Coverage: seq1={result.seq1_coverage:.3f}, seq2={result.seq2_coverage:.3f}")
+```
+
+### Option 2: Core Scoring Only (use with your alignments)
+```python
+from adjusted_identity import score_alignment
+
+# For pre-aligned sequences from BLAST, BioPython, etc.
+aligned_seq1 = "ATCG-AAAT"  # From your alignment tool
+aligned_seq2 = "ATCGAAAAT"  # From your alignment tool
+
+result = score_alignment(aligned_seq1, aligned_seq2)
+print(f"Adjusted identity: {result.identity:.3f}")
+```
+
+### Compare with Traditional Identity
+```python
+from adjusted_identity import align_and_score, RAW_ADJUSTMENT_PARAMS
+
+# Traditional identity (no adjustments)
+raw_result = align_and_score("ATCGAAAAATGTC", "ATCGAAAATGTC", RAW_ADJUSTMENT_PARAMS)
+print(f"Traditional identity: {raw_result.identity:.3f}")
+
+# Adjusted identity (with MycoBLAST adjustments)  
+adj_result = align_and_score("ATCGAAAAATGTC", "ATCGAAAATGTC")
+print(f"Adjusted identity: {adj_result.identity:.3f}")
+
+# Examine the scoring pattern
+print(f"Score pattern: {adj_result.score_aligned}")
+# '|' = exact match, '=' = ambiguous/homopolymer, ' ' = substitution
+```
+
+## Use Cases
+
+### Mycological DNA Barcoding
+
+Common scenario: ITS sequences with homopolymer differences due to sequencing artifacts.
+
+```python
+from adjusted_identity import align_and_score
+
+# Fungal ITS sequences with different homopolymer lengths
+its_seq1 = "TCCGTAGGTGAACCTGCGGAAGGATCATTACCGAGTTTAAA"    # 3 A's at end
+its_seq2 = "TCCGTAGGTGAACCTGCGGAAGGATCATTACCGAGTTTTAAAA"   # 4 A's at end
+
+result = align_and_score(its_seq1, its_seq2)
+print(f"Species identity: {result.identity:.3f}")  # Should be ~1.0 with homopolymer adjustment
+```
+
+### Handling Ambiguous Bases
+
+```python
+from adjusted_identity import align_and_score
+
+# Sequences with IUPAC ambiguity codes
+barcode1 = "ATCGRGTC"  # R = A or G
+barcode2 = "ATCGKGTC"  # K = G or T (both R and K contain G)
+
+result = align_and_score(barcode1, barcode2)
+print(f"Identity with IUPAC handling: {result.identity:.3f}")  # Should be 1.0
+print(f"Score pattern: {result.score_aligned}")  # Shows '=' for ambiguous matches
+```
+
+### Understanding Score Patterns
+
+The `score_aligned` field provides a visual representation of how each position was scored:
+
+- `|` = Exact match between standard nucleotides (A=A, C=C, G=G, T=T)
+- `=` = Ambiguous match (IUPAC codes) or homopolymer/repeat extension
+- ` ` (space) = Substitution (mismatch)
+- `-` = Indel extension (normalized)
+- `.` = End-trimmed, dual-gap, or overhang position (not scored)
+
+```python
+from adjusted_identity import align_and_score
+
+result = align_and_score("ATCGRAAATGTC", "ATCGAAAAATGTC")
+print(f"Seq1: {result.seq1_aligned}")
+print(f"Seq2: {result.seq2_aligned}") 
+print(f"Score: {result.score_aligned}")
+# Output might show: ||||==||||||
+#                    ATCG = exact matches (||||)
+#                    R vs A = ambiguous match (=)
+#                    AAA vs AAAA = homopolymer extension (=)
+```
+
+### Repeat Motif Handling
+
+```python
+from adjusted_identity import align_and_score, AdjustmentParams
+
+# Dinucleotide repeat differences (AT repeat from Russell article)
+seq1 = "CGATAT--C"  # Missing one AT unit
+seq2 = "CGATATATC"  # Has extra AT unit
+
+# With repeat motif adjustment (default)
+result = align_and_score(seq1, seq2)
+print(f"Adjusted identity: {result.identity:.3f}")  # Should be 1.0
+
+# Control max repeat motif length
+params = AdjustmentParams(
+    max_repeat_motif_length=3  # Detect up to trinucleotide repeats (e.g., CAG)
+)
+result = align_and_score("CAGCAG---TTC", "CAGCAGCAGTTC", params)
+```
+
+### Multi-Sequence Alignment (MSA) Support
+
+The package correctly handles sequence pairs extracted from multi-sequence alignments (MSA), where both sequences may have gaps at the same position due to alignment with third sequences.
+
+```python
+from adjusted_identity import score_alignment
+
+# Sequences from MSA (e.g., spoa, MUSCLE, MAFFT output)
+# Both sequences have gaps at positions 3-4 due to alignment with a third sequence
+msa_seq1 = "AGA--TT"
+msa_seq2 = "AGAT-TT"
+
+result = score_alignment(msa_seq1, msa_seq2)
+print(f"MSA identity: {result.identity:.3f}")  # Should be 1.0 - 'T' recognized as homopolymer
+print(f"Score pattern: {result.score_aligned}")
+
+# Another example with consensus-based homopolymer detection
+msa_seq1 = "AGG-AC"  # G at position 2
+msa_seq2 = "AG-GAC"  # G at position 3
+
+result = score_alignment(msa_seq1, msa_seq2)
+print(f"MSA identity: {result.identity:.3f}")  # Both G's recognized as homopolymer extensions
+```
+
+**Key MSA features:**
+- **Dual-gap handling**: Positions where both sequences have '-' are excluded from scoring (marked with `.`)
+- **Consensus context**: Homopolymer detection uses consensus nucleotides from both sequences
+- **Conflict resolution**: When sequences disagree at context positions, homopolymer extension is not applied
+
+### Custom Adjustments
+
+```python
+from adjusted_identity import align_and_score, AdjustmentParams
+
+# Custom adjustment parameters
+custom_params = AdjustmentParams(
+    normalize_homopolymers=True,   # Enable homopolymer adjustment
+    handle_iupac_overlap=False,    # Disable IUPAC intersection
+    normalize_indels=True,         # Enable indel normalization
+    end_skip_distance=10,         # Skip 10bp from each end (default is 0 = disabled)
+    max_repeat_motif_length=2     # Detect up to dinucleotide repeats (default)
+)
+
+result = align_and_score(seq1, seq2, custom_params)
+```
+
+## API Architecture
+
+This package provides a **layered API design** that separates sequence alignment from identity scoring, giving you maximum flexibility:
+
+### Core Layer: `score_alignment()`
+The **core implementation** that applies MycoBLAST-style adjustments to any pre-aligned sequences. This allows you to use **any alignment library** (BLAST, BioPython, edlib, etc.) with the adjusted identity algorithm.
+
+**Input**: Just needs gapped sequences of equal length  
+**Output**: Adjusted identity metrics with detailed scoring information
+
+### Convenience Layer: `align_and_score()`
+A **higher-level function** that combines fast edlib alignment with the scoring algorithm. Provides BLAST-like infix alignment that's fast enough for production use without requiring external dependencies.
+
+**Input**: Raw unaligned sequences  
+**Output**: Complete alignment and adjusted identity results
+
+---
+
+## API Reference
+
+### Core Function
+
+#### `score_alignment(seq1_aligned, seq2_aligned, adjustment_params=None, scoring_format=None)`
+
+**The core implementation** - applies MycoBLAST-style adjustments to pre-aligned sequences from any source.
+
+**Use this when:**
+- You already have alignments from BLAST, BioPython, or other tools
+- You want to integrate adjusted identity into existing pipelines
+- You need maximum control over the alignment process
+
+**Parameters:**
+- `seq1_aligned`, `seq2_aligned` (str): Pre-aligned sequences with gaps (must be same length)
+- `adjustment_params` (AdjustmentParams, optional): Adjustment parameters
+- `scoring_format` (ScoringFormat, optional): Scoring visualization format
+
+**Returns:**
+- `AlignmentResult`: Scoring results and metrics
+
+**Example with BLAST alignment:**
+```python
+# After getting BLAST alignment results
+from adjusted_identity import score_alignment
+
+blast_seq1 = "ATCG-AAAT"  # From BLAST output
+blast_seq2 = "ATCGAAAAT"  # From BLAST output
+
+result = score_alignment(blast_seq1, blast_seq2)
+print(f"Adjusted identity: {result.identity:.3f}")
+```
+
+### Convenience Function
+
+#### `align_and_score(seq1, seq2, adjustment_params=None, scoring_format=None)`
+
+**High-level convenience function** that handles both alignment and scoring in one step.
+
+**Use this when:**
+- You want a simple, fast solution without additional alignment tools
+- You need BLAST-like performance for production use
+- You're comparing raw sequences end-to-end
+
+**Parameters:**
+- `seq1`, `seq2` (str): Raw DNA sequences to compare
+- `adjustment_params` (AdjustmentParams, optional): Adjustment parameters
+- `scoring_format` (ScoringFormat, optional): Scoring visualization format
+
+**Returns:**
+- `AlignmentResult`: Contains identity metrics, alignment, and coverage information
+
+**Example:**
+```python
+from adjusted_identity import align_and_score
+
+result = align_and_score("ATCGAAAATGTC", "ATCGAAAATGTC")
+print(f"Identity: {result.identity:.3f}")
+```
+
+### Configuration Classes
+
+#### `AdjustmentParams`
+
+Configure which sequence adjustments to apply:
+
+```python
+AdjustmentParams(
+    normalize_homopolymers=True,    # Ignore homopolymer length differences
+    handle_iupac_overlap=True,      # Allow IUPAC ambiguity intersections
+    normalize_indels=True,          # Count contiguous indels as single events
+    end_skip_distance=0,           # Skip first/last N nucleotides (0 = disabled by default)
+    max_repeat_motif_length=2      # Maximum repeat motif length to detect (1=homopolymers only, 2=dinucleotides, etc.)
+)
+```
+
+#### `ScoringFormat`
+
+Customize alignment visualization characters:
+
+```python
+ScoringFormat(
+    match='|',                     # Exact match (A=A, C=C, G=G, T=T)
+    ambiguous_match='=',           # Ambiguous nucleotide match (any IUPAC code match)
+    substitution=' ',              # Nucleotide substitution
+    indel_start=' ',               # First position of indel
+    indel_extension='-',           # Indel positions (normalization)
+    homopolymer_extension='=',     # Homopolymer length difference
+    end_trimmed='.'               # Position outside scoring region
+)
+```
+
+#### `AlignmentResult`
+
+Results returned by alignment functions:
+
+```python
+AlignmentResult(
+    identity=0.95,                 # Identity score (0.0-1.0)
+    mismatches=2,                  # Number of mismatches counted
+    scored_positions=40,           # Positions used for identity calculation
+    seq1_coverage=0.98,            # Fraction of seq1 in alignment
+    seq2_coverage=0.97,            # Fraction of seq2 in alignment
+    seq1_aligned="ATCG-ATCG",      # Aligned sequence 1 with gaps
+    seq2_aligned="ATCGATCG-",      # Aligned sequence 2 with gaps
+    score_aligned="||||=|||"       # Scoring visualization
+)
+```
+
+### Constants
+
+- `DEFAULT_ADJUSTMENT_PARAMS`: All adjustments enabled (recommended)
+- `RAW_ADJUSTMENT_PARAMS`: No adjustments (traditional identity)
+- `DEFAULT_SCORING_FORMAT`: Default visualization characters
+
+## Integration with Other Alignment Tools
+
+The core `score_alignment()` function works with alignments from any source. Here are examples with popular alignment libraries:
+
+### Using with NCBI BLAST
+
+```python
+# NOTE: This example is illustrative and not tested
+from Bio.Blast import NCBIWWW, NCBIXML
+from adjusted_identity import score_alignment
+
+# Run BLAST search (example)
+result_handle = NCBIWWW.qblast("blastn", "nt", query_sequence)
+blast_records = NCBIXML.parse(result_handle)
+
+for blast_record in blast_records:
+    for alignment in blast_record.alignments:
+        for hsp in alignment.hsps:
+            # Extract aligned sequences from BLAST HSP
+            query_aligned = hsp.query
+            subject_aligned = hsp.sbjct
+            
+            # Apply adjusted identity scoring
+            adj_result = score_alignment(query_aligned, subject_aligned)
+            
+            print(f"BLAST identity: {hsp.identities/hsp.align_length:.3f}")
+            print(f"Adjusted identity: {adj_result.identity:.3f}")
+```
+
+### Using with BioPython PairwiseAligner
+
+```python
+from Bio import Align
+from adjusted_identity import score_alignment
+
+# Create BioPython aligner
+aligner = Align.PairwiseAligner()
+aligner.match_score = 2
+aligner.mismatch_score = -1
+
+# Example sequences
+seq1 = "ATCGATCG"
+seq2 = "ATCGTCG"  # Missing one nucleotide
+
+# Perform alignment
+alignments = aligner.align(seq1, seq2)
+best_alignment = alignments[0]
+
+# Extract aligned sequences using indexing (idiomatic BioPython)
+seq1_aligned = str(best_alignment[0])
+seq2_aligned = str(best_alignment[1])
+
+# Apply adjusted scoring
+result = score_alignment(seq1_aligned, seq2_aligned)
+print(f"Adjusted identity: {result.identity:.3f}")
+```
+
+### Using with Custom/External Aligners
+
+```python
+# NOTE: This example is illustrative template code
+from adjusted_identity import score_alignment
+
+def process_alignment_file(alignment_file):
+    """Process alignments from any external tool."""
+    results = []
+    
+    # Parse your alignment format (FASTA, SAM, custom, etc.)
+    for seq1_aligned, seq2_aligned in parse_alignment_file(alignment_file):
+        # Ensure sequences are the same length
+        assert len(seq1_aligned) == len(seq2_aligned)
+        
+        # Apply adjusted identity scoring
+        result = score_alignment(seq1_aligned, seq2_aligned)
+        results.append(result)
+    
+    return results
+```
+
+## Understanding End Trimming Behavior
+
+The `end_skip_distance` parameter implements "digital end trimming" to skip sequencing artifacts near read ends. **Important**: This parameter counts **nucleotides** (non-gap characters), not alignment positions.
+
+### Automatic Activation
+
+End trimming only activates when sequences are long enough:
+
+```python
+from adjusted_identity import align_and_score, AdjustmentParams
+
+# Short sequences (< 2 × end_skip_distance nucleotides): NO trimming applied
+short_seq1 = "ATCGATCG"      # 8 nucleotides 
+short_seq2 = "ATCGATCG"      # 8 nucleotides
+result = align_and_score(short_seq1, short_seq2)  # end_skip_distance=0 by default
+print(f"Scored positions: {result.scored_positions}")  # 8 (full sequence)
+print(f"Score pattern: {result.score_aligned}")        # "||||||||" (no trimming dots)
+
+# Long sequences (≥ 2 × end_skip_distance nucleotides): Trimming applied  
+long_seq1 = "A" * 25 + "TCGX" + "T" * 25    # 54 nucleotides
+long_seq2 = "A" * 25 + "TCGA" + "T" * 25    # 54 nucleotides
+result = align_and_score(long_seq1, long_seq2)
+print(f"Scored positions: {result.scored_positions}")  # ~14 (middle region only)
+print(f"Score pattern: {result.score_aligned}")        # ".......|||| |||||......." (dots show trimmed regions)
+```
+
+### Nucleotide vs Position Counting
+
+End trimming counts **actual nucleotides** in each sequence, ignoring gaps:
+
+```python
+# This alignment has gaps, but nucleotide counting still works correctly
+seq1_aligned = "AAA---TCGATCG---TTT"  # 12 nucleotides (ignoring gaps)
+seq2_aligned = "---AAATCGATCGTTT---"  # 12 nucleotides (ignoring gaps)
+
+# With end_skip_distance=5: skips first 5 and last 5 nucleotides from each sequence
+# Only the middle "TCGATCG" region (2 nucleotides) would be scored
+```
+
+### Customizing End Trimming
+
+```python
+# Disable end trimming completely
+no_trim_params = AdjustmentParams(end_skip_distance=0)
+result = align_and_score(long_seq1, long_seq2, no_trim_params)
+
+# Use shorter trimming distance for smaller sequences
+short_trim_params = AdjustmentParams(end_skip_distance=5) 
+result = align_and_score(medium_seq1, medium_seq2, short_trim_params)
+```
+
+**Rule of thumb**: For sequences shorter than `2 × end_skip_distance` nucleotides, end trimming has no effect and the entire alignment is scored.
+
+## Advanced Usage
+
+### Batch Processing
+
+```python
+from adjusted_identity import align_and_score
+
+sequences = [
+    ("seq1", "ATCGATCGATCG"),
+    ("seq2", "ATCGATCGATCC"),
+    ("seq3", "ATCGATCGATCG"),
+]
+
+reference = sequences[0][1]
+results = []
+
+for name, seq in sequences[1:]:
+    result = align_and_score(reference, seq)
+    results.append({
+        'name': name,
+        'identity': result.identity,
+        'coverage': min(result.seq1_coverage, result.seq2_coverage)
+    })
+
+# Sort by identity
+results.sort(key=lambda x: x['identity'], reverse=True)
+```
+
+### Understanding Scoring Patterns
+
+The `score_aligned` field shows how each position was scored:
+
+```python
+result = align_and_score("AAA-TTT", "AAAATTT")
+print(result.score_aligned)  # "|||=|||"
+# | = match
+# = = homopolymer extension (ignored if adjustment enabled)
+```
+
+Scoring symbols:
+- `|`: Exact match (A=A, C=C, G=G, T=T)
+- `=`: Ambiguous match (IUPAC) or homopolymer/repeat extension
+- ` ` (space): Substitution or indel start (counts as mismatch)
+- `-`: Indel extension (ignored if normalization enabled)
+- `.`: End-trimmed, dual-gap, or overhang (not scored)
+
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run tests with coverage
+pytest --cov=adjusted_identity --cov-report=html
+```
+
+The test suite includes:
+- Unit tests for all adjustment types
+- Edge cases and error conditions
+- Real-world mycological scenarios
+- Performance tests with long sequences
+- Documentation examples
+
+## Background
+
+This package implements the sequence preprocessing approach described in the MycoBLAST algorithm by Stephen Russell and Mycota Lab, adapted for general-purpose DNA sequence comparison. The foundational research is detailed in ["Why NCBI BLAST identity scores can be misleading for fungi"](https://mycotalab.substack.com/p/why-ncbi-blast-identity-scores-can).
+
+### How the Variant Range Algorithm Works
+
+Starting in v0.2.0, this package uses a **variant range algorithm** that provides more accurate scoring for complex indel patterns, especially in multi-sequence alignments.
+
+**The key insight**: Standard aligners don't know about homopolymers—they just find the minimum-edit alignment. This can produce patterns where a simple homopolymer expansion looks like a complex substitution or scattered indels.
+
+**How it works:**
+
+1. **Find variant ranges**: Scan the alignment for contiguous regions where sequences differ (gaps, mismatches, or both). These are bounded by matching positions on each side.
+
+2. **Extract alleles**: For each variant range, pull out the gap-free content from each sequence. For example, in `TGC-C-TC` vs `TGCT--TC`, the variant range yields alleles `"C"` and `"T"`.
+
+3. **Check for extensions**: Ask whether each allele could be explained as a repeat of the adjacent context:
+   - Does `"C"` extend the left context `C`? Yes (homopolymer)
+   - Does `"T"` extend the right context `T`? Yes (homopolymer)
+
+4. **Apply Occam's razor**: If both alleles are valid extensions of their respective contexts, they represent equivalent repeat expansions → **0 edits**. No mismatch is counted because both placements are biologically plausible.
+
+**Example:**
+```
+seq1: ATTCA     Traditional scoring: 1 substitution (T vs C)
+seq2: ATCCA     Variant range: T extends left T, C extends right C → 0 edits
+```
+
+This approach handles cases that position-by-position algorithms miss, such as "floating" nucleotides in MSA data where gap placement is arbitrary.
+
+For the complete specification, see [docs/SCORING_SPEC.md](docs/SCORING_SPEC.md).
+
+### Why These Adjustments Matter
+
+The adjustments are particularly valuable for:
+
+- **Fungal taxonomy**: ITS sequences often have homopolymer differences
+- **DNA barcoding**: Technical artifacts can obscure phylogenetic signal
+- **Sequence quality assessment**: End-trimming handles poor-quality regions
+- **Phylogenetic analysis**: IUPAC codes preserve ambiguous but valid matches
+
+**Credit**: This implementation is based on the MycoBLAST algorithm developed by Stephen Russell and Mycota Lab. The theoretical framework and biological motivation are thoroughly explained in their foundational article.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make changes and add tests
+4. Run the test suite: `pytest`
+5. Submit a pull request
+
+## Citation
+
+If you use this package in your research, please cite:
+
+```
+Walker, J. (2025). Adjusted Identity Calculator for DNA Sequences. 
+GitHub: https://github.com/joshuaowalker/adjusted-identity
+```
+
+**Please also cite the foundational work:**
+
+```
+Russell, S. (2025). Why NCBI BLAST identity scores can be misleading for fungi.
+Mycota Lab. https://mycotalab.substack.com/p/why-ncbi-blast-identity-scores-can
+```
+
+## License
+
+BSD 2-Clause License - see [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+### Version 0.2.2
+
+- **Removed**: `score_aligned_seq2` field (added in v0.2.1) has been removed
+  - Analysis showed it was redundant: same as `score_aligned` 98% of the time
+  - Scoring is symmetric: swap seq1/seq2 arguments to get the alternate perspective
+  - This simplifies the API and reduces memory overhead
+
+### Version 0.2.1
+
+- **Bug Fix**: Fixed dual-gap handling so they don't split variant ranges (key regression test added)
+- **Bug Fix**: Fixed visualization when one position is extension and other is core with matching cores
+- Improved visualization for indel normalization: first core position shows ` `, subsequent show `-`
+
+### Version 0.2.0
+- **Major Enhancement**: Implemented variant range algorithm for improved homopolymer and repeat motif detection
+- **Key behavioral change**: Alternating indel patterns like `TGC-C-TC` vs `TGCT--TC` now correctly score as identity=1.0
+  - The algorithm recognizes that C extends the left C context and T extends the right T context
+  - Both alleles are valid repeat extensions → 0 edits (Occam's razor principle)
+- **Algorithm improvements**:
+  - Variant regions are now bounded by non-gap match positions (respects alignment boundaries)
+  - Alleles extracted from variant ranges are analyzed for left/right repeat extensions
+  - Split scoring: partial extensions allowed (e.g., "AAG" where "AA" extends context scores AA as 0 edits, G as 1 edit)
+  - Opposite direction extensions are valid (allele1 extending left + allele2 extending right = both valid)
+- **IUPAC integration**: Motif matching uses `_are_nucleotides_equivalent()` so IUPAC codes can extend context
+- **Breaking change**: `end_skip_distance` now defaults to 0 (disabled). Set `end_skip_distance=20` to restore previous behavior.
+- Removed 218 lines of dead code from previous indel processing implementation
+
+### Version 0.1.7
+- **Feature**: Added multi-sequence alignment (MSA) dual-gap support for homopolymer normalization
+- Consensus-based context extraction now handles sequences where both have gaps at the same position (common in MSA outputs from spoa, MUSCLE, MAFFT)
+- Dual-gap positions ('-' vs '-') are now correctly treated as matches, not indels
+- Homopolymer detection uses consensus from both sequences when extracting context
+- Added 17 comprehensive tests for MSA edge cases
+- 100% backward compatible - all 133 tests pass
+- No API changes - existing code works unchanged
+
+### Version 0.1.6
+- **Enhancement**: Added validation for contradictory `AdjustmentParams` configuration
+- Now raises `ValueError` when `normalize_homopolymers=True` but `max_repeat_motif_length < 1` (which would silently disable homopolymer normalization)
+- Added comprehensive test coverage for parameter validation edge cases
+- No API changes - existing valid configurations work unchanged
+
+### Version 0.1.5
+- **Enhancement**: Added `ambiguous_match` field to `ScoringFormat` to distinguish between exact nucleotide matches and ambiguous matches
+- Modified `_are_nucleotides_equivalent()` to return a tuple indicating match type  
+- Score patterns now show `|` for exact standard nucleotide matches (A=A, C=C, G=G, T=T) and `=` for any matches involving IUPAC ambiguity codes
+- No breaking changes - existing code works unchanged but score visualization is more informative
+
+### Version 0.1.4
+- **Bug fix**: Fixed overhang scoring behavior when `end_skip_distance=0`
+- Now correctly scores only positions where both sequences have content (no gap vs nucleotide scoring)
+- Added comprehensive test suite for overhang region handling edge cases
+- No API changes - existing code will work unchanged but may see different results for overhang alignments
+
+### Version 0.1.3
+- **Bug fix**: Fixed alignment length mismatch error in `align_edlib_bidirectional()`
+- Resolved "Aligned sequences must have same length" errors for certain sequence pairs
+- Simplified suffix trimming logic by removing unnecessary sequence trimming/reattachment
+- No API changes or performance impact
+
+### Version 0.1.2
+- **Breaking**: Removed BioPython dependency - now only requires `edlib`
+- Implemented custom `reverse_complement()` function with full IUPAC support
+- Reduced package size and installation complexity
+- Added comprehensive test coverage for reverse complement functionality
+- Maintains 100% API compatibility (no code changes needed)
+
+### Version 0.1.1
+- Added repeat motif adjustment support (dinucleotide and longer repeats)
+- Implemented intelligent motif length detection with degeneracy handling
+- Added `max_repeat_motif_length` parameter to AdjustmentParams
+- Enhanced left-right indel processing algorithm for mixed motif lengths
+- Added comprehensive test coverage for repeat motif scenarios
+
+### Version 0.1.0
+- Initial release
+- Complete MycoBLAST-style adjustment implementation (except repeat motifs)
+- Comprehensive test suite
+- Full documentation and examples
