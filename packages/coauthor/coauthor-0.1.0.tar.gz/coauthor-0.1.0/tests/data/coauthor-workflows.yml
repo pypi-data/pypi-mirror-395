@@ -1,0 +1,35 @@
+---
+profile: markdown
+regex_path: .*\.md$
+# regex_content: .*\(ai:.*?\).*
+regex_content:
+  - .*\(ai-test:.*?\).*
+  - ".*@ai-test:.*"
+watch_directory: vaults
+regex_replacements:
+  - regex: "(?<!` ) -> "
+    replace: " → "
+  - regex: "(?<!` ) <- "
+    replace: " ← "
+agent:
+workflows:
+  - name: obsidian
+    watch:
+      filesystem:
+        paths:
+          - vaults
+    tasks:
+      - id: ai-file-update
+        type: ai
+        path_patterns:
+          - .*\.md$
+        content_patterns:
+          - .*\(ai-test:.*?\).*
+          - ".*@ai-test:.*"
+      - id: regex-file-updates
+        type: regex_replace_in_file
+        patterns:
+          - regex: "(?<!` ) -> "
+            replace: " → "
+          - regex: "(?<!` ) <- "
+            replace: " ← "

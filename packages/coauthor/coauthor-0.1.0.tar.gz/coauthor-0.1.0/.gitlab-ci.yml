@@ -1,0 +1,107 @@
+---
+stages:
+  # - lint
+  - test
+  - build
+  - release
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  CI_PYTHON_VERSION: "3.11"
+
+default:
+  image: python:$CI_PYTHON_VERSION
+
+before_script:
+  - python --version
+  - pip install --upgrade pip
+
+# .linters:
+#   stage: lint
+#   script:
+#     - pip install . pre-commit mypy==1.13.0 -r tests/requirements.txt
+#     - mypy src/ tests/
+
+# .lint:
+#   extends: .linters
+#   tags:
+#     - docker
+#   only:
+#     - master
+
+prepare:
+  stage: build
+  script:
+    - |
+      C2_VERSION=$(grep 'version =' pyproject.toml | awk -F '"' '{print $2}')
+    - 'echo "C2_VERSION: $C2_VERSION"'
+    - |
+      echo "C2_VERSION=$C2_VERSION" >> variables.env
+  artifacts:
+    reports:
+      dotenv: variables.env
+
+build:
+  stage: build
+  script:
+    - python3 -m pip install flit
+    - flit build
+  artifacts:
+    paths:
+      - dist/
+
+pypi-publish:
+  stage: release
+  script:
+    - python3 -m pip install flit
+    - flit build
+    - flit publish
+  # environment: # require approval
+  #   name: release
+  #   url: https://pypi.org/project/coauthor
+  # variables:
+  #   # FLIT_INDEX_URL: https://test.pypi.org/legacy/
+  #   FLIT_USERNAME: __token__
+  only:
+    - tags
+
+test:
+  stage: test
+  parallel:
+    matrix:
+      - PY: ["3.10", "3.11"]
+        # DEPS_VERSION: ["min_deps_version", "latest_deps_version"]
+  image: "python:$PY"
+  # services:
+  #   - docker:dind
+  script:
+    - git config --global user.email "you@example.com"
+    - git config --global user.name "Your Name"
+    - pip install . -r tests/requirements.txt
+    - pytest --cov src --cov-fail-under 100
+  coverage: '/TOTAL\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)\%$/'
+  allow_failure: true
+  artifacts:
+    paths:
+      - coverage.xml
+      - coverage_html
+
+gitlab-release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs: [prepare]
+  before_script: []
+  script:
+    - echo "Create Coauthor release $C2_VERSION"
+  release:
+    name: Coauthor $C2_VERSION
+    description: "./CHANGELOG.md"
+    tag_name: $C2_VERSION
+    ref: $CI_COMMIT_SHA
+  when: manual
+  only:
+    - master
+# assets:
+#   links:
+#     - name: coauthor
+#       url: https://galaxy.ansible.com/$C2_NAMESPACE/$C2_NAME

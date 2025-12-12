@@ -1,0 +1,184 @@
+---
+tools:
+  - name: list_tracked_files
+    description: Lists all tracked files in the specified project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+      required: [project_name]
+      additionalProperties: true
+  - name: list_tracked_directories
+    description: >-
+      List all directories that contain tracked files
+      in the Git repository at project_path.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+      required: [project_name]
+      additionalProperties: true
+  - name: write_files
+    description: Writes or updates files in the specified project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        files:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              content:
+                type: string
+      required: [project_name, files]
+      additionalProperties: false
+  - name: get_files
+    description: Retrieves the content of specified files in the project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        paths:
+          type: array
+          items:
+            type: string
+      required: [project_name, paths]
+      additionalProperties: false
+  - name: create_directories
+    description: Create directories in the project, similar to mkdir -p.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        directories:
+          type: array
+          items:
+            type: string
+      required: [project_name, directories]
+      additionalProperties: false
+  - name: list_modified_files
+    description: >-
+      Lists files with outstanding changes (new, staged or modified)
+      in the specified project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+      required: [project_name]
+      additionalProperties: false
+  - name: get_diffs
+    description: >-
+      Retrieves diffs for specified files in the specified project,
+      or all if not specified.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        paths:
+          type: array
+          items:
+            type: string
+          description: Paths to files. Optional; if omitted, all modified.
+      required: [project_name]
+      additionalProperties: false
+  - name: delete_files
+    description: >-
+      Deletes specified files or directories in the project.
+      Directories are deleted recursively.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        paths:
+          type: array
+          items:
+            type: string
+          description: Paths to the files or directories to delete.
+      required: [project_name, paths]
+      additionalProperties: false
+  - name: move_files
+    description: Moves files or directories to new locations in the project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        moves:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: string
+              destination:
+                type: string
+          description: List of moves, each with source and destination paths.
+      required: [project_name, moves]
+      additionalProperties: false
+  - name: get_context
+    description: >-
+      Retrieves the context from COAUTHOR.md in the specified project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+      required: [project_name]
+      additionalProperties: false
+  - name: update_context
+    description: Updates the context in COAUTHOR.md in the specified project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        content:
+          type: string
+          description: The new content for COAUTHOR.md.
+      required: [project_name, content]
+      additionalProperties: false
+  - name: search_files
+    description: >-
+      Searches for a query string or regex in tracked files
+      of the specified project.
+    parameters:
+      type: object
+      properties:
+        project_name:
+          type: string
+          description: Name of the project.
+        query:
+          type: string
+          description: The search string or regular expression.
+        is_regex:
+          type: boolean
+          description: >-
+            Whether the query is a regular expression. Default is false.
+        context_lines:
+          type: integer
+          description: >-
+            Number of context lines before and after each match. Default is 0.
+      required: [project_name, query]
+      additionalProperties: false

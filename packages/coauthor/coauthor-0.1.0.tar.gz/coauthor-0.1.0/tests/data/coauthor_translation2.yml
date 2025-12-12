@@ -1,0 +1,19 @@
+---
+jinja:
+  custom_delimiters:
+    variable_start_string: "[[["
+    variable_end_string: "]]]"
+workflows:
+  - name: website-translation
+    path_patterns:
+      - .*\.md$
+    content_patterns:
+      - ".*ping.*"
+    tasks:
+      - id: read_file
+        type: read_file
+      - id: write_file
+        type: write_file
+        content: >-
+          [[[ config
+          | get_task_attribute("read_file", "content") ]]]=pong
