@@ -1,0 +1,339 @@
+Metadata-Version: 2.4
+Name: agentgear-ai
+Version: 0.1.8
+Summary: AgentGear: LLM observability, prompt management, and agentic tracing platform with SDK, FastAPI backend, and dashboard.
+Project-URL: Homepage, https://github.com/debpanda/agentgear
+Project-URL: Repository, https://github.com/debpanda/agentgear
+Project-URL: Issues, https://github.com/debpanda/agentgear/issues
+Author: AgentGear Contributors
+License-Expression: Apache-2.0
+License-File: LICENSE
+Keywords: agents,fastapi,llm,observability,prompts,sdk,tracing
+Classifier: Framework :: FastAPI
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.10
+Requires-Dist: fastapi>=0.110
+Requires-Dist: httpx>=0.27
+Requires-Dist: itsdangerous>=2.2
+Requires-Dist: jinja2>=3.1
+Requires-Dist: pydantic-settings>=2.0
+Requires-Dist: pydantic>=2.6
+Requires-Dist: python-dateutil>=2.8
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: sqlalchemy>=2.0
+Requires-Dist: typer>=0.9
+Requires-Dist: uvicorn[standard]>=0.27
+Provides-Extra: cli
+Requires-Dist: typer[all]>=0.9; extra == 'cli'
+Provides-Extra: dev
+Requires-Dist: coverage>=7.4; extra == 'dev'
+Requires-Dist: mypy>=1.8; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.23; extra == 'dev'
+Requires-Dist: pytest>=7.4; extra == 'dev'
+Requires-Dist: ruff>=0.3; extra == 'dev'
+Requires-Dist: types-python-dateutil; extra == 'dev'
+Provides-Extra: server
+Requires-Dist: uvicorn[standard]>=0.27; extra == 'server'
+Description-Content-Type: text/markdown
+
+# AgentGear
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/debpanda/agentgear/main/docs/assets/agentgear-logo.svg" alt="AgentGear logo" width="220" />
+</p>
+
+AgentGear is an open-source, cloud-ready observability and prompt management platform for LLM-powered agents. It ships a Python SDK, FastAPI backend, React + Vite dashboard, and Typer CLI so you can log prompts, runs, spans, costs, and latency across modern frameworks (OpenAI Agent SDK, Google ADK, LangChain, LlamaIndex, LiteLLM, custom Python).
+
+---
+
+## Use Cases
+- **LLM observability**: capture runs, spans, errors, latency, and token/cost metrics for pipelines and agents.
+- **Prompt registry & versioning**: track prompt versions, metadata, and link runs back to prompt versions.
+- **Cost/latency budgeting**: monitor token usage and latency per run/prompt; export metrics via API.
+- **Multi-project isolation**: issue scoped API tokens per project for SDKs and CI.
+- **Self-hosted UI**: packaged React dashboard served by FastAPI (no Node required in production); use Node only if you want to develop the UI.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Python 3.10+
+- Node 18+ (with npm/pnpm/yarn) — only needed if you want to hack on the UI locally; production install uses the bundled build
+- SQLite (default) or Postgres (for cloud)
+
+### 1) Install SDK
+```bash
+pip install agentgear-ai
+```
+> Package name is `agentgear-ai`, import path remains `import agentgear`.
+
+### 2) Initialize backend (SQLite dev)
+```bash
+agentgear init-db
+```
+> Default SQLite file lives at `~/.agentgear/agentgear.db`. Set `AGENTGEAR_DATABASE_URL` to override (absolute path recommended).
+
+### 3) Launch API + dashboard (served from the Python package)
+```bash
+agentgear ui  # FastAPI + packaged React dashboard on :8000
+# open http://localhost:8000
+# first visit prompts you to set an admin username/password
+```
+
+### 4) Create project + token (from CLI)
+```bash
+agentgear create-project --name "My Project"
+agentgear create-token --project <project_id>
+```
+Copy the token (shown once). Use it in SDK calls via `X-AgentGear-Key`.
+
+### 5) Forgot the password?
+- Set env vars, restart the server, and sign in with the override:
+  - `export AGENTGEAR_ADMIN_USERNAME=admin`
+  - `export AGENTGEAR_ADMIN_PASSWORD=change-me`
+  - `agentgear ui`
+- Clear the env vars afterward if you want to go back to the stored admin user.
+
+---
+
+## SDK Usage
+
+### Configure client
+```python
+from agentgear import AgentGearClient
+
+# Remote mode (FastAPI running elsewhere)
+client = AgentGearClient(
+    base_url="https://your-api.example.com",
+    api_key="ag_live_...",
+    project_id="proj_123",
+    local=False,
+)
+
+# Local mode (writes directly to SQLite, no API key needed)
+local_client = AgentGearClient(
+    project_id="proj_123",
+    local=True,
+)
+```
+
+### Observe decorator
+```python
+from agentgear import observe
+
+@observe(client, name="chat-complete", prompt_version_id="pv_abc")
+def complete(prompt: str) -> str:
+    # call your LLM here
+    return "response"
+
+complete("hi")
+```
+Captures args, output, latency, prompt version, and errors; logs a run.
+
+### Trace spans
+```python
+from agentgear import trace
+
+run = client.log_run(name="pipeline", input_text="user input")
+with trace(client, run_id=run["id"], name="retrieve") as span:
+    # retrieval work
+    pass
+with trace(client, run_id=run["id"], name="generate", parent_id=span.span_id):
+    # generation work
+    pass
+```
+
+### Prompt templating
+```python
+from agentgear import Prompt
+
+prompt = Prompt(name="greeting", template="Hello {{ name }}!", version_id="pv_1")
+rendered = prompt.render(name="AgentGear")
+# register / version prompt
+client.register_prompt(name=prompt.name, content=prompt.template, description="Greeting")
+client.create_prompt_version(prompt_id="<prompt_id>", content="Hi {{ name }}!")
+```
+
+### OpenAI chat instrumentation
+```python
+from openai import OpenAI
+from agentgear.sdk.integrations.openai import instrument_openai_chat
+
+raw_client = OpenAI(api_key="sk-...")
+client = AgentGearClient(base_url="http://localhost:8000", api_key="ag_live_...", project_id="proj_123")
+instrumented = instrument_openai_chat(raw_client, agentgear=client, model="gpt-4o", prompt_version_id="pv_123")
+
+resp = instrumented.chat.completions.create(model="gpt-4o", messages=[{"role":"user","content":"Hello"}])
+```
+
+### End-to-end example (log run + spans + prompt link)
+```python
+from agentgear import AgentGearClient, trace
+
+client = AgentGearClient(
+    base_url="http://localhost:8000",
+    api_key="ag_live_...",          # from CLI token creation
+    project_id="proj_123",
+)
+
+# Register a prompt (keeps version history)
+prompt = client.register_prompt(name="retrieval-chat", content="Answer using {context}")
+pv = client.create_prompt_version(prompt_id=prompt["id"], content="Answer using {context}. Be concise.")
+
+# Log a run and nested spans
+run = client.log_run(
+    name="qa-flow",
+    input_text="What is AgentGear?",
+    prompt_version_id=pv["id"],
+    token_usage={"prompt": 150, "completion": 120},
+)
+
+with trace(client, run_id=run["id"], name="retrieve") as span:
+    # do retrieval...
+    pass
+
+with trace(client, run_id=run["id"], name="generate", parent_id=span.span_id) as _:
+    # call model...
+    pass
+```
+
+---
+
+## Backend (FastAPI)
+
+### Core entities
+- **Project**: id, name, description, created_at
+- **API Token**: id, project_id, key_hash (SHA-256), scopes, revoked, last_used_at
+- **Prompt / PromptVersion**: registry + versioning
+- **Run**: logged LLM call with tokens/cost/latency
+- **Span**: child spans for workflows
+
+### Auth
+- Header: `X-AgentGear-Key: <token>`
+- Scopes (examples): `runs.write`, `prompts.read`, `prompts.write`, `tokens.manage`
+- Dashboard login: first visit prompts you to set an admin username/password.
+- Password reset: set `AGENTGEAR_ADMIN_USERNAME` and `AGENTGEAR_ADMIN_PASSWORD`, restart, sign in, then clear the env vars if you want to go back to the stored admin user.
+- Local mode (`AGENTGEAR_LOCAL_MODE=true`) bypasses auth for dev; keep it `false` in any shared or remote environment.
+
+### Key endpoints
+- `POST /api/projects`, `GET /api/projects`, `GET /api/projects/{id}`
+- `POST /api/projects/{id}/tokens`, `GET /api/projects/{id}/tokens`, `DELETE /api/projects/{id}/tokens/{token_id}`
+- `POST /api/prompts`, `GET /api/prompts`, `GET /api/prompts/{id}`, `POST /api/prompts/{id}/versions`, `GET /api/prompts/{id}/versions`
+- `POST /api/runs`, `GET /api/runs`, `GET /api/runs/{id}`
+- `POST /api/spans`, `GET /api/spans?run_id=`
+- `GET /api/metrics/summary`, `GET /api/health`
+
+### Configuration (env)
+| Var | Default | Description |
+| --- | --- | --- |
+| `AGENTGEAR_DATABASE_URL` | `sqlite:///~/.agentgear/agentgear.db` | DB connection (absolute path recommended; Postgres e.g. `postgresql+psycopg://user:pass@host/db`) |
+| `AGENTGEAR_API_HOST` | `0.0.0.0` | Bind host |
+| `AGENTGEAR_API_PORT` | `8000` | Bind port |
+| `AGENTGEAR_SECRET_KEY` | `agentgear-dev-secret` | Signing/crypto secret |
+| `AGENTGEAR_ALLOW_ORIGINS` | `*` | CORS allowlist |
+| `AGENTGEAR_LOCAL_MODE` | `false` | If true, bypasses auth (dev only) |
+| `AGENTGEAR_ADMIN_USERNAME` | `None` | Optional: override admin login username (e.g. for reset) |
+| `AGENTGEAR_ADMIN_PASSWORD` | `None` | Optional: override admin login password (e.g. for reset) |
+
+---
+
+## Dashboard (React + Vite + Tailwind)
+- Packaged build is bundled with the PyPI wheel and served from `/` when you run `agentgear ui`.
+- For local UI tweaks, use the dev server (below); production installs can skip Node entirely.
+- `/projects`: list + create projects
+- `/projects/:id`: overview (stats, prompts, runs, tokens)
+- `/projects/:id/tokens`: create/revoke tokens (shows raw token once)
+- `/runs`: list runs with latency/cost
+- `/runs/:id`: run detail + spans
+- `/prompts`: prompt registry
+- `/prompts/:id`: versions + add version
+
+### Run frontend locally
+```bash
+cd frontend
+npm install
+npm run dev
+# set API target if not localhost:
+# export VITE_AGENTGEAR_API=http://localhost:8000
+```
+> Production installs get the built dashboard bundled inside the Python package and served from `/` when you run `agentgear ui`.
+
+### Common UI flows
+- Sign in (or complete first-time admin setup) at `/`.
+- Create a project and issue an API token from the Tokens tab (token shown once).
+- Browse runs/spans with latency and cost, filter by project.
+- Manage prompts and versions, and see which runs reference each prompt version.
+
+---
+
+## CLI (Typer)
+```bash
+agentgear --help
+agentgear init-db
+agentgear create-project --name "Demo"
+agentgear create-token --project <project_id> --scopes runs.write prompts.read prompts.write tokens.manage
+agentgear list-projects
+agentgear demo-data
+agentgear ui --host 0.0.0.0 --port 8000 --reload
+```
+
+---
+
+## Deployment
+
+### Postgres example
+```bash
+export AGENTGEAR_DATABASE_URL="postgresql+psycopg://user:pass@host:5432/agentgear"
+export AGENTGEAR_LOCAL_MODE=false
+agentgear init-db
+agentgear ui --host 0.0.0.0 --port 8000 --reload=false
+```
+
+### Production notes
+- Use Postgres for durability and concurrency.
+- Keep `AGENTGEAR_SECRET_KEY` secret.
+- Issue per-project tokens with least-privilege scopes.
+- Put FastAPI behind HTTPS + reverse proxy (nginx, Caddy, ALB).
+- Restrict CORS to trusted origins.
+
+---
+
+## Data Model Overview
+- `projects`: id, name, description, created_at
+- `api_keys`: id, project_id, key_hash, scopes (JSON), revoked, last_used_at
+- `prompts`: id, project_id, name, description
+- `prompt_versions`: id, prompt_id, version, content, metadata
+- `runs`: id, project_id, prompt_version_id, input/output, tokens, cost, latency, error, metadata
+- `spans`: id, project_id, run_id, parent_id, name, timing, metadata
+
+---
+
+## Testing & Dev
+- Lint (Python): `ruff check .`
+- Tests (Python): `pytest`
+- Frontend lint: `npm run lint --prefix frontend`
+- Frontend test (placeholder): `npm run test --prefix frontend`
+
+---
+
+## Releasing to PyPI (manual)
+```bash
+pip install build twine
+python -m build
+twine upload dist/*
+```
+
+---
+
+## Contributing
+See `CONTRIBUTING.md` for setup, standards, and review process. PRs welcome!
+
+## License
+Apache 2.0. See `LICENSE`.
