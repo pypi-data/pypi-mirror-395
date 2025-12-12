@@ -1,0 +1,236 @@
+#!python
+#
+# See top-level LICENSE.rst file for Copyright information
+#
+# -*- coding: utf-8 -*-
+
+"""
+This script generates the $DESI_ROOT/spectro/redux/nightqa/{NIGHT}/nightqa-{NIGHT}.html page, and related products, once all tile-qa*fits are done.
+"""
+
+#- enforce a batch-friendly matplotlib backend
+from desispec.util import set_backend
+set_backend()
+
+import os,sys
+import time
+import numpy as np
+import argparse
+from desiutil.log import get_logger
+from desispec.io import specprod_root
+from importlib import resources
+from desispec.night_qa import (
+    get_nightqa_outfns,
+    get_surveys_night_expids,
+    get_dark_night_expid,
+    get_morning_dark_night_expid,
+    get_ctedet_night_expid,
+    create_dark_pdf,
+    create_badcol_png,
+    create_ctedet_pdf,
+    create_ctedet_rowbyrow_pdf,
+    create_sframesky_pdf,
+    create_tileqa_pdf,
+    create_skyzfiber_png,
+    create_petalnz_pdf,
+    write_nightqa_html,
+)
+
+# AR get all steps, using dummy outdir, night
+steps_all = list(get_nightqa_outfns("", 0).keys())
+
+def parse(options=None):
+    parser = argparse.ArgumentParser(
+                description="Generate $DESI_ROOT/spectro/redux/nightqa/{NIGHT}/nightqa-{NIGHT}.html page, and related products")
+    parser.add_argument("-n","--night", type = int, default = None, required = True,
+                        help = "night to process. ex: 20211128")
+    parser.add_argument("-p", "--prod", type = str, default = None, required = False,
+                        help = "Path to input reduction, e.g. /global/cfs/cdirs/desi/spectro/redux/blanc,  or simply prod version, like blanc, but requires env. variable DESI_SPECTRO_REDUX. Default is $DESI_SPECTRO_REDUX/$SPECPROD.")
+    parser.add_argument("-g","--group", type = str, default = "cumulative", required = False,
+                        help = 'tile group "cumulative" or "pernight"')
+    parser.add_argument("-o", "--outdir", type = str, default = None, required = False,
+                        help = "Path to ouput folder, default is the input prod directory. Files written in {prod}/nightqa/{night}; several files will be created there")
+    parser.add_argument("--css", type = str, default = None, required = False,
+                        help = "html formatting css file; default to importlib.resources.files('desispec').joinpath('data/qa/nightqa.css')")
+    parser.add_argument("--steps", type = str, default = ",".join(steps_all), required = False,
+                        help = "comma-separated list of steps to execute (default={})".format(",".join(steps_all)))
+    parser.add_argument("--nproc", type = int, default = 1, required = False,
+                        help="number of parallel processes for create_dark_pdf(), create_ctedet_pdf(), create_ctedet_rowbyrow_pdf() and create_sframesky_pdf() (default=1)")
+    parser.add_argument("--dark-bkgsub-science-cameras", type = str, default = "b", required = False,
+                        help="for the dark/morningdark, comma-separated list of the cameras to be additionally processed with the --bkgsub-for-science argument (default=b)")
+    ## flags
+    parser.add_argument("--recompute", action = "store_true",
+                        help="recompute (i.e. overwrite args.outfile if already existing")
+    parser.add_argument("--compute-missing-only", action = "store_true",
+                        help="compute missing files only; overrides args.steps")
+    parser.add_argument("--skip-dark-steps", action = "store_true",
+                        help="skips the dark, morningdark, and badcol steps even "
+                             + "if supplied in --steps; overrides args.steps")
+    parser.add_argument("--skip-cal-steps", action = "store_true",
+                        help="skips the dark, morningdark, badcol, ctedet, "
+                             + "and ctedetrowbyrow steps even if supplied "
+                             + "in --steps; overrides args.steps")
+    args = None
+    if options is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(options)
+    # AR handle None...
+    if args.dark_bkgsub_science_cameras.lower() == "none":
+        args.dark_bkgsub_science_cameras = None
+
+    return args
+
+
+def main():
+    start_time = time.time()
+
+    log = get_logger()
+
+    # AR arguments: reading/defaulting
+    args = parse()
+    if args.recompute and args.compute_missing_only:
+        msg = "cannot set at the same time args.recompute and args.compute_missing_only"
+        log.error(msg)
+        raise ValueError(msg)
+    if args.prod is None:
+        args.prod = specprod_root()
+    elif args.prod.find("/")<0 :
+        args.prod = specprod_root(args.prod)
+    else:
+        args.prod = os.path.normpath(args.prod)
+    if args.outdir is None :
+        args.outdir = os.path.join(args.prod, "nightqa", "{}".format(args.night))
+    if args.css is None:
+        args.css = resources.files("desispec").joinpath("data/qa/nightqa.css")
+    for kwargs in args._get_kwargs():
+        log.info(kwargs)
+
+    # AR is ffmpeg installed
+    # AR disabled for now, as using pdf; keep the lines in case we generate mp4 later
+    # if os.system("which ffmpeg") != 0:
+    #    log.error("ffmpeg needs to be installed to create the mp4 movies; it can be installed at nersc with 'module load ffmpeg'")
+    #    raise RuntimeError("ffmpeg needs to be installed to create the mp4 movies; it can be installed at nersc with 'module load ffmpeg'")
+
+    # AR existing output folder?
+    if not os.path.isdir(args.outdir):
+        log.info("creating {}".format(args.outdir))
+        os.makedirs(args.outdir, exist_ok=True)
+    # AR files that will be created
+    outfns = get_nightqa_outfns(args.outdir, args.night)
+    # AR steps to be done
+    if not args.compute_missing_only:
+        steps_tbd = args.steps.split(",")
+    else:
+        log.info("args.compute_missing_only set: will override args.steps={}".format(args.steps))
+        steps_tbd = []
+        for step in steps_all:
+            ## recompute html since recomputing other steps
+            if not os.path.isfile(outfns[step]) or step == 'html':
+                steps_tbd.append(step)
+                log.info(f"add {step} to steps_tbd, as args.compute_missing_only "
+                         + f"set and no {outfns[step]} present")
+    if args.skip_dark_steps or args.skip_cal_steps:
+        for step in ['dark', 'morningdark', 'badcol']:
+            if step in steps_tbd:
+                steps_tbd.remove(step)
+    if args.skip_cal_steps:
+        for step in ['ctedet', 'ctedetrowbyrow']:
+            if step in steps_tbd:
+                steps_tbd.remove(step)
+
+    if len(steps_tbd) == 0:
+        log.info("no steps to be done")
+    else:
+        log.info("steps to be done: {}".format(",".join(steps_tbd)))
+    # AR existing files?
+    for step in steps_tbd:
+        fn = outfns[step]
+        log.info("will create {}".format(fn))
+        if os.path.isfile(fn):
+            if args.recompute:
+                log.warning("\texisting {} will be overwritten".format(fn))
+            elif step == 'html':
+                log.warning("\texisting {} will be overwritten even though args.recompute = False".format(fn))
+            else:
+                log.warning(f"\t{fn} already exists and args.recompute = False,"
+                            + f" so skipping this step")
+
+    # AR expids, tileids, surveys
+    if np.isin(["sframesky", "tileqa", "skyzfiber", "petalnz", "html"], steps_tbd).sum() > 0:
+        expids, tileids, surveys = get_surveys_night_expids(args.night)
+
+    # AR dark expid
+    if np.isin(["dark", "badcol"], steps_tbd).sum() > 0:
+        dark_expid = get_dark_night_expid(args.night, args.prod)
+
+    if "morningdark" in steps_tbd:
+        morningdark_expid = get_morning_dark_night_expid(args.night, args.prod)
+
+    # AR CTE detector expid
+    if np.isin(["ctedet", "ctedetrowbyrow"], steps_tbd).sum() > 0:
+        ctedet_expid = get_ctedet_night_expid(args.night, args.prod)
+
+    # AR dark
+    if "dark" in steps_tbd and dark_expid is not None \
+            and (args.recompute or not os.path.exists(outfns["dark"])):
+        create_dark_pdf(outfns["dark"], args.night, args.prod, dark_expid, args.nproc,
+                        bkgsub_science_cameras_str=args.dark_bkgsub_science_cameras)
+
+    # AR morning dark expid
+    if "morningdark" in steps_tbd and morningdark_expid is not None \
+            and (args.recompute or not os.path.exists(outfns["morningdark"])):
+        create_dark_pdf(outfns["morningdark"], args.night, args.prod, morningdark_expid,
+                        args.nproc, bkgsub_science_cameras_str=args.dark_bkgsub_science_cameras)
+
+    # AR badcolumn
+    if "badcol" in steps_tbd and dark_expid is not None \
+            and (args.recompute or not os.path.exists(outfns["badcol"])):
+        create_badcol_png(outfns["badcol"], args.night, args.prod)
+
+    # AR CTE detector
+    if "ctedet" in steps_tbd and ctedet_expid is not None \
+            and (args.recompute or not os.path.exists(outfns["ctedet"])):
+        create_ctedet_pdf(outfns["ctedet"], args.night, args.prod, ctedet_expid, args.nproc)
+
+    if "ctedetrowbyrow" in steps_tbd and ctedet_expid is not None \
+            and (args.recompute or not os.path.exists(outfns["ctedetrowbyrow"])):
+        create_ctedet_rowbyrow_pdf(outfns["ctedetrowbyrow"], args.night, args.prod, ctedet_expid, args.nproc)
+
+    # AR sframesky
+    if "sframesky" in steps_tbd and (args.recompute or not os.path.exists(outfns["sframesky"])):
+        create_sframesky_pdf(outfns["sframesky"], args.night, args.prod, expids, args.nproc)
+
+    # AR tileqa
+    if "tileqa" in steps_tbd and (args.recompute or not os.path.exists(outfns["tileqa"])):
+        create_tileqa_pdf(outfns["tileqa"], args.night, args.prod, expids, tileids, group=args.group)
+
+    # AR skyzfiber
+    if "skyzfiber" in steps_tbd and (args.recompute or not os.path.exists(outfns["skyzfiber"])):
+        create_skyzfiber_png(outfns["skyzfiber"], args.night, args.prod,
+                             np.unique(tileids), dchi2_threshold=9, group=args.group)
+
+    # AR per-petal n(z)
+    if "petalnz" in steps_tbd and (args.recompute or not os.path.exists(outfns["petalnz"])):
+        unq_tileids, ii = np.unique(tileids, return_index=True)
+        unq_surveys = surveys[ii]
+        create_petalnz_pdf(outfns["petalnz"], args.night, args.prod, unq_tileids,
+                           unq_surveys, dchi2_threshold=25, group=args.group)
+
+    # AR create index.html
+    # AR we first copy the args.css file to args.outdir
+    if "html" in steps_tbd:
+        os.system("cp {} {}".format(args.css, args.outdir))
+        write_nightqa_html(
+            outfns, args.night, args.prod, os.path.basename(args.css),
+            expids, tileids, surveys,
+        )
+
+    duration_seconds = time.time() - start_time
+    minutes = int(duration_seconds // 60)
+    seconds = int(duration_seconds % 60)
+
+    log.info(f'All done at {time.asctime()}; duration {minutes}m{seconds}s')
+
+if __name__ == "__main__":
+    main()
