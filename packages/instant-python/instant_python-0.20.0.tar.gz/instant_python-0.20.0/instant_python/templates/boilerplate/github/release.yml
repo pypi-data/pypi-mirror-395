@@ -1,0 +1,94 @@
+# To be able to use this GitHub workflow, you need to follow these steps:
+# Prerequisites:
+# 1. Generate a SSH key pair for signing releases: ssh-keygen -t ed25519 -C "<your-email>" -f ~/.ssh/github_actions
+# Configuration:
+# 1. In your GitHub repository, go to Settings > Secrets and variables > Actions.
+# 2. In the _Secrets_ tab, create a new repository secret named `SSH_PRIVATE_SIGNING_KEY` and paste the contents of your private key file (e.g., `cat ~/.ssh/github_actions`).
+# 3. In the _Variables_ tab, create the following repository variables:
+#    - `GIT_COMMITTER_EMAIL`: The email address you want to use for committing changes (e.g., `github-actions[bot]@users.noreply.github.com`).
+#    - `GIT_COMMITTER_NAME`: The name you want to use for committing changes (e.g., `github-actions[bot]`).
+#    - `SSH_PUBLIC_SIGNING_KEY`: The contents of your public key file (e.g., `cat ~/.ssh/github_actions.pub`).
+name: Release and Publish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    if: "!startsWith(github.event.head_commit.message, 'bump:')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      released: {% raw %}${{ steps.released.outputs.released }}{% endraw %}
+
+      tag: {% raw %}${{ steps.released.outputs.tag }}{% endraw %}
+
+
+    steps:
+      - name: 🛡️ Harden runner
+        uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.12.2
+        with:
+          egress-policy: audit
+
+      - name: 📥 Checkout the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 🔖 Create release
+        id: released
+        uses: python-semantic-release/python-semantic-release@2896129e02bb7809d2cf0c1b8e9e795ee27acbcf # v10.0.2
+        with:
+          build: true
+          push: true
+          changelog: true
+          commit: true
+          tag: true
+          vcs_release: true
+          config_file: pyproject.toml
+          github_token: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+
+          git_committer_email: {% raw %}${{ vars.GIT_COMMITTER_EMAIL }}{% endraw %}
+
+          git_committer_name: {% raw %}${{ vars.GIT_COMMITTER_NAME }}{% endraw %}
+
+          ssh_public_signing_key: {% raw %}${{ vars.SSH_PUBLIC_SIGNING_KEY }}{% endraw %}
+
+          ssh_private_signing_key: {% raw %}${{ secrets.SSH_PRIVATE_SIGNING_KEY }}{% endraw %}
+
+
+  build-and-publish:
+    name: Publish to PyPI
+    needs:
+      - release
+    if: {% raw %}needs.release.outputs.released == 'true'{% endraw %}
+
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+
+    steps:
+      - name: 🛡️ Harden runner
+        uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.12.2
+        with:
+          egress-policy: audit
+
+      - name: 📥 Checkout the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: refs/tags/{% raw %}${{ needs.release.outputs.tag }}{% endraw %}
+
+
+      - name: 🛠️ Setup environment
+        uses: ./.github/actions/python_setup
+
+      - name: 🏃 Build package
+        run: {{ general.dependency_manager }} build
+
+      - name: 🚀 Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
