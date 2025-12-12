@@ -1,0 +1,84 @@
+[project]
+name = "ray-cli"
+description = "Command-line utility for generating and broadcasting DMX over sACN and Art-Net"
+authors = [ { name = "Norbert Batiuk", email = "norbert@batiuk.se" }, ]
+readme = "README.md"
+requires-python = ">=3.8,<4.0"
+license = "MIT"
+repository = "https://github.com/nobbmaestro/ray-cli"
+keywords = ["dmx", "sacn", "cli", "utility", "python"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["version"]
+
+dependencies = []
+
+[project.scripts]
+ray-cli = "ray_cli.cli:main"
+
+[project.urls]
+Repository = "https://github.com/nobbmaestro/ray-cli"
+
+[dependency-groups]
+dev = [
+    "pre-commit==3.5.0",
+    "pytest>=8.3.2,<9.0.0",
+    "tox>=4.16.0,<5.0.0",
+    "hypothesis>=6.113.0",
+    "ty>=0.0.1a29",
+    "ruff>=0.14.7",
+]
+
+[build-system]
+requires = ["hatchling>=1.25", "hatch-vcs>=0.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.ruff]
+line-length = 88
+target-version = 'py311'
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = []
+
+[tool.pytest.ini_options]
+markers = [
+    "integration_tests: mark a test as an integration test",
+]
+
+[tool.tox]
+requires = ["tox-uv>=1.11"]
+env_list = ["python3.8", "python3.9", "python3.10", "python3.11", "lint"]
+
+[tool.tox.gh-actions]
+python = """
+    3.8: python3.8
+    3.9: python3.9
+    3.10: python3.10
+    3.11: python3.11, lint
+    """
+
+[tool.tox.env_run_base]
+dependency_groups = ["dev"]
+deps = ["pytest", "pre-commit"]
+commands = [
+    ["pytest"],
+]
+
+[tool.tox.env.lint]
+description = "Run linters via pre-commit"
+skip_install = true
+deps = ["pre-commit"]
+commands = [
+    ["pre-commit", "run", "--all-files", "--show-diff-on-failure"],
+]
