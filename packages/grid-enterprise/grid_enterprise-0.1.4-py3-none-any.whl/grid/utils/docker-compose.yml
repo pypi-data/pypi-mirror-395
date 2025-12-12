@@ -1,0 +1,126 @@
+x-isaac-lab-volumes-full: &full-isaac-lab-volumes
+  - type: volume
+    source: isaac-cache-kit
+    target: /isaac-sim/kit/cache
+  - type: volume
+    source: isaac-cache-ov
+    target: /root/.cache/ov
+  - type: volume
+    source: isaac-cache-pip
+    target: /root/.cache/pip
+  - type: volume
+    source: isaac-cache-gl
+    target: /root/.cache/nvidia/GLCache
+  - type: volume
+    source: isaac-cache-compute
+    target: /root/.nv/ComputeCache
+  - type: volume
+    source: isaac-logs
+    target: /root/.nvidia-omniverse/logs
+  - type: volume
+    source: isaac-carb-logs
+    target: /isaac-sim/kit/logs/Kit/Isaac-Sim
+  - type: volume
+    source: isaac-data
+    target: /root/.local/share/ov/data
+  - type: volume
+    source: isaac-docs
+    target: /root/Documents
+  - $GRID_DATA_DIR/isaac:/mnt/data
+
+services:
+  core:
+    image: sfgrid.azurecr.io/grid/core/main:airgen-test
+    container_name: grid_core
+    network_mode: host
+    volumes:
+      - $GRID_DATA_DIR/samples:/workspace/samples
+      - $GRID_DATA_DIR/.devcontainer:/workspace/.devcontainer
+      - $GRID_DATA_DIR/models/weights:/GRID/external/weights
+    working_dir: /workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  server:
+    image: sfgrid.azurecr.io/grid/server/main:v0.1.74
+    container_name: grid_server
+    network_mode: host
+    environment:
+      PLATFORM_JWT_SECRET_KEY: aksdhiefrifhroihfoih4hfroihofirkshdueuhduihfr
+      PORTAL_JWT_SECRET_KEY: aksdhiefrifhroihfoih4hfroihofirade
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    volumes:
+      - $GRID_DATA_DIR/samples/notebooks:/mnt/notebooks
+    depends_on:
+      - core
+
+  sim-airgen:
+    profiles:
+      - airgen
+    image: sfgrid.azurecr.io/grid/sim/airgen:v0.1.74
+    container_name: grid_sim_airgen
+    network_mode: host
+    environment:
+      GRID_RUNTIME_ENV: dev
+      PLATFORM_JWT_SECRET_KEY: aksdhiefrifhroihfoih4hfroihofirkshdueuhduihfr
+      SIM_TYPE: airgen
+    volumes:
+      - $GRID_DATA_DIR/airgenbins:/mnt/airgenbins
+      - $GRID_DATA_DIR/samples/assets:/mnt/assets
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  sim-isaac:
+    profiles:
+      - isaac
+    image: sfgrid.azurecr.io/grid/sim/isaac/main:v0.1.74
+    container_name: grid_sim_isaac
+    network_mode: host
+    environment:
+      GRID_RUNTIME_ENV: dev
+      PLATFORM_JWT_SECRET_KEY: aksdhiefrifhroihfoih4hfroihofirkshdueuhduihfr
+      SIM_TYPE: isaac
+    volumes: *full-isaac-lab-volumes
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  grid-session-ui:
+    image: sfgrid.azurecr.io/grid/frontend-enterprise/main:v0.1.210
+    container_name: grid_session_ui
+    ports:
+      - "3198:80"
+    environment:
+      VITE_PORTAL_JWT_SECRET_KEY: aksdhiefrifhroihfoih4hfroihofirade
+      VITE_PLATFORM_JWT_SECRET_KEY: aksdhiefrifhroihfoih4hfroihofirkshdueuhduihfr
+      VITE_REACT_APP_PORTAL_ADDR: ${HOST_IP}
+
+volumes:
+  # isaac-sim
+  isaac-cache-kit:
+  isaac-cache-ov:
+  isaac-cache-pip:
+  isaac-cache-gl:
+  isaac-cache-compute:
+  isaac-logs:
+  isaac-carb-logs:
+  isaac-data:
+  isaac-docs:
+  # isaac-lab
+  isaac-lab-docs:
+  isaac-lab-logs:
+  isaac-lab-data:
