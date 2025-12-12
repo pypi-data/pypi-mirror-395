@@ -1,0 +1,65 @@
+import astropy.units as u
+import numpy as np
+import pandas as pd
+from hats.pixel_math import HealpixPixel
+from mocpy import MOC
+
+import lsdb
+
+
+def test_moc_search_filters_correct_points(small_sky_order1_catalog):
+    search_moc = MOC.from_healpix_cells(ipix=np.array([176, 177]), depth=np.array([2, 2]), max_depth=2)
+    filtered_cat = small_sky_order1_catalog.moc_search(search_moc)
+    assert filtered_cat.get_healpix_pixels() == [HealpixPixel(1, 44)]
+    filtered_cat_comp = filtered_cat.compute()
+    cat_comp = small_sky_order1_catalog.compute()
+    assert np.all(
+        search_moc.contains_lonlat(
+            filtered_cat_comp["ra"].to_numpy() * u.deg, filtered_cat_comp["dec"].to_numpy() * u.deg
+        )
+    )
+    assert np.sum(
+        search_moc.contains_lonlat(cat_comp["ra"].to_numpy() * u.deg, cat_comp["dec"].to_numpy() * u.deg)
+    ) == len(filtered_cat_comp)
+
+
+def test_moc_search_filters_healpix13(small_sky_healpix13_dir):
+    catalog = lsdb.open_catalog(small_sky_healpix13_dir)
+    assert catalog.hc_structure.catalog_info.healpix_column == "healpix13"
+
+    # Search MOC at order 2, lower than catalog healpix order 13
+    search_moc = MOC.from_healpix_cells(ipix=np.array([176, 177]), depth=np.array([2, 2]), max_depth=2)
+    expected_filters = [[("healpix13", ">=", 176 << 22), ("healpix13", "<", 178 << 22)]]
+    filtered_cat = catalog.moc_search(search_moc)
+    assert filtered_cat.get_healpix_pixels() == [HealpixPixel(1, 44)]
+    assert filtered_cat.loading_config.filters == expected_filters
+
+    # Same search MOC but at order 29, greater than catalog healpix order 13
+    search_moc_refined = search_moc.refine_to_order(29)
+    filtered_cat_refined = catalog.moc_search(search_moc_refined)
+    assert filtered_cat_refined.get_healpix_pixels() == [HealpixPixel(1, 44)]
+    assert filtered_cat_refined.loading_config.filters == expected_filters
+
+    filtered_cat_comp = filtered_cat.compute()
+    filtered_cat_refined_comp = filtered_cat_refined.compute()
+    pd.testing.assert_frame_equal(filtered_cat_comp, filtered_cat_refined_comp)
+
+    cat_comp = catalog.compute()
+    assert np.all(
+        search_moc.contains_lonlat(
+            filtered_cat_comp["ra"].to_numpy() * u.deg, filtered_cat_comp["dec"].to_numpy() * u.deg
+        )
+    )
+    assert np.sum(
+        search_moc.contains_lonlat(cat_comp["ra"].to_numpy() * u.deg, cat_comp["dec"].to_numpy() * u.deg)
+    ) == len(filtered_cat_comp)
+
+
+def test_moc_search_non_fine(small_sky_order1_catalog):
+    search_moc = MOC.from_healpix_cells(ipix=np.array([176, 180]), depth=np.array([2, 2]), max_depth=2)
+    filtered_cat = small_sky_order1_catalog.moc_search(search_moc, fine=False)
+    assert filtered_cat.get_healpix_pixels() == [HealpixPixel(1, 44), HealpixPixel(1, 45)]
+    pd.testing.assert_frame_equal(
+        filtered_cat.compute(),
+        small_sky_order1_catalog.pixel_search([HealpixPixel(1, 44), HealpixPixel(1, 45)]).compute(),
+    )

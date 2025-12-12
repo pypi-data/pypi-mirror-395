@@ -1,0 +1,103 @@
+[project]
+name = "lsdb"
+license = "BSD-3-Clause"
+license-files = ["LICENSE", "CITATION.bib"]
+readme = "README.md"
+description = "Spatial analysis for extremely large astronomical catalogs using dask"
+authors = [
+    { name = "LINCC Frameworks", email = "lincc-frameworks-team@lists.lsst.org" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+]
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    # Includes dask[array,dataframe,distributed,diagnostics].
+    # dask distributed eases the creation of parallel dask clients.
+    # dask diagnostics is required to spin up the dashboard for profiling.
+    "dask[complete]>=2025.3.0",
+    "deprecated",
+    "hats>=0.7.3,<0.8",
+    "nested-pandas>=0.6.3,<0.7.0",
+    "numpy",
+    "pyarrow",
+    "scipy>=1.7.2", # kdtree
+    "tabulate>=0.7.0",
+    "universal-pathlib",
+]
+
+[project.urls]
+source = "https://github.com/astronomy-commons/lsdb"
+documentation = "https://lsdb.readthedocs.io/"
+
+# On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
+[project.optional-dependencies]
+dev = [
+    "asv[virtualenv]==0.6.5", # Used to compute performance benchmarks
+    "black", # Used for static linting of files
+    "jupyter", # Clears output from Jupyter notebooks
+    "mypy", # Used for static type checking of files
+    "pre-commit", # Used to run checks before finalizing a git commit
+    "pylint", # Used for static linting of files
+    "pytest",
+    "pytest-cov", # Used to report total code coverage
+    "pytest-mock", # Used to mock objects in tests
+    "types-tabulate", # Type information for tabulate
+]
+s3fs = [
+    "s3fs>0.5",
+]
+full = [
+    "fsspec[full]", # complete file system specs.
+    "ipykernel", # Support for Jupyter notebooks
+    "ipywidgets", # useful for tqdm in notebooks.
+    "lsst-sphgeom ; sys_platform == 'darwin' or sys_platform == 'linux'", # To handle spherical sky polygons, not available on Windows
+    "matplotlib",
+]
+
+[build-system]
+requires = [
+    "setuptools>=62", # Used to build and package the Python project
+    "setuptools_scm>=6.2", # Gets release version from git. Makes it available programmatically
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "src/lsdb/_version.py"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+    "src",
+    "docs",
+]
+addopts = "--doctest-modules --doctest-glob=*.rst"
+
+[tool.setuptools.package-data]
+lsdb = ["py.typed"]
+
+[tool.coverage.report]
+omit = [
+    "src/lsdb/_version.py", # auto-generated
+]
+
+[tool.black]
+line-length = 110
+target-version = ["py38"]
+
+[tool.isort]
+profile = "black"
+line_length = 110
+skip_glob = ["benchmarks/env/*"]
+
+[tool.coverage.run]
+omit=["src/lsdb/_version.py"]
+
+[tool.mypy]
+plugins = "pydantic.mypy"
+disable_error_code = ["operator"]
