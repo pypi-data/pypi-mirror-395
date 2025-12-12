@@ -1,0 +1,11 @@
+#!/usr/bin/bash
+NGSCXX_DIR=$( cd $(dirname $0); pwd )
+PY_INCLUDE_FLAGS=-I$(python3 -c"import sysconfig;print(sysconfig.get_path('include'))")
+if [ -f /opt/rh/gcc-toolset-14/root/usr/bin/c++ ]
+  then NGSCXX=/opt/rh/gcc-toolset-14/root/usr/bin/c++
+  else NGSCXX=c++
+fi
+export CCACHE_NOHASHDIR=1
+
+
+$NGSCXX  -L$NGSCXX_DIR/../lib/python3.13/site-packages/netgen_mesher.libs -Wl,--rpath=$NGSCXX_DIR/../lib/python3.13/site-packages/netgen_mesher.libs $*
