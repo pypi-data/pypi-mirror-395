@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+
+  build:
+    name: Build and Test
+    needs: release-please
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      runner: ubuntu-latest
+      version: ${{ needs.release-please.outputs.version }}
+
+  publish:
+    name: Publish to PyPI
+    needs: [build, release-please]
+    if: needs.release-please.outputs.release_created
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ghanon
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: ghanon-${{ needs.release-please.outputs.version }}
+          path: dist/
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Test publication
+        run: uv run --with ghanon --no-project -- python -c "import ghanon"
+
+      - name: Summary
+        env:
+          version: ${{ needs.release-please.outputs.version }}
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          repository: ${{ github.repository }}
+        run: |
+          {
+            echo "## 🎉 Release Summary"
+            echo ""
+            echo "Successfully released version **$version**"
+            echo ""
+            echo "### 📦 Package Links"
+            echo "- **PyPI**: [ghanon $version](https://pypi.org/p/ghanon/$version/)"
+            echo "- **GitHub Release**: [$tag_name](https://github.com/$repository/releases/tag/$tag_name)"
+            echo ""
+            echo "### 📥 Installation"
+            echo '```bash'
+            echo '# pip'
+            echo "pip install ghanon==$version"
+            echo ""
+            echo '# uv'
+            echo "uv tool install ghanon==$version"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

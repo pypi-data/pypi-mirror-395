@@ -1,0 +1,83 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        description: The runner label to use
+        required: true
+      version:
+        type: string
+        description: The version that was built
+        required: false
+    secrets:
+      github-token:
+        description: GitHub token
+        required: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ inputs.runner }}
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install Task
+        uses: go-task/setup-task@v1
+
+      - name: Install dependencies
+        run: task install
+
+      - name: Lint codebase
+        run: task lint
+
+      - name: Run unit tests
+        run: task test:unit
+
+      - name: Install locally
+        run: uv tool install .
+
+      - name: Run commandline test
+        run: ghanon
+
+      - name: Test package installation
+        shell: bash
+        if: inputs.runner != 'windows-latest'
+        run: ./scripts/test-install.sh
+
+      - name: Test package installation
+        if: inputs.runner == 'windows-latest'
+        shell: pwsh
+        run: ./scripts/test-install.ps1
+
+      - name: Upload coverage to Coveralls
+        if: inputs.runner == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.github-token }}
+          path-to-lcov: ./coverage/lcov.info
+
+      - name: Upload distributable
+        if: inputs.version != ''
+        id: upload-artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ghanon-${{ inputs.version }}
+          path: dist/
+          retention-days: 1

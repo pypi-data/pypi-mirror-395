@@ -1,0 +1,112 @@
+[project]
+name = "ghanon"
+version = "0.2.1"
+description = "The GitHub Actions Best Practices Linter"
+authors = [
+    { name = "Niko Heikkilä", email = "yo@nikoheikkila.fi" }
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.14"
+readme = "README.md"
+keywords = ["github", "actions", "linter", "best practices", "ci/cd"]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+    "Typing :: Typed"
+]
+dependencies = [
+    "click>=8.3.1",
+    "colorama>=0.4.6",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.2",
+]
+
+[project.urls]
+homepage = "https://github.com/nikoheikkila/ghanon"
+repository = "https://github.com/nikoheikkila/ghanon.git"
+documentation = "https://github.com/nikoheikkila/ghanon/blob/master/README.md"
+changelog = "https://github.com/nikoheikkila/ghanon/blob/master/CHANGELOG.md"
+issues = "https://github.com/nikoheikkila/ghanon/issues"
+
+[project.scripts]
+ghanon = "ghanon.cli:main"
+
+[dependency-groups]
+dev = [
+    "assertpy>=1.1",
+    "pytest>=9.0.1",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.14.7",
+    "pyrefly>=0.44.0",
+    "pre-commit>=4.5.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "N999", # Module naming
+    "TC001", # Type-checking blocks
+    "TC002", # Type-checking blocks
+    "G004"  # Use of f-string with logging functions
+]
+
+[tool.pyrefly]
+project-includes = ["**/*"]
+project-excludes = [
+  "**/__pycache__",
+  "**/*venv/**/*",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "D100", # Missing docstring in public module - not required in tests
+    "D101", # Missing docstring in public class - not required in tests
+    "D102", # Missing docstring in public method - not required in tests
+    "D400", # First line should end with a period - not required in tests
+    "D415", # First line should end with a period - not required in tests
+    "ANN001", # Missing type annotation for function argument - not required in tests
+    "ANN201", # Missing return type annotation for public function - not required in tests
+    "S108", # Probable insecure usage of temporary file or directory - false positive in tests
+    "S101", # Use of assert detected - asserts are used in tests
+]
+"cli.py" = [
+    "FBT001" # Boolean options in CLI are allowed
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--cov=ghanon",
+    "--cov-report=term-missing",
+    "--cov-report=html:coverage/html",
+    "--cov-report=json:coverage/coverage.json",
+    "--cov-report=markdown:coverage/coverage.md",
+    "--cov-report=lcov:coverage/lcov.info",
+    "--cov-fail-under=100",
+    "-v"
+]
+
+[tool.coverage.run]
+source = ["ghanon"]
+omit = [
+    "main.py",
+    "tests/*",
+    ".venv/*",
+    "*/site-packages/*",
+    "*/__pycache__/*",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

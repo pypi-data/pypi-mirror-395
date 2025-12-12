@@ -1,0 +1,20 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, windows-latest, macos-latest]
+    name: Build
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      runner: ${{ matrix.runner }}

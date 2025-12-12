@@ -1,0 +1,63 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+
+  install:
+    desc: Install dependencies
+    sources:
+      - pyproject.toml
+      - uv.lock
+    cmds:
+      - uv sync --all-extras --all-packages --dev
+
+  build:
+    desc: Build the package
+    cmds:
+      - uv build
+
+  lint:
+    desc: Lint the codebase
+    cmds:
+      - uv run pyrefly check
+      - uv run ruff check
+
+  format:
+    desc: Format the codebase
+    cmds:
+      - uv run ruff check --fix
+      - uv run ruff format
+
+  typecheck:
+    desc: Infer missing types
+    cmds:
+      - uv run pyrefly infer
+
+  test:unit:
+    desc: Run tests with coverage
+    cmds:
+      - uv run pytest tests
+
+  test:watch:
+    desc: Run tests in watch mode
+    silent: true
+    watch: true
+    sources:
+      - tests/**/*.py
+      - ghanon/**/*.py
+    cmds:
+      - uv run pytest tests -qq --no-cov
+
+  test:update:
+    desc: Update test snapshots
+    cmds:
+      - rm -rf __snapshots__
+      - task: test:unit
+
+  test:
+    desc: Run all tests
+    cmds:
+      - task: format
+      - task: lint
+      - task: test:unit

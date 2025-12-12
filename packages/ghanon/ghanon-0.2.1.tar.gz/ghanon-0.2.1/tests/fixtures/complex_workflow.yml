@@ -1,0 +1,503 @@
+name: Enterprise CI/CD Pipeline
+run-name: Deploy to ${{ inputs.environment }} by @${{ github.actor }}
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+      - 'hotfix/**'
+    tags:
+      - 'v*.*.*'
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'tests/**'
+  pull_request_target:
+    types:
+      - opened
+      - labeled
+  schedule:
+    - cron: '0 2 * * 1'
+    - cron: '0 14 * * 5'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target deployment environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+        default: development
+      debug_enabled:
+        description: 'Enable debug mode'
+        required: false
+        type: boolean
+        default: false
+      version:
+        description: 'Version to deploy'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      config-path:
+        required: true
+        type: string
+      perform-deploy:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      token:
+        required: true
+      api-key:
+        required: false
+    outputs:
+      build-version:
+        description: "The version that was built"
+        value: ${{ jobs.build.outputs.version }}
+      deploy-url:
+        description: "The deployment URL"
+        value: ${{ jobs.deploy.outputs.url }}
+  workflow_run:
+    workflows:
+      - Security Scan
+      - Dependency Check
+    types:
+      - completed
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: write
+  packages: write
+  deployments: write
+  id-token: write
+  security-events: write
+
+env:
+  NODE_VERSION: '20.x'
+  PYTHON_VERSION: '3.11'
+  DOCKER_REGISTRY: ghcr.io
+  BUILD_CACHE_KEY: build-cache-v1
+  DEPLOYMENT_TIMEOUT: 600
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./src
+
+jobs:
+  setup:
+    name: Setup and Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      cache-key: ${{ steps.cache.outputs.key }}
+      version: ${{ steps.version.outputs.version }}
+      should-deploy: ${{ steps.check.outputs.deploy }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Generate cache key
+        id: cache
+        run: echo "key=${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Calculate version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check deployment conditions
+        id: check
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ inputs.perform-deploy }}" == "true" ]]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier
+        run: npm run format:check
+
+      - name: TypeScript type check
+        run: npm run type-check
+
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  test:
+    name: Test Suite
+    runs-on: ${{ matrix.os }}
+    needs: [setup, lint]
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['18.x', '20.x', '21.x']
+        architecture: [x64]
+        include:
+          - os: ubuntu-latest
+            node-version: '20.x'
+            architecture: arm64
+          - os: macos-latest
+            node-version: '20.x'
+            architecture: arm64
+        exclude:
+          - os: windows-latest
+            node-version: '21.x'
+    container:
+      image: node:${{ matrix.node-version }}-alpine
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        NODE_ENV: test
+        CI: true
+      volumes:
+        - /tmp:/tmp
+      options: --cpus 2 --memory 4g
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test_db
+      REDIS_URL: redis://redis:6379
+      TEST_COVERAGE_THRESHOLD: 80
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ needs.setup.outputs.cache-key }}-${{ matrix.os }}-${{ matrix.node-version }}
+          restore-keys: |
+            ${{ needs.setup.outputs.cache-key }}-${{ matrix.os }}-
+            ${{ needs.setup.outputs.cache-key }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit -- --coverage
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          API_KEY: ${{ secrets.api-key }}
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-${{ matrix.os }}-${{ matrix.node-version }}
+
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tags: ${{ steps.meta.outputs.tags }}
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+    environment:
+      name: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VERSION: ${{ needs.setup.outputs.version }}
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "version=${{ needs.setup.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "tags=${{ env.DOCKER_REGISTRY }}/${{ github.repository }}:${{ needs.setup.outputs.version }}" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifacts
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ needs.setup.outputs.version }}
+          path: |
+            dist/
+            build/
+          retention-days: 30
+          compression-level: 9
+
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name != 'pull_request'
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ needs.build.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ needs.build.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: needs.setup.outputs.should-deploy == 'true' && github.ref == 'refs/heads/develop'
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: https://staging.example.com
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Deploy to staging
+        id: deploy
+        run: |
+          echo "Deploying to staging..."
+          echo "url=https://staging.example.com" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          curl -f https://staging.example.com/health || exit 1
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [docker, deploy-staging]
+    if: needs.setup.outputs.should-deploy == 'true' && github.ref == 'refs/heads/main'
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://example.com
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+      deployment-id: ${{ steps.deploy.outputs.deployment-id }}
+    steps:
+      - name: Deploy to production
+        id: deploy
+        run: |
+          echo "Deploying to production..."
+          echo "url=https://example.com" >> $GITHUB_OUTPUT
+          echo "deployment-id=${{ github.run_id }}" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests
+        run: |
+          echo "Running production smoke tests..."
+          curl -f https://example.com/health || exit 1
+
+      - name: Create deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: 'production',
+              auto_merge: false
+            });
+
+  reusable-workflow:
+    name: Call Reusable Workflow
+    needs: [build]
+    uses: ./.github/workflows/shared.yml
+    with:
+      environment: staging
+      version: ${{ needs.build.outputs.version }}
+    secrets:
+      deploy-token: ${{ secrets.DEPLOY_TOKEN }}
+
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    steps:
+      - name: Notify on success
+        if: success()
+        run: echo "Deployment successful!"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Deployment failed!"
+
+      - name: Notify on cancellation
+        if: cancelled()
+        run: echo "Deployment cancelled!"
+
+  cleanup:
+    name: Cleanup Resources
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - name: Clean up old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const oldArtifacts = artifacts.data.artifacts
+              .filter(a => Date.now() - new Date(a.created_at).getTime() > 30 * 24 * 60 * 60 * 1000);
+
+            for (const artifact of oldArtifacts) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+            }
