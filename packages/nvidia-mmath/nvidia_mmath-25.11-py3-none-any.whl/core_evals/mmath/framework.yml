@@ -1,0 +1,116 @@
+framework:
+  name: mmath
+  pkg_name: mmath
+  full_name: "MMATH: A Multilingual Benchmark for Mathematical Reasoning"
+  description: "MMATH is a new benchmark specifically designed for multilingual complex reasoning. It comprises 374 carefully selected math problems from high-quality sources, including AIME, CNMO, and MATH-500, and covers ten typologically and geographically diverse languages. Each problem is translated and validated through a rigorous pipeline that combines frontier LLMs with human verification, ensuring semantic consistency."
+  url: https://github.com/RUCAIBox/MMATH/
+defaults:
+  command: >-
+    {% if target.api_endpoint.api_key is not none %}export OPENAI_API_KEY=${{target.api_endpoint.api_key}}  && {% endif %}
+    mmath --model-url {{target.api_endpoint.url}} --model-name {{target.api_endpoint.model_id}}  --lang {{config.params.extra.language}} --output-dir {{config.output_dir}}
+    --parallelism {{config.params.parallelism}} --retries {{config.params.max_retries}} {% if config.params.limit_samples is not none %} --limit {{config.params.limit_samples}}{% endif %}
+    {% if config.params.limit_samples is not none %} --limit {{config.params.limit_samples}}{% endif %}
+  config:
+    supported_endpoint_types:
+    - chat
+    params:
+      limit_samples: null
+      max_new_tokens: 32768 # all inference params were the same for all reasoning models in original implementation
+      temperature: 0.6
+      top_p: 0.95
+      parallelism: 8 # how many request to sent to the MUT endpoint in parallel. 
+      max_retries: 5 # if request fails, how many times should the client try again
+      extra:
+        language: en
+  target:
+    api_endpoint: # required to add: url, model_id, type
+      stream: false
+evaluations:
+  - name: mmath_en
+    description: English mmath
+    defaults:
+      config:
+        type: mmath_en
+        params:
+          task: mmath_en
+          extra:
+            language: en
+  - name: mmath_zh
+    description: Chinese mmath
+    defaults:
+      config:
+        type: mmath_zh
+        params:
+          task: mmath_zh
+          extra:
+            language: zh
+  - name: mmath_ar
+    description: Arabic mmath
+    defaults:
+      config:
+        type: mmath_ar
+        params:
+          task: mmath_ar
+          extra:
+            language: ar
+  - name: mmath_es
+    description: Spanish mmath
+    defaults:
+      config:
+        type: mmath_es
+        params:
+          task: mmath_es
+          extra:
+            language: es
+  - name: mmath_fr
+    description: French mmath
+    defaults:
+      config:
+        type: mmath_fr
+        params:
+          task: mmath_fr
+          extra:
+            language: fr
+  - name: mmath_ja
+    description: Japanese mmath
+    defaults:
+      config:
+        type: mmath_ja
+        params:
+          task: mmath_ja
+  - name: mmath_ko
+    description: Korean mmath
+    defaults:
+      config:
+        type: mmath_ko
+        params:
+          task: mmath_ko
+          extra:
+            language: ko
+  - name: mmath_pt
+    description: Portuguese mmath
+    defaults:
+      config:
+        type: mmath_pt
+        params:
+          task: mmath_pt
+          extra:
+            language: pt
+  - name: mmath_th
+    description: Thai mmath
+    defaults:
+      config:
+        type: mmath_th
+        params:
+          task: mmath_th
+          extra:
+            language: th
+  - name: mmath_vi
+    description: Vietnamese mmath
+    defaults:
+      config:
+        type: mmath_vi
+        params:
+          task: mmath_vi
+          extra:
+            language: vi
