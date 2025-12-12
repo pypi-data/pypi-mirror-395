@@ -1,0 +1,69 @@
+version: '3'
+
+vars:
+  VERSION:
+    sh: git describe --tags
+  TIMESTAMP:
+    sh: "date --rfc-3339='seconds' --utc"
+
+tasks:
+  _require_sudo:
+    cmds:
+      - echo "Confirming you have sudo privileges..."
+      - sudo echo "test" > /dev/null
+    silent: true
+
+  _registry_auth:
+    cmds:
+      - echo "Confirming you have authenticated with the registry..."
+      - sudo docker login ghcr.io/museus
+    silent: true
+
+  build:
+    vars:
+      TIMESTAMP:
+        sh: "date --rfc-3339='seconds' --utc"
+      BRANCH_NAME:
+        sh: 'git rev-parse --abbrev-ref HEAD | sed "s/\//-/g"'
+      COMMIT_SHA:
+        sh: "git rev-parse HEAD"
+
+          #sources:
+          #      - ../src
+    cmds:
+      - echo ''
+      - task: _require_sudo
+      - printf 'Building {{ .BRANCH_NAME }}-{{ .VERSION }} at {{ .TIMESTAMP }}\n\n'
+      - sudo BRANCH_NAME="{{ .BRANCH_NAME }}" COMMIT_SHA="{{ .COMMIT_SHA }}" BUILD_TIMESTAMP="{{ .TIMESTAMP }}" BUILD_VERSION="{{ .VERSION }}" docker build -t "ghcr.io/museus/versecbot:{{ .BRANCH_NAME }}-latest" -t "ghcr.io/museus/versecbot:{{ .BRANCH_NAME }}-{{ .COMMIT_SHA }}" .
+    silent: true
+
+  push:
+    dir: deploy
+    cmds:
+      - task: _require_sudo
+      - task: _registry_auth
+      - task: build
+      - sudo BUILD_VERSION="{{ .VERSION }}" docker compose push
+    silent: true
+
+  inspect:
+    deps: [_require_sudo]
+    cmds:
+      - sudo docker inspect ghcr.io/museus/supportiveshade:latest
+
+  run:
+    deps: [build]
+    dir: deploy
+    cmds:
+      - sudo BUILD_VERSION="{{ .VERSION }}" docker compose up
+
+  localbuild:
+    dir: .
+    cmds:
+      - python3 -m build && python3 -m pip install --force-reinstall dist/versecbot-0.2-py3-none-any.whl
+
+  localrun:
+    deps: [localbuild]
+    dir: src
+    cmds:
+      - python3 -m versecbot
