@@ -1,0 +1,91 @@
+Metadata-Version: 2.4
+Name: youtube_sync
+Version: 1.2.86
+Summary: syncs youtube for offline play
+Home-page: https://github.com/zackees/youtube-sync
+Maintainer: Zachary Vorhies
+License-Expression: BSD-3-Clause
+Keywords: template-python-cmd
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: filelock
+Requires-Dist: ytdlp-brighteon>=2023.10.3
+Requires-Dist: docker-run-cmd>=1.0.13
+Requires-Dist: Pillow
+Requires-Dist: certifi
+Requires-Dist: appdirs
+Requires-Dist: open-webdriver>=1.6.9
+Requires-Dist: pytz
+Requires-Dist: python-dateutil
+Requires-Dist: feedparser
+Requires-Dist: download
+Requires-Dist: static-ffmpeg>=2.12
+Requires-Dist: pytest-playwright
+Requires-Dist: beautifulsoup4>=4.13.3
+Requires-Dist: virtual-fs>=1.0.24
+Requires-Dist: webdriver-manager
+Requires-Dist: pyvirtualdisplay
+Requires-Dist: yt-dlp[curl-cffi,default]>=2025.3.31
+Requires-Dist: rclone-api>=1.5.61
+Requires-Dist: yt-dlp-proxy>=1.0.7
+Requires-Dist: youtube-trusted-session-generator>=0.0.4
+Requires-Dist: yt-dlp-get-pot
+Dynamic: home-page
+Dynamic: license-file
+
+# youtube-sync
+
+Syncs up your youtube or other channels data to the hard drive. A library.json file will be created to track which videos have already been found. It will download any missing files.
+
+# Docker Setup
+
+You will need to have `config.json` embedded at the root of the container. Render.com makes this easy with a secret file.
+
+If you do not have the ability to inject a file at the root, stash your json as a one liner into env variable "YOUTUBE_SYNC_CONFIG_JSON"
+
+# Config.json
+
+This configuration holds the rclone configuration as well as the channel setup and destination root. There is no type checking for the rclone section, instead
+just list the key value pairs as shown below.
+
+```json
+{
+    "output": "dst:Bucket/root/path",
+    "rclone": {
+        "dst": {
+            "type": "b2",
+            "account": "****",
+            "key": "****"
+        }
+    },
+    "channels": [
+        {
+            "name": "RonGibson",
+            "source": "brighteon",
+            "channel_id": "rongibsonchannel"
+        },
+        {
+            "name": "TheDuran",
+            "source": "youtube",
+            "channel_id": "@theduran"
+        }
+    ]
+}
+```
+
+In this case the files will be outputted to
+
+  * RonGibson -> dst:path/to/RonGibson/brighteon/*
+  * TheDuran -> dst:path/to/TheDuran/youtube/*
+
+Each output directory will have one `library.json` file an multiple mp3 files.
+
+
+
+# PO Token TODO:
+
+  * https://github.com/LuanRT/BgUtils
+  * https://github.com/iv-org/youtube-trusted-session-generator
+    * docker run -p 8080:8080 quay.io/invidious/youtube-trusted-session-generator:webserver
