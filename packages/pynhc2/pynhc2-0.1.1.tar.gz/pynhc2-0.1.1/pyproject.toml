@@ -1,0 +1,82 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=80.9.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pynhc2"
+version = "0.1.1"
+requires-python = ">=3.11"
+dependencies = [
+    "paho-mqtt>=2.1.0",
+    "setuptools>=80.9.0"
+]
+authors = [
+  {name = "Kevin Ghekiere", email = "kevinghekiere@gmail.com"}
+]
+maintainers = [
+  {name = "Kevin Ghekiere", email = "kevinghekiere@gmail.com"}
+]
+description = "Python SDK for Niko Home Control 2"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["niko", "home control", "mqtt"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pynhc2*"]
+exclude = ["dev*", "tests*", "docs*", ".venv*", "dist",".vscode", ".pytest_cache"]
+
+
+[tool.bumpver]
+current_version = "0.1.2"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+tag_message = "{new_version}"
+tag_scope = "default"
+pre_commit_hook = ""
+post_commit_hook = ""
+commit = false
+tag = false
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+    'version = "{version}"'
+]
+"README.md" = [
+    'version = {version}',
+]
+"pynhc2/__init__.py" = [
+    '__version__ = "{version}"',
+]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--cov=pynhc2 --cov-report=html:tests/coverage"
+
+[tool.coverage.run]
+source = ["pynhc2"]
+omit = ["*/tests/*", "*/venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.coverage.html]
+directory = "/tests/coverage"
