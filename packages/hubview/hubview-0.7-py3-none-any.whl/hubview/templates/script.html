@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <header class="panel-h">
+    <h2>Script Controller — {{ name }}</h2>
+    <div class="panel-actions">
+      <button class="btn" onclick="ctrlStart()">▶ Start</button>
+      <button class="btn danger" onclick="ctrlStop()">⏹ Stop</button>
+      <button class="btn" onclick="ctrlRestart()">↻ Restart</button>
+    </div>
+  </header>
+
+  <div class="controller">
+    <div>
+      <strong>Configuration</strong><br>
+      Script: <code>{{ script.path }}</code><br>
+      Script: <a href="{{ url_for('view_file', path=script.path) }}">Open</a><br>
+      Log: <code>{{ script.log }}</code><br>
+      Log: <a href="{{ url_for('view_file', path=script.log) }}">Open</a><br>
+      Python: <code>{{ script.python }}</code>
+    </div>
+    <hr>
+
+    <div class="row">
+      <div class="left">
+        <span class="muted">Status:</span>
+        <span id="status-chip" class="chip">Unknown</span>
+        <span class="muted">• Elapsed:</span>
+        <span id="elapsed" class="muted">—</span>
+      </div>
+
+      <div class="right">
+        <label class="muted">Args</label>
+        <input id="argline" class="input" placeholder="e.g. --foo bar 123">
+        <button class="btn" onclick="saveArgs()">Apply</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="left toggles">
+        <label><input type="checkbox" id="chk-follow" checked> Auto-follow</label>
+        <label><input type="checkbox" id="chk-reverse"> Reverse log</label>
+      </div>
+
+      <div class="right">
+        <button class="btn" onclick="copyLog()">Copy</button>
+        <button class="btn" onclick="downloadLog()">Download</button>
+        <label class="muted" style="margin-left:.5rem;">Poll</label>
+        <select id="poll" class="input" style="width:auto;">
+          <option value="1000">1s</option>
+          <option value="2000" selected>2s</option>
+          <option value="3000">3s</option>
+          <option value="5000">5s</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="log-wrap">
+      <pre id="log" class="log">Loading…</pre>
+    </div>
+  </div>
+</section>
+
+<style>
+  .controller { padding: 1rem }
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .75rem; margin-bottom: .75rem; flex-wrap: wrap
+  }
+  .left, .right { display: flex; align-items: center; gap: .5rem }
+  .chip { border: 1px solid var(--border); padding: .15rem .6rem; border-radius: 999px }
+  .chip.ok   { color: var(--good);   border-color: var(--good) }
+  .chip.warn { color: var(--warn);   border-color: var(--warn) }
+  .chip.bad  { color: var(--danger); border-color: var(--danger) }
+  .toggles label { margin-right: 1rem; user-select: none }
+  .log-wrap { border: 1px solid var(--border); border-radius: 10px; background: #000 }
+  .log {
+    margin: 0; color: #cfe9cf; max-height: 55vh; overflow: auto;
+    white-space: pre-wrap; line-height: 1.4; padding: .9rem
+  }
+</style>
+
+<script>
+  (() => {
+    const statusEl = document.getElementById('status-chip');
+    const elapsedEl = document.getElementById('elapsed');
+    const logEl = document.getElementById('log');
+    const pollSel = document.getElementById('poll');
+    const follow = document.getElementById('chk-follow');
+    const reverse = document.getElementById('chk-reverse');
+    const argline = document.getElementById('argline');
+
+    const NAME = "{{ name }}";
+
+    let lastStatus = 'unknown';
+    let lastLog = '';
+    let startedAt = null;
+    let timer = null;
+
+    const setChip = (text, cls) => {
+      statusEl.textContent = text;
+      statusEl.className = 'chip ' + (cls || '');
+    };
+    const fmtElapsed = ms => {
+      if (!ms || ms < 1000) return '—';
+      const s = Math.floor(ms / 1000) % 60;
+      const m = Math.floor(ms / 60000) % 60;
+      const h = Math.floor(ms / 3600000);
+      const pad = n => String(n).padStart(2, '0');
+      return (h ? h + ':' : '') + pad(m) + ':' + pad(s);
+    };
+    const autoScroll = () => {
+      if (!follow.checked) return;
+      logEl.scrollTop = reverse.checked ? 0 : logEl.scrollHeight;
+    };
+
+    function saveArgs() { localStorage.setItem('script_args_' + NAME, argline.value || ''); }
+    window.saveArgs = saveArgs;
+    argline.value = localStorage.getItem('script_args_' + NAME) || '';
+
+    async function fetchStatus() {
+      try {
+        const r = await fetch(`/status/${NAME}`, { cache: 'no-store' });
+        const text = (await r.text()).trim();
+        const cur = text || 'unknown';
+
+        if (cur !== lastStatus) {
+          lastStatus = cur.toLowerCase();
+          if (lastStatus.startsWith('running')) {
+            setChip(text, 'ok'); if (!startedAt) startedAt = Date.now();
+          } else if (lastStatus.includes('error') || lastStatus.includes('fail')) {
+            setChip(text, 'bad'); startedAt = null;
+          } else if (lastStatus.includes('starting') || lastStatus.includes('stopping')) {
+            setChip(text, 'warn');
+          } else {
+            setChip(text || 'idle', ''); startedAt = null;
+          }
+        }
+        elapsedEl.textContent = startedAt ? fmtElapsed(Date.now() - startedAt) : '—';
+        return text;
+      } catch {
+        setChip('Error', 'bad');
+      }
+    }
+
+    async function fetchLog(force = false) {
+      try {
+        const r = await fetch(`/log/${NAME}`, { cache: 'no-store' });
+        const txt = await r.text();
+        if (!force && txt === lastLog) return;
+        lastLog = txt;
+        logEl.textContent = reverse.checked
+          ? txt.split('\n').reverse().join('\n')
+          : txt;
+        autoScroll();
+      } catch {
+        logEl.textContent = 'Error fetching log…';
+      }
+    }
+
+    function schedulePoll() {
+      clearInterval(timer);
+      let interval = parseInt(pollSel.value, 10) || 2000;
+      if ((lastStatus || '').startsWith('running')) interval = Math.min(interval, 1000);
+      timer = setInterval(async () => { await fetchStatus(); fetchLog(false); }, interval);
+    }
+
+    async function ctrlStart() {
+      const args = encodeURIComponent(argline.value || '');
+      await fetch(`/start/${NAME}` + (args ? (`?args=${args}`) : ''), { method: 'GET' });
+      setChip('Starting…', 'warn');
+      await fetchStatus(); await fetchLog(true); schedulePoll();
+    }
+    async function ctrlStop() {
+      await fetch(`/stop/${NAME}`, { method: 'GET' });
+      setChip('Stopping…', 'warn');
+      await fetchStatus(); await fetchLog(true); schedulePoll();
+    }
+    async function ctrlRestart() { await ctrlStop(); setTimeout(ctrlStart, 400); }
+    window.ctrlStart = ctrlStart;
+    window.ctrlStop = ctrlStop;
+    window.ctrlRestart = ctrlRestart;
+
+    async function copyLog() {
+      try { await navigator.clipboard.writeText(logEl.textContent); } catch {}
+    }
+    function downloadLog() {
+      const text = logEl.textContent;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'script-log-' + NAME + '-' + new Date().toISOString().replace(/[:.]/g, '-') + '.txt';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    }
+    window.copyLog = copyLog;
+    window.downloadLog = downloadLog;
+
+    reverse.addEventListener('change', () => fetchLog(true));
+    pollSel.addEventListener('change', schedulePoll);
+
+    document.addEventListener('keydown', e => {
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      if (e.key === 's') ctrlStart();
+      if (e.key === 'x') ctrlStop();
+      if (e.key.toLowerCase() === 'r') ctrlRestart();
+      if (e.key.toLowerCase() === 'f') { follow.checked = !follow.checked; autoScroll(); }
+      if (e.key.toLowerCase() === 'v') { reverse.checked = !reverse.checked; fetchLog(true); }
+    });
+
+    (async () => {
+      await fetchStatus();
+      await fetchLog(true);
+      schedulePoll();
+    })();
+  })();
+</script>
+
+{% endblock %}
