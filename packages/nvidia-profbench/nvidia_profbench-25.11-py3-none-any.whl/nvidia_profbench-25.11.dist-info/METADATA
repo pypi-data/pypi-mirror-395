@@ -1,0 +1,316 @@
+Metadata-Version: 2.4
+Name: nvidia-profbench
+Version: 25.11
+Summary: Professional domain benchmark for evaluating LLMs on Physics PhD, Chemistry PhD, Finance MBA, and Consulting MBA tasks
+Author: NVIDIA Corporation
+License: Apache License 2.0
+Project-URL: Homepage, https://github.com/nvidia/profbench
+Project-URL: Repository, https://github.com/nvidia/profbench
+Project-URL: Documentation, https://github.com/nvidia/profbench/blob/main/README.md
+Keywords: llm,evaluation,benchmark,professional,phd,mba
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+License-File: LICENSE-APACHE
+Requires-Dist: openai>=1.71.0
+Requires-Dist: datasets>=2.14.7
+Requires-Dist: huggingface-hub>=0.33.1
+Requires-Dist: numpy
+Requires-Dist: scikit-learn
+Requires-Dist: tqdm
+Requires-Dist: nemo-evaluator
+Requires-Dist: google-genai
+Provides-Extra: google
+Requires-Dist: google-genai; extra == "google"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Dynamic: license-file
+
+# NVIDIA Evals Factory
+The goal of NVIDIA Evals Factory is to advance and refine state-of-the-art methodologies for model evaluation, and deliver them as modular evaluation packages (evaluation containers and pip wheels) that teams can use as standardized building blocks.
+
+# ProfBench
+
+ProfBench is part of NVIDIA Evals Factory, providing standardized evaluation methodologies for assessing LLMs on professional domain tasks.
+
+## Overview
+
+ProfBench introduces over 3000 expert-authored response–criterion pairs across 40 tasks in four professional domains: **Physics PhD**, **Chemistry PhD**, **Finance MBA**, and **Consulting MBA**. It enables evaluation of open-ended, document-grounded professional tasks beyond exam-style QA or code/math-only settings.
+
+**Key Features:**
+- Realistic professional workflows requiring synthesis and long-form analysis
+- Robust, affordable LLM-Judge combining Macro-F1 measure with Bias Index
+- Achieves <1% cross-provider bias while reducing costs by 2-3 orders of magnitude
+- Evaluation cost: ~$12 per run (vs ~$300 for HealthBench, ~$8000 for PaperBench with OpenAI o3)
+
+Even frontier models find ProfBench challenging: the best report-generator GPT-5-high reaches only 65.9% overall, underscoring substantial headroom in realistic professional workflows.
+
+## Quick Start Guide
+
+NVIDIA Evals Factory provide you with evaluation clients, that are specifically built to evaluate model endpoints using our Standard API.
+
+### Launching an Evaluation
+
+#### List the Available Evaluations
+
+```bash
+$ nemo-evaluator ls
+```
+
+Output:
+```
+profbench: 
+  * report_generation
+  * llm_judge
+```
+
+#### Run the Evaluation of Your Choice
+
+**LLM Judge Evaluation:**
+```bash
+export API_KEY=your_nvidia_api_key_here
+
+nemo-evaluator run_eval \
+    --eval_type llm_judge \
+    --model_id meta/llama-3.1-70b-instruct \
+    --model_type chat \
+    --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+    --api_key_name API_KEY \
+    --output_dir './results/profbench_llm_judge'
+```
+
+**Report Generation Evaluation:**
+```bash
+nemo-evaluator run_eval \
+    --eval_type report_generation \
+    --model_id meta/llama-3.1-70b-instruct \
+    --model_type chat \
+    --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+    --api_key_name API_KEY \
+    --output_dir './results/profbench_report_generation'
+```
+
+#### Gather the Results
+
+```bash
+cat ./results/profbench_llm_judge/results.yml
+```
+
+**Example LLM Judge Output:**
+```yaml
+results:
+  tasks:
+    llm_judge:
+      metrics:
+        Overall:
+          scores:
+            Overall:
+              value: 65.3
+        Physics PhD:
+          scores:
+            Physics PhD:
+              value: 66.5
+        Chemistry PhD:
+          scores:
+            Chemistry PhD:
+              value: 60.3
+        Finance MBA:
+          scores:
+            Finance MBA:
+              value: 61.4
+        Consulting MBA:
+          scores:
+            Consulting MBA:
+              value: 63.4
+        BIAS-INDEX:
+          scores:
+            BIAS-INDEX:
+              value: 4.0
+        MF1-BI:
+          scores:
+            MF1-BI:
+              value: 61.3
+```
+
+**Example Report Generation Output:**
+```yaml
+results:
+  tasks:
+    report_generation:
+      metrics:
+        Overall:
+          scores:
+            Overall:
+              value: 11.4
+        Physics PhD:
+          scores:
+            Physics PhD:
+              value: 3.4
+        Chemistry PhD:
+          scores:
+            Chemistry PhD:
+              value: 7.1
+        Finance MBA:
+          scores:
+            Finance MBA:
+              value: 6.0
+        Consulting MBA:
+          scores:
+            Consulting MBA:
+              value: 28.9
+```
+
+## Command-Line Tool
+
+Each package comes pre-installed with a set of command-line tools, designed to simplify the execution of evaluation tasks through the `nemo-evaluator` interface.
+
+### Commands
+
+#### 1. List Evaluation Types
+```bash
+nemo-evaluator ls
+```
+Displays the evaluation types available within the ProfBench harness.
+
+#### 2. Run an Evaluation
+
+The `nemo-evaluator run_eval` command executes the evaluation process. Below are the flags and their descriptions:
+
+**Required Flags:**
+- `--eval_type <string>` - The type of evaluation to perform (`llm_judge` or `report_generation`)
+- `--model_id <string>` - The name or identifier of the model to evaluate
+- `--model_url <url>` - The API endpoint where the model is accessible
+- `--model_type <string>` - The type of the model to evaluate, currently either `chat`, `completions`, or `vlm`
+- `--output_dir <directory>` - The directory to use as the working directory for the evaluation. The results, including the `results.yml` output file, will be saved here
+
+**Optional Flags:**
+- `--api_key_name <string>` - The name of the environment variable that stores the Bearer token for the API, if authentication is required
+- `--run_config <path>` - Specifies the path to a YAML file containing the evaluation definition
+- `--overrides <string>` - Override configuration parameters (e.g., `"config.params.limit_samples=10"`)
+- `--dry_run` - Print the final run configuration and command without executing the evaluation
+
+#### Example
+
+```bash
+nemo-evaluator run_eval \
+    --eval_type llm_judge \
+    --model_id meta/llama-3.1-70b-instruct \
+    --model_type chat \
+    --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+    --output_dir ./evaluation_results
+```
+
+If the model API requires authentication, set the API key in an environment variable and reference it using the `--api_key_name` flag:
+
+```bash
+export API_KEY="your_api_key_here"
+
+nemo-evaluator run_eval \
+    --eval_type llm_judge \
+    --model_id meta/llama-3.1-70b-instruct \
+    --model_type chat \
+    --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+    --api_key_name API_KEY \
+    --output_dir ./evaluation_results
+```
+
+## Configuring Evaluations via YAML
+
+Evaluations in NVIDIA Evals Factory are configured using YAML files that define the parameters and settings required for the evaluation process. These configuration files follow a standard API which ensures consistency across evaluations.
+
+**Example of a YAML config:**
+
+```yaml
+config:
+  type: llm_judge
+  params:
+    parallelism: 10
+    limit_samples: 30
+    max_new_tokens: 4096
+    temperature: 0.0
+    top_p: 0.00001
+target:
+  api_endpoint:
+    model_id: meta/llama-3.1-70b-instruct
+    type: chat
+    url: https://integrate.api.nvidia.com/v1/chat/completions
+    api_key: API_KEY
+```
+
+The priority of overrides is as follows:
+
+1. Command line arguments
+2. User config (as seen above)
+3. Task defaults (defined per task type)
+4. Framework defaults
+
+**`--dry_run` option** allows you to print the final run configuration and command without executing the evaluation.
+
+**Example:**
+```bash
+nemo-evaluator run_eval \
+    --eval_type llm_judge \
+    --model_id meta/llama-3.1-70b-instruct \
+    --model_type chat \
+    --model_url https://integrate.api.nvidia.com/v1/chat/completions \
+    --output_dir ./evaluation_results \
+    --dry_run
+```
+
+## FAQ
+
+### Deploying a Model as an Endpoint
+
+NVIDIA Evals Factory utilize a client-server communication architecture to interact with the model. As a prerequisite, the model must be deployed as an endpoint with a NIM-compatible API.
+
+Users have the flexibility to deploy their model using their own infrastructure and tooling.
+
+Servers with APIs that conform to the OpenAI/NIM API standard are expected to work seamlessly out of the box.
+
+### Evaluation Types
+
+**1. LLM Judge (`llm_judge`)**
+
+Evaluates model responses against expert-authored criteria across professional domains.
+
+- Assesses professional reasoning, extraction accuracy, and writing style
+- Provides domain-specific scores (Physics PhD, Chemistry PhD, Finance MBA, Consulting MBA)
+- Includes bias metrics (BIAS-INDEX, MF1-BI) to measure self-enhancement bias
+
+**2. Report Generation (`report_generation`)**
+
+End-to-end evaluation pipeline for professional report writing.
+
+- Generates professional reports from prompts
+- Uses LLM-as-a-judge to evaluate generated reports
+- Scores across domains and skill dimensions (Reasoning, Extraction, Style)
+
+### Metrics Explained
+
+**Domain Scores:** Performance on specific professional domains:
+- Physics PhD
+- Chemistry PhD
+- Finance MBA
+- Consulting MBA
+
+
+### Supported Libraries
+
+- **`openai`** - OpenAI API and OpenAI-compatible endpoints (NVIDIA NIM, OpenRouter, vLLM, etc.)
+
+**Note:** Web search features are only available with Google GenAI library. This feature will raise `NotImplementedError` if used with OpenAI or OpenRouter APIs.
+
+### Contributing
+
+This software is distributed as a pip wheel only. The source repository is internal to NVIDIA and not publicly accessible. For issues or questions, please refer to the NVIDIA support channels.
+
+### License
+This software is distributed under the terms of both the MIT license and the Apache License (Version 2.0). See LICENSE and LICENSE-APACHE for details.
