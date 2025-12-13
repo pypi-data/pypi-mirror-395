@@ -1,0 +1,18 @@
+language: python
+python:
+  - "3.6"
+
+before_install:
+  - sudo apt-get install tidy
+  - sudo apt-get install -y libreoffice python3-uno
+  - libreoffice '--accept=socket,host=127.0.0.1,port=8100;urp;' &
+
+install:
+  - pip install -U setuptools
+  - pip install -r requirements.txt
+  - pip install -e .
+
+script:
+  - export LINO_CACHE_ROOT=$TRAVIS_BUILD_DIR/lino_cache
+  - mkdir $LINO_CACHE_ROOT
+  - inv prep test
