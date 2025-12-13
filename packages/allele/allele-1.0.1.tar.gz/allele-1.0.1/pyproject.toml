@@ -1,0 +1,140 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "allele"
+version = "1.0.1"
+description = "Phylogenic AI Agents - Beyond Prompt Engineering. Evolve Genetically Optimized Personalities with Liquid Memory."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    { name = "Jimmy De Jesus", email = "jimmydejesus1129@gmail.com" }
+]
+maintainers = [
+    { name = "Jimmy De Jesus", email = "jimmydejesus1129@gmail.com" }
+]
+keywords = [
+    "ai",
+    "agents",
+    "phylogenic",
+    "genetic-algorithms",
+    "genome",
+    "evolution",
+    "liquid-neural-networks",
+    "llm",
+    "allele",
+    "neuromorphic"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.21.0",
+    "typing-extensions>=4.0.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "pylint>=2.15.0",
+    "mypy>=1.0.0",
+    "isort>=5.11.0",
+]
+openai = [
+    "openai>=1.0.0",
+]
+anthropic = [
+    "anthropic>=0.18.0",
+]
+ollama = [
+    "aiohttp>=3.8.0",
+]
+all = [
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+    "aiohttp>=3.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bravetto/allele"
+Documentation = "https://github.com/bravetto/allele#readme"
+Repository = "https://github.com/bravetto/allele"
+Issues = "https://github.com/bravetto/allele/issues"
+Changelog = "https://github.com/bravetto/allele/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/allele"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/examples",
+    "/docs",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=allele",
+    "--cov-report=term-missing",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.pylint.messages_control]
+max-line-length = 88
+disable = [
+    "C0111",
+    "C0103",
+    "R0913",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "numpy.*"
+ignore_missing_imports = true
