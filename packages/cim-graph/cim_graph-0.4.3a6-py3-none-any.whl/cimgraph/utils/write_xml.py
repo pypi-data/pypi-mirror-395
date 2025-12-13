@@ -1,0 +1,141 @@
+from __future__ import annotations
+
+import enum
+import logging
+
+from cimgraph.data_profile.known_problem_classes import ClassesWithManytoMany
+from cimgraph.data_profile.units import CIMUnit
+from cimgraph.models.graph_model import GraphModel
+
+_log = logging.getLogger(__name__)
+
+
+def write_xml(network: GraphModel, filename: str, namespaces: dict=None,
+              write_identifier:bool=True, enforce_rdf_direction:bool=False) -> None:
+    """
+    Write the network graph to an XML file.
+
+    Args:
+        network (GraphModel): The network graph to be written to an XML file.
+        namespaces (dict): A dictionary of namespaces to be used in the XML file. The key is the namespace prefix and the value is the namespace URI. Defaults to CIM100.
+
+    Returns:
+        None
+
+    """
+    default_namespaces = {'cim': 'http://iec.ch/TC57/CIM100#',
+                        'eu': 'http://iec.ch/TC57/CIM100-European#',
+                        'nc': 'http://entsoe.eu/ns/nc#',
+                        'gb': 'http://GB/placeholder/ext#',
+                        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'}
+    if namespaces is not None:
+            default_namespaces.update(namespaces)
+    namespaces = default_namespaces
+
+
+
+    # Create reverse lookup for namespace
+    reverse_ns_lookup = {v: k for k, v in namespaces.items()}
+
+    iec61970_301 = network.connection.iec61970_301
+    # Handling of formatting change between different 301 standard versions
+    if int(iec61970_301) > 7:
+        rdf_header = 'rdf:about="urn:uuid:'
+        rdf_resource = 'urn:uuid:'
+    else:
+        rdf_header = 'rdf:ID="'
+        rdf_resource = '#'
+
+   # Write XML header and namespace declarations
+    f = open(filename, 'w', encoding='utf-8')
+    header = '<?xml version="1.0" encoding="utf-8"?>\n'
+    header += '<!-- un-comment this line to enable validation\n'
+    header += '-->\n'
+    header += f'<rdf:RDF'
+    for ns in namespaces:
+        header += f' xmlns:{ns}="{namespaces[ns]}"'
+    header += '>\n'
+    header += '<!--\n'
+    header += '-->\n'
+    f.write(header)
+
+    # Write each object in the network graph to the XML file
+    classes = list(network.graph.keys())
+    sorted_classes = sorted(classes, key=lambda x: x.__name__)
+    for root_class in sorted_classes:
+        counter = 0
+        for obj in network.list_by_class(root_class):
+            cim_class = obj.__class__
+            header = f'<cim:{cim_class.__name__} {rdf_header}{obj.uri()}">\n'
+            f.write(header)
+            parent_classes = list(cim_class.__mro__)
+            parent_classes.pop(len(parent_classes) - 1)
+            for parent in parent_classes:
+                for attribute in parent.__annotations__.keys():
+                    try:
+                        serialize = cim_class.__dataclass_fields__[attribute].metadata['serialize']
+                        if not serialize and enforce_rdf_direction:
+                            continue
+                    except:
+                        _log.warning(f'{attribute} missing serialize')
+                        serialize = True
+                    # Skip over Identity.identifier attribute
+                    if attribute == 'identifier' and write_identifier:
+                        row = f'  <cim:Identity.identifier>{obj.uri()}</cim:Identity.identifier>\n'
+                        f.write(row)
+                        continue
+                    attribute_type = cim_class.__dataclass_fields__[attribute].type
+                    rdf = f'{parent.__name__}.{attribute}'
+                    attr_ns = cim_class.__dataclass_fields__[attribute].metadata['namespace']
+                    ns_prefix = reverse_ns_lookup[attr_ns]
+                    # Upload attributes that are many-to-one or are known problem classes
+                    if 'list' not in attribute_type or serialize:
+                        edge_class = attribute_type.split('[')[1].split(']')[0]
+                        edge = getattr(obj, attribute)
+                        # Check if attribute is association to a class object
+                        if edge_class in network.connection.cim.__all__:
+                            if edge is not None and edge != []:
+                                if type(edge.__class__) is enum.EnumMeta:
+                                    resource = f'rdf:resource="{attr_ns}{str(edge)}"'
+                                    row = f'  <{ns_prefix}:{parent.__name__}.{attribute} {resource}/>\n'
+                                    f.write(row)
+                                elif isinstance(edge, CIMUnit):
+                                    row = f'  <{ns_prefix}:{parent.__name__}.{attribute}>{str(edge.quantity.magnitude)}</{ns_prefix}:{parent.__name__}.{attribute}>\n'
+                                    f.write(row)
+                                elif type(edge) is str or type(edge) is bool or type(edge) is float:
+                                    row = f'  <{ns_prefix}:{parent.__name__}.{attribute}>{str(edge)}</{ns_prefix}:{parent.__name__}.{attribute}>\n'
+                                    f.write(row)
+                                elif type(edge) is list:
+                                    for value in edge:
+                                        #TODO: lookup how to handle multiple rows of same value
+                                        if type(value.__class__) is enum.EnumMeta:
+                                            resource = f'rdf:resource="{attr_ns}{str(edge)}"'
+                                            row = f'  <{ns_prefix}:{parent.__name__}.{attribute} {resource}/>\n'
+                                            f.write(row)
+                                        elif type(value) is str or type(value) is bool or type(value) is float:
+                                            row = f'  <{ns_prefix}:{parent.__name__}.{attribute}>{str(value)}</{ns_prefix}:{parent.__name__}.{attribute}>\n'
+                                            f.write(row)
+                                        else:
+                                            resource = f'rdf:resource="{rdf_resource}{value.uri()}"'
+                                            row = f'  <{ns_prefix}:{parent.__name__}.{attribute} {resource}/>\n'
+                                            f.write(row)
+                                else:
+                                    # try:
+                                        resource = f'rdf:resource="{rdf_resource}{edge.uri()}"'
+                                        row = f'  <{ns_prefix}:{parent.__name__}.{attribute} {resource}/>\n'
+                                        f.write(row)
+                                    # except:
+                                    #     _log.warning(obj.__dict__)
+                        else:
+                            if isinstance(edge, CIMUnit):
+                                    row = f'  <{ns_prefix}:{parent.__name__}.{attribute}>{str(edge.quantity.magnitude)}</{ns_prefix}:{parent.__name__}.{attribute}>\n'
+                                    f.write(row)
+                            elif edge is not None and edge != []:
+                                row = f'  <{ns_prefix}:{parent.__name__}.{attribute}>{str(edge)}</{ns_prefix}:{parent.__name__}.{attribute}>\n'
+                                f.write(row)
+            tail = f'</cim:{cim_class.__name__}>\n'
+            f.write(tail)
+            counter = counter + 1
+        _log.info(f'wrote {counter} {cim_class.__name__} objects')
+    f.write('</rdf:RDF>')
+    f.close()
