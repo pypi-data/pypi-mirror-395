@@ -1,0 +1,47 @@
+# Pre-commit Hooks for this project
+# Versions pinned to match tox.ini for consistency.
+
+default_language_version:
+  python: python3.7
+
+repos:
+  # --- general code hygiene ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+        # exclude all files in test/ which are not *.py
+        exclude: ^test/.*(?<!\.py)$
+      - id: end-of-file-fixer
+        exclude: ^test/.*(?<!\.py)$
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-added-large-files
+
+  # --- isort (import sorting) ---
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.11.5
+    hooks:
+      - id: isort
+        args: ["--profile=black"]
+
+  # --- Black (Code formatting) ---
+  - repo: https://github.com/psf/black
+    rev: 22.10.0
+    hooks:
+      - id: black
+
+  # --- Flake8 (Linting) ---
+  - repo: https://github.com/pycqa/flake8
+    rev: 5.0.4
+    hooks:
+      - id: flake8
+
+  # --- Mypy (Type checking) ---
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.4.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-setuptools
+        # all settings are in mypy.ini

@@ -1,0 +1,78 @@
+standalone
+==========
+
+adapt src/CONFIG.py
+- set MTDB to the path where this file is located
+  SRCPATH, DATAPATH, MITFI*,MITOSPATH should be automatically correct
+- ANALYSEPATH and BACKUPPATH can be ignored
+- the WEBSERVER, QUEUEING, DB parts of the config can be ignored
+  for the standalone version
+- in the part "external tools" you need to configure VIENNAPATH these should
+  be set to the paths where the Vienna RNA
+  package (version 1.8.x)
+- the part "logging defaults" can also be ignored
+
+Further prerequisites:
+- java has to be in the PATH
+- Rscript has to be in the PATH and ggplot2 has to be installed in R
+- python (tested is 2.7)
+- biopython must be available
+- R with installed ggplot2
+
+MITOS can be started with
+python ~/src/mitos.py
+the parameter -h shows the options.
+The options -i, -c, and -o are mandatory.
+
+client and server
+=================
+
+adapt CONFIG.py
+- all variable starting QUEUE...
+
+server
+======
+
+- copy mtdb/web/mitos/ to web server directory
+- set .htaccess PythonPath to mtdb/src
+- httpd.conf
+  * AlloweOverride All or
+  * AddHandler mod_python .py .. nach httpd.conf
+- set and create WRKPATH and TOMCATPATH
+  * WRKPATH must be writable by the apache user and the user executing
+    mitoscs.pt server
+  * TOMCATPATH must be writable by the user running mitoscs.py and
+    accessible to apache (ie below public_html)
+  * the directories can be the same! Easiest is to create it with permission
+    777
+- set EMAILSERVER
+- set WEBPATH to the full URL of MITOS that is accessible from outside
+- ln -s mitos/example/ mitos-output/example
+
+client
+======
+
+Adoptions of the CONFIG file
+- set WRKPATH and create it
+Further:
+- for genome output some fonts are necessary for reportlab (which should have been
+  installed automatically with biopython), see:  http://john.parnefjord.se/node/51
+
+webserver
+=========
+
+- verzeichniss /var/www/mitos & /var/www/mitos/mitos-output anlegen
+  + schreibbar fuer www-data
+- WRKPATH TOMCATPATH auf /var/www/mitos/mitos-output setzen
+- WEBPATH anpassen
+- EMAILSERVER anpassen
+- MITOS_TRACKING_CODE anpassen
+
+- cp -r web/mitos/ /var/www/ (takes care that .htaccess is copied)
+- set src/ directory in first line of .htaccess
+
+
+
+
+
+zZt k35 k36

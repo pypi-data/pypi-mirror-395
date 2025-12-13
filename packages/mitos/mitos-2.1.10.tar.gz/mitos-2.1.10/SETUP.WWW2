@@ -1,0 +1,27 @@
+* Configure Apache by adding the following to /etc/apache2/sites-available/mitos2.conf:
+
+WSGIScriptAlias /mitos2 /opt/mitos2/mitos2.wsgi
+<Directory /opt/mitos2>
+#    WSGIApplicationGroup %{GLOBAL}
+    Order allow,deny
+    Allow from all
+    Require all granted
+</Directory>
+
+Note that it is highly recommended that the WSGI application script file in this case NOT be placed within the existing DocumentRoot for your main Apache installation, or the particular site you are setting it up for. This is because if that directory is otherwise being used as a source of static files, the source code for your application might be able to be downloaded.
+
+
+* Give Apache the required privileges:
+
+sudo chown -R www-data /opt/mitos2
+sudo chgrp -R www-data /opt/mitos2
+sudo chmod o+x /opt/
+sudo chmod o+x /opt/mitos2
+
+* Enable the "mitos2" site in Apache:
+
+sudo a2ensite mitos2
+
+* Restart Apache:
+
+sudo service apache2 restart

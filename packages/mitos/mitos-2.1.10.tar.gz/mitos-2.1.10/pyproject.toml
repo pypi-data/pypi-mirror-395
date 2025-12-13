@@ -1,0 +1,110 @@
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mitos"
+dynamic = ["version"]
+authors = [
+    {name = "Matthias Bernt", email = "m.bernt@ufz.de"}
+]
+description = "MITOS: de novo annotation of metazoan mitochondrial genomes"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.7, <3.8"
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "biopython==1.73",
+]
+
+[project.urls]
+Homepage = "http://mitos.bioinf.uni-leipzig.de"
+Download = "https://gitlab.com/Bernt/MITOS"
+Repository = "https://gitlab.com/Bernt/MITOS"
+
+[project.scripts]
+runmitos = "mitos.scripts.runmitos:main"
+drawmitos = "mitos.scripts.drawmitos:main"
+analyse = "mitos.scripts.analyse:main"
+gcpp = "mitos.scripts.gcpp:main"
+geneorder = "mitos.scripts.geneorder:main"
+getfeatures = "mitos.scripts.getfeatures:main"
+getinfo = "mitos.scripts.getinfo:main"
+refseqsplit = "mitos.scripts.refseqsplit:main"
+subseq = "mitos.scripts.subseq:main"
+taxtree = "mitos.scripts.taxtree:main"
+update_blastdb = "mitos.scripts.update_blastdb:main"
+update_hmm = "mitos.scripts.update_hmm:main"
+
+[project.optional-dependencies]
+dev = [
+    "flake8==5.0.4",
+    "black==22.10.0",
+    "isort==5.11.5",
+    "mypy==1.4.1",
+    "pytest==7.4.4",
+    "tox==3.28.0",
+    "twine==4.0.2",
+]
+
+[tool.setuptools]
+packages = { find = {} }
+include-package-data = true
+script-files = [
+    "mitos/plotprot.R",
+    "mitos/plotstst.R",
+    "mitos/plotrna.R",
+]
+
+[tool.setuptools.package-data]
+mitos = [
+    "*.R",
+    "mitfi/parser/*"
+    ]
+
+# manage versioning based on Git tags
+[tool.setuptools_scm]
+root = "."
+version_scheme = "no-guess-dev"
+# do not append node and date information to the version string
+local_scheme = "no-local-version"
+# automatically generate version file
+write_to = "mitos/_version.py"
+
+# Black configuration
+[tool.black]
+target-version = ['py37']
+exclude = '''
+(
+    \.git
+  | \.tox
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.conda
+  | build
+  | dist
+  | mitos/_version\.py
+)
+'''
+
+# isort configuration
+[tool.isort]
+profile = "black"
+skip = [".conda", ".tox", "build", "dist", ".mypy_cache", ".pytest_cache"]
+
+# flake8 configuration (flake8 doesn't support pyproject.toml natively, but keeping it here for reference)
+# You'll still need setup.cfg for flake8 configuration until flake8 v6+
+
+# pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "-ra -q"
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"

@@ -1,0 +1,80 @@
+# Cache Templates
+.cache_template: &default_cache
+  key:
+    files:
+      - tox.ini
+      - pyproject.toml
+  paths:
+    - .cache/pip/
+
+.conda_cache_template: &conda_cache
+  key:
+    files:
+      - tox.ini
+      - pyproject.toml
+  paths:
+    - .cache/pip/
+    - .conda/pkgs/
+
+variables:
+  SHELL: /bin/bash
+  PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
+
+# Columns of the pipeline
+stages:
+  - static_analysis
+  - test
+  - integration
+  - deploy
+
+# default settings for all jobs (unless overridden)
+default:
+  image: python:3.7
+  cache: *default_cache
+  interruptible: true
+  before_script:
+    - pip install tox==3.28.0
+
+linting:
+  stage: static_analysis
+  script:
+    - tox -e lint
+
+type_checking:
+  stage: static_analysis
+  script:
+    - tox -e type
+
+unit_test_py37:
+  stage: test
+  script:
+    - tox -e py37
+
+integration_test_py37:
+  stage: integration
+  image: condaforge/miniforge3:latest
+  cache: *conda_cache
+  variables:
+    CONDA_PKGS_DIRS: $CI_PROJECT_DIR/.conda/pkgs
+  before_script:
+    - cp .condarc ~/.condarc || true
+    - conda install -y pip
+    - pip install tox==3.28.0
+    - pip install tox-conda==0.10.2
+    # get refseq63 reference data
+    - mkdir -p refdata
+    - '[ -f refdata/refseq63m.tar.bz2 ] || wget https://zenodo.org/record/4284483/files/refseq63m.tar.bz2?download=1 -O refdata/refseq63m.tar.bz2'
+    - '[ ! -d refdata/refseq63m ] && tar -xf refdata/refseq63m.tar.bz2 -C refdata || echo "refdata already exists"'
+  script:
+    - tox -e integration-py37
+
+deploy_production:
+  stage: deploy
+  before_script: []
+  script:
+    - pip install --upgrade build twine
+    - cat $PYPIRC > /tmp/.pypirc
+    - python -m build
+    - python -m twine upload --repository pypi dist/* --config-file /tmp/.pypirc --verbose
+  only:
+    - tags
