@@ -1,0 +1,817 @@
+Metadata-Version: 2.4
+Name: bach-geodb_cities
+Version: 1.0.0
+Summary: MCP server for accessing Geodb Cities API
+Project-URL: Homepage, https://github.com/bachstudio/bach-geodb_cities
+Project-URL: Repository, https://github.com/bachstudio/bach-geodb_cities
+Project-URL: Documentation, https://github.com/bachstudio/bach-geodb_cities#readme
+Project-URL: Bug Tracker, https://github.com/bachstudio/bach-geodb_cities/issues
+Author: bachstudio
+License: MIT License
+        
+        Copyright (c) 2025 bachstudio
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: api,geodb_cities,mcp,model-context-protocol
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Requires-Dist: fastmcp>=2.0.0
+Requires-Dist: httpx>=0.25.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Geodb Cities MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Geodb Cities API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-geodb_cities`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Geodb Cities API。
+
+- **PyPI 包名**: `bach-geodb_cities`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-geodb_cities
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-geodb_cities bach_geodb_cities
+
+# 或指定版本
+uvx --from bach-geodb_cities@latest bach_geodb_cities
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-geodb_cities
+
+# 运行（命令名使用下划线）
+bach_geodb_cities
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-geodb_cities": {
+      "command": "uvx",
+      "args": ["--from", "bach-geodb_cities", "bach_geodb_cities"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-geodb_cities": {
+      "command": "uvx",
+      "args": ["--from", "bach-geodb_cities", "bach_geodb_cities"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `place_distance`
+
+Gets this place's distance to the given place.
+
+**端点**: `GET /v1/geo/places/{placeId}/distance`
+
+
+**参数**:
+
+- `distanceUnit` (string): The unit of distance: KM | MI [default]
+
+- `toPlaceId` (string): The distance to this place
+
+- `placeId` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `place_time`
+
+Get this place's current time in ISO-8601 format: HHmmss.SSSZ
+
+**端点**: `GET /v1/geo/places/{placeId}/time`
+
+
+**参数**:
+
+- `placeId` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `place_date_time`
+
+Get this place's current date-time in ISO-6801 format: yyyyMMdd'T'HHmmssZ
+
+**端点**: `GET /v1/geo/places/{placeId}/dateTime`
+
+
+**参数**:
+
+- `placeId` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `place_located_in`
+
+Get the details for the containing populated place (e.g., its county or other administrative division), including location coordinates, population, and elevation above sea-level  (if available).   Currently, this data is highly dependent on whether the Wikidata **locatedIn** relation is properly defined. If you see an issue, please propose a change to the corresponding Wikidata entry.
+
+**端点**: `GET /v1/geo/places/{placeId}/locatedIn`
+
+
+**参数**:
+
+- `placeId` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `place_details`
+
+Get the details for a specific place, including location coordinates, population, and elevation above sea-level (if available).
+
+**端点**: `GET /v1/geo/places/{placeId}`
+
+
+**参数**:
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `placeId` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `city_located_in`
+
+Get the details for the containing populated place (e.g., its county or other administrative division), including location coordinates, population, and elevation above sea-level  (if available).   Currently, this data is highly dependent on whether the Wikidata **locatedIn** relation is properly defined. If you see an issue, please propose a change to the corresponding Wikidata entry.
+
+**端点**: `GET /v1/geo/cities/{cityId}/locatedIn`
+
+
+**参数**:
+
+- `cityId` (string) *必需*: Example value: Q65
+
+
+
+---
+
+
+### `places_near_location`
+
+Get places near the given location, filtering by optional criteria.
+
+**端点**: `GET /v1/geo/locations/{locationid}/nearbyPlaces`
+
+
+**参数**:
+
+- `types` (string): Only places for these types (comma-delimited): ADM2 | CITY | ISLAND
+
+- `radius` (string) *必需*: The location radius within which to find places
+
+- `distanceUnit` (string): The unit of distance to use: MI | KM
+
+- `countryIds` (string): Only places in these countries (comma-delimited country codes or WikiData ids)
+
+- `excludedCountryIds` (string): Only places NOT in these countries (comma-delimited country codes or WikiData ids)
+
+- `timeZoneIds` (string): Only places in these time-zones
+
+- `minPopulation` (number): Only places having at least this population
+
+- `maxPopulation` (number): Only places having no more than this population
+
+- `namePrefix` (string): Only places whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any places marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = countryCode | elevation | name | population
+
+- `locationid` (string) *必需*: Only cities near this location. Latitude/longitude in ISO-6709 format: ±DD.DDDD±DDD.DDDD
+
+
+
+---
+
+
+### `places_near_place`
+
+Get places near the given place, filtering by optional criteria.
+
+**端点**: `GET /v1/geo/places/{placeId}/nearbyPlaces`
+
+
+**参数**:
+
+- `types` (string): Only places for these types (comma-delimited): ADM2 | CITY | ISLAND
+
+- `radius` (number) *必需*: The location radius within which to find places
+
+- `distanceUnit` (string): The unit of distance to use: MI | KM
+
+- `countryIds` (string): Only places in these countries (comma-delimited country codes or WikiData ids)
+
+- `excludedCountryIds` (string): Only places NOT in these countries (comma-delimited country codes or WikiData ids)
+
+- `timeZoneIds` (string): Only places in these time-zones
+
+- `minPopulation` (number): Only places having at least this population
+
+- `maxPopulation` (number): Only places having no more than this population
+
+- `namePrefix` (string): Only places whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any places marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = countryCode | elevation | name | population
+
+- `placeId` (string) *必需*: Example value: 
+
+
+
+---
+
+
+### `country_places`
+
+Get the places in the given country.
+
+**端点**: `GET /v1/geo/countries/{countryId}/places`
+
+
+**参数**:
+
+- `types` (string): Only cities for these types (comma-delimited): ADM2 | CITY | ISLAND
+
+- `timeZoneIds` (string): Only places in these time-zones
+
+- `minPopulation` (number): Only places having at least this population
+
+- `maxPopulation` (number): Only places having no more than this population
+
+- `namePrefix` (string): Only places whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any cities marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = elevation | name | population
+
+- `countryId` (string) *必需*: Example value: US
+
+
+
+---
+
+
+### `country_region_divisions`
+
+Get the administrative divisions in the given region.
+
+**端点**: `GET /v1/geo/countries/{countryid}/regions/{regioncode}/adminDivisions`
+
+
+**参数**:
+
+- `minPopulation` (number): Only cities having at least this population
+
+- `maxPopulation` (number): Only divisions having no more than this population
+
+- `namePrefix` (string): Only divisions whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any cities marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = elevation | name | population
+
+- `countryid` (string) *必需*: An ISO-3166 country code or WikiData id
+
+- `regioncode` (string) *必需*: An ISO-3166 or FIPS region code
+
+
+
+---
+
+
+### `admin_division_details`
+
+Get the details for a specific administrative division, including location coordinates, population, and elevation above sea-level (if available).
+
+**端点**: `GET /v1/geo/adminDivisions/{divisionId}`
+
+
+**参数**:
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `divisionId` (string) *必需*: Example value: Q104994
+
+
+
+---
+
+
+### `cities_near_division`
+
+Get cities near the given administrative division, filtering by optional criteria.
+
+**端点**: `GET /v1/geo/adminDivisions/{divisionId}/nearbyCities`
+
+
+**参数**:
+
+- `types` (string): Only cities for these types (comma-delimited): CITY | ADM2
+
+- `radius` (number) *必需*: The location radius within which to find cities
+
+- `distanceUnit` (string): The unit of distance to use: MI | KM
+
+- `countryIds` (string): Only cities in these countries (comma-delimited country codes or WikiData ids)
+
+- `excludedCountryIds` (string): Only cities NOT in these countries (comma-delimited country codes or WikiData ids)
+
+- `timeZoneIds` (string): Only cities in these time-zones
+
+- `minPopulation` (number): Only cities having at least this population
+
+- `maxPopulation` (number): Only cities having no more than this population
+
+- `namePrefix` (string): Only cities whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any cities marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = countryCode | elevation | name | population
+
+- `divisionId` (string) *必需*: Example value: Q104994
+
+
+
+---
+
+
+### `admin_divisions`
+
+Find administrative divisions, filtering by optional criteria. If no criteria are set, you will get back all known divisions with a population of at least 1000
+
+**端点**: `GET /v1/geo/adminDivisions`
+
+
+**参数**:
+
+- `location` (string): Only divisions near this location. Latitude/longitude in ISO-6709 format: ±DD.DDDD±DDD.DDDD
+
+- `radius` (number): The location radius within which to find divisions
+
+- `distanceUnit` (string): The unit of distance to use: MI | KM
+
+- `countryIds` (string): Only divisions in these countries (comma-delimited country codes or WikiData ids)
+
+- `excludedCountryIds` (string): Only divisions NOT in these countries (comma-delimited country codes or WikiData ids)
+
+- `timeZoneIds` (string): Only divisions in these time-zones
+
+- `minPopulation` (number): Only divisions having at least this population
+
+- `maxPopulation` (number): Only divisions having no more than this population
+
+- `namePrefix` (string): Only divisions whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any divisions marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = countryCode | elevation | name | population
+
+
+
+---
+
+
+### `country_region_places`
+
+Get the places in the given region.
+
+**端点**: `GET /v1/geo/countries/{countryid}/regions/{regionId}/places`
+
+
+**参数**:
+
+- `types` (string): Only cities for these types (comma-delimited): ADM2 | CITY | ISLAND
+
+- `timeZoneIds` (string): Only places in these time-zones
+
+- `minPopulation` (number): Only places having at least this population
+
+- `maxPopulation` (number): Only places having no more than this population
+
+- `namePrefix` (string): Only places whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any cities marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = elevation | name | population
+
+- `countryid` (string) *必需*: An ISO-3166 country code or WikiData id
+
+- `regionId` (string) *必需*: Example value: CA
+
+
+
+---
+
+
+### `places`
+
+Find places, filtering by optional criteria. If no criteria are set, you will get back all known places.
+
+**端点**: `GET /v1/geo/places`
+
+
+**参数**:
+
+- `types` (string): Only places for these types (comma-delimited): ADM2 | CITY | ISLAND
+
+- `location` (string): Only places near this location. Latitude/longitude in ISO-6709 format: ±DD.DDDD±DDD.DDDD
+
+- `radius` (number): The location radius within which to find places
+
+- `distanceUnit` (string): The unit of distance to use: MI | KM
+
+- `countryIds` (string): Only places in these countries (comma-delimited country codes or WikiData ids)
+
+- `excludedCountryIds` (string): Only places NOT in these countries (comma-delimited country codes or WikiData ids)
+
+- `timeZoneIds` (string): Only places in these time-zones
+
+- `minPopulation` (number): Only places having at least this population
+
+- `maxPopulation` (number): Only places having no more than this population
+
+- `namePrefix` (string): Only places whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any places marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = countryCode | elevation | name | population
+
+
+
+---
+
+
+### `time_zone`
+
+Get the time-zone current time in ISO-6801 format: HHmmss.SSSZ
+
+**端点**: `GET /v1/locale/timezones/{zoneid}`
+
+
+**参数**:
+
+- `zoneid` (string) *必需*: The time-zone id
+
+
+
+---
+
+
+### `admin_divisions_near_location`
+
+Get administrative divisions near the given location, filtering by optional criteria.
+
+**端点**: `GET /v1/geo/locations/{locationid}/nearbyDivisions`
+
+
+**参数**:
+
+- `radius` (string) *必需*: The location radius within which to find divisions
+
+- `distanceUnit` (string): The unit of distance to use: MI | KM
+
+- `countryIds` (string): Only divisions in these countries (comma-delimited country codes or WikiData ids)
+
+- `excludedCountryIds` (string): Only divisions NOT in these countries (comma-delimited country codes or WikiData ids)
+
+- `timeZoneIds` (string): Only divisions in these time-zones
+
+- `minPopulation` (number): Only divisions having at least this population
+
+- `maxPopulation` (number): Only divisions having no more than this population
+
+- `namePrefix` (string): Only divisions whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any divisions marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = countryCode | elevation | name | population
+
+- `locationid` (string) *必需*: Only divisions near this location. Latitude/longitude in ISO-6709 format: ±DD.DDDD±DDD.DDDD
+
+
+
+---
+
+
+### `admin_divisions_near_division`
+
+Get divisions near the given administrative division, filtering by optional criteria.
+
+**端点**: `GET /v1/geo/adminDivisions/{divisionId}/nearbyDivisions`
+
+
+**参数**:
+
+- `radius` (number) *必需*: The location radius within which to find divisions
+
+- `distanceUnit` (string): The unit of distance to use: MI | KM
+
+- `countryIds` (string): Only divisions in these countries (comma-delimited country codes or WikiData ids)
+
+- `excludedCountryIds` (string): Only divisions NOT in these countries (comma-delimited country codes or WikiData ids)
+
+- `timeZoneIds` (string): Only divisions in these time-zones
+
+- `minPopulation` (number): Only divisions having at least this population
+
+- `maxPopulation` (number): Only divisions having no more than this population
+
+- `namePrefix` (string): Only divisions whose names start with this prefix. If languageCode is set, the prefix will be matched on the name as it appears in that language.
+
+- `namePrefixDefaultLangResults` (string): Example value: 
+
+- `languageCode` (string): Display results in this language
+
+- `asciiMode` (string): Example value: 
+
+- `hateoasMode` (string): Example value: 
+
+- `includeDeleted` (string): Whether to include any divisions marked deleted: ALL | SINCE_YESTERDAY | SINCE_LAST_WEEK | NONE
+
+- `limit` (number): The maximum number of results to retrieve
+
+- `offset` (number): The zero-ary offset into the results
+
+- `sort` (string): How to sort the results. Format: ±SORT_FIELD,±SORT_FIELD where SORT_FIELD = countryCode | elevation | name | population
+
+- `divisionId` (string) *必需*: Example value: Q104994
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
