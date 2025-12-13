@@ -1,0 +1,316 @@
+Metadata-Version: 2.4
+Name: nlweb-dataload
+Version: 0.5.5
+Summary: Data loading tools for NLWeb - load schema.org JSON and RSS feeds into vector databases
+Author: Microsoft Corporation
+License: MIT
+Project-URL: Homepage, https://github.com/nlweb-ai/NLWeb_Core
+Project-URL: Repository, https://github.com/nlweb-ai/NLWeb_Core
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: feedparser>=6.0.0
+Requires-Dist: aiohttp>=3.8.0
+Provides-Extra: azure
+Requires-Dist: openai>=1.12.0; extra == "azure"
+Requires-Dist: azure-identity>=1.12.0; extra == "azure"
+Provides-Extra: openai
+Requires-Dist: openai>=1.12.0; extra == "openai"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+
+# NLWeb Data Loading
+
+Data loading tools for NLWeb - load schema.org JSON files and RSS feeds into vector databases with automatic embedding generation.
+
+## Overview
+
+`nlweb-dataload` provides a simple interface for loading structured data into vector databases. It:
+
+- Loads schema.org JSON files or RSS/Atom feeds
+- Automatically computes embeddings for all documents
+- Uploads to vector databases in batches
+- Supports deletion by site
+
+## Installation
+
+```bash
+# Install from PyPI (when published)
+pip install nlweb-dataload
+
+# Or install from source
+pip install -e packages/dataload
+```
+
+## Quick Start
+
+```python
+import asyncio
+import nlweb_core
+from nlweb_dataload import load_to_db, delete_site
+
+# Initialize NLWeb with config
+nlweb_core.init(config_path="config.yaml")
+
+# Load schema.org JSON file
+async def main():
+    result = await load_to_db(
+        file_path="recipes.json",
+        site="seriouseats"
+    )
+    print(f"Loaded {result['total_loaded']} documents")
+
+asyncio.run(main())
+```
+
+## Configuration
+
+Add writer configuration to your `config.yaml`:
+
+```yaml
+# config.yaml
+retrieval_endpoints:
+  azure_search_prod:
+    db_type: azure_ai_search
+    api_endpoint: https://your-search.search.windows.net
+    api_key_env: AZURE_SEARCH_KEY
+    index_name: embeddings1536
+    auth_method: api_key  # or azure_ad for managed identity
+
+    # Add writer configuration
+    writer:
+      enabled: true
+      import_path: nlweb_azure_vectordb.azure_search_writer
+      class_name: AzureSearchWriter
+
+# Set as write endpoint
+write_endpoint: azure_search_prod
+```
+
+## Usage
+
+### Load JSON File
+
+Load a schema.org JSON file:
+
+```python
+from nlweb_dataload import load_to_db
+
+# Single schema.org object or array of objects
+result = await load_to_db(
+    file_path="data/recipes.json",
+    site="seriouseats"
+)
+```
+
+Example JSON file:
+
+```json
+[
+  {
+    "@context": "http://schema.org",
+    "@type": "Recipe",
+    "url": "https://www.seriouseats.com/best-pasta-recipe",
+    "name": "Best Pasta Ever",
+    "description": "The best pasta recipe you'll ever make",
+    "author": {"@type": "Person", "name": "Chef Mario"}
+  }
+]
+```
+
+### Load RSS Feed
+
+Load an RSS or Atom feed (automatically converts to schema.org Article):
+
+```python
+from nlweb_dataload import load_to_db
+
+# Load from URL
+result = await load_to_db(
+    file_path="https://example.com/feed.xml",
+    site="example",
+    file_type="rss"  # Optional, auto-detected
+)
+
+# Load from local file
+result = await load_to_db(
+    file_path="feeds/blog.xml",
+    site="myblog",
+    file_type="rss"
+)
+```
+
+### Delete Site Data
+
+Remove all documents for a site:
+
+```python
+from nlweb_dataload import delete_site
+
+result = await delete_site(site="old-site.com")
+print(f"Deleted {result['deleted_count']} documents")
+```
+
+### Batch Upload
+
+Control batch size for large datasets:
+
+```python
+result = await load_to_db(
+    file_path="large_dataset.json",
+    site="example",
+    batch_size=50  # Upload 50 documents at a time (default: 100)
+)
+```
+
+### Specify Endpoint
+
+Use a specific endpoint instead of default write_endpoint:
+
+```python
+result = await load_to_db(
+    file_path="data.json",
+    site="example",
+    endpoint_name="azure_search_staging"  # Override default
+)
+```
+
+## Data Format
+
+### Schema.org JSON
+
+Documents must include these fields:
+
+- `url` (required): Unique document URL
+- `name` or `headline` (required): Document name/title
+- `description` (optional): Used for embedding if present
+
+Any valid schema.org type is supported (Recipe, Article, Product, Event, etc.).
+
+### RSS/Atom Feeds
+
+RSS/Atom feeds are automatically converted to schema.org Article format with:
+
+- `url`: Entry link
+- `name`/`headline`: Entry title
+- `description`: Entry summary/content
+- `datePublished`: Publication date
+- `author`: Entry author
+- `publisher`: Feed title/link
+- `keywords`: Entry tags/categories
+
+## Architecture
+
+### Write Interface Separation
+
+NLWeb maintains clean separation between read and write operations:
+
+- **`nlweb_core.retriever`**: Read-only search interface
+- **`nlweb_dataload.writer`**: Write interface (upload/delete)
+
+This prevents accidental writes during queries and allows different access patterns.
+
+### Writer Interface
+
+Each vector database provider implements `VectorDBWriterInterface`:
+
+```python
+from nlweb_dataload.writer import VectorDBWriterInterface
+
+class MyDatabaseWriter(VectorDBWriterInterface):
+    async def upload_documents(self, documents, **kwargs):
+        # Upload documents to database
+        pass
+
+    async def delete_documents(self, filter_criteria, **kwargs):
+        # Delete documents matching criteria
+        pass
+
+    async def delete_site(self, site, **kwargs):
+        # Delete all documents for site
+        pass
+```
+
+## Supported Vector Databases
+
+### Azure AI Search
+
+Built-in support via `nlweb-azure-vectordb`:
+
+```bash
+pip install nlweb-azure-vectordb
+```
+
+Configuration:
+
+```yaml
+retrieval_endpoints:
+  azure_search:
+    db_type: azure_ai_search
+    writer:
+      import_path: nlweb_azure_vectordb.azure_search_writer
+      class_name: AzureSearchWriter
+```
+
+### Other Databases
+
+Create a writer class for your database:
+
+1. Implement `VectorDBWriterInterface`
+2. Add to config with `import_path` and `class_name`
+3. Install provider package
+
+See `nlweb_azure_vectordb.azure_search_writer` for reference implementation.
+
+## Command Line Usage
+
+```bash
+# Load JSON file
+python -m nlweb_dataload.db_load \
+  --file data/recipes.json \
+  --site seriouseats \
+  --config config.yaml
+
+# Load RSS feed
+python -m nlweb_dataload.db_load \
+  --file https://example.com/feed.xml \
+  --site example \
+  --type rss \
+  --config config.yaml
+
+# Delete site
+python -m nlweb_dataload.db_load \
+  --delete-site old-site.com \
+  --config config.yaml
+```
+
+## Dependencies
+
+- `nlweb-core>=0.5.0` - Core NLWeb functionality
+- `feedparser>=6.0.0` - RSS/Atom feed parsing
+- `aiohttp>=3.8.0` - Async HTTP for URL loading
+
+## Development
+
+```bash
+# Install in editable mode with dev dependencies
+pip install -e "packages/dataload[dev]"
+
+# Run tests
+pytest packages/dataload/tests
+```
+
+## License
+
+MIT License - Copyright (c) 2025 Microsoft Corporation
