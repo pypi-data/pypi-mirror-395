@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stridekit"
+version = "1.0.1"
+description = "An Agent-First Framework for Sprint-Powered, Spec-Driven Development"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Saran Mahadev"}
+]
+keywords = ["cli", "sprint", "agile", "ai-agent", "development", "stride", "workflow"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
+    "pyyaml>=6.0.0",
+    "pydantic>=2.0.0",
+    "pyfiglet>=0.8.post1",
+    "questionary>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
+]
+
+[project.scripts]
+stride = "stride.cli:app"
+
+[project.urls]
+Homepage = "https://stride.saranmahadev.in"
+Documentation = "https://stride.saranmahadev.in"
+Repository = "https://github.com/saranmahadev/Stride.git"
+Issues = "https://github.com/saranmahadev/Stride/issues"
+Source = "https://github.com/saranmahadev/Stride"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["stride*"]
+
+[tool.setuptools.package-data]
+stride = ["templates/**/*.md"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=stride --cov-report=term-missing"
