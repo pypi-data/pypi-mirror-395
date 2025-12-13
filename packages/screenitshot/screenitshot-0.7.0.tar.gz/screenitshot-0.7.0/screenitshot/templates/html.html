@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Renderer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: white;
+      overflow: hidden;
+    }
+    #container {
+      width: 100%;
+      min-height: 100vh;
+    }
+    #html-container {
+      width: 100%;
+    }
+  </style>
+  <script type="module" crossorigin>(function(){const r=document.createElement("link").relList;if(r&&r.supports&&r.supports("modulepreload"))return;for(const t of document.querySelectorAll('link[rel="modulepreload"]'))i(t);new MutationObserver(t=>{for(const e of t)if(e.type==="childList")for(const l of e.addedNodes)l.tagName==="LINK"&&l.rel==="modulepreload"&&i(l)}).observe(document,{childList:!0,subtree:!0});function c(t){const e={};return t.integrity&&(e.integrity=t.integrity),t.referrerPolicy&&(e.referrerPolicy=t.referrerPolicy),t.crossOrigin==="use-credentials"?e.credentials="include":t.crossOrigin==="anonymous"?e.credentials="omit":e.credentials="same-origin",e}function i(t){if(t.ep)return;t.ep=!0;const e=c(t);fetch(t.href,e)}})();const g="FILE_BASE64_PLACEHOLDER",b=1;let f=globalThis.fileBase64||g,H=globalThis.pageNumber||b;function M(){if(!document.getElementById("container"))return;const r=document.createElement("div");r.style.cssText=`
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  `,r.innerHTML=`
+    <div style="padding: 2rem; text-align: center;">
+      <h2>Local Testing Mode</h2>
+      <p>Select an HTML file to render:</p>
+      <input type="file" accept=".html,.htm" id="file-input" style="margin: 1rem 0;">
+    </div>
+  `,document.body.appendChild(r),document.getElementById("file-input").addEventListener("change",async i=>{const t=i.target.files?.[0];if(!t)return;const e=new FileReader;e.onload=async l=>{f=(l.target?.result).split(",")[1],r.remove(),await y()},e.readAsDataURL(t)})}const h=960,a=1280;async function y(){try{const o=document.getElementById("html-container");if(!o)throw new Error("HTML container element not found");if(f===g)return M(),{width:h,height:a,pageCount:1,pageNumber:1,scale:1};const r=atob(f),c=new Uint8Array(r.length);for(let n=0;n<r.length;n++)c[n]=r.charCodeAt(n);const i=new TextDecoder("utf-8").decode(c),e=new DOMParser().parseFromString(i,"text/html");e.querySelectorAll("style").forEach(n=>{const s=document.createElement("style");s.textContent=n.textContent,document.head.appendChild(s)}),e.querySelectorAll('link[rel="stylesheet"]').forEach(n=>{const s=n.getAttribute("href");s&&!s.startsWith("http")&&console.warn("External stylesheet skipped:",s)}),o.style.width=`${h}px`,o.innerHTML=e.body.innerHTML,e.body.style.cssText&&(o.style.cssText+=e.body.style.cssText);const w=o.querySelectorAll("img");await Promise.all(Array.from(w).map(n=>n.complete?Promise.resolve():new Promise(s=>{n.onload=s,n.onerror=s}))),await new Promise(n=>setTimeout(n,100));const m=o.scrollHeight,d=Math.max(1,Math.ceil(m/a)),u=Math.max(1,Math.min(H,d)),p=(u-1)*a,L=m-p,T=Math.min(a,L);return window.scrollTo(0,p),console.log(`HTML rendered successfully (page ${u}/${d})`),{width:h,height:T,pageCount:d,pageNumber:u,scale:2}}catch(o){throw console.error("Error rendering HTML:",o),o}}window.renderComplete=y();</script>
+</head>
+<body>
+  <div id="container">
+    <div id="html-container"></div>
+  </div>
+</body>
+</html>
