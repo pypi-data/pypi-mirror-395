@@ -1,0 +1,99 @@
+# build
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+# versionning
+[tool.semantic_release]
+version_variables = [
+    "src/n7/__init__.py:__version__",
+]
+version_toml = [
+    "pyproject.toml:project.version",
+]
+branch = "prod"
+upload_to_pypi = false
+build_command = "python -m build"
+commit_message = "chore(release): {version} [skip ci]"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["refactor", "fix", "doc", "chore", "feat"]
+minor_tags = ["feat"]
+patch_tags = ["refactor", "fix", "doc", "chore"]
+
+[tool.semantic_release.branches.prod]
+match = "prod"
+prerelease = false
+
+# Global projet
+[project]
+name = "n7"
+version = "1.5.0"
+description = "CLI global pour les projets N7"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    { name = "nseven" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "typer[all]",
+    "pyyaml",
+]
+
+# Point d’entrée CLI : permettra de taper simplement `n7`
+[project.scripts]
+n7 = "n7.__main__:app"
+
+# Dit à pip où est le code
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+# Inclusion automatique des packages sous src/n7
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ---------------------------------------------------------------------------
+# BLACK — Formatter (comme Prettier pour Python)
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length = 100              # Largeur max avant retour à la ligne
+target-version = ["py313"]     # Version cible du langage
+skip-string-normalization = true  # Respect des guillemets choisis
+color = true
+
+# ---------------------------------------------------------------------------
+# RUFF — Linter ultra rapide (style + erreurs potentielles)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+fix = false # pas de correction affiche les erreurs, utiliser --fix pour fixer les erreurs
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [ # Sélection des règles
+    "E",  # PEP8 (pycodestyle)
+    "F",  # Pyflakes (imports/variables non utilisées, erreurs logiques)
+    "B",  # Bugbear (bugs réels + mauvaises pratiques)
+    "I",  # Isort (ordre automatique des imports)
+]
+ignore = [
+    "B008",  # Typer utilise des function calls dans les defaults (typer.Argument, typer.Option)
+]
+
+# ---------------------------------------------------------------------------
+# MYPY — Vérification statique des types
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = false                # Passe à true quand tu seras plus avancé
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+# mypy ne vérifie pas le code non typé, mais tu peux activer :
+check_untyped_defs = true     # Mets false si tu ne veux pas qu'il analyse tout
+exclude = [
+    "tests",                   # Exemple: ignore les tests si tu veux
+]
+ignore_missing_imports = true # Permet d'utiliser ruff, pytest, etc. sans les typer manuellement
