@@ -1,0 +1,215 @@
+Solr control panel
+==================
+
+First some initial setup code:
+
+We need to patch the dispatcher because we want to test *setting* solr to
+active without *having* it active.
+    >>> from collective.solr import dispatcher
+    >>> _save_isActive = dispatcher.isActive
+    >>> dispatcher.isActive = lambda:False
+
+    >>> from zope.component import getUtility
+    >>> from collective.solr.utils import getConfig
+    >>> config = getConfig()
+    >>> config.active
+    False
+    >>> str(config.host)
+    '127.0.0.1'
+    >>> config.port
+    8983
+    >>> str(config.base)
+    '/solr/plone'
+    >>> config.async_indexing
+    False
+    >>> config.auto_commit
+    True
+    >>> config.commit_within
+    0
+    >>> config.index_timeout
+    0.0
+    >>> config.search_timeout
+    0.0
+    >>> config.max_results
+    10000000
+    >>> config.required == ['SearchableText']
+    True
+    >>> config.facets == ['portal_type', 'review_state']
+    True
+    >>> config.filter_queries == ['portal_type']
+    True
+    >>> config.slow_query_threshold
+    0
+    >>> config.effective_steps
+    1
+    >>> config.exclude_user
+    False
+    >>> config.highlight_fields
+    []
+    >>> config.highlight_formatter_pre == '['
+    True
+    >>> config.highlight_formatter_post == ']'
+    True
+    >>> config.highlight_fragsize
+    100
+    >>> config.field_list
+    []
+    >>> config.levenshtein_distance
+    0.0
+    >>> config.atomic_updates
+    True
+
+Viewing the site control panel
+------------------------------
+
+    >>> from plone.app.testing import TEST_USER_ID
+    >>> from plone.app.testing import TEST_USER_NAME
+    >>> from plone.app.testing import TEST_USER_PASSWORD
+    >>> from plone.app.testing import setRoles
+    >>> from plone.testing.z2 import Browser
+    >>> from transaction import commit
+    >>> setRoles(layer['portal'], TEST_USER_ID, ['Manager'])
+    >>> commit()
+    >>> browser = Browser(layer['app'])
+    >>> browser.open('http://nohost/plone/login_form')
+    >>> browser.getControl(name='__ac_name').value = TEST_USER_NAME
+    >>> browser.getControl(name='__ac_password').value = TEST_USER_PASSWORD
+    >>> browser.getControl('Log in').click()
+    >>> browser.open('http://nohost/plone/@@solr-controlpanel')
+    >>> browser.url
+    'http://nohost/plone/@@solr-controlpanel'
+
+Click the cancel button:
+
+    >>> browser.getControl(name="form.buttons.cancel").click()
+    >>> browser.url.endswith('plone_control_panel') or browser.url.endswith('@@overview-controlpanel')
+    True
+
+There should be still no changes:
+
+    >>> 'Changes canceled.' in browser.contents
+    True
+
+
+Make some changes
+-----------------
+
+    >>> browser.open('http://nohost/plone/@@solr-controlpanel')
+    >>> browser.url.endswith('solr-controlpanel')
+    True
+
+    >>> browser.getControl(name='form.widgets.active:list').value = True
+    >>> browser.getControl(name='form.widgets.host').value = 'foo.bar'
+    >>> browser.getControl(name='form.widgets.port').value = '1234'
+    >>> browser.getControl(name='form.widgets.base').value = '/solr/plone'
+    >>> browser.getControl(name='form.widgets.async_indexing:list').value = True
+    >>> browser.getControl(name='form.widgets.auto_commit:list').value = False
+    >>> browser.getControl(name='form.widgets.commit_within').value = '10000'
+    >>> browser.getControl(name='form.widgets.index_timeout').value = '7.0'
+    >>> browser.getControl(name='form.widgets.search_timeout').value = '3.1'
+    >>> browser.getControl(name='form.widgets.max_results').value = '23'
+    >>> browser.getControl(name='form.widgets.required').value = 'foo\r\nbar'
+    >>> browser.getControl(name='form.widgets.search_pattern').value = '(Title:{value})'
+    >>> browser.getControl(name='form.widgets.facets').value = 'type\r\nstate'
+    >>> browser.getControl(name='form.widgets.filter_queries').value = 'portal_type'
+    >>> browser.getControl(name='form.widgets.slow_query_threshold').value = '50'
+    >>> browser.getControl(name='form.widgets.effective_steps').value = '300'
+    >>> browser.getControl(name='form.widgets.exclude_user:list').value = True
+    >>> browser.getControl(name='form.widgets.highlight_fields').value = 'SearchableText'
+    >>> browser.getControl(name='form.widgets.highlight_formatter_pre').value = '>'
+    >>> browser.getControl(name='form.widgets.highlight_formatter_post').value = '<'
+    >>> browser.getControl(name='form.widgets.highlight_fragsize').value = '150'
+    >>> browser.getControl(name='form.widgets.field_list').value = 'Title\r\neffective'
+    >>> browser.getControl(name='form.widgets.levenshtein_distance').value = '1.0'
+    >>> browser.getControl(name='form.widgets.atomic_updates:list').value = False
+
+Click the save button:
+
+    >>> browser.getControl(name="form.buttons.save").click()
+    >>> browser.url.endswith('solr-controlpanel')
+    True
+
+We should be informed that something has changed:
+
+    >>> 'Changes saved.' in browser.contents
+    True
+
+Make sure the changes have been applied correctly to the tool:
+
+    >>> config.active
+    True
+    >>> config.host == 'foo.bar'
+    True
+    >>> config.port
+    1234
+    >>> config.base == '/solr/plone'
+    True
+    >>> config.async_indexing
+    True
+    >>> config.auto_commit
+    False
+    >>> config.commit_within
+    10000
+    >>> config.index_timeout
+    7.0
+    >>> config.search_timeout
+    3.1...
+    >>> config.max_results
+    23
+    >>> config.required == ['foo', 'bar']
+    True
+    >>> config.search_pattern == '(Title:{value})'
+    True
+    >>> config.facets == ['type', 'state']
+    True
+    >>> config.slow_query_threshold
+    50
+    >>> config.effective_steps
+    300
+    >>> config.exclude_user
+    True
+    >>> config.highlight_fields == ['SearchableText']
+    True
+    >>> config.highlight_formatter_pre == '>'
+    True
+    >>> config.highlight_formatter_post == '<'
+    True
+    >>> config.highlight_fragsize
+    150
+    >>> config.field_list == ['Title', 'effective']
+    True
+    >>> config.levenshtein_distance
+    1.0
+    >>> config.atomic_updates
+    False
+
+Now that the connection is active we can also select more filter query
+parameters from the complete list of Solr indexes, provided that we use the
+correct host and port:
+
+    >>> browser.getControl(name='form.widgets.host').value = '127.0.0.1'
+    >>> browser.getControl(name='form.widgets.port').value = '8983'
+    >>> browser.getControl(name='form.widgets.filter_queries').value = 'Subject\r\nreview_state'
+    >>> browser.getControl(name="form.buttons.save").click()
+    >>> sorted(config.filter_queries) == ['Subject', 'review_state']
+    True
+
+
+Required query parameters
+-------------------------
+
+Lastly, let's make sure the "Required query parameters" setting can be set
+to an empty list (please see `issue #18`__ for more infos):
+
+  .. __: http://plone.org/products/collective.solr/issues/18
+
+    >>> browser.getControl(name='form.widgets.required').value = ''
+    >>> browser.getControl(name="form.buttons.save").click()
+    >>> 'Changes saved.' in browser.contents
+    True
+
+    >>> config.required
+    []
+
+Clean up.
+    >>> dispatcher.isActive = _save_isActive

@@ -1,0 +1,76 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    i18n_domain="solr">
+
+  <browser:resourceDirectory
+      name="collective.solr.images"
+      directory="images" />
+
+  <browser:resourceDirectory
+      name="collective.solr.resources"
+      directory="resources" />
+
+  <browser:page
+      name="solr-controlpanel"
+      for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+      class=".controlpanel.SolrControlPanel"
+      template="templates/controlpanel.pt"
+      permission="cmf.ManagePortal" />
+
+  <adapter
+    factory=".controlpanel.SolrControlpanelAdapter"
+    name="solr-controlpanel" />
+
+  <browser:page
+      for="*"
+      name="solr-maintenance"
+      class=".maintenance.SolrMaintenanceView"
+      allowed_interface="..interfaces.ISolrMaintenanceView"
+      permission="cmf.ManagePortal" />
+
+  <browser:page
+      name="index.html"
+      for="socket.error"
+      class=".errors.ErrorView"
+      template="templates/errors.pt"
+      permission="zope2.Public" />
+
+  <browser:viewlet
+      name="plone.searchbox"
+      manager="plone.app.layout.viewlets.interfaces.IPortalHeader"
+      class=".facets.SearchBox"
+      layer=".interfaces.IThemeSpecific"
+      permission="zope2.View" />
+
+  <browser:page
+      name="search"
+      for="plone.base.interfaces.INavigationRoot"
+      class=".facets.SearchView"
+      template="templates/search.pt"
+      layer=".interfaces.IThemeSpecific"
+      permission="zope2.View"
+      />
+
+  <browser:page
+      for="plone.base.interfaces.INavigationRoot"
+      name="search-facets"
+      class=".facets.SearchFacetsView"
+      template="templates/facets.pt"
+      layer=".interfaces.IThemeSpecific"
+      permission="zope2.View" />
+
+  <browser:page
+      for="*"
+      name="suggest-terms"
+      class=".suggest.SuggestView"
+      permission="zope2.View"/>
+
+  <browser:page
+      for="*"
+      name="solr-autocomplete"
+      class=".suggest.AutocompleteView"
+      permission="zope2.View"/>
+
+</configure>
