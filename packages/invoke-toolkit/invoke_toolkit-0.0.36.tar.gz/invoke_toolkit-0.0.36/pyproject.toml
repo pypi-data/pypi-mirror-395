@@ -1,0 +1,200 @@
+[project]
+name = "invoke-toolkit"
+dynamic = ["version"]
+description = "A set of extended APIs for PyInvoke for composable scripts, plugins and richer output"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Nahuel Defossé", email = "D3f0@users.noreply.github.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Operating System :: MacOS :: MacOS X",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: System :: Software Distribution",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "invoke>=2.2.1",
+    "rich>=14.2.0",
+    "typing-extensions>=4.13.2",
+    "appdirs",
+    "tomlkit>=0.13.3",
+    "pyyaml>=6.0.3",
+    "pdbpp >=0.11.7",
+    "copier>=9.10.3",
+]
+
+# Git based versioning, uses git tags
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/invoke_toolkit"]
+# Include template files in wheel distribution
+force-include = { "templates" = "invoke_toolkit/templates" }
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/invoke_toolkit",
+  "/templates",
+  "/tests",
+  "/MANIFEST.in",
+]
+
+
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_scheme = "pep440"
+version_provider = "uv"
+update_changelog_on_bump = true
+major_version_zero = true
+
+[project.scripts]
+inv = "invoke_toolkit.program.main:program.run"
+intk = "invoke_toolkit.program.main:program.run"
+invoke-toolkit = "invoke_toolkit.program.main:program.run"
+
+
+[project.urls]
+Documentation = "https://github.com/D3f0/invoke-toolkit#readme"
+Issues = "https://github.com/D3f0/invoke-toolkit/issues"
+Source = "https://github.com/D3f0/invoke-toolkit"
+
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/invoke_toolkit tests}"
+
+[tool.coverage.run]
+source_pkgs = ["invoke_toolkit", "tests"]
+branch = true
+parallel = true
+
+
+[tool.coverage.paths]
+invoke_toolkit = ["src/invoke_toolkit", "*/invoke-toolkit/src/invoke_toolkit"]
+tests = ["tests", "*/invoke-toolkit/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+
+[tool.ruff.lint.per-file-ignores]
+"*tasks*" = ["ARG001"]
+"__init__.py" = ["E402"]
+"**/{tests,docs}/*" = ["E402"]
+"src/invoke_toolkit/program/program.py" = ["E402"]
+
+[project.optional-dependencies]
+dev = [
+  "hunter>=3.7.0",
+  "pdbpp>=0.11.7",
+]
+
+[dependency-groups]
+ci = [
+    "nox>=2025.10.16",
+]
+dev = [
+    "copier>=9.10.3",
+    "hunter>=3.7.0",
+    "pdbpp>=0.11.7",
+    "pre-commit>=4.3.0",
+    "pre-commit-uv>=4.2.0",
+    "pylint>=3.2.7",
+    "pylint-per-file-ignores>=1.0.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=5.0.0",
+    "pytest-html>=4.1.1",
+    "pytest-picked>=0.5.1",
+    "pytest-sugar>=1.1.1",
+    "pytest-xdist>=3.8.0",
+    "ty>=0.0.1a25",
+]
+doc = [
+    "quartodoc>=0.11.1",
+]
+
+[tool.pylint.main]
+load-plugins = [
+    "pylint_per_file_ignores",
+]
+
+[tool.pylint.design]
+max-positional-arguments = 12
+max-args = 12
+
+[tool.pylint."messages control"]
+# Only show warnings with the listed confidence levels. Leave empty to show all.
+# Valid levels: HIGH, CONTROL_FLOW, INFERENCE, INFERENCE_FAILURE, UNDEFINED.
+confidence = [ "HIGH", "CONTROL_FLOW", "INFERENCE", "INFERENCE_FAILURE", "UNDEFINED" ]
+
+# Disable the message, report, category or checker with the given id(s). You can
+# either give multiple identifiers separated by comma (,) or put this option
+# multiple times (only on the command line, not in the configuration file where
+# it should appear only once). You can also use "--disable=all" to disable
+# everything first and then re-enable specific checks. For example, if you want
+# to run only the similarities checker, you can use "--disable=all
+# --enable=similarities". If you want to run only the classes checker, but have
+# no Warning level messages displayed, use "--disable=all --enable=classes
+# --disable=W".
+disable = [
+  "C0411",
+  "C0209",
+  "W0511", # TODO lines
+  "C0413", # Imports order
+]
+
+
+per-file-ignores = [
+    "tasks.py:missing-function-docstring,missing-class-docstring,missing-module-docstring,invalid-name,too-many-branches",
+    "src/invoke_toolkit/tasks/tasks.py:too-many-arguments",
+    "src/invoke_toolkit/program/program.py:ungrouped-imports,redefined-builtin,raise-missing-from,attribute-defined-outside-init,redefined-builtin,possibly-used-before-assignment,no-else-raise",
+    "src/**/__init__.py:missing-module-docstring,global-statement",
+    "src/invoke_toolkit/scripts/loader.py:redefined-builtin",
+    "src/**/tasks/*.py:unused-argument",
+    "src/invoke_toolkit/collections.py:logging-fstring-interpolation,missing-class-docstring",
+    "src/invoke_toolkit/utils/inspection.py:logging-fstring-interpolation",
+    "**/types.py:too-many-arguments,too-few-public-methods,too-many-locals,missing-class-docstring",
+    "**/context.py:too-few-public-methods",
+    # This is for the list initialization of var-args in Invoke
+    "**/*.py:dangerous-default-value,line-too-long,logging-format-interpolation,missing-module-docstring,missing-class-docstring,logging-fstring-interpolation,redefined-builtin",
+    "tests/**/*.py:missing-function-docstring,unused-argument,missing-module-docstring,missing-class-docstring,redefined-outer-name,import-outside-toplevel,protected-access",
+    "tests/conftest.py:missing-module-docstring,redefined-outer-name",
+    "src/invoke_toolkit/loader/entrypoint.py:missing-function-docstring,logging-fstring-interpolation,import-outside-toplevel,broad-exception-caught,unused-argument,arguments-differ",
+]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=invoke_toolkit"
+filterwarnings = []
+
+[tool.pyright]
+reportUnusedCallResult = false
+pythonVersion = "3.10"
