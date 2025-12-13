@@ -1,0 +1,47 @@
+# video-bookmarks
+**@readwithai** - [X](https://x.com/readwithai) - [blog](https://readwithai.substack.com/) - [machine-aided reading](https://www.reddit.com/r/machineAidedReading/) - [📖](https://readwithai.substack.com/p/what-is-reading-broadly-defined
+)[⚡️](https://readwithai.substack.com/s/technical-miscellany)[🖋️](https://readwithai.substack.com/p/note-taking-with-obsidian-much-of)
+
+A command-line wrapper for the the `mpv` video player to create bookmarks in videos and audio files from te command-line. This can be useful when clipping videos for memes.
+
+This is lightweight and easy to edit. The timestamps obtained may be used with [ffmpeg](https://github.com/talwrii/ffmpeg-cookbook).
+
+Mostly vibe-coded at present! I can code, quantity of vibe coding will likely decrease over time.
+
+## Motivation
+I quite like the command-line, and use it when I am not doing someting big. I wanted to cut out clips from a video from the command-line in order to share memes, but most of the tools were fiddley. So I decided to write this.
+
+## Alternatives and prior work
+mplayer and mpv support scripting and you may be able to define a bookmarks system for them. This seemed too fiddle for my liking.
+
+Video editors like [[Shotcut]] may be useful for this sort of thing. If you are posting on youtube or TikTok the short creators allow some good editing.
+
+You could use `vlc` to get these timestamps.
+
+## Installation
+Ensure mpv is installed:
+
+```
+sudo apt install mpv
+```
+
+You can then install `video-bookmarks` using [pipx](https://github.com/pypa/pipx):
+
+```
+pipx install video-bookmarks
+```
+
+
+# Usage
+You can run `video-bookmarks test.mp4`. This then gives you a list of keybindings to run.
+
+It will generate a bookmarks file called test.bookmarks.
+
+
+## About me
+I am **@readwithai**. I create tools for reading, research and agency sometimes using the markdown editor [Obsidian](https://readwithai.substack.com/p/what-exactly-is-obsidian).
+
+I also create a [stream of tools](https://readwithai.substack.com/p/my-productivity-tools) that are related to carrying out my work.
+
+I write about lots of things - including tools like this - on [X](https://x.com/readwithai).
+My [blog](https://readwithai.substack.com/) is more about reading and research and agency.
