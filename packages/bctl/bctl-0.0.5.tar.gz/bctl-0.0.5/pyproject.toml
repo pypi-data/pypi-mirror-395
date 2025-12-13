@@ -1,0 +1,64 @@
+[project]
+name = "bctl"
+version = "0.0.5"
+description = "service for controlling brightness of laptop & external displays"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+keywords=['brightness', 'brightness-control', 'display-brightness', 'screen-brightness']
+dependencies = [
+    'click', 'tendo', 'aiofiles',
+    'pyudev', 'desktop-notify',
+    'pydantic', 'pydash',
+    'retry-deco',
+    'dbus-next'  # note dbus-next is used by desktop-notify; preferably we'd like to switch over to dbus-fast, see https://gitlab.com/hxss-linux/desktop-notify/-/issues/3
+]
+classifiers = [
+  # How mature is this project? Common values are
+  #   3 - Alpha
+  #   4 - Beta
+  #   5 - Production/Stable
+  "Development Status :: 5 - Production/Stable",
+
+  "Intended Audience :: End Users/Desktop",
+  "Topic :: System :: Hardware",
+
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX :: Linux"
+]
+
+[project.urls]
+homepage = "https://github.com/haridusministeerium/bctl"
+issues = "https://github.com/haridusministeerium/bctl/issues"
+changelog = "https://github.com/haridusministeerium/bctl/blob/master/CHANGELOG.md"
+
+# Development dependencies
+# pip install -e .[lint,test,exe]
+# pip install -e .[dev]
+# pip install -e .[test]
+[project.optional-dependencies]
+dev = [
+    "ruff",  # linting
+    "ty", # checking types
+    "ipdb", # debugging
+]
+
+[build-system]
+requires = [
+    "setuptools>=80.9"
+]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+bctlsim = "bctl.bin.main_daemon_sim:main"
+bctl = "bctl.bin.main_client:main"
+bctld = "bctl.bin.main_daemon:main"
+
+[tool.zest-releaser]
+extra-message = "[skip ci]"
+# push to git remote:
+push-changes = true
+# do not release to pypi:
+release = false
+history_format = "md"
+
