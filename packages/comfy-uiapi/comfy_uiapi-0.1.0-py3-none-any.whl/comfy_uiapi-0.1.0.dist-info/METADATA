@@ -1,0 +1,141 @@
+Metadata-Version: 2.4
+Name: comfy-uiapi
+Version: 0.1.0
+Summary: Python client for ComfyUI-uiapi - programmatic control of ComfyUI workflows
+Project-URL: Homepage, https://github.com/holo-q/comfy-uiapi-client
+Project-URL: Repository, https://github.com/holo-q/comfy-uiapi-client
+Author: holo-q
+License-Expression: MIT
+Keywords: api,client,comfyui,image-generation,stable-diffusion
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Multimedia :: Graphics
+Requires-Python: >=3.11
+Requires-Dist: aiofiles>=24.1
+Requires-Dist: httpx>=0.27
+Requires-Dist: numpy>=1.26
+Requires-Dist: opencv-python>=4.9
+Requires-Dist: pillow>=10.0
+Requires-Dist: websockets>=13.0
+Provides-Extra: dev
+Requires-Dist: pytest; extra == 'dev'
+Requires-Dist: pytest-asyncio; extra == 'dev'
+Requires-Dist: ruff; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# comfy-uiapi
+
+Python client for [ComfyUI-uiapi](https://github.com/oxysoft/ComfyUI-uiapi) - programmatic control of ComfyUI workflows.
+
+## Installation
+
+```bash
+pip install comfy-uiapi
+```
+
+Or for development:
+
+```bash
+pip install -e /path/to/comfy-uiapi-client
+```
+
+## Quick Start
+
+```python
+from comfy_uiapi import ComfyClient
+
+# Connect to ComfyUI with uiapi extension
+client = ComfyClient("127.0.0.1:8188")
+client.ensure_connection()
+
+# Set workflow fields
+client.set("prompt.text", "a beautiful landscape, photorealistic")
+client.set("ksampler.seed", 42)
+client.set("ksampler.steps", 20)
+
+# Execute and get result
+result = client.execute()  # Returns numpy array (RGB)
+```
+
+## Two Execution Modes
+
+### 1. WebUI Mode (default)
+
+Manipulates the workflow graph in the browser via uiapi:
+
+```python
+client = ComfyClient("127.0.0.1:8188")
+client.require_webui = True  # default
+
+client.set("prompt.text", "hello world")
+result = client.execute()
+```
+
+Requires: Browser with ComfyUI WebUI open and connected.
+
+### 2. Workflow API Mode
+
+Posts JSON workflow directly to `/prompt` endpoint - no browser needed:
+
+```python
+import json
+
+# Load workflow JSON (exported from ComfyUI)
+with open("workflow_api.json") as f:
+    workflow = json.load(f)
+
+client = ComfyClient("127.0.0.1:8188")
+client.require_webui = False
+
+# Execute with field overrides
+result = client.execute_workflow(
+    workflow,
+    fields=[
+        ("prompt.text", "a cat in space"),
+        ("ksampler.seed", 123),
+    ]
+)
+```
+
+## Model Downloads
+
+```python
+from comfy_uiapi import ComfyClient, ModelDef
+
+client = ComfyClient("127.0.0.1:8188")
+
+models = {
+    "sd_xl_base_1.0.safetensors": ModelDef(
+        huggingface="stabilityai/stable-diffusion-xl-base-1.0"
+    ),
+    "my_lora.safetensors": ModelDef(
+        civitai="https://civitai.com/api/download/models/12345"
+    ),
+}
+
+client.download_models(models)
+```
+
+## Async API
+
+All methods have async variants:
+
+```python
+import asyncio
+from comfy_uiapi import ComfyClient
+
+async def main():
+    client = ComfyClient("127.0.0.1:8188")
+    await client.ensure_connection_async()
+    await client.set_async("prompt.text", "async generation")
+    result = await client.execute_async()
+
+asyncio.run(main())
+```
+
+## License
+
+MIT
