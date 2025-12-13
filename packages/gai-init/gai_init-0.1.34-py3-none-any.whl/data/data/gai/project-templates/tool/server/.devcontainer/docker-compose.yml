@@ -1,0 +1,35 @@
+version: "3"
+services:
+    devcontainer:
+        image: {{PROJECT_NAME}}-svr_devcontainer:0.1.0
+        container_name: {{PROJECT_NAME}}-svr
+        build:
+            context: ..
+            dockerfile: .devcontainer/Dockerfile.devcontainer
+            cache_from:
+                - type=local,src=$HOME/.cache/image_cache
+            cache_to:
+                - type=local,dest=$HOME/.cache/image_cache
+        environment:
+            PYTHONPATH: /workspaces/gai-tools-md/.venv/lib/python3.10/site-packages
+            UV_LINK_MODE: symlink
+        volumes:
+            # Make sure this matches the workspaceFolder in .devcontainer/devcontainer.json
+            - ..:/workspace:cached
+
+            # Mount ~/.gai directory
+            - $HOME/.gai:/home/vscode/.gai
+
+            # ~/.cache
+            - $HOME/.cache:/home/vscode/.cache
+
+            # Mount gai-lib directory
+            - ../../../../gai-sdk/lib:/workspace/gai-lib
+
+            # Use docker from host
+            - /var/run/docker.sock:/var/run/docker.sock
+
+            # Manually create these mount points for tool's shared libraries
+            # - ../../src/gai/tools/{{TOOL_NAME}}/lib:/workspace/src/gai/tools/{{TOOL_NAME}}/lib
+
+        command: sleep infinity
