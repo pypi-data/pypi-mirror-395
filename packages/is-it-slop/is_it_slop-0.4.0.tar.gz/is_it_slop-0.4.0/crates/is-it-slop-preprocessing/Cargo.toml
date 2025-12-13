@@ -1,0 +1,55 @@
+[package]
+name = "is-it-slop-preprocessing"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+
+
+[lib]
+name = "is_it_slop_preprocessing"
+crate-type = ["cdylib", "rlib"]
+
+
+[dependencies]
+tiktoken-rs = { workspace = true }
+indicatif = { workspace = true, optional = true }
+sprs = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+bincode = { workspace = true, optional = true }
+smallvec = { workspace = true }
+dashmap = { workspace = true }
+ahash = { workspace = true }
+mimalloc = { workspace = true, optional = true }
+tracing = { workspace = true }
+pyo3 = { workspace = true, optional = true }
+numpy = { workspace = true, optional = true }
+pyo3-log = { workspace = true, optional = true }
+
+[features]
+default = ["bincode"]
+python = [
+    "pyo3",
+    "numpy",
+    "pyo3-log",
+    "mimalloc",
+    "serde",
+    "bincode",
+    "progress-bars",
+]
+serde = ["dep:serde", "dep:serde_json"]
+bincode = ["dep:bincode"]
+progress-bars = ["dep:indicatif"]
+mimalloc = ["dep:mimalloc"]
+
+all-testable = ["serde", "bincode"]
+
+[lints]
+workspace = true
