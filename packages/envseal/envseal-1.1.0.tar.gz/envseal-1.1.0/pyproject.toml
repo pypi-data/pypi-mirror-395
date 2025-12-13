@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "envseal"
+dynamic = ["version"]
+description = "Encrypt sensitive values in environment files using AES-GCM"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [{ name = "Til Schwarze", email = "tschwarze@envseal.org" }]
+keywords = [
+    "encryption",
+    "environment",
+    "secrets",
+    "security",
+    "obfuscation",
+    "aes",
+    "aes-gcm",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "cryptography>=46.0.1",
+    "keyring>=25.6.0",
+    "python-dotenv>=1.1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "mkdocs>=1.5.0",
+    "mkdocs-material",
+    "mkdocstrings-python",
+]
+cf_docs = ["mkdocs>=1.5.0", "mkdocs-material", "mkdocstrings-python"]
+
+[project.urls]
+Homepage = "https://github.com/justTil/envseal"
+Documentation = "https://docs.envseal.org"
+Issues = "https://github.com/justTil/envseal/issues"
+
+[project.scripts]
+envseal = "envseal.cli:main"
+
+[tool.hatch.version]
+path = "src/envseal/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/envseal"]
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
