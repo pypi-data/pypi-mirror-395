@@ -1,0 +1,423 @@
+"""Main file scanner orchestrator using the plugin system."""
+
+import os
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+from .scanners import BaseScanner, StructureNode, get_registry
+from .gitignore import load_gitignore, GitignoreParser
+from .glob_expander import expand_braces
+
+
+class FileScanner:
+    """Main scanner that delegates to language-specific scanner plugins."""
+
+    def __init__(self, show_errors: bool = True, fallback_on_errors: bool = True):
+        """
+        Initialize file scanner.
+
+        Args:
+            show_errors: Show parse error nodes in output
+            fallback_on_errors: Use regex fallback for severely broken files
+        """
+        self.registry = get_registry()
+        self.show_errors = show_errors
+        self.fallback_on_errors = fallback_on_errors
+
+    def scan_content(
+        self,
+        content: str | bytes,
+        filename: str,
+        include_metadata: bool = False
+    ) -> Optional[list[StructureNode]]:
+        """
+        Scan file content directly without requiring a file path.
+
+        Useful for scanning remote files (e.g., from GitHub) or content from APIs.
+
+        Args:
+            content: File content as string or bytes
+            filename: Filename (used to determine language/scanner type)
+            include_metadata: Include basic metadata node (just filename and size)
+
+        Returns:
+            List of StructureNode objects, or None if file type not supported
+        """
+        # Get file extension from filename
+        path = Path(filename)
+        suffix = path.suffix.lower()
+
+        # Get appropriate scanner for this file type
+        scanner_class = self.registry.get_scanner(suffix)
+
+        if not scanner_class:
+            return None  # Unsupported file type
+
+        # Create scanner instance with options
+        scanner = scanner_class(
+            show_errors=self.show_errors,
+            fallback_on_errors=self.fallback_on_errors
+        )
+
+        # Convert content to bytes if needed
+        if isinstance(content, str):
+            source_code = content.encode('utf-8')
+        else:
+            source_code = content
+
+        # Scan using the appropriate plugin
+        structures = scanner.scan(source_code)
+
+        # Prepend metadata if requested and structures exist
+        if include_metadata and structures is not None:
+            size_bytes = len(source_code)
+            if size_bytes < 1024:
+                size_str = f"{size_bytes}B"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.1f}KB"
+            else:
+                size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
+
+            file_info = StructureNode(
+                type="file-info",
+                name=path.name,
+                start_line=1,
+                end_line=1,
+                file_metadata={
+                    "size": size_bytes,
+                    "size_formatted": size_str,
+                    "source": "content",
+                }
+            )
+            structures = [file_info] + structures
+
+        return structures
+
+    def scan_file(self, file_path: str, include_file_metadata: bool = True) -> Optional[list[StructureNode]]:
+        """
+        Scan a single file and return its structure.
+
+        Args:
+            file_path: Path to the file to scan
+            include_file_metadata: Include file metadata (size, timestamps) as first node
+
+        Returns:
+            List of StructureNode objects, or None if file type not supported
+        """
+        path = Path(file_path)
+
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Get appropriate scanner for this file type
+        suffix = path.suffix.lower()
+        scanner_class = self.registry.get_scanner(suffix)
+
+        if not scanner_class:
+            return None  # Unsupported file type
+
+        # Get file metadata
+        file_stats = os.stat(file_path)
+
+        # Create scanner instance with options
+        scanner = scanner_class(
+            show_errors=self.show_errors,
+            fallback_on_errors=self.fallback_on_errors
+        )
+
+        # Read file
+        with open(file_path, "rb") as f:
+            source_code = f.read()
+
+        # Scan using the appropriate plugin
+        structures = scanner.scan(source_code)
+
+        # Entropy-based saliency analysis (annotate high-importance code regions)
+        # Skip for binary/non-code files where entropy analysis is meaningless
+        binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.pdf'}
+        if structures is not None and suffix not in binary_extensions:
+            self._annotate_salient_code(structures, file_path, source_code)
+
+        # Prepend file metadata if requested and structures exist
+        if include_file_metadata and structures is not None:
+            # Format file size
+            size_bytes = file_stats.st_size
+            if size_bytes < 1024:
+                size_str = f"{size_bytes}B"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.1f}KB"
+            else:
+                size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
+
+            # Create file info node
+            file_info = StructureNode(
+                type="file-info",
+                name=path.name,
+                start_line=1,
+                end_line=1,
+                file_metadata={
+                    "size": size_bytes,
+                    "size_formatted": size_str,
+                    "created": datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
+                    "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+                    "permissions": oct(file_stats.st_mode)[-3:],
+                }
+            )
+            structures = [file_info] + structures
+
+        return structures
+
+    def _annotate_salient_code(
+        self,
+        structures: list[StructureNode],
+        file_path: str,
+        source_code: bytes,
+        top_percent: float = 0.20,
+        coverage_threshold: float = 0.5
+    ) -> None:
+        """
+        Annotate structure nodes with salient code excerpts based on entropy analysis.
+
+        High-entropy code regions (complex, unique, called-often) are marked for
+        full code display, while low-entropy regions show only signature/docstring.
+
+        Args:
+            structures: List of StructureNode objects to annotate
+            file_path: Path to the file being analyzed
+            source_code: Raw source code bytes
+            top_percent: Top N% of partitions to consider salient (default: 0.20 = top 20%)
+            coverage_threshold: Minimum fraction of node that must be salient to show code (default: 0.5)
+        """
+        try:
+            from .entropy import analyze_file_entropy
+
+            # Run entropy analysis
+            partitions = analyze_file_entropy(
+                file_path,
+                top_percent=top_percent,
+                use_centrality=True
+            )
+
+            # Build set of salient line numbers
+            salient_lines = set()
+            for partition in partitions:
+                salient_lines.update(range(partition.start_line, partition.end_line + 1))
+
+            # Decode source code to lines
+            source_lines = source_code.decode('utf-8', errors='replace').split('\n')
+
+            # Recursively annotate nodes
+            self._annotate_nodes_recursive(structures, salient_lines, source_lines, coverage_threshold)
+
+        except Exception as e:
+            # Fail gracefully if entropy analysis fails (e.g., file too small, import error)
+            if self.show_errors:
+                import sys
+                print(f"Warning: Entropy analysis failed for {file_path}: {e}", file=sys.stderr)
+
+    def _annotate_nodes_recursive(
+        self,
+        nodes: list[StructureNode],
+        salient_lines: set,
+        source_lines: list[str],
+        coverage_threshold: float
+    ) -> None:
+        """
+        Recursively annotate nodes with code excerpts if they overlap with salient regions.
+
+        Args:
+            nodes: List of nodes to annotate
+            salient_lines: Set of line numbers marked as salient
+            source_lines: Source code split into lines
+            coverage_threshold: Minimum coverage to trigger code display
+        """
+        for node in nodes:
+            # Skip structural nodes that shouldn't show code
+            skip_types = {'file-info', 'imports', 'section', 'heading', 'heading-1', 'heading-2',
+                         'heading-3', 'heading-4', 'heading-5', 'heading-6', 'paragraph'}
+            if node.type in skip_types:
+                # Still recurse to children, but don't add code to this node
+                if node.children:
+                    self._annotate_nodes_recursive(node.children, salient_lines, source_lines, coverage_threshold)
+                continue
+
+            # Calculate overlap between node and salient lines
+            node_lines = set(range(node.start_line, node.end_line + 1))
+            overlap = node_lines & salient_lines
+
+            if overlap and len(node_lines) > 0:
+                coverage = len(overlap) / len(node_lines)
+
+                # If significant overlap, attach code excerpt
+                if coverage >= coverage_threshold:
+                    # Extract lines for this node (convert 1-indexed to 0-indexed)
+                    start_idx = max(0, node.start_line - 1)
+                    end_idx = min(len(source_lines), node.end_line)
+
+                    # Dynamically add attributes (duck typing - no dataclass change needed)
+                    node.code_excerpt = source_lines[start_idx:end_idx]
+                    node.saliency_coverage = coverage
+
+            # Recurse into children
+            if node.children:
+                self._annotate_nodes_recursive(node.children, salient_lines, source_lines, coverage_threshold)
+
+    def scan_directory(
+        self,
+        directory: str,
+        pattern: str = "**/*",
+        respect_gitignore: bool = True,
+        exclude_patterns: Optional[list[str]] = None
+    ) -> dict[str, Optional[list[StructureNode]]]:
+        """
+        Scan all supported files in a directory.
+
+        Args:
+            directory: Directory path to scan
+            pattern: Glob pattern for files (use "**/*" for recursive, "*" for current dir only)
+            respect_gitignore: Respect .gitignore exclusions (default: True)
+            exclude_patterns: Additional patterns to exclude (gitignore syntax)
+
+        Returns:
+            Dictionary mapping file paths to their structures
+        """
+        results = {}
+        dir_path = Path(directory).resolve()
+
+        if not dir_path.exists():
+            raise FileNotFoundError(f"Directory not found: {directory}")
+
+        # Load gitignore if requested
+        gitignore = load_gitignore(dir_path) if respect_gitignore else None
+
+        # Default exclusions - always applied
+        default_exclusions = [
+            # Files
+            '.DS_Store',      # macOS
+            'Thumbs.db',      # Windows
+            'desktop.ini',    # Windows
+            '.localized',     # macOS
+            # Directories (universal noise)
+            'node_modules/',  # Node.js dependencies
+            '__pycache__/',   # Python bytecode
+            '.pytest_cache/', # pytest cache
+            'dist/',          # Build output
+            'build/',         # Build output
+            'target/',        # Rust/Java/Kotlin build
+            '*.egg-info/',    # Python package metadata
+            '.venv/',         # Python virtual env
+            'venv/',          # Python virtual env
+            '.next/',         # Next.js build
+            '.nuxt/',         # Nuxt build
+            'coverage/',      # Test coverage
+            '.coverage/',     # Coverage reports
+            '.ruff_cache/',   # Ruff cache
+            '.mypy_cache/',   # MyPy cache
+        ]
+
+        # Combine defaults with user-provided exclusions
+        all_exclude_patterns = default_exclusions.copy()
+        if exclude_patterns:
+            all_exclude_patterns.extend(exclude_patterns)
+
+        # Parse exclusion patterns
+        exclude_parser = GitignoreParser(all_exclude_patterns) if all_exclude_patterns else None
+
+        # Expand brace patterns (e.g., "**/*.{py,js}" → ["**/*.py", "**/*.js"])
+        expanded_patterns = expand_braces(pattern)
+
+        # Process each expanded pattern
+        seen_files = set()  # Avoid duplicates if patterns overlap
+        for expanded_pattern in expanded_patterns:
+            for file_path in dir_path.glob(expanded_pattern):
+                if not file_path.is_file():
+                    continue
+
+                # Skip if already processed
+                file_str = str(file_path)
+                if file_str in seen_files:
+                    continue
+                seen_files.add(file_str)
+
+                # Check exclusions
+                try:
+                    rel_path = str(file_path.relative_to(dir_path))
+                except ValueError:
+                    # File outside base directory
+                    continue
+
+                # Skip files inside hidden directories (directories starting with .)
+                # But allow hidden files themselves (e.g., .gitignore, .python-version)
+                path_parts = Path(rel_path).parts
+                if any(part.startswith('.') and part not in [file_path.name] for part in path_parts):
+                    # File is inside a hidden directory, skip it
+                    continue
+
+                # Check gitignore
+                if gitignore and gitignore.matches(rel_path, file_path.is_dir()):
+                    continue
+
+                # Check additional exclusions
+                if exclude_parser and exclude_parser.matches(rel_path, file_path.is_dir()):
+                    continue
+
+                # Check if we have a scanner for this file type
+                scanner_class = self.registry.get_scanner(file_path.suffix.lower())
+                if scanner_class:
+                    # Check if scanner wants to skip this file
+                    if scanner_class.should_skip(file_path.name):
+                        continue
+
+                    try:
+                        results[file_str] = self.scan_file(file_str)
+                    except Exception as e:
+                        # Continue scanning even if one file fails
+                        results[file_str] = [StructureNode(
+                            type="error",
+                            name=f"Failed to scan: {str(e)}",
+                            start_line=1,
+                            end_line=1
+                        )]
+                else:
+                    # Unsupported file type - include with basic metadata only
+                    try:
+                        file_stats = os.stat(file_str)
+                        size_bytes = file_stats.st_size
+                        if size_bytes < 1024:
+                            size_str = f"{size_bytes}B"
+                        elif size_bytes < 1024 * 1024:
+                            size_str = f"{size_bytes / 1024:.1f}KB"
+                        else:
+                            size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
+
+                        results[file_str] = [StructureNode(
+                            type="file-info",
+                            name=file_path.name,
+                            start_line=1,
+                            end_line=1,
+                            file_metadata={
+                                "size": size_bytes,
+                                "size_formatted": size_str,
+                                "extension": file_path.suffix or "(no extension)",
+                                "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+                                "unsupported": True
+                            }
+                        )]
+                    except Exception:
+                        # If we can't even get metadata, skip the file
+                        continue
+
+        return results
+
+    def get_supported_extensions(self) -> list[str]:
+        """Get list of all supported file extensions."""
+        return self.registry.get_supported_extensions()
+
+    def get_scanner_info(self) -> dict[str, str]:
+        """Get mapping of extensions to language names."""
+        return self.registry.get_scanner_info()
+
+
+# For backward compatibility, export StructureNode
+__all__ = ["FileScanner", "StructureNode"]
