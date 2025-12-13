@@ -1,0 +1,103 @@
+# Veox: The Incredible ML Client for DOUG
+
+Veox is a standalone, pip-installable Python client for DOUG (Distributed Optimization Using GP). It delivers an "incredible" developer experience with a sklearn-style API, real-time TQDM progress bars, and rich terminal output.
+
+## Features
+
+- **sklearn-style API**: Familiar `fit(X, y)` interface with full pandas DataFrame support.
+- **Distributed Evolution**: Seamlessly offload heavy computation to the DOUG cluster.
+- **Real-time Streaming**: Beautiful TQDM progress bars and live status updates.
+- **Built-in Datasets**: Instant access to curated ML datasets (Heart Disease, Titanic, etc.).
+- **Code Pulling**: Extract generated pipeline code directly to your local machine.
+
+## Installation
+
+```bash
+pip install veox
+```
+
+## Usage
+
+### Python API
+
+```python
+from veox import Veox
+from veox.datasets import load_heart_disease
+
+# Initialize client
+client = Veox(api_url="http://localhost:8090")
+
+# Load built-in dataset
+X, y = load_heart_disease()
+
+# Run evolution
+model = client.fit(X=X, y=y, task="binary", population=50, generations=10)
+
+# Pull best pipeline code
+client.pull_code(output_file="best_pipeline.py")
+```
+
+### Command Line Interface
+
+```bash
+# Run evolution on a CSV file
+veox fit --csv my_data.csv --target-column target --task binary --verbose
+
+# Pull code from the last job
+veox pull-code --job-id job_abc123 --output pipeline.py
+```
+
+### Advanced Features
+
+**Polling Mode (Robustness)**
+If streaming connections are unstable, you can switch to polling mode:
+```python
+client.fit(..., use_polling=True, poll_interval=3.0)
+```
+The client also automatically falls back to polling if the stream disconnects.
+
+**Plotting Evolution**
+Visualizing the evolution process is built-in (requires `matplotlib` and `seaborn`):
+```python
+# During fit (auto-plot at end)
+client.fit(..., plot=True)
+
+# Or manually after the job
+history = client.get_job_history(job_id, include_individuals=True)
+from veox.plotting import plot_evolution
+plot_evolution(history)
+```
+
+## Release Process
+
+**CRITICAL:** Do NOT run `pip install` or `twine upload` directly on your host machine. Always use the provided Docker scripts to ensure a clean, isolated build environment.
+
+To build and publish a new version of `veox`:
+
+1.  **Update Version**:
+    Edit `pyproject.toml` and bump the `version` field (e.g., `0.1.14` -> `0.1.15`).
+
+2.  **Configure Credentials**: 
+    Ensure you have a `.env` file in the project root directory (`~/veox_pip/.env`) containing your PyPI token.
+    ```bash
+    TWINE_USERNAME=__token__
+    TWINE_PASSWORD=pypi-your-token-here
+    ```
+
+3.  **Run Containerized Release**:
+    Execute the release script. This will spin up a clean Docker container, install build dependencies, build the wheel, and upload to PyPI.
+    ```bash
+    ./scripts/docker_release.sh
+    ```
+
+4.  **Verify**:
+    Check [PyPI](https://pypi.org/project/veox/) to confirm the new version is live.
+
+### Local Testing
+
+To run the test suite purely locally (without publishing), use the Docker test script:
+```bash
+./scripts/docker_run_tests.sh
+```
+This runs all unit tests inside a container, matching the CI environment.
+
