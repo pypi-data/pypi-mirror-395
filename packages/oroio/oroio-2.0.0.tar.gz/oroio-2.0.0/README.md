@@ -1,0 +1,260 @@
+# oroio CLI
+
+[![PyPI version](https://badge.fury.io/py/oroio.svg)](https://badge.fury.io/py/oroio)
+[![Python versions](https://img.shields.io/pypi/pyversions/oroio.svg)](https://pypi.org/project/oroio/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Official command-line client for **oroio** - Factory Droid API Key Manager.
+
+Manage your Factory Droid API keys through a secure, cloud-based microservice or your own self-hosted server.
+
+---
+
+## ✨ Features
+
+- 🔐 **Secure Key Storage**: Keys encrypted with AES-256-GCM
+- 🔄 **Automatic Key Rotation**: Smart switching when balance runs low
+- 📊 **Usage Tracking**: Real-time balance and expiration monitoring
+- 🌐 **Multi-Server Support**: Connect to any oroio server (cloud or self-hosted)
+- 🎨 **Beautiful CLI**: Rich terminal output with tables and colors
+- 🚀 **Fast & Lightweight**: Minimal dependencies, works everywhere
+
+---
+
+## 📦 Installation
+
+```bash
+pip install oroio
+```
+
+**Requirements**: Python 3.8+
+
+---
+
+## 🚀 Quick Start
+
+### 1. Configure Server (Optional)
+
+By default, connects to `http://localhost:8000`. To use a different server:
+
+```bash
+oroio config set-server https://api.oroio.io
+```
+
+### 2. Register Account
+
+```bash
+oroio register
+# Username: john
+# Email: john@example.com
+# Password: ********
+# ✓ Account created successfully!
+```
+
+### 3. Login
+
+```bash
+oroio login
+# Username: john
+# Password: ********
+# ✓ Logged in successfully as john
+```
+
+### 4. Add API Key
+
+```bash
+oroio add fk-your-factory-api-key
+# ✓ Key added successfully. Total keys: 1
+```
+
+### 5. List Keys
+
+```bash
+oroio list
+```
+
+**Output:**
+```
+╭───┬──────────────────────┬────────────┬──────────────────────┬────────────┬────────────╮
+│ # │ Key                  │    Balance │        Used / Total  │ Expires    │ Status     │
+├───┼──────────────────────┼────────────┼──────────────────────┼────────────┼────────────┤
+│ 1 │ fk-abc...xyz         │     450.0K │    50.0K / 500.0K    │ 2025-12-31 │ ● Active   │
+╰───┴──────────────────────┴────────────┴──────────────────────┴────────────┴────────────╯
+
+Total: 1 keys
+```
+
+### 6. Use Key in Commands
+
+```bash
+oroio run droid
+# Using key: fk-abc...
+# Running: droid
+# [droid starts with FACTORY_API_KEY automatically set]
+```
+
+---
+
+## 📚 Command Reference
+
+### Configuration
+
+```bash
+oroio config set-server <URL>   # Set API server
+oroio config show               # Show current config
+oroio version                   # Show CLI version
+```
+
+### Authentication
+
+```bash
+oroio register                  # Register new account
+oroio login                     # Login to server
+oroio logout                    # Logout (clear tokens)
+```
+
+### Key Management
+
+```bash
+oroio add <KEY>                 # Add new API key
+oroio list                      # List all keys with usage
+oroio use <INDEX>               # Switch active key
+oroio rm <INDEX>                # Remove key
+oroio current                   # Show current key (plaintext)
+oroio refresh                   # Refresh usage data
+```
+
+### Run Commands
+
+```bash
+oroio run <COMMAND>             # Run command with API key injected
+```
+
+**Examples:**
+```bash
+oroio run droid                 # Run droid CLI
+oroio run python script.py      # Run Python script
+oroio run node app.js           # Run Node.js app
+```
+
+The key is automatically set as:
+- `FACTORY_API_KEY` (v2 standard)
+- `DROID_API_KEY` (v1 compatibility)
+
+---
+
+## 🌐 Server Options
+
+### Option 1: Use Public Server
+
+```bash
+oroio config set-server https://api.oroio.io
+oroio register
+oroio login
+```
+
+### Option 2: Self-Hosted Server
+
+Deploy your own oroio server:
+
+```bash
+# Clone repository
+git clone https://github.com/notdp/oroio.git
+cd oroio/backend
+
+# Start with Docker Compose
+docker-compose up -d
+```
+
+Then connect CLI:
+
+```bash
+pip install oroio
+oroio config set-server http://your-server.com
+oroio register
+```
+
+### Option 3: Local Development
+
+```bash
+# Start local server
+cd oroio/backend
+docker-compose up -d
+
+# Connect CLI to localhost (default)
+oroio register
+oroio login
+```
+
+---
+
+## 🔧 Advanced Usage
+
+### Environment Variables
+
+Override server URL without config:
+
+```bash
+export OROIO_API_ENDPOINT=https://api.oroio.io
+oroio login
+```
+
+### Configuration File
+
+Config is stored in: `~/.oroio-cli/config.json`
+
+```json
+{
+  "api_endpoint": "https://api.oroio.io",
+  "access_token": "eyJhbGc...",
+  "refresh_token": "eyJhbGc..."
+}
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/notdp/oroio.git
+cd oroio/cli
+pip install -e .
+```
+
+---
+
+## 🆚 Migration from v1
+
+If you used the standalone `dk` CLI before:
+
+| v1 Command | v2 Command |
+|------------|------------|
+| `dk add` | `oroio add` |
+| `dk list` | `oroio list` |
+| `dk use` | `oroio use` |
+| `dk run` | `oroio run` |
+
+**Note**: `dk` is kept as an alias, so `dk` commands still work!
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](https://github.com/notdp/oroio/blob/main/CONTRIBUTING.md)
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](https://github.com/notdp/oroio/blob/main/LICENSE)
+
+---
+
+## 🔗 Links
+
+- **Homepage**: https://github.com/notdp/oroio
+- **Documentation**: https://github.com/notdp/oroio/tree/main/docs
+- **Issue Tracker**: https://github.com/notdp/oroio/issues
+- **PyPI**: https://pypi.org/project/oroio/
+
+---
+
+**Made with ❤️ by the oroio team**
