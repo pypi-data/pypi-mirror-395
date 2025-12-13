@@ -1,0 +1,138 @@
+Metadata-Version: 2.4
+Name: cattle_grid
+Version: 0.5.18
+Summary: Middleware for the Fediverse
+License-File: LICENSE
+Requires-Python: >=3.11
+Requires-Dist: alembic>=1.17.2
+Requires-Dist: argon2-cffi>=23.1.0
+Requires-Dist: bovine>=0.5.13
+Requires-Dist: dynaconf>=3.2.6
+Requires-Dist: fastapi[standard]>=0.121.2
+Requires-Dist: faststream[cli,rabbit]>=0.6.3
+Requires-Dist: jinja2>=3.1.6
+Requires-Dist: pydantic==2.12.2
+Requires-Dist: sqlalchemy-utils>=0.41.2
+Requires-Dist: sqlalchemy[asyncio]>=2.0.36
+Requires-Dist: tomli-w>=1.0.0
+Requires-Dist: uuid6>=2025.0.1
+Provides-Extra: aiosqlite
+Requires-Dist: aiosqlite>=0.21.0; extra == 'aiosqlite'
+Provides-Extra: cache
+Requires-Dist: fakeredis>=2.26.2; extra == 'cache'
+Requires-Dist: redis>=5.2.1; extra == 'cache'
+Provides-Extra: postgres
+Requires-Dist: asyncpg>=0.30.0; extra == 'postgres'
+Provides-Extra: uvicorn
+Requires-Dist: uvicorn>=0.37.0; extra == 'uvicorn'
+Description-Content-Type: text/markdown
+
+# cattle_grid
+
+cattle_grid handles a few common tasks that plague Fediverse applications:
+
+* Maintaining an actor document and associated endpoints like inbox
+* Verifying HTTP signatures
+* Determine if somebody is authorized to view something or not
+* Manage follower collections
+
+Furthermore with its [muck_out](https://bovine.codeberg.page/muck_out/) extension
+it handles parsing ActivityPub objects.
+
+cattle_grid relies on [faststream](https://faststream.ag2.ai/latest/) and
+then [RabbitMQ](https://www.rabbitmq.com/) for message processing. If you
+want to use cattle_grid, you will be faced with using __message queues__.
+
+cattle_grid has an internal account system.
+
+## Related links
+
+### Applications using cattle_grid
+
+* [comments](https://bovine.codeberg.page/comments/) allows one to add comments to a static site
+* [fedi-herds](https://codeberg.org/bovine/fedi-herds/) allows list management
+* [roboherd](https://bovine.codeberg.page/roboherd/) allows one to build automatic posting bots (these have no frontend)
+
+### Related projects / utilities
+
+* [almabtrieb](https://bovine.codeberg.page/almabtrieb/) implements one of the Client protocols used by cattle_grid
+* [console](https://codeberg.org/bovine/console) provides a light weight frontend.
+
+## Development
+
+### Testing
+
+You can run the pytest tests via
+
+```bash
+uv run pytest
+```
+
+or in watch mode
+
+```bash
+uv run ptw .
+```
+
+### Running behave tests
+
+Build the container via
+
+```bash
+./update_docker.sh
+```
+
+This script uses the requirements from `pyproject.toml` via `uv export` to install
+python dependencies in the container. This means this script needs to be rerun, if
+you make changes to the dependencies. Startup the docker environment via
+
+```bash
+docker compose up
+```
+
+Open a runner container
+
+```bash
+docker compose run --rm --name runner cattle_grid_app /bin/sh
+```
+
+Inside this container, you now run
+
+```bash
+fediverse-features
+behave
+```
+
+The first step downloads some features from [fediverse-features](https://codeberg.org/helge/fediverse-features)
+and the second step runs the test suite.
+
+### Building end 2 end reports  (as done by CI)
+
+The process to build the end to end reports is described [here](./resources/report_builder/README.md). The reports should be published to [this repository](https://codeberg.org/helge/cattle_grid_reports) and then made available [here](https://helge.codeberg.page/cattle_grid_reports/).
+
+### Running as stand alone
+
+Create a requirements.txt file and start a virgin docker container
+
+```bash
+uv export --no-editable --no-emit-project --no-hashes --no-dev > requirements.txt
+docker run --rm -ti -p 8000:8000\
+    -v ./cattle_grid:/app/cattle_grid\
+    -v ./requirements.txt:/app/requirements.txt \
+    --workdir /app\
+    helgekr/bovine:python3.13 /bin/sh
+```
+
+Once inside the docker container install dependencies
+
+```sh
+pip intall -r requirements.txt
+```
+
+and run `cattle_grid` via
+
+```sh
+uvicorn cattle_grid:create_app --factory --host 0.0.0.0
+```
+
+This currently fails.
