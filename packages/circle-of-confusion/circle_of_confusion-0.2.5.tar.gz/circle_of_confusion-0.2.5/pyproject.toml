@@ -1,0 +1,101 @@
+[build-system]
+requires = ["hatchling", "hatch-build-scripts"]
+build-backend = "hatchling.build"
+
+[project]
+name = "circle-of-confusion"
+requires-python = ">=3.9"
+classifiers = [
+    'License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)',
+    "Operating System :: OS Independent",
+    "Programming Language :: Rust",
+    "Environment :: WebAssembly",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: Implementation :: MicroPython",
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    "Topic :: Scientific/Engineering",
+    "Topic :: Multimedia :: Graphics",
+]
+dynamic = ["version"]
+description = "Calculator for Circle of Confusion (CoC) to calculate the size in pixels of an area, used for depth of field processing."
+readme = "README.md"
+license = "EUPL-1.2"
+authors = [{ name = "Gilles Vink", email = "gillesvink@noreply.codeberg.org" }]
+maintainers = [
+    { name = "Gilles Vink", email = "gillesvink@noreply.codeberg.org" },
+]
+dependencies = [
+    "protobuf==6.33.0",
+    "pywasm>=2.2.1",
+]
+
+[dependency-groups]
+wasmtime = ["wasmtime>=7.0.02"]
+recommended = ["wasmtime"]
+dev = [
+    "pytest==8.1.1",
+    "pytest-readme>=1.0.2",
+    "ty>=0.0.1a26",
+]
+
+[project.optional-dependencies]
+recommended = ["wasmtime"]
+wasmtime = ["wasmtime"]
+
+
+[project.urls]
+Homepage = "https://codeberg.org/gillesvink/circle-of-confusion"
+"Bug Tracker" = "https://codeberg.org/gillesvink/circle-of-confusion/issues"
+Changelog = "https://codeberg.org/gillesvink/circle-of-confusion/src/branch/main/CHANGELOG.md"
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "**/*.rs" },
+    { file = "**/*.proto" },
+
+]
+
+[tool.hatch.version]
+path = "Cargo.toml"
+pattern = "version = \"(?P<version>\\d+\\.\\d+\\.\\d+)"
+[tool.hatch.build.targets.wheel]
+packages = ["python/src/circle_of_confusion"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"./build/_circle_of_confusion" = "/_circle_of_confusion"
+
+[[tool.hatch.build.targets.wheel.hooks.build-scripts.scripts]]
+out_dir = "build"
+commands = [
+    "mkdir -p build/_circle_of_confusion",
+    "touch build/_circle_of_confusion/__init__.py",
+    "uv pip install mypy-protobuf",
+    "protoc --proto_path=./proto --python_out=./build/_circle_of_confusion circle_of_confusion.proto --mypy_out=./build/_circle_of_confusion",
+    "cargo build --lib --release --target wasm32-unknown-unknown --features wasm-bindings",
+    "cp target/wasm32-unknown-unknown/release/circle_of_confusion.wasm ./build/_circle_of_confusion",
+]
+artifacts = [
+    "_circle_of_confusion",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["build"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ty.rules]
+index-out-of-bounds = "ignore"
+
