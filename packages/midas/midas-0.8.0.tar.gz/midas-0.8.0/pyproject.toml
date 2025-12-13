@@ -1,0 +1,110 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "midas"
+version = "0.8.0"
+description="Python driver for Honeywell Midas gas detectors."
+authors = [
+  {name = "Pat Fuller", email = "patrickfuller@gmail.com" },
+]
+maintainers = [
+  {name = "Alex Ruddick", email = "alex@ruddick.tech" }
+]
+readme = "README.md"
+classifiers = [
+  "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+  "Development Status :: 4 - Beta",
+  "Natural Language :: English",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Human Machine Interfaces",
+  "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)"
+]
+dependencies = [
+  'pymodbus>=3.0.2,<3.12.0,!=3.10.0',
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0",
+  "pytest-cov",
+  "pytest-asyncio",
+  "ruff~=0.14.7",
+  "zuban>=0.3.0",
+]
+
+[project.scripts]
+midas = "midas:command_line"
+
+[project.urls]
+Homepage = "https://github.com/alexrudd2/midas"
+Issues = "https://github.com/alexrudd2/midas/issues"
+
+[tool.setuptools]
+packages = ["midas"]
+
+[tool.setuptools.package-data]
+"midas" = ["faults.csv", "py.typed"]
+
+[tool.ruff]
+extend-exclude = ["venv*"]
+line-length = 99
+target-version = "py310"
+
+[tool.ruff.lint]
+ignore = [
+  "D104",  # Missing docstring in public package
+  "W293",  # Blank line contains whitespace
+]
+select = [
+  "B",   # bandit
+  "C",   # complexity
+  "COM", # trailing comma rules
+  "D",   # docstrings
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort
+  "PT",  # flake8-pytest
+  "RUF", # ruff base config
+  "SIM", # flake-simplify
+  "UP",  # pyupgrade
+  "W",   # pycodestyle warnings
+  "YTT", # flake8-2020
+  "ARG", # flake8-unused args
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true
+
+[tool.mypy]
+check_untyped_defs = true
+allow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["pymodbus.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+allow_untyped_defs = true
+
+[tool.pytest]
+addopts = ["--cov"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+enableTypeIgnoreComments = true
