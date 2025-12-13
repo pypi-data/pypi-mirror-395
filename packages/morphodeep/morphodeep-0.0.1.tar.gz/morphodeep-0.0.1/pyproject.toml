@@ -1,0 +1,78 @@
+[project]
+name = "morphodeep"
+version = "0.0.1"
+description = "Instance segmentation of membranes"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+  {name = "Emmanuel Faure"},
+  {email = "emmanuel.faure@lirmm.fr"},
+]
+keywords = [
+    "image analysis",
+    "bioimage",
+    "segmentation",
+    "instance-segmentation",
+    "deep learning",
+    "unet",
+    "napari plugin",
+    "microscopy",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Framework :: napari",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+requires-python = ">=3.10"
+
+dependencies = [
+    "numpy",
+    "tqdm",
+    "tensorflow",
+    "scikit-image",
+    "matplotlib",
+    "nibabel",
+    "scipy",
+    "h5py",
+    "paramiko",
+    "scp",
+    "pandas"
+]
+
+[project.optional-dependencies]
+napari = [
+  "napari>=0.4.19",
+  "magicgui>=0.6.0", 
+  "PyQt5",
+  "qtpy>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "tox-uv",
+    "pytest",  # https://docs.pytest.org/en/latest/contents.html
+    "pytest-cov",  # https://pytest-cov.readthedocs.io/en/latest/
+    "pytest-qt",  # httprs://pytest-qt.readthedocs.io/en/latest/
+    "napari[qt]",  # test with napari's default Qt bindings
+]
+
+[project.entry-points."napari.manifest"]
+morphodeep = "morphodeep:napari.yaml"
+
+[tool.setuptools]
+# pas de "src layout" ici : le package est dans ./morphodeep
+packages = { find = { where = ["."] } }
+
+[tool.setuptools.package-data]
+# inclure le manifest napari dans le wheel
+"morphodeep" = ["napari.yaml"]
