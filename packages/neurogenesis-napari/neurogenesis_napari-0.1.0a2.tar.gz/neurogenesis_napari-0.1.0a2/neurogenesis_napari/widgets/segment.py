@@ -1,0 +1,143 @@
+from functools import partial
+from typing import Tuple, List
+import numpy as np
+from magicgui import magic_factory
+from napari.qt.threading import thread_worker
+import napari
+from napari import Viewer
+from napari.layers import Image
+from napari.utils.notifications import (
+    show_error,
+    show_warning,
+    show_info,
+)
+from skimage.measure import regionprops
+from neurogenesis_napari.widget_utils import (
+    bbox_to_rectangle,
+    get_gray_img,
+    setup_cellpose_log_panel,
+    log_context,
+    wire_layer_comboboxes_autorefresh,
+    image_layer_choices,
+    start_progress,
+    close_progress,
+    get_segmentation_layers,
+)
+
+
+SEGMENT_WIDGET_PANEL_KEY = "segment_widget"
+
+
+@thread_worker
+def _segment_async(
+    img_gray: np.ndarray,
+    panel_key: str,
+    gpu: bool = False,
+    model_type: str = "cyto3",
+) -> Tuple[np.ndarray, List[List[float]], List[np.ndarray]]:
+    """Segment *img_gray* with Cellpose and derive centroids + bounding boxes. Route the logs to a separate context associated with the panel key.
+    Args:
+        img_gray (np.ndarray): 2‑D numpy array.
+        panel_key (str): Panel key of the log context.
+        gpu (bool: False): If ``True`` and a CUDA device is available, run Cellpose on GPU.
+        model_type (str: = "cyto3"):  Name of the pretrained Cellpose model to load.
+
+    Returns:
+        pred_masks
+        centroids
+        bounding_boxes
+    """
+    from cellpose import models
+    from neurogenesis_napari.segmentation.dapi_cellpose import segment
+
+    show_info("Segmentation is running...")
+
+    # route logs from this thread to the matching dock only
+    with log_context(panel_key):
+        model = models.Cellpose(gpu=gpu, model_type=model_type)
+        pred_masks = segment(img_gray, model)
+
+    regions = regionprops(pred_masks)
+    centroids = []
+    bounding_boxes = []
+    for region in regions:
+        centroids.append([float(region.centroid[0]), float(region.centroid[1])])
+        bounding_boxes.append(bbox_to_rectangle(region.bbox))
+
+    return pred_masks, centroids, bounding_boxes
+
+
+def _segment_widget_impl(
+    viewer: Viewer,
+    DAPI: Image,
+    gpu: bool = False,
+    model_type: str = "cyto3",
+) -> None:
+    """Run segmentation and add three visual layers to Napari.
+
+    Args:
+        DAPI (Image): DAPI channel.
+        gpu (bool: = False): Forwarded to "_get_bounding_boxes". Use GPU if available.
+        model_type (str: = "cyto3"): Which Cellpose model weights to load.
+
+    Returns:
+        None
+    """
+    if DAPI is None:
+        show_warning("No DAPI image layer selected. Pick one and retry.")
+        return None
+
+    img_gray = get_gray_img(DAPI)
+
+    setup_cellpose_log_panel(
+        viewer,
+        panel_key=SEGMENT_WIDGET_PANEL_KEY,
+        dock_title="Cellpose logs - Segment",
+    )
+
+    worker = _segment_async(img_gray, SEGMENT_WIDGET_PANEL_KEY, gpu, model_type)
+
+    def _on_done(result) -> None:
+        pred_masks, centroids, bounding_boxes = result
+
+        DAPI.metadata["segmentation"] = {
+            "masks": pred_masks,
+            "centroids": centroids,
+            "bounding_boxes": bounding_boxes,
+        }
+
+        segmentation_layers = get_segmentation_layers(DAPI, pred_masks, centroids, bounding_boxes)
+        for layer in segmentation_layers:
+            viewer.add_layer(layer)
+
+        show_info("Cellpose segmentation finished.")
+
+    pbar = {"obj": None}
+
+    worker.started.connect(partial(start_progress, pbar))
+    worker.returned.connect(_on_done)
+    worker.errored.connect(lambda e: (show_error(f"Cellpose failed: {e}")))
+    worker.finished.connect(partial(close_progress, pbar))
+
+    worker.start()
+    return None
+
+
+_factory = magic_factory(
+    call_button="Segment",
+    DAPI={
+        "widget_type": "ComboBox",
+        "choices": image_layer_choices,
+        "nullable": True,
+    },
+)(_segment_widget_impl)
+
+
+def segment_widget():
+    w = _factory()
+    _ = wire_layer_comboboxes_autorefresh(
+        w,
+        viewer=napari.current_viewer(),
+        combos=[(w.DAPI, ["dapi"])],
+    )
+    return w
