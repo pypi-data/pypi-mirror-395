@@ -1,0 +1,358 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LightConversion.Hardware.HarpiaDaq</name>
+    </assembly>
+    <members>
+        <member name="T:LightConversion.Hardware.HarpiaDaq.IHarpiaDaqLogger">
+            <summary>Interface for DAQ logger</summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.IHarpiaDaqLogger.LogEvent(System.String)">
+            <summary></summary>
+            <param name="message"></param>
+        </member>
+        <member name="T:LightConversion.Hardware.HarpiaDaq.HarpiaDaq">
+            <summary>
+            Class for manipulation of FTDI-controlled Harpia DAQ
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.#ctor">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.NumberOfChannels">
+            <summary>
+            Number of total channels on DAQ
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.UsbInTransferSize">
+            <summary>
+            USB transfer size for FTDI
+            </summary>
+        </member>
+        <member name="T:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection">
+            <summary>
+            Collection of Analog input channels
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.Item(System.Int32)">
+            <summary>
+            </summary>
+            <param name="index"></param>
+            <returns></returns>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.Item(System.String)">
+            <summary>
+            </summary>
+            <param name="channelString"></param>
+            <returns></returns>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.CountAvailable">
+            <summary>
+            Number of total number of channels on DAQ
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.CountEnabled">
+            <summary>
+            Number of currently enabled channels
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.#ctor(LightConversion.Hardware.HarpiaDaq.HarpiaDaq,LightConversion.Hardware.HarpiaDaq.IHarpiaDaqLogger,System.Int32)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="_myDaq"></param>
+            <param name="_myLogger"></param>
+            <param name="numberOfChannels"></param>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.Disable(System.String)">
+            <summary>
+            Disables single or multiple channels
+            </summary>
+            <param name="channelEnableString">A single channel string, for example AI0, or comma-separated list of channels</param>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.Enable(System.String)">
+            <summary>
+            Enables single or multiple channels
+            </summary>
+            <param name="channelEnableString">A single channel string, for example AI0, or comma-separated list of channels</param>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.ToString">
+            <summary>
+            Converts to comma-separated string of enabled channels
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCollection.SoftSpan">
+            <summary>
+            SOFTSPAN number for acquisition
+            </summary>
+        </member>
+        <member name="T:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel">
+            <summary>
+            Analog input channel
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.PhysicalChannel">
+            <summary>
+            Number of physical channel (CH0-CH5)
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.#ctor(LightConversion.Hardware.HarpiaDaq.HarpiaDaq,LightConversion.Hardware.HarpiaDaq.IHarpiaDaqLogger)">
+            <summary>
+            Constructor
+            </summary>
+            <param name="_myDaq">HarpiaDaq object</param>
+            <param name="_myLogger">Logger</param>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.Enable">
+            <summary>
+            Sets channel enabled for next acquisition and sets default range (-10V;10V)
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.Disable">
+            <summary>
+            Sets channel disabled for next acquisition
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.SetRange(System.Int32)">
+            <summary>
+            Sets channel range for next acquisition
+            </summary>
+            <param name="rangeIndex">Range index from <see cref="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.SupportedRanges"/> array</param>
+            <returns></returns>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.SetRange(System.Double,System.Double)">
+            <summary>
+            Sets channel range for next acquisition. <paramref name="minimumValue"/> and <paramref name="maximumValue"/> values must correspond to values of <see cref="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.SupportedRanges"/>"/>
+            </summary>
+            <param name="minimumValue">Minimum analog channel value</param>
+            <param name="maximumValue">Maximum analog channel value</param>
+            <returns></returns>
+        </member>
+        <member name="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.SupportedRanges">
+            <summary>
+            List of analog channel readout range for current device. Value (0.0, 0.0) means channel is disabled
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.RangeIndex">
+            <summary>
+            Index of analog channel range from <see cref="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.SupportedRanges"/>
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.IsEnabled">
+            <summary>
+            Is channel enabled
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.MinimumValue">
+            <summary>
+            Minimum value of analog channel readout, set for next acquisition
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannel.MaximumValue">
+            <summary>
+            Minimum value of analog channel readout, set for next acquisition
+            </summary>
+        </member>
+        <member name="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannelCount">
+            <summary>
+            Number of Analog input channels
+            </summary>
+        </member>
+        <member name="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.TimeoutRetriesMax">
+            <summary>
+            Number of maximum data acquisition retries before throwing the <see cref="T:System.TimeoutException"/>
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.MaxDatapoints">
+            <summary>
+            Maximum number of datapoints that can be acquired by a single FTDI session.
+            If more points are requested, multiple acquisitions are done and results are concatenated.
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.LoadDevice(System.String)">
+            <summary>
+            Loads device info by device name
+            </summary>
+            <param name="deviceName">Device name string (e.g. Dev0)</param>
+            <returns>Device (not initialized) object</returns>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.LoadDevice(System.String,LightConversion.Hardware.HarpiaDaq.IHarpiaDaqLogger)">
+            <summary>
+            Loads device info
+            </summary>
+            <param name="deviceName">Device name string (e.g. Dev0)</param>
+            <param name="logger">External logger for debugging</param>
+            <returns></returns>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.Devices">
+            <summary>
+            List of device name strings
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.IsBusy">
+            <summary>
+            True, if acquisition is keeping the device busy
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.Device">
+            <summary>
+            FTDI-level device information
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ReverseSignals">
+            <summary>
+            If true, time-dependence in signals is reversed
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AcquisitionTime">
+            <summary>
+            Time span in miliseconds of the last acquisition (data sorting excluded)
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.OverheadTime">
+            <summary>
+            Overhead time (data sorting) span in miliseconds of the last acquisition
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AcquisitionTimeout">
+            <summary>
+            Time, after which a TimeoutException is raised
+            </summary>
+        </member>
+        <member name="F:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AIChannels">
+            <summary>
+            Analog input channels
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.TriggerSource">
+            <summary>
+            Trigger (start) source
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ClockSource">
+            <summary>
+            Clock source
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ClockActiveEdge">
+            <summary>
+            Clock active edge (falling/rising)
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.TriggerActiveEdge">
+            <summary>
+            Trigger active edge (always rising)
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.EnableAIChannels(System.String)">
+            <summary>
+            Enables channels
+            </summary>
+            <param name="channelEnableString">Coma or semicolon separate list of AI channels</param>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ClockFrequency">
+            <summary>
+            Internal sampling clock frequency
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.MaxClockFrequency">
+            <summary>
+            Maximum clock frequency for current channel configuration
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.DatapointsPerChannel">
+            <summary>
+            Number of samples to acquire per channel
+            </summary>
+            <remarks>
+            After initialization, this number might differ from used on previous initialization
+            </remarks>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.Initialize">
+            <summary>
+            Initializes loaded SYNC DAQ device
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.Initialize(System.Boolean)">
+            <summary>
+            Initializes loaded DAQ device
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.Connected">
+            <summary>
+            True, if device was initialized successfully
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ConfigureStartTrigger(LightConversion.Abstractions.TriggerChannel)">
+            <summary>
+            Configures trigger (start) source
+            </summary>
+            <param name="triggerSource">Channel to use for internal/external triggering</param>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ConfigureSampleClock(LightConversion.Abstractions.ClockChannel,System.Double,LightConversion.Abstractions.SampleClockActiveEdge,System.Int32)">
+            <summary>
+            Configures clock (a/d trigger) channel
+            </summary>
+            <param name="clockSource">Channel to use for internal/external triggering</param>
+            <param name="clockFrequency">Frequency in Hz. Relevant only for internal clock</param>
+            <param name="clockActiveEdge">Edge of digital signal for clocking</param>
+            <param name="datapointsPerChannel">Number of datapoints per channel for successive acquisition</param>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.SetClockFrequency(System.Double)">
+            <summary>
+            Sets clock frequency for next acquisition. Relevant only if <see cref="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ClockSource"/> is <see cref="F:LightConversion.Abstractions.ClockChannel.Internal"/>
+            </summary>
+            <param name="clockFrequency">Clock frequency. If value is larger than supported maximum, <see cref="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.MaximalInternalClockFrequency"/> value is used</param>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.MaximalInternalClockFrequency">
+            <summary>
+            Maximum internal clock frequency, when <see cref="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.ClockSource"/> is not <see cref="F:LightConversion.Abstractions.ClockChannel.Internal"/>
+            </summary>
+            <returns>Maximum internal clock frequency, depending on count of currently enabled channels</returns>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.GetAnalogChannelsData(System.Boolean)">
+            <summary>
+            Reads data (sample number defined by DatapointsPerChannel from enabled analog channels
+            </summary>
+            <param name="isSerialReadout">If false (default), raw data decryption is done in-between reading FTDI buffer</param>
+            <returns>Two dimensional array of voltage data. First dimension corresponds to channel, second - time dependence. Physical channels are assigned by ChannelMap</returns>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.GetAnalogChannelsData(System.Threading.CancellationToken,System.Boolean)">
+            <summary>
+            Reads data (sample number defined by DatapointsPerChannel from enabled analog channels
+            </summary>
+            <returns>Two dimensional array of voltage data. First dimension corresponds to channel, second - time dependence. Physical channels are assigned by ChannelMap</returns>
+            <param name="isSerialReadout">If false (default), raw data decryption is done in-between reading FTDI buffer</param>
+            <exception cref="T:System.TimeoutException">Thrown when data acquisition time exceeds <see cref="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.AcquisitionTimeout"/> is exceeded</exception>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.LastAcquisitionTimeoutRetries">
+            <summary>
+            Number of timeouts due to FTDI buffer overload in last acquisition
+            </summary>
+        </member>
+        <member name="M:LightConversion.Hardware.HarpiaDaq.HarpiaDaq.Dispose">
+            <summary>
+            Disposes object
+            </summary>
+        </member>
+        <member name="T:LightConversion.Hardware.HarpiaDaq.Properties.Resources">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.Properties.Resources.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:LightConversion.Hardware.HarpiaDaq.Properties.Resources.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+    </members>
+</doc>
