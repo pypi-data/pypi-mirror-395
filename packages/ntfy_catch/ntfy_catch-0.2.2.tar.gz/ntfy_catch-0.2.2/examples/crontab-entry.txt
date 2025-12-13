@@ -1,0 +1,121 @@
+# ntfy-catch Cron Setup Instructions
+#
+# This file contains example crontab entries for running ntfy-catch periodically.
+# To edit your crontab, run: crontab -e
+
+# ============================================================================
+# BASIC SETUP
+# ============================================================================
+
+# Poll every 5 minutes
+# Replace /path/to/ntfy-catch with your actual installation path
+*/5 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
+
+# ============================================================================
+# ALTERNATIVE SCHEDULES
+# ============================================================================
+
+# Every 1 minute (for time-sensitive notifications)
+# */1 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
+
+# Every 10 minutes (less frequent polling)
+# */10 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
+
+# Every 30 minutes
+# */30 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
+
+# Every hour (at minute 0)
+# 0 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
+
+# ============================================================================
+# MULTIPLE CONFIGURATIONS
+# ============================================================================
+
+# Poll high-priority alerts every minute
+# */1 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/alerts.ini >> logs/alerts-cron.log 2>&1
+
+# Poll monitoring every 5 minutes
+# */5 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/monitoring.ini >> logs/monitoring-cron.log 2>&1
+
+# ============================================================================
+# SINGLE TOPIC POLLING
+# ============================================================================
+
+# Poll only the 'critical' topic every minute
+# */1 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini --topic critical >> logs/critical-cron.log 2>&1
+
+# ============================================================================
+# ADVANCED: WITH PYTHON VIRTUAL ENVIRONMENT
+# ============================================================================
+
+# If using a Python virtual environment, activate it first
+# */5 * * * * cd /path/to/ntfy-catch && source venv/bin/activate && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
+
+# ============================================================================
+# ADVANCED: WITH EMAIL NOTIFICATIONS ON ERRORS
+# ============================================================================
+
+# Set MAILTO at the top of your crontab to receive error emails
+# MAILTO=your-email@example.com
+# */5 * * * * cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
+
+# ============================================================================
+# CRON SCHEDULE FORMAT REFERENCE
+# ============================================================================
+#
+# * * * * *  command to execute
+# │ │ │ │ │
+# │ │ │ │ └─── day of week (0-7, both 0 and 7 = Sunday)
+# │ │ │ └───── month (1-12)
+# │ │ └─────── day of month (1-31)
+# │ └───────── hour (0-23)
+# └─────────── minute (0-59)
+#
+# Examples:
+#   */5 * * * *     = every 5 minutes
+#   0 * * * *       = every hour at minute 0
+#   0 0 * * *       = every day at midnight
+#   0 9 * * 1       = every Monday at 9:00 AM
+#   */15 9-17 * * * = every 15 minutes from 9 AM to 5 PM
+#
+# ============================================================================
+# TESTING YOUR CRON JOB
+# ============================================================================
+#
+# 1. Test the command manually first:
+#    cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini
+#
+# 2. Add the cron entry with a short interval (e.g., every minute)
+#
+# 3. Wait and check the logs:
+#    tail -f /path/to/ntfy-catch/logs/cron.log
+#    tail -f /path/to/ntfy-catch/logs/ntfy-catch.log
+#
+# 4. Once working, adjust to your desired interval
+#
+# ============================================================================
+# DEBUGGING CRON ISSUES
+# ============================================================================
+#
+# If cron job isn't working:
+#
+# 1. Check cron is running: systemctl status cron (or crond)
+#
+# 2. Check your crontab: crontab -l
+#
+# 3. Check logs:
+#    - Cron system log: grep CRON /var/log/syslog (or /var/log/cron)
+#    - Application logs: logs/cron.log and logs/ntfy-catch.log
+#
+# 4. Test with full paths:
+#    */5 * * * * /usr/bin/python3 /full/path/to/ntfy-catch/src/main.py --config /full/path/to/ntfy-catch/config/ntfy-catch.ini >> /full/path/to/ntfy-catch/logs/cron.log 2>&1
+#
+# 5. Check file permissions:
+#    - main.py should be readable
+#    - handler script should be executable
+#    - config file should be readable
+#
+# 6. Environment differences:
+#    Cron runs with minimal environment. If you need specific environment
+#    variables, set them in your crontab:
+#    */5 * * * * export PATH=/usr/local/bin:$PATH && cd /path/to/ntfy-catch && python src/main.py --config config/ntfy-catch.ini >> logs/cron.log 2>&1
