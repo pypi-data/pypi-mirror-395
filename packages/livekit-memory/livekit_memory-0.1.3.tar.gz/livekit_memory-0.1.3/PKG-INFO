@@ -1,0 +1,108 @@
+Metadata-Version: 2.4
+Name: livekit-memory
+Version: 0.1.3
+Summary: Memory - Document ingestion engine. Chunks and indexes knowledge sources into Qdrant to power LiveKit agent's contextual retrieval.
+License: Apache-2.0
+Keywords: livekit,rag,memory,qdrant,embeddings,retrieval
+Author: joshiayush
+Requires-Python: >=3.13,<4
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Dist: fastembed (>=0.7.4,<0.8.0)
+Requires-Dist: langchain (>=1.1.2,<2.0.0)
+Requires-Dist: langchain-core (>=1.1.1,<2.0.0)
+Requires-Dist: langchain-google-vertexai (>=3.1.1,<4.0.0)
+Requires-Dist: langchain-text-splitters (>=0.3.0,<1.0.0)
+Requires-Dist: nltk (>=3.9.0,<4.0.0)
+Requires-Dist: pypdf (>=5.1.0,<6.0.0)
+Requires-Dist: qdrant-client (>=1.16.1,<2.0.0)
+Requires-Dist: tidylog (>=0.1.1,<0.2.0)
+Project-URL: Homepage, https://github.com/joshiayush/memory
+Project-URL: Issues, https://github.com/joshiayush/memory/issues
+Project-URL: Repository, https://github.com/joshiayush/memory
+Description-Content-Type: text/markdown
+
+# livekit-memory
+
+Document ingestion engine. Chunks and indexes knowledge sources into Qdrant to power LiveKit agent's contextual retrieval.
+
+## Installation
+
+```bash
+pip install livekit-memory
+```
+
+## Usage
+
+### CLI
+
+**Ingest documents:**
+
+```bash
+# Ingest a markdown file to Qdrant Cloud
+livekit-memory ingest document.md --type markdown --collection my-docs \
+    --url https://your-cluster.qdrant.io --api-key $QDRANT_API_KEY
+
+# Ingest to localhost Qdrant (no API key required)
+livekit-memory ingest --url localhost --collection my-docs --file document.md --type markdown
+```
+
+**Query documents:**
+
+```bash
+# Query from Qdrant Cloud
+livekit-memory query --url https://your-cluster.qdrant.io --api-key $QDRANT_API_KEY \
+    --collection my-docs --query "What is the main topic?"
+
+# Query from localhost
+livekit-memory query --url localhost --collection my-docs --query "What is the main topic?"
+```
+
+**Migrate between Qdrant instances:**
+
+```bash
+# Migrate from cloud to localhost
+livekit-memory migrate \
+    --source-url https://your-cluster.qdrant.io --source-api-key $QDRANT_API_KEY \
+    --dest-url localhost \
+    --collection my-docs
+```
+
+### Python API
+
+```python
+import asyncio
+from livekit_memory import FastRAGPipeline, RAGConfig, QdrantConfig, EmbeddingConfig
+
+async def main():
+    config = RAGConfig(
+        qdrant=QdrantConfig(
+            url="localhost",
+            collection_name="my-docs",
+        ),
+        embedding=EmbeddingConfig(
+            model_name="BAAI/bge-small-en-v1.5",
+        ),
+    )
+
+    pipeline = FastRAGPipeline(config)
+    await pipeline.initialize_collection()
+
+    # Ingest documents
+    await pipeline.ingest_documents(["Document content here..."])
+
+    # Retrieve context
+    result = await pipeline.retrieve_context("What is this about?", top_k=5)
+    print(result.top_result)
+
+asyncio.run(main())
+```
+
+## License
+
+Apache-2.0
+
