@@ -1,0 +1,1223 @@
+import logging
+
+import numpy as np
+from mosqito.sound_level_meter import noct_spectrum, noct_synthesis
+from mosqito.sound_level_meter.noct_spectrum._center_freq import _center_freq
+from scipy.signal import ShortTimeFFT
+from scipy.signal.windows import get_window
+
+from wandas.processing.base import AudioOperation, register_operation
+from wandas.utils.types import NDArrayComplex, NDArrayReal
+
+logger = logging.getLogger(__name__)
+
+
+def _validate_spectral_params(
+    n_fft: int,
+    win_length: int | None,
+    hop_length: int | None,
+    method_name: str,
+) -> tuple[int, int]:
+    """
+    Validate and compute spectral analysis parameters.
+
+    Parameters
+    ----------
+    n_fft : int
+        FFT size
+    win_length : int or None
+        Window length (None means use n_fft)
+    hop_length : int or None
+        Hop length (None means use win_length // 4)
+    method_name : str
+        Name of the method for error messages (e.g., "STFT", "Welch method")
+
+    Returns
+    -------
+    tuple[int, int]
+        (actual_win_length, actual_hop_length)
+
+    Raises
+    ------
+    ValueError
+        If parameters are invalid
+    """
+    # Validate n_fft
+    if n_fft <= 0:
+        raise ValueError(
+            f"Invalid FFT size for {method_name}\n"
+            f"  Got: {n_fft}\n"
+            f"  Expected: Positive integer > 0\n"
+            f"FFT size must be a positive integer.\n"
+            f"Common values: 512, 1024, 2048, 4096 (powers of 2 are most efficient)"
+        )
+
+    # Set win_length with default
+    actual_win_length = win_length if win_length is not None else n_fft
+
+    # Validate win_length - check positive first, then relationship
+    if actual_win_length <= 0:
+        raise ValueError(
+            f"Invalid window length for {method_name}\n"
+            f"  Got: {actual_win_length}\n"
+            f"  Expected: Positive integer > 0\n"
+            f"Window length must be a positive integer.\n"
+            f"Typical values: same as n_fft ({n_fft}) or slightly smaller"
+        )
+
+    if actual_win_length > n_fft:
+        raise ValueError(
+            f"Invalid window length for {method_name}\n"
+            f"  Got: win_length={actual_win_length}\n"
+            f"  Expected: win_length <= n_fft ({n_fft})\n"
+            f"Window length cannot exceed FFT size.\n"
+            f"Use win_length={n_fft} or smaller, or increase n_fft to\n"
+            f"{actual_win_length} or larger"
+        )
+
+    # Set hop_length with default
+    if hop_length is None:
+        if actual_win_length < 4:
+            raise ValueError(
+                f"Window length too small to compute default hop length for\n"
+                f"{method_name}\n"
+                f"  Got: win_length={actual_win_length}\n"
+                f"  Expected: win_length >= 4 when hop_length is not specified\n"
+                f"Default hop_length is computed as win_length // 4, which would be\n"
+                f"zero for win_length < 4.\n"
+                f"Please specify a larger win_length or provide hop_length explicitly."
+            )
+        actual_hop_length = actual_win_length // 4
+    else:
+        actual_hop_length = hop_length
+
+    # Validate hop_length
+    if actual_hop_length <= 0:
+        raise ValueError(
+            f"Invalid hop length for {method_name}\n"
+            f"  Got: {actual_hop_length}\n"
+            f"  Expected: Positive integer > 0\n"
+            f"Hop length must be a positive integer.\n"
+            f"Typical value: win_length // 4 = {actual_win_length // 4}"
+        )
+
+    if actual_hop_length > actual_win_length:
+        raise ValueError(
+            f"Invalid hop length for {method_name}\n"
+            f"  Got: hop_length={actual_hop_length}\n"
+            f"  Expected: hop_length <= win_length ({actual_win_length})\n"
+            f"Hop length cannot exceed window length (would create gaps).\n"
+            f"Use hop_length={actual_win_length} or smaller for proper overlap"
+        )
+
+    return actual_win_length, actual_hop_length
+
+
+class FFT(AudioOperation[NDArrayReal, NDArrayComplex]):
+    """FFT (Fast Fourier Transform) operation"""
+
+    name = "fft"
+    n_fft: int | None
+    window: str
+
+    def __init__(
+        self, sampling_rate: float, n_fft: int | None = None, window: str = "hann"
+    ):
+        """
+        Initialize FFT operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : int, optional
+            FFT size, default is None (determined by input size)
+        window : str, optional
+            Window function type, default is 'hann'
+
+        Raises
+        ------
+        ValueError
+            If n_fft is not a positive integer
+        """
+        # Validate n_fft parameter
+        if n_fft is not None and n_fft <= 0:
+            raise ValueError(
+                f"Invalid FFT size\n"
+                f"  Got: {n_fft}\n"
+                f"  Expected: Positive integer > 0\n"
+                f"FFT size must be a positive integer.\n"
+                f"Common values: 512, 1024, 2048, 4096,\n"
+                f"8192 (powers of 2 are most efficient)"
+            )
+
+        self.n_fft = n_fft
+        self.window = window
+        super().__init__(sampling_rate, n_fft=n_fft, window=window)
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        操作後の出力データの形状を計算します
+
+        Parameters
+        ----------
+        input_shape : tuple
+            入力データの形状 (channels, samples)
+
+        Returns
+        -------
+        tuple
+            出力データの形状 (channels, freqs)
+        """
+        n_freqs = self.n_fft // 2 + 1 if self.n_fft else input_shape[-1] // 2 + 1
+        return (*input_shape[:-1], n_freqs)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "FFT"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayComplex:
+        """FFT操作のプロセッサ関数を作成"""
+        from scipy.signal import get_window
+
+        if self.n_fft is not None and x.shape[-1] > self.n_fft:
+            # If n_fft is specified and input length exceeds it, truncate
+            x = x[..., : self.n_fft]
+
+        win = get_window(self.window, x.shape[-1])
+        x = x * win
+        result: NDArrayComplex = np.fft.rfft(x, n=self.n_fft, axis=-1)
+        result[..., 1:-1] *= 2.0
+        # 窓関数補正
+        scaling_factor = np.sum(win)
+        result = result / scaling_factor
+        return result
+
+
+class IFFT(AudioOperation[NDArrayComplex, NDArrayReal]):
+    """IFFT (Inverse Fast Fourier Transform) operation"""
+
+    name = "ifft"
+    n_fft: int | None
+    window: str
+
+    def __init__(
+        self, sampling_rate: float, n_fft: int | None = None, window: str = "hann"
+    ):
+        """
+        Initialize IFFT operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : Optional[int], optional
+            IFFT size, default is None (determined based on input size)
+        window : str, optional
+            Window function type, default is 'hann'
+        """
+        self.n_fft = n_fft
+        self.window = window
+        super().__init__(sampling_rate, n_fft=n_fft, window=window)
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape (channels, freqs)
+
+        Returns
+        -------
+        tuple
+            Output data shape (channels, samples)
+        """
+        n_samples = 2 * (input_shape[-1] - 1) if self.n_fft is None else self.n_fft
+        return (*input_shape[:-1], n_samples)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "iFFT"
+
+    def _process_array(self, x: NDArrayComplex) -> NDArrayReal:
+        """Create processor function for IFFT operation"""
+        logger.debug(f"Applying IFFT to array with shape: {x.shape}")
+
+        # Restore frequency component scaling (remove the 2.0 multiplier applied in FFT)
+        _x = x.copy()
+        _x[..., 1:-1] /= 2.0
+
+        # Execute IFFT
+        result: NDArrayReal = np.fft.irfft(_x, n=self.n_fft, axis=-1)
+
+        # Window function correction (inverse of FFT operation)
+        from scipy.signal import get_window
+
+        win = get_window(self.window, result.shape[-1])
+
+        # Correct the FFT window function scaling
+        scaling_factor = np.sum(win) / result.shape[-1]
+        result = result / scaling_factor
+
+        logger.debug(f"IFFT applied, returning result with shape: {result.shape}")
+        return result
+
+
+class STFT(AudioOperation[NDArrayReal, NDArrayComplex]):
+    """Short-Time Fourier Transform operation"""
+
+    name = "stft"
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        n_fft: int = 2048,
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: str = "hann",
+    ):
+        """
+        Initialize STFT operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : int
+            FFT size, default is 2048
+        hop_length : int, optional
+            Number of samples between frames. Default is win_length // 4
+        win_length : int, optional
+            Window length. Default is n_fft
+        window : str
+            Window type, default is 'hann'
+
+        Raises
+        ------
+        ValueError
+            If n_fft is not positive, win_length > n_fft, or hop_length is invalid
+        """
+        # Validate and compute parameters
+        actual_win_length, actual_hop_length = _validate_spectral_params(
+            n_fft, win_length, hop_length, "STFT"
+        )
+
+        self.n_fft = n_fft
+        self.win_length = actual_win_length
+        self.hop_length = actual_hop_length
+        self.noverlap = (
+            self.win_length - self.hop_length if hop_length is not None else None
+        )
+        self.window = window
+
+        self.SFT = ShortTimeFFT(
+            win=get_window(window, self.win_length),
+            hop=self.hop_length,
+            fs=sampling_rate,
+            mfft=self.n_fft,
+            scale_to="magnitude",
+        )
+        super().__init__(
+            sampling_rate,
+            n_fft=n_fft,
+            win_length=self.win_length,
+            hop_length=self.hop_length,
+            window=window,
+        )
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape
+
+        Returns
+        -------
+        tuple
+            Output data shape
+        """
+        n_samples = input_shape[-1]
+        n_f = len(self.SFT.f)
+        n_t = len(self.SFT.t(n_samples))
+        return (input_shape[0], n_f, n_t)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "STFT"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayComplex:
+        """Apply SciPy STFT processing to multiple channels at once"""
+        logger.debug(f"Applying SciPy STFT to array with shape: {x.shape}")
+
+        # Convert 1D input to 2D
+        if x.ndim == 1:
+            x = x.reshape(1, -1)
+
+        # Apply STFT to all channels at once
+        result: NDArrayComplex = self.SFT.stft(x)
+        result[..., 1:-1, :] *= 2.0
+        logger.debug(f"SciPy STFT applied, returning result with shape: {result.shape}")
+        return result
+
+
+class ISTFT(AudioOperation[NDArrayComplex, NDArrayReal]):
+    """Inverse Short-Time Fourier Transform operation"""
+
+    name = "istft"
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        n_fft: int = 2048,
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: str = "hann",
+        length: int | None = None,
+    ):
+        """
+        Initialize ISTFT operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : int
+            FFT size, default is 2048
+        hop_length : int, optional
+            Number of samples between frames. Default is win_length // 4
+        win_length : int, optional
+            Window length. Default is n_fft
+        window : str
+            Window type, default is 'hann'
+        length : int, optional
+            Length of output signal. Default is None (determined from input)
+
+        Raises
+        ------
+        ValueError
+            If n_fft is not positive, win_length > n_fft, or hop_length is invalid
+        """
+        # Validate and compute parameters
+        actual_win_length, actual_hop_length = _validate_spectral_params(
+            n_fft, win_length, hop_length, "ISTFT"
+        )
+
+        self.n_fft = n_fft
+        self.win_length = actual_win_length
+        self.hop_length = actual_hop_length
+        self.window = window
+        self.length = length
+
+        # Instantiate ShortTimeFFT for ISTFT calculation
+        self.SFT = ShortTimeFFT(
+            win=get_window(window, self.win_length),
+            hop=self.hop_length,
+            fs=sampling_rate,
+            mfft=self.n_fft,
+            scale_to="magnitude",  # Consistent scaling with STFT
+        )
+
+        super().__init__(
+            sampling_rate,
+            n_fft=n_fft,
+            win_length=self.win_length,
+            hop_length=self.hop_length,
+            window=window,
+            length=length,
+        )
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after ISTFT operation.
+
+        Uses the SciPy ShortTimeFFT calculation formula to compute the expected
+        output length based on the input spectrogram dimensions and output range
+        parameters (k0, k1).
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input spectrogram shape (channels, n_freqs, n_frames)
+            where n_freqs = n_fft // 2 + 1 and n_frames is the number of time frames.
+
+        Returns
+        -------
+        tuple
+            Output shape (channels, output_samples) where output_samples is the
+            reconstructed signal length determined by the output range [k0, k1).
+
+        Notes
+        -----
+        The calculation follows SciPy's ShortTimeFFT.istft() implementation.
+        When k1 is None (default), the maximum reconstructible signal length is
+        computed as:
+
+        .. math::
+
+            q_{max} = n_{frames} + p_{min}
+
+            k_{max} = (q_{max} - 1) \\cdot hop + m_{num} - m_{num\\_mid}
+
+        The output length is then:
+
+        .. math::
+
+            output\\_samples = k_1 - k_0
+
+        where k0 defaults to 0 and k1 defaults to k_max.
+
+        Parameters that affect the calculation:
+        - n_frames: number of time frames in the STFT
+        - p_min: minimum frame index (ShortTimeFFT property)
+        - hop: hop length (samples between frames)
+        - m_num: window length
+        - m_num_mid: window midpoint position
+        - self.length: optional length override (if set, limits output)
+
+        References
+        ----------
+        - SciPy ShortTimeFFT.istft:
+          https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ShortTimeFFT.istft.html
+        - SciPy Source: https://github.com/scipy/scipy/blob/main/scipy/signal/_short_time_fft.py
+        """
+        n_channels = input_shape[0]
+        n_frames = input_shape[-1]  # time_frames
+
+        # SciPy ShortTimeFFT の計算式に従う
+        # See: https://github.com/scipy/scipy/blob/main/scipy/signal/_short_time_fft.py
+        q_max = n_frames + self.SFT.p_min
+        k_max = (q_max - 1) * self.SFT.hop + self.SFT.m_num - self.SFT.m_num_mid
+
+        # Default parameters: k0=0, k1=None (which becomes k_max)
+        # The output length is k1 - k0 = k_max - 0 = k_max
+        k0 = 0
+        k1 = k_max
+
+        # If self.length is specified, it acts as an override to limit the output
+        if self.length is not None:
+            k1 = min(self.length, k1)
+
+        output_samples = k1 - k0
+
+        return (n_channels, output_samples)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "iSTFT"
+
+    def _process_array(self, x: NDArrayComplex) -> NDArrayReal:
+        """
+        Apply SciPy ISTFT processing to multiple channels at once using ShortTimeFFT"""
+        logger.debug(
+            f"Applying SciPy ISTFT (ShortTimeFFT) to array with shape: {x.shape}"
+        )
+
+        # Convert 2D input to 3D (assume single channel)
+        if x.ndim == 2:
+            x = x.reshape(1, *x.shape)
+
+        # Adjust scaling back if STFT applied factor of 2
+        _x = np.copy(x)
+        _x[..., 1:-1, :] /= 2.0
+
+        # Apply ISTFT using the ShortTimeFFT instance
+        result: NDArrayReal = self.SFT.istft(_x)
+
+        # Trim to desired length if specified
+        if self.length is not None:
+            result = result[..., : self.length]
+
+        logger.debug(
+            f"ShortTimeFFT applied, returning result with shape: {result.shape}"
+        )
+        return result
+
+
+class Welch(AudioOperation[NDArrayReal, NDArrayReal]):
+    """Welch method for power spectral density estimation.
+
+    Computes the one-sided amplitude spectrum using Welch's method for
+    consistency with FFT and STFT methods. For a sine wave with amplitude A,
+    the peak value at its frequency will be approximately A.
+
+    Notes
+    -----
+    Internally uses scipy.signal.welch with scaling='spectrum' and converts
+    the power spectrum to amplitude spectrum:
+    - DC component (f=0): A = sqrt(P)
+    - AC components (f>0): A = sqrt(2*P)
+    """
+
+    name = "welch"
+    n_fft: int
+    window: str
+    hop_length: int | None
+    win_length: int | None
+    average: str
+    detrend: str
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        n_fft: int = 2048,
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: str = "hann",
+        average: str = "mean",
+        detrend: str = "constant",
+    ):
+        """
+        Initialize Welch operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : int, optional
+            FFT size, default is 2048
+        hop_length : int, optional
+            Number of samples between frames. Default is win_length // 4
+        win_length : int, optional
+            Window length. Default is n_fft
+        window : str, optional
+            Window function type, default is 'hann'
+        average : str, optional
+            Averaging method, default is 'mean'
+        detrend : str, optional
+            Detrend method, default is 'constant'
+
+        Raises
+        ------
+        ValueError
+            If n_fft, win_length, or hop_length are invalid
+        """
+        # Validate and compute parameters
+        actual_win_length, actual_hop_length = _validate_spectral_params(
+            n_fft, win_length, hop_length, "Welch method"
+        )
+
+        self.n_fft = n_fft
+        self.win_length = actual_win_length
+        self.hop_length = actual_hop_length
+        self.noverlap = (
+            self.win_length - self.hop_length if hop_length is not None else None
+        )
+        self.window = window
+        self.average = average
+        self.detrend = detrend
+        super().__init__(
+            sampling_rate,
+            n_fft=n_fft,
+            win_length=self.win_length,
+            hop_length=self.hop_length,
+            window=window,
+            average=average,
+            detrend=detrend,
+        )
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape (channels, samples)
+
+        Returns
+        -------
+        tuple
+            Output data shape (channels, freqs)
+        """
+        n_freqs = self.n_fft // 2 + 1
+        return (*input_shape[:-1], n_freqs)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "Welch"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayReal:
+        """Create processor function for Welch operation.
+
+        Converts power spectrum from scipy.signal.welch to one-sided
+        amplitude spectrum for consistency with FFT/STFT.
+        """
+        from scipy import signal as ss
+
+        _, result = ss.welch(
+            x,
+            nperseg=self.win_length,
+            noverlap=self.noverlap,
+            nfft=self.n_fft,
+            window=self.window,
+            average=self.average,
+            detrend=self.detrend,
+            scaling="spectrum",
+        )
+
+        if not isinstance(x, np.ndarray):
+            # Trigger computation for Dask array
+            raise ValueError(
+                "Welch operation requires a Dask array, but received a non-ndarray."
+            )
+
+        # Convert power spectrum to amplitude spectrum for consistency with FFT/STFT.
+        # scipy.signal.welch with scaling='spectrum' returns a one-sided power spectrum
+        # where for a sine wave with amplitude A:
+        #   - DC component (f=0): P = A^2 (no factor of 2 since DC is not mirrored)
+        #   - AC components (f>0): P = A^2/2 (half power due to one-sided spectrum)
+        # To recover amplitude A:
+        #   - DC: A = sqrt(P)
+        #   - AC: A = sqrt(2*P) = sqrt(2) * sqrt(P)
+        result = np.sqrt(result)  # Convert to amplitude
+        result[..., 1:-1] *= np.sqrt(2)  # Apply factor of sqrt(2) for AC components
+
+        return np.array(result)
+
+
+class NOctSpectrum(AudioOperation[NDArrayReal, NDArrayReal]):
+    """N-octave spectrum operation"""
+
+    name = "noct_spectrum"
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        fmin: float,
+        fmax: float,
+        n: int = 3,
+        G: int = 10,  # noqa: N803
+        fr: int = 1000,
+    ):
+        """
+        Initialize N-octave spectrum
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        fmin : float
+            Minimum frequency (Hz)
+        fmax : float
+            Maximum frequency (Hz)
+        n : int, optional
+            Number of octave divisions, default is 3
+        G : int, optional
+            Reference level, default is 10
+        fr : int, optional
+            Reference frequency, default is 1000
+        """
+        super().__init__(sampling_rate, fmin=fmin, fmax=fmax, n=n, G=G, fr=fr)
+        self.fmin = fmin
+        self.fmax = fmax
+        self.n = n
+        self.G = G
+        self.fr = fr
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape
+
+        Returns
+        -------
+        tuple
+            Output data shape
+        """
+        # Calculate output shape for octave spectrum
+        _, fpref = _center_freq(
+            fmin=self.fmin, fmax=self.fmax, n=self.n, G=self.G, fr=self.fr
+        )
+        return (input_shape[0], fpref.shape[0])
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "Oct"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayReal:
+        """Create processor function for octave spectrum"""
+        logger.debug(f"Applying NoctSpectrum to array with shape: {x.shape}")
+        spec, _ = noct_spectrum(
+            sig=x.T,
+            fs=self.sampling_rate,
+            fmin=self.fmin,
+            fmax=self.fmax,
+            n=self.n,
+            G=self.G,
+            fr=self.fr,
+        )
+        if spec.ndim == 1:
+            # Add channel dimension for 1D
+            spec = np.expand_dims(spec, axis=0)
+        else:
+            spec = spec.T
+        logger.debug(f"NoctSpectrum applied, returning result with shape: {spec.shape}")
+        return np.array(spec)
+
+
+class NOctSynthesis(AudioOperation[NDArrayReal, NDArrayReal]):
+    """Octave synthesis operation"""
+
+    name = "noct_synthesis"
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        fmin: float,
+        fmax: float,
+        n: int = 3,
+        G: int = 10,  # noqa: N803
+        fr: int = 1000,
+    ):
+        """
+        Initialize octave synthesis
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        fmin : float
+            Minimum frequency (Hz)
+        fmax : float
+            Maximum frequency (Hz)
+        n : int, optional
+            Number of octave divisions, default is 3
+        G : int, optional
+            Reference level, default is 10
+        fr : int, optional
+            Reference frequency, default is 1000
+        """
+        super().__init__(sampling_rate, fmin=fmin, fmax=fmax, n=n, G=G, fr=fr)
+
+        self.fmin = fmin
+        self.fmax = fmax
+        self.n = n
+        self.G = G
+        self.fr = fr
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape
+
+        Returns
+        -------
+        tuple
+            Output data shape
+        """
+        # Calculate output shape for octave spectrum
+        _, fpref = _center_freq(
+            fmin=self.fmin, fmax=self.fmax, n=self.n, G=self.G, fr=self.fr
+        )
+        return (input_shape[0], fpref.shape[0])
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "Octs"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayReal:
+        """Create processor function for octave synthesis"""
+        logger.debug(f"Applying NoctSynthesis to array with shape: {x.shape}")
+        # Calculate n from shape[-1]
+        n = x.shape[-1]  # Calculate n from shape[-1]
+        if n % 2 == 0:
+            n = n * 2 - 1
+        else:
+            n = (n - 1) * 2
+        freqs = np.fft.rfftfreq(n, d=1 / self.sampling_rate)
+        result, _ = noct_synthesis(
+            spectrum=np.abs(x).T,
+            freqs=freqs,
+            fmin=self.fmin,
+            fmax=self.fmax,
+            n=self.n,
+            G=self.G,
+            fr=self.fr,
+        )
+        result = result.T
+        logger.debug(
+            f"NoctSynthesis applied, returning result with shape: {result.shape}"
+        )
+        return np.array(result)
+
+
+class Coherence(AudioOperation[NDArrayReal, NDArrayReal]):
+    """Coherence estimation operation"""
+
+    name = "coherence"
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        n_fft: int = 2048,
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: str = "hann",
+        detrend: str = "constant",
+    ):
+        """
+        Initialize coherence estimation operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : int
+            FFT size, default is 2048
+        hop_length : int, optional
+            Number of samples between frames. Default is win_length // 4
+        win_length : int, optional
+            Window length. Default is n_fft
+        window : str
+            Window function, default is 'hann'
+        detrend : str
+            Type of detrend, default is 'constant'
+
+        Raises
+        ------
+        ValueError
+            If n_fft is not positive, win_length > n_fft, or hop_length is invalid
+        """
+        # Validate and compute parameters
+        actual_win_length, actual_hop_length = _validate_spectral_params(
+            n_fft, win_length, hop_length, "Coherence"
+        )
+
+        self.n_fft = n_fft
+        self.win_length = actual_win_length
+        self.hop_length = actual_hop_length
+        self.window = window
+        self.detrend = detrend
+        super().__init__(
+            sampling_rate,
+            n_fft=n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=window,
+            detrend=detrend,
+        )
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape (channels, samples)
+
+        Returns
+        -------
+        tuple
+            Output data shape (channels * channels, freqs)
+        """
+        n_channels = input_shape[0]
+        n_freqs = self.n_fft // 2 + 1
+        return (n_channels * n_channels, n_freqs)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "Coh"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayReal:
+        """Processor function for coherence estimation operation"""
+        logger.debug(f"Applying coherence estimation to array with shape: {x.shape}")
+        from scipy import signal as ss
+
+        _, coh = ss.coherence(
+            x=x[:, np.newaxis],
+            y=x[np.newaxis, :],
+            fs=self.sampling_rate,
+            nperseg=self.win_length,
+            noverlap=self.win_length - self.hop_length,
+            nfft=self.n_fft,
+            window=self.window,
+            detrend=self.detrend,
+        )
+
+        # Reshape result to (n_channels * n_channels, n_freqs)
+        result: NDArrayReal = coh.transpose(1, 0, 2).reshape(-1, coh.shape[-1])
+
+        logger.debug(f"Coherence estimation applied, result shape: {result.shape}")
+        return result
+
+
+class CSD(AudioOperation[NDArrayReal, NDArrayComplex]):
+    """Cross-spectral density estimation operation"""
+
+    name = "csd"
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        n_fft: int = 2048,
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: str = "hann",
+        detrend: str = "constant",
+        scaling: str = "spectrum",
+        average: str = "mean",
+    ):
+        """
+        Initialize cross-spectral density estimation operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : int
+            FFT size, default is 2048
+        hop_length : int, optional
+            Number of samples between frames. Default is win_length // 4
+        win_length : int, optional
+            Window length. Default is n_fft
+        window : str
+            Window function, default is 'hann'
+        detrend : str
+            Type of detrend, default is 'constant'
+        scaling : str
+            Type of scaling, default is 'spectrum'
+        average : str
+            Method of averaging, default is 'mean'
+
+        Raises
+        ------
+        ValueError
+            If n_fft is not positive, win_length > n_fft, or hop_length is invalid
+        """
+        # Validate and compute parameters
+        actual_win_length, actual_hop_length = _validate_spectral_params(
+            n_fft, win_length, hop_length, "CSD"
+        )
+
+        self.n_fft = n_fft
+        self.win_length = actual_win_length
+        self.hop_length = actual_hop_length
+        self.window = window
+        self.detrend = detrend
+        self.scaling = scaling
+        self.average = average
+        super().__init__(
+            sampling_rate,
+            n_fft=n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=window,
+            detrend=detrend,
+            scaling=scaling,
+            average=average,
+        )
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape (channels, samples)
+
+        Returns
+        -------
+        tuple
+            Output data shape (channels * channels, freqs)
+        """
+        n_channels = input_shape[0]
+        n_freqs = self.n_fft // 2 + 1
+        return (n_channels * n_channels, n_freqs)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "CSD"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayComplex:
+        """Processor function for cross-spectral density estimation operation"""
+        logger.debug(f"Applying CSD estimation to array with shape: {x.shape}")
+        from scipy import signal as ss
+
+        # Calculate all combinations using scipy's csd function
+        _, csd_result = ss.csd(
+            x=x[:, np.newaxis],
+            y=x[np.newaxis, :],
+            fs=self.sampling_rate,
+            nperseg=self.win_length,
+            noverlap=self.win_length - self.hop_length,
+            nfft=self.n_fft,
+            window=self.window,
+            detrend=self.detrend,
+            scaling=self.scaling,
+            average=self.average,
+        )
+
+        # Reshape result to (n_channels * n_channels, n_freqs)
+        result: NDArrayComplex = csd_result.transpose(1, 0, 2).reshape(
+            -1, csd_result.shape[-1]
+        )
+
+        logger.debug(f"CSD estimation applied, result shape: {result.shape}")
+        return result
+
+
+class TransferFunction(AudioOperation[NDArrayReal, NDArrayComplex]):
+    """Transfer function estimation operation"""
+
+    name = "transfer_function"
+
+    def __init__(
+        self,
+        sampling_rate: float,
+        n_fft: int = 2048,
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: str = "hann",
+        detrend: str = "constant",
+        scaling: str = "spectrum",
+        average: str = "mean",
+    ):
+        """
+        Initialize transfer function estimation operation
+
+        Parameters
+        ----------
+        sampling_rate : float
+            Sampling rate (Hz)
+        n_fft : int
+            FFT size, default is 2048
+        hop_length : int, optional
+            Number of samples between frames. Default is win_length // 4
+        win_length : int, optional
+            Window length. Default is n_fft
+        window : str
+            Window function, default is 'hann'
+        detrend : str
+            Type of detrend, default is 'constant'
+        scaling : str
+            Type of scaling, default is 'spectrum'
+        average : str
+            Method of averaging, default is 'mean'
+
+        Raises
+        ------
+        ValueError
+            If n_fft is not positive, win_length > n_fft, or hop_length is invalid
+        """
+        # Validate and compute parameters
+        actual_win_length, actual_hop_length = _validate_spectral_params(
+            n_fft, win_length, hop_length, "Transfer function"
+        )
+
+        self.n_fft = n_fft
+        self.win_length = actual_win_length
+        self.hop_length = actual_hop_length
+        self.window = window
+        self.detrend = detrend
+        self.scaling = scaling
+        self.average = average
+        super().__init__(
+            sampling_rate,
+            n_fft=n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=window,
+            detrend=detrend,
+            scaling=scaling,
+            average=average,
+        )
+
+    def calculate_output_shape(self, input_shape: tuple[int, ...]) -> tuple[int, ...]:
+        """
+        Calculate output data shape after operation
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input data shape (channels, samples)
+
+        Returns
+        -------
+        tuple
+            Output data shape (channels * channels, freqs)
+        """
+        n_channels = input_shape[0]
+        n_freqs = self.n_fft // 2 + 1
+        return (n_channels * n_channels, n_freqs)
+
+    def get_display_name(self) -> str:
+        """Get display name for the operation for use in channel labels."""
+        return "H"
+
+    def _process_array(self, x: NDArrayReal) -> NDArrayComplex:
+        """Processor function for transfer function estimation operation"""
+        logger.debug(
+            f"Applying transfer function estimation to array with shape: {x.shape}"
+        )
+        from scipy import signal as ss
+
+        # Calculate cross-spectral density between all channels
+        f, p_yx = ss.csd(
+            x=x[:, np.newaxis, :],
+            y=x[np.newaxis, :, :],
+            fs=self.sampling_rate,
+            nperseg=self.win_length,
+            noverlap=self.win_length - self.hop_length,
+            nfft=self.n_fft,
+            window=self.window,
+            detrend=self.detrend,
+            scaling=self.scaling,
+            average=self.average,
+            axis=-1,
+        )
+        # p_yx shape: (num_channels, num_channels, num_frequencies)
+
+        # Calculate power spectral density for each channel
+        f, p_xx = ss.welch(
+            x=x,
+            fs=self.sampling_rate,
+            nperseg=self.win_length,
+            noverlap=self.win_length - self.hop_length,
+            nfft=self.n_fft,
+            window=self.window,
+            detrend=self.detrend,
+            scaling=self.scaling,
+            average=self.average,
+            axis=-1,
+        )
+        # p_xx shape: (num_channels, num_frequencies)
+
+        # Calculate transfer function H(f) = P_yx / P_xx
+        h_f = p_yx / p_xx[np.newaxis, :, :]
+        result: NDArrayComplex = h_f.transpose(1, 0, 2).reshape(-1, h_f.shape[-1])
+
+        logger.debug(
+            f"Transfer function estimation applied, result shape: {result.shape}"
+        )
+        return result
+
+
+# Register all operations
+for op_class in [
+    FFT,
+    IFFT,
+    STFT,
+    ISTFT,
+    Welch,
+    NOctSpectrum,
+    NOctSynthesis,
+    Coherence,
+    CSD,
+    TransferFunction,
+]:
+    register_operation(op_class)
