@@ -1,0 +1,215 @@
+Metadata-Version: 2.4
+Name: chipdriver
+Version: 1.17.13
+Summary: ChipQFpga software driver library
+Author: Wenpu Zhang
+Author-email: zhangwenpu <fire0517@126.com>
+Keywords: ChipQ fpga
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: psutil
+Requires-Dist: prettytable
+Requires-Dist: matplotlib
+Requires-Dist: numpy<2.0; python_version < "3.11"
+Requires-Dist: numpy>=2.3.1; python_version >= "3.11"
+Requires-Dist: pathlib2
+Requires-Dist: winpcapy; platform_system == "Windows"
+Dynamic: author
+Dynamic: requires-python
+
+<!--
+ * @Title: 
+ * @Description: 
+ * @Version: 
+ * @Company: Casia
+ * @Author: hsj
+ * @Date: 2021-07-19 05:38:25
+ * @LastEditors: hsj
+ * @LastEditTime: 2022-04-06 09:58:01
+-->
+# chipdriver板卡控制库
+- [chipdriver板卡控制库](#chipdriver板卡控制库)
+  - [简介](#简介)
+  - [安装](#安装)
+  - [chipdriver中板卡通信库使用方法](#chipdriver中板卡通信库使用方法)
+  - [TODO](#todo)
+___
+
+## 简介
+
+chipdriver是一个python库，方便用户对多种类ChipQ fpga板卡进行操控的软件库。集成了二层包通信、指令下发、相关文件生成与解析、各类基础波形绘制、通过配置文件编译jump table等功能。
+
+## 安装
+从gitlab下载最新版本的安装包[下载地址](http://172.29.220.100/software/QCController/chipfpga/-/releases)
+```shell
+pip3 install chipdriver-x.y.z.tar.gz
+# 或使用whl安装包
+pip3 install chipdriver-x.y.z-py3-none-any.whl
+# 验证
+python
+>>> import chipdriver
+>>>
+# import 成功则安装成功
+```
+> 注意：相关依赖的外部下载可能需要设置pip源，或使用对应版本whl文件进行安装。
+
+**卸载旧版本**
+
+```
+pip3 uninstall chipdriver
+```
+
+## chipdriver中板卡通信库使用方法
+
+可以参照以下几个例子：
+
+* [AWG使用说明](docs/AWG使用说明.md)
+* [ADC使用说明](docs/ADC使用说明.md)
+* [HPDC使用说明](docs/HPDC%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md)
+* [旧版使用说明](docs/readme/v1.md)
+
+## 开发计划
+
+* [chipdriver开发计划](docs/roadmap/roadmap.md)
+
+## 开发者须知
+
+### 单元测试
+
+#### 单元测试方法
+
+在项目根目录下执行
+
+```python
+python -m unittest
+```
+
+#### 单元测试规范及要求
+
+* 所有单元测试应写在`test/unittest`目录及其子目录中；
+* 每个单元测试文件应以`test_`开头，一个单元测试文件对应一个业务逻辑或一个源文件；
+* 使用`unittest`模块进行单元测试；
+* 每个测试类以`Test`开头，测试模块需继承`unittest.TestCase`；
+* 每个测试模块中的测试方法应以`test_`开头，并以函数名明晰测试的具体内容；
+* 对有返回的源码方法，必须进行返回值测试；
+* 对无返回值但是可以进行结果验证的，应尽量验证；
+* 所有测试用例必须可以顺利执行，禁止阻塞或依赖外部程序；
+* 使用coverage包进行覆盖率检查，每个版本发版前进行单元测试检查，需要保证单元测试对源码覆盖率达到100%；
+
+以下是一个有效的单元测试样例：
+
+```python
+'''
+此文件用来测试src/wave/wavefragment.py, 
+'''
+
+
+import unittest
+from src.wave.wavefragment import WaveFragment
+from src.wave.arraywaver import ArrayWaver
+from src.wave.filewaver import FileWaver, NumpyTxtWaver
+from src.wave.functionwaver import sinWaver
+import numpy as np
+import os
+class TestWavefragment(unittest.TestCase):
+
+    def test_getInfo(self):
+        array = np.arange(-2, 2, 0.5)
+        base_res: np.ndarray = array * 32767 + 1000
+        temp = base_res
+        base_res_array = base_res.clip(-32768, 32767).astype(np.int16)
+        base_res = base_res_array.tobytes()      
+        # FileWaver类型
+        np.savetxt("filewaver_test",[temp], delimiter=',')
+        waver = NumpyTxtWaver("C", "filewaver_test")
+        wf = WaveFragment(0, waver)
+        base_info={
+            "class": waver.cls,
+            "name": "C",
+            "addressStart": 0,
+            "addressEnd": 0,
+            "cycle": 1,
+            "datafile": "filewaver_test"
+        }        
+        test_info = wf.getInfo()
+        self.assertEqual(test_info, base_info)
+        os.remove("filewaver_test")
+        # FunctionWaver类型
+        waver = sinWaver("B")
+        wf = WaveFragment(0, waver)
+        base_info={
+            "class": waver.cls,
+            "name": "B",
+            "addressStart": 0,
+            "addressEnd": 1,
+            "cycle": 1,
+            "freq": 125e6,
+            "samplerate": 2e9,
+            "amplitude": 32767,
+            "phase": 0,
+            "bias": 0,
+        }
+        test_info = wf.getInfo()
+        self.assertEqual(test_info, base_info)
+
+        # ArrayWaver
+        array = np.arange(-2, 2.5, 0.5)
+        waver = ArrayWaver(array, "A")
+        wf = WaveFragment(0, waver)
+        base_info={
+            "class": waver.cls,
+            "name": "A",
+            "addressStart": 0,
+            "addressEnd": 1,
+            "cycle": 1,
+            "amplitude": 32767,
+            "phase":0 ,
+            "offset": 0,
+            "data": array.tolist()
+        }
+        test_info = wf.getInfo()
+        self.assertEqual(test_info, base_info)
+
+        # 异常测试
+        with self.assertRaises(NotImplementedError):
+            wf = WaveFragment(0, waver)
+            waver = 1
+            wf.waver = waver
+            wf.getInfo()
+```
+
+#### 统计覆盖率
+
+使用`coverage`来统计测试覆盖率：
+
+```powershell
+coverage run -m unittest
+```
+
+查看覆盖率：
+
+```powershell
+Name                                        Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------
+src\wave\__init__.py                            5      0   100%
+src\wave\arraywaver.py                         54      0   100%
+src\wave\filewaver.py                          42      0   100%
+src\wave\functionwaver.py                      73      0   100%
+src\wave\wavefragment.py                       48      0   100%
+src\wave\waver.py                              23      0   100%
+test\__init__.py                                0      0   100%
+test\unittest\__init__.py                       0      0   100%
+test\unittest\test_marker.py                   73      0   100%
+test\unittest\waver\__init__.py                 0      0   100%
+test\unittest\waver\test_arraywaver.py         44      0   100%
+test\unittest\waver\test_filewaver.py          51      0   100%
+test\unittest\waver\test_functionwaver.py      38      0   100%
+test\unittest\waver\test_wavefragment.py       37      0   100%
+test\unittest\waver\test_waver.py              21      0   100%
+```
+
