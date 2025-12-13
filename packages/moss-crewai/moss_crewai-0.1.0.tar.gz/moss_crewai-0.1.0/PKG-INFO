@@ -1,0 +1,67 @@
+Metadata-Version: 2.4
+Name: moss-crewai
+Version: 0.1.0
+Summary: MOSS signing integration for CrewAI agents
+Project-URL: Homepage, https://mosscomputing.com
+Project-URL: Repository, https://github.com/mosscomputing/moss-crewai
+Author: Carey D'Souza
+License-Expression: MIT
+License-File: LICENSE
+Keywords: agents,ai,crewai,cryptography,moss,signing
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Requires-Dist: crewai>=0.1.0
+Requires-Dist: moss-sdk>=0.1.0
+Provides-Extra: dev
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# moss-crewai
+
+MOSS signing integration for CrewAI agents.
+
+## Installation
+
+```bash
+pip install moss-crewai
+```
+
+## Usage
+
+```python
+from crewai import Agent
+from moss_crewai import moss_wrap
+
+# Create your CrewAI agent
+agent = Agent(
+    role="Researcher",
+    goal="Find information",
+    backstory="You are a research assistant"
+)
+
+# Wrap with MOSS signing
+agent = moss_wrap(agent, "moss:team:researcher")
+
+# After agent executes, signature is available
+result = agent.execute_task(task)
+envelope = agent.moss_envelope  # MOSS Envelope with signature
+```
+
+## Verification
+
+```python
+from moss import Subject
+
+# Verify the agent's output
+result = Subject.verify(agent.moss_envelope)
+assert result.valid
+```
