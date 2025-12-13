@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qmcp"
+version = "0.7.5"
+description = "MCP Server for q/kdb+ integration (Cloud-connected client)"
+authors = [{name = "Gabi Teodoru", email = "gabiteodoru@gmail.com"}]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "mcp",
+    "requests>=2.32.0",
+    "numpy>=1.8.0",
+    "pandas",
+    "msgpack>=1.0.0",
+    "gabiteodoru-sugar",
+    "platformdirs>=3.0.0",
+    "tomli>=1.2.0;python_version<'3.11'",
+    "ordered-set>=4.0.0",
+    "psutil>=5.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6.0",
+]
+
+[project.urls]
+"Homepage" = "https://medium.com/@gabiteodoru/why-llms-cant-write-q-kdb-writing-code-right-to-left-ea6df68af443"
+"Documentation" = "https://medium.com/@gabiteodoru"
+"Bug Tracker" = "https://github.com/gabiteodoru/qmcp/issues"
+
+[project.scripts]
+qmcp = "qmcp.server:main"
+
+[tool.setuptools.packages.find]
+exclude = ["private_tests*", "bak*", "tests_*", "qmcp.qython*", ".claude-plugin*", "commands*"]
+include = ["qmcp", "qmcp.*", "qmcp.qython.docs_api", "qmcp.qython.q_utils"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.sh"]
+
+[tool.setuptools.package-data]
+qmcp = ["qythonhelp/*.md", "qython/docs/*.md", "qmcp.q", "docs/*.md"]

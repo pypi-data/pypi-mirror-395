@@ -1,0 +1,47 @@
+Qython's numpy only contains:
+-functions:
+	-from original Python numpy:
+		-prefix `np.`
+			-exactly 1 parameter: sum mean min max std var prod abs sqrt log exp reciprocal sign ceil floor sin cos tan arcsin arccos arctan arange zeros ones eye cumsum cumprod hstack vstack concatenate all any unique sort argsort
+			-exactly 2 parameters (element-wise operations): minimum maximum
+			-exactly 2 parameters (set operations): intersect1d setdiff1d union1d setxor1d
+			-concatenate: flattens by one level (2D→1D, 3D→2D, etc) and can join multiple arrays passed as a list
+			-diff: Works like numpy by default. Optional `prepend=0` parameter supported (preferred for finance time series and table updates as it preserves length and is exact inverse of `np.cumsum`). When applying to temporal types also use `prepend=0`
+			-exactly 2 parameters: corrcoef cov
+			-exactly 3 parameters: where
+			-other:
+				-average: either 1 parameter, or 1 parameter and named parameter `weights`
+		-prefix `np.linalg.`:
+			-exactly 1 parameter: inv det
+			-exactly 2 parameters: lstsq (returns tuple with solution and 3 nans for residuals/rank/sv)
+			-lstsq_T: Efficient version, read "lstsq" doc for details
+		-prefix `np.random.`:
+			-np.random.seed(value): Set random seed for reproducible random number generation
+			-np.random.choice(array): Random choice from array (returns single element)
+			-np.random.choice(array, size=N): Random sample of size N with replacement
+			-np.random.choice(array, size=N, replace=True/False): Sample with/without replacement
+			-np.random.randint(high): Generate single random integer in range [0, high)
+			-np.random.randint(low, high): Generate single random integer in range [low, high)
+			-np.random.randint(low, high, size): Generate random integers in range [low, high). `size` can be an integer for 1D array or tuple (e.g., (3, 4)) for multi-dimensional arrays
+			-np.random.uniform(high): Generate single random float in range [0, high)
+			-np.random.uniform(low, high): Generate single random float in range [low, high)
+			-np.random.uniform(low, high, size): Generate random floats in range [low, high). `size` can be an integer for 1D array or tuple (e.g., (3, 4)) for multi-dimensional arrays
+			-np.random.permutation(x): Randomly permute array or return permuted range(x) if x is integer
+	-Qython additions:
+		-np.ema(alpha, data): Exponential moving average. Equivalent to pandas.ewm(alpha=alpha, adjust=False).mean(). Note `adjust=False`.
+		-np.percentile(data, percentile); percentile is a number between 0 and 1
+		-np.cummin(data): Cumulative minimum
+		-np.cummax(data): Cumulative maximum
+		-np.cummean(data): Cumulative mean
+		-np.round(data): Round to nearest integer. Optional second parameter: np.round(data, 2)
+		-np.array_equal(a, b): Returns True if arrays are equal (whole-array comparison, not element-wise)
+-properties from original Python numpy: .T .ndim .shape
+-new methods:
+ -ffill() bfill() no parameters, filling gaps like in pandas
+ -fillna(x) exactly 1 parameter replaces nans with x
+ -isnull() no parameters, returns boolean array indicating which elements are null
+ -all() any() no parameters, returns True if all/any elements are truthy, works on lists/arrays
+ -keys() values() items() no parameters, work on dicts like in Python
+ -x.within(low,high) returns boolean array if x within [low, high]; equivalent to `(x>=low)&(x<=high)`
+ -pop(index) exactly 1 parameter, mutates list/dict by removing element at index, returns the modified list/dict (UNLIKE Python which returns the removed element)
+ -rolling(n).method with methods sum mean std min max
