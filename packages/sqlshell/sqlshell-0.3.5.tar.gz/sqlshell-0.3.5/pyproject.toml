@@ -1,0 +1,121 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel>=0.37.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sqlshell"
+version = "0.3.5"
+description = "A powerful SQL shell with GUI interface for data analysis"
+readme = "README.md"
+authors = [
+    {name = "SQLShell Team"}
+]
+requires-python = ">=3.8"
+keywords = ["sql", "data analysis", "gui", "duckdb"]
+license = "MIT"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "PyQt6>=6.4.0",
+    "duckdb>=0.9.0",
+    "openpyxl>=3.1.0",
+    "pyarrow>=14.0.1",
+    "fastparquet>=2023.10.1",
+    "xlrd>=2.0.1",
+    "deltalake",
+    "Pillow>=10.0.0",
+    "xgboost",
+    "scikit-learn",
+    "matplotlib>=3.10.0",
+    "scipy>=1.15.0",
+    "seaborn>=0.13.0",
+    "nltk>=3.8.1",
+    "psutil>=5.9.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/oyvinrog/SQLShell"
+
+[project.scripts]
+sqls = "sqlshell.__main__:main"
+
+[tool.setuptools]
+packages = [
+    "sqlshell",
+    "sqlshell.data",
+    "sqlshell.db",
+    "sqlshell.resources",
+    "sqlshell.sqlshell",
+    "sqlshell.ui",
+    "sqlshell.utils"
+]
+
+[tool.setuptools.package-data]
+sqlshell = [
+    "*.db",
+    "resources/*.png",
+    "resources/*.gif",
+    "data/*.py",
+    "*.png",
+    "*.ico"
+]
+
+[tool.setuptools.exclude-package-data]
+sqlshell = [
+    "tests/*",
+    "*/tests/*",
+    "tests/data/*"
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "-ra",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "gui: marks tests that require GUI/PyQt6 (deselect with '-m \"not gui\"')",
+    "integration: marks integration tests",
+    "unit: marks unit tests",
+    "database: marks tests that use database operations",
+    "performance: marks performance tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["sqlshell"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/resources/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true 
