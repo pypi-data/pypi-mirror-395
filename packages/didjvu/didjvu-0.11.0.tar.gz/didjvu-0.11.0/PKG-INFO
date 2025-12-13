@@ -1,0 +1,139 @@
+Metadata-Version: 2.4
+Name: didjvu
+Version: 0.11.0
+Summary: DjVu encoder with foreground/background separation (Python 3 fork) 
+Home-page: https://github.com/FriedrichFroebel/didjvu/
+Author: Jakub Wilk
+Maintainer: FriedrichFröbel
+License: GPL-2.0-only
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: GNU General Public License v2 (GPLv2)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Topic :: Text Processing
+Classifier: Topic :: Multimedia :: Graphics
+Requires-Python: >=3.10, <4
+Description-Content-Type: text/x-rst
+License-File: COPYING
+Requires-Dist: gamera>=4.0.0
+Requires-Dist: Pillow
+Provides-Extra: dev
+Requires-Dist: coverage; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: pep8-naming; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: docutils; extra == "docs"
+Requires-Dist: pygments; extra == "docs"
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: maintainer
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+Overview
+========
+
+**didjvu** uses the Gamera_ framework to separate foreground/background
+layers, which can be then encoded into a DjVu_ file.
+
+.. _Gamera:
+   https://gamera.informatik.hsnr.de/
+.. _DjVu:
+   http://djvu.org/
+
+Prerequisites
+=============
+
+The following software is required:
+
+* Python_ 3 (≥ 3.6)
+* Gamera-4_ (≥ 4.0)
+* Pillow_
+* DjVuLibre_ (≥ 3.5.22)
+* minidjvu_ (≥ 0.8) for the ``--pages-per-dict``/``-p`` option
+
+Additionally, one of the following libraries is needed for the ``--xmp``
+option:
+
+* GExiv2_ (≥ 0.12.2) + PyGI_ or
+* python-xmp-toolkit_ or
+* py3exiv2_
+
+.. _Python:
+   https://www.python.org/
+.. _Pillow:
+   https://pypi.org/project/Pillow/
+.. _DjVuLibre:
+   https://djvu.sourceforge.net/
+.. _minidjvu:
+   https://minidjvu.sourceforge.net/
+.. _GExiv2:
+   https://wiki.gnome.org/Projects/gexiv2
+.. _PyGI:
+   https://wiki.gnome.org/Projects/PyGObject
+.. _python-xmp-toolkit:
+   https://github.com/python-xmp-toolkit/python-xmp-toolkit
+.. _py3exiv2:
+   https://launchpad.net/py3exiv2
+.. _Gamera-4:
+   https://github.com/hsnr-gamera/gamera-4
+
+Installation
+============
+
+The easiest way to install didjvu is from PyPI::
+
+    pip install didjvu
+
+Alternatively, you can use didjvu without installing it, straight out of an unpacked source tarball or a VCS checkout.
+
+It's also possible to install it from source for the current interpreter with::
+
+   pip install .
+
+The man pages can be deployed using::
+
+   make install_manpage
+
+By default, ``make install_manpage`` installs them to ``/usr/local/``. You can specify a different installation prefix by setting the ``PREFIX`` variable, e.g.::
+
+   make install PREFIX="$HOME/.local"
+   
+About this fork
+===============
+
+This repository is a port of the original repository to Python 3.
+
+The process involved the *2to3* tool and manual fixes afterwards to get the existing tests to pass. Some of the error reports and fixes arising from the early porting process have been contributed by `@rmast`_.
+
+At the moment there are no plans to submit a pull request to the upstream repository, which would probably require some changes to my code as well. This is mostly due to the corresponding upstream issue being marked as *wontfix*: `Issue #13`_.
+
+I will try to keep this fork/port in sync with the upstream changes where necessary. Please note that I do not have any plans on implementing completely new features for now. Feature requests and bugs which can be reproduced in the original version as well should be reported at both places in the best case.
+
+Differences from upstream
+-------------------------
+
+* Package requires Python ≥ 3.6.
+  * Please note that Python 3.6 support has been dropped here in the meantime and the latest code might stop working on EOL Python versions.
+* Drop old Gamera workarounds.
+* Migrate from *nose* to plain *unittest* stdlib module.
+* Conform to PEP8 coding style.
+* Use standardized *setup.py*-based installation.
+* Rename *lib* to *didjvu* and migrate *didjvu* binary to *__main__.py* and console script version.
+
+
+.. _@rmast:
+   https://github.com/rmast
+.. _Issue #13:
+   https://github.com/jwilk/didjvu/issues/13
