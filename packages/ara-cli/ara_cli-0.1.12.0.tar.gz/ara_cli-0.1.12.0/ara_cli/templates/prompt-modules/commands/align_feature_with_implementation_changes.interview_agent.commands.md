@@ -1,0 +1,1 @@
+I have changed the implementation file {updated_implementation_file_path} by adding new functionality after the existing comment markers. Update the related feature file {feature_file_path} so that the Then-steps match the new behaviour and, if needed, create additional scenarios to cover the new logic.

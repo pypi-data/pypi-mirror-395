@@ -1,0 +1,1 @@
+From the artefact content at {example_artefact_file_path}, create a set of implementation tasks with the exact specified names and content and assign them logically to the responsible user {assignee_identifier}. Do not modify the provided task texts; just materialise them as individual task entries in the appropriate location.

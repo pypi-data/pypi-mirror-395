@@ -1,0 +1,1 @@
+Read the file at {input_file_path} and extract all key information into bullet points. Group the bullets by topic (for example: decisions, open questions, action items) and avoid repeating minor details.

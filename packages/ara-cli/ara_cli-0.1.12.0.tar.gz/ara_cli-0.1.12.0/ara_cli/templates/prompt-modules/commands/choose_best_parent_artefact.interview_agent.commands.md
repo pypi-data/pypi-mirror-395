@@ -1,0 +1,1 @@
+Using the find_the_best_suited_parent_artefact tool for the given artifact, determine which artefact is best suited to capture the value. Explain your reasoning and, if needed, propose concrete artefact names or formats.

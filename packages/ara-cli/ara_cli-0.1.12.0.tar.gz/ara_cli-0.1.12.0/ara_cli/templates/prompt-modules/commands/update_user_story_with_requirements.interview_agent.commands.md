@@ -1,0 +1,1 @@
+Reformulate and update the user story in {user_story_file_path} according to the new requirements {updated_requirements_description}. Reflect these requirements in clear acceptance criteria and, if needed, propose follow-up user stories.

@@ -1,0 +1,1 @@
+In the task file at {task_file_path}, there are multiple TODOs. Perform only the TODOs that relate to {todo_scope_description} (for example, Docker image builds, logging clean-up, or UI copy changes), implement the required changes, and then mark only those relevant TODOs as completed inside the task file.

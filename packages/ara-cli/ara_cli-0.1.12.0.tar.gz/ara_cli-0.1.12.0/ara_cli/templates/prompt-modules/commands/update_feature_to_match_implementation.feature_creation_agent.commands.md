@@ -1,0 +1,1 @@
+Update the feature file at {feature_file_path} so that it fully reflects the current behaviour of the implementation in {implementation_file_paths}. Keep the existing scenario structure where possible, adjust steps where necessary, and ensure that edge cases and negative paths are described explicitly.

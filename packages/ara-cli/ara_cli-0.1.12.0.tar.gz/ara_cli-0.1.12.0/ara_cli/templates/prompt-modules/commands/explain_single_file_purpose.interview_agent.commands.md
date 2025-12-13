@@ -1,0 +1,1 @@
+What is this file about: {input_file_path}? Read the file using the appropriate tools and return a concise explanation of its purpose, structure, and key domain concepts.
