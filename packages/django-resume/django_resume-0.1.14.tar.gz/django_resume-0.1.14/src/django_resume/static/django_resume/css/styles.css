@@ -1,0 +1,453 @@
+/* universal styles, configuration etc. */
+:root {
+    font-family: "Martian Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-optical-sizing: auto;
+    font-weight: 200;
+    font-style: normal;
+    font-variation-settings: "wdth" 87.5;
+    --font-color: #555e6a;
+    color: var(--font-color);
+    font-size: 14px;
+    line-height: 1.5rem;
+    --color-black: black;
+    --color-white: white;
+    --color-ultralightgrey: rgb(235, 236, 241);
+    --color-lightgrey: rgb(180, 185, 198);
+    --color-middlegrey: #545d69;
+    --color-grey-transparent: hsl(207, 6%, 30%);
+    --color-grey: #333333;
+    --color-brightblue: #0071c7;
+    --color-brightblue-transparent: #0071c7;
+    --color-darkblue: rgba(0, 113, 199, 0.7);
+    --color-darkblue-transparent: rgba(52, 136, 218, 0.3);
+    --measure: 70ch;
+    --ratio: 1.5;
+    --border-thin: 1px;
+    --border-color: #e3e3e3;
+    --s-6: calc(var(--s-5) / var(--ratio));
+    --s-5: calc(var(--s-4) / var(--ratio));
+    --s-4: calc(var(--s-3) / var(--ratio));
+    --s-3: calc(var(--s-2) / var(--ratio));
+    --s-2: calc(var(--s-1) / var(--ratio));
+    --s-1: calc(var(--s0) / var(--ratio));
+    --s0: 1rem;
+    --s1: calc(var(--s0) * var(--ratio));
+    --s2: calc(var(--s1) * var(--ratio));
+    --s3: calc(var(--s2) * var(--ratio));
+    --s4: calc(var(--s3) * var(--ratio));
+    --s5: calc(var(--s4) * var(--ratio));
+}
+
+@view-transition {
+  navigation: auto;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: calc(4 * var(--s0));
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Inter", monospace;
+    font-weight: 600;
+    font-style: normal;
+    font-variation-settings: "slnt" 0;
+    font-optical-sizing: auto;
+    color: var(--color-black);
+    margin: 0; /* Removes default margin to remove gaps between sections */
+    /*word-spacing: var(--word-spacing); !* Adds space between words *!*/
+}
+
+p, ul, label {
+    margin: 0; /* Removes default margin to remove gaps between sections */
+    word-spacing: -0.2ch; /* Adds space between words */
+}
+
+hr {
+    height: 1px; /* or however thick you want the hr */
+    background: repeating-linear-gradient(to right, black 0, black 2px, transparent 2px, transparent 6px);
+    border: none; /* Remove border to avoid conflicts */
+}
+
+* {
+    box-sizing: border-box;
+    max-inline-size: var(--measure);
+}
+
+html,
+body,
+div,
+header,
+nav,
+main,
+footer {
+    max-inline-size: none;
+}
+
+footer {
+    /* add some space below footer */
+    margin-bottom: var(--s3);
+}
+
+a {
+    text-decoration: none; /* Removes the underline */
+}
+
+a.underlined {
+    color: var(--color-brightblue);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 2px;
+    transition: text-decoration-color 0.3s ease;
+}
+
+a.underlined:hover {
+    text-decoration-color: var(--color-darkblue);
+}
+
+p.pretty {
+    text-wrap: pretty;
+}
+
+.cover-title {
+    /*margin-block-end: var(--s1);*/
+}
+
+.first-cover-headline {
+    font-size: 1.4rem;
+    margin-block-end: var(--s0);
+    margin-block-start: var(--s2);
+}
+
+svg {
+    vertical-align: middle; /* Adjusts the vertical alignment */
+}
+
+/* layout primitives */
+.center {
+    box-sizing: content-box;
+    margin-inline: auto;
+    max-inline-size: var(--measure);
+    padding-inline-start: 1rem;
+    padding-inline-end: 1rem;
+}
+
+.with-sidebar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s1);
+}
+
+.with-sidebar > :first-child {
+    /* not sidebar */
+    flex-basis: 0;
+    flex-grow: 999;
+    min-inline-size: 50%;
+}
+
+.with-sidebar > :last-child {
+    /* sidebar */
+    flex-basis: 15rem;
+    flex-grow: 1;
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+[class^='stack'] > * {
+    /* top and bottom margins in horizontal-tb writing mode */
+    margin-block: 0;
+}
+
+.stack > * + * {
+    margin-block-start: var(--s0);
+}
+
+.stack-card > :nth-child(2) {
+    margin-block-end: auto; /* push second child to the bottom */
+}
+
+.stack-card > :last-child {
+    margin-block-start: var(--s1); /* min space between card text and badges */
+}
+
+.stack-small > * + * {
+    margin-block-start: var(--s-1);
+}
+
+
+.stack-large > * + * {
+    margin-block-start: var(--s2);
+}
+
+.stack-large > :first-child {
+    margin-block-start: var(--s1);
+}
+
+.icon {
+    width: 1.25em;
+    height: 1.25em;
+}
+
+.icon-link {
+    position: absolute;
+    top: var(--s-2);
+    right: var(--s-2);
+    color: var(--color-brightblue-transparent) !important;
+}
+
+.link-margin {
+    margin-inline-end: var(--s-1);
+}
+
+.with-icon {
+    display: inline-flex;
+    vertical-align: middle;
+}
+
+.with-icon .icon {
+    margin-inline-end: 0.2rem;
+}
+
+.project-box {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: var(--s0);
+    border: var(--color-lightgrey) var(--border-thin) solid;
+    border-radius: 0.5ch;
+    --color-light: var(--color-white);
+    --color-dark: var(--color-black);
+    color: var(--font-color);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    /* scroll animation */
+    opacity: 1;
+    transform: translateY(0px);
+}
+
+.project-box.invisible {
+    opacity: 0;
+    transform: translateY(100px);
+    transition: all 0.5s ease;
+}
+
+.project-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 10px rgba(110, 114, 124, 0.15);
+    /*background-color: rgba(52, 136, 218, 0.05); !* link color 30% *!*/
+    background: linear-gradient(to bottom, rgba(52, 136, 218, 0.1), rgba(255, 255, 255, 0));
+}
+
+.project-box > h3 {
+    color: var(--color-black);
+}
+
+.project-box > p {
+    font-size: calc(0.9 * var(--s0));
+}
+
+.project-box * {
+    color: inherit;
+}
+
+.grid {
+    display: grid;
+    grid-gap: 1rem;
+}
+
+@supports (width: min(180px, 100%)) {
+    .grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    }
+}
+
+/* special cases and utility classes */
+.avatar-container {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.avatar {
+    border-radius: 10%;
+}
+
+.social-link {
+    color: var(--color-grey);
+    border: var(--border-thin) solid var(--border-color);
+    padding: var(--s-3);
+    border-radius: 0.5ch;
+}
+
+.social-link:hover {
+    background-color: var(--color-darkblue-transparent); /* link color 30% */
+    color: var(--color-black);
+}
+
+.cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.timeline-header-cluster {
+    justify-content: space-between;
+}
+
+.timeline-header-title {
+    display: flex;
+    gap: var(--s-2);
+    align-items: center; /* Aligns the title and the job badges vertically */
+}
+
+.year-span {
+    top: var(--s1);
+    right: 0;
+    font-size: calc(0.9 * var(--s0));
+    font-weight: lighter;
+    margin-left: auto;
+}
+
+.cluster-list {
+    list-style-type: none; /* Removes default bullets */
+    padding: 0; /* Removes default padding */
+}
+
+.icons-list {
+    margin-block-end: var(--s-3); /* Remove ul default margin for social link icons */
+}
+
+.skills-list li {
+    background-color: var(--color-grey); /* Dark grey background */
+    color: var(--color-white); /* White text color */
+    padding: 0.5ch 1ch; /* Adds space inside the badge */
+    border-radius: 0.5ch; /* Rounds the corners */
+    font-size: calc(0.8 * var(--s0)); /* Adjusts the font size */
+    display: inline-block; /* Ensures badges are inline */
+}
+
+.pronoun-badges-list li {
+    background-color: var(--color-ultralightgrey); /* Light grey background */
+    line-height: 1.5; /* normalize the line height so that the badges are centered vertically */
+    padding: 0.5ch 1ch; /* Adds space inside the badge */
+    border-radius: 1ch; /* Rounds the corners */
+    font-size: calc(0.8 * var(--s0)); /* Adjusts the font size */
+    color: var(--color-middlegrey); /* Dark grey text color */
+    display: inline-block; /* Ensures badges are inline */
+}
+
+.job-badges-list li {
+    background-color: var(--color-ultralightgrey); /* Light grey background */
+    padding: 0.5ch 1ch; /* Adds space inside the badge */
+    border-radius: 1ch; /* Rounds the corners */
+    font-size: calc(0.8 * var(--s0)); /* Adjusts the font size */
+    color: var(--color-middlegrey); /* Dark grey text color */
+    display: inline-block; /* Ensures badges are inline */
+}
+
+.project-badges-list li {
+    background-color: var(--color-ultralightgrey); /* Light grey background */
+    padding: 0.5ch 1ch; /* Adds space inside the badge */
+    border-radius: 1ch; /* Rounds the corners */
+    font-size: calc(0.8 * var(--s0)); /* Adjusts the font size */
+    color: var(--color-middlegrey); /* Dark grey text color */
+    display: inline-block; /* Ensures badges are inline */
+}
+
+.sub-line {
+    font-size: calc(1.1 * var(--s0));
+    color: var(--color-black);
+    font-weight: 300;
+}
+
+header {
+    display: flex;
+    justify-content: flex-end;
+    padding-block-end: var(--s1);
+    padding-block-start: var(--s1);
+}
+
+h1 {
+    font-size: calc(2.5 * var(--s0));
+    line-height: calc(2.5 * var(--s0));
+    font-weight: 600;
+}
+
+h3 {
+    color: var(--color-grey-transparent);
+}
+
+section {
+    padding-block-start: var(--s1);
+    padding-block-end: var(--s1);
+}
+
+.footer-with-background {
+    display: flex;
+    flex-direction: column;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    text-align: center;
+    margin-block-start: auto;
+    margin-bottom: calc(-1.1 * var(--s3));
+    align-items: flex-end;
+}
+
+.contact {
+    display: inline-block;
+    margin-bottom: var(--s1);
+    border: 1px solid var(--color-grey);
+    border-radius: var(--s-2);
+    padding: var(--s-1);
+}
+
+.float-right {
+    float: right;
+}
+
+.cover-avatar-container {
+    overflow: hidden;
+    width: 15vw;
+    min-width: 100px;
+    max-width: 130px;
+    aspect-ratio: 4 / 5.5;
+    margin-left: var(--s1);
+    margin-bottom: var(--s1);
+    margin-right: var(--s1);
+    transform: rotate(8deg);
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3); /* X offset, Y offset, blur radius, shadow color */
+    border: white 5px solid;
+}
+
+.cover-avatar-edit-container {
+    width: 15vw;
+    min-width: 100px;
+    max-width: 130px;
+    margin-left: auto;
+}
+
+.cover-avatar-image {
+    height: auto;
+    width: 100%;
+    object-fit: cover;
+}
+
+.small-input {
+    min-width: 10px;
+    max-width: 20ch;
+}
