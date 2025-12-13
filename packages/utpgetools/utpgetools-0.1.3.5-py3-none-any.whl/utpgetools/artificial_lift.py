@@ -1,0 +1,1589 @@
+"""
+Artificial Lift Systems Analysis Module
+
+This module provides comprehensive functions for analyzing and designing artificial lift
+systems commonly used in oil and gas production. The module includes tools for various
+artificial lift methods including rod pumps, gas lift, plunger lift, and progressive
+cavity pumps (PCPs), along with supporting calculations for echometer analysis and
+well performance evaluation.
+
+Main Functions:
+    VLP: Vertical Lift Performance curve calculations using multiphase flow correlations
+    IPR: Inflow Performance Relationship calculations for reservoir-wellbore analysis
+    echometer_fl_bhp: Complete echometer analysis for fluid level and pressure calculations
+    gas_valve_depths: Gas lift valve depth calculations for unloading design
+    plunger_rate_calculation: Plunger lift cycle analysis and production rate estimation
+    pcp_design: Progressive cavity pump design and performance analysis
+
+Supporting Functions:
+    newton_laplace_vg: Gas sonic velocity calculations for echometer analysis
+    fluid_level_from_shot: Fluid level determination from acoustic travel time
+    calculate_flow_divided_by_area: Flow rate calculations from pressure buildup data
+    mccoy_correlation: Liquid holdup estimation using McCoy correlation
+    fluid_fractions: Individual fluid fraction calculations from mixture properties
+    bhp_from_fluid_level: Bottomhole pressure calculations from fluid level data
+
+Dependencies:
+    - numpy: For numerical calculations and array operations
+    - rich.console: For enhanced console output formatting
+    - utpgetools.utilities_package: For fluid property calculations
+
+Notes:
+    This module is designed for petroleum engineers working on artificial lift
+    optimization, well performance analysis, and production system design. All
+    functions include comprehensive error checking and provide detailed console
+    output for transparency in calculations.
+"""
+
+import numpy as np
+from rich.console import Console
+from rich.text import Text
+
+console = Console()
+
+def VLP(
+    diameter_in,
+    total_length_ft,
+    length_increment_ft,
+    angle_deg,
+    roughness,
+    GLR,
+    WOR,
+    API,
+    gas_gravity,
+    water_gravity,
+    separator_temp_F,
+    separator_pressure_psi,
+    outlet_temp_F,
+    inlet_temp_F,
+    wellhead_pressure_psi,
+    flowrate_range_stb_per_day,
+):
+    """
+    Calculates the Vertical Lift Performance (VLP) curve for a well using multiphase flow correlations.
+    
+    Parameters:
+    -----------
+    flowrate_range_stb_per_day : array-like or scalar
+        If array-like: Returns arrays of flowrate (STB/D) and corresponding bottomhole pressure (psia).
+        If scalar: Returns arrays of depth (ft) and corresponding pressure (psia) along the wellbore.
+    
+    Returns:
+    --------
+    If flowrate_range_stb_per_day is array-like:
+        tuple: (flowrates, bottomhole_pressures)
+    If flowrate_range_stb_per_day is scalar:
+        tuple: (depths, pressures_along_wellbore)
+    """
+    diameter_ft = diameter_in / 12.0
+    n_steps = int(total_length_ft / length_increment_ft)
+    angle_rad = np.radians(angle_deg)
+    e = roughness
+    Tgrad = (inlet_temp_F - outlet_temp_F) / total_length_ft
+    
+    # Check if input is a single value or array
+    is_single_flowrate = np.isscalar(flowrate_range_stb_per_day)
+
+    def vlp_single(rateSTB, return_pressure_array=False):
+        # Preallocate arrays
+        p = np.zeros(n_steps + 1)
+        T = np.zeros(n_steps + 1)
+        olddeltap = 30.0
+        p[0] = wellhead_pressure_psi
+        T[0] = outlet_temp_F
+        for i in range(1, n_steps + 1):
+            error = 1.0
+            iter_count = 0
+            while error >= 0.001 and iter_count < 200:
+                T_i = T[i-1] + (Tgrad * length_increment_ft / 2)
+                p_i = p[i-1] + (olddeltap / 2)
+                Oilsg = 141.5 / (API + 131.5)
+                GOR = GLR * (WOR + 1)
+                GasSg = gas_gravity * (1 + 5.912e-5 * API * separator_temp_F * (np.log((separator_pressure_psi + 14.7) / 114.7) / np.log(10)))
+                A = API / (T_i + 460)
+                if API <= 30:
+                    Pb = (27.64 * GOR / (GasSg * 10 ** (11.172 * A))) ** (1 / 1.0937)
+                else:
+                    Pb = (56.06 * GOR / (GasSg * 10 ** (10.393 * A))) ** (1 / 1.187)
+                if API <= 30:
+                    Rs = GasSg * (p_i ** 1.0937) * (10 ** (11.172 * A)) / 27.64
+                else:
+                    Rs = GasSg * (p_i ** 1.187) * (10 ** (10.393 * A)) / 56.06
+                Rs = min(max(Rs, 0), GOR)
+                F = (T_i - 60) * (API / GasSg)
+                if p_i < Pb:
+                    if API <= 30:
+                        Bo = 1 + 4.677e-4 * Rs + 1.751e-5 * F - 1.8106e-8 * Rs * F
+                    else:
+                        Bo = 1 + 4.677e-4 * Rs + 1.1e-5 * F - 1.337e-9 * Rs * F
+                else:
+                    if API <= 30:
+                        Bob = 1 + 4.677e-4 * GOR + 1.751e-5 * F - 1.8106e-8 * GOR * F
+                    else:
+                        Bob = 1 + 4.677e-4 * GOR + 1.1e-5 * F - 1.337e-9 * GOR * F
+                    co = (-1.433 + 5 * Rs + 17.2 * T_i - 1.18 * GasSg + 12.61 * API) / (p_i * 1e5)
+                    Bo = Bob * np.exp(co * (Pb - p_i))
+                Zv = 3.0324 - 0.02023 * API
+                y = 10 ** Zv
+                x = y * (T_i ** -1.163)
+                Muod = (10 ** x) - 1
+                aa = 10.715 * ((Rs + 100) ** -0.515)
+                bb = 5.44 * ((Rs + 150) ** -0.338)
+                if p_i <= Pb:
+                    Muo = aa * (Muod ** bb)
+                else:
+                    Muob = aa * (Muod ** bb)
+                    m = 2.6 * (p_i ** 1.187) * np.exp(-11.513 - 8.98e-5 * p_i)
+                    Muo = Muob * ((p_i / Pb) ** m)
+                Tc = gas_gravity * 314.8148 + 168.5185
+                Pc = gas_gravity * (-47.619) + 700.4762
+                Tr = (T_i + 460) / Tc
+                Pr = p_i / Pc
+                Dz = 10 ** (0.3106 - 0.49 * Tr + 0.1824 * (Tr ** 2))
+                Cz = 0.132 - 0.32 * (np.log(Tr) / np.log(10))
+                Bz = (0.62 - 0.23 * Tr) * Pr + ((0.066 / (Tr - 0.86)) - 0.037) * (Pr ** 2) + 0.32 * (Pr ** 6) / (10 ** (9 * (Tr - 1)))
+                Az = 1.39 * ((Tr - 0.92) ** 0.5) - 0.36 * Tr - 0.101
+                Z = Az + (1 - Az) * np.exp(-Bz) + Cz * (Pr ** Dz)
+                densG = 2.7 * gas_gravity * p_i / ((T_i + 460) * Z)
+                Bg = 0.0283 * Z * (T_i + 460) / p_i
+                Xvisc = 3.5 + (986 / (T_i + 460)) + 0.01 * 29 * gas_gravity
+                Lamda = 2.4 - 0.2 * Xvisc
+                Kvisc = ((9.4 + 0.02 * 29 * gas_gravity) * ((T_i + 460) ** 1.5)) / (209 + 19 * 29 * gas_gravity + T_i + 460)
+                MuG = Kvisc * 1e-4 * np.exp(Xvisc * ((0.01602 * densG) ** Lamda))
+                densAir = 28.97 * p_i / (10.73159 * Z * (T_i + 460))
+                dissgasgr = densG / densAir
+                densO = (62.4 * Oilsg / Bo) + (0.0764 * dissgasgr * Rs / (Bo * 5.615))
+                densW = 62.4 * water_gravity
+                densL = (WOR * densW + Bo * densO) / (WOR + Bo)
+                MuW = np.exp(1.003 - 1.479e-2 * T_i + 1.982e-5 * (T_i ** 2))
+                MuL = ((WOR * densW) / (WOR * densW + Bo * densO)) * MuW + ((Bo * densO) / (WOR * densW + Bo * densO)) * Muo
+                sigmaO = 30
+                sigmaW = 74
+                sigma = ((WOR * densW) / (WOR * densW + Bo * densO)) * sigmaW + ((Bo * densO) / (WOR * densW + Bo * densO)) * sigmaO
+                Area = np.pi * (diameter_ft ** 2) / 4
+                ql = (WOR + Bo) * rateSTB * 5.615
+                qg = Bg * (GOR - Rs) * rateSTB
+                qt = qg + ql
+                Fg = qg / qt
+                Fl = 1 - Fg
+                usg = qg / (Area * 86400)
+                usl = ql / (Area * 86400)
+                um = usg + usl
+                LB = 1.071 - (0.2218 * (um ** 2) / diameter_ft)
+                LB = max(LB, 0.13)
+                if Fg < LB:
+                    us = 0.8
+                    yl = 1 - 0.5 * (1 + (um / us) - ((1 + (um / us)) ** 2 - 4 * usg / us) ** 0.5)
+                    yl = min(max(yl, Fl), 1)
+                    mdotl = Area * usl * densL * 86400
+                    Nre = 0.022 * mdotl / (diameter_ft * MuL)
+                    try:
+                        ff = (1 / (-4 * (np.log((e / 3.7065) - (5.0452 / Nre) * (np.log(((e ** 1.1098) / 2.8257) + ((7.149 / Nre) ** 0.8981)) / np.log(10))) / np.log(10)))) ** 2
+                    except:
+                        ff = 0.02
+                    DensAvg = (1 - yl) * densG + yl * densL
+                    dpdz = (1 / 144) * ((np.sin(angle_rad) * DensAvg) + ((ff * (mdotl ** 2)) / (7.413e10 * (diameter_ft ** 5) * densL * (yl ** 2))))
+                    DeltaP = dpdz * length_increment_ft
+                else:
+                    Nvl = 1.938 * usl * ((densL / sigma) ** 0.25)
+                    Nvg = 1.938 * usg * ((densL / sigma) ** 0.25)
+                    Nd = 120.872 * diameter_ft * ((densL / sigma) ** 0.5)
+                    Nl = 0.15726 * MuL * ((1 / (densL * (sigma ** 3))) ** 0.25)
+                    CNl = 7.9595 * (Nl ** 6) - 13.144 * (Nl ** 5) + 8.3825 * (Nl ** 4) - 2.4629 * (Nl ** 3) + 0.2213 * (Nl ** 2) + 0.0473 * Nl + 0.0018
+                    group1 = Nvl * (p_i ** 0.1) * CNl / ((Nvg ** 0.575) * (14.7 ** 0.1) * Nd)
+                    ylpsy = -3.44985871528755e15 * (group1 ** 6) + 56858620047687.2 * (group1 ** 5) - 368100995579.95 * (group1 ** 4) + 1189881753.18 * (group1 ** 3) - 2037716.09 * (group1 ** 2) + 1868.71 * group1 + 0.1
+                    group2 = Nvg * (Nl ** 0.38) / (Nd ** 2.14)
+                    psy = 116159 * (group2 ** 4) - 22251 * (group2 ** 3) + 1232.1 * (group2 ** 2) - 4.8183 * group2 + 0.9116
+                    psy = max(psy, 1)
+                    yl = ylpsy * psy
+                    yl = min(max(yl, Fl), 1)
+                    DensAvg = (1 - yl) * densG + yl * densL
+                    mdot = Area * (usl * densL + usg * densG) * 86400
+                    try:
+                        Nre = 0.022 * mdot / (diameter_ft * (MuL ** yl) * (MuG ** (1 - yl)))
+                        ff = (1 / (-4 * (np.log((e / 3.7065) - (5.0452 / Nre) * (np.log(((e ** 1.1098) / 2.8257) + ((7.149 / Nre) ** 0.8981)) / np.log(10))) / np.log(10)))) ** 2
+                    except:
+                        ff = 0.02
+                    dpdz = (1 / 144) * ((np.sin(angle_rad) * DensAvg) + ((ff * (mdot ** 2)) / (7.413e10 * (diameter_ft ** 5) * DensAvg)))
+                    DeltaP = dpdz * length_increment_ft
+                error = abs(DeltaP - olddeltap) / (abs(olddeltap) + 1e-6)
+                olddeltap = DeltaP
+                iter_count += 1
+            p[i] = p[i-1] + DeltaP
+            T[i] = T[i-1] + length_increment_ft * Tgrad
+        
+        if return_pressure_array:
+            # Create depth array from wellhead (0) to total depth
+            depths = np.arange(0, total_length_ft + length_increment_ft, length_increment_ft)
+            return depths[:len(p)], p
+        else:
+            return p[-1]
+
+    # Handle single flowrate vs flowrate range
+    if is_single_flowrate:
+        # Return pressure vs depth curve for single flowrate
+        depths, pressures = vlp_single(flowrate_range_stb_per_day, return_pressure_array=True)
+        return depths, pressures
+    else:
+        # Run for each flowrate sequentially to get VLP curve
+        bhp_list = [vlp_single(rateSTB) for rateSTB in flowrate_range_stb_per_day]
+        return np.array(flowrate_range_stb_per_day), np.array(bhp_list)
+def IPR(q_test=None, p_test=None, p_res=None, pwf=None, J=None, p_b=None, show_plot=False, plot_mode='overlay', constant_J=True):
+    """
+    Calculates the Inflow Performance Relationship (IPR) for a well, estimating the production rate based on reservoir and well parameters.
+    This function adapts to both below- and above-bubble point conditions, providing a versatile tool for artificial lift and reservoir engineering analysis.
+    
+    Parameters:
+    -----------
+    q_test : array-like or scalar
+        Well test flowrate data (STB/D). If array, must have same length as p_test and p_res.
+    p_test : array-like or scalar
+        Well test pressure data (psi). If array, must have same length as q_test and p_res.
+    p_res : array-like or scalar
+        Reservoir pressure(s) (psi). If array, must have same length as q_test and p_test.
+        Each reservoir pressure is associated with the corresponding well test data.
+    pwf : array-like or scalar
+        Wellbore flowing pressure(s) for IPR calculation (psi).
+    J : scalar, optional
+        Productivity index. If provided, overrides calculation from test data.
+    p_b : scalar
+        Bubble point pressure (psi).
+    show_plot : bool, default False
+        Whether to display IPR plots.
+    plot_mode : str, default 'overlay'
+        Plot mode: 'overlay' or 'separate'.
+    constant_J : bool, default True
+        Whether to use constant productivity index across different reservoir pressures.
+        If True, uses J from first test point for all reservoir pressures.
+        If False, calculates J individually for each reservoir pressure using its corresponding test data.
+    
+    Returns:
+    --------
+    array or list of arrays
+        Flow rates corresponding to input pwf values.
+        
+    Raises:
+    -------
+    ValueError
+        If the number of well tests doesn't match the number of reservoir pressures,
+        or if q_test and p_test have different shapes.
+    
+    Examples:
+    ---------
+    # Single test point and reservoir pressure
+    IPR(q_test=100, p_test=2000, p_res=3000, pwf=np.linspace(0, 3000, 100), p_b=1800)
+    
+    # Multiple test points, each associated with a reservoir pressure
+    q_tests = [80, 120, 150]  # STB/D
+    p_tests = [2200, 1800, 1500]  # psi  
+    p_res = [2800, 3000, 3200]  # psi - each corresponds to a test point
+    IPR(q_test=q_tests, p_test=p_tests, p_res=p_res, pwf=np.linspace(0, 3000, 100), p_b=1800)
+    """
+    import numpy as np
+
+    # Convert inputs to arrays
+    q_test_arr = np.asarray(q_test)
+    p_test_arr = np.asarray(p_test)
+    pwf_arr = np.asarray(pwf)
+    
+    # Validate test data inputs
+    if q_test_arr.shape != p_test_arr.shape:
+        raise ValueError("q_test and p_test must have the same shape when both are arrays")
+    
+    # Ensure p_res is iterable and convert to array
+    try:
+        p_res_arr = np.asarray(p_res)
+        p_res_list = list(p_res_arr)
+    except TypeError:
+        p_res_arr = np.asarray([p_res])
+        p_res_list = [p_res]
+    
+    # Validate that well test data matches reservoir pressure data
+    if q_test_arr.ndim > 0 and p_res_arr.ndim > 0:
+        if len(q_test_arr) != len(p_res_arr):
+            raise ValueError(f"Number of well tests ({len(q_test_arr)}) must match number of reservoir pressures ({len(p_res_arr)})")
+    elif q_test_arr.ndim > 0 or p_res_arr.ndim > 0:
+        # One is array, one is scalar - check if they're compatible
+        if q_test_arr.ndim > 0 and len(q_test_arr) != len(p_res_list):
+            raise ValueError(f"Number of well tests ({len(q_test_arr)}) must match number of reservoir pressures ({len(p_res_list)})")
+        elif p_res_arr.ndim > 0 and len(p_res_list) > 1:
+            # Multiple reservoir pressures but single test point
+            raise ValueError(f"Single well test provided but multiple reservoir pressures ({len(p_res_list)}) given. Provide one test per reservoir pressure.")
+
+    q_curves = []
+    
+    # Calculate J once if constant_J is True and J is None
+    J_fixed = None
+    if constant_J and J is None:
+        # Use the first test point for constant J calculation
+        if q_test_arr.ndim == 0:  # scalar
+            J_fixed = q_test_arr / (p_res_list[0] - p_test_arr)
+        else:  # array - use first test point
+            J_fixed = q_test_arr[0] / (p_res_list[0] - p_test_arr[0])
+            
+    for i, pres in enumerate(p_res_list):
+        if J is not None:
+            J_val = J
+        elif constant_J:
+            J_val = J_fixed
+        else:
+            # Use corresponding test data for this reservoir pressure
+            if q_test_arr.ndim == 0:  # scalar test data
+                q_test_val = q_test_arr
+                p_test_val = p_test_arr
+            else:  # array test data - use corresponding index
+                q_test_val = q_test_arr[i]
+                p_test_val = p_test_arr[i]
+            J_val = q_test_val / (pres - p_test_val)
+        
+        # Check if reservoir pressure is below bubble point
+        if pres >= p_b:
+            # Original behavior when reservoir pressure is above bubble point
+            qb = J_val * (pres - p_b)
+            qmax = qb / (1-0.2 * (p_b / pres) - 0.8 * (p_b / pres) ** 2)
+            console.print(f"\n[bright_cyan]qb[/bright_cyan] for [bright_cyan]p_res[/bright_cyan]={pres} psi: [bright_red]{qb:.2f}[/bright_red] STB/D")
+            console.print(f"[bright_cyan]qmax[/bright_cyan] for [bright_cyan]p_res[/bright_cyan]={pres} psi: [bright_red]{qmax:.2f}[/bright_red] STB/D")
+            q = np.where(
+                pwf_arr > p_b,
+                # qb + (J_val * p_b / 1.8) * (1 - 0.2 * pwf_arr / p_b - 0.8 * (pwf_arr / p_b) ** 2), # previous version
+                # qb / (1-0.2 * pwf_arr / p_b - 0.8 * (pwf_arr / p_b) ** 2), # testing new version
+                J_val * (pres - pwf_arr),
+                (1 - 0.2 * (pwf_arr / pres) - 0.8 * (pwf_arr / pres) ** 2) * qmax # revised version
+            )
+        else:
+            # Use full two-phase Vogel IPR when reservoir pressure is below bubble point
+            if q_test_arr.ndim == 0:  # scalar test data
+                q_test_val = q_test_arr
+                p_test_val = p_test_arr
+            else:  # array test data - use corresponding index
+                q_test_val = q_test_arr[i]
+                p_test_val = p_test_arr[i]
+            
+            qmax = q_test_val / (1-0.2 * (p_test_val / pres) - 0.8 * (p_test_val / pres) ** 2)
+            console.print(f"Reservoir pressure below bubble point - using two-phase Vogel IPR")
+            console.print(f"[bright_cyan]qmax[/bright_cyan] for [bright_cyan]p_res[/bright_cyan]={pres} psi: [bright_red]{qmax:.2f}[/bright_red] STB/D")
+            q = (1 - 0.2 * (pwf_arr / pres) - 0.8 * (pwf_arr / pres) ** 2) * qmax
+                
+            
+        # If input was scalar, return scalar
+        if np.isscalar(pwf):
+            q = float(q)
+        q_curves.append(q)
+
+    if show_plot:
+        import matplotlib.pyplot as plt
+        if plot_mode == 'overlay':
+            for i, q in enumerate(q_curves):
+                mask = pwf_arr <= p_res_list[i]
+                plt.plot(np.array(q)[mask], pwf_arr[mask], label=f'p_res={p_res_list[i]}')
+            plt.xlabel('q (STB/D)')
+            plt.ylabel('pwf (psi)')
+            plt.title('Reservoir IPR')
+            plt.grid()
+            plt.xlim(0)
+            plt.ylim(0)
+            plt.legend()
+            plt.show()
+        elif plot_mode == 'separate':
+            for i, q in enumerate(q_curves):
+                mask = pwf_arr <= p_res_list[i]
+                plt.figure()
+                plt.plot(np.array(q)[mask], pwf_arr[mask])
+                plt.xlabel('q (STB/D)')
+                plt.ylabel('pwf (psi)')
+                plt.title(f'Reservoir IPR (p_res={p_res_list[i]})')
+                plt.xlim(0)
+                plt.ylim(0)
+                plt.grid()
+                plt.show()
+
+    return q_curves if len(q_curves) > 1 else q_curves[0]
+
+def newton_laplace_vg(z,T,gamma_g,k=1.25):
+    """
+    Calculate gas sonic velocity using the Newton-Laplace equation.
+    
+    This function computes the speed of sound in gas using gas properties and the
+    Newton-Laplace equation, which is commonly used in echometer analysis for
+    determining fluid levels in wells and acoustic shot interpretation.
+    
+    Args:
+        z (float): Gas compressibility factor (z-factor) at the conditions of interest.
+            Dimensionless value typically between 0.7-1.1 for most reservoir conditions.
+        T (float): Temperature in degrees Rankine (°R = °F + 459.67).
+            Should be the temperature at the depth where sonic velocity is calculated.
+        gamma_g (float): Gas specific gravity (dimensionless, relative to air).
+            Standard value is approximately 0.6-0.8 for typical natural gas.
+        k (float, optional): Specific heat ratio (Cp/Cv) for the gas.
+            Default value is 1.25, which is typical for natural gas mixtures.
+            
+    Returns:
+        float: Gas sonic velocity in feet per second (ft/s).
+        
+    Examples:
+        >>> # Calculate sonic velocity for typical conditions
+        >>> z_factor = 0.85
+        >>> temp_rankine = 580  # 120°F + 460
+        >>> gas_sg = 0.65
+        >>> velocity = newton_laplace_vg(z_factor, temp_rankine, gas_sg)
+        >>> print(f"Sonic velocity: {velocity:.1f} ft/s")
+        
+        >>> # Using custom specific heat ratio
+        >>> velocity = newton_laplace_vg(0.9, 600, 0.7, k=1.3)
+        
+    Notes:
+        - Formula: vg = 41.44 * sqrt(k * z * T / gamma_g)
+        - The constant 41.44 includes unit conversion factors
+        - Commonly used in echometer analysis for acoustic well surveys
+        - Temperature must be in absolute scale (Rankine)
+        - Results are sensitive to gas composition through gamma_g and k
+    """
+    return 41.44*np.sqrt(k * z * T / gamma_g)
+
+def fluid_level_from_shot(deltat,vg):
+    """
+    Calculate fluid level depth from acoustic travel time.
+    
+    This function determines the depth to fluid level in a wellbore using the
+    acoustic travel time and gas sonic velocity. This is the fundamental calculation
+    used in echometer analysis for fluid level determination.
+    
+    Args:
+        deltat (float): Acoustic travel time in seconds.
+            This is the time for sound to travel from surface to fluid level and back.
+        vg (float): Gas sonic velocity in feet per second (ft/s).
+            Typically calculated using newton_laplace_vg() function.
+            
+    Returns:
+        float: Depth to fluid level in feet from surface.
+        
+    Examples:
+        >>> # Calculate fluid level from echometer shot
+        >>> travel_time = 2.5  # seconds
+        >>> sonic_velocity = 1100  # ft/s
+        >>> fluid_depth = fluid_level_from_shot(travel_time, sonic_velocity)
+        >>> print(f"Fluid level at {fluid_depth:.0f} feet")
+        
+        >>> # Combined with sonic velocity calculation
+        >>> z, T, gamma_g = 0.85, 580, 0.65
+        >>> vg = newton_laplace_vg(z, T, gamma_g)
+        >>> depth = fluid_level_from_shot(2.8, vg)
+        
+    Notes:
+        - Formula: L = deltat * vg / 2
+        - Division by 2 accounts for round-trip travel time
+        - Assumes sound travels at constant velocity in gas column
+        - Used extensively in artificial lift optimization and monitoring
+        - Results depend on accurate gas property determination
+    """
+    return deltat*vg/2
+
+def calculate_flow_divided_by_area(deltap,h,deltat):
+    """
+    Calculate flow rate per unit area from pressure buildup data.
+    
+    This function computes the flow rate divided by cross-sectional area using
+    pressure buildup analysis, commonly used in echometer analysis and fluid
+    level calculations for determining well productivity.
+    
+    Args:
+        deltap (float): Pressure buildup during test period in psi.
+            The pressure increase observed during the shut-in period.
+        h (float): Height of fluid column or relevant length in feet.
+            Typically the fluid level depth or height of fluid column.
+        deltat (float): Time period for pressure buildup in appropriate time units.
+            Should be consistent with the correlation being used.
+            
+    Returns:
+        float: Flow rate divided by area (q/A) in ft/s or consistent velocity units.
+        
+    Examples:
+        >>> # Calculate from echometer data
+        >>> pressure_buildup = 15.0  # psi
+        >>> fluid_height = 3500     # feet
+        >>> buildup_time = 120      # consistent time units
+        >>> q_over_a = calculate_flow_divided_by_area(pressure_buildup, fluid_height, buildup_time)
+        >>> print(f"Flow/Area ratio: {q_over_a:.3f} ft/s")
+        
+    Notes:
+        - Formula: q/A = 0.68 * (deltap * h / deltat)
+        - The constant 0.68 is an empirical correlation factor
+        - Used in conjunction with McCoy correlation for liquid holdup analysis
+        - Units must be consistent throughout the calculation
+        - Commonly applied in echometer-based well analysis
+    """
+    return 0.68 * (deltap * h / deltat)
+
+def mccoy_correlation(q_over_a):
+    """
+    Calculate liquid fraction using McCoy correlation.
+    
+    This function applies the McCoy correlation to determine liquid holdup fraction
+    in multiphase flow based on the flow rate per unit area. This correlation is
+    commonly used in echometer analysis for determining fluid compositions in
+    wellbores.
+    
+    Args:
+        q_over_a (float): Flow rate divided by cross-sectional area in ft/s.
+            Typically calculated using calculate_flow_divided_by_area() function.
+            
+    Returns:
+        float: Liquid fraction (fl) as a dimensionless value between 0 and 1.
+            Represents the volume fraction of liquid in the fluid mixture.
+            
+    Examples:
+        >>> # Apply McCoy correlation
+        >>> flow_area_ratio = 0.15  # ft/s
+        >>> liquid_fraction = mccoy_correlation(flow_area_ratio)
+        >>> print(f"Liquid fraction: {liquid_fraction:.3f}")
+        >>> print(f"Liquid percentage: {liquid_fraction*100:.1f}%")
+        
+        >>> # Combined calculation from pressure buildup
+        >>> deltap, h, deltat = 12.0, 4000, 150
+        >>> q_a = calculate_flow_divided_by_area(deltap, h, deltat)
+        >>> fl = mccoy_correlation(q_a)
+        
+    Notes:
+        - Formula: fl = 4.6572 * (q/A)^(-0.319)
+        - This is an empirical correlation derived from field data
+        - Valid for typical oil and gas well conditions
+        - Used extensively in artificial lift analysis
+        - Results should be validated against field observations
+    """
+    return 4.6572 * (q_over_a)**(-0.319)
+
+def fluid_fractions(fl,WOR):
+    """
+    Calculate individual fluid fractions from total liquid fraction and water-oil ratio.
+    
+    This function breaks down the total liquid fraction into oil, water, and gas
+    components based on the water-oil ratio. This is essential for understanding
+    the fluid composition in multiphase flow analysis.
+    
+    Args:
+        fl (float): Total liquid fraction (dimensionless, 0-1).
+            Typically obtained from McCoy correlation or other holdup correlations.
+        WOR (float): Water-oil ratio (dimensionless).
+            Volumetric ratio of water to oil production (water volume / oil volume).
+            
+    Returns:
+        tuple: Three-element tuple containing:
+            - fo (float): Oil fraction (dimensionless, 0-1)
+            - fw (float): Water fraction (dimensionless, 0-1)  
+            - fg (float): Gas fraction (dimensionless, 0-1)
+            
+    Examples:
+        >>> # Calculate fractions for oil-dominated production
+        >>> liquid_frac = 0.65   # 65% liquid
+        >>> water_oil_ratio = 0.5  # 0.5:1 WOR
+        >>> fo, fw, fg = fluid_fractions(liquid_frac, water_oil_ratio)
+        >>> print(f"Oil: {fo:.3f}, Water: {fw:.3f}, Gas: {fg:.3f}")
+        Oil: 0.433, Water: 0.217, Gas: 0.350
+        
+        >>> # High water cut well
+        >>> fo, fw, fg = fluid_fractions(0.8, 4.0)  # 4:1 WOR, 80% liquid
+        >>> print(f"Water cut: {fw/(fo+fw)*100:.1f}%")
+        
+    Notes:
+        - fo = fl / (1 + WOR)
+        - fw = fl - fo  
+        - fg = 1 - fl
+        - Sum of all fractions equals 1.0
+        - Used in echometer analysis and multiphase flow calculations
+        - Essential for bottomhole pressure calculations
+    """
+    fo = fl / (1+WOR)
+    fw = fl-fo
+    fg = 1-fl
+    return fo,fw,fg
+
+def bhp_from_fluid_level(gamma_f,TD,H,psa=50):
+    """
+    Calculate bottomhole pressure from fluid level and fluid properties.
+    
+    This function computes bottomhole pressure using hydrostatic pressure principles,
+    accounting for the fluid column height and specific gravity. Includes elevation
+    correction for annulus pressure measurement.
+    
+    Args:
+        gamma_f (float): Fluid specific gravity (dimensionless, relative to water).
+            Weighted average specific gravity of the fluid mixture in the wellbore.
+        TD (float): Total well depth in feet.
+            True vertical depth or measured depth depending on well geometry.
+        H (float): Fluid level depth in feet from surface.
+            Depth to the fluid interface, typically from echometer analysis.
+        psa (float, optional): Surface annulus pressure in psia.
+            Default value is 50 psia. Pressure at surface reference point.
+            
+    Returns:
+        float: Bottomhole pressure in psia.
+        
+    Examples:
+        >>> # Calculate BHP for typical conditions
+        >>> fluid_sg = 0.85      # Mixed fluid specific gravity
+        >>> total_depth = 5000   # 5000 ft well
+        >>> fluid_level = 3500   # 3500 ft fluid level
+        >>> surface_pressure = 45  # 45 psia surface pressure
+        >>> bhp = bhp_from_fluid_level(fluid_sg, total_depth, fluid_level, surface_pressure)
+        >>> print(f"Bottomhole pressure: {bhp:.1f} psia")
+        
+        >>> # Using default surface pressure
+        >>> bhp = bhp_from_fluid_level(0.9, 6000, 4200)
+        
+    Notes:
+        - Formula: BHP = psa * (1 + H/40000) + 0.433 * gamma_f * (TD - H)
+        - The term (1 + H/40000) provides elevation correction
+        - 0.433 is the hydrostatic pressure gradient for water (psi/ft per unit SG)
+        - (TD - H) is the height of fluid column above bottomhole
+        - Assumes single-phase fluid properties for the column
+        - Used extensively in artificial lift analysis and well monitoring
+    """
+    return psa * (1 + H/40000) + 0.433 * gamma_f * (TD - H)
+
+def echometer_fl_bhp(PBU_time, travel_time, deltap, API, gamma_g, gamma_w, temperature_f, psa, WOR, TVD):
+    """
+    Calculates fluid level and bottomhole pressure (BHP) from an echometer shot using acoustic analysis.
+    
+    This function analyzes echometer (acoustic) well test data to determine the fluid level in the wellbore
+    and calculate the corresponding bottomhole pressure. The calculation process involves determining the 
+    speed of sound in gas, calculating fluid level from travel time, estimating flow rates and fluid 
+    fractions, computing mixture density, and finally calculating BHP using hydrostatic pressure principles.
+    
+    The function prints intermediate calculations and equations at each step for transparency and validation.
+    
+    Args:
+        PBU_time (float): 
+            Pressure buildup time in seconds. Time the well is shut in for the PBU test.
+        
+        travel_time (float): 
+            Acoustic travel time in seconds. Time for sound to travel down to 
+            fluid level and back up.
+        
+        deltap (float): 
+            Pressure buildup during test in psi. Pressure increase observed 
+            during the acoustic shot.
+        
+        API (float): 
+            Oil API gravity in degrees API. Used to calculate oil specific gravity.
+        
+        gamma_g (float): 
+            Gas specific gravity, dimensionless relative to air. Used for gas 
+            property calculations.
+        
+        gamma_w (float): 
+            Water specific gravity, dimensionless relative to water. Typically 
+            around 1.0-1.1.
+        
+        temperature_f (float): 
+            Temperature in degrees Fahrenheit. Wellbore temperature for gas 
+            property calculations.
+        
+        psa (float): 
+            Shut-in annulus pressure / surface separator pressure in psia. 
+            Reference pressure at surface.
+        
+        WOR (float): 
+            Water-to-oil ratio, dimensionless. Volumetric ratio of water to 
+            oil production.
+        
+        TVD (float): 
+            Well true vertical depth in feet. Total vertical depth of the well.
+
+    Returns:
+        tuple: A tuple containing two calculated values:
+        
+            fluid_level (float): Distance from surface to fluid interface in feet.
+            BHP (float): Calculated bottomhole pressure in psia.
+    
+    Process Overview:
+    -----------------
+    1. Calculate gas compressibility factor (z) using gas properties
+    2. Determine sonic velocity in gas using Newton-Laplace equation
+    3. Calculate fluid level from acoustic travel time
+    4. Estimate flow rate per unit area from pressure buildup
+    5. Calculate liquid fraction using McCoy correlation
+    6. Determine individual fluid fractions (oil, water, gas)
+    7. Compute mixture density accounting for gas expansion
+    8. Calculate BHP using hydrostatic pressure with elevation correction
+    
+    Notes:
+    ------
+    - All intermediate calculations and equations are printed to console
+    - Uses McCoy correlation for liquid holdup estimation
+    - Accounts for gas expansion effects in mixture density calculation
+    - Includes elevation correction for annulus pressure
+    - Requires utpgetools.utilities_package for gas property calculations
+    
+    Example:
+    --------
+    >>> fluid_level, bhp = echometer_fl_bhp(
+    ...     deltat=2.5,      # 2.5 seconds travel time
+    ...     deltap=15.0,     # 15 psi pressure buildup  
+    ...     API=35.0,        # 35 API oil
+    ...     gamma_g=0.65,    # 0.65 gas specific gravity
+    ...     gamma_w=1.05,    # 1.05 water specific gravity
+    ...     temperature_f=150, # 150°F temperature
+    ...     psa=50.0,        # 50 psia surface pressure
+    ...     WOR=2.0,         # 2:1 water-oil ratio
+    ...     TVD=5000.0       # 5000 ft well depth
+    ... )
+    """
+    # Steps for calculation
+
+    # Speed of sound in gas (vg) from Newton-Laplace equation
+        # vg = 41.44 * sqrt(k * z * T / gamma_g)
+        # Use z at shut in annulus pressure or average from surface to SI ann
+        # SG at standard conditions (given in problem)
+    from utpgetools.utilities_package import gas_properties_calculation
+    
+    properties = gas_properties_calculation(gamma_g,
+                                            pressure_psi=psa,
+                                            temperature_f=temperature_f,
+                                            )
+    z = properties['z_factors'][-1] # Use z at SI ann
+    console.print(f"\nUsing average pressure in annulus, [bright_cyan]z[/bright_cyan] = [bright_red]{z:.3f}[/bright_red]")
+    T = temperature_f + 460  # Convert to Rankine
+    vg = 41.44 * np.sqrt(1.25 * z * T / gamma_g)
+    console.print(f"\nSonic velocity in gas [bright_cyan]vg[/bright_cyan] = [bright_red]{vg:.3f}[/bright_red] ft/s")
+    console.print(f"\n[bright_cyan]vg[/bright_cyan] = 41.44 * sqrt(1.25 * z * T / gamma_g)")
+    # Calculate L
+        # L = deltat * vg / 2
+    L = travel_time * vg / 2
+    console.print(f"\nFluid level [bright_cyan]L[/bright_cyan] = [bright_red]{L:.3f}[/bright_red] ft")
+    console.print(f"\n[bright_cyan]L[/bright_cyan] = deltat * vg / 2")
+
+    # Calculate q/A
+        # q/A = 0.68 * (deltap * h / deltat)
+        # deltap is pressure buildup during test
+    q_over_a = 0.68 * (deltap * L / PBU_time)
+    console.print(f"\nFlow rate divided by area [bright_cyan]q/A[/bright_cyan] = [bright_red]{q_over_a:.3f}[/bright_red] ft/s")
+    console.print(f"\n[bright_cyan]q/A[/bright_cyan] = 0.68 * (deltap * h / deltat)")
+    # Calculate fl (liquid fraction)
+        # fl = 4.6572 * (q/A)^-0.319
+    fl = 4.6572 * (q_over_a ** -0.319)
+    console.print(f"\nLiquid fraction using McCoy: [bright_cyan]fl[/bright_cyan] = [bright_red]{fl:.3f}[/bright_red]")
+    console.print(f"\n[bright_cyan]fl[/bright_cyan] = 4.6572 * (q/A)^-0.319")
+    # Calculate fo, fw, fg
+        # fo = fl / (1 + WOR)
+        # fw = fl - fo
+        # fg = 1 - fl
+    fo = fl / (1 + WOR)
+    fw = fl - fo
+    fg = 1 - fl
+    console.print(f"\nOil fraction [bright_cyan]fo[/bright_cyan] = [bright_red]{fo:.3f}[/bright_red], water fraction [bright_cyan]fw[/bright_cyan] = [bright_red]{fw:.3f}[/bright_red], gas fraction [bright_cyan]fg[/bright_cyan] = [bright_red]{fg:.3f}[/bright_red]")
+    console.print(f"\n[bright_cyan]fo[/bright_cyan] = fl / (1 + WOR), [bright_cyan]fw[/bright_cyan] = fl - fo, [bright_cyan]fg[/bright_cyan] = 1 - fl")
+    # Calculate the mixture density rhof
+        # rhof = 62.4 * (gamma_o * fo + gamma_w * fw) / (1 - 0.0187 * (TVD - L) * gamma_g / (z * T ) * fg)
+        # Temp is in rankine. z is at SI ann
+    gamma_o = 141.5 / (API + 131.5)
+    z = properties['z_factors'][-1]  # Use z at SI ann
+    rhof = 62.4 * (gamma_o * fo + gamma_w * fw) / (1 - 0.0187 * (TVD - L) * gamma_g / (z * T) * fg)
+    console.print(f"\nMixture density [bright_cyan]rhof[/bright_cyan] = [bright_red]{rhof:.3f}[/bright_red] lb/ft3")
+    console.print(f"\n[bright_cyan]rhof[/bright_cyan] = 62.4 * (gamma_o * fo + gamma_w * fw) / (1 - 0.0187 * (TVD - L) * gamma_g / (z * T ) * fg)")
+    # Calculate BHP
+        # BHP = PSA * (1 + H / 40000) + 0.433 * rhof / 62.4 * (TD - L)
+    bhp = psa * (1 + L / 40000) + 0.433 * rhof/62.4 * (TVD - L)
+    console.print(f"\nBottomhole pressure [bright_cyan]BHP[/bright_cyan] = [bright_red]{bhp:.3f}[/bright_red] psia")
+    console.print(f"\n[bright_cyan]BHP[/bright_cyan] = PSA * (1 + H / 40000) + 0.433 * SGf * (TD - L)")
+    return L,bhp
+
+def gas_valve_depths(Pinj, pwh, Gk, Gg, Pdt, Gdt, packer_depth, Kickoff=None):
+
+    """
+    Calculate the Required depths for gas lift valves in a well.
+
+    Args:
+        Pinj (float): 
+            Injection pressure at the surface in psi.
+        
+        pwh (float): 
+            Wellhead pressure in psi.
+        
+        Gk (float): 
+            Kill fluid gradient in psi/ft. Typically 0.433 for water.
+        
+        Gg (float): 
+            Gas gradient in the annulus in psi/ft.
+        
+        Pdt (float): 
+            Design discharge pressure in psi.
+        
+        Gdt (float): 
+            Pressure gradient for unloading in psi/ft.
+        
+        packer_depth (float): 
+            Depth of the packer in ft.
+        
+        Kickoff (float, optional): 
+            Kickoff pressure in psi. If None, uses Pinj for initial pressure.
+
+    Returns:
+        list: A list containing calculated valve depths.
+        
+            valve_depths (list of float): List of calculated valve depths in ft.
+
+    """
+    valve_depths = []
+    if Kickoff is None:
+        p1 = Pinj
+    else:
+        p1 = Kickoff
+    H1 = (p1-pwh) / (Gk-Gg)
+    valve_depths.append(H1)
+    Hn = H1
+
+    while True:
+        H_old = Hn
+
+        Hn = (Pinj - Pdt + (Gg-Gdt) * H_old) / (Gk-Gg) + H_old
+    
+        if Hn > packer_depth:
+            Hn = packer_depth
+            valve_depths.append(Hn)
+            break
+        
+        valve_depths.append(Hn)
+
+    valve_depths = [round(d) for d in valve_depths]
+
+    return valve_depths
+
+def plunger_rate_calculation(TD, t_blowdown, WOR, tubing_ID, slug_height, loss_fraction, pt, Wp, oil_API, water_gravity):
+    """
+    Calculate plunger cycle time, slug volume, production rate, and Required compressor pressure.
+
+    Args:
+        TD (float): 
+            Total depth of the well in ft.
+        
+        t_blowdown (float): 
+            Blowdown time in minutes.
+        
+        WOR (float): 
+            Water-oil ratio, dimensionless.
+        
+        tubing_ID (float): 
+            Inner diameter of the tubing in inches.
+        
+        slug_height (float): 
+            Height of the fluid slug in ft.
+        
+        loss_fraction (float): 
+            Percentage loss per thousand ft as a decimal.
+        
+        pt (float): 
+            Tubing pressure at the surface in psia.
+        
+        Wp (float): 
+            Weight of the plunger in lbs.
+        
+        oil_API (float): 
+            Oil API gravity in degrees API.
+        
+        water_gravity (float): 
+            Water specific gravity, dimensionless.
+    """
+
+    t_rise = TD / 750 # minutes to rise
+    console.print(f"\nPlunger rise time: [bright_red]{t_rise:.0f}[/bright_red] minutes")
+    console.print(f"\n[bright_cyan]t_rise[/bright_cyan] = TD / 750")
+    
+    t_fall = TD / 250 # minutes to fall
+    console.print(f"\nPlunger fall time: [bright_red]{t_fall:.0f}[/bright_red] minutes")
+    console.print(f"\n[bright_cyan]t_fall[/bright_cyan] = TD / 250")
+    
+    t_cycle = t_rise + t_fall + t_blowdown # total cycle time in minutes
+    console.print(f"\nPlunger cycle time: [bright_red]{t_cycle:.0f}[/bright_red] minutes")
+
+    cycles_per_day = 1440 / t_cycle
+    console.print(f"\nPlunger cycles per day: [bright_red]{cycles_per_day:.0f}[/bright_red]")
+
+    tubing_capacity = np.pi * (tubing_ID / 2 / 12) ** 2 # in cubic feet per foot of tubing
+    console.print(f"\nTubing capacity: [bright_red]{tubing_capacity:.3f}[/bright_red] ft3/ft")
+    
+    slug_volume = tubing_capacity * slug_height # ft3
+    console.print(f"\nSlug volume: [bright_red]{slug_volume:.3f}[/bright_red] ft3")
+    
+    slug_volume_stb = slug_volume / 5.615 # convert to STB
+    console.print(f"\nSlug volume: [bright_red]{slug_volume_stb:.3f}[/bright_red] STB")
+    
+    loss_fraction_perthousand = loss_fraction / 1000 # convert to loss per thousand feet
+    cycle_volume = slug_volume_stb * (1 - loss_fraction_perthousand * TD) # STB per cycle
+    console.print(f"\nCycle volume (after losses): [bright_red]{cycle_volume:.3f}[/bright_red] STB")
+    console.print(f"\n[bright_cyan]cycle_volume[/bright_cyan] = slug_volume_stb * (1 - loss_fraction_perthousand * TD)")
+    
+    production_rate = cycle_volume * cycles_per_day # STB per day
+    console.print(f"\nProduction rate: [bright_red]{production_rate:.0f}[/bright_red] BLPD")
+    console.print(f"[bright_cyan]Production_rate[/bright_cyan] = [bright_red]{(production_rate / (1+WOR)):.0f}[/bright_red] BOPD")
+
+    # Calculate Required compressor pressure
+    
+    At = np.pi * (tubing_ID / 2) ** 2 # in square inches
+    # calculate liquid specific gravity, which is the weighted average of oil and water at surface conditions
+    water_cut = WOR / (1 + WOR)
+    oil_sg = 141.5 / (131.5 + oil_API) # assuming 40 API oil
+    gamma_l = oil_sg * (1 - water_cut) + water_gravity * water_cut
+    console.print(f"\nLiquid specific gravity [bright_cyan]gamma_l[/bright_cyan] = [bright_red]{gamma_l:.3f}[/bright_red]")
+    console.print(f"\n[bright_cyan]gamma_l[/bright_cyan] = oil_sg * (1 - water_cut) + water_gravity * water_cut")
+    Ws = slug_volume_stb * 350 * gamma_l
+    pg = 1.5 * ((Ws + Wp) / At) + pt
+    console.print(f"\nRequired compressor pressure: [bright_red]{pg:.0f}[/bright_red] psia")
+    console.print(f"\n[bright_cyan]pg[/bright_cyan] = 1.5 * ((Ws + Wp) / At) + pt")
+    return
+
+def pcp_design(API, 
+               gas_gravity, 
+               water_gravity, 
+               GLR, 
+               WOR, 
+               pwf, 
+               BHT, 
+               tubing_ID, 
+               rod_diameter,
+               Wr, 
+               pump_depth_ft, 
+               oil_rate, 
+               liquid_rate,
+               pump_capacity,
+               rotor_diameter,
+               separator_pressure=100, 
+               separator_temperature=100,
+               pump_efficiency=None,
+               t_surface=None,
+               wellhead_pressure=None,
+               bearing_load_rating=50500,
+               lifetime_revolutions=90*10**6,
+               ):
+    """
+    Designs and analyzes a Progressive Cavity Pump (PCP) artificial lift system for oil wells.
+    
+    This function performs comprehensive design calculations for PCP systems, including pump performance
+    analysis, power requirements, mechanical stress analysis, and bearing life estimation. The function
+    calculates fluid properties at pump conditions, determines discharge pressure using multiphase flow
+    correlations, computes pump operating parameters, and evaluates mechanical design criteria.
+    
+    All intermediate calculations and equations are printed to console with color formatting for 
+    clear visualization of the design process and results.
+    
+    Args:
+        API (float): 
+            Oil API gravity in degrees API. Used to calculate oil specific gravity 
+            and properties.
+        
+        gas_gravity (float): 
+            Gas specific gravity, dimensionless relative to air. For gas property 
+            calculations.
+        
+        water_gravity (float): 
+            Water specific gravity, dimensionless relative to water. Typically 1.0-1.1.
+        
+        GLR (float): 
+            Gas-to-liquid ratio in scf/stb. Total gas production per stock tank 
+            barrel of liquid.
+        
+        WOR (float): 
+            Water-to-oil ratio, dimensionless. Volumetric ratio of water to oil 
+            production.
+        
+        pwf (float): 
+            Wellbore flowing pressure at pump intake in psia. Bottomhole flowing 
+            pressure.
+        
+        BHT (float): 
+            Bottomhole temperature in degrees Fahrenheit. Temperature at pump depth.
+        
+        tubing_ID (float): 
+            Tubing internal diameter in inches. Production tubing inner diameter.
+        
+        rod_diameter (float): 
+            Rod diameter in inches. PCP drive rod diameter.
+        
+        Wr (float): 
+            Rod weight per unit length in lbf/ft. Weight of rod string per foot.
+        
+        pump_depth_ft (float): 
+            Pump setting depth in feet. Vertical depth where pump is installed.
+        
+        oil_rate (float): 
+            Oil production rate in STB/D. Stock tank barrels of oil per day.
+        
+        liquid_rate (float): 
+            Total liquid production rate in STB/D. Oil plus water production rate.
+        
+        pump_capacity (float): 
+            Pump capacity in bbl/d/rpm. Volumetric displacement per revolution per rpm.
+        
+        rotor_diameter (float): 
+            Pump rotor diameter in inches. Diameter of the PCP rotor.
+        
+        separator_pressure (float, default=100): 
+            Separator pressure in psia. Surface separation pressure for property 
+            calculations.
+        
+        separator_temperature (float, default=100): 
+            Separator temperature in degrees Fahrenheit. Surface separation 
+            temperature.
+        
+        pump_efficiency (float, optional): 
+            Pump volumetric efficiency as decimal. If None, function prompts for 
+            input after discharge pressure calculation.
+        
+        t_surface (float, optional): 
+            Surface temperature in degrees Fahrenheit. If None, uses 
+            separator_temperature.
+        
+        wellhead_pressure (float, optional): 
+            Wellhead pressure in psia. If None, uses separator_pressure.
+        
+        bearing_load_rating (float, default=50500): 
+            Bearing load rating in lbf. Manufacturer's bearing capacity rating.
+        
+        lifetime_revolutions (float, default=90e6): 
+            Expected bearing lifetime in revolutions. Total revolutions for bearing 
+            life calculation.
+    
+    Returns:
+        None: Function prints all results to console and does not return values.
+    
+    Calculations Performed:
+    -----------------------
+    1. Fluid property analysis at pump intake conditions (Rs, z-factor)
+    2. Multiphase flow pressure drop calculation from surface to pump depth
+    3. Pump operating speed determination based on production requirements
+    4. Pump torque calculation for drive system sizing
+    5. Pump power requirements (BHP input and HHP output)
+    6. Pump efficiency evaluation
+    7. Mechanical stress analysis including:
+       - Buoyed rod load calculation
+       - Pump thrust force analysis
+       - Von Mises stress determination
+    8. Bearing life estimation based on load and operating speed
+    
+    Design Considerations:
+    ----------------------
+    - Accounts for dissolved gas effects on fluid properties
+    - Includes buoyancy effects on rod loading
+    - Considers pump thrust forces in bearing analysis
+    - Uses multiphase flow correlations for accurate pressure calculations
+    - Provides mechanical design validation through stress analysis
+    
+    Notes:
+    ------
+    - Requires utpgetools.utilities_package for property calculations
+    - Uses rich console formatting for enhanced output readability
+    - Function will prompt for pump efficiency if not provided initially
+    - All intermediate equations are displayed for transparency
+    - Bearing life calculation assumes L10 life criteria
+    
+    Example:
+    --------
+    >>> pcp_design(
+    ...     API=30.0,                    # 30 API oil
+    ...     gas_gravity=0.65,            # 0.65 gas specific gravity  
+    ...     water_gravity=1.05,          # 1.05 water specific gravity
+    ...     GLR=500,                     # 500 scf/stb GLR
+    ...     WOR=2.0,                     # 2:1 water-oil ratio
+    ...     pwf=1500,                    # 1500 psia intake pressure
+    ...     BHT=180,                     # 180°F bottomhole temperature
+    ...     tubing_ID=2.992,             # 2.992" tubing ID
+    ...     rod_diameter=1.25,           # 1.25" rod diameter
+    ...     Wr=2.5,                      # 2.5 lbf/ft rod weight
+    ...     pump_depth_ft=5000,          # 5000 ft pump depth
+    ...     oil_rate=100,                # 100 STB/D oil rate
+    ...     liquid_rate=300,             # 300 STB/D liquid rate
+    ...     pump_capacity=0.5,           # 0.5 bbl/d/rpm capacity
+    ...     rotor_diameter=3.0,          # 3.0" rotor diameter
+    ...     pump_efficiency=0.85         # 85% pump efficiency
+    ... )
+    """
+    from utpgetools.utilities_package import oil_properties_calculation, gas_properties_calculation, two_phase_flow
+
+    oil_properties = oil_properties_calculation(API,
+                                                gas_gravity,
+                                                water_gravity,
+                                                GLR,
+                                                WOR,
+                                                pwf,
+                                                BHT,
+                                                pressure_increment_psi=100,
+                                                separator_temperature_f=separator_temperature,
+                                                separator_pressure_psi=separator_pressure
+                                                )
+
+    gas_properties = gas_properties_calculation(gravity=gas_gravity,
+                                                pressure_psi=pwf,
+                                                temperature_f=BHT
+                                                )
+
+
+    Rs = oil_properties['rs_scf_bbl'][-1]
+    console.print(f"\nDissolved gas-oil ratio [bright_cyan]Rs[/bright_cyan] at pump intake: [bright_red]{Rs:.2f}[/bright_red] scf/bbl")
+    z = gas_properties['z_factors'][-1]
+    console.print(f"\nGas compressibility factor [bright_cyan]z[/bright_cyan] at pump intake: [bright_red]{z:.3f}[/bright_red]")
+    dissolved_GLR = oil_rate * Rs / liquid_rate # this gets used for the two phase flow pressure calculation
+    console.print(f"\nDissolved [bright_cyan]GLR[/bright_cyan] at pump intake: [bright_red]{dissolved_GLR:.2f}[/bright_red] scf/stb")
+    if t_surface is None:
+        t_surface = separator_temperature
+    if wellhead_pressure is None:
+        wellhead_pressure = separator_pressure
+    depths, pressures = two_phase_flow(diameter_in=tubing_ID-rod_diameter,
+                                       total_length_ft=pump_depth_ft,
+                                       gas_liquid_ratio_scf_stb=dissolved_GLR,
+                                       water_oil_ratio_stb_stb=WOR,
+                                       oil_gravity_api=API,
+                                       gas_gravity=gas_gravity,
+                                       water_gravity=water_gravity,
+                                       separator_temperature_f=separator_temperature,
+                                       separator_pressure_psi=separator_pressure,
+                                       oil_flowrate_stb_d=oil_rate,
+                                       surface_temperature_f=t_surface,
+                                       bottom_temperature_f=BHT,
+                                       wellhead_pressure_psi=wellhead_pressure,
+                                       length_increment_ft=500
+                                       )
+    discharge_pressure = pressures[-1]
+    console.print(f"\nCalculated discharge pressure at pump depth: [bright_red]{discharge_pressure:.2f}[/bright_red] psi")
+
+    # pump capacity should be bbl/d/rpm
+    # pump efficiency comes from the curve on the slides of efficiency vs percent of max pressure
+    if pump_efficiency is None:
+        console.print(f"\nUse the discharge pressure and provide pump efficiency to continue")
+        return
+    pump_speed = liquid_rate * 0.4 / pump_efficiency / pump_capacity
+    console.print(f"\nRequired pump speed: [bright_red]{pump_speed:.0f}[/bright_red] rpm")
+    console.print(f"\n[bright_cyan]pump_speed[/bright_cyan] = liquid_rate * 0.4 / pump_efficiency / pump_capacity")
+
+    T = 0.0894 * ((liquid_rate / pump_efficiency) * (discharge_pressure - pwf)) / (pump_speed * 0.8)
+    console.print(f"\nRequired pump torque: [bright_red]{T:.2f}[/bright_red] ft-lb")
+    console.print(f"\n[bright_cyan]T[/bright_cyan] = 0.0894 * ((liquid_rate / pump_efficiency) * (discharge_pressure - pwf)) / (pump_speed * 0.8)")
+    
+    BHPin = ((liquid_rate / pump_efficiency) * (discharge_pressure - pwf)) / (0.8 * 58771)
+    console.print(f"\nRequired pump BHP: [bright_red]{BHPin:.2f}[/bright_red] hp")
+    console.print(f"\n[bright_cyan]BHPin[/bright_cyan] = ((liquid_rate / pump_efficiency) * (discharge_pressure - pwf)) / (0.8 * 58771)")
+
+    HHPout = 1.7 * 10**(-5) * 250 * (discharge_pressure - pwf)
+    console.print(f"\nPump HHP: [bright_red]{HHPout:.2f}[/bright_red] hp")
+    console.print(f"\n[bright_cyan]HHPout[/bright_cyan] = 1.7 * 10^(-5) * 250 * (discharge_pressure - pwf)")
+
+    epcp = HHPout / BHPin * 100
+    console.print(f"\nPump efficiency: [bright_red]{epcp:.2f}[/bright_red] %")
+
+    # gamma_l is the weighted average of oil and water specific gravities
+    oil_sg = 141.5 / (131.5 + API)
+    gamma_l = oil_sg * (1 - (WOR / (1 + WOR))) + water_gravity * (WOR / (1 + WOR))
+    console.print(f"\nLiquid specific gravity [bright_cyan]gamma_l[/bright_cyan]: [bright_red]{gamma_l:.3f}[/bright_red]")
+
+    Fr = pump_depth_ft * Wr * (1 - 0.127 * gamma_l)
+    console.print(f"\nBuoyed rod load [bright_cyan]Fr[/bright_cyan]: [bright_red]{Fr:.2f}[/bright_red] lbf")
+    console.print(f"\n[bright_cyan]Fr[/bright_cyan] = pump_depth_ft * Wr * (1 - 0.127 * gamma_l)")
+
+
+    Fb = 9/16 * np.pi * rotor_diameter**2 * (discharge_pressure - pwf)
+    console.print(f"\nPump thrust [bright_cyan]Fb[/bright_cyan]: [bright_red]{Fb:.2f}[/bright_red] lbf")
+    console.print(f"\n[bright_cyan]Fb[/bright_cyan] = 9/16 * pi * d^2 * (discharge_pressure - pwf)")
+
+    von_mises_stress = 4 / np.pi / rod_diameter**3 * np.sqrt((Fr + Fb)**2 * rod_diameter**2 + 48 * 144 * T**2)
+    console.print(f"\nVon Mises stress : [bright_red]{von_mises_stress:.2f}[/bright_red] psi")
+    console.print(f"\n[bright_cyan]Von Mises stress[/bright_cyan] = 4 / pi / d^3 * sqrt((Fr + Fb)^2 * d^2 + 48 * 144 * T^2)")
+
+    bearing_life = (bearing_load_rating / (Fr + Fb))**(10/3) * (lifetime_revolutions / pump_speed) / 1440 / 365
+    console.print(f"\nEstimated bearing life: [bright_red]{bearing_life:.2f}[/bright_red] years")
+    console.print(f"\n[bright_cyan]bearing_life[/bright_cyan] = (bearing_load_rating / (Fr + Fb))**(10/3) * (lifetime_revolutions / pump_speed) / 1440 / 365")
+    return
+def esp_design_calculation(
+    liquid_rate_bpd,
+    water_cut_fraction,
+    oil_API,
+    gas_gravity, 
+    water_gravity,
+    GLR_scf_stb,
+    pwf_psi,
+    pump_depth_ft,
+    tubing_ID_in,
+    BHT_f,
+    head_per_stage_ft,
+    hp_per_stage,
+    separator_pressure_psi=100,
+    separator_temperature_f=100,
+    wellhead_pressure_psi=None,
+    surface_temperature_f=80,
+    motor_options=None,
+    design_margin_percent=10,
+    max_stages=400,
+    pwf_measurement_depth_ft=None,
+    gas_separator_efficiency=1.0,
+):
+    """
+    Complete ESP (Electric Submersible Pump) design calculation following petroleum engineering workflow.
+    
+    This function performs comprehensive ESP design analysis including pump sizing, head calculations,
+    stage requirements, horsepower determination, and motor selection. All intermediate calculations
+    are displayed with detailed explanations following standard ESP design methodology outlined in
+    the notebook markdown cell.
+    
+    Parameters:
+    -----------
+    liquid_rate_bpd : float
+        Total liquid production rate in barrels per day (oil + water)
+    
+    water_cut_fraction : float
+        Water cut as fraction (0-1). Example: 0.6 = 60% water cut
+    
+    oil_API : float
+        Oil API gravity in degrees API
+    
+    gas_gravity : float
+        Gas specific gravity (dimensionless, relative to air)
+    
+    water_gravity : float
+        Water specific gravity (dimensionless, relative to water)
+    
+    GLR_scf_stb : float
+        Gas-liquid ratio in standard cubic feet per stock tank barrel
+    
+    pwf_psi : float
+        Bottomhole flowing pressure measured at pwf_measurement_depth_ft in psia.
+        If pwf_measurement_depth_ft is provided and differs from pump_depth_ft,
+        pressure will be translated using two-phase flow correlation.
+    
+    pump_depth_ft : float
+        Pump setting depth in feet (vertical depth)
+    
+    pwf_measurement_depth_ft : float, optional
+        Depth where pwf was measured in feet TVD. If None, assumes pwf was 
+        measured at pump depth. If different from pump_depth_ft, function
+        will calculate pressure at pump depth using two-phase flow correlation.
+    
+    tubing_ID_in : float
+        Production tubing internal diameter in inches
+    
+    BHT_f : float
+        Bottomhole temperature at pump depth in degrees Fahrenheit
+    
+    separator_pressure_psi : float, optional
+        Surface separator pressure in psia (default: 100)
+    
+    separator_temperature_f : float, optional
+        Surface separator temperature in degrees Fahrenheit (default: 100)
+    
+    wellhead_pressure_psi : float, optional
+        Wellhead pressure in psia (default: uses separator_pressure_psi)
+    
+    surface_temperature_f : float, optional
+        Surface temperature in degrees Fahrenheit (default: 80)
+    
+    head_per_stage_ft : float
+        Head delivered per pump stage in feet
+    
+    hp_per_stage : float
+        Horsepower required per pump stage in hp
+    
+    Note: Pump efficiency is calculated using the standard ESP equation:
+        efficiency = 1.7e-5 × Q × ΔPs / hp_per_stage
+        where Q is liquid rate (bpd), ΔPs is pressure per stage (psi), 
+        and hp_per_stage is horsepower per stage
+    
+    motor_options : list, optional
+        Available motor options. If None, uses standard motor ratings
+        Expected format: [{'hp': hp_rating, 'max_current': amps, 'voltage': volts}]
+    
+    design_margin_percent : float, optional
+        Design safety margin percentage (default: 10%)
+    
+    max_stages : int, optional
+        Maximum allowable number of pump stages (default: 400)
+    
+    Returns:
+    --------
+    dict
+        Comprehensive ESP design results containing all calculated parameters
+    
+    ESP Design Process (Following Notebook Steps):
+    ---------------------------------------------
+    1. Determine size - Calculate required flow rates and fluid properties
+    2. Determine required output - Compute discharge pressure and total dynamic head  
+    3. Pick a pump within operating range - Select pump based on performance curves
+    4. Head/stage & HP/stage - Interpolate pump performance data
+    5. Calculate deltaPs - Use head * gamma_f * 0.433 conversion
+    6. Calculate deltaP - Compute discharge - Pwf pressure difference
+    7. Calculate number of stages - Determine stages needed with design margin
+    8. Calculate required horsepower - Compute total BHP and motor requirements
+    9. Pick a motor - Select appropriate motor from available options
+    
+    Examples:
+    ---------
+    >>> # Using your notebook data
+    >>> from utpgetools.artificial_lift import esp_design_calculation
+    >>> 
+    >>> # ESP Case 1 - 10 deg DLS limit - Set at 3200ft TVD
+    >>> results = esp_design_calculation(
+    ...     liquid_rate_bpd=56410,      # From df['Ql [bbl/d]'][0]
+    ...     water_cut_fraction=0.59,     # From WOR calculation
+    ...     oil_API=38,
+    ...     gas_gravity=0.7, 
+    ...     water_gravity=1.02,
+    ...     GLR_scf_stb=147,            # From df['GLR [scf/bbl]'][0]
+    ...     pwf_psi=2645,               # From df['Pwf [psi]'][0]
+    ...     pump_depth_ft=3200,         # ESP Case 1 depth
+    ...     tubing_ID_in=2.441,
+    ...     BHT_f=175,
+    ...     head_per_stage_ft=200,      # Pump specification
+    ...     hp_per_stage=8.5            # Pump specification
+    ... )
+    """
+    from utpgetools.utilities_package import oil_properties_calculation, two_phase_flow
+    
+    console.print("\n" + "="*80)
+    console.print("[bold bright_blue]ESP DESIGN CALCULATION[/bold bright_blue]")
+    console.print("="*80)
+    
+    # Set defaults if not provided
+    if wellhead_pressure_psi is None:
+        wellhead_pressure_psi = separator_pressure_psi
+    
+    # Step 1: Input Summary and Validation (Determine size)
+    console.print(f"\n[bold bright_cyan]STEP 1: Input Parameters & Pump Specifications[/bold bright_cyan]")
+    
+    oil_rate_bpd = liquid_rate_bpd * (1 - water_cut_fraction)
+    water_rate_bpd = liquid_rate_bpd * water_cut_fraction
+    
+    GLR_scf_stb = GLR_scf_stb * (1 - gas_separator_efficiency)  # Adjust GLR for gas separator efficiency
+
+    # Production Data
+    console.print(f"Production Data:")
+    console.print(f"  Liquid Rate: [bright_red]{liquid_rate_bpd:,.0f}[/bright_red] BPD (Oil: {oil_rate_bpd:,.0f}, Water: {water_rate_bpd:,.0f})")
+    console.print(f"  Water Cut: [bright_red]{water_cut_fraction*100:.1f}[/bright_red]%")
+    console.print(f"  GLR: [bright_red]{GLR_scf_stb:.0f}[/bright_red] scf/stb")
+    console.print(f"  Oil API: [bright_red]{oil_API:.1f}[/bright_red] °API")
+    
+    # Calculate WOR from water cut
+    if water_cut_fraction >= 1.0:
+        raise ValueError("Water cut cannot be 100% or greater")
+    WOR = water_cut_fraction / (1 - water_cut_fraction)
+    
+    # Calculate fluid properties early for pressure translation
+    oil_sg = 141.5 / (131.5 + oil_API)
+    fluid_sg = oil_sg * (1 - water_cut_fraction) + water_gravity * water_cut_fraction
+    
+    # Pressure Translation: Calculate pump intake pressure if pwf measured at different depth
+    pump_intake_pressure_psi = pwf_psi
+    if pwf_measurement_depth_ft is not None and abs(pwf_measurement_depth_ft - pump_depth_ft) > 1:
+        console.print(f"\n[bold bright_yellow]PRESSURE TRANSLATION[/bold bright_yellow]")
+        console.print(f"Pwf measured at: [bright_red]{pwf_measurement_depth_ft:,.0f}[/bright_red] ft TVD")
+        console.print(f"Pump set at: [bright_red]{pump_depth_ft:,.0f}[/bright_red] ft TVD")
+        console.print(f"Calculating pressure at pump depth using two-phase flow correlation...")
+        
+        # Calculate depth difference
+        depth_diff = abs(pump_depth_ft - pwf_measurement_depth_ft)
+        
+        # Use hydrostatic approximation with mixed fluid density as primary method
+        # This is more reliable for ESP design than complex two-phase flow between arbitrary points
+        rho_avg = fluid_sg * 62.4  # lb/ft3 (mixed fluid density)
+        hydrostatic_gradient = rho_avg / 144  # psi/ft
+        
+        if pump_depth_ft < pwf_measurement_depth_ft:
+            # Pump is above measurement point - pressure decreases going upward
+            pump_intake_pressure_psi = pwf_psi - hydrostatic_gradient * depth_diff
+            console.print(f"Pump above measurement depth: reducing pressure by hydrostatic head")
+        else:
+            # Pump is below measurement point - pressure increases going downward
+            pump_intake_pressure_psi = pwf_psi + hydrostatic_gradient * depth_diff
+            console.print(f"Pump below measurement depth: increasing pressure by hydrostatic head")
+            
+        console.print(f"Hydrostatic gradient (mixed fluid): [bright_red]{hydrostatic_gradient:.3f}[/bright_red] psi/ft")
+        console.print(f"Depth difference: [bright_red]{depth_diff:.0f}[/bright_red] ft")
+        console.print(f"Pressure adjustment: [bright_red]{hydrostatic_gradient * depth_diff:+.0f}[/bright_red] psi")
+        
+        # Optional: Try two-phase flow for comparison (but don't use for ESP calculation)
+        try:
+            # Calculate representative two-phase gradient for reference
+            depths_to_measurement, pressures_to_measurement = two_phase_flow(
+                diameter_in=tubing_ID_in,
+                total_length_ft=min(pwf_measurement_depth_ft, 3000),  # Limit calculation length
+                gas_liquid_ratio_scf_stb=GLR_scf_stb,
+                water_oil_ratio_stb_stb=WOR,
+                oil_gravity_api=oil_API,
+                gas_gravity=gas_gravity,
+                water_gravity=water_gravity,
+                separator_temperature_f=separator_temperature_f,
+                separator_pressure_psi=separator_pressure_psi,
+                oil_flowrate_stb_d=oil_rate_bpd,
+                surface_temperature_f=surface_temperature_f,
+                bottom_temperature_f=BHT_f,
+                wellhead_pressure_psi=separator_pressure_psi,
+                return_detailed_properties=False
+            )
+            
+            if len(depths_to_measurement) > 1:
+                # Calculate overall gradient for reference
+                two_phase_gradient = (pressures_to_measurement[-1] - pressures_to_measurement[0]) / \
+                                   (depths_to_measurement[-1] - depths_to_measurement[0])
+                console.print(f"Two-phase flow gradient (reference): [bright_cyan]{two_phase_gradient:.3f}[/bright_cyan] psi/ft")
+                console.print(f"Gradient difference: [bright_cyan]{((two_phase_gradient/hydrostatic_gradient - 1)*100):+.1f}%[/bright_cyan] vs hydrostatic")
+                
+        except Exception as e:
+            console.print(f"[yellow]Note: Two-phase flow reference calculation failed ({e})[/yellow]")
+        
+        console.print(f"Measured Pwf at {pwf_measurement_depth_ft:.0f} ft: [bright_red]{pwf_psi:.0f}[/bright_red] psia")
+        console.print(f"Translated pressure at pump depth ({pump_depth_ft:.0f} ft): [bright_red]{pump_intake_pressure_psi:.0f}[/bright_red] psia")
+        console.print(f"Pressure difference: [bright_red]{pump_intake_pressure_psi - pwf_psi:+.0f}[/bright_red] psi")
+    
+    # Display calculated information
+    console.print(f"\nWell Data:")
+    console.print(f"  Pump Depth: [bright_red]{pump_depth_ft:,.0f}[/bright_red] ft TVD")
+    console.print(f"  Pump Intake Pressure: [bright_red]{pump_intake_pressure_psi:.0f}[/bright_red] psia" + 
+                  (f" (translated from {pwf_psi:.0f} psia at {pwf_measurement_depth_ft:.0f} ft)" if pwf_measurement_depth_ft is not None and abs(pwf_measurement_depth_ft - pump_depth_ft) > 1 else ""))
+    console.print(f"  Bottomhole Temperature: [bright_red]{BHT_f:.0f}[/bright_red] °F")
+    console.print(f"  Tubing ID: [bright_red]{tubing_ID_in:.3f}[/bright_red] inches")
+    
+    # Pump Specifications
+    console.print(f"Pump Specifications:")
+    console.print(f"  Head per Stage: [bright_red]{head_per_stage_ft:.1f}[/bright_red] ft/stage")
+    console.print(f"  HP per Stage: [bright_red]{hp_per_stage:.1f}[/bright_red] hp/stage")
+    
+    console.print(f"Water-Oil Ratio (WOR): [bright_red]{WOR:.2f}[/bright_red]")
+    console.print(f"[bright_cyan]WOR[/bright_cyan] = water_cut / (1 - water_cut)")
+    
+    # Step 2: Calculate fluid properties at pump conditions
+    console.print(f"\n[bold bright_cyan]STEP 2: Fluid Properties at Pump Intake[/bold bright_cyan]")
+    
+    # Calculate oil specific gravity and mixed fluid properties
+    oil_sg = 141.5 / (131.5 + oil_API)
+    fluid_sg = oil_sg * (1 - water_cut_fraction) + water_gravity * water_cut_fraction
+    
+    console.print(f"Oil Specific Gravity: [bright_red]{oil_sg:.3f}[/bright_red]")
+    console.print(f"Mixed Fluid Specific Gravity: [bright_red]{fluid_sg:.3f}[/bright_red]")
+    console.print(f"[bright_cyan]fluid_sg[/bright_cyan] = oil_sg × (1 - water_cut) + water_sg × water_cut")
+    
+    # Step 3: Calculate discharge pressure (Determine required output)
+    console.print(f"\n[bold bright_cyan]STEP 3: Calculate Discharge Pressure (Required Output)[/bold bright_cyan]")
+    
+    # ESP discharge pressure is the pressure needed at pump discharge to lift fluid to surface
+    # This should be calculated by determining the pressure drop from pump to surface and adding wellhead pressure
+    
+    try:
+        # Calculate pressure profile from surface to pump depth to get pressure drop
+        depths, pressures = two_phase_flow(
+            diameter_in=tubing_ID_in,
+            total_length_ft=pump_depth_ft,
+            gas_liquid_ratio_scf_stb=GLR_scf_stb,
+            water_oil_ratio_stb_stb=WOR,
+            oil_gravity_api=oil_API,
+            gas_gravity=gas_gravity,
+            water_gravity=water_gravity,
+            separator_temperature_f=separator_temperature_f,
+            separator_pressure_psi=separator_pressure_psi,
+            oil_flowrate_stb_d=oil_rate_bpd,
+            surface_temperature_f=surface_temperature_f,
+            bottom_temperature_f=BHT_f,
+            wellhead_pressure_psi=wellhead_pressure_psi,
+            length_increment_ft=500
+        )
+        
+        # The pressure drop from surface to pump depth
+        pressure_drop_surface_to_pump = pressures[-1] - pressures[0]
+        # ESP discharge pressure = wellhead pressure + pressure needed to overcome this drop
+        discharge_pressure = wellhead_pressure_psi + pressure_drop_surface_to_pump
+        
+        console.print(f"Pressure drop from surface to pump: [bright_red]{pressure_drop_surface_to_pump:.0f}[/bright_red] psi")
+        console.print(f"Required Discharge Pressure: [bright_red]{discharge_pressure:.0f}[/bright_red] psia")
+        console.print(f"  = Wellhead Pressure ({wellhead_pressure_psi:.0f}) + Pressure Drop ({pressure_drop_surface_to_pump:.0f})")
+        
+    except Exception as e:
+        console.print(f"[yellow]Warning: Two-phase flow calculation failed: {str(e)}[/yellow]")
+        console.print("[yellow]Using simplified hydrostatic calculation[/yellow]")
+        
+        # Hydrostatic pressure drop from surface to pump depth
+        pressure_drop_hydrostatic = fluid_sg * 0.433 * pump_depth_ft  # psi
+        discharge_pressure = wellhead_pressure_psi + pressure_drop_hydrostatic
+        
+        console.print(f"Hydrostatic pressure drop: [bright_red]{pressure_drop_hydrostatic:.0f}[/bright_red] psi")
+        console.print(f"Required Discharge Pressure: [bright_red]{discharge_pressure:.0f}[/bright_red] psia")
+    
+    # Step 4: Calculate deltaP (discharge - Pwf)
+    console.print(f"\n[bold bright_cyan]STEP 4: Calculate Pressure Requirements[/bold bright_cyan]")
+    
+    deltaP = discharge_pressure - pump_intake_pressure_psi
+    console.print(f"Total Pressure Rise Required (ΔP): [bright_red]{deltaP:.0f}[/bright_red] psi")
+    console.print(f"  ΔP = {discharge_pressure:.0f} - {pump_intake_pressure_psi:.0f} = [bright_red]{deltaP:.0f}[/bright_red] psi")
+    
+    # Step 5: Calculate pressure per stage, efficiency, and number of stages
+    console.print(f"\n[bold bright_cyan]STEP 5: Calculate Stages Required[/bold bright_cyan]")
+    
+    delta_ps = head_per_stage_ft * fluid_sg * 0.433
+    console.print(f"Pressure per Stage: [bright_red]{delta_ps:.2f}[/bright_red] psi/stage (= {head_per_stage_ft:.1f} × {fluid_sg:.3f} × 0.433)")
+    
+    # Calculate ESP efficiency using the standard equation: efficiency = 1.7e-5 * Q * ΔPs / hp_per_stage
+    pump_efficiency_calculated = 1.7e-5 * liquid_rate_bpd * delta_ps / hp_per_stage
+    pump_efficiency_percent = pump_efficiency_calculated * 100  # Convert to percentage
+    console.print(f"Calculated Pump Efficiency: [bright_red]{pump_efficiency_percent:.1f}[/bright_red]%")
+    console.print(f"[bright_cyan]efficiency[/bright_cyan] = 1.7e-5 × {liquid_rate_bpd:.0f} × {delta_ps:.2f} ÷ {hp_per_stage:.1f} = {pump_efficiency_calculated:.4f}")
+    
+    # Efficiency validation and warnings
+    if pump_efficiency_percent < 60:
+        console.print("[yellow]Warning: Low efficiency (<60%) - Consider different pump specifications or operating conditions[/yellow]")
+    elif pump_efficiency_percent > 90:
+        console.print("[yellow]Note: High efficiency (>90%) - Verify pump specifications and operating conditions[/yellow]")
+    
+    stages_required = deltaP / delta_ps
+    stages_design = int(np.ceil(stages_required * (1 + design_margin_percent/100)))
+    
+    console.print(f"Stages Required: [bright_red]{stages_required:.1f}[/bright_red] (= {deltaP:.0f} ÷ {delta_ps:.2f})")
+    console.print(f"Design Stages (with {design_margin_percent}% margin): [bright_red]{stages_design}[/bright_red]")
+    
+    if stages_design > max_stages:
+        console.print(f"[red]ERROR: Required stages ({stages_design}) exceed maximum ({max_stages})[/red]")
+    
+    # Step 6: Calculate required horsepower
+    console.print(f"\n[bold bright_cyan]STEP 6: Calculate Power Requirements[/bold bright_cyan]")
+    
+    total_bhp = stages_design * hp_per_stage
+    
+    console.print(f"Total Brake Horsepower: [bright_red]{total_bhp:.1f}[/bright_red] hp (= {stages_design} × {hp_per_stage:.1f})")
+    
+    # Design Summary
+    console.print(f"\n[bold bright_green]FINAL ESP DESIGN SUMMARY:[/bold bright_green]")
+    console.print(f"Pump Type: Custom Specification")
+    console.print(f"Number of Stages: [bright_red]{stages_design}[/bright_red]")
+    console.print(f"Total Horsepower: [bright_red]{total_bhp:.1f}[/bright_red] hp")
+    console.print(f"Operating Efficiency: [bright_red]{pump_efficiency_percent:.1f}[/bright_red]%")
+    console.print(f"Total Head: [bright_red]{stages_design * head_per_stage_ft:.0f}[/bright_red] ft")
+    console.print(f"Total Pressure Rise: [bright_red]{stages_design * delta_ps:.0f}[/bright_red] psi")
+    
+    # Return results dictionary
+    results = {
+        'design_summary': {
+            'liquid_rate_bpd': liquid_rate_bpd,
+            'pump_model': 'Custom Specification',
+            'stages': stages_design,
+            'total_hp': total_bhp,
+            'efficiency_percent': pump_efficiency_percent
+        },
+        'fluid_properties': {
+            'fluid_sg': fluid_sg,
+            'oil_sg': oil_sg,
+            'WOR': WOR,
+            'water_cut': water_cut_fraction
+        },
+        'pressure_analysis': {
+            'pwf_measured_psi': pwf_psi,
+            'pwf_measurement_depth_ft': pwf_measurement_depth_ft,
+            'pump_intake_pressure_psi': pump_intake_pressure_psi,
+            'discharge_pressure_psi': discharge_pressure,
+            'differential_pressure_psi': deltaP,
+            'delta_ps_per_stage': delta_ps
+        },
+        'pump_performance': {
+            'flow_rate_bpd': liquid_rate_bpd,
+            'head_per_stage_ft': head_per_stage_ft,
+            'hp_per_stage': hp_per_stage,
+            'efficiency_percent': pump_efficiency_percent,
+            'stages_theoretical': stages_required,
+            'stages_design': stages_design
+        },
+        'power_requirements': {
+            'total_bhp': total_bhp
+        }
+    }
+    
+    return results
