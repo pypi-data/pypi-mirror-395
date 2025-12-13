@@ -1,0 +1,1 @@
+Canopy is available for personal use or non-profits. A license is needed for commercial use.
