@@ -1,0 +1,504 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Templates Configuration Schema",
+    "description": "Schema for validating pytemplify template configuration YAML files.",
+    "type": "object",
+    "properties": {
+        "globals": {
+            "type": "object",
+            "description": "Global variables for template rendering.",
+            "properties": {
+                "version": {
+                    "type": "string"
+                },
+                "project": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "version",
+                "project"
+            ],
+            "additionalProperties": true
+        },
+        "flatten_data": {
+            "type": "boolean",
+            "description": "Enable data flattening for direct template access. When true, top-level data keys are available directly (e.g., {{ project_name }}). When false, requires dd. prefix (e.g., {{ dd.project_name }}). Default: true.",
+            "default": true
+        },
+        "jinja_env": {
+            "type": "object",
+            "description": "Jinja2 environment configuration options for template rendering. These options control how templates are processed.",
+            "properties": {
+                "trim_blocks": {
+                    "type": "boolean",
+                    "description": "Remove first newline after a template tag. Useful for cleaner code generation. Default: false.",
+                    "default": false
+                },
+                "lstrip_blocks": {
+                    "type": "boolean",
+                    "description": "Strip leading spaces/tabs from start of a line to the beginning of a block. Default: false.",
+                    "default": false
+                },
+                "autoescape": {
+                    "type": "boolean",
+                    "description": "Enable automatic escaping of variables. Set to true for HTML generation, false for code. Default: false.",
+                    "default": false
+                },
+                "keep_trailing_newline": {
+                    "type": "boolean",
+                    "description": "Preserve trailing newline at the end of templates. Default: true.",
+                    "default": true
+                },
+                "newline_sequence": {
+                    "type": "string",
+                    "enum": [
+                        "\n",
+                        "\r\n",
+                        "\r"
+                    ],
+                    "description": "The sequence that starts a newline. Use '\\n' (Linux/Mac), '\\r\\n' (Windows), or '\\r'. Default: '\\n'.",
+                    "default": "\n"
+                },
+                "line_statement_prefix": {
+                    "type": "string",
+                    "description": "If given, statements can be written as lines using this prefix (e.g., '##' allows '## for item in items')."
+                },
+                "line_comment_prefix": {
+                    "type": "string",
+                    "description": "If given, line comments can be written using this prefix (e.g., '###' allows '### This is a comment')."
+                }
+            },
+            "additionalProperties": false
+        },
+        "manual_sections": {
+            "type": "object",
+            "description": "Configuration for manual sections preservation.",
+            "properties": {
+                "start_marker": {
+                    "type": "string",
+                    "description": "Custom start marker for manual sections. Default: 'MANUAL SECTION START'"
+                },
+                "end_marker": {
+                    "type": "string",
+                    "description": "Custom end marker for manual sections. Default: 'MANUAL SECTION END'"
+                }
+            },
+            "additionalProperties": false
+        },
+        "extra_data": {
+            "type": "array",
+            "description": "Additional data sources (JSON/YAML/TOML) with optional schema validation. Supports external files or inline data.",
+            "items": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "description": "External file data source with optional schema validation",
+                        "properties": {
+                            "path": {
+                                "type": "string",
+                                "description": "Path to config file (JSON/YAML/TOML). Relative paths resolved from templates.yaml location. Supports environment variables like ${VAR_NAME}."
+                            },
+                            "key": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                                "description": "Key to store data under in template context."
+                            },
+                            "required": {
+                                "type": "boolean",
+                                "description": "Whether this file must exist. If false, missing files are skipped with a warning.",
+                                "default": true
+                            },
+                            "format": {
+                                "type": "string",
+                                "enum": [
+                                    "json",
+                                    "yaml",
+                                    "toml",
+                                    "auto"
+                                ],
+                                "default": "auto",
+                                "description": "File format. 'auto' detects from extension (.json, .yaml, .yml, .toml). Defaults to 'auto'."
+                            },
+                            "schema": {
+                                "type": "string",
+                                "description": "Path to JSON Schema file for validation (optional). Relative paths resolved from templates.yaml location."
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Human-readable description of this config file's purpose"
+                            }
+                        },
+                        "required": [
+                            "path",
+                            "key"
+                        ],
+                        "additionalProperties": false
+                    },
+                    {
+                        "type": "object",
+                        "description": "Inline data source with optional schema validation",
+                        "properties": {
+                            "value": {
+                                "description": "Inline value to add to template context. Can be a dictionary, list, string, number, boolean, or null."
+                            },
+                            "key": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                                "description": "Key to store value under in template context."
+                            },
+                            "schema": {
+                                "type": "string",
+                                "description": "Path to JSON Schema file for validation (optional). Relative paths resolved from templates.yaml location."
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Human-readable description of this inline data's purpose"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "key"
+                        ],
+                        "additionalProperties": false
+                    }
+                ]
+            }
+        },
+        "format": {
+            "type": "object",
+            "description": "Configuration for optional code formatting after template generation",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable/disable formatting globally. Default: false",
+                    "default": false
+                },
+                "defaults": {
+                    "type": "object",
+                    "description": "Default settings applied to all formatters",
+                    "properties": {
+                        "preserve_manual_sections": {
+                            "type": "boolean",
+                            "description": "Whether to preserve manual sections during formatting. Default: true",
+                            "default": true
+                        },
+                        "ignore_patterns": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "File patterns to ignore during formatting (e.g., ['*.min.*', '*.generated.*'])",
+                            "default": []
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "formatters": {
+                    "type": "object",
+                    "description": "File type specific formatter configurations",
+                    "patternProperties": {
+                        ".*": {
+                            "type": "object",
+                            "description": "Formatter configuration for specific file extensions",
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "description": "Formatter type (e.g., 'black', 'clang-format', 'prettier', 'command')",
+                                    "enum": [
+                                        "black",
+                                        "clang-format",
+                                        "prettier",
+                                        "autopep8",
+                                        "yapf",
+                                        "cpp_format",
+                                        "command"
+                                    ]
+                                },
+                                "enabled": {
+                                    "type": "boolean",
+                                    "description": "Enable/disable this specific formatter. Default: true",
+                                    "default": true
+                                },
+                                "command": {
+                                    "type": "string",
+                                    "description": "Command template for command-type formatters (uses ${input} and ${output} placeholders)"
+                                },
+                                "extensions": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "description": "File extensions this formatter handles (for command formatters)"
+                                },
+                                "options": {
+                                    "type": "object",
+                                    "description": "Formatter-specific options",
+                                    "additionalProperties": true
+                                }
+                            },
+                            "required": [
+                                "type"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "additionalProperties": false,
+                    "examples": {
+                        ".py": {
+                            "type": "black",
+                            "options": {
+                                "line_length": 88
+                            }
+                        },
+                        ".c|.cpp|.h|.hpp": {
+                            "type": "clang-format",
+                            "options": {
+                                "style": "Google"
+                            }
+                        },
+                        ".js|.ts": {
+                            "type": "prettier",
+                            "options": {
+                                "parser": "typescript"
+                            }
+                        },
+                        ".custom": {
+                            "type": "command",
+                            "command": "mycustomfmt ${input} -o ${output}",
+                            "extensions": [
+                                ".custom"
+                            ],
+                            "options": {
+                                "timeout": 30
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "examples": [
+                {
+                    "enabled": true,
+                    "defaults": {
+                        "preserve_manual_sections": true,
+                        "ignore_patterns": [
+                            "*.min.*"
+                        ]
+                    },
+                    "formatters": {
+                        ".py": {
+                            "type": "black",
+                            "options": {
+                                "line_length": 88
+                            }
+                        },
+                        ".js|.ts": {
+                            "type": "prettier"
+                        }
+                    }
+                }
+            ]
+        },
+        "data_helpers": {
+            "type": "object",
+            "description": "Configuration for data_helpers integration to enhance template capabilities",
+            "properties": {
+                "helpers": {
+                    "type": "array",
+                    "description": "List of helper module/class specifications",
+                    "items": {
+                        "type": "string",
+                        "description": "Helper specification in format 'module.ClassName' or 'module' for all helpers"
+                    },
+                    "examples": [
+                        "my_helpers.CompanyHelpers",
+                        "my_helpers.EmployeeHelpers",
+                        "project_helpers"
+                    ]
+                },
+                "discovery_paths": {
+                    "type": "array",
+                    "description": "List of directory paths to discover helper classes from",
+                    "items": {
+                        "type": "string",
+                        "description": "Directory path to search for Python files containing DataHelper classes"
+                    },
+                    "examples": [
+                        "./helpers/",
+                        "./my_project/data_helpers/",
+                        "../shared_helpers/"
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "examples": [
+                {
+                    "helpers": [
+                        "my_helpers.CompanyHelpers",
+                        "my_helpers.EmployeeHelpers"
+                    ],
+                    "discovery_paths": [
+                        "./helpers/"
+                    ]
+                },
+                {
+                    "discovery_paths": [
+                        "./helpers/",
+                        "./shared_helpers/"
+                    ]
+                },
+                {
+                    "helpers": [
+                        "project_helpers"
+                    ]
+                }
+            ]
+        },
+        "validation": {
+            "type": "object",
+            "description": "Validation configuration for post-generation checks",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable/disable validation globally"
+                },
+                "fail_fast": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Stop validation on first failure"
+                },
+                "validators": {
+                    "type": "array",
+                    "description": "List of validator configurations",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "type"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "gtest",
+                                    "json_schema",
+                                    "file_structure",
+                                    "custom"
+                                ],
+                                "description": "Type of validator"
+                            },
+                            "enabled": {
+                                "type": "boolean",
+                                "default": true,
+                                "description": "Enable/disable this validator"
+                            },
+                            "patterns": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "File/test patterns to validate (glob or regex)"
+                            },
+                            "options": {
+                                "type": "object",
+                                "description": "Validator-specific options",
+                                "additionalProperties": true
+                            },
+                            "profile": {
+                                "type": "string",
+                                "enum": [
+                                    "basic",
+                                    "coverage",
+                                    "strict",
+                                    "custom"
+                                ],
+                                "default": "basic",
+                                "description": "Configuration profile: basic (minimal), coverage (with reports), strict (warnings as errors), custom (full control)"
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "templates": {
+            "type": "array",
+            "description": "List of template definitions.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "folder": {
+                        "type": "string",
+                        "description": "Template folder path."
+                    },
+                    "output": {
+                        "type": "string",
+                        "description": "Output folder path."
+                    },
+                    "iterate": {
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "description": "Single iteration expression supporting simple ('var in collection'), conditional ('var in collection if condition'), and nested ('outer in collection >> inner in outer.items if condition') syntax."
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "description": "Iteration expression (simple or conditional only, no nested syntax in arrays)"
+                                },
+                                "minItems": 1,
+                                "description": "Array of iteration expressions for multiple iterations in one template. Example: ['group in dd.groups', 'device in dd.devices']"
+                            }
+                        ]
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Whether this template set is enabled. Defaults to true.",
+                        "default": true
+                    },
+                    "files": {
+                        "type": "object",
+                        "description": "Optional file filtering patterns for template files.",
+                        "properties": {
+                            "include": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "List of glob patterns to include only matching template files. Example: ['_foreach_group_*.j2', '_foreach_service_*.j2']"
+                            },
+                            "exclude": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "List of glob patterns to exclude matching template files. Example: ['_foreach_*.j2', '*test*']"
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "name",
+                    "folder"
+                ],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": [
+        "globals",
+        "templates"
+    ],
+    "additionalProperties": false
+}
