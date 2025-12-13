@@ -1,0 +1,477 @@
+Metadata-Version: 2.4
+Name: worker-core-lib
+Version: 0.0.46
+Summary: Core library for worker services
+Author-email: Jordane Masson <masson.jordan@gmail.com>
+Project-URL: Homepage, https://github.com/Mesh-Sync/Mesh-Sync
+Project-URL: Bug Tracker, https://github.com/Mesh-Sync/Mesh-Sync
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic-settings~=2.0.0
+Requires-Dist: sqlalchemy~=2.0.0
+Requires-Dist: boto3~=1.28.0
+Requires-Dist: bullmq<2.16.0,>=2.15.0
+Requires-Dist: gdown~=4.7.0
+Requires-Dist: google-api-python-client~=2.90.0
+Requires-Dist: google-auth-httplib2~=0.1.0
+Requires-Dist: google-auth-oauthlib~=1.0.0
+Requires-Dist: pysftp~=0.2.9
+Requires-Dist: requests~=2.31.0
+Requires-Dist: paramiko~=3.3.0
+Requires-Dist: cryptography~=41.0.5
+Requires-Dist: pytest~=7.4.0
+Requires-Dist: pytest-asyncio~=0.21.0
+Requires-Dist: pyyaml~=6.0
+Requires-Dist: watchfiles~=0.19.0
+Requires-Dist: python-dotenv~=1.0.0
+Requires-Dist: redis<6.0.0,>=5.0.0
+Requires-Dist: psycopg2-binary~=2.9.0
+Requires-Dist: Pillow~=10.0.0
+Requires-Dist: minio~=7.1.0
+Requires-Dist: ffmpeg-python~=0.2.0
+Requires-Dist: python-dateutil~=2.8.0
+Requires-Dist: pytz~=2023.3
+Requires-Dist: mesh-sync-worker-backend-client<5.0.0,>=4.0.0
+Requires-Dist: elasticsearch~=8.11.0
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: httpx>=0.24.0
+
+# Worker Core Library
+
+Core library for worker services in the Mesh-Sync platform.
+
+## Overview
+
+This is a Python library that provides shared functionality for worker services, including:
+- **ELK Event Wrapper**: High-level interface for emitting metrics and events to Elasticsearch with automatic field population and duration tracking
+- **BullMQ integration** with adapter pattern for flexible backend selection
+- **Storage providers** (S3, Google Drive, SFTP)
+- **Authentication and credentials** management
+- **Database utilities**
+- **Common utility functions**
+
+## Key Features
+
+### ELK Event Wrapper
+
+The library provides a high-level interface for emitting structured metrics and events to Elasticsearch with automatic field population, duration tracking, and error handling.
+
+**Quick Example**:
+```python
+from worker_core_lib.elk import ElkEventWrapper
+
+elk_wrapper = ElkEventWrapper(worker_name="worker-metadata-generation")
+
+# Track LLM execution
+async with elk_wrapper.track_llm_execution(
+    model="gpt-4",
+    user_id="user-123",
+    prompt_type="metadata_generation"
+) as tracker:
+    result = await llm.generate(prompt)
+    tracker.set_token_usage(input=1000, output=500, total_cost=0.05)
+```
+
+**Features**:
+- **6 specialized tracking methods**: LLM execution, Blender operations, file processing, marketplace API calls, database queries, custom operations
+- **Automatic metrics**: Duration calculation, timestamp, source, environment
+- **Context manager pattern**: Automatic cleanup and metric emission
+- **Error tracking**: Captures exceptions with type and message
+- **Flexible metrics**: Add any custom metrics via `set_metric()`
+
+**Documentation**:
+- [Complete Usage Guide](ELK_WRAPPER_USAGE_GUIDE.md) - Detailed examples and use cases
+- [Integration Examples](examples/worker_integration_examples.py) - Real worker integration code
+
+**Use Cases**:
+- Track LLM token usage and costs across OpenAI, Anthropic, etc.
+- Monitor Blender rendering performance (vertices, faces, render time)
+- Measure file conversion times and compression ratios
+- Track marketplace API rate limits and response times
+- Monitor database query performance
+
+### Worker Backend Adapter Pattern
+
+The library now supports multiple backend implementations through the adapter pattern:
+
+- **BullMQ Adapter**: Uses BullMQ with Redis for queue management (default)
+- **External Worker Backend Adapter**: Integrates with a dedicated external worker backend service
+
+Switch between backends using environment variables:
+
+```bash
+# Use BullMQ (default)
+export WORKER_BACKEND_TYPE=bullmq
+export REDIS_HOST=localhost
+export REDIS_PORT=6379
+
+# Or use external worker backend
+export WORKER_BACKEND_TYPE=external
+export WORKER_BACKEND_URL=https://worker-backend.example.com
+export WORKER_BACKEND_API_KEY=your-api-key
+```
+
+See [Worker Backend Adapter Pattern Documentation](docs/worker_backend_adapter.md) for detailed information.
+
+## Installation
+
+### From PyPI
+
+```bash
+pip install worker-core-lib
+```
+
+### From Source
+
+```bash
+pip install -e .
+```
+
+### From GitHub Container Registry (GHCR)
+
+The Docker image is automatically built and published to GHCR:
+
+```bash
+docker pull ghcr.io/mesh-sync/worker-core-lib:latest
+```
+
+## Development
+
+### Building Locally
+
+Build the Python package:
+```bash
+pip install build
+python -m build
+```
+
+Build the Docker image:
+```bash
+docker build -t worker-core-lib:local .
+```
+
+### Running Tests
+
+```bash
+pip install -e .
+pytest
+```
+
+## CI/CD Pipeline
+
+This repository uses GitHub Actions for continuous integration and deployment:
+
+### Workflow 1: Build, Test, and Deploy to GHCR
+
+**Location**: `.github/workflows/docker-publish.yml`
+
+**Triggers**:
+- Push to `master`, `main`, or `develop` branches
+- Pull requests to `master`, `main`, or `develop` branches
+
+**Jobs**:
+1. **Build and Test**:
+   - Sets up Python 3.10 (matching Dockerfile)
+   - Installs dependencies
+   - Runs pytest (all tests)
+   - Builds Python package
+   - Determines version based on branch
+   - Builds Docker image
+   - Pushes to GHCR (only on push, not PRs)
+
+**Container Registry**: Images are published to GitHub Container Registry (GHCR) at `ghcr.io/mesh-sync/worker-core-lib`
+
+**Versioning Strategy**:
+- **master/main branch**: Uses semantic version from `pyproject.toml` (e.g., `0.0.1`)
+- **develop branch**: Appends `-SNAPSHOT` suffix (e.g., `0.0.1-SNAPSHOT`)
+- **Pull requests**: Appends `-pr<number>` (e.g., `0.0.1-pr6`) - built but not pushed to registry
+- **Other branches**: Appends sanitized branch name (e.g., `0.0.1-feature-xyz`)
+
+**Tags**:
+- `<version>` - Version-specific tag (e.g., `0.0.1` or `0.0.1-SNAPSHOT`)
+- `latest` - Latest build from master/main branch only
+- `master`, `main`, or `develop` - Branch-specific builds
+- `sha-<commit>` - Build with commit SHA for traceability
+- Pull request builds are validated but not pushed to the registry
+
+### Workflow 2: Build and Publish to PyPI
+
+**Location**: `.github/workflows/pypi-publish.yml`
+
+**Triggers**:
+- Push to `master`, `main`, or `develop` branches (build and test only)
+- Pull requests (build and test only)
+- Push tags matching `v*.*.*` pattern (e.g., `v0.0.1`, `v1.2.3`) - triggers publish
+
+**Jobs**:
+1. **Build and Test**:
+   - Sets up Python 3.10
+   - Installs dependencies
+   - Runs pytest
+   - Builds Python package
+   - Validates with twine
+   - Uploads artifacts
+
+2. **Publish to PyPI** (only on version tags):
+   - Downloads build artifacts
+   - Publishes to PyPI using trusted publishing (no manual tokens needed)
+
+**PyPI Package**: Published at `https://pypi.org/project/worker-core-lib/`
+
+### Accessing Container Images
+
+Images are publicly available from GHCR:
+
+```bash
+# Pull latest release
+docker pull ghcr.io/mesh-sync/worker-core-lib:latest
+
+# Pull specific version
+docker pull ghcr.io/mesh-sync/worker-core-lib:0.0.1
+
+# Pull develop snapshot
+docker pull ghcr.io/mesh-sync/worker-core-lib:0.0.1-SNAPSHOT
+docker pull ghcr.io/mesh-sync/worker-core-lib:develop
+
+# Pull specific branch
+docker pull ghcr.io/mesh-sync/worker-core-lib:master
+
+# Pull specific commit
+docker pull ghcr.io/mesh-sync/worker-core-lib:sha-abc1234
+```
+
+### Manual Publishing with Justfile
+
+You can also manually build and publish using the Justfile:
+
+#### Docker Image Management
+
+```bash
+# Get current version (will append -SNAPSHOT on develop branch)
+just version
+
+# Build Docker image with appropriate version tag
+just build
+
+# Push to GHCR (requires docker login to ghcr.io)
+just publish
+```
+
+#### PyPI Package Management
+
+```bash
+# Get current version
+just get-version
+
+# Build Python package
+just build-package
+
+# Check package validity
+just check-package
+
+# Show package contents
+just show-package
+
+# Test package installation locally
+just test-install
+
+# Publish to PyPI (requires PyPI credentials)
+just publish-pypi
+
+# Publish to Test PyPI (for testing)
+just publish-test-pypi
+```
+
+#### Version Management
+
+```bash
+# Set specific version
+just set-version 1.2.3
+
+# Bump patch version (0.0.1 -> 0.0.2)
+just bump-patch
+
+# Bump minor version (0.0.1 -> 0.1.0)
+just bump-minor
+
+# Bump major version (0.0.1 -> 1.0.0)
+just bump-major
+
+# Complete release workflow (bump, commit, tag, push)
+just release patch   # or minor, or major
+```
+
+#### Publishing a New Version to PyPI
+
+To publish a new version to PyPI:
+
+1. **Update the version** (using one of these methods):
+   ```bash
+   # Option 1: Use the release command (recommended)
+   just release patch  # or minor, or major
+   
+   # Option 2: Manual bump and tag
+   just bump-patch
+   git add pyproject.toml
+   git commit -m "Bump version to $(just get-version)"
+   git push
+   just tag-and-publish
+   ```
+
+2. **The GitHub Actions workflow will automatically**:
+   - Build and test the package
+   - Publish to PyPI when the tag is pushed
+
+3. **Verify the package** on PyPI:
+   - Visit https://pypi.org/project/worker-core-lib/
+   - Install and test: `pip install worker-core-lib`
+
+#### Setting Up PyPI Trusted Publishing (Recommended)
+
+For the GitHub Actions workflow to publish to PyPI without manual tokens:
+
+1. Go to https://pypi.org/manage/account/publishing/
+2. Add a new "pending publisher":
+   - PyPI Project Name: `worker-core-lib`
+   - Owner: `Mesh-Sync`
+   - Repository name: `worker-core-lib`
+   - Workflow name: `pypi-publish.yml`
+   - Environment name: `pypi`
+
+#### Manual PyPI Publishing (Alternative)
+
+If you prefer to publish manually without GitHub Actions:
+
+```bash
+# Set PyPI credentials (one time setup)
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=<your-pypi-token>
+
+# Or configure ~/.pypirc
+
+# Build and publish
+just publish-pypi
+```
+
+## Usage
+
+### Using the Adapter Pattern
+
+```python
+from core_lib.core_lib_bullmq import (
+    BaseWorker, 
+    QueueManager,
+    WorkerBackendFactory
+)
+
+# Get the configured adapter
+adapter = WorkerBackendFactory.get_adapter()
+
+# Add a job
+job_id = await QueueManager.safe_add_job(
+    "my-queue",
+    "process-task",
+    {"input": "data"},
+    {"priority": 1}
+)
+
+# Create a worker
+class MyWorker(BaseWorker):
+    async def process(self, job, job_token):
+        # Process the job
+        return {"result": "success"}
+
+worker = MyWorker(queue_name="my-queue", use_adapter=True)
+```
+
+### BullMQ-like Features
+
+The library now provides BullMQ-like functionality for creating child jobs, job flows, and common patterns:
+
+#### Creating Child Jobs
+
+```python
+from core_lib.core_lib_bullmq import JobContext, QueueManager
+
+class ParentWorker(BaseWorker):
+    async def process(self, job, job_token):
+        # Create JobContext with QueueManager
+        context = JobContext(job, result_queue=None, queue_manager=QueueManager)
+        
+        # Add child jobs
+        child_id = await context.add_child_job(
+            'child-queue',
+            'child-task',
+            {'data': 'child data'}
+        )
+        
+        # Signal waiting for children
+        await context.move_to_waiting_children()
+        
+        return {'status': 'waiting_for_children'}
+```
+
+#### Using FlowBuilder for Complex Job Dependencies
+
+```python
+from core_lib.core_lib_bullmq import FlowBuilder, QueueManager
+
+# Create a flow with dependencies
+flow = FlowBuilder()
+parent = flow.add_job('queue', 'parent-task', {'input': 'data'})
+child1 = flow.add_child(parent, 'queue', 'child-1', {'data': 'c1'})
+child2 = flow.add_child(parent, 'queue', 'child-2', {'data': 'c2'})
+flow.add_child(child1, 'queue', 'grandchild', {'data': 'gc'})
+
+# Execute the flow (jobs added bottom-up with dependencies)
+job_ids = await flow.execute(QueueManager)
+```
+
+#### BullMQ Helper Methods
+
+```python
+from core_lib.core_lib_bullmq import BullMQHelpers, QueueManager
+
+# Add job with retry
+job_id = await BullMQHelpers.add_job_with_retry(
+    QueueManager, 'queue', 'task', {'data': 'value'},
+    max_attempts=5, backoff_delay=1000
+)
+
+# Add delayed job
+job_id = await BullMQHelpers.add_delayed_job(
+    QueueManager, 'queue', 'task', {'data': 'value'},
+    delay_ms=60000  # 1 minute
+)
+
+# Add job with priority
+job_id = await BullMQHelpers.add_job_with_priority(
+    QueueManager, 'queue', 'task', {'data': 'value'},
+    priority=10
+)
+```
+
+### Using External Worker Backend (mesh-sync-worker-backend-client)
+
+The library integrates with the `mesh-sync-worker-backend-client` package:
+
+```bash
+# Set environment variables
+export WORKER_BACKEND_TYPE=external
+export WORKER_BACKEND_URL=https://worker-backend.example.com
+export WORKER_BACKEND_API_KEY=your-api-key
+```
+
+```python
+# No code changes needed - QueueManager automatically uses the external backend
+job_id = await QueueManager.safe_add_job("queue", "task", {"data": "value"})
+```
+
+See the [example code](examples/bullmq_features_example.py) and [documentation](docs/worker_backend_adapter.md) for more details.
+
+## License
+
+MIT License
