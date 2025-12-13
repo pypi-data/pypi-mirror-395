@@ -1,0 +1,228 @@
+[build-system]
+requires = ["setuptools>=67", "setuptools-git-versioning"]
+build-backend = "setuptools.build_meta"
+
+[project]
+requires-python = "~=3.12.0"
+dynamic = ["version"]
+
+name = "sync-roles"
+description = "Python utility function to ensure that a DB roles have certain permissions."
+readme = "README.md"
+
+authors = [
+  { name="Department for Business and Trade", email="sre@digital.trade.gov.uk" },
+  { name="Roberto Lapuente Romo", email="roberto@lapuente.me" },
+]
+maintainers = [
+  { name="Roberto Lapuente Romo", email="roberto@lapuente.me" },
+]
+
+license = "MIT"
+license-files = ["LICENSE"]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "sqlalchemy>=1.4.24",
+]
+
+[project.optional-dependencies]
+postgres-psycopg2 = [
+    "psycopg2-binary>=2.9.0",
+]
+postgres-psycopg3 = [
+    "psycopg>=3.1.0",
+]
+postgres = [
+    "psycopg>=3.1.0",
+]
+
+[dependency-groups]
+dev = [
+    {include-group = "lint"},
+    "psycopg[dev]",
+    "pytest-cov",
+    "pytest>=7.4.4",
+    "types-psycopg2",
+    "uv",
+    "wrapt>=1.4.1",
+]
+lint = [
+    "mypy",
+    "pre-commit",
+    "ruff",
+]
+
+[project.urls]
+Repository = "https://github.com/elpinchetopo/sync-roles"
+
+
+################################################################################
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.dynamic]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sync_roles*"]
+exclude = ["tests*"]
+
+[tool.setuptools-git-versioning]
+enabled = true
+
+
+################################################################################
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "A",
+    # "ANN",  Add once we have type annotations
+    "B",
+    "C4",
+    # "C90",  Add after simplifying complex expressions
+    "COM",
+    "D",
+    # "DOC",  # Currently in preview status
+    "E",
+    "ERA",
+    "EXE",
+    "F",
+    "FA",
+    "FURB",
+    "I",
+    "ICN",
+    "INP",
+    "ISC",
+    "LOG",
+    "N",
+    "PIE",
+    "PT",
+    "PTH",
+    "PYI",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "T10",
+    "T20",
+    "UP",
+    "W",
+    "YTT",
+]
+ignore = [
+    "S608"  # No sql injection possible in our use case
+]
+
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "D",  # We don't require docstrings in tests
+    "S101",  # We allow assert statements in tests
+    "S106",  # We allow hardcoding passwords in tests
+]
+"tests/test_sync_roles.py" = [
+    "ANN",  # We don't have type annotations in old tests
+]
+
+################################################################################
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+packages = ["sync_roles"]
+
+
+################################################################################
+
+[tool.pytest.ini_options]
+log_cli = false
+log_level = "DEBUG"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.coverage.run]
+source = ["src/sync_roles"]
+omit = ["tests/*"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 98
+show_missing = true
+
+
+################################################################################
+
+[tool.uv]
+# link-mode = "copy"
+upgrade = true
+
+[tool.uv.pip]
+python-version = "3.12"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+publish-url = "https://upload.pypi.org/legacy/"
+default = true
+
+
+################################################################################
+
+# ci = [
+#   "pytest==7.4.4",
+#   # At the time of writing, 1.14.1 is the latest version of wrapt that the latest version of
+#   # elastic-apm can be installed with
+#   "wrapt==1.14.1",
+#   "pytest-cov",
+# ]
+# ci-psycopg2-sqlalchemy1 = [
+#     "psycopg2==2.9.2",
+#     "sqlalchemy==1.4.24",
+# ]
+# ci-psycopg2-9-10-sqlalchemy1 = [
+#     "psycopg2==2.9.10",
+#     "sqlalchemy==1.4.24",
+# ]
+# ci-psycopg2-sqlalchemy2 = [
+#     "psycopg2==2.9.2",
+#     "sqlalchemy==2.0.0",
+# ]
+# ci-psycopg2-9-10-sqlalchemy2-0-31 = [
+#     "psycopg2==2.9.10",
+#     "sqlalchemy==2.0.31",
+# ]
+# ci-psycopg3-sqlalchemy2 = [
+#     "psycopg==3.1.4",
+#     "sqlalchemy==2.0.0",
+# ]
+# ci-psycopg3-sqlalchemy2-0-31 = [
+#     "psycopg==3.1.4",
+#     "sqlalchemy==2.0.31",
+# ]
