@@ -1,0 +1,404 @@
+# 🏭 ADEMA Framework
+
+```
+     _    ____  _____ __  __    _    
+    / \  |  _ \| ____|  \/  |  / \   
+   / _ \ | | | |  _| | |\/| | / _ \  
+  / ___ \| |_| | |___| |  | |/ ___ \ 
+ /_/   \_\____/|_____|_|  |_/_/   \_\
+
+ Arquitectura Django para Emprendedores con Módulos Acoplables
+ ─────────────────────────────────────────────────────────────
+ El Framework que programa para ti (y para tu copiloto IA)
+```
+
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Django 4.2+](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+---
+
+## 🎯 ¿Por qué ADEMA?
+
+### El Problema
+
+Cuando un LLM (GPT, Claude, Copilot) genera código Django, **cada vez lo hace diferente**:
+
+```python
+# Sesión 1: El LLM genera esto
+class Producto(models.Model):
+    nombre = models.CharField(max_length=100)
+    
+# Sesión 2: El mismo LLM genera esto otro
+class Product(models.Model):
+    title = models.TextField()
+    created = models.DateField()
+
+# ❌ Inconsistente, sin estándares, código espagueti
+```
+
+### La Solución ADEMA
+
+```python
+# Con ADEMA, el LLM SIEMPRE genera esto:
+class Product(AdemaBaseModel):
+    """Producto del inventario."""
+    name = models.CharField(max_length=200, verbose_name="Nombre")
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    class Meta:
+        verbose_name = "Producto"
+    
+    # ✅ Hereda: id (UUID), created_at, updated_at, is_active
+    # ✅ Consistente, auditable, predecible
+```
+
+> **"El mejor código que puede escribir una IA es el que sigue reglas predefinidas"**
+
+---
+
+## 🚀 Instalación Rápida
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/Excel-ente/django-adema.git
+cd django-adema/adema-framework
+
+# Crear entorno virtual e instalar
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -e .
+```
+
+## 📖 Uso
+
+### Opción 1: Web Wizard (Recomendado) 🌟
+
+```bash
+django-adema launch
+```
+
+Se abrirá un asistente visual en tu navegador donde podrás:
+- ✅ Nombrar tu proyecto
+- ✅ Elegir base de datos (SQLite/PostgreSQL)
+- ✅ Seleccionar módulos (Inventario, Ventas, Compras...)
+- ✅ Generar con un clic
+
+### Opción 2: Línea de Comandos
+
+```bash
+# Crear proyecto
+django-adema startproject mi_ferreteria
+
+# Agregar módulos
+cd mi_ferreteria
+django-adema startapp inventario
+django-adema startapp ventas
+django-adema startapp compras
+```
+
+---
+
+## 🏗️ Arquitectura: Vertical Slicing
+
+ADEMA genera proyectos con arquitectura **Vertical Slicing** - cada módulo es independiente y completo:
+
+```
+mi_proyecto/
+│
+├── config/                      # ⚙️ Configuración central
+│   ├── settings/
+│   │   ├── base.py             # Settings compartidos
+│   │   ├── local.py            # Desarrollo
+│   │   └── production.py       # Producción
+│   ├── urls.py
+│   └── wsgi.py
+│
+├── apps/
+│   │
+│   ├── inventario/             # 📦 Módulo completo
+│   │   ├── models.py           # Punto de entrada de modelos
+│   │   ├── services/           # 🧠 Lógica de negocio
+│   │   ├── views/              # Vistas (solo orquestación)
+│   │   ├── components/         # 🧩 Entidades de dominio (Modelos divididos)
+│   │   ├── admin/              # Config admin
+│   │   └── urls.py
+│   │
+│   ├── ventas/                 # 💰 Otro módulo completo
+│   │   └── ...
+│   │
+│   └── compras/                # 🛒 Y otro más
+│       └── ...
+│
+├── templates/
+├── static/
+├── .env                        # Variables de entorno
+└── manage.py
+```
+
+### Flujo de Datos
+
+```
+Request HTTP
+     │
+     ▼
+┌─────────┐     ┌────────────┐     ┌──────────┐     ┌─────────┐
+│  Vista  │ ──▶ │ Servicio   │ ──▶ │ Modelo   │ ──▶ │   BD    │
+│ (View)  │     │ (Lógica)   │     │ (Datos)  │     │         │
+└─────────┘     └────────────┘     └──────────┘     └─────────┘
+     │                                   │
+     │    ⚠️ Las vistas NUNCA           │
+     │    contienen lógica              │
+     │    de negocio                    │
+     ▼                                   ▼
+  Response                          Transacciones
+                                    atómicas
+```
+
+---
+
+## 🔧 Componentes Base
+
+### AdemaBaseModel
+
+Todos los modelos heredan campos estándar:
+
+```python
+from adema.base.models import AdemaBaseModel
+
+class Cliente(AdemaBaseModel):
+    nombre = models.CharField(max_length=200)
+    email = models.EmailField(unique=True)
+    
+    # ✅ Heredado automáticamente:
+    # id = UUIDField (primary key)
+    # created_at = DateTimeField
+    # updated_at = DateTimeField  
+    # is_active = BooleanField (soft delete)
+```
+
+### AdemaBaseService
+
+Lógica de negocio con logging y transacciones:
+
+```python
+from adema.base.services import AdemaBaseService
+
+class VentaService(AdemaBaseService):
+    
+    def crear_venta(self, cliente_id: UUID, items: list) -> Venta:
+        """Crea una venta con sus items."""
+        self.log.info(f"Creando venta para cliente {cliente_id}")
+        
+        with self.atomic_transaction():
+            venta = Venta.objects.create(cliente_id=cliente_id)
+            
+            for item in items:
+                VentaItem.objects.create(venta=venta, **item)
+                StockService().decrementar(item['producto_id'], item['cantidad'])
+            
+            venta.total = self._calcular_total(venta)
+            venta.save()
+        
+        return venta
+```
+
+---
+
+## 📦 Módulos de Negocio
+
+| Módulo | Descripción | Estado |
+|--------|-------------|--------|
+| **Core** | Empresa, Usuarios, Configuración | ✅ Incluido |
+| **Inventario** | Productos, Stock, Depósitos | 🚧 En desarrollo |
+| **Ventas** | Clientes, Pedidos, POS | 🚧 En desarrollo |
+| **Compras** | Proveedores, Órdenes | 📋 Planificado |
+| **Facturación** | Facturas, Impuestos | 📋 Planificado |
+| **CRM** | Leads, Oportunidades | 📋 Planificado |
+
+---
+
+## 🏪 Plantillas por Tipo de Negocio
+
+```bash
+# Próximamente:
+django-adema startproject mi_negocio --template ferreteria
+django-adema startproject mi_negocio --template restaurante
+django-adema startproject mi_negocio --template clinica
+django-adema startproject mi_negocio --template ecommerce
+```
+
+Cada plantilla viene pre-configurada con los módulos necesarios para ese tipo de negocio.
+
+---
+
+## 🤖 Preparado para IA
+
+### El Futuro: LLM que Conoce tus Reglas
+
+ADEMA está diseñado para que un copiloto IA pueda generar código **consistente**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  Tú dices: "Agrega un módulo de envíos"                        │
+│                                                                 │
+│  El LLM recibe contexto ADEMA:                                 │
+│  • Hereda de AdemaBaseModel                                    │
+│  • Servicios en /services/                                     │
+│  • Sin lógica en vistas                                        │
+│  • Transacciones atómicas                                      │
+│                                                                 │
+│  El LLM genera código que SÍ funciona con tu proyecto          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Ver [TECHNICAL_VISION.md](TECHNICAL_VISION.md) para la especificación completa de convenciones para LLMs.
+
+---
+
+## 🗺️ Roadmap
+
+```
+Fase 1 ████████████░░░░░░░░ 60%  CLI + Base (actual)
+Fase 2 ░░░░░░░░░░░░░░░░░░░░  0%  Módulos de negocio
+Fase 3 ░░░░░░░░░░░░░░░░░░░░  0%  Integración LLM
+Fase 4 ░░░░░░░░░░░░░░░░░░░░  0%  ADEMA Cloud
+```
+
+### Detalle:
+
+- **Fase 1 (Actual)**: CLI, Web Wizard, Arquitectura base
+- **Fase 2**: Módulos Inventario, Ventas, Compras completos
+- **Fase 3**: LLM Analyzer que sugiere módulos según el negocio
+- **Fase 4**: Plataforma cloud estilo "Vercel para ERPs"
+
+---
+
+## 🛠️ Desarrollo
+
+```bash
+# Instalar dependencias de desarrollo
+pip install -e ".[dev]"
+
+# Formatear código
+black adema/
+isort adema/
+
+# Linting
+flake8 adema/
+
+# Tests
+pytest
+
+# Type checking
+mypy adema/
+```
+
+---
+
+## 🤖 IA & Micro-Agentes (Local-First)
+
+ADEMA incluye soporte nativo para **Micro-Agentes** utilizando LangChain. Por defecto, prioriza la privacidad y el costo cero usando **Ollama** (local), pero permite escalar a la nube (OpenAI) con simple configuración.
+
+### Instalación con Soporte IA
+
+```bash
+pip install "django-adema[ai]"
+```
+
+### Configuración (.env)
+
+El generador de proyectos crea automáticamente estas variables:
+
+```env
+# Por defecto: Local (Privacidad total, Costo cero)
+AI_PROVIDER=ollama
+AI_MODEL=llama3
+AI_BASE_URL=http://localhost:11434
+
+# Para Producción / Nube (Opcional)
+# AI_PROVIDER=openai
+# AI_MODEL=gpt-4-turbo
+# AI_API_KEY=sk-...
+```
+
+### Uso: Creando un Agente
+
+Hereda de `AdemaBaseAgent` para crear agentes inteligentes en tus módulos:
+
+```python
+from adema.base.agents import AdemaBaseAgent
+from langchain_core.tools import tool
+
+class AgenteInventario(AdemaBaseAgent):
+    def get_tools(self):
+        @tool
+        def consultar_stock(producto: str):
+            """Consulta el stock actual de un producto."""
+            # Lógica real aquí...
+            return f"Hay 50 unidades de {producto}"
+            
+        return [consultar_stock]
+
+# Uso
+agente = AgenteInventario()
+respuesta = agente.run("¿Cuánto stock queda de martillos?")
+print(respuesta)
+```
+
+---
+
+## 🤝 Contribuir
+
+¡Las contribuciones son bienvenidas! Áreas donde se necesita ayuda:
+
+- 🧩 **Módulos de negocio**: Implementar Inventario, Ventas, Compras
+- 🧪 **Tests**: Aumentar cobertura
+- 📚 **Documentación**: Guías y tutoriales
+- 🌐 **i18n**: Traducciones y facturación por país
+- 🔌 **Integraciones**: Pasarelas de pago, APIs
+
+```bash
+# Fork, crea branch, haz cambios, y:
+black adema/ && isort adema/ && pytest
+# Luego abre un PR
+```
+
+---
+
+## 📚 Documentación
+
+| Documento | Descripción |
+|-----------|-------------|
+| [TECHNICAL_VISION.md](TECHNICAL_VISION.md) | Arquitectura, convenciones para LLMs, roadmap detallado |
+| [MODULE_DEVELOPMENT_GUIDE.md](docs/MODULE_DEVELOPMENT_GUIDE.md) | 📘 **Guía completa para desarrollar módulos** - Reglas para humanos e IAs |
+| [SECURITY_DEPENDENCIES.md](SECURITY_DEPENDENCIES.md) | Análisis de seguridad de todas las dependencias |
+
+---
+
+## ⚖️ Comparación
+
+| | ADEMA | Odoo | ERPNext | Cookiecutter |
+|--|-------|------|---------|--------------|
+| **Código propio** | ✅ | ❌ | ❌ | ✅ |
+| **Módulos pre-armados** | ✅ | ✅ | ✅ | ❌ |
+| **Curva de aprendizaje** | Baja | Alta | Alta | Media |
+| **Lock-in** | Ninguno | Alto | Medio | Ninguno |
+| **Preparado para IA** | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+## 📄 Licencia
+
+MIT License - Usa ADEMA como quieras, incluso comercialmente.
+
+---
+
+<p align="center">
+  <b>ADEMA</b> - El código que escribe código, con reglas claras. 🚀
+  <br>
+  <sub>Hecho con ❤️ para emprendedores del software</sub>
+</p>

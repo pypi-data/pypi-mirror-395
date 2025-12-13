@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-adema"
+version = "0.1.0"
+description = "Django meta-framework for generating ERP/CRM projects with Vertical Slicing architecture"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "ADEMA Team", email = "info@adema.dev"}
+]
+maintainers = [
+    {name = "Excel-ente", email = "info@adema.dev"}
+]
+keywords = [
+    "django",
+    "framework", 
+    "erp",
+    "crm",
+    "scaffolding",
+    "generator",
+    "vertical-slicing",
+    "cli",
+    "wizard"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Framework :: Django :: 4.2",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "Django>=4.2",
+    "python-dotenv>=1.0.0",
+    "psycopg2-binary>=2.9.9",
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "Jinja2>=3.1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "flake8",
+    "pytest",
+    "pytest-django",
+    "pytest-cov",
+    "mypy",
+    "django-stubs",
+    "twine",
+    "build",
+]
+
+[project.scripts]
+django-adema = "adema.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Excel-ente/django-adema"
+Documentation = "https://github.com/Excel-ente/django-adema#readme"
+Repository = "https://github.com/Excel-ente/django-adema"
+Issues = "https://github.com/Excel-ente/django-adema/issues"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["adema*"]
+
+[tool.setuptools.package-data]
+"*" = [
+    "*.html",
+    "*.css", 
+    "*.js",
+    "*.py-tpl",
+    "*.txt",
+    "*.md",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | venv
+    | build
+    | dist
+    | \.egg-info
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip = [".git", "venv", ".venv", "build", "dist"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+python_files = ["test_*.py", "*_test.py"]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
