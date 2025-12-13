@@ -1,0 +1,106 @@
+Metadata-Version: 2.2
+Name: gllm-pipeline-binary
+Version: 0.4.27
+Summary: A library containing components related to Gen AI applications pipeline orchestration.
+Author-email: Dimitrij Ray <dimitrij.ray@gdplabs.id>, Henry Wicaksono <henry.wicaksono@gdplabs.id>, Kadek Denaya <kadek.d.r.diana@gdplabs.id>
+Requires-Python: <3.13,>=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: poetry<2.2.0,>=2.1.3
+Requires-Dist: pydantic<2.12.0,>=2.11.7
+Requires-Dist: gllm-core-binary<0.4.0,>=0.3.0
+Requires-Dist: gllm-inference-binary<0.6.0,>=0.5.0
+Requires-Dist: aiohttp<3.13.0,>=3.12.14
+Requires-Dist: langgraph<0.7.0,>=0.6.0
+Requires-Dist: typing-extensions<5.0.0,>=4.5.0
+Provides-Extra: dev
+Requires-Dist: coverage<7.5.0,>=7.4.4; extra == "dev"
+Requires-Dist: mypy<1.16.0,>=1.15.0; extra == "dev"
+Requires-Dist: pre-commit<3.8.0,>=3.7.0; extra == "dev"
+Requires-Dist: pytest<8.2.0,>=8.1.1; extra == "dev"
+Requires-Dist: pytest-asyncio<0.24.0,>=0.23.6; extra == "dev"
+Requires-Dist: pytest-cov<5.1.0,>=5.0.0; extra == "dev"
+Requires-Dist: ruff<0.7.0,>=0.6.7; extra == "dev"
+Provides-Extra: cache
+Requires-Dist: gllm-datastore-binary[chroma]<0.6.0,>=0.5.0; extra == "cache"
+Provides-Extra: multimodal-router
+Requires-Dist: gllm-inference-binary[google]<0.6.0,>=0.5.0; extra == "multimodal-router"
+Provides-Extra: semantic-router
+Requires-Dist: azure-search-documents<12.0.0,>=11.5.1; extra == "semantic-router"
+Requires-Dist: semantic-router<0.2.0,>=0.1.0; extra == "semantic-router"
+
+# GLLM Pipeline
+
+## Description
+
+A library containing components related to Gen AI applications pipeline orchestration.
+
+## Installation
+
+### Prerequisites
+1. Python 3.11+ - [Install here](https://www.python.org/downloads/)
+2. Pip (if using Pip) - [Install here](https://pip.pypa.io/en/stable/installation/)
+3. Poetry 2.1.4+ - [Install here](https://python-poetry.org/docs/#installation)
+4. Git (if using Git) - [Install here](https://git-scm.com/downloads)
+5. gcloud CLI (for authentication) - [Install here](https://cloud.google.com/sdk/docs/install)
+6. For git installation, access to the [GDP Labs SDK github repository](https://github.com/GDP-ADMIN/gl-sdk)
+
+### 1. Installation from Artifact Registry
+Choose one of the following methods to install the package:
+
+#### Using pip
+```bash
+pip install gllm-pipeline-binary
+```
+
+#### Using Poetry
+```bash
+poetry add gllm-pipeline-binary
+```
+
+### 2. Development Installation (Git)
+For development purposes, you can install directly from the Git repository:
+```bash
+poetry add "git+ssh://git@github.com/GDP-ADMIN/gen-ai-internal.git#subdirectory=libs/gllm-pipeline"
+```
+
+## Local Development Setup
+
+### Quick Setup (Recommended)
+For local development with editable gllm packages, use the provided Makefile:
+
+```bash
+# Complete setup: installs Poetry, configures auth, installs packages, sets up pre-commit
+make setup
+```
+
+The following are the available Makefile targets:
+
+1. `make setup` - Complete development setup (recommended for new developers)
+2. `make install-poetry` - Install or upgrade Poetry to the latest version
+3. `make auth` - Configure authentication for internal repositories
+4. `make install` - Install all dependencies
+5. `make install-pre-commit` - Set up pre-commit hooks
+6. `make update` - Update dependencies
+
+### Manual Development Setup (Legacy)
+If you prefer to manage dependencies manually:
+
+1. Go to root folder of `gllm-pipeline` module, e.g. `cd libs/gllm-pipeline`.
+2. Run `poetry shell` to create a virtual environment.
+3. Run `poetry lock` to create a lock file if you haven't done it yet.
+4. Run `poetry install` to install the `gllm-pipeline` requirements for the first time.
+5. Run `poetry update` if you update any dependency module version at `pyproject.toml`.
+
+
+## Contributing
+Please refer to this [Python Style Guide](https://docs.google.com/document/d/1uRggCrHnVfDPBnG641FyQBwUwLoFw0kTzNqRm92vUwM/edit?usp=sharing)
+to get information about code style, documentation standard, and SCA that you need to use when contributing to this project
+
+### Getting Started with Development
+1. Clone the repository and navigate to the gllm-pipeline directory
+2. Run `make setup` to set up your development environment
+3. Run `which python` to get the path to be referenced at Visual Studio Code interpreter path (`Ctrl`+`Shift`+`P` or `Cmd`+`Shift`+`P`)
+4. Try running the unit test to see if it's working:
+```bash
+poetry run pytest -s tests/unit_tests/
+```
