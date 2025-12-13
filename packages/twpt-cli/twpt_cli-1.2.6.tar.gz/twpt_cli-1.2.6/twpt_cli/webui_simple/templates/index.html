@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreatWinds Pentest Dashboard</title>
+    <link rel="stylesheet" href="/simple/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- ECharts for World Map -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="cyber-bg">
+        <div class="grid-overlay"></div>
+        <div class="scan-line"></div>
+        <div class="particles" id="particles"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <!-- Left side: Logo (clickable to go home) -->
+            <div class="header-left">
+                <a href="#" class="logo" id="logo-home-link" title="Go to Dashboard">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M12 8v4m0 4h.01"/>
+                        </svg>
+                        <div class="logo-glow"></div>
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-name">ThreatWinds</span>
+                        <span class="logo-subtitle">Pentest Dashboard</span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Right side: Server selector, connection status, datetime, switch -->
+            <div class="header-right">
+                <!-- Server Selector -->
+                <div class="server-selector" id="server-selector">
+                    <button class="server-btn" id="server-btn">
+                        <span class="server-status-indicator"></span>
+                        <span class="server-name" id="current-server-name">Select Server</span>
+                        <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                    <div class="server-dropdown" id="server-dropdown">
+                        <div class="server-dropdown-header">
+                            <span>Servers</span>
+                            <button class="add-server-btn" id="add-server-btn" title="Add Server">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="server-list" id="server-list">
+                            <!-- Servers populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Status -->
+                <div class="connection-info">
+                    <div class="connection-status" id="connection-status">
+                        <div class="status-orb">
+                            <div class="orb-core"></div>
+                            <div class="orb-ring"></div>
+                            <div class="orb-pulse"></div>
+                        </div>
+                        <div class="status-details">
+                            <span class="status-text" id="status-text">Connecting...</span>
+                            <span class="status-server" id="status-server">---</span>
+                        </div>
+                    </div>
+                    <div class="connection-meta">
+                        <span class="meta-item" id="connection-ip">IP: ---</span>
+                        <span class="meta-item" id="connection-country">---</span>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <span class="datetime" id="datetime">--:--:--</span>
+                    <button class="btn-switch-ui" id="switch-ui-btn" title="Switch to Advanced Terminal UI">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-header">
+                    <span class="sidebar-title">Pentests</span>
+                    <div class="sidebar-actions">
+                        <button class="sidebar-btn" id="refresh-btn" title="Refresh">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </button>
+                        <button class="sidebar-btn primary" id="new-pentest-btn" title="New Pentest">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="pentest-filters">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="IN_PROGRESS">Active</button>
+                    <button class="filter-btn" data-filter="COMPLETED">Done</button>
+                </div>
+                <div class="pentests-list" id="pentests-list">
+                    <div class="loading-state">
+                        <div class="loader"></div>
+                        <span>Loading pentests...</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Panel -->
+        <div class="main-panel">
+            <!-- Dashboard View (default) -->
+            <div class="view active" id="dashboard-view">
+                <!-- Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total">0</span>
+                            <span class="stat-label">Total Pentests</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange pulse">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-active">0</span>
+                            <span class="stat-label">Active Scans</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-completed">0</span>
+                            <span class="stat-label">Completed</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-findings">0</span>
+                            <span class="stat-label">Findings</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- World Map Visualization -->
+                <div class="threat-map-container" id="threat-map-container">
+                    <div class="threat-map-header">
+                        <div class="map-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                            </svg>
+                            <span>PENTEST TARGET MAP</span>
+                        </div>
+                        <div class="map-stats">
+                            <span class="map-stat"><span class="stat-dot active"></span>Active Scans: <span id="map-active">0</span></span>
+                            <span class="map-stat"><span class="stat-dot completed"></span>Completed: <span id="map-completed">0</span></span>
+                        </div>
+                    </div>
+                    <div class="threat-map" id="threat-map">
+                        <!-- ECharts World Map Container -->
+                        <div id="echarts-map" style="width: 100%; height: 100%;"></div>
+                        <!-- Floating Action Button -->
+                        <div class="map-floating-action">
+                            <button class="btn-primary" id="map-new-pentest-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                                Start New Pentest
+                            </button>
+                        </div>
+                    </div>
+                    <div class="threat-map-legend">
+                        <div class="legend-item">
+                            <span class="legend-marker active"></span>
+                            <span>Active Scan</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker completed"></span>
+                            <span>Completed</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker critical"></span>
+                            <span>Critical Findings</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker scheduled"></span>
+                            <span>Scheduled</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Welcome Panel -->
+                <div class="welcome-panel" id="welcome-panel">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">
+                            <div class="radar-sweep"></div>
+                            <div class="radar-ring ring-1"></div>
+                            <div class="radar-ring ring-2"></div>
+                            <div class="radar-ring ring-3"></div>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="12" r="6"/>
+                                <circle cx="12" cy="12" r="2"/>
+                                <line x1="12" y1="2" x2="12" y2="6"/>
+                                <line x1="12" y1="18" x2="12" y2="22"/>
+                                <line x1="2" y1="12" x2="6" y2="12"/>
+                                <line x1="18" y1="12" x2="22" y2="12"/>
+                            </svg>
+                        </div>
+                        <h2>Select a Pentest</h2>
+                        <p>Choose a pentest from the sidebar to view details, monitor progress, or explore results.</p>
+                        <button class="btn-primary large" id="welcome-new-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Start New Pentest
+                        </button>
+                        <div class="welcome-features">
+                            <div class="feature-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                                <span>Automated Security Scanning</span>
+                            </div>
+                            <div class="feature-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                                <span>Detailed Reports</span>
+                            </div>
+                            <div class="feature-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                </svg>
+                                <span>Real-time Monitoring</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pentest Detail View -->
+            <div class="view" id="detail-view">
+                <div class="detail-header">
+                    <div class="detail-title-row">
+                        <div class="detail-target">
+                            <span class="target-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+                                </svg>
+                            </span>
+                            <div>
+                                <h1 id="detail-target">---</h1>
+                                <span class="detail-id" id="detail-id">---</span>
+                            </div>
+                        </div>
+                        <div class="detail-status" id="detail-status-badge">
+                            <span class="status-badge">---</span>
+                        </div>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn-action" id="btn-home" title="Back to Dashboard">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                <polyline points="9 22 9 12 15 12 15 22"/>
+                            </svg>
+                            <span>Home</span>
+                        </button>
+                        <button class="btn-action" id="btn-files" title="View Files">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            <span>Files</span>
+                        </button>
+                        <button class="btn-action primary" id="btn-download" title="Download Report">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span>Download</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="progress-section" id="progress-section">
+                    <div class="progress-header">
+                        <span class="progress-phase" id="progress-phase">Initializing...</span>
+                        <span class="progress-percent" id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                            <div class="progress-glow"></div>
+                        </div>
+                    </div>
+                    <div class="progress-stages">
+                        <div class="stage" data-stage="recon"><span class="stage-dot"></span>Recon</div>
+                        <div class="stage" data-stage="scan"><span class="stage-dot"></span>Scan</div>
+                        <div class="stage" data-stage="exploit"><span class="stage-dot"></span>Exploit</div>
+                        <div class="stage" data-stage="report"><span class="stage-dot"></span>Report</div>
+                    </div>
+                </div>
+
+                <!-- Detail Content -->
+                <div class="detail-content">
+                    <!-- Info Cards -->
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.2 4.2l4.2 4.2M1 12h6m6 0h6"/>
+                                </svg>
+                                <span>Configuration</span>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="info-row"><span>Scope</span><span id="info-scope">---</span></div>
+                                <div class="info-row"><span>Type</span><span id="info-type">---</span></div>
+                                <div class="info-row"><span>Style</span><span id="info-style">---</span></div>
+                                <div class="info-row"><span>Exploit</span><span id="info-exploit">---</span></div>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                <span>Timeline</span>
+                            </div>
+                            <div class="info-card-body">
+                                <div class="info-row"><span>Created</span><span id="info-created">---</span></div>
+                                <div class="info-row"><span>Started</span><span id="info-started">---</span></div>
+                                <div class="info-row"><span>Finished</span><span id="info-finished">---</span></div>
+                                <div class="info-row"><span>Duration</span><span id="info-duration">---</span></div>
+                            </div>
+                        </div>
+                        <div class="info-card findings-card">
+                            <div class="info-card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                </svg>
+                                <span>Findings</span>
+                            </div>
+                            <div class="info-card-body findings-summary">
+                                <div class="finding-stat critical"><span class="finding-count" id="finding-critical">0</span><span>Critical</span></div>
+                                <div class="finding-stat high"><span class="finding-count" id="finding-high">0</span><span>High</span></div>
+                                <div class="finding-stat medium"><span class="finding-count" id="finding-medium">0</span><span>Medium</span></div>
+                                <div class="finding-stat low"><span class="finding-count" id="finding-low">0</span><span>Low</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Targets List -->
+                    <div class="targets-section">
+                        <div class="targets-header">
+                            <span>Targets</span>
+                        </div>
+                        <div class="targets-list" id="targets-list">
+                            <!-- Targets populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Live Progress Stream (shown for active pentests) -->
+                    <div class="stream-section" id="stream-section" style="display:none;">
+                        <div class="stream-header">
+                            <div class="stream-title">
+                                <div class="stream-indicator"></div>
+                                <span>Live Progress Stream</span>
+                            </div>
+                            <div class="stream-actions">
+                                <button class="stream-btn" id="stream-autoscroll-btn" title="Auto-scroll" data-enabled="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="17 13 12 18 7 13"/><polyline points="17 6 12 11 7 6"/>
+                                    </svg>
+                                </button>
+                                <button class="stream-btn" id="stream-clear-btn" title="Clear">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="stream-console" id="stream-console">
+                            <div class="stream-line system">
+                                <span class="stream-time">--:--:--</span>
+                                <span class="stream-msg">Connecting to pentest stream...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Explorer View -->
+            <div class="view" id="files-view">
+                <div class="files-header">
+                    <div class="files-breadcrumb">
+                        <button class="breadcrumb-btn" id="files-back-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                            </svg>
+                        </button>
+                        <span class="breadcrumb-path" id="files-path">/</span>
+                    </div>
+                    <div class="files-actions">
+                        <button class="btn-action" id="files-download-all">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Download All
+                        </button>
+                    </div>
+                </div>
+                <div class="files-container">
+                    <div class="files-list" id="files-list">
+                        <!-- Files populated here -->
+                    </div>
+                    <div class="file-preview" id="file-preview">
+                        <div class="preview-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            <span>Select a file to preview</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- New Pentest Modal -->
+    <div class="modal" id="new-pentest-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>New Pentest</h2>
+                <button class="modal-close" data-close>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Target</label>
+                    <input type="text" id="input-target" class="form-input" placeholder="example.com or 192.168.1.1">
+                    <span class="form-hint">Domain name or IP address to scan</span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Scope</label>
+                        <div class="select-wrapper">
+                            <select id="input-scope" class="form-select">
+                                <option value="TARGETED">Targeted</option>
+                                <option value="HOLISTIC">Holistic</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <div class="select-wrapper">
+                            <select id="input-type" class="form-select">
+                                <option value="BLACK_BOX">Black Box</option>
+                                <option value="WHITE_BOX">White Box</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Style</label>
+                        <div class="select-wrapper">
+                            <select id="input-style" class="form-select">
+                                <option value="AGGRESSIVE">Aggressive</option>
+                                <option value="SAFE">Safe</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Exploitation</label>
+                        <div class="toggle-group">
+                            <input type="checkbox" id="input-exploit" checked>
+                            <label for="input-exploit" class="toggle-label">
+                                <span class="toggle-switch"></span>
+                                <span>Enabled</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Playbook</label>
+                        <div class="select-wrapper">
+                            <select id="input-playbook" class="form-select">
+                                <option value="">None (Standard)</option>
+                            </select>
+                        </div>
+                        <span class="form-hint">Custom methodology</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Memory</label>
+                        <div class="select-wrapper">
+                            <select id="input-memory" class="form-select" multiple size="2">
+                            </select>
+                        </div>
+                        <span class="form-hint">Ctrl+click for multiple</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <input type="checkbox" id="input-default-memory" checked>
+                        <label for="input-default-memory" class="toggle-label">
+                            <span class="toggle-switch"></span>
+                            <span>Include default memory</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" data-close>Cancel</button>
+                <button class="btn-primary" id="submit-pentest">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    Start Scan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Server Modal -->
+    <div class="modal" id="add-server-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Add Server</h2>
+                <button class="modal-close" data-close>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Server Name</label>
+                    <input type="text" id="server-name" class="form-input" placeholder="Production Server">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Host</label>
+                        <input type="text" id="server-host" class="form-input" placeholder="192.168.1.100">
+                    </div>
+                    <div class="form-group">
+                        <label>Port</label>
+                        <input type="text" id="server-port" class="form-input" placeholder="9741" value="9741">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>gRPC Port</label>
+                    <input type="text" id="server-grpc-port" class="form-input" placeholder="9742" value="9742">
+                </div>
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <input type="checkbox" id="server-use-existing" checked>
+                        <label for="server-use-existing" class="toggle-label">
+                            <span class="toggle-switch"></span>
+                            <span>Use existing credentials</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="server-creds-section" style="display:none;">
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="text" id="server-api-key" class="form-input" placeholder="API Key">
+                    </div>
+                    <div class="form-group">
+                        <label>API Secret</label>
+                        <input type="password" id="server-api-secret" class="form-input" placeholder="API Secret">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" data-close>Cancel</button>
+                <button class="btn-primary" id="submit-server">Add Server</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credentials Modal -->
+    <div class="modal" id="credentials-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Connect to ThreatWinds</h2>
+            </div>
+            <div class="modal-body">
+                <p class="modal-intro">Enter your ThreatWinds API credentials to get started.</p>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="text" id="cred-api-key" class="form-input" placeholder="Enter your API key">
+                </div>
+                <div class="form-group">
+                    <label>API Secret</label>
+                    <input type="password" id="cred-api-secret" class="form-input" placeholder="Enter your API secret">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Server Host</label>
+                        <input type="text" id="cred-host" class="form-input" placeholder="localhost" value="localhost">
+                    </div>
+                    <div class="form-group">
+                        <label>Port</label>
+                        <input type="text" id="cred-port" class="form-input" placeholder="9741" value="9741">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary full" id="submit-credentials">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/simple/static/js/app.js"></script>
+</body>
+</html>
