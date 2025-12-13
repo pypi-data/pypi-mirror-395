@@ -1,0 +1,30 @@
+{
+    "database": {
+        "$mirror": "database_service:main_database",
+        "host": "localhost",
+        "port": 5432,
+        "database_name": "app_db"
+    },
+    "user_service": {
+        "$mirror": "user_service",
+        "database": "$main_database",
+        "cache_enabled": true
+    },
+    "services": [
+        {
+            "$mirror": "simple_service:primary_service",
+            "name": "primary"
+        },
+        {
+            "$mirror": "simple_service",
+            "name": "secondary"
+        }
+    ],
+    "service_map": {
+        "primary": "$primary_service",
+        "backup": {
+            "$mirror": "simple_service",
+            "name": "backup"
+        }
+    }
+}

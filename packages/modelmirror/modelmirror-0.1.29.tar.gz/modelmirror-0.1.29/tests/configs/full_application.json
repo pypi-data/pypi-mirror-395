@@ -1,0 +1,53 @@
+{
+    "primary_database": {
+        "$mirror": "database_service:primary_db",
+        "host": "primary.db.example.com",
+        "port": 5432,
+        "database_name": "app_primary"
+    },
+    "secondary_database": {
+        "$mirror": "database_service",
+        "host": "secondary.db.example.com",
+        "port": 5432,
+        "database_name": "app_secondary"
+    },
+    "user_service": {
+        "$mirror": "user_service:main_user_service",
+        "database": "$primary_db",
+        "cache_enabled": true
+    },
+    "microservices": [
+        {
+            "$mirror": "simple_service:auth_service",
+            "name": "authentication"
+        },
+        {
+            "$mirror": "simple_service:notification_service",
+            "name": "notifications"
+        },
+        {
+            "$mirror": "simple_service",
+            "name": "analytics"
+        }
+    ],
+    "service_registry": {
+        "auth": "$auth_service",
+        "notifications": "$notification_service",
+        "payments": {
+            "$mirror": "simple_service",
+            "name": "payment_processor"
+        }
+    },
+    "orchestrator": {
+        "$mirror": "complex_service",
+        "database": "$primary_db",
+        "user_service": "$main_user_service",
+        "config": {
+            "max_workers": "10",
+            "timeout": "30",
+            "retry_attempts": "3"
+        }
+    },
+    "environment": "production",
+    "debug_mode": false
+}

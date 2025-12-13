@@ -1,0 +1,32 @@
+"""
+Test classes that accept Type parameters for testing type references.
+"""
+
+from typing import Optional, Type
+
+from tests.fixtures.test_classes import SimpleService
+
+
+class ServiceWithTypeRef:
+    """Service that accepts a type reference as a parameter."""
+
+    def __init__(self, name: str, service_type: type[SimpleService], dependency: Optional[object] = None):
+        self.name = name
+        self.service_type = service_type
+        self.dependency = dependency
+
+
+class CircularServiceA:
+    """Service for testing circular type dependencies."""
+
+    def __init__(self, name: str, service_b_type: Type):
+        self.name = name
+        self.service_b_type = service_b_type
+
+
+class CircularServiceB:
+    """Service for testing circular type dependencies."""
+
+    def __init__(self, name: str, service_a_type: Type):
+        self.name = name
+        self.service_a_type = service_a_type
