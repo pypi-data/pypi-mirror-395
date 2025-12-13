@@ -1,0 +1,190 @@
+Metadata-Version: 2.4
+Name: zut
+Version: 4.0.2
+Summary: Reusable Python utilities to avoid reinventing the wheel.
+Author-email: Sébastien Hocquet <seb@ipamo.net>
+Project-URL: Homepage, https://codeberg.org/ipamo/zut
+Project-URL: Bug Tracker, https://codeberg.org/ipamo/zut/issues
+Keywords: reusable,util,utils,wheel,common,commons,base,csv,excel,db,database,load,bulk,insert,sqlite,postgresql,pg,mysql,maria,mariadb,sqlserver,mssql
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Provides-Extra: pg
+Requires-Dist: psycopg[binary]; extra == "pg"
+Requires-Dist: sqlparse; extra == "pg"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "pg"
+Requires-Dist: pytz; python_version < "3.9" and extra == "pg"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "pg"
+Provides-Extra: postgresql
+Requires-Dist: psycopg[binary]; extra == "postgresql"
+Requires-Dist: sqlparse; extra == "postgresql"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "postgresql"
+Requires-Dist: pytz; python_version < "3.9" and extra == "postgresql"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "postgresql"
+Provides-Extra: mysql
+Requires-Dist: mysqlclient; extra == "mysql"
+Requires-Dist: sqlparse; extra == "mysql"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "mysql"
+Requires-Dist: pytz; python_version < "3.9" and extra == "mysql"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "mysql"
+Provides-Extra: mariadb
+Requires-Dist: mysqlclient; extra == "mariadb"
+Requires-Dist: sqlparse; extra == "mariadb"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "mariadb"
+Requires-Dist: pytz; python_version < "3.9" and extra == "mariadb"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "mariadb"
+Provides-Extra: sqlserver
+Requires-Dist: pyodbc; extra == "sqlserver"
+Requires-Dist: sqlparams; extra == "sqlserver"
+Requires-Dist: sqlparse; extra == "sqlserver"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "sqlserver"
+Requires-Dist: pytz; python_version < "3.9" and extra == "sqlserver"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "sqlserver"
+Provides-Extra: mssql
+Requires-Dist: pyodbc; extra == "mssql"
+Requires-Dist: sqlparams; extra == "mssql"
+Requires-Dist: sqlparse; extra == "mssql"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "mssql"
+Requires-Dist: pytz; python_version < "3.9" and extra == "mssql"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "mssql"
+Provides-Extra: sqlite
+Requires-Dist: sqlparse; extra == "sqlite"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "sqlite"
+Requires-Dist: pytz; python_version < "3.9" and extra == "sqlite"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "sqlite"
+Provides-Extra: tz
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "tz"
+Requires-Dist: pytz; python_version < "3.9" and extra == "tz"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "tz"
+Provides-Extra: tabulate
+Requires-Dist: tabulate; extra == "tabulate"
+Provides-Extra: excel
+Requires-Dist: openpyxl; extra == "excel"
+Requires-Dist: defusedxml; extra == "excel"
+Provides-Extra: perf
+Requires-Dist: psutil; extra == "perf"
+Provides-Extra: all
+Requires-Dist: psycopg[binary]; extra == "all"
+Requires-Dist: mysqlclient; extra == "all"
+Requires-Dist: pyodbc; extra == "all"
+Requires-Dist: sqlparams; extra == "all"
+Requires-Dist: sqlparse; extra == "all"
+Requires-Dist: tzlocal; (python_version < "3.9" or sys_platform == "win32") and extra == "all"
+Requires-Dist: pytz; python_version < "3.9" and extra == "all"
+Requires-Dist: tzdata; (python_version >= "3.9" and sys_platform == "win32") and extra == "all"
+Requires-Dist: tabulate; extra == "all"
+Requires-Dist: openpyxl; extra == "all"
+Requires-Dist: defusedxml; extra == "all"
+Requires-Dist: psutil; extra == "all"
+Dynamic: license-file
+
+Zut
+===
+
+Reusable Python utilities to avoid reinventing the wheel.
+
+This library provides many general-purpose classes and functions, that I found myself needing in many contexts over the years, as complements to the Python standard library.
+
+
+## Installation
+
+Zut package is published [on PyPI](https://pypi.org/project/zut/). It requires Python version >= 3.7.
+
+Install without any dependency (none is mandatory):
+
+```sh
+pip install zut
+```
+
+It is also possible to install with an _extra_ specifier to add optional dependencies, for example:
+
+```sh
+pip install zut[pg]
+```
+
+
+## Avalable _extra_ specifiers
+
+Please note that no dependency is mandatory to use Zut.
+
+### Database backends
+
+For `zut.db` package:
+
+- `pip install zut[pg]` (synonym: `zut[postgresql]`): access PostgreSQL databases (installs `psycopg` and `sqlparse`).
+- `pip install zut[mysql]` (synonyms: `zut[mariadb]`): access MySQL and MariaDB databases (installs `mysqlclient` and `sqlparse`).
+- `pip install zut[sqlserver]` (synonym: `zut[mssql]`): access Microsoft SQL Server databases (installs `pyodbc`, `sqlparams` and `sqlparse`).
+- `pip install zut[sqlite]`: access SQLite databases (installs `sqlparse`).
+
+The `tz` extra specifier (see below) is automatically included with all database extra specifiers.
+
+### Miscellaneous features
+
+- `pip install zut[tz]` : parse timezones from string, get local timezone name or convert between naive and aware datetimes in various timezones (installs `tzdata` and `tzlocal` on Windows). This extra specifier does not install anything on Linux (for Python >= 3.9) because this feature is natively available.
+- `pip install zut[tabulate]` : display tabular data elegantly (installs `tabulate`). If this dependency is not included, the library provides a polyfill for the `tabulate` function to handle simple cases.
+- `pip install zut[excel]` : manage Excel files with `zut.excel` module (installs `openpyxl` and `defusedxml`).
+- `pip install zut[perf]` : track memory performance using `zut.perf` package (installs `psutil`).
+
+### All features
+
+Use `pip install zut[all]` to install all optional dependencies.
+
+
+## Features
+
+| Module        | Summary
+|---------------|------------------------------------------------------------------------------------------------------------------------------------
+| `zut.api` | A JSON-oriented API client using only Python standard library.                                                   
+| `zut.callback` | HTTP callback server (for redirects of authorization flows).
+| `zut.choices` | Allow usage of Django-like Choices classes for libraries that have optional Django dependency.
+| `zut.commands` | Define and run commands and command-line applications.
+| `zut.config` | Define application configuration settings using `config.ini` files (parsed with standard library's `ConfigParser` and `Sectionproxy`).
+| `zut.console` | Console colors and other terminal utilities (live/transient output that can be erased).
+| `zut.convert` | Flexible conversion functions.
+| `zut.csv` | Write and read CSV tables.
+| `zut.db` | A standardized abstraction to access different database backends.
+| `zut.db.mariadb` | Implementation of `zut.db` for the MariaDB database backend.
+| `zut.db.mysql` | Implementation of `zut.db` for the MySQL database backend.
+| `zut.db.pg` | Implementation of `zut.db` for the PostgreSQL database backend.
+| `zut.db.sqlite` | Implementation of `zut.db` for the SQLite database backend.
+| `zut.db.sqlserver` | Implementation of `zut.db` for the Sql Server database backend.
+| `zut.encoding` | Encoding helpers: skip UTF8 BOM, fix encoding issues for files opened with surrogateescape, etc.
+| `zut.env` | Environment helpers: load `.env` file, detect specificities, install pip packages.
+| `zut.errors` | Error classes.
+| `zut.excel` | Write and read Excel tables.
+| `zut.gpg` | Encryption and decryption using GnuPG, including management of passwords with `pass`, "the standard unix password manager" (see: https://www.passwordstore.org/).
+| `zut.graph` | Graph utilities.
+| `zut.json` | Write and read using JSON format.
+| `zut.locale` | Registration of locales and retrieval of information about locales.
+| `zut.logging` | Configuration of logging and helpers for specific use cases.
+| `zut.net` | Resolve network information (DNS resolution with a timeout, port status, system proxy, etc).
+| `zut.numbers` | Parse and convert numbers.
+| `zut.paths` | Path and file helpers: find directories and files, archivate, etc.
+| `zut.perf` | Measurement of elapsed time and memory consumption.
+| `zut.process` | Run processes and handle process errors (wrappers and extensions on stdlib's `subprocess`).
+| `zut.secrets` | Definition and resolution of delayable secrets (specified with `file:`, `pass:` or `env:` prefixes) and other secret/password helpers.
+| `zut.slugs` | Generate slugs and provide flexible string filters.
+| `zut.tables` | General-purpose utilities for tabular data: Column class, tabulate functions (including a polyfill if necessary).
+| `zut.time` | Parse and convert datetimes and timezones.
+| `zut.types` | Type and Python language utilities.
+| `zut.unittest` | Utilities for unit tests.
+| `zut.urls` | Build URLs.
+
+
+## Contribute
+
+Pull requests are welcome.
+
+See [contributing guidelines](CONTRIBUTING.md).
+
+
+## Credits
+
+This project is licensed under the terms of the [MIT license](LICENSE.txt).
+
+Logo by [Eric Watson - Dreamstime.com](https://www.dreamstime.com/dreamstime-template-image140091035) (_"Royalty-free vector"_).
