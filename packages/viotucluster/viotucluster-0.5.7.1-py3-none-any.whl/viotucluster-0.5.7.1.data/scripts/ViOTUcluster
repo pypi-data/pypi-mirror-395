@@ -1,0 +1,428 @@
+#!/usr/bin/env bash
+
+# Record start time
+start_time=$(date +%s)
+
+# Initialize variables
+INPUT_DIR=""
+RAW_SEQ_DIR=""
+OUTPUT_DIR=""
+DATABASE=""
+SAMPLETYPE=""
+REASSEMBLE=false
+DISABLE_BINNING=false
+VERSION="0.5.7.1"
+CONCENTRATION_TYPE=""
+THREADS="0"
+LOG_FILE=""
+MIN_LENGTH="2500" # Default minimum length for sequence filtering
+SAMBAMBA_SAVE_INTERMEDIATE=false
+
+# New concurrency knobs (CLI) — empty means "auto"
+MAX_PredictionTASKS=""
+TPM_tasks=""
+Assemble_jobs=""
+
+# Capture SIGINT (Ctrl+C) and SIGTERM signals only in the parent process
+trap 'cleanup' SIGINT SIGTERM
+
+cleanup_flag=false
+cleanup() {
+  if [ "$cleanup_flag" = true ]; then
+    return
+  fi
+  cleanup_flag=true
+  [ -t 1 ] && tput cnorm
+  if [ "$$" -eq "$(ps -o pgid= $$)" ]; then
+    log_with_timestamp "Caught termination signal. Cleaning up..."
+    kill -- -$$ # Kill the entire process group
+  fi
+  exit 1 # Exit with an error code
+}
+
+# Function to add a timestamp to log entries
+log_with_timestamp() {
+  echo "$1"
+}
+
+timestamp_and_forward() {
+  local line
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[[:space:]]-[[:space:]] ]]; then
+      printf '%s\n' "$line"
+    else
+      printf '%s - %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$line"
+    fi
+  done
+}
+
+# ---------- Parse CLI ----------
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -i) INPUT_DIR=$2; shift 2 ;;
+    -r) RAW_SEQ_DIR=$2; shift 2 ;;
+    -o) OUTPUT_DIR=$2; LOG_FILE="${OUTPUT_DIR}/pipeline.log"; shift 2 ;;
+    -d) DATABASE=$2; shift 2 ;;
+    -n) THREADS=$2; shift 2 ;;
+    -m|--min-length) MIN_LENGTH=$2; shift 2 ;;
+    -P|--max-prediction-tasks) MAX_PredictionTASKS=$2; shift 2 ;;
+    -T|--tpm-tasks) TPM_tasks=$2; shift 2 ;;
+    -A|--assemble-jobs) Assemble_jobs=$2; shift 2 ;;
+    -v) echo "Version: $VERSION"; exit 0 ;;
+    --non-con) CONCENTRATION_TYPE="non-concentration"; shift ;;
+    --con) CONCENTRATION_TYPE="concentration"; shift ;;
+    --reassemble) REASSEMBLE=true; shift ;;
+    --disable-binning) DISABLE_BINNING=true; shift ;;
+    --save-sambamba-intermediate) SAMBAMBA_SAVE_INTERMEDIATE=true; shift ;;
+    -h)
+      echo "Usage: $0 [options]"
+      echo ""
+      echo "Options:"
+      echo "  -i <input_path_to_search>         Input directory to search for FASTA files."
+      echo "  -r <input_path_raw_seqs>          Input directory for raw paired reads."
+      echo "  -o <output_path>                   Output directory."
+      echo "  -d <database_path>                 Database path."
+      echo "  -n <threads>                       Threads per heavy task (default: nproc if 0)."
+      echo "  -m, --min-length <length>          Minimum contig length for filtering (default: 2500)."
+      echo "  -P, --max-prediction-tasks <N>     Global concurrency for prediction stage (default: auto = 30)."
+      echo "  -T, --tpm-tasks <N>                Parallel samples for BAM/TPM (default: auto = 15)."
+      echo "  -A, --assemble-jobs <N>            Parallel samples for assembly (default: auto = 10)."
+      echo "  --non-con | --con                  Processing mode."
+      echo "  --reassemble                       Enable reassembly of bins."
+      echo "  --save-sambamba-intermediate      Write Sambamba view output to disk before sorting."
+      echo "  --disable-binning                  Skip vRhyme binning and use contigs directly."
+      echo "  -v                                  Show version."
+      echo "  -h                                  Show help."
+      exit 0
+      ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
+  esac
+done
+
+REASSEMBLE=false
+
+# ---------- Prepare logging ----------
+if [ -z "$OUTPUT_DIR" ]; then
+  echo "Error: Output directory not specified" >&2
+  exit 1
+fi
+mkdir -p "$OUTPUT_DIR"
+if ! touch "$LOG_FILE" 2>/dev/null; then
+  echo "Warning: Could not create log file at ${LOG_FILE}. Logging to stderr." >&2
+  LOG_FILE=""
+fi
+if [ -n "$LOG_FILE" ]; then
+  echo "Run ViOTUcluster as command: $0 $*" >> "$LOG_FILE"
+else
+  echo "Run ViOTUcluster as command: $0 $*" >&2
+fi
+
+# Timestamped tee if possible
+if [ -n "$LOG_FILE" ] && [ -w "$LOG_FILE" ]; then
+  exec > >(timestamp_and_forward | tee -a "$LOG_FILE") 2>&1
+else
+  exec > >(timestamp_and_forward) 2>&1
+  log_with_timestamp "Warning: Logging to log file failed. Outputting to standard streams only."
+fi
+
+# ---------- Validate required inputs ----------
+if [ -z "$INPUT_DIR" ] || [ -z "$RAW_SEQ_DIR" ] || [ -z "$OUTPUT_DIR" ] || [ -z "$DATABASE" ] || [ -z "$CONCENTRATION_TYPE" ]; then
+  log_with_timestamp "Usage: $0 -i <input> -r <raw> -o <out> -d <db> -n <threads> [-m <min_len>] --non-con/--con [--reassemble] [-P N] [-T N] [-A N]"
+  exit 1
+fi
+if ! [[ "$MIN_LENGTH" =~ ^[0-9]+$ ]]; then
+  log_with_timestamp "Error: MIN_LENGTH must be a non-negative integer. Given: '$MIN_LENGTH'"
+  exit 1
+fi
+
+# ---------- Helper: int validation ----------
+is_pos_int () { [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ]; }
+
+# ---------- Defaults for new knobs ----------
+if ! is_pos_int "$MAX_PredictionTASKS"; then MAX_PredictionTASKS=30; fi
+(( MAX_PredictionTASKS < 1 )) && MAX_PredictionTASKS=1
+
+if ! is_pos_int "$TPM_tasks"; then TPM_tasks=15; fi
+(( TPM_tasks < 1 )) && TPM_tasks=1
+
+if ! is_pos_int "$Assemble_jobs"; then Assemble_jobs=10; fi
+(( Assemble_jobs < 1 )) && Assemble_jobs=1
+
+# ---------- Threads per file ----------
+if [ "$THREADS" -eq 0 ]; then
+  THREADS_PER_FILE=$(nproc)
+else
+  THREADS_PER_FILE="$THREADS"
+fi
+
+# ---------- Discovery of paired reads ----------
+shopt -s nullglob
+
+found_paired_files=false
+for FILE in "${RAW_SEQ_DIR}"/*_R1.*; do
+  BASENAME=$(basename "$FILE" | sed 's/_R1\..*//')
+  PREFIX="${RAW_SEQ_DIR}/${BASENAME}"
+  R1_FOUND=""; R2_FOUND=""
+
+  for ext in ".fq" ".fastq" ".fq.gz" ".fastq.gz"; do
+    if [ -f "${PREFIX}_R1${ext}" ] && [ -f "${PREFIX}_R2${ext}" ]; then
+      R1_FOUND="${PREFIX}_R1${ext}"; R2_FOUND="${PREFIX}_R2${ext}"
+      log_with_timestamp "Found paired files: ${R1_FOUND} and ${R2_FOUND}"
+      found_paired_files=true; break
+    elif [ -f "${PREFIX}_1${ext}" ] && [ -f "${PREFIX}_2${ext}" ]; then
+      R1_FOUND="${PREFIX}_1${ext}"; R2_FOUND="${PREFIX}_2${ext}"
+      log_with_timestamp "Found paired files: ${R1_FOUND} and ${R2_FOUND}"
+      found_paired_files=true; break
+    fi
+  done
+
+  if [ -z "$R1_FOUND" ]; then
+    log_with_timestamp "Error: Paired-end file for ${BASENAME} not found in expected formats."
+  fi
+done
+
+shopt -u nullglob
+
+if ! $found_paired_files && compgen -G "${RAW_SEQ_DIR}/*_R1.*" >/dev/null; then
+  log_with_timestamp "Warning: No valid paired-end files were successfully identified in ${RAW_SEQ_DIR} despite _R1 files being present."
+fi
+
+# ---------- check ----------
+if [ "$CONCENTRATION_TYPE" == "non-concentration" ]; then
+  log_with_timestamp "[🔄] Running non-concentration specific steps..."
+elif [ "$CONCENTRATION_TYPE" == "concentration" ]; then
+  log_with_timestamp "[🔄] Running concentration specific steps..."
+else
+  log_with_timestamp "[❌] Error: Invalid concentration type: '$CONCENTRATION_TYPE'."
+  exit 1
+fi
+
+log_with_timestamp "[🔄] Processing with $CONCENTRATION_TYPE mode, $THREADS threads, min-length $MIN_LENGTH."
+if [ "$DISABLE_BINNING" = true ]; then
+  log_with_timestamp "[ℹ️] Binning stage disabled; contigs will be used directly downstream."
+fi
+if [ "$SAMBAMBA_SAVE_INTERMEDIATE" = true ]; then
+  log_with_timestamp "Sambamba intermediate BAM files will be kept to reduce open file pressure."
+fi
+
+# ---------- Conda env / script dir ----------
+if [ -z "$CONDA_PREFIX" ]; then
+  log_with_timestamp "Conda environment is not activated."
+  cleanup
+fi
+ScriptDir="${CONDA_PREFIX}/bin"
+
+if [ ! -f "${ScriptDir}/filter_contigs.py" ]; then
+  log_with_timestamp "Error: filter_contigs.py not found in ${ScriptDir}"
+  cleanup
+fi
+
+# ---------- Filter contigs ----------
+FILTERED_SEQS_DIR="${OUTPUT_DIR}/FilteredSeqs"
+mkdir -p "${FILTERED_SEQS_DIR}"
+log_with_timestamp "[🔄] Filtering sequences from ${INPUT_DIR} (min length ${MIN_LENGTH}) → ${FILTERED_SEQS_DIR}..."
+# Fix: pass MIN_LENGTH instead of hard-coded 500
+python "${ScriptDir}/filter_contigs.py" "${MIN_LENGTH}" "${INPUT_DIR}" "${FILTERED_SEQS_DIR}"
+filter_py_result=$?
+if [ $filter_py_result -ne 0 ]; then
+  log_with_timestamp "[❌] filter_contigs.py failed with exit code $filter_py_result."
+  cleanup
+fi
+log_with_timestamp "[✅] Sequence filtering completed."
+
+FILES=$(find "${FILTERED_SEQS_DIR}" -type f \( -name "*.fa" -o -name "*.fasta" \))
+if [ -z "$FILES" ]; then
+  log_with_timestamp "[⚠️] Warning: No FASTA files found in ${FILTERED_SEQS_DIR} after filtering."
+fi
+
+# ---------- Export env for submodules ----------
+export INPUT_DIR OUTPUT_DIR DATABASE SAMPLETYPE REASSEMBLE ScriptDir RAW_SEQ_DIR THREADS MIN_LENGTH
+export Group FILES RawFILES CONCENTRATION_TYPE THREADS_PER_FILE
+export DISABLE_BINNING
+export SAMBAMBA_SAVE_INTERMEDIATE
+
+# New: export concurrency envs for downstream modules
+export MAX_PredictionTASKS TPM_tasks Assemble_jobs
+export MAX_TASKS="$MAX_PredictionTASKS"
+
+# ---------- run_module helper ----------
+prepare_unbinned_from_contigs() {
+  local seprate_root="${OUTPUT_DIR}/SeprateFile"
+  local unbined_dir="${OUTPUT_DIR}/Summary/SeperateRes/unbined"
+  local bins_dir="${OUTPUT_DIR}/Summary/SeperateRes/bins"
+  local viralseq_dir="${OUTPUT_DIR}/Summary/SeperateRes"
+
+  if [ ! -d "$seprate_root" ]; then
+    log_with_timestamp "[❌] Expected contig directory '${seprate_root}' not found when preparing unbinned sequences."
+    return 1
+  fi
+
+  mkdir -p "$unbined_dir" "$bins_dir" "$viralseq_dir"
+  rm -f "${unbined_dir}"/*_unbined.fasta 2>/dev/null || true
+  rm -f "${bins_dir}"/*.fasta 2>/dev/null || true
+  rm -f "${viralseq_dir}"/*_viralseqs.fasta 2>/dev/null || true
+
+  shopt -s nullglob
+  local filtered_files=("${seprate_root}"/*/*_filtered.fasta)
+  shopt -u nullglob
+
+  local count=${#filtered_files[@]}
+  if [ "$count" -eq 0 ]; then
+    log_with_timestamp "[❌] No '*_filtered.fasta' files found under ${seprate_root}; cannot continue without contigs."
+    return 1
+  fi
+
+  for filtered in "${filtered_files[@]}"; do
+    local filename
+    filename=$(basename "$filtered")
+    local sample="${filename%_filtered.*}"
+    if [ -z "$sample" ]; then
+      sample="$filename"
+    fi
+
+    local unbined_dest="${unbined_dir}/${sample}_unbined.fasta"
+    cp -f "$filtered" "$unbined_dest"
+
+    local viralseq_dest="${viralseq_dir}/${sample}_viralseqs.fasta"
+    cp -f "$unbined_dest" "$viralseq_dest"
+  done
+
+  log_with_timestamp "[✅] Prepared ${count} unbinned contig files directly from filtered contigs."
+  return 0
+}
+
+run_module() {
+  local module_name="$1"
+  local log_file="$2"
+  local command_to_run="$3"
+
+  mkdir -p "$(dirname "$log_file")"
+  : > "$log_file"
+
+  local msg="Starting $module_name..."
+  local border="###############################################"
+  echo "$border"; echo "# $msg"; echo "$border"
+  log_with_timestamp "Starting $module_name..."
+
+  local spin='-\|/'; local i=0
+  if [ -t 1 ]; then
+    tput civis
+    (
+      while true; do
+        i=$(( (i+1) % 4 ))
+        printf "\rRunning %s... %s" "$module_name" "${spin:$i:1}"
+        sleep 0.1
+      done
+    ) & local spinner_pid=$!
+  fi
+
+  local module_start_time; module_start_time=$(date +%s)
+  # Run with line-buffered tee to module-specific log
+  eval "stdbuf -oL $command_to_run" 2>>"$log_file" >> "$log_file"
+  local result=$?
+
+  if [ -n "$spinner_pid" ] && kill -0 "$spinner_pid" 2>/dev/null; then
+    kill "$spinner_pid" 2>/dev/null; wait "$spinner_pid" 2>/dev/null
+  fi
+  if [ -t 1 ]; then tput cnorm; printf "\r\033[K"; fi
+
+  if [ "$result" -ne 0 ]; then
+    echo "$module_name failed. Check log: $log_file"
+    log_with_timestamp "Error: $module_name failed with exit code $result. Check log: $log_file"
+    if [ -s "$log_file" ]; then
+      log_with_timestamp "---- Last 40 lines from $log_file ----"
+      tail -n 40 "$log_file" | while IFS= read -r tail_line; do
+        printf '[%s][tail] %s\n' "$module_name" "$tail_line"
+      done
+      log_with_timestamp "---- End of $log_file ----"
+    fi
+    cleanup
+  fi
+
+  local module_end_time; module_end_time=$(date +%s)
+  local module_runtime=$((module_end_time - module_start_time))
+  echo "$module_name completed in ${module_runtime} seconds."
+  log_with_timestamp "$module_name completed in ${module_runtime} seconds."
+}
+
+# ---------- Sample type → Group ----------
+SAMPLETYPE="Mix"
+case "$SAMPLETYPE" in
+  DNA) Group="dsDNAphage, NCLDV, ssDNA, lavidaviridae" ;;
+  RNA) Group="RNA, lavidaviridae" ;;
+  Mix) Group="dsDNAphage, NCLDV, RNA, ssDNA, lavidaviridae" ;;
+  *) log_with_timestamp "Unknown sample type: $SAMPLETYPE"; exit 1 ;;
+esac
+
+# ---------- Module existence checks ----------
+MODULE_LOG_DIR="${OUTPUT_DIR}/Log"
+mkdir -p "${MODULE_LOG_DIR}"
+
+for module_script in viral_prediction_module.sh cross_validation_module.sh binning_merge_module.sh drep_module.sh summary_module.sh run_dram_analysis.sh run_iphop_analysis.sh; do
+  if [ ! -f "${ScriptDir}/${module_script}" ]; then
+    log_with_timestamp "Error: Module script ${module_script} not found in ${ScriptDir}"
+    cleanup
+  elif [ ! -x "${ScriptDir}/${module_script}" ]; then
+    log_with_timestamp "Error: Module script ${module_script} is not executable."
+    cleanup
+  fi
+done
+
+# ---------- Execute modules (env variables propagate concurrency knobs) ----------
+run_module "Viral prediction" "${MODULE_LOG_DIR}/Viral_prediction.log" "${ScriptDir}/viral_prediction_module.sh"
+run_module "Cross Validation" "${MODULE_LOG_DIR}/Cross_validation.log" "${ScriptDir}/cross_validation_module.sh --${CONCENTRATION_TYPE}"
+if [ "$DISABLE_BINNING" = true ]; then
+  if ! prepare_unbinned_from_contigs; then
+    cleanup
+  fi
+else
+  run_module "Binning and merge" "${MODULE_LOG_DIR}/Binning_merge.log" "${ScriptDir}/binning_merge_module.sh"
+fi
+run_module "dRep" "${MODULE_LOG_DIR}/Drep.log" "${ScriptDir}/drep_module.sh"
+run_module "Summary" "${MODULE_LOG_DIR}/Summary.log" "${ScriptDir}/summary_module.sh"
+
+log_with_timestamp "[✅][✅][✅]All basic analysis completed successfully. vOTU file and summary files are available in ${OUTPUT_DIR}/Summary."
+
+sleep 1
+
+# ---------- Advanced analysis (interactive or auto) ----------
+interactive_prompt() {
+  local tty_device="/dev/tty"
+  exec 3>&1 4>&2
+  if [ -c "$tty_device" ]; then exec > "$tty_device" 2>&1; else log_with_timestamp "No terminal available for interactive prompt. Logging to file."; fi
+  local choice=""
+  while true; do
+    if [ -c "$tty_device" ]; then
+      read -r -p "[❗] Proceed with advanced analysis? (y/n) : " choice < "$tty_device"
+    else
+      echo "[❗] Proceed with advanced analysis? (y/n) : "; read -r choice
+    fi
+    case "$choice" in
+      [Yy]* )
+        echo "Starting advanced analysis..."; exec 1>&3 2>&4; exec 3>&- 4>&-
+        run_module "DRAM" "${MODULE_LOG_DIR}/DRAM.log" "${ScriptDir}/run_dram_analysis.sh ${OUTPUT_DIR}/Summary/vOTU/vOTU.fasta ${OUTPUT_DIR}/Summary/DRAMRes"
+        run_module "iPhop" "${MODULE_LOG_DIR}/iPhop.log" "${ScriptDir}/run_iphop_analysis.sh ${OUTPUT_DIR}/Summary/vOTU/vOTU.fasta ${OUTPUT_DIR}/Summary/iPhopRes"
+        break ;;
+      [Nn]* ) echo "Skipping advanced analysis."; break ;;
+      * ) echo "Please answer y/n." ;;
+    esac
+  done
+  exec 1>&3 2>&4; exec 3>&- 4>&-
+}
+
+if [ -t 0 ] && [ -z "$SLURM_JOB_ID" ] && [ -z "$PBS_JOBID" ] && [ -z "$LSB_JOBID" ]; then
+  interactive_prompt
+else
+  log_with_timestamp "Non-interactive environment detected. Executing advanced analysis automatically."
+  run_module "DRAM" "${MODULE_LOG_DIR}/DRAM.log" "${ScriptDir}/run_dram_analysis.sh ${OUTPUT_DIR}/Summary/vOTU/vOTU.fasta ${OUTPUT_DIR}/Summary/DRAMRes"
+  run_module "iPhop" "${MODULE_LOG_DIR}/iPhop.log" "${ScriptDir}/run_iphop_analysis.sh ${OUTPUT_DIR}/Summary/vOTU/vOTU.fasta ${OUTPUT_DIR}/Summary/iPhopRes"
+  log_with_timestamp "[✅][✅]Advanced analysis completed successfully. DRAM and iPhop results are available in ${OUTPUT_DIR}/Summary."
+fi
+
+# ---------- Footer ----------
+end_time=$(date +%s)
+total_runtime=$((end_time - start_time))
+log_with_timestamp "Total runtime: ${total_runtime} seconds"
+echo "Total runtime: ${total_runtime} seconds."
+[ -t 1 ] && tput cnorm
+exit 0
