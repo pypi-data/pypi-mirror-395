@@ -1,0 +1,63 @@
+---
+# Production-ready example config.
+# Replace hostnames/users with your production values and prefer SSH keys or
+# external secret managers instead of embedding passwords here.
+
+defaults:
+  duration: 60
+  interval: 5
+  log_level: "INFO"
+  disable_pty: false
+  max_log_size_main_mb: 20
+  max_log_file_count_main: 10
+
+hosts:
+  prod-server1:
+    host: prod-server1.example.com
+    user: deploy
+    port: 22
+  prod-server2:
+    host: prod-server2.example.com
+    user: deploy
+    port: 22
+
+tasks:
+  iperf:
+    module: iperf
+    interval: 5
+    duration: 120
+    sinks:
+      enable_jsonl: true
+      enable_csv: true
+      file_base: iperf
+    links:
+      - server: prod-server1
+        client: prod-server2
+        interface: eth0
+        port: 5201
+    display:
+      parameters:
+        "throughput_*":
+          thresholds:
+            good:
+              value: [8000000000, 10000000000]
+              operator: "range"
+              color: "green"
+            warn:
+              value: [6000000000, 8000000000]
+              operator: "range"
+              color: "yellow"
+            bad:
+              value: 6000000000
+              operator: "lt"
+              color: "red"
+  ipmi:
+    module: ipmi_provider
+    host_id: prod-server1
+    interval: 60
+    duration: 600
+  ptu:
+    module: ptu_provider
+    host_id: prod-server1
+    interval: 5
+    duration: 120

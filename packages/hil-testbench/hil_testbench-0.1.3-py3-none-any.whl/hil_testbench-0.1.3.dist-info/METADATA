@@ -1,0 +1,333 @@
+Metadata-Version: 2.4
+Name: hil-testbench
+Version: 0.1.3
+Summary: Hardware-in-Loop testbench framework with concurrent task execution, structured logging, and live metrics.
+Author-email: HIL Testbench Contributors <noreply@example.com>
+Maintainer-email: HIL Testbench Maintainers <noreply@example.com>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: automation,concurrent,hardware-in-loop,hil,monitoring,ssh,tasks,testbench
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.9
+Requires-Dist: networkx>=3.0
+Requires-Dist: paramiko>=3.0.0
+Requires-Dist: pint>=0.22
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: pywinpty>=2.0.0; sys_platform == 'win32'
+Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: simpleeval>=0.9.13
+Provides-Extra: dev
+Requires-Dist: hypothesis>=6.92.0; extra == 'dev'
+Requires-Dist: matplotlib>=3.8.0; extra == 'dev'
+Requires-Dist: numpy>=1.26.0; extra == 'dev'
+Requires-Dist: pycg>=0.0.8; extra == 'dev'
+Requires-Dist: pytest-cov>=4.1.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.12.0; extra == 'dev'
+Requires-Dist: pytest>=7.4.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Requires-Dist: simpleeval>=0.9.10; extra == 'dev'
+Requires-Dist: tox>=4.0.0; extra == 'dev'
+Provides-Extra: maintainer
+Requires-Dist: build>=1.0.0; extra == 'maintainer'
+Requires-Dist: detect-secrets>=1.5.0; extra == 'maintainer'
+Requires-Dist: interrogate>=1.7.0; extra == 'maintainer'
+Requires-Dist: pre-commit>=3.5.0; extra == 'maintainer'
+Requires-Dist: pytest-testmon>=2.1.0; extra == 'maintainer'
+Requires-Dist: twine>=4.0.0; extra == 'maintainer'
+Description-Content-Type: text/markdown
+
+# Badges
+![CI](https://github.com/your/repo/actions/workflows/ci.yml/badge.svg)
+![Advanced RHEL](https://github.com/your/repo/actions/workflows/advanced-rhel.yml/badge.svg)
+![Nightly Stress](https://github.com/your/repo/actions/workflows/nightly-stress.yml/badge.svg)
+![Coverage](https://img.shields.io/endpoint?url=<coverage.json>)
+# HIL Testbench
+
+A Hardware-in-Loop (HIL) testbench framework for concurrent task execution, running commands locally and remotely via SSH, with structured logging, health monitoring, and live metrics dashboard.
+
+## Features
+- Concurrent local/remote task execution
+- Structured JSONL logging
+- Health monitoring (CPU, memory, disk)
+- Live metrics dashboard
+- Extensible task definitions
+- Automatic orphan process cleanup
+- Session state persistence and recovery
+
+## Quick Start
+
+### Installation
+
+**Using uv (Recommended - 10-100x faster):**
+```bash
+pip install uv
+uv pip install -e ".[dev]"
+```
+
+**Using pip (Traditional):**
+```bash
+pip install -e .
+```
+
+### Runtime Dependencies
+
+Remote command execution relies on `paramiko`. The editable install above pulls it in automatically, but minimal or custom environments must ensure it is available:
+
+```bash
+# Using uv (faster)
+uv pip install "paramiko>=3.0.0"
+
+# Using pip
+python -m pip install "paramiko>=3.0.0"
+```
+
+If `paramiko` is missing the framework will still load, but any SSH-backed task fails fast with a clear RuntimeError that includes the install hint shown above.
+
+### Basic Usage
+
+1. **Foreground Mode** (interactive monitoring with console output):
+```bash
+python run_tasks.py --config tasks.yaml task1 task2
+```
+
+2. **Daemon Mode** (background execution, logs only):
+```bash
+python run_tasks.py --daemon --config tasks.yaml task1 task2
+```
+
+3. **Monitor Running Session**:
+```bash
+# One-shot status check
+python scripts/status.py logs/2025-11-21_14-30-45_123
+
+# Continuous monitoring (updates every 2 seconds)
+python scripts/status.py logs/latest --watch
+```
+
+### Configuration
+
+Create a `tasks.yaml` file:
+
+```yaml
+defaults:
+  duration: 60
+  interval: 5
+  log_level: "INFO"        # Console output level (DEBUG/INFO/WARNING/ERROR)
+  log_level_file: "DEBUG"  # File logging level (captures everything)
+
+hosts:
+  server1:
+    host: 192.168.30.100
+    user: tom
+    port: 22
+
+tasks:
+  iperf:
+    module: iperf
+    interval: 5
+    sinks:
+      enable_jsonl: true
+      enable_csv: true
+    links:
+      - server: localhost
+        client: server1
+      interface: eth0
+      port: 5201
+```
+
+The repository ships with a lightweight memory monitoring task (`module: free`) that runs `/usr/bin/free`
+and parses the `Mem`/`Swap` rows into structured events. Configure it similarly:
+
+```yaml
+  free:
+    module: free
+    hosts:
+    - localhost
+    sinks:
+      enable_jsonl: true
+      enable_csv: true
+```
+
+It obeys the same `duration`/`interval` defaults defined above and leverages the framework’s JSONL/CSV sinks without additional plumbing.
+
+      #### TaskConfig immutability
+
+      `TaskConfig` (and its nested `task_params` and `display` structures) are exposed to
+      task authors as read-only views. Attempting to mutate values (for example,
+      `config.task_params["links"].append(...)`) raises a `TypeError`. To adjust settings at
+      runtime, create a copy via `config.with_updates(...)`,
+      `config.with_task_params_updates(...)`, or `config.with_display_updates(...)` and make
+      changes on the returned instance.
+
+### Logging Configuration
+
+The framework uses dual log levels for flexible output control:
+
+- **`log_level`**: Controls console output verbosity (default: `INFO`)
+  - Set to `DEBUG` for verbose console output during development
+  - Set to `WARNING` or `ERROR` for minimal console output in production
+
+- **`log_level_file`**: Controls file logging verbosity (default: `DEBUG`)
+  - File logs always capture complete diagnostic information
+  - Separate from console level - keep files verbose for debugging
+
+**Example**: Clean console (INFO) with verbose files (DEBUG):
+```yaml
+defaults:
+  log_level: "INFO"        # User-friendly console messages only
+  log_level_file: "DEBUG"  # Complete diagnostic data in files
+```
+
+**Daemon Mode**: Console output disabled, only file logging:
+```bash
+python run_tasks.py --daemon iperf  # Only writes to log files
+```
+
+### Log Directory Management
+
+The framework creates a new log directory for each execution, which can lead to many directories during development. The framework will suggest cleanup when limits are exceeded, and you can enable automatic cleanup if desired.
+
+#### Default Behavior: Suggest Cleanup
+
+By default, automatic cleanup is **disabled**. When configured limits are exceeded, the framework logs a suggestion:
+```
+[FRAMEWORK] INFO  Log directory cleanup recommended: 25 directories exceed configured limits. Run with --prune-logs to clean up.
+```
+
+Configure limits in `tasks.yaml`:
+```yaml
+defaults:
+  max_log_dirs: 50       # Suggest cleanup when exceeding 50 directories
+  max_log_age_days: 30   # Suggest cleanup for directories older than 30 days
+```
+
+#### Enable Automatic Cleanup (Optional)
+
+To enable automatic cleanup on startup:
+```yaml
+defaults:
+  max_log_dirs: 50
+  max_log_age_days: 30
+  auto_prune: true       # Enable automatic cleanup
+```
+
+Or via CLI:
+```bash
+python run_tasks.py --auto-prune task1  # Enable automatic cleanup for this run
+```
+
+#### Manual Cleanup
+
+Use `--prune-logs` to manually clean up log directories:
+
+```bash
+# Preview what would be deleted (dry-run mode)
+python run_tasks.py --prune-logs dry-run
+
+# Interactive cleanup (prompts for confirmation)
+python run_tasks.py --prune-logs auto
+
+# Force cleanup without prompting
+python run_tasks.py --prune-logs force
+
+# With custom limits
+python run_tasks.py --prune-logs dry-run --max-log-dirs 10 --max-log-age-days 7
+```
+
+#### Safety Features
+
+- The current execution directory is never deleted
+- The `latest-run` pointer file is preserved
+- All cleanup actions are logged for auditability
+
+### Multi-Terminal Workflow
+
+The framework is designed for lab testing with multiple terminals:
+
+- **Terminal 1**: Run tests (foreground or daemon mode)
+- **Terminal 2**: Investigate issues, SSH to remote hosts, inspect logs
+- **Terminal 3**: Monitor session status with `scripts/status.py --watch`
+
+This allows you to:
+- Keep tests running while investigating failures
+- Monitor progress without blocking your shell
+- Manually intervene on remote systems when needed
+
+## Documentation
+
+- **Internal Documentation**: [docs-internal/](docs-internal/) - Architecture, development guides, and feature requirements
+- **User Documentation**: [docs/](docs/) - User guides and API reference (coming soon)
+
+### Key Documents
+
+- [Process Tracking Requirements](docs-internal/features/process-tracking-requirements.md) - System requirements for automatic process cleanup
+- [Process Tracking Architecture](docs-internal/architecture/process-tracking-architecture.md) - Design and implementation details
+- [Task Architecture](docs-internal/architecture/task-architecture-analysis.md) - Task execution framework design
+
+## Code Quality & Sonar Analysis
+
+The CI pipeline runs two independent analyses after tests complete:
+
+- **SonarCloud** (`sonarcloud` job): requires the existing `SONAR_TOKEN` secret.
+- **Local SonarQube Community** (`sonar-local` job): optional; runs only if both `SONAR_TOKEN` and `SONAR_HOST_URL` secrets are defined. Point the host secret at your on-prem instance (for example `https://rockyserver.airplane-albacore.ts.net`).
+
+Both jobs reuse the coverage report generated during `tests`. Update `sonar-project.properties` if additional modules need to be included in either scan.
+
+### On-Demand Sonar runs without full CI
+
+When you want fresh Sonar results but do not need a full CI pass:
+
+1. Generate (or reuse) a coverage report locally and push it to the dedicated branch using the helper script:
+
+```bash
+chmod +x scripts/push_sonar_coverage.sh  # first run only
+RUN_TESTS=1 scripts/push_sonar_coverage.sh
+```
+
+2. The script updates the `sonar-coverage` branch with the latest `coverage.xml` and pushes it to GitHub via a temporary worktree.
+3. Every push to `sonar-coverage` (or a manual dispatch) triggers `.github/workflows/sonar-on-demand.yml`, which:
+  - Checks out `main` for source code
+  - Pulls the committed coverage file from `sonar-coverage`
+  - Runs SonarCloud and, when secrets are present, the local SonarQube scan—without rerunning the entire test suite.
+
+## Git Hooks and Pre-commit
+
+Use pre-commit to enforce formatting, linting, secrets checks, and internal policy hooks across all clones.
+
+### Setup
+
+```bash
+pip install pre-commit
+pre-commit install                 # install pre-commit hooks (runs on commit)
+pre-commit install --hook-type pre-push  # optional: also run on push
+```
+
+### Manual Run
+
+Run hooks manually without commit-stage filters:
+
+```bash
+pre-commit run --all-files --hook-stage manual
+```
+
+Notes:
+- Branch protection hook (`no-commit-to-branch`) runs only during commit and blocks commits to `main`. Push via PR from a feature branch.
+- Policy hooks include logging/terminology enforcement and keyword blocking; fix failures before committing.
+
+### Bootstrap Script
+
+You can auto-install hooks with:
+
+```bash
+bash scripts/install_hooks.sh
+```
+
+
+## License
+MIT License (see LICENSE)
