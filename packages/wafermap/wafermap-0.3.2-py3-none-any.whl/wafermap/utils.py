@@ -1,0 +1,121 @@
+"""Utility functions"""
+
+import math
+
+import numpy
+
+# Color functions
+
+
+def rgb_to_html(red: float, green: float, blue: float) -> str:
+    """Convert given rgb 0-1 color to an HTML code"""
+    r, g, b = to255(red, green, blue)
+    return "#%02X%02X%02X" % (r, g, b)
+
+
+def invert(red: float, green: float, blue: float) -> tuple[float, float, float]:
+    """returns RGB components of inverted color"""
+    return 1.0 - red, 1.0 - green, 1.0 - blue
+
+
+def to255(red: float, green: float, blue: float) -> tuple[int, int, int]:
+    """returns RGB color to 0-255 scale"""
+    r = min(round(red * 255), 255)
+    g = min(round(green * 255), 255)
+    b = min(round(blue * 255), 255)
+    return r, g, b
+
+
+# Utility functions
+
+
+def euclidean_distance(
+    point: tuple[float, float], origin: tuple[float, float] = None
+) -> float:
+    """Calculate euclidean distance from the origin"""
+    if origin is None:
+        return math.sqrt(sum((p**2 for p in point)))
+    assert len(origin) == len(point)
+    return math.sqrt(sum(((p - o) ** 2 for p, o in zip(point, origin))))
+
+
+def bounded_rectangle(
+    rect: list[tuple[float, float]], bounds: list[tuple[float, float]]
+) -> list[tuple[float, float]]:
+    """
+    Resize rectangle given by points into a rectangle that fits within bounds,
+    preserving the aspect ratio.
+    :param rect: Input rectangle [ll, ur], where each point is (y, x)
+    :param bounds: Input bounding rectangle [ll, ur]
+    :return: Bounded rectangle with same aspect ratio
+    """
+    assert len(rect) == len(bounds) == 2
+    assert rect[0][0] <= rect[1][0] and rect[0][1] <= rect[1][1]
+    assert bounds[0][0] <= bounds[1][0] and bounds[0][1] <= bounds[1][1]
+
+    width_input = rect[1][1] - rect[0][1]
+    height_input = rect[1][0] - rect[0][0]
+    width_bound = bounds[1][1] - bounds[0][1]
+    height_bound = bounds[1][0] - bounds[0][0]
+
+    width = width_input
+    height = height_input
+
+    # find new rect points
+    while width > width_bound or height > height_bound:
+        if width > width_bound:
+            # need to bound w
+            a_w = width_bound / width
+            width = width_bound
+            height = height * a_w
+
+        if height > height_bound:
+            # need to bound w
+            a_h = height_bound / height
+            height = height_bound
+            width = width * a_h
+
+    rect_out = [rect[0], (rect[0][0] + height, rect[0][1] + width)]
+
+    return rect_out
+
+
+def rotate(
+    points: list[tuple[float, float]], anchor: tuple[float, float], angle: float = 90.0
+) -> list[tuple[float, float]]:
+    """Rotates points (nx2) about anchor (x, y) by angle in degrees"""
+    points = numpy.array(points)
+    anchor = numpy.array(anchor)
+    angle = math.radians(-angle)
+    return (
+        numpy.dot(
+            points - anchor,
+            [[math.cos(angle), math.sin(angle)], [-math.sin(angle), math.cos(angle)]],
+        )
+        + anchor
+    )
+
+
+def cart2pol(x: float, y: float) -> tuple[float, float]:
+    """Convert cartesian coordinates x, y into polar rho, phi"""
+    rho = numpy.sqrt(x**2 + y**2)
+    phi = numpy.arctan2(y, x)
+    return rho, phi
+
+
+def pol2cart(rho: float, phi: float) -> tuple[float, float]:
+    """Convert polar coordinates rho, phi into cartesian x, y"""
+    x = rho * numpy.cos(phi)
+    y = rho * numpy.sin(phi)
+    return x, y
+
+
+def swap(x):
+    """Swaps iterables of size 2, except strings and dicts, from (x, y) to (y, x), recursively"""
+    if hasattr(x, "__iter__") and not (isinstance(x, str) or isinstance(x, dict)):
+        if len(x) == 2:
+            return type(x)((swap(x[1]), swap(x[0])))
+        else:
+            return type(x)(swap(x_i) for x_i in x)
+    else:
+        return x
