@@ -1,0 +1,166 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vendor-connectors"
+version = "0.1.1"
+description = "Universal vendor connectors with transparent secret management, including Meshy AI for 3D assets"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["aws", "gcp", "github", "slack", "vault", "zoom", "meshy", "3d", "connectors"]
+authors = [{ name = "Jon Bogaty", email = "jon@jonbogaty.com" }]
+maintainers = [{ name = "Jon Bogaty", email = "jon@jonbogaty.com" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    # jbcom ecosystem
+    "extended-data-types>=2025.11.164",
+    "lifecyclelogging>=202511.3.0",
+    "directed-inputs-class>=202511.3.0",
+    # Cloud providers
+    "boto3>=1.34.0",
+    "google-api-python-client>=2.0.0",
+    "google-cloud-billing>=1.0.0",
+    "google-cloud-resource-manager>=1.0.0",
+    "hvac>=2.0.0",
+    "PyGithub>=2.0.0",
+    "python-graphql-client>=0.4.0",
+    "slack-sdk>=3.0.0",
+    "requests>=2.32.0",
+    # Meshy AI SDK dependencies
+    "httpx>=0.28.1",
+    "tenacity>=9.1.2",
+    "pydantic>=2.0.0",
+    "rich>=14.0.0",
+    "eval-type-backport>=0.2.0; python_version < '3.10'",
+    # Additional utils
+    "numpy>=1.26.0",
+    "validators>=0.22.0",
+    "deepmerge>=1.1.0",
+    "filelock>=3.13.0",
+    "more-itertools>=10.0.0",
+]
+
+[project.urls]
+Documentation = "https://github.com/jbcom/vendor-connectors#readme"
+Issues = "https://github.com/jbcom/vendor-connectors/issues"
+Source = "https://github.com/jbcom/vendor-connectors"
+
+[project.optional-dependencies]
+tests = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-asyncio>=0.23.0",
+]
+# Meshy webhooks support
+webhooks = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.38.0",
+    "pyngrok>=7.2.2",
+]
+# Agent framework integrations for Meshy
+crewai = [
+    "crewai[tools]>=1.5.0",
+]
+mcp = [
+    "mcp>=1.0.0",
+]
+# All agent tools
+agents = [
+    "crewai[tools]>=1.5.0",
+    "mcp>=1.0.0",
+]
+# Vector store for Meshy RAG embeddings
+vector = [
+    "sqlite-vec>=0.1.0",
+    "sentence-transformers>=3.0.0",
+]
+# Full installation with all extras
+all = [
+    "crewai[tools]>=1.5.0",
+    "mcp>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.38.0",
+    "pyngrok>=7.2.2",
+    "sqlite-vec>=0.1.0",
+    "sentence-transformers>=3.0.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-asyncio>=0.23.0",
+    "mypy>=1.8.0",
+    "ruff>=0.2.0",
+    "types-requests>=2.31.0",
+]
+
+[project.scripts]
+meshy-mcp = "vendor_connectors.meshy.agent_tools.mcp.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vendor_connectors"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--cov=vendor_connectors",
+    "--cov-report=term-missing",
+]
+
+[tool.coverage.report]
+fail_under = 35
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008", "B019", "B904", "C901", "UP006", "UP007", "UP035", "UP045"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
+
+[tool.semantic_release]
+build_command = "uv build"
+commit_message = "chore(release): release v{version} [skip ci]"
+allow_zero_version = true
+tag_format = "v{version}"
+version_toml = ["pyproject.toml:project.version"]
+version_variables = ["src/vendor_connectors/__init__.py:__version__"]
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
