@@ -1,0 +1,231 @@
+[build-system]
+build-backend = "hatchling.build"
+
+requires = ["hatchling"]
+
+[project]
+name = "fujin-cli"
+version = "0.14.0"
+description = "Get your project up and running in a few minutes on your own vps."
+readme = "README.md"
+keywords = [
+  "caddy",
+  "deployment",
+  "django",
+  "fastapi",
+  "litestar",
+  "python",
+  "systemd",
+]
+authors = [{ name = "Tobi DEGNON", email = "tobidegnon@proton.me" }]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Natural Language :: English",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+dependencies = [
+  "cappa>=0.24",
+  "jinja2>=3.1.3",
+  "msgspec[toml]>=0.18.6",
+  "python-dotenv>=1.0.1",
+  "rich>=13.9.2",
+  "ssh2-python>=1.2.0.post1",
+]
+
+urls.Documentation = "https://github.com/falcopackages/fujin#readme"
+urls.Issues = "https://github.com/falcopackages/fujin/issues"
+urls.Source = "https://github.com/falcopackages/fujin"
+
+scripts.fujin = "fujin.__main__:main"
+
+[dependency-groups]
+dev = [
+  "django>=5.1.2",
+  "pytest>=9.0.1",
+  "inline-snapshot>=0.13.0",
+  "pytest-subprocess>=1.5.3",
+  "shellcheck-py>=0.11.0.1",
+]
+docs = [
+  "myst-parser",
+  "shibuya",
+  "sphinx-autobuild",
+  "sphinx-autodoc2>=0.5",
+  "sphinx-copybutton",
+  "sphinx-design",
+  "sphinx-exec-code>=0.14",
+  "sphinx-togglebutton>=0.3.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fujin"]
+
+[tool.uv.workspace]
+members = ["examples/django/bookstore"]
+
+[tool.ruff]
+# Assume Python {{ python_version }}
+target-version = "py312"
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+extend-include = ["*.pyi?"]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".github",
+  ".hg",
+  ".mypy_cache",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "build",
+  "dist",
+  "migrations",
+  "node_modules",
+]
+# Like Black, indent with spaces, rather than tabs.
+format.indent-style = "space"
+# Like Black, use double quotes for strings.
+format.quote-style = "double"
+# Like Black, automatically detect the appropriate line ending.
+format.line-ending = "auto"
+lint.select = [
+  "B",  # flake8-bugbear
+  "E",  # Pycodestyle
+  "F",  # Pyflakes
+  "UP", # pyupgrade
+]
+lint.ignore = [
+  "E501",
+  "E741",
+  "I",    # isort
+] # temporary
+# Tests can use magic values, assertions, and relative imports
+lint.per-file-ignores."tests/**/*" = ["PLR2004", "S101", "TID252"]
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+lint.fixable = ["A", "B", "C", "D", "E", "F", "I"]
+lint.unfixable = []
+# Allow unused variables when underscore-prefixed.
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+lint.isort.force-single-line = true
+lint.isort.known-first-party = ["fujin"]
+lint.isort.required-imports = ["from __future__ import annotations"]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+lint.pyupgrade.keep-runtime-typing = true
+
+[tool.bumpversion]
+current_version = "0.14.0"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+ignore_missing_files = false
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = true
+message = "Bump version: {current_version} → {new_version}"
+commit_args = "--no-verify"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "src/fujin/__init__.py"
+replace = '__version__ = "{new_version}"'
+search = '__version__ = "{current_version}"'
+
+[tool.mypy]
+check_untyped_defs = true
+exclude = ["docs", "tests", "migrations", "venv", ".venv", "examples"]
+files = ["fujin"]
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+ignore_errors = true
+module = ["tests.*", "docs.*"]
+
+[tool.git-cliff.changelog]
+header = """
+# Changelog\n
+All notable changes to this project will be documented in this file.\n
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n
+"""
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**breaking**] {% endif %}\
+            {{ commit.message | upper_first }}\
+    {% endfor %}
+{% endfor %}\n
+"""
+footer = """
+<!-- generated by git-cliff -->
+"""
+trim = true
+
+[tool.git-cliff.git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->🚀 Features" },
+  { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
+  { message = "^doc|^docs", group = "<!-- 3 -->📚 Documentation" },
+  { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
+  { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
+  { message = "^style", group = "<!-- 5 -->🎨 Styling" },
+  { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+  { message = "^build", group = "<!-- 7 -->📦 Build" },
+  { message = "^chore\\(release\\): prepare for", skip = true },
+  { message = "^chore\\(deps.*\\)", skip = true },
+  { message = "^chore\\(pr\\)", skip = true },
+  { message = "^chore\\(pull\\)", skip = true },
+  { message = "^chore|^ci", group = "<!-- 8 -->⚙️ Miscellaneous Tasks" },
+  { body = ".*security", group = "<!-- 9 -->🛡️ Security" },
+  { message = "^revert", group = "<!-- 10 -->◀️ Revert" },
+]
+protect_breaking_commits = false
+filter_commits = false
+topo_order = false
+sort_commits = "newest"
+
+[tool.pytest.ini_options]
+markers = ["use_recorder: mark test to use the mock recorder"]
+
+[tool.inline-snapshot]
+format-command = "ruff format --stdin-filename {filename}"

@@ -1,0 +1,43 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: local
+    hooks:
+      - id: fmt
+        name: ruff format
+        entry: uvx ruff format
+        language: system
+        files: '\.py$'
+
+      - id: logchanges
+        name: update changelog
+        entry: just logchanges || true
+        language: system
+        pass_filenames: false
+
+  - repo: https://github.com/myint/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        exclude: .*/__init__.py
+        args:
+          - --in-place
+          - --remove-all-unused-imports
+          - --expand-star-imports
+          - --remove-duplicate-keys
+          - --remove-unused-variables
+
+
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: v2.11.1
+    hooks:
+      - id: pyproject-fmt
+        args: [ "pyproject.toml" ]
+        exclude: ^(examples/)
+
+  # - repo: https://github.com/asottile/reorder_python_imports
+  #   rev: v3.13.0
+  #   hooks:
+  #     - id: reorder-python-imports
+  #       args:
+  #         - "--application-directories=src"
