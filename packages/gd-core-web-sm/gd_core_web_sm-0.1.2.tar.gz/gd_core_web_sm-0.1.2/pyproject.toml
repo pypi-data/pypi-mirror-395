@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gd-core-web-sm"
+version = "0.1.2"
+description = "A spaCy-compatible Scottish Gaelic NLP pipeline with POS tagging and a POS-aware lemmatizer."
+readme = "README.md"
+authors = [
+    { name="Oskar Diyali", email="oskardiyali@cornellcollege.edu" }
+]
+license = "MIT"
+requires-python = ">=3.8"
+
+dependencies = [
+    "spacy>=3.7.0",
+    "torch>=1.13.0"
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+[project.urls]
+Homepage = "https://github.com/CSRI-2024/lemmatizer_gaelic"
+Issues = "https://github.com/CSRI-2024/lemmatizer_gaelic/issues"
+
+[tool.setuptools]
+packages = ["gd_core_web_sm"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+gd_core_web_sm = [
+    "*.json",
+    "*.cfg",
+    "tokenizer/*.json",
+    "lookups/*.json",
+    "models/*",
+]
+
+[project.entry-points."spacy_factories"]
+pos_tagger_pipe = "gd_core_web_sm.models.tagger_module:create_tagger_pipe"
+gaelic_lemmatizer_pos_aware = "gd_core_web_sm.pos_aware_lemmatizer:make_gaelic_lemmatizer"
