@@ -1,0 +1,431 @@
+Metadata-Version: 2.4
+Name: miniflux-tui-py
+Version: 0.7.4
+Summary: A Python TUI client for Miniflux RSS reader with feed sorting capabilities
+Project-URL: Homepage, https://github.com/reuteras/miniflux-tui-py
+Project-URL: Documentation, https://reuteras.github.io/miniflux-tui-py/
+Project-URL: Repository, https://github.com/reuteras/miniflux-tui-py
+Project-URL: Issues, https://github.com/reuteras/miniflux-tui-py/issues
+Project-URL: Bug-tracker, https://github.com/reuteras/miniflux-tui-py/issues
+Author-email: Peter Reuterås <peter@reuteras.net>
+License: MIT
+License-File: AUTHORS.md
+License-File: LICENSE
+Keywords: feed-reader,miniflux,rss,terminal,tui
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: 3.15
+Classifier: Topic :: Internet
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Classifier: Topic :: Office/Business :: News/Diary
+Classifier: Topic :: Utilities
+Classifier: Typing :: Typed
+Requires-Python: >=3.11
+Requires-Dist: beautifulsoup4>=4.14.2
+Requires-Dist: bleach>=6.3.0
+Requires-Dist: html2text>=2025.4.15
+Requires-Dist: html5lib>=1.1
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: miniflux>=1.1.4
+Requires-Dist: textual>=6.4.0
+Requires-Dist: tomli>=2.0.1; python_version < '3.11'
+Provides-Extra: binary
+Requires-Dist: pyinstaller>=6.10.0; extra == 'binary'
+Provides-Extra: dev
+Requires-Dist: bandit[toml]>=1.7.5; extra == 'dev'
+Requires-Dist: pylint>=4.0.2; extra == 'dev'
+Requires-Dist: pyright>=1.1.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'dev'
+Requires-Dist: pytest-benchmark>=4.0.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=8.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.6.0; extra == 'dev'
+Provides-Extra: docs
+Requires-Dist: mkdocs-material>=9.6.22; extra == 'docs'
+Requires-Dist: mkdocs>=1.6.1; extra == 'docs'
+Requires-Dist: mkdocstrings[python]>=0.30.1; extra == 'docs'
+Provides-Extra: fuzz
+Requires-Dist: atheris>=2.3.0; extra == 'fuzz'
+Description-Content-Type: text/markdown
+
+# miniflux-tui-py
+
+<div align="center">
+  <img src="https://cdn.jsdelivr.net/gh/reuteras/miniflux-tui-py@main/assets/logo-256.png" alt="miniflux-tui-py logo" width="128" height="128">
+</div>
+
+[![PyPI version](https://img.shields.io/pypi/v/miniflux-tui-py.svg)](https://pypi.org/project/miniflux-tui-py/)
+[![Python 3.11+ | 3.12 | 3.13 | 3.14 | 3.15](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.15-blue)](https://pypi.org/project/miniflux-tui-py/)
+[![Downloads](https://static.pepy.tech/badge/miniflux-tui-py/month)](https://pepy.tech/project/miniflux-tui-py)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Test Status](https://github.com/reuteras/miniflux-tui-py/workflows/Test/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/test.yml)
+[![Last Commit](https://img.shields.io/github/last-commit/reuteras/miniflux-tui-py?logo=github)](https://github.com/reuteras/miniflux-tui-py/commits/main)
+[![Python 3.15 Preview](https://img.shields.io/badge/Python%203.15-preview-yellow)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/test.yml)
+[![CIFuzz](https://github.com/reuteras/miniflux-tui-py/actions/workflows/cifuzz.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/cifuzz.yml)
+[![OSV Scanner](https://github.com/reuteras/miniflux-tui-py/actions/workflows/osv-scanner.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/osv-scanner.yml)
+[![CodeQL](https://github.com/reuteras/miniflux-tui-py/actions/workflows/codeql.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/codeql.yml)
+[![Semgrep](https://github.com/reuteras/miniflux-tui-py/actions/workflows/semgrep.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/semgrep.yml)
+[![MegaLinter](https://github.com/reuteras/miniflux-tui-py/actions/workflows/linter.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/linter.yml)
+[![Dependency Review](https://github.com/reuteras/miniflux-tui-py/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/dependency-review.yml)
+[![License Check](https://github.com/reuteras/miniflux-tui-py/actions/workflows/license-check.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/license-check.yml)
+[![Malcontent](https://github.com/reuteras/miniflux-tui-py/actions/workflows/malcontent-pr.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/malcontent-pr.yml)
+[![zizmor](https://github.com/reuteras/miniflux-tui-py/actions/workflows/zizmor.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/zizmor.yml)
+[![Container Builds](https://github.com/reuteras/miniflux-tui-py/actions/workflows/container-image.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/container-image.yml)
+[![SBOM](https://img.shields.io/badge/SBOM-CycloneDX%20%26%20SPDX-5A45FF)](https://github.com/reuteras/miniflux-tui-py/releases/latest)
+[![Coverage Status](https://coveralls.io/repos/github/reuteras/miniflux-tui-py/badge.svg?branch=main)](https://coveralls.io/github/reuteras/miniflux-tui-py?branch=main)
+[![Performance](https://github.com/reuteras/miniflux-tui-py/actions/workflows/performance.yml/badge.svg)](https://github.com/reuteras/miniflux-tui-py/actions/workflows/performance.yml)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://reuteras.github.io/miniflux-tui-py/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/reuteras/miniflux-tui-py/badge)](https://securityscorecards.dev/viewer/?uri=github.com/reuteras/miniflux-tui-py)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11362/badge?t=2025)](https://www.bestpractices.dev/projects/11362)
+
+A [Python](https://www.python.org) TUI (Terminal User Interface) client for the [Miniflux](https://miniflux.app) self-hosted RSS reader built with [Textual](https://github.com/textualize/textual/).
+
+## Status
+
+**Production/Stable** - v0.7.3
+
+This project has reached production stability with:
+- ✅ Comprehensive feature set (categories, feeds, settings, history, runtime theme switching)
+- ✅ Non-blocking background operations (sync while using the UI)
+- ✅ Robust CI/CD with 15+ security and quality workflows
+- ✅ High test coverage (>60%) across Python 3.11-3.15
+- ✅ OpenSSF Best Practices badge and Scorecard monitoring
+- ✅ Container builds with SLSA attestation
+- ✅ Professional documentation and API reference
+
+## Features
+
+### Core Functionality
+- 📖 **Browse and read** RSS entries with keyboard navigation
+- ✓ **Mark entries** as read/unread, starred/unstarred
+- 💾 **Save entries** to third-party services (Pocket, Instapaper, etc.)
+- 🌐 **Open in browser** or fetch original content for truncated entries
+- 📝 **HTML to Markdown** conversion for readable display
+
+### Organization & Filtering
+- 🗂️ **Multiple sort modes** - date (newest first), feed (alphabetical), or status (unread first)
+- 📁 **Group by feed** or category with expand/collapse
+- 🔍 **Filter by status** - unread only or starred only
+- 🔎 **Search** through entries by title or content
+- 🏷️ **Category management** - organize feeds into categories
+
+### Feed Management
+- 🔄 **Auto-discover** feeds from URLs
+- ⚙️ **Configure feeds** - scraping rules, rewrite rules, fetch settings, blocklist/allowlist
+- 🔁 **Refresh feeds** - individual feeds or all feeds
+- 📊 **Feed status** - view problematic feeds and errors
+- 🛠️ **Feed settings editor** - comprehensive feed configuration
+
+### User Experience
+- ⌨️ **Keyboard-driven** - extensive Vim-style shortcuts
+- 🎨 **Runtime theme switching** - toggle dark/light mode instantly with 'T' key
+- 🔄 **Non-blocking sync** - navigate and read entries while syncing in background
+- 📚 **Reading history** - browse your 200 most recently read entries
+- 🔐 **Password manager** integration for secure credential storage
+- 📦 **Multi-platform** - Linux, macOS, Windows support
+
+## Installation
+
+### From PyPI (Recommended with uv)
+
+```bash
+# Install uv (see: https://docs.astral.sh/uv/getting-started/installation/)
+# On macOS/Linux: brew install uv
+# On Windows: winget install astral-sh.uv
+# Or visit https://docs.astral.sh/uv/getting-started/installation/
+
+# Install miniflux-tui-py
+uv tool install miniflux-tui-py
+
+# Create configuration
+miniflux-tui --init
+
+# Run the application
+miniflux-tui
+```
+
+### Alternative: Using pip
+
+```bash
+pip install miniflux-tui-py
+miniflux-tui --init
+miniflux-tui
+```
+
+**Note:** After installation with `uv tool install` or `pip install`, you can run the application directly with `miniflux-tui` (no `uv run` needed). You can also run it as a Python module: `python -m miniflux_tui`.
+
+### Prebuilt Binaries (GitHub Releases)
+
+If you do not want to manage a Python environment, each tagged release now attaches standalone binaries for Linux (x86_64), macOS (arm64), and Windows (x86_64):
+
+1. Download the archive for your platform from the [GitHub Releases page](https://github.com/reuteras/miniflux-tui-py/releases).
+2. Extract the archive:
+    - Linux/macOS: `tar -xzf miniflux-tui-<os>-<arch>.tar.gz`
+    - Windows: right-click the `.zip` file and choose **Extract All…**
+3. (Linux/macOS only) Make the binary executable: `chmod +x miniflux-tui`
+4. Run the TUI: `./miniflux-tui --init`
+
+> **Note:** macOS may quarantine binaries downloaded from the internet. If macOS blocks execution, run `xattr -d com.apple.quarantine miniflux-tui` once after extraction.
+
+### Container Image (Docker/Podman)
+
+```bash
+# Pull the signed image from GitHub Container Registry
+# `latest` tracks the default branch. Replace with a release tag (e.g. v0.4.0) to pin.
+docker pull ghcr.io/reuteras/miniflux-tui:latest
+
+# Create a configuration directory on the host if it does not exist
+mkdir -p ~/.config/miniflux-tui
+
+# Generate a config file (writes to the mounted directory)
+docker run --rm -it \
+  -v ~/.config/miniflux-tui:/home/miniflux/.config/miniflux-tui \
+  ghcr.io/reuteras/miniflux-tui:latest \
+  --init
+
+# Launch the TUI (shares configuration and uses your terminal)
+docker run --rm -it \
+  -v ~/.config/miniflux-tui:/home/miniflux/.config/miniflux-tui \
+  ghcr.io/reuteras/miniflux-tui:latest
+```
+
+The image is built in CI, published to GHCR, and signed with Sigstore Cosign using GitHub OIDC so you can verify it with:
+
+```bash
+cosign verify ghcr.io/reuteras/miniflux-tui:latest
+```
+
+### From Source (For Developers)
+
+```bash
+# Install uv (see: https://docs.astral.sh/uv/getting-started/installation/)
+# On macOS/Linux: brew install uv
+# On Windows: winget install astral-sh.uv
+# Or visit https://docs.astral.sh/uv/getting-started/installation/
+
+# Clone the repository
+git clone https://github.com/reuteras/miniflux-tui-py.git
+cd miniflux-tui-py
+
+# Install all dependencies (including dev and docs)
+uv sync --all-groups
+
+# Create default configuration
+uv run miniflux-tui --init
+
+# Run the application (use 'uv run' when running from source without installing)
+uv run miniflux-tui
+```
+
+**Note:** `uv run` is only needed when running from source without installing the package. After installing with `uv tool install` or `pip install`, use `miniflux-tui` directly.
+
+## Documentation
+
+Full documentation is available at [reuteras.github.io/miniflux-tui-py](https://reuteras.github.io/miniflux-tui-py/)
+
+- [Installation Guide](https://reuteras.github.io/miniflux-tui-py/installation/)
+- [Configuration](https://reuteras.github.io/miniflux-tui-py/configuration/)
+- [Usage Guide](https://reuteras.github.io/miniflux-tui-py/usage/)
+- [Contributing](https://reuteras.github.io/miniflux-tui-py/contributing/)
+
+## GitHub Codespaces
+
+GitHub Codespaces provides a preconfigured, browser-accessible development
+environment that works well with the terminal-based interface of
+`miniflux-tui-py`. This repository includes a `.devcontainer/devcontainer.json`
+so every Codespace starts from a Python 3.13+ image, installs `uv`, and runs
+`uv sync --locked --all-groups` automatically. After the first boot you can launch the
+TUI with the same commands documented in the
+[From Source](#from-source-for-developers) section:
+
+```bash
+uv run miniflux-tui --init
+uv run miniflux-tui
+```
+
+To verify the setup before running the application, use:
+
+```bash
+uv run miniflux-tui --check-config
+```
+
+### Keeping your Miniflux token secret
+
+Use [Codespaces secrets](https://docs.github.com/codespaces/managing-your-codespaces/managing-secrets-for-your-codespaces)
+to store your API token so only the Codespaces that you start can read it:
+
+1. In the repository, go to **Settings → Codespaces secrets** and add a new
+    secret named `MINIFLUX_TOKEN` (or add a personal Codespaces secret from your
+    user settings).
+2. Launch a Codespace for this repository. GitHub injects the secret into the
+    environment as `MINIFLUX_TOKEN` each time the Codespace starts.
+3. Configure `config.toml` to read the token from the environment by using a
+    command for the `password` field, for example:
+
+    ```toml
+    password = ["/bin/sh", "-c", "printf %s \"$MINIFLUX_TOKEN\""]
+    ```
+
+Each collaborator must define their own secret—your personal Codespaces secrets
+are never shared with other users, and theirs are not shared with you. Avoid
+writing the raw token to tracked files inside the Codespace so it is not
+accidentally committed.
+
+The Codespace is set up so the VS Code Testing view is ready to run the project's
+pytest suite without extra configuration. VS Code also auto-formats Python files
+with Ruff on save and wires up the default interpreter to the repo's `.venv`, so
+the editor, formatter, and tests all work straight away.
+
+## Configuration
+
+Create a configuration file at:
+
+- **Linux**: `~/.config/miniflux-tui/config.toml`
+- **macOS**: `~/.config/miniflux-tui/config.toml`
+- **Windows**: `%APPDATA%\miniflux-tui\config.toml`
+
+Example configuration:
+
+```toml
+server_url = "https://miniflux.example.com"
+password = ["op", "read", "op://Personal/Miniflux/API Token"]
+allow_invalid_certs = false
+
+[theme]
+unread_color = "cyan"
+read_color = "gray"
+
+[sorting]
+default_sort = "feed"  # Options: "feed", "date", "status"
+default_group_by_feed = false
+```
+
+### Retrieving your API token securely
+
+Miniflux authenticates using API tokens. Instead of storing the token directly
+in `config.toml`, configure the `password` field with a command that prints the
+token to stdout. This keeps the secret in your password manager (for example
+1Password, Bitwarden, or pass).
+
+To create a token:
+1. Log into your Miniflux server.
+2. Go to **Settings** → **API Keys** → **Create a new API key**.
+3. Store the generated token in your password manager.
+4. Update the `password` command so it outputs the token, e.g.:
+
+    ```toml
+    # 1Password example
+    password = ["op", "read", "op://Personal/Miniflux/API Token"]
+
+    # Environment variable example
+    password = ["/bin/sh", "-c", "printf %s \"$MINIFLUX_TOKEN\""]
+    ```
+
+## Keyboard Shortcuts
+
+### Entry List View
+
+| Key        | Action                                           |
+|------------|--------------------------------------------------|
+| ↑/↓ or k/j | Navigate entries                                 |
+| Enter      | Open entry                                       |
+| m          | Toggle read/unread                               |
+| *          | Toggle star                                      |
+| e          | Save entry to third-party service                |
+| s          | Cycle sort mode (date/feed/status)               |
+| g          | Toggle grouping by feed                          |
+| c          | Toggle grouping by category                      |
+| Shift+G    | Expand all feeds/categories (when grouped)       |
+| Shift+Z    | Collapse all feeds/categories (when grouped)     |
+| h or ←     | Collapse individual feed/category (when grouped) |
+| l or →     | Expand individual feed/category (when grouped)   |
+| X          | Open feed settings (when on a feed)              |
+| r          | Refresh current feed on server                   |
+| Shift+R    | Refresh all feeds on server                      |
+| ,          | Sync entries from server (fetch new)             |
+| u          | Show unread entries only                         |
+| t          | Show starred entries only                        |
+| /          | Search entries (interactive dialog)              |
+| Shift+M    | Manage categories                                |
+| Shift+H    | Toggle reading history view                      |
+| Shift+X    | Open scraping rule helper                        |
+| Shift+T    | Toggle theme (dark/light)                        |
+| ?          | Show keyboard help                               |
+| i          | Show system status                               |
+| Shift+S    | Show TUI settings                                |
+| q          | Quit application                                 |
+
+### Entry Reader View
+
+| Key             | Action                            |
+|-----------------|-----------------------------------|
+| ↑/↓ or k/j      | Scroll up/down                    |
+| PageUp/PageDown | Fast scroll                       |
+| J               | Next entry                        |
+| K               | Previous entry                    |
+| u               | Mark as unread                    |
+| *               | Toggle star                       |
+| e               | Save entry to third-party service |
+| o               | Open in browser                   |
+| f               | Fetch original content            |
+| X               | Open feed settings                |
+| Shift+X         | Open scraping rule helper         |
+| b or Esc        | Back to list                      |
+| ?               | Show keyboard help                |
+| i               | Show system status                |
+| Shift+S         | Show TUI settings                 |
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details on:
+- Setting up your development environment
+- Running tests and checks
+- Submitting pull requests
+
+For release information and troubleshooting, see:
+- [RELEASE.md](RELEASE.md) - How to create releases
+- [docs/RELEASE_TROUBLESHOOTING.md](docs/RELEASE_TROUBLESHOOTING.md) - Handling release failures
+
+## Development
+
+```bash
+# Install all development dependencies
+uv sync --all-groups
+
+# Lint code
+uv run ruff check .
+
+# Type check
+uv run pyright miniflux_tui tests
+
+# Run tests
+uv run pytest tests --cov=miniflux_tui
+
+# Preview documentation locally
+uv run mkdocs serve
+```
+
+## Why Python?
+
+This project is a Python implementation of [cliflux](https://github.com/spencerwi/cliflux) (Rust), created since I don't now Rust and wanted to do some changes to that code.
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Related Projects
+
+- [cliflux](https://github.com/spencerwi/cliflux) - Original Rust TUI client for Miniflux that inspired this tool.
+- [Miniflux](https://miniflux.app) is a minimalist and opinionated feed reader.
+- [textual](https://github.com/textualize/textual/)
