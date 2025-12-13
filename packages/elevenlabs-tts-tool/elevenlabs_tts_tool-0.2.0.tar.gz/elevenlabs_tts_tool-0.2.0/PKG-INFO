@@ -1,0 +1,845 @@
+Metadata-Version: 2.4
+Name: elevenlabs-tts-tool
+Version: 0.2.0
+Summary: Professional command-line tool for ElevenLabs text-to-speech synthesis
+Project-URL: Homepage, https://github.com/dnvriend/elevenlabs-tts-tool
+Project-URL: Repository, https://github.com/dnvriend/elevenlabs-tts-tool
+Project-URL: Issues, https://github.com/dnvriend/elevenlabs-tts-tool/issues
+Project-URL: Changelog, https://github.com/dnvriend/elevenlabs-tts-tool/releases
+Author-email: Dennis Vriend <dvriend@ilionx.com>
+License: MIT
+License-File: LICENSE
+Keywords: ai-voice,cli,command-line,elevenlabs,speech-synthesis,text-to-speech,tts,voice-generation
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Multimedia :: Sound/Audio :: Speech
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Utilities
+Classifier: Typing :: Typed
+Requires-Python: >=3.13
+Requires-Dist: click>=8.1.7
+Requires-Dist: elevenlabs>=1.0.0
+Requires-Dist: urllib3>=2.6.0
+Description-Content-Type: text/markdown
+
+# elevenlabs-tts-tool
+
+[![Python Version](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://github.com/python/mypy)
+[![AI Generated](https://img.shields.io/badge/AI-Generated-blueviolet.svg)](https://www.anthropic.com/claude)
+[![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-5A67D8.svg)](https://www.anthropic.com/claude/code)
+
+A command-line tool for ElevenLabs text-to-speech synthesis with human-friendly voice selection.
+
+## Table of Contents
+
+- [About](#about)
+- [Why CLI-First?](#why-cli-first)
+- [Use Cases](#use-cases)
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+  - [Shell Completion](#shell-completion)
+  - [Verbosity Levels](#verbosity-levels)
+- [Usage](#usage)
+  - [Synthesize Command](#synthesize-command)
+  - [List Voices](#list-voices)
+  - [Update Voices](#update-voices)
+  - [Model Selection](#model-selection)
+  - [Subscription Info](#subscription-info)
+- [Advanced Features](#advanced-features)
+  - [Emotion Control](#emotion-control)
+  - [Pause Control (SSML)](#pause-control-ssml)
+- [Free Tier Limitations](#free-tier-limitations)
+- [Claude Code Integration](#claude-code-integration)
+- [Library Usage](#library-usage)
+- [Development](#development)
+- [Resources](#resources)
+- [License](#license)
+
+## About
+
+### What is ElevenLabs?
+
+[ElevenLabs](https://elevenlabs.io) provides cutting-edge AI voice synthesis technology that generates natural-sounding speech from text. Their Turbo v2.5 model offers fast, high-quality text-to-speech with a wide variety of realistic voices.
+
+### What is elevenlabs-tts-tool?
+
+`elevenlabs-tts-tool` transforms the ElevenLabs API into a professional, composable CLI tool designed for:
+
+- **Agent-Friendly Design**: Structured commands and error messages enable AI agents (like Claude Code) to reason and act effectively in ReAct loops
+- **Composable Architecture**: JSON output to stdout, logs to stderr - perfect for piping and automation
+- **Reusable Building Blocks**: Commands serve as foundations for Claude Code skills, MCP servers, shell scripts, or custom workflows
+- **Dual-Mode Operation**: Use as both CLI tool and Python library
+- **Production Quality**: Type-safe with strict mypy checks, comprehensive tests, and clear error handling with suggested fixes
+
+## Why CLI-First?
+
+Traditional API wrappers force you to write code for every interaction. CLI-first design provides:
+
+1. **Immediate Productivity**: Run commands without writing wrapper code
+2. **Automation Ready**: Pipe commands together in shell scripts
+3. **Agent Integration**: AI agents can invoke commands directly
+4. **Human & Machine Friendly**: Works equally well for developers and automation
+
+## Use Cases
+
+- 🎙️ **Voice Notifications**: Add TTS to CI/CD pipelines and monitoring systems
+- 📚 **Content Creation**: Generate audiobooks, podcasts, and video narration
+- 🤖 **AI Agent Integration**: Build voice-enabled Claude Code skills and MCP servers
+- 🛠️ **Development Workflows**: Create audio alerts for long-running processes
+- 🎯 **Accessibility**: Convert text content to audio for accessibility features
+- 🔊 **Testing**: Test voice UIs and audio systems
+- 🔔 **Claude Code Hooks**: Use as notification system for Claude Code events (see [Claude Code Integration](#claude-code-integration))
+
+## Features
+
+- ✅ **Two Synthesis Modes**: Play through speakers or save to audio file
+- ✅ **8 TTS Models**: Choose from quality, speed, or emotional expression models
+- ✅ **42 Premium Voices**: Curated selection with human-friendly names (rachel, adam, charlotte, etc.)
+- ✅ **Voice & Model Discovery**: List voices and models with characteristics
+- ✅ **Emotional Expression**: Use `[happy]`, `[sad]`, etc. tags with v3 model
+- ✅ **Flexible Input**: Accept text from arguments or stdin (pipe support)
+- ✅ **CLI & Library**: Use as command-line tool or import as Python library
+- ✅ **Type Safety**: Strict mypy checks throughout
+- ✅ **Comprehensive Tests**: Full test coverage with pytest
+- ✅ **Agent-Friendly Errors**: Clear error messages with suggested fixes
+- ✅ **Modern Tooling**: Built with uv, mise, click, and Python 3.13+
+
+## Installation
+
+### Prerequisites
+
+- Python 3.13 or higher
+- [uv](https://github.com/astral-sh/uv) package manager
+- ElevenLabs API key ([get yours here](https://elevenlabs.io/app/settings/api-keys))
+- **macOS users**: [FFmpeg](https://ffmpeg.org/) for audio playback
+
+```bash
+# macOS: Install FFmpeg via Homebrew
+brew install ffmpeg
+
+# Linux: Install via package manager
+sudo apt-get install ffmpeg  # Debian/Ubuntu
+sudo yum install ffmpeg      # RedHat/CentOS
+```
+
+### Install from source
+
+```bash
+# Clone the repository
+git clone https://github.com/dnvriend/elevenlabs-tts-tool.git
+cd elevenlabs-tts-tool
+
+# Install globally with uv
+uv tool install .
+```
+
+### Verify installation
+
+```bash
+elevenlabs-tts-tool --version
+```
+
+## Configuration
+
+### Set API Key
+
+```bash
+# Export API key (required for all commands)
+export ELEVENLABS_API_KEY='your-api-key-here'
+
+# Or add to your shell profile (~/.zshrc, ~/.bashrc)
+echo 'export ELEVENLABS_API_KEY="your-api-key"' >> ~/.zshrc
+```
+
+Get your API key from: https://elevenlabs.io/app/settings/api-keys
+
+### Shell Completion
+
+Enable tab completion for bash, zsh, or fish shells:
+
+**Bash** (add to `~/.bashrc`):
+```bash
+eval "$(elevenlabs-tts-tool completion bash)"
+```
+
+**Zsh** (add to `~/.zshrc`):
+```bash
+eval "$(elevenlabs-tts-tool completion zsh)"
+```
+
+**Fish** (save to completion file):
+```bash
+mkdir -p ~/.config/fish/completions
+elevenlabs-tts-tool completion fish > ~/.config/fish/completions/elevenlabs-tts-tool.fish
+```
+
+**For better performance**, save completion to a file:
+```bash
+# Bash
+elevenlabs-tts-tool completion bash > ~/.elevenlabs-tts-tool-complete.bash
+echo 'source ~/.elevenlabs-tts-tool-complete.bash' >> ~/.bashrc
+
+# Zsh
+elevenlabs-tts-tool completion zsh > ~/.elevenlabs-tts-tool-complete.zsh
+echo 'source ~/.elevenlabs-tts-tool-complete.zsh' >> ~/.zshrc
+```
+
+Once installed, you can tab-complete commands, options, and even voice names!
+
+### Verbosity Levels
+
+Control logging output with progressive verbosity levels:
+
+```bash
+# Default (WARNING only) - quiet mode
+elevenlabs-tts-tool synthesize "Hello world"
+
+# -v (INFO) - show high-level operations
+elevenlabs-tts-tool -v synthesize "Hello world"
+
+# -vv (DEBUG) - show detailed steps, API calls, validation
+elevenlabs-tts-tool -vv synthesize "Hello world"
+
+# -vvv (TRACE) - show full API requests/responses, library internals
+elevenlabs-tts-tool -vvv synthesize "Hello world"
+```
+
+**Verbosity Breakdown:**
+- **No flag** (default): Only warnings and errors
+- **`-v`**: INFO level - operation status, file names, progress
+- **`-vv`**: DEBUG level - validation steps, API call details, timing
+- **`-vvv`**: TRACE level - full HTTP requests/responses, ElevenLabs SDK internals
+
+**Note:** Verbosity applies to all commands:
+```bash
+elevenlabs-tts-tool -v list-voices      # INFO level
+elevenlabs-tts-tool -vv list-models     # DEBUG level
+elevenlabs-tts-tool -vvv info           # TRACE level with API details
+```
+
+## Usage
+
+### Synthesize Command
+
+Convert text to speech with various options:
+
+```bash
+# Basic usage - play through speakers
+elevenlabs-tts-tool synthesize "Hello world"
+
+# Use a different voice
+elevenlabs-tts-tool synthesize "Hello world" --voice adam
+elevenlabs-tts-tool synthesize "Cheerio mate" --voice charlotte
+
+# Read from stdin
+echo "Hello from stdin" | elevenlabs-tts-tool synthesize --stdin
+cat article.txt | elevenlabs-tts-tool synthesize --stdin
+
+# Save to MP3 file (default format)
+elevenlabs-tts-tool synthesize "Save this" --output speech.mp3
+
+# Save to WAV file (PCM format)
+elevenlabs-tts-tool synthesize "Save this" --output speech.wav --format pcm_24000
+
+# Lower quality MP3 (smaller file size)
+elevenlabs-tts-tool synthesize "Save this" --output speech.mp3 --format mp3_22050_32
+
+# Combine options
+cat blog-post.txt | elevenlabs-tts-tool synthesize --stdin \
+    --voice rachel --output narration.mp3 --format mp3_44100_128
+```
+
+#### Output Formats
+
+The `--format` option controls audio quality and file size. Different formats require different ElevenLabs subscription tiers:
+
+**Available on all tiers:**
+- `mp3_44100_128` - MP3 at 44.1kHz, 128kbps (default, ~17KB for short text)
+- `mp3_22050_32` - MP3 at 22.05kHz, 32kbps (lower quality, ~6KB for short text)
+- `pcm_16000` - PCM/WAV at 16kHz
+- `pcm_22050` - PCM/WAV at 22.05kHz
+- `pcm_24000` - PCM/WAV at 24kHz (~67KB for short text)
+- `ulaw_8000` - μ-law at 8kHz (for Twilio)
+
+**Creator tier and above:**
+- `mp3_44100_192` - MP3 at 44.1kHz, 192kbps (higher quality)
+
+**Pro tier and above:**
+- `pcm_44100` - PCM/WAV at 44.1kHz (highest quality, largest file size)
+
+**Examples:**
+```bash
+# Default MP3 (works on all tiers)
+elevenlabs-tts-tool synthesize "Text" --output audio.mp3
+
+# High-quality WAV (Pro tier required)
+elevenlabs-tts-tool synthesize "Text" --output audio.wav --format pcm_44100
+
+# Lower bandwidth (works on all tiers)
+elevenlabs-tts-tool synthesize "Text" --output audio.mp3 --format mp3_22050_32
+```
+
+### List Voices
+
+Discover available voices with characteristics:
+
+```bash
+# List all 42 available voices
+elevenlabs-tts-tool list-voices
+
+# Find specific voices with grep
+elevenlabs-tts-tool list-voices | grep British
+elevenlabs-tts-tool list-voices | grep "female.*young"
+elevenlabs-tts-tool list-voices | grep male
+```
+
+**Popular Voices:**
+- `rachel` - Calm and friendly American female (default)
+- `adam` - Deep, authoritative American male
+- `charlotte` - Seductive and calm British female
+- `antoni` - Well-rounded American male
+- `bella` - Soft and pleasant American female
+- `daniel` - Deep and authoritative British male
+
+### Update Voices
+
+Update the voice lookup table from ElevenLabs API:
+
+```bash
+# Update default voice lookup (saves to ~/.config/elevenlabs-tts-tool/)
+elevenlabs-tts-tool update-voices
+
+# Save to custom location
+elevenlabs-tts-tool update-voices --output custom_voices.json
+```
+
+The voice lookup is stored in `~/.config/elevenlabs-tts-tool/voices_lookup.json` and takes precedence over the package default.
+
+### Model Selection
+
+ElevenLabs offers multiple TTS models optimized for different use cases. Use the `--model` option with the `synthesize` command to select a model.
+
+#### List Available Models
+
+```bash
+# Show all available models with characteristics
+elevenlabs-tts-tool list-models
+```
+
+#### Current Generation Models
+
+**Eleven Turbo v2.5** (Default) - `eleven_turbo_v2_5`
+- Balanced quality and speed (~250ms latency)
+- 32 languages, 40,000 char limit
+- 50% cheaper per character
+- **Best for:** General-purpose TTS
+
+```bash
+elevenlabs-tts-tool synthesize "Hello world" --model eleven_turbo_v2_5
+```
+
+**Eleven Multilingual v2** - `eleven_multilingual_v2`
+- Highest production quality
+- 29 languages, 10,000 char limit
+- Medium latency
+- **Best for:** Professional content, e-learning
+
+```bash
+elevenlabs-tts-tool synthesize "Professional narration" --model eleven_multilingual_v2
+```
+
+**Eleven Flash v2.5** - `eleven_flash_v2_5`
+- Ultra-low latency (~75ms)
+- 32 languages, 40,000 char limit
+- 50% cheaper per character
+- **Best for:** Real-time agents, bulk processing
+
+```bash
+elevenlabs-tts-tool synthesize "Quick response" --model eleven_flash_v2_5
+```
+
+**Eleven v3 (Alpha)** - `eleven_v3`
+- Most emotionally expressive
+- 70+ languages, 5,000 char limit
+- Higher latency
+- **Best for:** Emotional dialogue, audiobooks
+- **Note:** Supports emotional tags (`[happy]`, `[sad]`, etc.)
+
+```bash
+elevenlabs-tts-tool synthesize "[happy] Welcome!" --model eleven_v3
+```
+
+#### Model Selection Examples
+
+```bash
+# Use highest quality model
+elevenlabs-tts-tool synthesize "Professional presentation" \
+    --voice rachel --model eleven_multilingual_v2
+
+# Ultra-fast real-time generation
+elevenlabs-tts-tool synthesize "Quick notification" \
+    --voice adam --model eleven_flash_v2_5
+
+# Emotional expression (requires v3)
+elevenlabs-tts-tool synthesize "[excited] Congratulations!" \
+    --voice charlotte --model eleven_v3 --output celebration.mp3
+
+# Pipe with model selection
+echo "Article content" | elevenlabs-tts-tool synthesize --stdin \
+    --voice daniel --model eleven_multilingual_v2 --output article.mp3
+```
+
+#### Legacy Models
+
+The following models are deprecated but still available:
+- `eleven_turbo_v2` - Superseded by Turbo v2.5 (50% cost savings)
+- `eleven_flash_v2` - Superseded by Flash v2.5
+- `eleven_monolingual_v1` - English-only (use `eleven_multilingual_v2` instead)
+- `eleven_multilingual_v1` - Use `eleven_multilingual_v2` instead
+
+**Warning:** Using deprecated models will show a deprecation notice. Migrate to current generation models for better performance and pricing.
+
+For detailed model information, see: [references/models.md](references/models.md)
+
+### Subscription Info
+
+View your ElevenLabs subscription status and usage statistics:
+
+```bash
+# View subscription info with last 7 days of usage
+elevenlabs-tts-tool info
+
+# View last 30 days of usage
+elevenlabs-tts-tool info --days 30
+
+# Quick quota check
+elevenlabs-tts-tool info --days 1
+```
+
+**Information Displayed:**
+- **Subscription Details:** Tier, status, voice slots, currency
+- **Character Usage:** Used/limit/remaining with percentage and visual bar
+- **Quota Reset:** When your character quota resets
+- **Historical Usage:** Daily usage breakdown for specified period
+- **Usage Statistics:** Average daily usage and projected monthly consumption
+- **Warnings:** Alerts when approaching quota limits (>75% or >90%)
+
+**Example Output:**
+```
+================================================================================
+ElevenLabs Subscription Information
+================================================================================
+
+Tier:           Free
+Status:         Active
+
+Character Usage:
+  Used:         8,543 characters
+  Limit:        10,000 characters
+  Remaining:    1,457 characters
+  Percentage:   85.4%
+  [████████████████████████████████████░░░░]
+
+Quota Resets:   2025-11-22 00:00:00
+                (Friday, November 22, 2025)
+
+Voice Slots:    3
+Currency:       USD
+
+================================================================================
+Historical Usage (Last 7 Days)
+================================================================================
+
+Date            Characters Used      Bar
+--------------------------------------------------------------------------------
+2025-11-15           1,234 chars    ██████████████████████████████
+2025-11-14             892 chars    ████████████████████
+2025-11-13           1,567 chars    ██████████████████████████████
+...
+--------------------------------------------------------------------------------
+Total:               8,543 chars
+
+Average daily usage: 1,220 characters
+Projected monthly:   36,600 characters
+
+================================================================================
+```
+
+**Use Cases:**
+- Monitor character quota consumption
+- Track usage patterns over time
+- Plan when to upgrade subscription tier
+- Avoid hitting quota limits unexpectedly
+- Understand daily/monthly usage trends
+
+## Advanced Features
+
+### Emotion Control
+
+ElevenLabs v3 model (`eleven_v3`) supports emotional tags for expressive speech:
+
+```bash
+# Happy greeting (requires eleven_v3 model)
+elevenlabs-tts-tool synthesize "[happy] Welcome! We're excited to have you here." --model eleven_v3
+
+# Sad message
+elevenlabs-tts-tool synthesize "[sad] I'm sorry to hear that..." --model eleven_v3
+
+# Excited announcement
+elevenlabs-tts-tool synthesize "[excited] Amazing news! Your project is approved!" --model eleven_v3
+```
+
+**Available Emotions:** `[happy]`, `[excited]`, `[sad]`, `[angry]`, `[nervous]`, `[curious]`, `[cheerfully]`, `[playfully]`, `[mischievously]`, `[resigned tone]`, `[flatly]`, `[deadpan]`
+
+**Speech Characteristics:** `[whispers]`, `[laughs]`, `[gasps]`, `[sighs]`, `[pauses]`, `[hesitates]`, `[stammers]`
+
+**Important:** Emotional tags only work with the `eleven_v3` model. They will be ignored on other models (v2.5, v2, etc.).
+
+### Pause Control (SSML)
+
+Add natural pauses using SSML break tags:
+
+```bash
+# Add 1-second pause
+elevenlabs-tts-tool synthesize "Welcome <break time=\"1.0s\" /> to our service."
+
+# Multiple pauses
+elevenlabs-tts-tool synthesize "First point <break time=\"0.5s\" /> Second point <break time=\"0.5s\" /> Third point."
+```
+
+**Note:** Keep pauses under 3 seconds and limit to 2-4 breaks per generation for best results.
+
+### Combining Emotions and Pauses
+
+```bash
+# Emotional speech with pauses
+elevenlabs-tts-tool synthesize "[happy] Good morning! <break time=\"0.5s\" /> [cheerfully] I hope you're having a great day."
+```
+
+For comprehensive documentation on emotions, pauses, SSML, and voice settings, see:
+- [Emotions and Pauses Guide](references/emotions-and-pauses.md)
+
+## Free Tier Limitations
+
+**ElevenLabs Free Tier:**
+- ✅ 10,000-20,000 characters per month (as of 2024-2025)
+- ✅ Access to all 42 premade voices
+- ✅ Create up to 3 custom voices
+- ✅ MP3 formats (all bitrates)
+- ✅ Basic SSML support
+- ✅ Emotional tags (v3 models)
+- ❌ No commercial license
+- ❌ PCM 44.1kHz format requires Pro tier
+- ⚠️ Max 2,500 characters per single generation
+
+**Recommended for:**
+- Personal projects
+- Experimentation
+- Development and testing
+- Non-commercial use
+
+For detailed free tier information and upgrade options, see:
+- [Free Tier Research](references/free-tier.md)
+- [ElevenLabs Pricing](https://elevenlabs.io/pricing)
+
+## Claude Code Integration
+
+Use `elevenlabs-tts-tool` as a notification system for Claude Code hooks to get audio alerts when tasks complete.
+
+### Setup Hook
+
+Create a notification hook in `~/.config/claude-code/hooks.json`:
+
+```json
+{
+  "hooks": {
+    "after_command": {
+      "type": "bash",
+      "command": "elevenlabs-tts-tool synthesize \"[happy] Task completed successfully!\" --voice rachel"
+    },
+    "on_error": {
+      "type": "bash",
+      "command": "elevenlabs-tts-tool synthesize \"[nervous] Error detected. Please check the output.\" --voice adam"
+    }
+  }
+}
+```
+
+### Use Cases
+
+**Task Completion Alerts:**
+```bash
+# After long-running build
+elevenlabs-tts-tool synthesize "[excited] Build completed!" --voice rachel
+```
+
+**Error Notifications:**
+```bash
+# On test failure
+elevenlabs-tts-tool synthesize "[sad] Tests failed. Please review." --voice adam
+```
+
+**Custom Workflows:**
+```bash
+# In your shell scripts
+make build && elevenlabs-tts-tool synthesize "[cheerfully] Build successful!" || \
+    elevenlabs-tts-tool synthesize "[nervous] Build failed!"
+```
+
+**Integration with Other Tools:**
+```bash
+# Combine with gemini-google-search-tool
+gemini-google-search-tool query "Latest AI news" | \
+    elevenlabs-tts-tool synthesize --stdin --voice charlotte --output news-summary.mp3
+```
+
+This allows you to:
+- Get audio alerts for completed tasks without monitoring the terminal
+- Hear error notifications while away from the screen
+- Create multi-step automation workflows with voice feedback
+- Build voice-enabled AI agent pipelines
+
+### Output Styles
+
+Claude Code supports custom output styles via `.claude/output-styles/` directory. Output styles allow you to customize how Claude Code responds to your requests. For comprehensive examples, see the [Claude Code Hooks Mastery repository](https://github.com/disler/claude-code-hooks-mastery/tree/main/.claude/output-styles).
+
+#### TTS Summary Output Style
+
+The **TTS Summary** output style provides audio task completion announcements using `elevenlabs-tts-tool`. This creates a voice-enabled assistant experience where Claude Code speaks to you about what it accomplished.
+
+**How it works:**
+1. Claude Code responds normally to all requests
+2. At the end of every response, it adds an audio summary
+3. The summary is synthesized using `elevenlabs-tts-tool synthesize`
+4. You hear what was accomplished without monitoring the terminal
+
+**Example Output Style Configuration:**
+
+Create `.claude/output-styles/tts-summary.md`:
+
+```markdown
+---
+name: TTS Summary
+description: Audio task completion announcements with TTS
+---
+
+# TTS Summary Output Style
+
+You are Claude Code with an experimental TTS announcement feature designed to communicate directly with the user about what you've accomplished.
+
+## Standard Behavior
+Respond normally to all user requests, using your full capabilities for:
+- Code generation and editing
+- File operations
+- Running commands
+- Analysis and explanations
+- All standard Claude Code features
+
+## Critical Addition: Audio Task Summary
+
+**At the very END of EVERY response**, you MUST provide an audio summary for the user and run a Bash tool:
+
+```bash
+elevenlabs-tts-tool synthesize "SUMMARY_TO_THE_USER"
+```
+
+## Important Rules
+
+- ALWAYS include the audio summary, even for simple queries
+- ALWAYS suggest 2-3 relevant next steps after task completion
+- Report task completion status with technical precision
+- Use efficient, direct language - no conversational elaboration
+- Focus on specifications achieved and functionality delivered
+- Report as status update, not personal communication
+- Execute the command using the Bash tool, DO NOT show it on the CLI
+```
+
+**Activate the output style:**
+```bash
+# In Claude Code CLI
+/output-style
+# Select "TTS Summary" from the list
+```
+
+**Benefits:**
+- ✅ Audio notifications for completed tasks
+- ✅ Stay informed without watching the terminal
+- ✅ Natural, conversational feedback
+- ✅ Perfect for long-running tasks or multi-step workflows
+- ✅ Voice-enabled AI assistant experience
+
+**Note:** This feature requires `elevenlabs-tts-tool` to be installed and configured with your API key.
+
+### Voice-Enabled Workflow with SuperWhisper
+
+Combine `elevenlabs-tts-tool` with [Claude Code](https://www.anthropic.com/claude/code) and [SuperWhisper](https://superwhisper.com/) for a complete voice-enabled development workflow.
+
+**The Power Trio:**
+1. **SuperWhisper** - Voice input: Speak commands to Claude Code
+2. **Claude Code** - AI assistance: Execute tasks and generate code
+3. **elevenlabs-tts-tool** - Voice output: Get audio notifications when tasks complete
+
+**Why This Works:**
+
+Speaking is **faster than typing**. Instead of typing long commands or descriptions:
+```bash
+# Traditional typing (slow):
+"Create a new Python function that parses JSON files and extracts all email addresses..."
+
+# Voice with SuperWhisper (fast):
+🎤 Just speak naturally and SuperWhisper transcribes instantly
+```
+
+**Perfect For:**
+- 🏃 **Long-Running Tasks**: Start a build with voice, get audio notification when done
+- 🔄 **Multi-Step Workflows**: Chain tasks with voice commands, hear progress updates
+- 💻 **Hands-Free Development**: Code while away from keyboard, get notified when ready
+- 🎯 **Context Switching**: Start tasks via voice, move to other work, return on audio alert
+
+**Example Workflow:**
+```bash
+# 1. Speak to SuperWhisper: "Run the test suite and let me know when it's done"
+# 2. Claude Code executes: pytest tests/
+# 3. elevenlabs-tts-tool announces: "[happy] All tests passed! 47 tests completed."
+
+# 4. Speak: "Now build the Docker image and push to registry"
+# 5. Claude Code executes: docker build && docker push
+# 6. elevenlabs-tts-tool announces: "[excited] Docker image built and pushed successfully!"
+```
+
+**Setup:**
+1. Install [SuperWhisper](https://superwhisper.com/) (macOS voice-to-text)
+2. Configure Claude Code with TTS Summary output style (see above)
+3. Use voice commands to control Claude Code
+4. Receive audio notifications on task completion
+
+**Benefits:**
+- ✅ **10x faster input** - Speak naturally instead of typing
+- ✅ **Hands-free operation** - No keyboard required for basic tasks
+- ✅ **Multitasking enabled** - Start tasks, switch context, return on notification
+- ✅ **Reduced cognitive load** - Voice is more natural than typing technical commands
+- ✅ **Accessibility** - Works great for users with typing difficulties
+
+**Note:** SuperWhisper is currently macOS-only. For other platforms, consider [Whisper Desktop](https://github.com/Const-me/Whisper) or similar voice input tools.
+
+## Library Usage
+
+Use `elevenlabs-tts-tool` as a Python library in your projects:
+
+```python
+from elevenlabs_tts_tool import get_client, play_speech, save_speech
+from elevenlabs_tts_tool import VoiceManager
+from pathlib import Path
+
+# Initialize client
+client = get_client()
+
+# Get voice ID
+voice_manager = VoiceManager()
+voice_id = voice_manager.get_voice_id("rachel")
+
+# Play through speakers
+play_speech(client, "Hello from Python", voice_id)
+
+# Save to file
+save_speech(client, "Save this", voice_id, Path("output.wav"))
+
+# List available voices
+for name, profile in voice_manager.list_voices():
+    print(f"{name}: {profile.description}")
+```
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/dnvriend/elevenlabs-tts-tool.git
+cd elevenlabs-tts-tool
+
+# Install dependencies
+make install
+
+# Show available commands
+make help
+```
+
+### Available Make Commands
+
+```bash
+make install          # Install dependencies
+make format           # Format code with ruff
+make lint             # Run linting with ruff
+make typecheck        # Run type checking with mypy
+make test             # Run tests with pytest
+make check            # Run all checks (lint, typecheck, test)
+make pipeline         # Run full pipeline (format, check, build, install-global)
+make build            # Build package
+make clean            # Remove build artifacts
+```
+
+### Project Structure
+
+```
+elevenlabs-tts-tool/
+├── elevenlabs_tts_tool/
+│   ├── __init__.py              # Public API exports
+│   ├── cli.py                   # CLI entry point
+│   ├── voices.py                # Voice management
+│   ├── voices_lookup.json       # Voice lookup table (42 voices)
+│   ├── core/                    # Core library functions
+│   │   ├── client.py           # ElevenLabs client
+│   │   └── synthesize.py       # TTS functions
+│   └── commands/                # CLI commands
+│       ├── synthesize_commands.py
+│       └── voice_commands.py
+├── tests/                       # Test suite
+├── pyproject.toml               # Project configuration
+├── Makefile                     # Development commands
+└── CLAUDE.md                    # Developer guide
+```
+
+## Resources
+
+- **ElevenLabs Documentation**: https://elevenlabs.io/docs
+- **API Reference**: https://elevenlabs.io/docs/api-reference
+- **Python SDK**: https://github.com/elevenlabs/elevenlabs-python
+- **Voice Library**: https://elevenlabs.io/voice-library
+- **Get API Key**: https://elevenlabs.io/app/settings/api-keys
+- **Claude Code Hooks Mastery**: https://github.com/disler/claude-code-hooks-mastery - Comprehensive guide to Claude Code hooks and output styles
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+**Dennis Vriend**
+
+- GitHub: [@dnvriend](https://github.com/dnvriend)
+
+## Acknowledgments
+
+- Built with [Click](https://click.palletsprojects.com/) for CLI framework
+- [ElevenLabs](https://elevenlabs.io) for world-class TTS technology
+- Developed with [uv](https://github.com/astral-sh/uv) for fast Python tooling
+
+---
+
+**Generated with AI**
+
+This project was generated using [Claude Code](https://www.anthropic.com/claude/code), an AI-powered development tool by [Anthropic](https://www.anthropic.com/). Claude Code assisted in creating the project structure, implementation, tests, documentation, and development tooling.
+
+Made with ❤️ using Python 3.13+

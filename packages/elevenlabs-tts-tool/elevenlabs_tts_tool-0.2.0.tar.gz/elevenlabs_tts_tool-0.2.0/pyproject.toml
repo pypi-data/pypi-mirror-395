@@ -1,0 +1,82 @@
+[project]
+name = "elevenlabs-tts-tool"
+version = "0.2.0"
+description = "Professional command-line tool for ElevenLabs text-to-speech synthesis"
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.1.7",
+    "elevenlabs>=1.0.0",
+    "urllib3>=2.6.0",  # Security fix for GHSA-gm62-xv2j-4w53, GHSA-2xpw-w6gg-jr37
+]
+authors = [
+    {name = "Dennis Vriend", email = "dvriend@ilionx.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+keywords = [
+    "elevenlabs",
+    "tts",
+    "text-to-speech",
+    "speech-synthesis",
+    "voice-generation",
+    "ai-voice",
+    "cli",
+    "command-line",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/dnvriend/elevenlabs-tts-tool"
+Repository = "https://github.com/dnvriend/elevenlabs-tts-tool"
+Issues = "https://github.com/dnvriend/elevenlabs-tts-tool/issues"
+Changelog = "https://github.com/dnvriend/elevenlabs-tts-tool/releases"
+
+[project.scripts]
+elevenlabs-tts-tool = "elevenlabs_tts_tool.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.7.0",
+    "pytest>=7.4.0",
+    "bandit>=1.7.0",
+    "pip-audit>=2.6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+strict = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv"]
+skips = ["B101"]  # Skip assert_used (common in tests)
