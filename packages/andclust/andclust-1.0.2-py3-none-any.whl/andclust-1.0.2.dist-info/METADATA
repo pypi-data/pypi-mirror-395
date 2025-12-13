@@ -1,0 +1,106 @@
+Metadata-Version: 2.4
+Name: andclust
+Version: 1.0.2
+Summary: ANDClust: Adaptive Neighborhood Density-Based Clustering Algorithm
+Author-email: Ali Şenol <alisenol@tarsus.edu.tr>
+Project-URL: Homepage, https://github.com/senolali/andclust
+Project-URL: Documentation, https://github.com/senolali/andclust
+Project-URL: Source, https://github.com/senolali/andclust
+Project-URL: Issues, https://github.com/senolali/andclust
+Project-URL: Paper, https://doi.org/10.1002/adts.202301113
+Keywords: clustering,density-based,machine-learning,unsupervised-learning
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.20
+Requires-Dist: scikit-learn>=1.0
+Requires-Dist: scipy>=1.8
+Requires-Dist: matplotlib>=3.0
+
+[![PyPI version](https://badge.fury.io/py/mcmstclustering.svg)](https://badge.fury.io/py/mcmstclustering)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+
+# ANDClust
+ 
+This package implementsthe ANDClust (Adaptive Neighborhood Distance-Based Clustering Algorithm to Cluster Varying Density and/or Neck-Typed Datasets) algorithm.
+
+## Installation
+
+```bash
+pip install andclust
+```
+
+## Usage
+
+```bash
+from andclust import ANDClust
+from sklearn.datasets import load_iris
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics.cluster import adjusted_rand_score
+
+data=load_iris()
+X,y=data['data'],data['target']
+
+scaler = MinMaxScaler()
+scaler.fit(X)
+X = scaler.transform(X)
+
+model = ANDClust(N=2,k=14,eps=0.113) # If you want to change kernel and band_with use model = ANDClust(N=2,k=14,eps=0.113,kernel='gaussian',b_width=0.025) default values for optional parameter krnl='gaussian', b_width=0.5 options for kernel are{“gaussian”, “tophat”, “epanechnikov”,
+“exponential”, “linear”, “cosine”}
+labels = model.fit_predict(X)
+
+ARI=adjusted_rand_score(labels,y)
+print("ARI=", ARI)
+
+```
+
+## Features
+
+	- Detects arbitrary-shaped clusters due to its density-based core structure.
+
+	- Handles varying density both between clusters and within the same cluster via a flexible neighborhood–distance mechanism.
+
+	- Robust against outliers and noisy samples.
+
+	- Capable of clustering high-dimensional datasets.
+
+	- Performs well on imbalanced datasets.
+
+	- Achieves high clustering quality across multiple evaluation metrics.
+
+	- Effectively identifies neck-type (bottleneck-shaped) clusters.
+
+
+##Citation
+
+If you use this algorithm in research, please cite the corresponding paper.
+
+```text
+Şenol, A. (2024). ANDClust: An Adaptive Neighborhood Distance-Based Clustering Algorithm to Cluster Varying Density and/or Neck-Typed Datasets. Advanced Theory and Simulations, 7(4), 2301113.
+```
+
+#BibTeX
+
+```text
+@article{csenol2024andclust,
+  title={ANDClust: An Adaptive Neighborhood Distance-Based Clustering Algorithm to Cluster Varying Density and/or Neck-Typed Datasets},
+  author={{\c{S}}enol, Ali},
+  journal={Advanced Theory and Simulations},
+  volume={7},
+  number={4},
+  pages={2301113},
+  year={2024},
+  publisher={Wiley Online Library}
+}
+```
+---
+
+## LICENSE **
+
+```text
+MIT License
+
+Copyright (c) 2025 Ali Şenol
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+...
