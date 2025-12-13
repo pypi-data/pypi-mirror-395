@@ -1,0 +1,374 @@
+from typing import Tuple, Dict, Optional
+import numpy as np
+import pygame
+import pygame_gui
+from pygame_gui import UIManager
+from pygame_gui.core.interfaces import IUIManagerInterface
+from pygame_gui.elements import UITextBox, UIImage, UIWindow, UILabel, UIButton
+
+# Constants
+DEFAULT_FONT = 'Arial'
+DEFAULT_FONT_SIZE = 30
+DEFAULT_COLOR = (0, 0, 0)
+DEFAULT_BG_COLOR = None
+DEFAULT_ANCHOR = 'center'
+
+
+def gradient_surface(rect: pygame.Rect,
+                     start_color: Tuple[int, int, int],
+                     end_color: Tuple[int, int, int]) -> pygame.Surface:
+    surface = pygame.Surface(rect.size, pygame.SRCALPHA)
+    for x in range(rect.w):
+        r = start_color[0] + (end_color[0] - start_color[0]) * (x / rect.w)
+        g = start_color[1] + (end_color[1] - start_color[1]) * (x / rect.w)
+        b = start_color[2] + (end_color[2] - start_color[2]) * (x / rect.w)
+        pygame.draw.line(surface, (r, g, b), (x, 0), (x, rect.h))
+    return surface
+
+
+def rounded_gradient_surface(rect: pygame.Rect,
+                             start_color: Tuple[int, int, int],
+                             end_color: Tuple[int, int, int],
+                             corner_radius: int,
+                             edge_thickness: int = 1,
+                             edge_color: Tuple[int, int, int] = (0, 0, 0)) -> pygame.Surface:
+    surface = gradient_surface(rect, start_color, end_color)
+    mask = pygame.Surface(rect.size, pygame.SRCALPHA)
+    pygame.draw.rect(mask, (255, 255, 255), rect, border_radius=corner_radius)
+    surface.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+    pygame.draw.rect(surface, edge_color, rect, width=edge_thickness, border_radius=corner_radius)
+    return surface
+
+
+class PG_Text:
+    def __init__(self, text='', xy=(0, 0),
+                 color: Tuple[int, int, int] = DEFAULT_COLOR,
+                 bg_color: Optional[Tuple[int, int, int]] = DEFAULT_BG_COLOR,
+                 font_name: str = DEFAULT_FONT,
+                 font_size: int = DEFAULT_FONT_SIZE,
+                 font: Optional[pygame.font.Font] = None,
+                 anchor: str = DEFAULT_ANCHOR):
+        self.text = text
+        self.xy = xy
+        self.color = color
+        self.bg_color = bg_color
+        self.font_name = font_name
+        self.font_size = font_size
+        self.font = font
+        self.anchor = anchor
+        self.update_text()
+
+    def __str__(self):
+        return f'{self.text}, <color({self.color} {self.bg_color})>, <font({self.font}, {self.font_name}, {self.font_size})>'
+
+    def update_text(self):
+        font = self.font or pygame.font.SysFont(self.font_name, self.font_size)
+        self.text_surface = font.render(self.text, True, self.color, self.bg_color)
+        self.text_rect = self.text_surface.get_rect()
+        setattr(self.text_rect, self.anchor, self.xy)
+
+    def draw(self, surface: pygame.Surface):
+        surface.blit(self.text_surface, self.text_rect)
+
+
+class TextBoxSurface:
+    def __init__(self, rect: pygame.Rect,
+                 manager: Optional[UIManager] = None,
+                 container=None):
+        self.rect = rect
+        self.manager = manager
+        self.container = container
+        self.texts: Dict[str, PG_Text] = {}
+        self.surface = pygame.Surface(rect.size, pygame.SRCALPHA)
+
+        self.text_box = UITextBox(
+            html_text="",
+            relative_rect=rect,
+            manager=self.manager,
+            container=self.container
+        )
+
+        self.image_element = UIImage(
+            relative_rect=self.rect,
+            image_surface=self.surface,
+            manager=manager,
+            container=container
+        )
+
+        self.clear()
+
+    def clear(self):
+        self.surface.fill((0, 0, 0, 0))
+
+    def add_text(self, name: str, text='',
+                 xy: Optional[Tuple[int, int]] = None,
+                 color: Tuple[int, int, int] = DEFAULT_COLOR,
+                 bg_color: Optional[Tuple[int, int, int]] = DEFAULT_BG_COLOR,
+                 font_name: str = DEFAULT_FONT,
+                 font_size: int = DEFAULT_FONT_SIZE,
+                 font: Optional[pygame.font.Font] = None,
+                 anchor: str = DEFAULT_ANCHOR):
+        xy = xy or tuple(np.array(self.rect.size) / 2)
+        self.texts[name] = PG_Text(text, xy, color, bg_color, font_name, font_size, font, anchor)
+        self.set_image()
+
+    def update_text(self, name: str, **kwargs):
+        if name not in self.texts:
+            self.add_text(name)
+
+        text_obj = self.texts[name]
+        for k, v in kwargs.items():
+            setattr(text_obj, k, v)
+        text_obj.update_text()
+        self.set_image()
+
+    def set_image(self):
+        self.clear()
+        for text_obj in self.texts.values():
+            text_obj.draw(self.surface)
+        self.image_element.set_image(self.surface)
+
+    def set_background_text(self, html_text: str):
+        self.text_box.set_text(html_text)
+
+
+class NumpadWindow(UIWindow):
+    NUMPAD_ENTER_USER_TYPE = "numpad_enter"
+
+    def __init__(
+            self,
+            xy: tuple[int, int] = (200, 50),
+            manager: IUIManagerInterface | None = None,
+            window_display_title: str = "Numpad",
+            placeholder: str = "",
+            **kwargs,
+    ):
+        super().__init__(
+            rect=pygame.Rect(xy, (340, 420)),
+            manager=manager,
+            window_display_title=window_display_title,
+            **kwargs
+        )
+
+        self.placeholder: str = placeholder
+        self.current_input: str = ""
+        self.value: int = 0
+
+        self.placeholder_label = UILabel(
+            relative_rect=pygame.Rect((20, 20), (300, 60)),
+            text=self.placeholder,
+            manager=manager,
+            container=self,
+            object_id="#placeholder_label"
+        )
+
+        self.display_label = UILabel(
+            relative_rect=pygame.Rect((20, 20), (300, 60)),
+            text=self.current_input,
+            manager=manager,
+            container=self,
+            object_id="#numpad_label"
+        )
+
+        mg_x, mg_y = 20, 90
+        btn_w, btn_h = 100, 70
+
+        self.button_layout = [
+            ['1', '2', '3'],
+            ['4', '5', '6'],
+            ['7', '8', '9'],
+            ['<', '0', 'OK']
+        ]
+
+        self.buttons: Dict[UIButton, str] = {}
+
+        for row_index, row_keys in enumerate(self.button_layout):
+            for col_index, key in enumerate(row_keys):
+                pos_x = mg_x + (col_index * btn_w)
+                pos_y = mg_y + (row_index * btn_h)
+                btn = UIButton(
+                    relative_rect=pygame.Rect((pos_x, pos_y), (btn_w, btn_h)),
+                    text=key,
+                    manager=manager,
+                    container=self,
+                    object_id=f"#numpad_button_{key}"
+                )
+                self.buttons[btn] = key
+
+        self.update_display()
+
+    def process_event(self, event: pygame.event.Event) -> bool:
+        handled = super().process_event(event)
+
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element in self.buttons:
+                pressed_value = self.buttons[event.ui_element]
+                self.handle_numpad_input(pressed_value)
+                handled = True
+
+        if event.type == pygame.TEXTINPUT:
+            if event.text in '0123456789':
+                self.handle_numpad_input(event.text)
+                handled = True
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE:
+                self.handle_numpad_input('<')
+                handled = True
+            elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                self.handle_numpad_input('OK')
+                handled = True
+
+        return handled
+
+    def update_display(self) -> None:
+        if self.current_input:
+            self.display_label.set_text(self.current_input)
+            self.placeholder_label.hide()
+        else:
+            self.display_label.set_text("")
+            self.placeholder_label.show()
+
+    def handle_numpad_input(self, value: str) -> None:
+        if value == 'OK':
+            self.value = int(self.current_input) if self.current_input else 0
+            pygame.event.post(
+                pygame.event.Event(
+                    pygame.USEREVENT,
+                    {
+                        "user_type": self.NUMPAD_ENTER_USER_TYPE,
+                        "value": self.value,
+                        "text": self.current_input,
+                        "object_id": self.object_ids[-1] if self.object_ids else None,
+                        "class_id": self.class_ids[-1] if self.class_ids else None,
+                    }
+                )
+            )
+
+            self.kill()
+            return
+
+        if value == '<':
+            self.current_input = self.current_input[:-1]
+        else:
+            if len(self.current_input) < 12 and value.isdigit():
+                self.current_input += value
+
+        self.value = int(self.current_input) if self.current_input else 0
+        self.update_display()
+
+
+def ex1():
+    pygame.init()
+    window_size = (800, 600)
+    display = pygame.display.set_mode(window_size)
+    pygame.display.set_caption('UIImage Example')
+    manager = UIManager(window_size)
+
+    textbox1 = TextBoxSurface(pygame.Rect(100, 100, 300, 100), manager=manager)
+    textbox1.set_background_text("This is background text")
+    textbox1.update_text(
+        'Text', text='Hello World', color=(255, 0, 255), xy=(10, 20), anchor='topleft',
+        font_name='Arial', font_size=10
+    )
+    textbox1.update_text(
+        'Text2', text='abc', color=(255, 0, 255), xy=(10, 50), anchor='topleft',
+        font_name='Rounded Mplus 1c Medium', font_size=20
+    )
+
+    windows = pygame_gui.elements.UIWindow(pygame.Rect(100, 200, 600, 500), manager=manager)
+    textbox2 = TextBoxSurface(pygame.Rect(100, 100, 300, 100), manager=manager, container=windows)
+    textbox2.set_background_text("Window background text")
+    textbox2.update_text('Text', text='My World', color=(255, 0, 255))
+
+    clock = pygame.time.Clock()
+    is_running = True
+
+    while is_running:
+        time_delta = clock.tick(60) / 1000.0
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                is_running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                textbox1.update_text('Text', text='Hello')
+
+            manager.process_events(event)
+
+        manager.update(time_delta)
+
+        display.fill((255, 255, 255))
+        manager.draw_ui(display)
+
+        pygame.display.update()
+
+    pygame.quit()
+
+
+def ex_numpad_window() -> None:
+    from pygame_gui.core import ObjectID
+    from theme import theme
+
+    pygame.init()
+    pygame.key.start_text_input()
+
+    window_size = (800, 600)
+    window_surface = pygame.display.set_mode(window_size)
+    pygame.display.set_caption("Pygame GUI Numpad Example")
+
+    background = pygame.Surface(window_size)
+    background.fill(pygame.Color('#707070'))
+
+    manager = pygame_gui.UIManager(window_size, theme_path=theme)
+    numpad_window = NumpadWindow(
+        manager=manager,
+        window_display_title='Password',
+        object_id=ObjectID(class_id='@input_password', object_id='#input_password'),
+        # object_id='#input_password'
+        placeholder='Input Password'
+    )
+
+    clock = pygame.time.Clock()
+    is_running = True
+
+    while is_running:
+        time_delta = clock.tick(60) / 1000.0
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                is_running = False
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+                if not numpad_window.alive():
+                    numpad_window = NumpadWindow(
+                        manager=manager,
+                        window_display_title='Password',
+                        object_id=ObjectID(class_id='@input_password', object_id='#input_password'),
+                        placeholder='Input Password'
+                    )
+
+            if event.type == pygame.USEREVENT:
+                if getattr(event, "user_type", None) == NumpadWindow.NUMPAD_ENTER_USER_TYPE:
+                    print(
+                        f'text = {event.text!r}, '
+                        f'value = {event.value}, '
+                        f'object_id = {event.object_id}, '
+                        f'class_id = {event.class_id}'
+                    )
+
+            manager.process_events(event)
+
+        manager.update(time_delta)
+
+        window_surface.blit(background, (0, 0))
+        manager.draw_ui(window_surface)
+
+        pygame.display.update()
+
+    pygame.key.stop_text_input()
+    pygame.quit()
+
+
+if __name__ == '__main__':
+    # ex1()
+    ex_numpad_window()
