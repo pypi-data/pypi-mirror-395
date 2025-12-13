@@ -1,0 +1,64 @@
+[project]
+name = "auris_tools"
+version = "0.1.0"
+description = "The swiss knife tools to coordinates cloud frameworks with an easy for Auris platforms"
+authors = [
+    {name = "Antonio Senra",email = "acsenrafilho@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+packages = [{include = "auris_tools"}]
+dependencies = [
+    "rich (>=14.1.0,<15.0.0)",
+    "boto3 (>=1.40.29,<2.0.0)",
+    "dotenv (>=0.9.9,<0.10.0)",
+    "python-docx (>=1.2.0,<2.0.0)",
+    "google-generativeai (>=0.8.5,<0.9.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+isort = "^6.0.1"
+pytest = "^8.4.2"
+pytest-cov = "^7.0.0"
+blue = "^0.9.1"
+taskipy = "^1.14.1"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.5.3"
+mkdocs-material = "^9.4.0"
+mkdocstrings = "^0.23.0"
+mkdocstrings-python = "^1.6.0"
+mkdocs-autorefs = "^0.5.0"
+griffe = "^0.36.0"
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
+[tool.taskipy.tasks]
+lint = "blue . && isort ."
+lint-check = "blue --check . && isort --check ."
+pre_test="task lint-check"
+test = "pytest -s -x --cov=auris_tools -vv --disable-warnings"
+post_test = "coverage html"
+docs = "mkdocs serve"
+docs-build = "mkdocs build"
+
+[tool.coverage.run]
+source = ["auris_tools"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+]
