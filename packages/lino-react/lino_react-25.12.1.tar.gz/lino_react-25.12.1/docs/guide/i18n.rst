@@ -1,0 +1,65 @@
+.. _react.i18n:
+
+==========================================
+i18n in React
+==========================================
+
+
+.. contents::
+   :depth: 1
+   :local:
+
+We have two shell scripts in the root of our repository that we need
+to understand to decipher what goes on under the hood regarding
+translation on react.
+
+.. xfile:: build.sh
+
+    Bundles react through webpack and creates link to translations.
+
+.. xfile:: make_messages
+
+    Create temporary dev bundle of react and extracts the translation
+    strings from the bundle.
+
+As react serves javascript files through django staticfiles react's
+:xfile:`build.sh` creates symbolic links to the
+`lino_react/translations/extracts/i18n` to the static files
+directory.
+
+The `npm run build` command cleans up the `lino_react/react/static`
+directory. Hance, every time we re-bundle react through `npm run build`
+we need to ensure that the symbolic links to translations are recreated.
+So it is advised to use the :xfile:`build.sh` script instead of
+`npm run build`.
+
+- What to translate?
+
+    Change the json files in `lino_react/translations/extracts/i18n`
+    directory. Only change the value of the key-value pairs within the json
+    files (and the changes should be available immediately (no need to run
+    any command)). For example, in
+    `lino_react/translations/extracts/i18n/de/translation.json`
+    the translated first item looks like the following::
+
+        {
+            "Quick search": "Schnellsuche",
+            ...
+        }
+
+- How to extract the modified translatable strings?
+
+    Simply run the :xfile:`make_messages` shell script.
+
+Cheat sheet
+===========
+
+
+- In a js or jsx source code file, ``this.ex.i18n.t("Hello, world!")`` marks
+  "Hello, world!" as a translatable message.
+
+- :cmd:`npm run mm`
+
+
+
+.. command:: npm run mm
