@@ -1,0 +1,482 @@
+#
+# MIT License
+#
+# (C) Copyright 2025 Hewlett Packard Enterprise Development LP
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+provider:
+  terragrunt:
+    terraform_dummy_version: "latest"
+    terraform_version: "1.9.7"
+    terragrunt_dummy_version: "latest"
+    terragrunt_version: "0.68.1"
+  commands:
+    # This section contains the commands that will be used from within
+    # the layer to execute actions initiated by the layer. They are
+    # specified here to facilitate mocking and in case the commands
+    # should need to change.
+    terragrunt: "terragrunt"
+    gcloud: "gcloud"
+    
+  organization:
+    # What you want to call your organization, not necessarily tied to
+    # GCP data anywhere. Lowercase and numeric with dashes.
+    name: ""                     # Required in system config overlay
+
+    # Your GCP billing account number
+    billing_account: ""          # Required in system config overlay
+
+    # Your GCP organization ID
+    org_id: ""                   # Required in system config overlay
+
+    # Your GCP parent organization ID (can be the same as the org_id)
+    parent: ""                   # Required in system config overlay
+
+    # Your GCP seed project. This is a project with storage resources
+    # associated with it that lives within your GCP organization and
+    # is accessible to users creating vTDS systems. Among other things
+    # it is used for preserving remotely cached Terragrunt / Terraform
+    # state for the GCP provider layer for all vTDS systems.
+    seed_project: ""             # Required in system config overlay
+
+    # An optional list of trusted IP address ranges in CIDR format
+    # that should be added to project firewalls at an organization level.
+    trusted_cidrs: []
+  project:
+    # Check the README.md in this directory to get information on
+    # these settings and where to find a comprehensive set of
+    # descriptions of each one.
+    base_name: vtds-base # the basis for the GCP project name
+    folder_id: ""
+    random_project_id: true
+
+    activate_service_identities: []
+
+    # Override location if you want your location to be outside the US
+    location: US
+    activate_apis_default:
+      - "admin.googleapis.com"
+      - "cloudbilling.googleapis.com"
+      - "cloudresourcemanager.googleapis.com"
+      - "iam.googleapis.com"
+      - "serviceusage.googleapis.com"
+      - "secretmanager.googleapis.com"
+
+    auto_create_network: false
+
+    bucket_force_destroy: true
+
+    bucket_labels: {}
+
+    bucket_location: null
+
+    # ERIC COME BACK AND LOOK AT THE BUCKET PROJECT AND BUCKET NAME
+    # FOR A WAY TO ISOLATE EXTERNALLY STORED TF STATE
+    bucket_name: null
+
+    bucket_pap: inherited
+
+    # ERIC COME BACK AND LOOK AT THE BUCKET PROJECT AND BUCKET NAME
+    # FOR A WAY TO ISOLATE EXTERNALLY STORED TF STATE
+    bucket_project: null
+
+    bucket_ula: true
+
+    # Bucket versioning is set to false because projects and their
+    # buckets tend to stick around and the files that are put into
+    # them tend to only need to be kept at the most recent
+    # version. Both storage costs and the risk of running out of
+    # quotas are kept under control by turning off versioning.
+    bucket_versioning: false
+
+    consumer_quotas: null
+
+    create_project_sa: true
+
+    default_network_tier: null
+
+    region: us-central1
+    zone: us-central1-a
+    trusted_cidrs: []
+    group_name: ""
+    group_role: "roles/owner"
+    labels:
+      terraform: "true"
+    orgpolicies_skip_execution: false
+    gcloud_skip_download: true
+    # Deletion policy. Defaults to "PREVENT" which will prevent the vTDS
+    # command from being able to delete the project. Only change this if
+    # you are okay with that.
+    deletion_policy: DELETE
+
+  blade_interconnects:
+    # Blade interconnects provide the provider layer networking used
+    # to connect Virtual Blades to each other. At other layers, this
+    # interconnect can be used as the backbone to carry virtual
+    # networking as needed. Any virtual networking is the
+    # responsibility of a higher layer.
+    #
+    # Virtual Blades in any given class only connects to a single
+    # Blade Interconnect, but multiple clusters of Virtual Blades from
+    # different classes can be defined using different Blade
+    # Interconnects as their backbones. In this case, routing and
+    # firewall rules can be used to control communication between the
+    # different clusters.
+    #
+    # The elements here represent classes of Blade Interconnects,
+    # which can stand alone, or be based on or used as parent classes
+    # in an inheritance hierarchy. The class names used for
+    # inheritance are the keys in this dictionary. By specifying a
+    # 'parent_class' in a Blade Interconnect class, your new class can
+    # inherit all of the settings of that parent class. The depth of
+    # the inheritance tree is unlimited. A Blade Interconnect class
+    # with no parent class may either stand alone or be used as the
+    # root of an inheritance tree. The 'base-interconnect' defined
+    # here provides good default settings for all configurable
+    # items. The 'base-interconnect' class can be used as-is,
+    # re-configured in a configuration overlay, or overridden through
+    # inheritance to provide more than one class of Blade
+    # Interconnects.
+    #
+    # All classes of Blade Interconnects specified here will be
+    # considered for inclusion in the generation of Terragrunt /
+    # Terraform controls and the associated creation of GCP objects
+    # within your project. To suppress generation of Terraform /
+    # Terragrunt for a base class that is being used purely as a base
+    # class, set the 'pure_base_class' parameter to true. This will
+    # allow other classes to be derived from the base without making
+    # the base class a candidate for creation in your project. The
+    # 'base-interconnect' class provided here is, by default, a pure
+    # base class. To use it as a class within your project, you can
+    # set 'pure_base_class' to false in an overlay and it will be
+    # included.
+    base-interconnect:
+      # The base internal network (private VPC) class default settings
+      parent_class: null
+      pure_base_class: true
+      network_name: "base-interconnect"
+      description: |
+        Default blade interconnect based on the 'base-interconnect' interconnect
+        class definition.
+      role: null
+      routing_mode: "GLOBAL"
+      mtu: 0
+      enable_ipv6_ula: false
+      internal_ipv6_range: ""
+      network_firewall_policy_enforcement_order: null
+      ipv4_cidr: 10.255.0.0/16 # Override this if it conflicts with something in your application
+      private_access: "true"
+      private_ipv6_access: null
+      flow_logs: "false"
+      flow_logs_interval: "INTERVAL_5_SEC"
+      flow_logs_sampling: "0.5"
+      flow_logs_metadata: "INCLUDE_ALL_METADATA"
+      flow_logs_filter: "true"
+      flow_logs_metadata_fields: []
+      stack_type: null
+      ipv6_access_type: null
+      firewall:
+        ingress_rules:
+          iap_ssh_ingress:
+            name: "iap-ssh-ingress"
+            description: "allow SSH ingress from GCP's Identity Aware Proxy (IAP)"
+            disabled: false
+            priority: 100
+            destination_ranges: null
+            source_ranges:
+              - "35.235.240.0/20"
+            source_tags: null
+            source_service_accounts: null
+            target_tags: null
+            target_service_accounts: null
+            allow:
+              - protocol: tcp
+                ports:
+                  - "22"
+            deny: []
+            log_config: null
+            # Since we update this information by merging, there is no
+            # native way to remove a map entry in an overlay. To
+            # remove this firewall rule from a derived
+            # blade-interconnect type, set 'delete' to true and it
+            # will be dropped in the derived type.
+            delete: false
+          other_ingress:
+            name: "other-ingress"
+            description: |
+              allow SSH, VxLAN and ICMP ingress from any host on the blade
+              interconnect subnet.
+            disabled: false
+            priority: 100
+            destination_ranges: null
+            source_ranges:
+              - "10.255.0.0/16"  # Change this if you change 'ipv4_cidr' above
+            source_tags: null
+            source_service_accounts: null
+            target_tags: null
+            target_service_accounts: null
+            allow:
+              - protocol: tcp
+                ports:
+                  - "22"
+              - protocol: udp
+                ports:
+                  - "4789"
+              - protocol: icmp
+                ports: []
+            deny: []
+            log_config: null
+            # Since we update this information by merging, there is no
+            # native way to remove a map entry in an overlay. To
+            # remove this firewall rule from a derived
+            # blade-interconnect type, set 'delete' to true and it
+            # will be dropped in the derived type.
+            delete: false
+        egress_rules:
+          unrestricted_external_egress:
+            name: "unrestricted-external-egress"
+            description: "allow egress from anywhere inside to anywhere outside"
+            disabled: false
+            priority: 100
+            destination_ranges:
+              - "0.0.0.0/0"
+            source_ranges:
+              - "0.0.0.0/0"
+            source_tags: null
+            source_service_accounts: null
+            target_tags: null
+            target_service_accounts: null
+            allow:
+              - protocol: "all"
+                ports: []
+            deny: []
+            log_config: null
+            # Since we update this information by merging, there is no
+            # native way to remove a map entry in an overlay. To
+            # remove this firewall rule from a derived
+            # blade-interconnect type, set 'delete' to true and it
+            # will be dropped in the derived type.
+            delete: false
+      routes:
+        # Routes are very platform and application specific, so the
+        # settings here are just here to give a template, not to be used
+        # for anything.
+        - name: "base-route"
+          description: "Placeholder for a route, override this"
+          tags: "base-route-tag"
+          destination_range: "0.0.0.0/0" # Override this with an application setting
+          next_hop_internet: false
+          next_hop_ip: "1.2.3.4"
+          # You need to specify exactly one of
+          # - next_hop_instance/...zone
+          # - next_hop_vpn_tunnel
+          # - next_ilb
+          # here. All three are commented out to allow flexibility in choice
+          # override this in the overlay config.
+          # next_hop_instance: "my-instance"
+          # next_hop_instance_zone: null
+          # next_hop_vpn_tunnel: ""
+          # next_hop_ilb: ""
+          priority: "1000"
+      # Applications sometimes need concrete configuration information
+      # that is most appropriately stored with the objects implemented
+      # within the layers instead of trying to map information onto
+      # those objects abstractly at the application layer. The
+      # application_metadata section of the configuration is only
+      # understood by a given application layer and provides a place to
+      # put such information. The intent here is that a specific
+      # configuration set used for a given application may place
+      # metadata with API objects for use by the application itself. Use
+      # of application_metadata should be done sparingly and with
+      # caution because it has the power to entangle a given vTDS stack
+      # and make it non-portable.
+      application_metadata: {}
+  virtual_blades:
+    # Virtual Blades are implemented here as GCP instances, typically
+    # with nested virtualization enabled so that the actual node(s)
+    # can be constructed on the blade. The settings available in a
+    # Virtual Blade class provide a nearly comprehensive list of the
+    # settings that can be used on GCP instances.
+    #
+    # The elements here represent classes of Virtual Blades,
+    # which can stand alone, or be based on or used as parent classes
+    # in an inheritance hierarchy. The class names used for
+    # inheritance are the keys in this dictionary. By specifying a
+    # 'parent_class' in a Virtual Blade class, your new class can
+    # inherit all of the settings of that parent class. The depth of
+    # the inheritance tree is unlimited. A Virtual Blade class
+    # with no parent class may either stand alone or be used as the
+    # root of an inheritance tree. The 'base-blade' defined
+    # here provides good default settings for all configurable
+    # items. The 'base-interconnect' class can be used as-is,
+    # re-configured in a configuration overlay, or overridden through
+    # inheritance to provide more than one class of Virtual Blade.
+    #
+    # All classes of Virtual Blades specified here will be
+    # consider for inclusion in the generation of Terragrunt /
+    # Terraform controls and the associatedcreation of GCP objects
+    # witin your project. To suppress generation of Terraform /
+    # Terragrunt for a base class that is being used purely as a base
+    # class, set the 'pure_base_class' parameter to true. This will
+    # allow other classes to be derived from the base without making
+    # the base class a candidate for creation in your project. The
+    # 'base-interconnect' class provided here is, by default, a pure
+    # base class. To use it as a class within your project, you can
+    # set 'pure_base_class' to false in an overlay and it will be
+    # included.
+    base-blade:
+      parent_class: null
+      pure_base_class: true
+      vm:
+        machine_type: n1-standard-4
+        min_cpu_platform: ""
+        enable_nested_virtualization: true
+        threads_per_core: 1
+        boot_disk:
+          source_image: ""
+          source_image_family: "ubuntu-minimal-2204-jammy-v20241115"
+          source_image_project: "ubuntu-os-cloud"
+          source_image_private: False
+          disk_size_gb: 10
+          disk_type: "pd-standard"
+          disk_labels: {}
+          disk_encryption_key: ""
+          auto_delete: true
+        additional_disks:
+          - disk_name: null
+            device_name: "sdb"
+            auto_delete: true
+            boot: false
+            disk_size_gb: 1024
+            disk_type: "pd-standard"
+            disk_labels: {}
+            source_snapshot: null
+      # This is the name of the secret that will be set up to hold
+      # the SSH key needed to connect by SSH to blades of this
+      # class. If you want to isolate blades of different classes to
+      # different SSH users, you can do that by creating different
+      # secrets and using them here instead of this one for those
+      # derived classes.
+      ssh_key_secret: blade-ssh-key
+      blade_interconnect:
+        network: ""
+        subnetwork: "base-interconnect"
+        nic_type: null
+        stack_type: null
+        additional_networks: []
+        total_egress_bandwidth_tier: "DEFAULT"
+        # Fill 'ip_addrs' in with IP address strings to be assigned to
+        # the blades of this class in the blade interconnect
+        # network. Each IP address will be assigned sequentially one
+        # per GCP instance (blade).
+        ip_addrs: []
+      metadata:
+        metadata:
+          "serial-port-enable": "true"
+        startup_script: ""
+      count: 0
+      # name_prefix is the prefix for the name of the instance template
+      name_prefix: "base"
+      access_config:
+        - nat_ip: ""
+          network_tier: "PREMIUM"
+      # hostname is the hostname of the instance(s). If there will be
+      # more than one instance of this class, 'add_hostname_suffix"
+      # needs to be 'true' and it will disambiguate the names.  If you
+      # only want one instance, with a fixed name,
+      # 'add_hostname_suffix' should be false.
+      hostname: "base"
+      add_hostname_suffix: true
+      hostname_suffix_separator: "-"
+      can_ip_forward: true
+      tags: []
+      labels: {}
+      availability:
+        preemptible: false
+        spot: false
+        automatic_restart: false
+        on_host_maintenance: "MIGRATE"
+        spot_instance_termination_action: "STOP"
+      security:
+        enable_shielded_vm: false
+        shielded_instance_config:
+          # Only used of 'enable_shielded_vm' is set to 'true' above.
+          enable_secure_boot: true
+          enable_vtpm: true
+          enable_integrity_monitoring: true
+        enable_confidential_vm: false
+      ipv6_access_config: []
+      gpu: null
+      resource_policies: []
+      # Applications sometimes need concrete configuration information
+      # that is most appropriately stored with the objects implemented
+      # within the layers instead of trying to map information onto
+      # those objects abstractly at the application layer. The
+      # application_metadata section of the configuration is only
+      # understood by a given application layer and provides a place to
+      # put such information. The intent here is that a specific
+      # configuration set used for a given application may place
+      # metadata with API objects for use by the application itself. Use
+      # of application_metadata should be done sparingly and with
+      # caution because it has the power to entangle a given vTDS stack
+      # and make it non-portable.
+      #
+      # Both the virtual blade class and the virtual blades carried by
+      # the blade class will contain the metadata defined here. There is
+      # no mechanism for making discrete metadata for individual virtual
+      # blades.
+      application_metadata: {}
+  secrets:
+    # All of the secrets to be used in your vTDS system are declared
+    # here, though their values and use may come from other
+    # layers. Secrets declared here will be created within the GCP
+    # Secret Manager and available for storing into or reading out of
+    # by name through the Secrets API object. Binding of secrets to
+    # other objects in the configuration is done using the name in the
+    # 'name' field of the secret.
+    blade_ssh_key:
+      # The SSH public / private key pair used by the provider layer
+      # to talk to Virtual Blades. The public key will be added to
+      # '/root/.ssh/authorized_keys' upon deployment of virtual
+      # blades.
+      name: blade-ssh-key
+      # Key value pairs used as labels in the secret to identify
+      # its function. Generally not used, but here if you want it. No
+      # more than 64 labels can be assigned.
+      labels: {}
+      # Key value pairs, similar to labels. There will always be a
+      # 'layer' annotation indicating what layer provides the secret
+      # value. The total size of annotation keys and values must be
+      # less than 16KiB.
+      annotations:
+        layer: provider
+      # Applications sometimes need concrete configuration information
+      # that is most appropriately stored with the objects implemented
+      # within the layers instead of trying to map information onto
+      # those objects abstractly at the application layer. The
+      # application_metadata section of the configuration is only
+      # understood by a given application layer and provides a place to
+      # put such information. The intent here is that a specific
+      # configuration set used for a given application may place
+      # metadata with API objects for use by the application itself. Use
+      # of application_metadata should be done sparingly and with
+      # caution because it has the power to entangle a given vTDS stack
+      # and make it non-portable.
+      application_metadata: {}
