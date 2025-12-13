@@ -1,0 +1,14 @@
+"""Init and utils."""
+
+from zope.i18nmessageid import MessageFactory
+
+import logging
+
+
+__version__ = "2.0.0a6"
+
+PACKAGE_NAME = "kitconcept.website"
+
+_ = MessageFactory(PACKAGE_NAME)
+
+logger = logging.getLogger(PACKAGE_NAME)
