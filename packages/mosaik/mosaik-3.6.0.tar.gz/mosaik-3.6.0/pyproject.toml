@@ -1,0 +1,131 @@
+[project]
+name = "mosaik"
+description = "mosaik is a flexible smart-grid co-simulation framework"
+authors = [{ name = "mosaik development team", email = "mosaik@offis.de" }]
+dependencies = [
+    "mosaik-api-v3>=3.0.13",
+    "loguru>=0.6",
+    "networkx>=2.5",
+    "tqdm>=4.66.4",
+    "typing-extensions>=4.11.0",
+]
+license = { file = "LICENSE.txt" }
+requires-python = ">= 3.8"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dynamic = ["version", "readme"]
+
+[project.urls]
+Homepage = "https://mosaik.offis.de/"
+Repository = "https://gitlab.com/mosaik/mosaik"
+Documentation = "https://mosaik.readthedocs.io/"
+Discussions = "https://github.com/orgs/OFFIS-mosaik/discussions"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2.1",
+    "pytest-cov>=5.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-asyncio>=0.23.7",
+    "hypothesis>=6.102.4",
+    "pynput==1.7.6",
+    {include-group = "plotting"},
+]
+docs = [
+    "sphinx>=8.0.0; python_version>='3.10'",
+    "sphinx-rtd-theme>=1.3.0",
+    "sphinx-toolbox>=3.5.0",
+    "mosaik-heatpump>=1.0.2",
+    "setuptools>=75; python_version<'3.12'",
+]
+plotting = [
+    "matplotlib>=3.8.2;python_version>='3.10'", 
+    "plotly>=5.19.0",
+    "numpy>=1.24",
+]
+tutorial = [
+    "mosaik-pandapower-2>=0.3.1; python_version>='3.9'",
+    "mosaik-pv>=1.2.2; python_version>='3.9'",
+    "pandapower>=2.13.1",
+    "numba>=0.59.0; python_version>='3.9'",
+    "plotly>=5.19.0",
+    "simbench>=1.4.0",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata.hooks.custom]
+# This section is empty, but needed for the hatch_build.py script to run
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["mosaik"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["mosaik"]
+
+[tool.uv]
+cache-keys = [{ git = { commit = true, tags = true } }]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+publish-url = "https://upload.pypi.org/legacy/"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+
+[tool.pytest.ini_options]
+markers = [
+    "cmd_process: Contains a simulator started using cmd",
+    "weak: Contains a weak connection",
+]
+xfail_strict = true
+filterwarnings = [
+    "error:[^i]|.[^n]",
+    "ignore:subprocess:ResourceWarning",
+    "ignore:unclosed event loop:ResourceWarning",
+    "ignore:invalid escape sequence:DeprecationWarning",
+]
+addopts = ["--doctest-glob='*.rst'"]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportIncompatibleMethodOverride = "warning"
+reportUninitializedInstanceVariable = "warning"
+reportUnnecessaryIsInstance = "none"
+reportUnusedImport = "warning"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportPrivateUsage = false
+
+include = ["mosaik"]
+exclude = ["**/__pycache__"]
+stubPath = "typings"
+pythonPlatform = "Linux"
+
+[tool.ruff.lint]
+extend-select = ["C", "W", "I", "E"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
+
+[tool.ruff.lint.per-file-ignores]
+# "mosaik/util.py" = ["W505"]
