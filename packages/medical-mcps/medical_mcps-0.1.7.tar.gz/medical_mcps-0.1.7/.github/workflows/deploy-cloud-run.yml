@@ -1,0 +1,82 @@
+name: Deploy to Cloud Run
+
+on:
+  release:
+    types: [published]  # Triggers when GitHub Release is created (after PyPI + Docker publish)
+  workflow_dispatch:    # Allow manual trigger
+
+permissions:
+  contents: read
+  id-token: write      # For GCP Workload Identity Federation
+  deployments: write   # For deployment tracking
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://medical-mcps-${{ secrets.GCP_PROJECT_ID }}.run.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version tag
+        id: get_version
+        run: |
+          VERSION=${{ github.event.release.tag_name || github.ref_name }}
+          # Remove 'v' prefix if present
+          VERSION=${VERSION#v}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "image_tag=${{ github.event.release.tag_name || github.ref_name }}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: medical-mcps
+          region: us-central1
+          image: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/medical-mcps:${{ steps.get_version.outputs.image_tag }}
+          flags: |
+            --allow-unauthenticated
+            --memory=512Mi
+            --timeout=3600
+            --max-instances=100
+            --min-instances=0
+
+      - name: Get deployed service URL
+        id: service_url
+        run: |
+          URL=$(gcloud run services describe medical-mcps --region us-central1 --format='value(status.url)')
+          echo "url=${URL}" >> $GITHUB_OUTPUT
+
+      - name: Create deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const state = '${{ job.status }}' === 'success' ? 'success' : 'failure';
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id || 0,
+              state: state,
+              environment_url: '${{ steps.service_url.outputs.url }}',
+              description: `Deployed version ${{ steps.get_version.outputs.version }}`
+            });
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Cloud Run Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** docker.io/${{ secrets.DOCKERHUB_USERNAME }}/medical-mcps:${{ steps.get_version.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** ${{ steps.service_url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Deployed Successfully" >> $GITHUB_STEP_SUMMARY
