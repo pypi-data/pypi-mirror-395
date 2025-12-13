@@ -1,0 +1,220 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-bencher"
+dynamic = ["version"]
+description = "Reproducible RAG baselines and evaluations with LangChain"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = "MIT"                         # e.g. "Apache-2.0", "BSD-3-Clause", or a compound expression
+license-files = ["LICENSE"]
+authors = [{name = "Mikael Twengström"}]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+  "langchain>=0.2.0",
+  "langchain-community>=0.2.0",
+  "langchain-openai>=0.1.0",
+  "langchain-huggingface >= 0.1.0",
+  "sentence-transformers>=2.2.2",
+  "faiss-cpu>=1.7.4",
+  "pydantic>=2.7.0",
+  "pyyaml>=6.0.1",
+  "rich>=13.7.0",
+  "numpy>=1.26.0"
+]
+
+[project.scripts]
+rag-bencher-cli = "rag_bencher.cli:main"
+rag-bencher-cli-bench = "rag_bencher.bench_cli:main"
+rag-bencher-cli-bench-many = "rag_bencher.bench_many_cli:main"
+
+[project.optional-dependencies]
+dev = ["tox>=4.32.0", "pytest>=7.4.0", "pytest-cov>=4.1.0", "black>=24.4.0", "isort>=5.13.0", "flake8>=7.3.0", "flake8-pyproject>=1.2.3", "mypy>=1.18.2", "types-PyYAML>=6.0.12.20250915", "types-requests>=2.32.4.20250913", "types-setuptools>=80.9.0.20250822", "flake8-bugbear>=25.10.21", "flake8-comprehensions>=3.17.0", "flake8-annotations>=3.2.0", "flake8-docstrings>=1.7.0", "build", "twine"]
+gcp = ["langchain-google-vertexai>=0.1.0", "google-auth>=2.30.0"]
+aws = ["langchain-aws>=0.1.0", "boto3>=1.34.0", "botocore>=1.34.0", "opensearch-py>=2.6.0"]
+azure = ["langchain-openai>=0.1.0", "azure-identity>=1.17.0", "azure-search-documents>=11.5.1"]
+providers = ["rag-bencher[gcp,aws,azure]"]
+
+[tool.black]
+line-length = 120
+extend-exclude = '\.ipynb$'
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+
+[tool.flake8]
+max-line-length = "120"
+extend-ignore = "E203,W503"
+extend-exclude = ".venv,venv,**/.venv,**/venv,build,dist,.git,__pycache__"
+select = ["C", "E", "F", "W", "B", "B9", "D", "ANN", "C4"]
+ignore = ["D100", "D101", "D102", "D103", "D104", "D107", "ANN101", "ANN102", "ANN204", "ANN401"]
+docstring-convention = "google"
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["rag_bencher"]
+files = ["src", "examples"]
+exclude_gitignore = true
+ignore_missing_imports = true
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = false
+disallow_subclassing_any = false
+show_error_codes = true
+pretty = true
+
+[tool.pytest.ini_options]
+markers = [
+  "unit: fast unit tests",
+  "offline: no network",
+  "cloud: live cloud smoke tests",
+  "gpu: requires CUDA",
+  "examples: runs example scripts",
+  "vector: live cloud vector smoke tests",
+  "integration: Integration tests for the CLIs"
+]
+addopts = [
+  "--cov",
+  "--cov-branch",
+  "--no-cov-on-fail",
+  "--cov-report=",
+  "--cov-config=pyproject.toml",
+  "-ra",
+]
+
+filterwarnings = [
+  "default",
+  "error::Warning:rag_bencher(\\.|$)",
+  # Third party errors, which we ignore
+  "ignore:.*iscoroutinefunction.*:DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+relative_files = false
+source = ["."]
+
+# Normalize paths from different runners (Linux/macOS, tox, Actions)
+[tool.coverage.paths]
+rag_bencher = [
+  "src/rag_bencher",
+  "*/src/rag_bencher",
+  ".tox/*/site-packages/rag_bencher",
+  "**/site-packages/rag_bencher",
+]
+examples = [
+  "examples",
+  "*/examples",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+include = [
+  "src/rag_bencher/*",
+  "examples/*",
+]
+omit = [
+    ".venv/*",
+    ".tox/*",
+    "*/site-packages/*",
+    "tests/*",
+    "build/*",
+]
+#fail_under = 100.0
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["rag_bencher*"]
+
+[tool.setuptools_scm]
+fallback_version = "0.0.0a0"
+local_scheme = "no-local-version"  # PEP440-compliant requires no +githash
+
+[tool.tox]
+requires = ["tox>=4.15", "tox-uv>=1.10"]  # uv-backed env creation & installs
+env_list = ["py312", "py313", "py314", "lint", "typecheck", "gpupy312", "gpupy313", "gpupy314"]
+
+[tool.tox.env_run_base]
+commands_pre = [["python", "-V"]]
+
+# --- Test envs (matrix) ---
+[tool.tox.env.py312]
+package = "editable"
+deps = [".[dev]"]
+set_env = { RAG_BENCH_DEVICE = "cpu", CUDA_VISIBLE_DEVICES = "", COVERAGE_RCFILE = "pyproject.toml", COV_CORE_DATAFILE = ".coverage.{env_name}", COVERAGE_FILE = ".coverage.{env_name}" }
+commands = [["pytest", "-m", "unit or offline"]]
+
+[tool.tox.env.py313]
+package = "editable"
+deps = [".[dev]"]
+set_env = { RAG_BENCH_DEVICE = "cpu", CUDA_VISIBLE_DEVICES = "", COVERAGE_RCFILE = "pyproject.toml", COV_CORE_DATAFILE = ".coverage.{env_name}", COVERAGE_FILE = ".coverage.{env_name}" }
+commands = [["pytest", "-m", "unit or offline"]]
+
+[tool.tox.env.py314]
+package = "editable"
+deps = [".[dev]"]
+set_env = { RAG_BENCH_DEVICE = "cpu", CUDA_VISIBLE_DEVICES = "", COVERAGE_RCFILE = "pyproject.toml", COV_CORE_DATAFILE = ".coverage.{env_name}", COVERAGE_FILE = ".coverage.{env_name}", PYTHONWARNINGS = "ignore:Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.:UserWarning" }
+commands = [["pytest", "-m", "unit or offline"]]
+
+# --- Lint env ---
+[tool.tox.env.lint]
+package = "skip"
+base_python = ["python3.12"]
+deps = [".[dev]"]
+commands = [
+  ["flake8"],
+  ["isort", "--check-only", "."],
+  ["black", "--check", "."]
+]
+
+# --- Type check env ---
+[tool.tox.env.typecheck]
+package = "skip"
+base_python = ["python3.12"]
+deps = [".[dev]"]
+commands = [["mypy", "."]]
+
+# --- GPU env ---
+[tool.tox.env.gpupy312]
+package = "editable"
+base_python = ["python3.12"]
+deps = [".[dev]"]
+set_env = { RAG_BENCH_DEVICE = "gpu", COVERAGE_RCFILE = "pyproject.toml", COV_CORE_DATAFILE = ".coverage.{env_name}", COVERAGE_FILE = ".coverage.{env_name}" }
+commands = [["pytest", "-m", "gpu or integration"]]
+
+# --- GPU env ---
+[tool.tox.env.gpupy313]
+package = "editable"
+base_python = ["python3.13"]
+deps = [".[dev]"]
+set_env = { RAG_BENCH_DEVICE = "gpu", COVERAGE_RCFILE = "pyproject.toml", COV_CORE_DATAFILE = ".coverage.{env_name}", COVERAGE_FILE = ".coverage.{env_name}" }
+commands = [["pytest", "-m", "gpu or integration"]]
+
+# --- GPU env ---
+[tool.tox.env.gpupy314]
+package = "editable"
+base_python = ["python3.14"]
+deps = [".[dev]"]
+set_env = { RAG_BENCH_DEVICE = "gpu", COVERAGE_RCFILE = "pyproject.toml", COV_CORE_DATAFILE = ".coverage.{env_name}", COVERAGE_FILE = ".coverage.{env_name}", PYTHONWARNINGS = "ignore:Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.:UserWarning" }
+commands = [["pytest", "-m", "gpu or integration"]]

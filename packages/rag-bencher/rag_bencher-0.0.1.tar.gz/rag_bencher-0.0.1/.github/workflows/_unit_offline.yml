@@ -1,0 +1,39 @@
+name: _unit_offline
+on:
+  workflow_call:
+    inputs:
+      marker:
+        description: 'pytest -m "unit or offline" to run'
+        required: true
+        type: string
+      coverage_suffix:
+        description: "Suffix to distinguish coverage files"
+        required: true
+        type: string
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv & tox
+        run: make setup
+
+      - name: Sync rag-bencher deps
+        run: make sync
+
+      - name: Run tests via tox (uv backend)
+        run: |
+          make test-all
+
+      - name: Save coverage data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cov-${{ inputs.coverage_suffix }}
+          path: .coverage.${{ inputs.coverage_suffix }}*
+          if-no-files-found: error
+          include-hidden-files: true

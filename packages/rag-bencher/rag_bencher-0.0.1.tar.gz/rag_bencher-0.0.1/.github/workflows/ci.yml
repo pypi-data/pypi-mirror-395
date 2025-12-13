@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  UnitOffline:
+    uses: ./.github/workflows/_unit_offline.yml
+    with:
+      marker: "unit-offline"
+      coverage_suffix: "py"
+
+  GPU:
+    uses: ./.github/workflows/_gpu.yml
+    secrets: inherit
+    with:
+      marker: "gpu"
+      coverage_suffix: "gpupy"
+
+  Coverage:
+    needs: [UnitOffline, GPU]
+    uses: ./.github/workflows/_coveralls.yml
+    with:
+      expect: "unit-offline,gpu"

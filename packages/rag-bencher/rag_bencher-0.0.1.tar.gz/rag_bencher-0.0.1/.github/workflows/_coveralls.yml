@@ -1,0 +1,46 @@
+name: coverage
+on:
+  workflow_call:
+    inputs:
+      expect:
+        description: "Comma-separated list of shard suffixes"
+        required: true
+        type: string
+
+jobs:
+  coverage-aggregate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv & tox
+        run: make setup
+
+      - name: Sync rag-bencher deps
+        run: make sync
+
+      - name: Erase possible coverage leftovers
+        run: uvx uv run coverage erase
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: covparts
+          pattern: cov-*
+          merge-multiple: true
+
+      - name: Combine coverage
+        run: |
+          ls -la covparts
+          uvx uv run coverage combine covparts
+          uvx uv run coverage xml
+          uvx uv run coverage report --fail-under=100
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: coverage.xml
+          format: cobertura

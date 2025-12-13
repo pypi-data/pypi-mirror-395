@@ -1,0 +1,66 @@
+{% set name = "rag-bencher" %}
+# PKG_VERSION is the full PEP 440 version (may include +local). Conda
+# versions cannot include the local segment, so strip everything after "+".
+{% set pypi_version = environ.get("PKG_VERSION") or PKG_VERSION or "0.0.0.dev0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ pypi_version }}
+
+source:
+  url: ../dist/rag_bencher-{{ pypi_version }}.tar.gz
+
+build:
+  noarch: python
+  # Use in-environment build tools to avoid fetching build deps from PyPI
+  script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
+  # Ask conda-build to honor the sdist's pyproject.toml and install build-system
+  # requirements from conda (PEP 517 isolation).
+  pyproject:
+    requires:
+      - setuptools >=68
+      - wheel
+      - setuptools-scm >=8
+    file: pyproject.toml
+    build-backend: setuptools.build_meta
+
+requirements:
+  host:
+    - python >=3.12,<3.15
+    - pip
+    - setuptools >=68
+    - wheel
+    - setuptools-scm >=8
+  run:
+    - python >=3.12,<3.15
+    - langchain >=0.2.0
+    - langchain-community >=0.2.0
+    - langchain-openai >=0.1.0
+    - langchain-huggingface >=0.1.0
+    - sentence-transformers >=2.2.2
+    - faiss-cpu >=1.7.4
+    - pydantic >=2.7.0
+    - pyyaml >=6.0.1
+    - rich >=13.7.0
+    - numpy >=1.26.0
+
+test:
+  imports:
+    - rag_bencher
+  commands:
+    - python -m rag_bencher.cli --help
+    - python -m rag_bencher.bench_cli --help
+    - python -m rag_bencher.bench_many_cli --help
+  requires:
+    - python >=3.12,<3.15
+
+about:
+  home: https://github.com/mikaeltw/rag-bencher
+  summary: "Benchmarking framework for RAG systems"
+  license: MIT
+  license_file: LICENSE
+  dev_url: https://github.com/mikaeltw/rag-bencher
+
+extra:
+  recipe-maintainers:
+    - mikaeltw
