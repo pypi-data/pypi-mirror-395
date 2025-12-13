@@ -1,0 +1,26 @@
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2020-2023 CERN.
+
+  Invenio-Banners is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- macro banner(ui_classes) -%}
+  {%- block banner %}
+    {%- set banners = get_active_banners() %}
+    {% if not ui_classes %}
+      {% set ui_classes = "top attached m-0" %}
+    {% endif %}
+    {% if banners %}
+      {% for banner in banners %}
+        <div class="ui {{ banner.category|style_banner_category }} message {{ ui_classes }} inv-banner" id="banner-{{ banner.id }}">
+          <div class="ui container">
+              {{ banner.message|safe }}
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {%- endblock banner %}
+{%- endmacro %}
