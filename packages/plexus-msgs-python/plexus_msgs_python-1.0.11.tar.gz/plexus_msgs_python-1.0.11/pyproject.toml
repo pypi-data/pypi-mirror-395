@@ -1,0 +1,73 @@
+[build-system]
+requires = [
+    "setuptools>=80.0",
+    "setuptools-scm>=9.0",
+    "iker-python-setup>=1.0",
+    "plexus-python-protobuf-setup>=1.0",
+]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "jinja2>=3.0",
+    "protobuf>=5.0",
+    "iker-python-common>=1.0",
+]
+test = [
+    "ddt>=1.7",
+    "pytest-cov>=5.0",
+    "pytest-order>=1.3",
+    "pytest>=8.3",
+    "iker-python-common>=1.0",
+]
+
+[project]
+name = "plexus-msgs-python"
+description = "Python APIs and utilities for Plexus ProtoBuf messages"
+dynamic = ["version"]
+requires-python = ">=3.12,<3.15"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "jinja2>=3.0",
+    "protobuf>=5.0",
+    "iker-python-common>=1.0",
+]
+
+[project.optional-dependencies]
+all = [
+    "plexus-msgs-python",
+]
+test = [
+    "ddt>=1.7",
+    "pytest-cov>=5.0",
+    "pytest-order>=1.3",
+    "pytest>=8.3",
+    "iker-python-common>=1.0",
+]
+
+[project.scripts]
+plexus-msgs-python = "plexus.msgs.__main__:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+zip-safe = false
+include-package-data = true
+package-data = { "plexus.msgs" = ["descriptor.pb"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+branch = true
+include = [
+    "src/plexus/*",
+]

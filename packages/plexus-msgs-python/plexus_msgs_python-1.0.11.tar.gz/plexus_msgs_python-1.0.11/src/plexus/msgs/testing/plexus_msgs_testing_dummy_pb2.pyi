@@ -1,0 +1,276 @@
+from plexus.msgs import plexus_pb2 as _plexus_pb2
+from plexus.msgs import plexus_common_pb2 as _plexus_common_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class DummyMessage(_message.Message):
+    __slots__ = ("optional_int32", "repeated_int32", "optional_int64", "repeated_int64", "optional_double", "repeated_double", "optional_bool", "repeated_bool", "optional_string", "repeated_string", "optional_enum", "repeated_enum", "optional_timestamp", "repeated_timestamp", "omitted_optional_int32", "omitted_repeated_int32", "omitted_optional_int64", "omitted_repeated_int64", "omitted_optional_double", "omitted_repeated_double", "omitted_optional_bool", "omitted_repeated_bool", "omitted_optional_string", "omitted_repeated_string", "omitted_optional_enum", "omitted_repeated_enum", "omitted_optional_timestamp", "omitted_repeated_timestamp", "optional_nested_message", "repeated_nested_message", "omitted_optional_nested_message", "omitted_repeated_nested_message")
+    class Enum(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        None: _ClassVar[DummyMessage.Enum]
+        Foo: _ClassVar[DummyMessage.Enum]
+        Bar: _ClassVar[DummyMessage.Enum]
+        Baz: _ClassVar[DummyMessage.Enum]
+        FooBar: _ClassVar[DummyMessage.Enum]
+        FooBaz: _ClassVar[DummyMessage.Enum]
+        BarBaz: _ClassVar[DummyMessage.Enum]
+        FooBarBaz: _ClassVar[DummyMessage.Enum]
+    None: DummyMessage.Enum
+    Foo: DummyMessage.Enum
+    Bar: DummyMessage.Enum
+    Baz: DummyMessage.Enum
+    FooBar: DummyMessage.Enum
+    FooBaz: DummyMessage.Enum
+    BarBaz: DummyMessage.Enum
+    FooBarBaz: DummyMessage.Enum
+    class NestedDummyMessage(_message.Message):
+        __slots__ = ("optional_int32", "repeated_int32", "optional_int64", "repeated_int64", "optional_double", "repeated_double", "optional_bool", "repeated_bool", "optional_string", "repeated_string", "optional_enum", "repeated_enum", "optional_timestamp", "repeated_timestamp", "omitted_optional_int32", "omitted_repeated_int32", "omitted_optional_int64", "omitted_repeated_int64", "omitted_optional_double", "omitted_repeated_double", "omitted_optional_bool", "omitted_repeated_bool", "omitted_optional_string", "omitted_repeated_string", "omitted_optional_enum", "omitted_repeated_enum", "omitted_optional_timestamp", "omitted_repeated_timestamp")
+        OPTIONAL_INT32_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_INT32_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_INT64_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_INT64_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_BOOL_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_BOOL_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_STRING_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_STRING_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_ENUM_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_ENUM_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_INT32_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_INT32_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_INT64_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_INT64_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_BOOL_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_BOOL_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_STRING_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_STRING_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_ENUM_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_ENUM_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        optional_int32: int
+        repeated_int32: _containers.RepeatedScalarFieldContainer[int]
+        optional_int64: int
+        repeated_int64: _containers.RepeatedScalarFieldContainer[int]
+        optional_double: float
+        repeated_double: _containers.RepeatedScalarFieldContainer[float]
+        optional_bool: bool
+        repeated_bool: _containers.RepeatedScalarFieldContainer[bool]
+        optional_string: str
+        repeated_string: _containers.RepeatedScalarFieldContainer[str]
+        optional_enum: DummyMessage.Enum
+        repeated_enum: _containers.RepeatedScalarFieldContainer[DummyMessage.Enum]
+        optional_timestamp: _plexus_common_pb2.Timestamp
+        repeated_timestamp: _containers.RepeatedCompositeFieldContainer[_plexus_common_pb2.Timestamp]
+        omitted_optional_int32: int
+        omitted_repeated_int32: _containers.RepeatedScalarFieldContainer[int]
+        omitted_optional_int64: int
+        omitted_repeated_int64: _containers.RepeatedScalarFieldContainer[int]
+        omitted_optional_double: float
+        omitted_repeated_double: _containers.RepeatedScalarFieldContainer[float]
+        omitted_optional_bool: bool
+        omitted_repeated_bool: _containers.RepeatedScalarFieldContainer[bool]
+        omitted_optional_string: str
+        omitted_repeated_string: _containers.RepeatedScalarFieldContainer[str]
+        omitted_optional_enum: DummyMessage.Enum
+        omitted_repeated_enum: _containers.RepeatedScalarFieldContainer[DummyMessage.Enum]
+        omitted_optional_timestamp: _plexus_common_pb2.Timestamp
+        omitted_repeated_timestamp: _containers.RepeatedCompositeFieldContainer[_plexus_common_pb2.Timestamp]
+        def __init__(self, optional_int32: _Optional[int] = ..., repeated_int32: _Optional[_Iterable[int]] = ..., optional_int64: _Optional[int] = ..., repeated_int64: _Optional[_Iterable[int]] = ..., optional_double: _Optional[float] = ..., repeated_double: _Optional[_Iterable[float]] = ..., optional_bool: bool = ..., repeated_bool: _Optional[_Iterable[bool]] = ..., optional_string: _Optional[str] = ..., repeated_string: _Optional[_Iterable[str]] = ..., optional_enum: _Optional[_Union[DummyMessage.Enum, str]] = ..., repeated_enum: _Optional[_Iterable[_Union[DummyMessage.Enum, str]]] = ..., optional_timestamp: _Optional[_Union[_plexus_common_pb2.Timestamp, _Mapping]] = ..., repeated_timestamp: _Optional[_Iterable[_Union[_plexus_common_pb2.Timestamp, _Mapping]]] = ..., omitted_optional_int32: _Optional[int] = ..., omitted_repeated_int32: _Optional[_Iterable[int]] = ..., omitted_optional_int64: _Optional[int] = ..., omitted_repeated_int64: _Optional[_Iterable[int]] = ..., omitted_optional_double: _Optional[float] = ..., omitted_repeated_double: _Optional[_Iterable[float]] = ..., omitted_optional_bool: bool = ..., omitted_repeated_bool: _Optional[_Iterable[bool]] = ..., omitted_optional_string: _Optional[str] = ..., omitted_repeated_string: _Optional[_Iterable[str]] = ..., omitted_optional_enum: _Optional[_Union[DummyMessage.Enum, str]] = ..., omitted_repeated_enum: _Optional[_Iterable[_Union[DummyMessage.Enum, str]]] = ..., omitted_optional_timestamp: _Optional[_Union[_plexus_common_pb2.Timestamp, _Mapping]] = ..., omitted_repeated_timestamp: _Optional[_Iterable[_Union[_plexus_common_pb2.Timestamp, _Mapping]]] = ...) -> None: ...
+    OPTIONAL_INT32_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_INT32_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_INT64_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_INT64_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_BOOL_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_BOOL_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_STRING_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_STRING_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_ENUM_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_ENUM_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_INT32_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_INT32_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_INT64_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_INT64_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_BOOL_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_BOOL_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_STRING_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_STRING_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_ENUM_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_ENUM_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_NESTED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_NESTED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_OPTIONAL_NESTED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    OMITTED_REPEATED_NESTED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    optional_int32: int
+    repeated_int32: _containers.RepeatedScalarFieldContainer[int]
+    optional_int64: int
+    repeated_int64: _containers.RepeatedScalarFieldContainer[int]
+    optional_double: float
+    repeated_double: _containers.RepeatedScalarFieldContainer[float]
+    optional_bool: bool
+    repeated_bool: _containers.RepeatedScalarFieldContainer[bool]
+    optional_string: str
+    repeated_string: _containers.RepeatedScalarFieldContainer[str]
+    optional_enum: DummyMessage.Enum
+    repeated_enum: _containers.RepeatedScalarFieldContainer[DummyMessage.Enum]
+    optional_timestamp: _plexus_common_pb2.Timestamp
+    repeated_timestamp: _containers.RepeatedCompositeFieldContainer[_plexus_common_pb2.Timestamp]
+    omitted_optional_int32: int
+    omitted_repeated_int32: _containers.RepeatedScalarFieldContainer[int]
+    omitted_optional_int64: int
+    omitted_repeated_int64: _containers.RepeatedScalarFieldContainer[int]
+    omitted_optional_double: float
+    omitted_repeated_double: _containers.RepeatedScalarFieldContainer[float]
+    omitted_optional_bool: bool
+    omitted_repeated_bool: _containers.RepeatedScalarFieldContainer[bool]
+    omitted_optional_string: str
+    omitted_repeated_string: _containers.RepeatedScalarFieldContainer[str]
+    omitted_optional_enum: DummyMessage.Enum
+    omitted_repeated_enum: _containers.RepeatedScalarFieldContainer[DummyMessage.Enum]
+    omitted_optional_timestamp: _plexus_common_pb2.Timestamp
+    omitted_repeated_timestamp: _containers.RepeatedCompositeFieldContainer[_plexus_common_pb2.Timestamp]
+    optional_nested_message: DummyMessage.NestedDummyMessage
+    repeated_nested_message: _containers.RepeatedCompositeFieldContainer[DummyMessage.NestedDummyMessage]
+    omitted_optional_nested_message: DummyMessage.NestedDummyMessage
+    omitted_repeated_nested_message: _containers.RepeatedCompositeFieldContainer[DummyMessage.NestedDummyMessage]
+    def __init__(self, optional_int32: _Optional[int] = ..., repeated_int32: _Optional[_Iterable[int]] = ..., optional_int64: _Optional[int] = ..., repeated_int64: _Optional[_Iterable[int]] = ..., optional_double: _Optional[float] = ..., repeated_double: _Optional[_Iterable[float]] = ..., optional_bool: bool = ..., repeated_bool: _Optional[_Iterable[bool]] = ..., optional_string: _Optional[str] = ..., repeated_string: _Optional[_Iterable[str]] = ..., optional_enum: _Optional[_Union[DummyMessage.Enum, str]] = ..., repeated_enum: _Optional[_Iterable[_Union[DummyMessage.Enum, str]]] = ..., optional_timestamp: _Optional[_Union[_plexus_common_pb2.Timestamp, _Mapping]] = ..., repeated_timestamp: _Optional[_Iterable[_Union[_plexus_common_pb2.Timestamp, _Mapping]]] = ..., omitted_optional_int32: _Optional[int] = ..., omitted_repeated_int32: _Optional[_Iterable[int]] = ..., omitted_optional_int64: _Optional[int] = ..., omitted_repeated_int64: _Optional[_Iterable[int]] = ..., omitted_optional_double: _Optional[float] = ..., omitted_repeated_double: _Optional[_Iterable[float]] = ..., omitted_optional_bool: bool = ..., omitted_repeated_bool: _Optional[_Iterable[bool]] = ..., omitted_optional_string: _Optional[str] = ..., omitted_repeated_string: _Optional[_Iterable[str]] = ..., omitted_optional_enum: _Optional[_Union[DummyMessage.Enum, str]] = ..., omitted_repeated_enum: _Optional[_Iterable[_Union[DummyMessage.Enum, str]]] = ..., omitted_optional_timestamp: _Optional[_Union[_plexus_common_pb2.Timestamp, _Mapping]] = ..., omitted_repeated_timestamp: _Optional[_Iterable[_Union[_plexus_common_pb2.Timestamp, _Mapping]]] = ..., optional_nested_message: _Optional[_Union[DummyMessage.NestedDummyMessage, _Mapping]] = ..., repeated_nested_message: _Optional[_Iterable[_Union[DummyMessage.NestedDummyMessage, _Mapping]]] = ..., omitted_optional_nested_message: _Optional[_Union[DummyMessage.NestedDummyMessage, _Mapping]] = ..., omitted_repeated_nested_message: _Optional[_Iterable[_Union[DummyMessage.NestedDummyMessage, _Mapping]]] = ...) -> None: ...
+
+class AnotherDummyMessage(_message.Message):
+    __slots__ = ("optional_int32", "repeated_int32", "optional_int64", "repeated_int64", "optional_double", "repeated_double", "optional_bool", "repeated_bool", "optional_string", "repeated_string", "optional_enum", "repeated_enum", "optional_timestamp", "repeated_timestamp", "optional_nested_message", "repeated_nested_message")
+    class Enum(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        None: _ClassVar[AnotherDummyMessage.Enum]
+        Foo: _ClassVar[AnotherDummyMessage.Enum]
+        Bar: _ClassVar[AnotherDummyMessage.Enum]
+        Baz: _ClassVar[AnotherDummyMessage.Enum]
+        FooBar: _ClassVar[AnotherDummyMessage.Enum]
+        FooBaz: _ClassVar[AnotherDummyMessage.Enum]
+        BarBaz: _ClassVar[AnotherDummyMessage.Enum]
+        FooBarBaz: _ClassVar[AnotherDummyMessage.Enum]
+    None: AnotherDummyMessage.Enum
+    Foo: AnotherDummyMessage.Enum
+    Bar: AnotherDummyMessage.Enum
+    Baz: AnotherDummyMessage.Enum
+    FooBar: AnotherDummyMessage.Enum
+    FooBaz: AnotherDummyMessage.Enum
+    BarBaz: AnotherDummyMessage.Enum
+    FooBarBaz: AnotherDummyMessage.Enum
+    class NestedDummyMessage(_message.Message):
+        __slots__ = ("optional_int32", "repeated_int32", "optional_int64", "repeated_int64", "optional_double", "repeated_double", "optional_bool", "repeated_bool", "optional_string", "repeated_string", "optional_enum", "repeated_enum", "optional_timestamp", "repeated_timestamp", "omitted_optional_int32", "omitted_repeated_int32", "omitted_optional_int64", "omitted_repeated_int64", "omitted_optional_double", "omitted_repeated_double", "omitted_optional_bool", "omitted_repeated_bool", "omitted_optional_string", "omitted_repeated_string", "omitted_optional_enum", "omitted_repeated_enum", "omitted_optional_timestamp", "omitted_repeated_timestamp", "optional_message", "repeated_message", "omitted_optional_message", "omitted_repeated_message")
+        OPTIONAL_INT32_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_INT32_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_INT64_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_INT64_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_BOOL_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_BOOL_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_STRING_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_STRING_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_ENUM_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_ENUM_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_INT32_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_INT32_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_INT64_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_INT64_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_BOOL_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_BOOL_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_STRING_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_STRING_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_ENUM_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_ENUM_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+        OPTIONAL_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+        REPEATED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_OPTIONAL_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+        OMITTED_REPEATED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+        optional_int32: int
+        repeated_int32: _containers.RepeatedScalarFieldContainer[int]
+        optional_int64: int
+        repeated_int64: _containers.RepeatedScalarFieldContainer[int]
+        optional_double: float
+        repeated_double: _containers.RepeatedScalarFieldContainer[float]
+        optional_bool: bool
+        repeated_bool: _containers.RepeatedScalarFieldContainer[bool]
+        optional_string: str
+        repeated_string: _containers.RepeatedScalarFieldContainer[str]
+        optional_enum: AnotherDummyMessage.Enum
+        repeated_enum: _containers.RepeatedScalarFieldContainer[AnotherDummyMessage.Enum]
+        optional_timestamp: _plexus_common_pb2.Timestamp
+        repeated_timestamp: _containers.RepeatedCompositeFieldContainer[_plexus_common_pb2.Timestamp]
+        omitted_optional_int32: int
+        omitted_repeated_int32: _containers.RepeatedScalarFieldContainer[int]
+        omitted_optional_int64: int
+        omitted_repeated_int64: _containers.RepeatedScalarFieldContainer[int]
+        omitted_optional_double: float
+        omitted_repeated_double: _containers.RepeatedScalarFieldContainer[float]
+        omitted_optional_bool: bool
+        omitted_repeated_bool: _containers.RepeatedScalarFieldContainer[bool]
+        omitted_optional_string: str
+        omitted_repeated_string: _containers.RepeatedScalarFieldContainer[str]
+        omitted_optional_enum: AnotherDummyMessage.Enum
+        omitted_repeated_enum: _containers.RepeatedScalarFieldContainer[AnotherDummyMessage.Enum]
+        omitted_optional_timestamp: _plexus_common_pb2.Timestamp
+        omitted_repeated_timestamp: _containers.RepeatedCompositeFieldContainer[_plexus_common_pb2.Timestamp]
+        optional_message: DummyMessage
+        repeated_message: _containers.RepeatedCompositeFieldContainer[DummyMessage]
+        omitted_optional_message: DummyMessage
+        omitted_repeated_message: _containers.RepeatedCompositeFieldContainer[DummyMessage]
+        def __init__(self, optional_int32: _Optional[int] = ..., repeated_int32: _Optional[_Iterable[int]] = ..., optional_int64: _Optional[int] = ..., repeated_int64: _Optional[_Iterable[int]] = ..., optional_double: _Optional[float] = ..., repeated_double: _Optional[_Iterable[float]] = ..., optional_bool: bool = ..., repeated_bool: _Optional[_Iterable[bool]] = ..., optional_string: _Optional[str] = ..., repeated_string: _Optional[_Iterable[str]] = ..., optional_enum: _Optional[_Union[AnotherDummyMessage.Enum, str]] = ..., repeated_enum: _Optional[_Iterable[_Union[AnotherDummyMessage.Enum, str]]] = ..., optional_timestamp: _Optional[_Union[_plexus_common_pb2.Timestamp, _Mapping]] = ..., repeated_timestamp: _Optional[_Iterable[_Union[_plexus_common_pb2.Timestamp, _Mapping]]] = ..., omitted_optional_int32: _Optional[int] = ..., omitted_repeated_int32: _Optional[_Iterable[int]] = ..., omitted_optional_int64: _Optional[int] = ..., omitted_repeated_int64: _Optional[_Iterable[int]] = ..., omitted_optional_double: _Optional[float] = ..., omitted_repeated_double: _Optional[_Iterable[float]] = ..., omitted_optional_bool: bool = ..., omitted_repeated_bool: _Optional[_Iterable[bool]] = ..., omitted_optional_string: _Optional[str] = ..., omitted_repeated_string: _Optional[_Iterable[str]] = ..., omitted_optional_enum: _Optional[_Union[AnotherDummyMessage.Enum, str]] = ..., omitted_repeated_enum: _Optional[_Iterable[_Union[AnotherDummyMessage.Enum, str]]] = ..., omitted_optional_timestamp: _Optional[_Union[_plexus_common_pb2.Timestamp, _Mapping]] = ..., omitted_repeated_timestamp: _Optional[_Iterable[_Union[_plexus_common_pb2.Timestamp, _Mapping]]] = ..., optional_message: _Optional[_Union[DummyMessage, _Mapping]] = ..., repeated_message: _Optional[_Iterable[_Union[DummyMessage, _Mapping]]] = ..., omitted_optional_message: _Optional[_Union[DummyMessage, _Mapping]] = ..., omitted_repeated_message: _Optional[_Iterable[_Union[DummyMessage, _Mapping]]] = ...) -> None: ...
+    OPTIONAL_INT32_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_INT32_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_INT64_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_INT64_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_DOUBLE_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_BOOL_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_BOOL_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_STRING_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_STRING_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_ENUM_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_ENUM_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    OPTIONAL_NESTED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    REPEATED_NESTED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    optional_int32: int
+    repeated_int32: _containers.RepeatedScalarFieldContainer[int]
+    optional_int64: int
+    repeated_int64: _containers.RepeatedScalarFieldContainer[int]
+    optional_double: float
+    repeated_double: _containers.RepeatedScalarFieldContainer[float]
+    optional_bool: bool
+    repeated_bool: _containers.RepeatedScalarFieldContainer[bool]
+    optional_string: str
+    repeated_string: _containers.RepeatedScalarFieldContainer[str]
+    optional_enum: AnotherDummyMessage.Enum
+    repeated_enum: _containers.RepeatedScalarFieldContainer[AnotherDummyMessage.Enum]
+    optional_timestamp: _plexus_common_pb2.Timestamp
+    repeated_timestamp: _containers.RepeatedCompositeFieldContainer[_plexus_common_pb2.Timestamp]
+    optional_nested_message: AnotherDummyMessage.NestedDummyMessage
+    repeated_nested_message: _containers.RepeatedCompositeFieldContainer[AnotherDummyMessage.NestedDummyMessage]
+    def __init__(self, optional_int32: _Optional[int] = ..., repeated_int32: _Optional[_Iterable[int]] = ..., optional_int64: _Optional[int] = ..., repeated_int64: _Optional[_Iterable[int]] = ..., optional_double: _Optional[float] = ..., repeated_double: _Optional[_Iterable[float]] = ..., optional_bool: bool = ..., repeated_bool: _Optional[_Iterable[bool]] = ..., optional_string: _Optional[str] = ..., repeated_string: _Optional[_Iterable[str]] = ..., optional_enum: _Optional[_Union[AnotherDummyMessage.Enum, str]] = ..., repeated_enum: _Optional[_Iterable[_Union[AnotherDummyMessage.Enum, str]]] = ..., optional_timestamp: _Optional[_Union[_plexus_common_pb2.Timestamp, _Mapping]] = ..., repeated_timestamp: _Optional[_Iterable[_Union[_plexus_common_pb2.Timestamp, _Mapping]]] = ..., optional_nested_message: _Optional[_Union[AnotherDummyMessage.NestedDummyMessage, _Mapping]] = ..., repeated_nested_message: _Optional[_Iterable[_Union[AnotherDummyMessage.NestedDummyMessage, _Mapping]]] = ...) -> None: ...
