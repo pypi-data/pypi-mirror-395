@@ -1,0 +1,55 @@
+[build-system]
+requires = ["uv_build>=0.7.20,<0.8.0"]
+build-backend = "uv_build"
+
+[project]
+name = "uv-bump"
+version = "0.3.2"
+description = "Bump pyproject.toml dependency minimum versions to latest feasible versions."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "tomli>=2.3.0; python_version<'3.11'",
+]
+authors = [{ name = "Jeroen van Zundert", email = "mail@jeroenvanzundert.nl" }]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["uv", "bump", "version", "dependency"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+[project.urls]
+Homepage = "https://github.com/zundertj/uv-bump"
+Repository = "https://github.com/zundertj/uv-bump.git"
+Issues = "https://github.com/zundertj/uv-bump/issues"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.8",
+]
+
+[tool.pytest]
+pythonpath = ["src"]
+
+[project.scripts]
+uv-bump = "uv_bump.cli:cli"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["COM812", "D100", "D104", "D103", "D203", "D212"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/{tests}/*" = ["D1", "S101"]
+
+[tool.mypy]
+strict = true
