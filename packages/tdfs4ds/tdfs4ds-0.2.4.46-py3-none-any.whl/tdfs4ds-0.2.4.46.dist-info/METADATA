@@ -1,0 +1,283 @@
+Metadata-Version: 2.1
+Name: tdfs4ds
+Version: 0.2.4.46
+Summary: A python package to simplify the usage of feature store using Teradata Vantage ...
+Author: Denis Molin
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: teradataml>=17.20
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: plotly
+Requires-Dist: tqdm
+Requires-Dist: networkx
+Requires-Dist: sqlparse
+
+![tdfs4ds logo](https://github.com/denismolin/tdfs4ds/raw/main/tdfs4ds_logo.png)
+
+# tdfs4ds : A Feature Store Library for Data Scientists working with Clearscape Analytics
+
+The tdfs library is a Python package designed for managing and utilizing Feature Stores in a Teradata Database. With a set of easy-to-use functions, tdfs enables the efficient creation, registration, and storage of features. It also simplifies the process of preparing feature data for ingestion, building datasets for data analysis, and obtaining already existing features.
+
+## Getting Started
+
+Install the tdfs package via pip:
+
+```bash
+pip install tdfs4ds
+```
+
+To utilize the functionality of the tdfs4ds package, import it in your Python script:
+
+```python
+import tdfs4ds
+```
+It is recommended to import it after creating the context with teradataml in order to use the connection parameters to get the feature store database as the default database. Otherwise you can specify it as follows:
+
+```python
+tdfs4ds.SCHEMA = <your database>
+```
+
+## Getting started
+
+The `tdfs4ds` package aims to be very simple and straightforward to start your feature store in a Vantage system and especially in your datalab. To start, you only need to master a restricted number of functions.
+
+- `tdfs4ds.setup(database, if_exists='fail')`: Creates a feature catalog table and a process catalog rable in the Teradata database you specify.
+
+- `tdfs4ds.upload_features(df, entity_id, feature_names, metadata = {}):`: Ingests the features calculated with the teradata dataframe df. You have to specify the entity_id, meaning the columns that define the unique ID in the result set. You have to specify the data type. Hence the entity_id is a dictionary with column name as key, and data type as value. e.g. {'ID': 'BIGINT'}. feature_names is the list of column name corresponding to the features you want to ingest in the feature store. Do not hesitate to use the metadata argument to document your features.
+
+- `tdfs4ds.build_dataset(entity_id, selected_features, view_name,comment = 'dataset')`: Create a dataset view from the feature store. entity_id is the list of column names defining the entity, selected_features is the dictionary with feature names as key and feature version (meaning the process id that calculates these features) are values. The view_name is the name of the dataset view we want. Do not hesitate to use the comment argument to comment the view in the database.
+
+These three functions is the core of the package. They manage for you the registering of entities or features when needed. They also manage the process catalog to simplify the operationalization of your feature engineering process.
+
+I forgot to mention that the feature catalog, process catalog and feature stores are all temporal. Meaning that you can time travel by changing the `tdfs4ds.FEATURE_STORE_TIME` variable (the format is '9999-01-01 00:00:00' or None for current time).
+
+Finally, it manages data_domain to avoid conflicts in feature and entity names across multiple use cases. The active data domain is stored in `tdfs4ds.DATA_DOMAIN`.
+
+## Example
+
+Imagine you already have a feature engineering process implemented as a view in Teradata Vantage. If you do not have a feature store, the first step is to set up one:
+
+### Step 1: setup a feature store
+
+After having created a context with teradataml, just type:
+
+``` python
+import tdfs4ds
+tdfs4ds.setup(database=my_database)
+```
+this will create for you the feature and process catalogs in the database named my_database.
+
+### Step 2: connect to your feature store
+
+Now we speficy the active database and the data domain our feature is dealing with.
+
+``` python
+tdfs4ds.DATA_DOMAIN = 'DATA_QUALITY'
+tdfs4ds.SCHEMA      = my_database
+```
+
+These two parameters are initialized with the default database when the tdfs4ds package is imported after the create_context call of teradataml that establish the connection with Vantage.
+
+### Step 3: feature engineering
+
+In Vantage, almost any feature engineering process, being in SQL or involving external languages or engines can be implemented in a SQL view. A view can be handled as a teradata dataframe (a cousin of pandas dataframe).
+
+``` python
+df = tdml.DataFrame(tdml.in_schema(my_database, my_view))
+```
+
+assuming tdml is the alias of the teradataml import, and my_view is the view that implements the feature engineering process. If you apply additional transformation with teradataml, please use `tdfs4ds.utils.lineage.crystallize_view` to make permanent the views generated by teradataml.
+
+### Step 4: upload & operationalise
+
+We define among the output columns of the view the columns dealing with the entity description, and the features to be ingested. We also add some metadata to describe our project.
+
+``` python
+from tdfs4ds.feature_store import upload_features
+# Specify the entity ids in the view columns (+ data types) 
+entity_id       = ['EVENT_DT' ,'ID']
+# Specify the columns that contains the actual features
+feature_names   = ['KPI1','KPI2]
+# attach informative metadata to document your process
+metadata        = {'project' : 'data quality'}
+# upload & operationalise
+upload_features(
+    df=df,
+    entity_id=entity_id,
+    feature_names=feature_names,
+    metadata={'project' : 'data quality'}
+)                   
+```
+
+Here we go! This command will register the entities, register the features in the data domain if they are not yet registered, register a feature engineering process in the process catalog and register the features in the feature store, maintaining the lineage.
+
+This function also outputs a teradata dataframe corresponding to the dataset you have just registered, i.e. the results of my_view.
+
+You also get a process id. This process id can also be retrieved with:
+
+``` python
+from tdfs4ds.process_store.process_query_administration import list_processes
+list_processes()
+```
+
+You can also run the process again and ingest new features in the feature store by using this process id as follows:
+
+``` python
+from tdfs4ds import run
+run(process_id)
+```
+So no need to get the code that builds the feature engineering process, the process id is all what you need.
+
+No worries if you are computing features that are already present in the feature store, the feature store is temporal so it will avoid any duplication of the feature and version the feature values when needed.
+
+### Building a new dataset with existing features
+
+Now your feature store is populated, you can build any dataset knowing the entity_ids, the features and the process_id (or feature version) of your choice.
+
+``` python
+from tdfs4ds import build_dataset
+mydataset = build_dataset(
+    entity_id = ['customer_id'],
+    selected_features = selected_features,
+    view_name = 'mydataset', 
+    comment = 'dataset for CHURN')
+```
+
+selected_feature is a dictionary where keys are the feature name, and value the process id corresponding to the process used for the computation of the feature value.
+
+if you do not know the registered entities, features and corresponding feature versions you can use the functions `get_list_entity`, `get_list_features`, `get_available_features` and `get_feature_versions` in `tdfs4ds.feature_store.feature_query_retrieval`.
+
+Here is the structure of the package:
+
+``` text
+.tdfs4ds
+    ├── datasets.py
+    │   └── Function: outstanding_amounts_dataset
+    │   └── Function: upload_outstanding_amounts_dataset
+    ├── __init__.py
+    │   └── Function: _upload_features
+    │   └── Function: augment_source_with_features
+    │   └── Function: build_dataset
+    │   └── Function: build_dataset_opt
+    │   └── Function: connect
+    │   └── Function: dataset_catalog
+    │   └── Function: feature_catalog
+    │   └── Function: get_dataset_entity
+    │   └── Function: get_dataset_features
+    │   └── Function: process_catalog
+    │   └── Function: roll_out
+    │   └── Function: run
+    │   └── Function: setup
+    │   └── Function: upload_features
+    │   └── Function: upload_tdstone2_scores
+    └── data
+        └── logo
+    └── dataset
+        ├── dataset.py
+        │   └── Class: Dataset
+        ├── dataset_catalog.py
+        │   └── Class: DatasetCatalog
+        ├── __init__.py
+    └── feature_store
+        ├── entity_management.py
+        │   └── Function: register_entity
+        │   └── Function: remove_entity
+        │   └── Function: tdstone2_entity_id
+        ├── feature_data_processing.py
+        │   └── Function: _store_feature_merge
+        │   └── Function: _store_feature_update_insert
+        │   └── Function: apply_collect_stats
+        │   └── Function: generate_collect_stats
+        │   └── Function: generate_on_clause
+        │   └── Function: get_feature_id_and_conversion
+        │   └── Function: prepare_feature_ingestion
+        │   └── Function: prepare_feature_ingestion_tdstone2
+        │   └── Function: store_feature
+        ├── feature_query_retrieval.py
+        │   └── Function: generate_uuid_from_string
+        │   └── Function: get_available_entity_id_records
+        │   └── Function: get_available_features
+        │   └── Function: get_entity_tables
+        │   └── Function: get_feature_location
+        │   └── Function: get_feature_store_content
+        │   └── Function: get_feature_store_table_name
+        │   └── Function: get_feature_versions
+        │   └── Function: get_list_entity
+        │   └── Function: get_list_features
+        │   └── Function: list_features
+        │   └── Function: write_where_clause_filter
+        ├── feature_store_management.py
+        │   └── Function: GetAlreadyExistingFeatureNames
+        │   └── Function: GetTheLargestFeatureID
+        │   └── Function: Gettdtypes
+        │   └── Function: _register_features_merge
+        │   └── Function: _register_features_update_insert
+        │   └── Function: delete_feature
+        │   └── Function: feature_store_catalog_creation
+        │   └── Function: feature_store_catalog_view_creation
+        │   └── Function: feature_store_table_creation
+        │   └── Function: register_features
+        │   └── Function: remove_feature
+        │   └── Function: tdstone2_Gettdtypes
+        ├── __init__.py
+    └── process_store
+        ├── process_followup.py
+        │   └── Function: follow_up_report
+        │   └── Function: follow_up_table_creation
+        │   └── Function: followup_close
+        │   └── Function: followup_open
+        ├── process_query_administration.py
+        │   └── Function: get_process_id
+        │   └── Function: list_processes
+        │   └── Function: list_processes_feature_split
+        │   └── Function: remove_process
+        ├── process_registration_management.py
+        │   └── Function: _register_process_view_merge
+        │   └── Function: _register_process_view_update_insert
+        │   └── Function: register_process_tdstone
+        │   └── Function: register_process_view
+        ├── process_store_catalog_management.py
+        │   └── Function: process_store_catalog_creation
+        │   └── Function: process_store_catalog_view_creation
+        │   └── Function: upgrade_process_catalog
+        ├── __init__.py
+    └── utils
+        ├── filter_management.py
+        │   └── Function: get_hidden_table_name
+        │   └── Class: FilterManager
+        ├── info.py
+        │   └── Function: extract_partition_content
+        │   └── Function: generate_partitioning_clause
+        │   └── Function: get_column_types
+        │   └── Function: get_column_types_simple
+        │   └── Function: get_feature_types_sql_format
+        │   └── Function: seconds_to_dhms
+        │   └── Function: update_varchar_length
+        ├── lineage.py
+        │   └── Function: _analyze_sql_query
+        │   └── Function: analyze_sql_query
+        │   └── Function: crystallize_view
+        │   └── Function: generate_process_report
+        │   └── Function: generate_view_dependency_network
+        │   └── Function: generate_view_dependency_network_fs
+        │   └── Function: get_ddl
+        │   └── Function: query_change_case
+        │   └── Function: query_replace
+        ├── query_management.py
+        │   └── Function: execute_query
+        │   └── Function: execute_query_wrapper
+        │   └── Function: is_version_greater_than
+        ├── time_management.py
+        │   └── Function: get_hidden_table_name
+        │   └── Class: TimeManager
+        ├── visualization.py
+        │   └── Function: display_table
+        │   └── Function: linear_depth_layout
+        │   └── Function: plot_graph
+        │   └── Function: prepare_plotly_traces
+        │   └── Function: radial_layout
+        │   └── Function: segmented_linear_layout
+        │   └── Function: visualize_graph
+        ├── __init__.py
+```

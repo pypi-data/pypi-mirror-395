@@ -1,0 +1,4 @@
+import tdfs4ds.process_store.process_query_administration
+import tdfs4ds.process_store.process_registration_management
+import tdfs4ds.process_store.process_store_catalog_management
+import tdfs4ds.process_store.process_followup
