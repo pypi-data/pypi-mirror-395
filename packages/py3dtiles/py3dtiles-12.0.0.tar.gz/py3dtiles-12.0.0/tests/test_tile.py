@@ -1,0 +1,293 @@
+import copy
+from pathlib import Path
+
+import numpy as np
+import pytest
+from numpy.testing import assert_array_equal
+
+from py3dtiles.exceptions import InvalidTilesetError, TilerException
+from py3dtiles.tileset import BoundingVolumeBox, Tile
+from py3dtiles.tileset.content import Pnts, PntsBody, PntsHeader
+
+
+class TestTileContentManagement:
+    def test_init_without_data(self, tmp_dir: Path) -> None:
+        tile = Tile()
+
+        assert tile.tile_content is None
+        assert tile.content_uri is None
+        with pytest.raises(
+            RuntimeError, match="Cannot load a tile without a content_uri"
+        ):
+            tile.get_or_fetch_content(tmp_dir)
+
+    def test_with_tile_content(self) -> None:
+        tile = Tile()
+
+        pnts = Pnts(PntsHeader(), PntsBody())
+        tile.tile_content = pnts
+
+        assert tile.get_or_fetch_content(None) == pnts
+        assert tile.content_uri is None
+
+    def test_with_path_content(self, tmp_dir_with_content: Path) -> None:
+        tile_path = Path("points", "r.pnts")
+        tile = Tile(content_uri=tile_path)
+
+        assert tile.tile_content is None
+        assert isinstance(tile.get_or_fetch_content(tmp_dir_with_content), Pnts)
+        assert isinstance(tile.tile_content, Pnts)
+
+    def test_write(self, tmp_dir: Path) -> None:
+        tile = Tile()
+        pnts = Pnts(PntsHeader(), PntsBody())
+        tile.tile_content = pnts
+
+        with pytest.raises(
+            TilerException, match="tile.content_uri is None, cannot write tile content"
+        ):
+            tile.write_content(tmp_dir)
+
+        tile.content_uri = Path("rr.pnts")
+        with pytest.raises(
+            ValueError, match="No root_uri given and tile.content_uri is not absolute"
+        ):
+            tile.write_content(None)
+
+        tile.write_content(tmp_dir)
+        assert (tmp_dir / tile.content_uri).exists()
+
+        tile.tile_content = None
+        with pytest.raises(
+            TilerException,
+            match="The tile has no tile content. A tile content should be added in the tile.",
+        ):
+            tile.write_content(tmp_dir)
+
+
+class TestTile:
+    def test_constructor(self) -> None:
+        tile = Tile()
+        assert tile.bounding_volume is None
+        assert tile.geometric_error == 500
+        assert tile._refine == "ADD"
+        assert tile.children == []
+        assert_array_equal(tile.transform, np.identity(4))
+
+        bounding_volume = BoundingVolumeBox()
+        bounding_volume.set_from_list([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+        tile = Tile(geometric_error=200, bounding_volume=bounding_volume)
+        assert tile.bounding_volume == bounding_volume
+        assert tile.geometric_error == 200
+        assert tile._refine == "ADD"
+        assert tile.children == []
+        assert_array_equal(tile.transform, np.identity(4))
+
+    def test_transform(self) -> None:
+        tile = Tile()
+
+        assert_array_equal(tile.transform, np.identity(4))
+
+        # fmt: off
+        tile.transform = np.array(
+            [
+                [1.0001, 0.0, 0.0, 0.0,],
+                [0.0, 1.001, 0.0, 0.0,],
+                [0.0, 0.0, 1.01, 0.0,],
+                [0.0, 0.0, 0.0, 1.1,],
+            ]
+        )
+
+        assert_array_equal(
+            tile.transform,
+            np.array(
+                [
+                    [1.0001, 0.0, 0.0, 0.0,],
+                    [0.0, 1.001, 0.0, 0.0,],
+                    [0.0, 0.0, 1.01, 0.0,],
+                    [0.0, 0.0, 0.0, 1.1,],
+                ]
+            ),
+        )
+        # fmt: on
+
+    def test_refine_mode(self) -> None:
+        tile = Tile()
+        assert tile.get_refine_mode() == "ADD"
+
+        with pytest.raises(InvalidTilesetError):
+            tile.set_refine_mode("replace")  # type: ignore [arg-type]
+
+        tile.set_refine_mode("REPLACE")
+        assert tile.get_refine_mode() == "REPLACE"
+
+    def test_children(self) -> None:
+        tile1 = Tile()
+
+        assert tile1.children == []
+        assert tile1.get_all_children() == []
+
+        tile11 = Tile()
+        tile1.add_child(tile11)
+        assert tile1.children == [tile11]
+        assert tile1.get_all_children() == [tile11]
+
+        tile12 = Tile()
+        tile1.add_child(tile12)
+        assert tile1.children == [tile11, tile12]
+        assert tile1.get_all_children() == [tile11, tile12]
+
+        tile111 = Tile()
+        tile11.add_child(tile111)
+
+        assert tile1.children == [tile11, tile12]
+        assert tile1.get_all_children() == [tile11, tile111, tile12]
+        assert tile11.get_all_children() == [tile111]
+
+    def test_to_dict(self) -> None:
+        tile = Tile()
+
+        with pytest.raises(InvalidTilesetError, match="Bounding volume is not set"):
+            tile.to_dict()
+
+        bounding_volume = BoundingVolumeBox()
+        bounding_volume.set_from_list([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+        tile.bounding_volume = bounding_volume
+
+        # most simple case
+        assert tile.to_dict() == {
+            "boundingVolume": {
+                "box": [
+                    1.0,
+                    2.0,
+                    3.0,
+                    4.0,
+                    5.0,
+                    6.0,
+                    7.0,
+                    8.0,
+                    9.0,
+                    10.0,
+                    11.0,
+                    12.0,
+                ]
+            },
+            "geometricError": 500,
+            "refine": "ADD",
+        }
+
+        tile.geometric_error = 3.14159
+        tile.to_dict()  # just test if no error
+
+        child_tile = Tile()
+        child_tile.geometric_error = 21
+        child_tile.bounding_volume = copy.deepcopy(bounding_volume)
+        tile.add_child(child_tile)
+
+        # cannot test now
+        # child.set_content()
+
+        assert tile.to_dict() == {
+            "boundingVolume": {
+                "box": [
+                    1.0,
+                    2.0,
+                    3.0,
+                    21.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    24.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    27.0,
+                ]
+            },
+            "geometricError": 3.14159,
+            "refine": "ADD",
+            "children": [
+                {
+                    "boundingVolume": {
+                        "box": [
+                            1.0,
+                            2.0,
+                            3.0,
+                            4.0,
+                            5.0,
+                            6.0,
+                            7.0,
+                            8.0,
+                            9.0,
+                            10.0,
+                            11.0,
+                            12.0,
+                        ]
+                    },
+                    "geometricError": 21,
+                    "refine": "ADD",
+                }
+            ],
+        }
+
+    def test_sync_bounding_volume_with_children(self) -> None:
+        tile = Tile()
+        tile.sync_bounding_volume_with_children()
+        # bounding volume is init after
+        assert tile.bounding_volume is not None
+        # bbox still invalid
+        assert not tile.bounding_volume.is_valid()
+
+        # add one child
+        child1 = Tile(
+            bounding_volume=BoundingVolumeBox.from_mins_maxs(
+                np.array([1, 1, 1, 2, 2, 2])
+            )
+        )
+        tile.children.append(child1)
+        tile.sync_bounding_volume_with_children()
+        assert tile.bounding_volume.is_valid()
+        assert_array_equal(tile.bounding_volume.get_center(), [1.5, 1.5, 1.5])
+        assert_array_equal(tile.bounding_volume.get_half_size(), [0.5, 0.5, 0.5])
+
+        # add 2 others
+        child2 = Tile(
+            bounding_volume=BoundingVolumeBox.from_mins_maxs(
+                np.array([-4, -2, 1, 2, 4, 4])
+            )
+        )
+        child3 = Tile(
+            bounding_volume=BoundingVolumeBox.from_mins_maxs(
+                np.array([0, -4, -4, 4, 2, 2])
+            )
+        )
+        tile.children.append(child2)
+        tile.children.append(child3)
+        tile.sync_bounding_volume_with_children()
+        assert tile.bounding_volume.is_valid()
+        assert_array_equal(tile.bounding_volume.get_center(), [0, 0, 0])
+        assert_array_equal(tile.bounding_volume.get_half_size(), [4, 4, 4])
+
+    def test_change_base(self) -> None:
+        tile = Tile(content_uri="foo.pnts")
+
+        child1 = Tile(content_uri="bar.pnts")
+        child2 = Tile(content_uri=None)
+        child3 = Tile(content_uri="baz/bazz.pnts")
+        child4 = Tile(content_uri="/absolute/path.pnts")
+        child11 = Tile(content_uri="child/bar.pnts")
+
+        tile.add_child(child1)
+        tile.add_child(child2)
+        tile.add_child(child3)
+        tile.add_child(child4)
+        child1.add_child(child11)
+
+        tile.change_base(Path("folder/old_path"), Path("folder"))
+
+        assert tile.content_uri == Path("old_path/foo.pnts")
+        assert child1.content_uri == Path("old_path/bar.pnts")
+        assert child2.content_uri is None
+        assert child3.content_uri == Path("old_path/baz/bazz.pnts")
+        assert child4.content_uri == Path("/absolute/path.pnts")
+        assert child11.content_uri == Path("old_path/child/bar.pnts")
