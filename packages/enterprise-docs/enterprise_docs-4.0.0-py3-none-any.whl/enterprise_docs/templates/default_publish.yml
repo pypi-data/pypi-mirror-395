@@ -1,0 +1,72 @@
+name: 🚀 Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*.*.*"   # Only publish on version tags like v1.2.0
+
+permissions:
+  contents: read
+  id-token: write         # ✅ OIDC to PyPI (no token secret required!)
+  attestations: write     # ✅ Provenance
+  actions: read
+
+concurrency:
+  group: publish-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    name: 🛠️ Build & Publish Package
+    runs-on: ubuntu-latest
+    environment: pypi  # Enforce approvals if enabled
+
+    steps:
+      - name: 🧩 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine pip-audit cyclonedx-bom sigstore
+
+      - name: ⚙️ Build artifacts (wheel + sdist)
+        run: python -m build
+
+      - name: 🔍 Verify build contents
+        run: twine check dist/*
+
+      - name: 🛡️ Check for known CVEs (block high severity)
+        run: pip-audit --strict
+
+      - name: 🧾 Generate SBOM (CycloneDX)
+        run: cyclonedx-bom --format json --outfile sbom.json
+
+      - name: 📎 Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
+      - name: 🔐 Sign artifacts (Sigstore)
+        run: |
+          sigstore sign dist/* --yes
+
+      - name: 🚀 Publish to PyPI using OIDC
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+          skip-existing: false   # fail if version exists (best practice)
+
+      - name: 🧾 Generate supply chain attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: "dist/*"
+
+      - name: ✅ Done
+        run: echo "✅ Published to PyPI successfully!"

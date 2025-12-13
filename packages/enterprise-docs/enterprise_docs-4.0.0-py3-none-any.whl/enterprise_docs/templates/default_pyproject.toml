@@ -1,0 +1,170 @@
+# =========================================================
+# 🏆 ENTERPRISE PYTHON TEMPLATE
+# Maintainer: Dhruv13x
+# SPDX-License-Identifier: MIT
+# Supply-Chain: SBOM + Sigstore + SLSA + CVE Enforcement
+# =========================================================
+
+[build-system]
+requires = [
+  "setuptools>=68",
+  "setuptools_scm>=8",
+  "wheel>=0.41",
+  "build>=1.2",
+  "pip-tools>=7",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "src/<package_name>/_version.py"
+version_scheme = "release-branch-semver"
+local_scheme = "no-local-version"
+fallback_version = "0.0.0"
+git_describe_command = "git describe --dirty --tags --long --match '*[0-9]*'"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+zip-safe = false
+include-package-data = true
+license-files = ["LICENSE*", "NOTICE*", "SECURITY.md", "SBOM*"]
+platforms = ["any"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+<package_name> = ["py.typed"]
+
+[project]
+name = "<package_name>"
+dynamic = ["version"]
+description = "<DESCRIPTION>"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Dhruv13x", email = "dhruv13x@gmail.com" }]
+maintainers = [{ name = "Dhruv13x", email = "dhruv13x@gmail.com" }]
+
+keywords = [
+  "cli", "devops", "automation", "cybersecurity", "python",
+  "tooling", "platform-engineering", "compliance"
+]
+
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+  "Security :: Integrity",
+  "Security :: Cryptography",
+]
+
+dependencies = [
+  "rich>=13,<14",
+  "tqdm>=4.66,<5",
+  "typing-extensions>=4.9,<5",
+  "opentelemetry-api>=1.26,<2",
+  "opentelemetry-sdk>=1.26,<2"
+]
+
+[project.optional-dependencies]
+cli = ["typer>=0.12,<1"]
+config = ["pydantic>=2,<3"]
+test = ["pytest>=8,<9","pytest-cov>=5,<6","hypothesis>=6,<7"]
+docs = [
+  "mkdocs>=1.6,<2","mkdocs-material>=9.5,<10",
+  "mkdocstrings[python]>=0.24,<1","mkdocs-autorefs","mkdocs-gen-files"
+]
+security = [
+  "bandit>=1.7,<2","pip-audit>=2.6,<3",
+  "detect-secrets>=1,<2","cyclonedx-bom>=4,<5"
+]
+build = [
+  "build","twine","sigstore>=2,<3",
+  "slsa-framework>=0.1",
+  "pip-tools>=7,<8"
+]
+dev = [
+  "<package_name>[cli]",
+  "<package_name>[config]",
+  "<package_name>[test]",
+  "<package_name>[security]",
+  "ruff>=0.4,<1",
+  "black>=24,<25",
+  "mypy>=1.10,<2",
+  "pre-commit>=3.6,<4",
+  "tox>=4,<5",
+  "pyproject-fmt>=1.8,<2",
+  "codespell>=2,<3"
+]
+
+all = ["<package_name>[cli]", "<package_name>[config]", "<package_name>[docs]", "<package_name>[dev]"]
+
+[project.scripts]
+<package_name> = "<package_name>.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/dhruv13x/<package_name>"
+Repository = "https://github.com/dhruv13x/<package_name>.git"
+Issues = "https://github.com/dhruv13x/<package_name>/issues"
+Docs = "https://dhruv13x.github.io/<package_name>"
+Changelog = "https://github.com/dhruv13x/<package_name>/blob/main/CHANGELOG.md"
+Security = "https://github.com/dhruv13x/<package_name>/blob/main/SECURITY.md"
+SBOM = "sbom.json"
+SLSA = "https://slsa.dev/"
+Provenance = "https://docs.sigstore.dev"
+
+# --- Linting ---
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+fix = true
+
+# --- Formatting ---
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+# --- Typing ---
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+python_version = "3.11"
+explicit_package_bases = true
+
+# --- Tests ---
+[tool.pytest.ini_options]
+addopts = "-ra -v --tb=short --junitxml=reports/junit.xml"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+# --- Coverage ---
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90
+
+# --- Security ---
+[tool.bandit]
+skips = ["B101"]
+exclude_dirs = ["tests"]
+
+[tool.pip-audit]
+format = "json"
+
+[tool.cyclonedx]
+output-format = "json"
+
+# --- Reproducible Builds ---
+[tool.pip-tools]
+generate_hashes = true
