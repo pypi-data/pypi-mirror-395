@@ -1,0 +1,115 @@
+Metadata-Version: 2.4
+Name: elli-client
+Version: 1.2.0
+Summary: Python client for Elli Wallbox API
+Author: Marc Szymkowiak
+License: MIT
+Project-URL: Homepage, https://github.com/marcszy91/elli-client
+Project-URL: Bug Tracker, https://github.com/marcszy91/elli-client/issues
+Project-URL: Source Code, https://github.com/marcszy91/elli-client
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic>=2.9.0
+Requires-Dist: pydantic-settings>=2.5.0
+Provides-Extra: dev
+Requires-Dist: black>=24.3.0; extra == "dev"
+Requires-Dist: isort>=5.13.2; extra == "dev"
+Requires-Dist: flake8>=7.0.0; extra == "dev"
+Requires-Dist: pytest>=8.1.1; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.6; extra == "dev"
+Requires-Dist: pre-commit>=3.7.0; extra == "dev"
+Dynamic: license-file
+
+# Elli Client
+
+Python client library for the Elli Wallbox API.
+
+## Installation
+
+```bash
+pip install elli-client
+```
+
+## Quick Start
+
+```python
+from elli_client import ElliAPIClient
+
+# Initialize client and login
+client = ElliAPIClient()
+token = client.login("your.email@example.com", "your_password")
+
+# Get charging stations
+stations = client.get_stations()
+for station in stations:
+    print(f"Station: {station.name} ({station.id})")
+
+# Get active charging session
+session = client.get_active_charging_session()
+if session:
+    print(f"Charging: {session.energy_consumption_wh / 1000:.2f} kWh")
+    print(f"Power: {session.momentary_power_w} W")
+```
+
+## Features
+
+- Authentication with Elli Account
+- Query charging stations
+- Retrieve charging sessions (active and historical)
+- Current charging power and energy consumption
+- Station information
+
+## Documentation
+
+- **[Quick Start Guide](docs/quick-start.md)** - Get started in minutes
+- **[API Reference](docs/api.md)** - Complete API documentation
+- **[Docs Overview](docs/README.md)** - Documentation index
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/marcszy91/elli-client
+cd elli-client
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+
+# Copy environment template and add your credentials
+cp .env.template .env
+# Edit .env and add your ELLI_EMAIL and ELLI_PASSWORD
+```
+
+### Testing
+
+```bash
+# Format code
+black src/
+isort src/
+
+# Run tests (when implemented)
+pytest
+```
+
+## Home Assistant Integration
+
+This client is used by the [Elli Charger HACS integration](https://github.com/marcszy91/hacs-elli-charger) for Home Assistant.
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Disclaimer
+
+This library was created through reverse engineering of the official Elli iPhone app. It is not officially supported by Elli or Volkswagen Group Charging GmbH. Use at your own risk.
