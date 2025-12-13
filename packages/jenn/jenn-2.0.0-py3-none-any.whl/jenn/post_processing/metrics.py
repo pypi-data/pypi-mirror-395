@@ -1,0 +1,23 @@
+"""Metrics.
+===========
+"""
+
+# Copyright (C) 2018 Steven H. Berguin
+# This work is licensed under the MIT License.
+from __future__ import annotations  # needed if python is 3.9
+
+import numpy as np
+
+
+def rsquare(y_pred: np.ndarray, y_true: np.ndarray) -> np.ndarray:
+    """Compute R-square value for each output.
+
+    :param y_pred: predicted values, array of shape (n_y, m)
+    :param y_true: actual values, array of shape (n_y, m)
+    :return: R-Squared values for each predicted reponse
+    """
+    axis = y_true.ndim - 1
+    y_bar = np.mean(y_true, axis=axis)
+    SSE = np.sum(np.square(y_pred - y_true), axis=axis)
+    SSTO = np.sum(np.square(y_true - y_bar) + 1e-12, axis=axis)
+    return 1 - SSE / SSTO
