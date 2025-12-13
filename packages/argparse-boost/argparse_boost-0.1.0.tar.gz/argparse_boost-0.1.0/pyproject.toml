@@ -1,0 +1,303 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0", "wheel>=0.37.1"]
+
+[project]
+name = "argparse-boost"
+version = "0.1.0"
+description = "Extension module for argparse"
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10,<4.0.0"
+authors = [
+  { name = "yakimka" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: PyPy"
+]
+
+dependencies = []
+[dependency-groups]
+dev = [
+  "mypy>=1.15.0,<2.0.0",
+  "pre-commit>=4.2.0,<5.0.0",
+  "pytest>=9.0.1,<9.1.0",
+  "pytest-asyncio>=1.0.0,<2.0.0",
+  "pytest-cov>=7.0.0,<8.0.0",
+  "pytest-deadfixtures>=2.2.1,<3.0.0",
+  "pytest-randomly>=4.0.0,<5.0.0",
+]
+
+[project.urls]
+repository = "https://github.com/yakimka/argparse-boost"
+
+[tool.setuptools]
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+platforms = ["Linux"]
+include-package-data = true
+zip-safe = true  # This just means it's safe to zip up the bdist
+
+# Non-code data that should be included in the package source code
+# https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+[tool.setuptools.package-data]
+acme = ["*.xml"]
+
+# Python modules and packages that are included in the
+# distribution package (and therefore become importable)
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*", "examples"]
+
+[tool.isort]
+# isort configuration:
+# https://github.com/timothycrosley/isort/wiki/isort-Settings
+profile = "black"
+include_trailing_comma = true
+use_parentheses = true
+# See https://github.com/timothycrosley/isort#multi-line-output-modes
+multi_line_output = 3
+line_length = "88"
+
+[tool.black]
+line-length = "88"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+# Directories that are not visited by pytest collector:
+norecursedirs = [
+  "*.egg",
+  ".eggs",
+  "dist",
+  "build",
+  "docs",
+  ".tox",
+  ".git",
+  "__pycache__",
+  ".cache",
+  ".venv",
+  "venv",
+  ".pre-commit",
+]
+
+# Strict `@xfail` by default:
+xfail_strict = true
+
+# pytest-asyncio
+asyncio_mode = "auto"
+
+# Extra options:
+addopts = [
+  # don't add --cov because it breaks pycharm debugger
+  #   just add it manaually when needed to cmd args
+  "--import-mode=importlib",
+  "--strict-markers",
+  "--strict-config",
+  "--tb=short",
+  "--cov-report=term-missing",
+#  "--cov-fail-under=100",
+  "-vv",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "pass",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
+]
+
+[tool.mypy]
+files = ["."]
+exclude = ["tests/"]
+##
+# mypy configurations: https://mypy.readthedocs.io/en/latest/config_file.html
+allow_redefinition = false
+check_untyped_defs = true
+disallow_any_explicit = false
+disallow_any_generics = false
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+ignore_errors = false
+ignore_missing_imports = true
+implicit_reexport = false
+local_partial_types = true
+no_implicit_optional = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_untyped_defs = false
+
+##
+[tool.ruff.lint]
+select = [
+  # flake8-unused-arguments
+  "ARG",
+  # flake8-async
+  "ASYNC",
+  # flake8-bugbear
+  "B",
+  # flake8-blind-except
+  "BLE",
+  # flake8-comprehensions
+  "C4",
+  # flake8-commas
+  "COM",
+  # flake8-django
+  "DJ",
+  # flake8-datetimez
+  "DTZ",
+  # pycodestyle
+  "E4",
+  "E7",
+  "E9",
+  # flake8-errmsg
+  "EM",
+  # flake8-eradicate
+  "ERA",
+  # flake8-executable
+  "EXE",
+  # Pyflakes
+  "F",
+  # fastapi
+  "FAST",
+  # flake8-logging
+  "LOG",
+  # pep8-naming
+  "N",
+  #	Use specific rule codes when using noqa
+  "PGH004",
+  # flake8-pie
+  "PIE",
+  # Pylint
+  "PLC",
+  # flake8-quotes
+  # Error
+  "PLE",
+  # flake8-pytest-style
+  "PT",
+  # flake8-pyi,
+  "PYI",
+  "Q",
+  # flake8-raise
+  "RSE",
+  # unused noqa
+  # __all__ is not sorted
+  "RUF022",
+  # __slots__ is not sorted
+  "RUF023",
+  # Do not pass mutable objects as values to dict.fromkeys
+  "RUF024",
+  # Decimal() called with float literal argument
+  "RUF032",
+  "RUF100",
+  # redirected noqa
+  "RUF101",
+  # flake8-bandit
+  "S",
+  # flake8-simplify
+  "SIM",
+  # flake8-self
+  "SLF",
+  # flake8-slots
+  "SLOT",
+  # flake8-type-checking
+  "TC",
+  # flake8-tidy-imports
+  "TID",
+]
+ignore = [
+  # default ignore list (conflicts with black)
+  "E226", "E24",
+  # pytest in tests and some checks for readability
+  "S101",
+  # https://github.com/psf/black/issues/565
+  "E203",
+  # complexity of functions
+  "C901",
+  # merging context managers
+  "SIM117",
+  # nested if statements
+  "SIM102",
+  # Unused lambda argument
+  "ARG005",
+  #
+  "B008",
+]
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "build",
+  "buck-out",
+  "dist",
+  "venv"
+]
+
+[tool.ruff.lint.per-file-ignores]
+# TC002 Move third-party import into a type-checking block
+# S* security problems
+"tests/*.py" = ["TC002", "S106", "S107", "ASYNC", "S311"]
+# Fastapi dependency injection
+"deps.py" = ["TC001", "TC002"]
+# Unused argument names in Sphinx-style docs
+"docs/*.py" = ["ARG001", "ARG002"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
+extend-immutable-calls = [
+  "picodi.Provide",
+  "picodi.integrations.fastapi.Provide",
+  "fastapi.Depends",
+  "fastapi.Query",
+]
+
+[tool.ruff.lint.flake8-pytest-style]
+parametrize-names-type = "csv"
+fixture-parentheses = true
+mark-parentheses = false
+
+[tool.ruff.lint.flake8-type-checking]
+exempt-modules = ["typing", "typing_extensions", "collections.abc"]
+##
