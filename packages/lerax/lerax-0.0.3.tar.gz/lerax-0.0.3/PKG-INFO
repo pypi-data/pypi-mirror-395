@@ -1,0 +1,96 @@
+Metadata-Version: 2.4
+Name: lerax
+Version: 0.0.3
+Summary: Deep Reinforcement Learning with JAX and Equinox.
+Project-URL: documentation, https://docs.tedpinkerton.ca/lerax
+Project-URL: homepage, https://github.com/RunnersNum40/lerax
+Project-URL: issues, https://github.com/RunnersNum40/lerax/issues
+Project-URL: source, https://github.com/RunnersNum40/lerax.git
+Author-email: Theodore Pinkerton <ted@tedpinkerton.ca>
+License-Expression: GPL-3.0-or-later
+License-File: LICENSE
+Requires-Python: >=3.13
+Requires-Dist: diffrax
+Requires-Dist: distreqx
+Requires-Dist: equinox
+Requires-Dist: jax
+Requires-Dist: jaxtyping
+Requires-Dist: optax
+Requires-Dist: rich
+Requires-Dist: tensorboard
+Requires-Dist: tensorboardx
+Provides-Extra: compatibility
+Requires-Dist: flax; extra == 'compatibility'
+Requires-Dist: gymnasium; extra == 'compatibility'
+Requires-Dist: gymnax; extra == 'compatibility'
+Requires-Dist: stable-baselines3; extra == 'compatibility'
+Provides-Extra: docs
+Requires-Dist: mkdocstrings-python; extra == 'docs'
+Requires-Dist: zensical; extra == 'docs'
+Provides-Extra: render
+Requires-Dist: imageio; extra == 'render'
+Requires-Dist: imageio-ffmpeg; extra == 'render'
+Requires-Dist: pygame; extra == 'render'
+Provides-Extra: test
+Requires-Dist: flax; extra == 'test'
+Requires-Dist: gymnasium; extra == 'test'
+Requires-Dist: gymnax; extra == 'test'
+Requires-Dist: pyright; extra == 'test'
+Requires-Dist: pytest; extra == 'test'
+Requires-Dist: pytest-cov; extra == 'test'
+Requires-Dist: pytest-xdist; extra == 'test'
+Requires-Dist: ruff; extra == 'test'
+Requires-Dist: stable-baselines3; extra == 'test'
+Description-Content-Type: text/markdown
+
+# Lerax: Fully JITable reinforcement learning with Jax.
+
+Lerax is a reinforcement learning library built on top of Jax, designed to facilitate the creation, training, and evaluation of RL agents in a fully JITable manner.
+It provides modular components for building custom environments, policies, and training algorithms.
+
+Built on top of [Jax](https://docs.jax.dev/en/latest/index.html), [Equinox](https://docs.kidger.site/equinox/), and [Diffrax](https://docs.kidger.site/diffrax/).
+
+## Installation
+
+```bash
+pip install lerax
+```
+
+## Documentation
+
+Check out: [lerax.tedpinkerton.ca](https://lerax.tedpinkerton.ca)
+
+## Training Example
+
+```py
+from jax import random as jr
+
+from lerax.algorithm import PPO
+from lerax.env import CartPole
+from lerax.policy import MLPActorCriticPolicy
+
+env = CartPole()
+policy = MLPActorCriticPolicy(env=env, key=jr.key(0))
+algo = PPO()
+
+policy = algo.learn(env, policy, total_timesteps=2**16, key=jr.key(1))
+```
+
+## TODO
+
+- Optimise for performance under JIT compilation
+  - Sharding support for distributed training
+- Documentation
+  - Standardize docstring formats
+  - Write documentation for all public APIs
+  - Add API to docs when Zensical supports it
+- Testing
+  - Unit testing
+  - Integration testing
+  - Full Jaxtyping
+    - Ensure all functions and classes have proper type annotations
+- Round out features
+  - Expand RL variants to include more algorithms
+    - Any off-policy algorithms
+  - Create a more comprehensive set of environments
+    - Brax based environments
