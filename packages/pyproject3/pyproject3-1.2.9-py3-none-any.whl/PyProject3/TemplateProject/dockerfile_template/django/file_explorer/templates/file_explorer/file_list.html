@@ -1,0 +1,213 @@
+{% extends 'file_explorer/base.html' %}
+
+{% block title %}文件列表 - 文件管理器{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 统计信息 -->
+    <div class="col-12 mb-4">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <i class="fas fa-files-o me-2"></i>总文件数
+                        </h5>
+                        <h3>{{ total_files }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <i class="fas fa-user me-2"></i>我的文件
+                        </h5>
+                        <h3>{{ my_files_count }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <i class="fas fa-globe me-2"></i>公开文件
+                        </h5>
+                        <h3>{{ public_files_count }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <i class="fas fa-upload me-2"></i>上传文件
+                        </h5>
+                        <a href="{% url 'file_explorer:file_upload' %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-plus me-1"></i>新建
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件列表 -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>文件列表
+                </h5>
+                <div>
+                    <a href="{% url 'file_explorer:file_upload' %}" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>上传文件
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if files %}
+                <div class="row">
+                    {% for file in files %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card file-card h-100">
+                            <div class="card-body text-center">
+                                <!-- 文件图标 -->
+                                <div class="file-icon">
+                                    {% if file.file_type == 'pdf' %}
+                                    <i class="fas fa-file-pdf text-danger"></i>
+                                    {% elif file.file_type == 'doc' or file.file_type == 'docx' %}
+                                    <i class="fas fa-file-word text-primary"></i>
+                                    {% elif file.file_type == 'xls' or file.file_type == 'xlsx' %}
+                                    <i class="fas fa-file-excel text-success"></i>
+                                    {% elif file.file_type == 'jpg' or file.file_type == 'jpeg' or file.file_type ==
+                                    'png' or file.file_type == 'gif' %}
+                                    <i class="fas fa-file-image text-info"></i>
+                                    {% elif file.file_type == 'zip' or file.file_type == 'rar' %}
+                                    <i class="fas fa-file-archive text-warning"></i>
+                                    {% elif file.file_type == 'txt' %}
+                                    <i class="fas fa-file-alt text-secondary"></i>
+                                    {% else %}
+                                    <i class="fas fa-file text-muted"></i>
+                                    {% endif %}
+                                </div>
+
+                                <!-- 文件名 -->
+                                <h6 class="card-title text-truncate" title="{{ file.original_name }}">
+                                    {{ file.original_name }}
+                                </h6>
+
+                                <!-- 文件信息 -->
+                                <p class="file-size mb-1">{{ file.get_file_size_display }}</p>
+                                <p class="file-date mb-2">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    {{ file.uploaded_at|date:"Y-m-d H:i" }}
+                                </p>
+
+                                <!-- 标签 -->
+                                {% if file.tags %}
+                                <div class="mb-2">
+                                    {% for tag in file.tags.split|slice:":3" %}
+                                    <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                    {% endfor %}
+                                    {% if file.tags.split|length > 3 %}
+                                    <span class="badge bg-secondary">...</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+
+                                <!-- 权限标识 -->
+                                {% if file.is_public %}
+                                <span class="badge bg-success mb-2">公开</span>
+                                {% else %}
+                                <span class="badge bg-warning mb-2">私有</span>
+                                {% endif %}
+
+                                <!-- 操作按钮 -->
+                                <div class="btn-group-vertical w-100" role="group">
+                                    <a href="{% url 'file_explorer:file_detail' file.pk %}"
+                                        class="btn btn-outline-primary btn-sm mb-1">
+                                        <i class="fas fa-eye me-1"></i>查看
+                                    </a>
+                                    <a href="{% url 'file_explorer:download_file' file.id %}"
+                                        class="btn btn-outline-success btn-sm mb-1">
+                                        <i class="fas fa-download me-1"></i>下载
+                                    </a>
+                                    {% if file.uploaded_by == user or user.is_superuser %}
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'file_explorer:file_update' file.pk %}"
+                                            class="btn btn-outline-warning btn-sm">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'file_explorer:file_delete' file.pk %}"
+                                            class="btn btn-outline-danger btn-sm">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 分页 -->
+                {% if is_paginated %}
+                <nav aria-label="文件分页" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <li
+                            class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">暂无文件</h5>
+                    <p class="text-muted">开始上传您的第一个文件吧！</p>
+                    <a href="{% url 'file_explorer:file_upload' %}" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>上传文件
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

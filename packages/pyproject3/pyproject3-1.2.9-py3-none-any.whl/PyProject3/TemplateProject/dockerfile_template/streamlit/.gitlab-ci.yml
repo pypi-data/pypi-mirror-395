@@ -1,0 +1,74 @@
+stages:
+  - build_mkdocs_image
+  # - deploy_k8s
+  # - deploy_on_50
+variables:
+  DEV_REGISTRY: "harbor.xmov.ai/xmov"
+  PRO_REGISTRY: "registry.cn-hangzhou.aliyuncs.com/xmov"
+  FS_URL: "https://open.feishu.cn/open-apis/bot/v2/hook/596839f6-7241-4e81-b8cf-bca30c299c51"
+  OSS_CONFIG_FILE: "/home/xmov/oss/ossutilconfig_xmov_alg_oss"
+  M3E_DIR: "${CI_PROJECT_DIR}/bin/models/"
+  DOC_SEGM_DIR: "${CI_PROJECT_DIR}/bin/doc_segm_dir"
+  OSS_BACKUP_DIR: "/xdata/gitlabci_builder/backup/"
+  XINGYUN_OPEN_MKDOCS: "xingyun_open_mkdocs"
+
+build_mkdocs_image:
+  stage: build_mkdocs_image
+  only:
+    - qa
+    - master
+    - dev
+  timeout: 3h
+  script:
+    - pwd
+    - echo ${CI_PROJECT_DIR}
+    - cd ./mkdocs
+    - docker tag  ${PRO_REGISTRY}/${XINGYUN_OPEN_MKDOCS}:${CI_COMMIT_REF_NAME}
+    - docker push ${PRO_REGISTRY}/${XINGYUN_OPEN_MKDOCS}:${CI_COMMIT_REF_NAME}
+  tags:
+    # - core-huadong1-ali
+    - node-50
+
+build_streamlit_image:
+  stage: build_streamlit_image
+  only:
+    - qa
+    - master
+    - dev
+  timeout: 3h
+  script:
+    - pwd
+    - echo ${CI_PROJECT_DIR}
+    - cd ./mkdocs
+    # 构建并推送 Docker 镜像
+    - docker build -t ${DEV_REGISTRY}/${XINGYUN_OPEN_MKDOCS}:${CI_COMMIT_REF_NAME} .
+    - docker push ${DEV_REGISTRY}/${XINGYUN_OPEN_MKDOCS}:${CI_COMMIT_REF_NAME}
+    # 如果是 master 分支，同时推送到生产环境镜像仓库
+    - |
+      if [ "$CI_COMMIT_REF_NAME" = "master" ]; then
+        docker tag ${DEV_REGISTRY}/${XINGYUN_OPEN_MKDOCS}:${CI_COMMIT_REF_NAME} ${PRO_REGISTRY}/${XINGYUN_OPEN_MKDOCS}:${CI_COMMIT_REF_NAME}
+        docker push ${PRO_REGISTRY}/${XINGYUN_OPEN_MKDOCS}:${CI_COMMIT_REF_NAME}
+      fi
+  tags:
+    # - core-huadong1-ali
+    - node-50
+
+
+# deploy_qa_k8s:
+#   stage: deploy_k8s
+#   only:
+#     - qa
+#   script:
+#     - update test-xingyun-open starcloud-backend
+#   tags:
+#     - xmov-local-ut
+
+# deploy_dev_k8s:
+#   stage: deploy_k8s
+#   only:
+#     - dev
+#   script:
+#     - update dev-xingyun-open starcloud-backend
+#   tags:
+#     - xmov-local-ut
+
