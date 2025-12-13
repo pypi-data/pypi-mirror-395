@@ -1,0 +1,116 @@
+Metadata-Version: 2.4
+Name: pycensuskr
+Version: 0.2.6
+Summary: A Python package for Korean census data processing
+Home-page: https://github.com/sigmafelix/pycensuskr
+Author: Insang Song
+Author-email: Insang Song <geoissong@gmail.com>, Sohyun Park <wherewindstay@gmail.com>, Hyesop Shin <hyesop.shin@auckland.ac.nz>
+Maintainer-email: Insang Song <geoissong@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/sigmafelix/pycensuskr
+Project-URL: Repository, https://github.com/sigmafelix/pycensuskr
+Project-URL: Bug Tracker, https://github.com/sigmafelix/pycensuskr/issues
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: flake8>=6.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# pycensuskr
+
+A Python package for Korean district-level census and geographic data.
+
+## Installation
+
+### PyPI
+
+```bash
+pip install pycensuskr
+```
+
+### From source
+
+```bash
+git clone https://github.com/sigmafelix/pycensuskr.git
+cd pycensuskr
+pip install -e .
+
+# python setup.py install
+```
+
+### For development
+
+```bash
+git clone https://github.com/sigmafelix/pycensuskr.git
+cd pycensuskr
+pip install -e ".[dev]"
+```
+
+## Usage
+
+```python
+from pycensuskr import __version__
+from pycensuskr import CensusKR
+from matplotlib import pyplot as plt
+import geopandas as gpd
+
+# Print version
+print(__version__)
+
+# Create a CensusData instance
+census = CensusKR()
+
+# load specific year data
+data_2020 = census.load_data(2020)
+print(data_2020)
+
+# load district boundaries for a specific year
+districts_2020 = census.load_districts(2020)
+districts_2020["adm2_re"] = districts_2020["adm2_code"].astype(str).str.slice(0,4)
+# aggregate geometries by adm2_re
+districts_2020 = districts_2020.dissolve(by="adm2_re", as_index=False)
+districts_2020["adm2_code"] = districts_2020["adm2_re"] + "0"
+districts_2020["adm2_code"] = districts_2020["adm2_code"].astype(int)
+
+# cleaned data with variable types
+df_tax_2020 = census.anycensus(year = 2020, type = "tax", aggregator = "sum")
+
+districts_tax_2020 = districts_2020.merge(df_tax_2020, on="adm2_code")
+print(districts_tax_2020)
+
+districts_tax_2020.plot("income_labor_mil")
+plt.show()
+```
+
+## Notes on data updates
+Our data cleaning and processing pipeline is based on the original R package `tidycensuskr`. We periodically synchronize the bundled datasets used in this package with those in R `tidycensuskr` and `tidycensussfkr` to ensure accuracy and relevance. Please refer to the [tidycensuskr webpage](https://github.com/sigmafelix/tidycensuskr) for details on the latest data updates and changes.
+
+
+## Development
+
+### Running tests
+
+```bash
+pytest
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
