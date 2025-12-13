@@ -1,0 +1,746 @@
+Metadata-Version: 2.4
+Name: bach-seo_api2
+Version: 1.0.0
+Summary: MCP server for accessing Seo Api2 API
+Project-URL: Homepage, https://github.com/bachstudio/bach-seo_api2
+Project-URL: Repository, https://github.com/bachstudio/bach-seo_api2
+Project-URL: Documentation, https://github.com/bachstudio/bach-seo_api2#readme
+Project-URL: Bug Tracker, https://github.com/bachstudio/bach-seo_api2/issues
+Author: bachstudio
+License: MIT License
+        
+        Copyright (c) 2025 bachstudio
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: api,mcp,model-context-protocol,seo_api2
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Requires-Dist: fastmcp>=2.0.0
+Requires-Dist: httpx>=0.25.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Seo Api2 MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Seo Api2 API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-seo_api2`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Seo Api2 API。
+
+- **PyPI 包名**: `bach-seo_api2`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-seo_api2
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-seo_api2 bach_seo_api2
+
+# 或指定版本
+uvx --from bach-seo_api2@latest bach_seo_api2
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-seo_api2
+
+# 运行（命令名使用下划线）
+bach_seo_api2
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-seo_api2": {
+      "command": "uvx",
+      "args": ["--from", "bach-seo_api2", "bach_seo_api2"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-seo_api2": {
+      "command": "uvx",
+      "args": ["--from", "bach-seo_api2", "bach_seo_api2"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `domain_age_checker`
+
+Domain Age Checker
+
+**端点**: `GET /domain-age-checker`
+
+
+**参数**:
+
+- `domain` (string) *必需*: Example value: facebook.com
+
+
+
+---
+
+
+### `credit_card_validator`
+
+Credit Card Validator
+
+**端点**: `GET /credit-card-validator`
+
+
+**参数**:
+
+- `ccnumber` (number) *必需*: Example value: 4111111111111111
+
+- `card_type` (string): Example value: 
+
+
+
+---
+
+
+### `hosting_checker`
+
+Hosting Checker
+
+**端点**: `GET /hosting-checker`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: https://google.com
+
+
+
+---
+
+
+### `whois_domain_lookup`
+
+Whois Domain Lookup
+
+**端点**: `GET /whois-domain-lookup`
+
+
+**参数**:
+
+- `domain` (string) *必需*: Example value: facebook.com
+
+
+
+---
+
+
+### `keyword_density_checker`
+
+Keyword Density Checker
+
+**端点**: `GET /keyword-density-checker`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: https://google.com
+
+
+
+---
+
+
+### `whois_domain_lookup_deprecated`
+
+Whois Domain Lookup (Deprecated)
+
+**端点**: `GET /whois-domain-lookup/{domain_name}`
+
+
+**参数**:
+
+- `domain_name` (string) *必需*: Example value: facebook.com
+
+
+
+---
+
+
+### `keyword_rank_checker`
+
+Keyword Rank Checker
+
+**端点**: `GET /keyword-rank-checker`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: facebook.com
+
+- `keyword` (string) *必需*: Example value: facebook
+
+- `countryCode` (string): Two-letter country codes that can be used as values of the geo location parameter.
+
+- `language` (string): API supports more than 80 languages. The default language is English (en).
+
+- `pages` (string): How many pages should the search extend
+
+
+
+---
+
+
+### `wordpress_theme_detector`
+
+WordPress Theme Detector
+
+**端点**: `GET /wordpress-theme-detector`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: https://aprt.ourbetazone.com/
+
+
+
+---
+
+
+### `ssl_checker`
+
+SSL Checker
+
+**端点**: `GET /ssl-checker`
+
+
+**参数**:
+
+- `domain` (string) *必需*: Example value: google.com
+
+
+
+---
+
+
+### `redirect_checker`
+
+Redirect Checker
+
+**端点**: `GET /redirect-checker`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: example.com
+
+
+
+---
+
+
+### `adsense_calculator`
+
+Adsense Calculator
+
+**端点**: `GET /adsense-calculator`
+
+
+**参数**:
+
+- `impressions` (number) *必需*: Daily Page Impressions
+
+- `ctr` (number) *必需*: Click Through Rate (%)
+
+- `cpc` (number) *必需*: Cost Per Click ($)
+
+
+
+---
+
+
+### `domain_to_ip`
+
+Domain to IP
+
+**端点**: `GET /domain-to-ip`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: https://google.com
+
+
+
+---
+
+
+### `page_size_checker`
+
+Page Size Checker
+
+**端点**: `GET /page-size-checker`
+
+
+**参数**:
+
+- `url` (string): Example value: https://google.com
+
+
+
+---
+
+
+### `isp_checker`
+
+ISP Checker
+
+**端点**: `GET /isp-checker`
+
+
+**参数**:
+
+- `ip` (string): Example value: 8.8.8.8
+
+
+
+---
+
+
+### `serp_api`
+
+SERP API
+
+**端点**: `GET /serp-chekcer`
+
+
+**参数**:
+
+- `keyword` (string) *必需*: Example value: rapid api
+
+- `domain` (string): Example value: rapidapi.com
+
+- `country` (string): Example value: us
+
+- `language` (string): Example value: en
+
+- `pages` (number): Example value: 2
+
+
+
+---
+
+
+### `top_website_languages_report`
+
+Top Website Languages Report
+
+**端点**: `GET /www-reports/language`
+
+
+
+---
+
+
+### `top_web_technologies_report`
+
+Top Web Technologies (Programming Language, Web Servers, Databases, Frameworks, etc)
+
+**端点**: `GET /www-reports/tech`
+
+
+
+---
+
+
+### `top_websites_by_traffic_report`
+
+Top websites by traffic (Latest Report)
+
+**端点**: `GET /www-reports/websites`
+
+
+
+---
+
+
+### `top_tld_report`
+
+Top Top-Level Domains Report
+
+**端点**: `GET /www-reports/tld`
+
+
+
+---
+
+
+### `top_wp_themes_report`
+
+Most using WP themes Report
+
+**端点**: `GET /www-reports/theme`
+
+
+
+---
+
+
+### `top_hosting_services_report`
+
+Top, best and most popular Hosting Services and details in the world (Latest Report).
+
+**端点**: `GET /www-reports/isp`
+
+
+
+---
+
+
+### `top_cms_report`
+
+Top, best and most popular Content Management Systems and details in the world (Latest Report).
+
+**端点**: `GET /www-reports/cms`
+
+
+
+---
+
+
+### `broken_links_finder`
+
+Broken Links Finder
+
+**端点**: `GET /broken-links-finder`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: world.com
+
+- `page` (number): Example value: 1
+
+
+
+---
+
+
+### `link_analyzer`
+
+Link Analyzer
+
+**端点**: `GET /link-analyzer`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: https://world.com
+
+
+
+---
+
+
+### `keywords_suggestion_tool`
+
+Keywords Suggestion Tool
+
+**端点**: `GET /keywords-suggestion-tool`
+
+
+**参数**:
+
+- `query` (string) *必需*: Example value: laptop
+
+
+
+---
+
+
+### `credit_card_generator`
+
+Credit Card Generator
+
+**端点**: `GET /credit-card-generator`
+
+
+**参数**:
+
+- `card_type` (string) *必需*: Example value: 
+
+- `count` (number): Example value: 5
+
+
+
+---
+
+
+### `ip_geolocation_checker`
+
+IP Geolocation Checker
+
+**端点**: `GET /ip-geolocation-checker`
+
+
+**参数**:
+
+- `ip` (string) *必需*: Example value: 8.8.8.8
+
+
+
+---
+
+
+### `domain_age_checker_depreciated`
+
+Domain Age Checker
+
+**端点**: `GET /domain-age-checker/{domain_name}`
+
+
+**参数**:
+
+- `domain_name` (string) *必需*: Example value: google.com
+
+
+
+---
+
+
+### `meta_tags_analyzer`
+
+Meta Tags Analyzer
+
+**端点**: `GET /meta-tags-analyzer`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: facebook.com
+
+
+
+---
+
+
+### `open_graph_checker`
+
+Open Graph Checker
+
+**端点**: `GET /open-graph-checker`
+
+
+**参数**:
+
+- `url` (string) *必需*: Example value: facebook.com
+
+
+
+---
+
+
+### `get_http_headers`
+
+Get HTTP Headers
+
+**端点**: `GET /get-http-headers`
+
+
+**参数**:
+
+- `url` (string): Example value: aprt.ourbetazone.com
+
+
+
+---
+
+
+### `name_servers_checker`
+
+Name Servers Checker
+
+**端点**: `GET /name-servers-checker`
+
+
+**参数**:
+
+- `domain` (string) *必需*: Example value: google.com
+
+
+
+---
+
+
+### `dns_records_checker`
+
+DNS Records Checker
+
+**端点**: `GET /dns-records-checker`
+
+
+**参数**:
+
+- `domain` (string) *必需*: Example value: google.com
+
+- `record_type` (string) *必需*: Allowed Record Types: A AAAA CNAME NS SOA MX SRV TXT CAA NAPTR PTR HINFO A6
+
+
+
+---
+
+
+### `asn_checker`
+
+ASN Checker
+
+**端点**: `GET /asn-checker`
+
+
+**参数**:
+
+- `ip` (string) *必需*: Example value: 8.8.8.8
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
