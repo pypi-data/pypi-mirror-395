@@ -1,0 +1,21 @@
+@dp.temporary_view()
+def {{ target_view }}():
+    """{{ description }}"""
+    df = spark.read \
+        .format("jdbc") \
+        .option("url", "{{ jdbc_url|replace('\\', '\\\\')|replace('"', '\\"') }}") \
+        .option("user", "{{ jdbc_user|replace('\\', '\\\\')|replace('"', '\\"') }}") \
+        .option("password", "{{ jdbc_password|replace('\\', '\\\\')|replace('"', '\\"') }}") \
+        .option("driver", "{{ jdbc_driver|replace('\\', '\\\\')|replace('"', '\\"') }}") \
+{% if jdbc_query %}        .option("query", """{{ jdbc_query }}""") \
+{% elif jdbc_table %}        .option("dbtable", "{{ jdbc_table|replace('\\', '\\\\')|replace('"', '\\"') }}") \
+{% endif %}        .load()
+    {% if add_operational_metadata %}
+    
+    # Add operational metadata columns
+    {% for col_name, expression in metadata_columns.items()|sort %}
+    df = df.withColumn('{{ col_name }}', {{ expression }})
+    {% endfor %}
+    {% endif %}
+    
+    return df 

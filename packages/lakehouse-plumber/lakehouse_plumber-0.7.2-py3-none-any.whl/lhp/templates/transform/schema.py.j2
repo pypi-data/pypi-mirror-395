@@ -1,0 +1,49 @@
+@dp.temporary_view()
+def {{ target_view }}():
+    """{{ description }}"""
+    {% if readMode == "batch" %}
+    df = spark.read.table("{{ source_view }}")
+    {% else %}
+    df = spark.readStream.table("{{ source_view }}")
+    {% endif %}
+    
+    {% if column_mapping %}
+    # Apply column renaming
+    {% for old_name, new_name in column_mapping.items() %}
+    df = df.withColumnRenamed("{{ old_name }}", "{{ new_name }}")
+    {% endfor %}
+    {% endif %}
+    
+    {% if type_casting %}
+    # Apply type casting
+    {% for column, new_type in type_casting.items() %}
+    df = df.withColumn("{{ column }}", F.col("{{ column }}").cast("{{ new_type }}"))
+    {% endfor %}
+    {% endif %}
+    
+    {% if schema_enforcement == 'strict' %}
+    # Strict schema enforcement - select only specified columns
+    # Schema-defined columns (will fail if missing)
+    columns_to_select = [
+        {% for col in final_columns %}
+        "{{ col }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+    
+    {% if metadata_columns %}
+    # Add operational metadata columns only if they exist (optional)
+    available_columns = set(df.columns)
+    metadata_columns = [
+        {% for col in metadata_columns %}
+        "{{ col }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+    for meta_col in metadata_columns:
+        if meta_col in available_columns:
+            columns_to_select.append(meta_col)
+    {% endif %}
+    
+    df = df.select(*columns_to_select)
+    {% endif %}
+    
+    return df 
