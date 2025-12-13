@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openflexure-stitching"
+version = "0.2.2"
+license = "LGPL-3.0-or-later"
+authors = [
+  { name="Joe Knapper", email="joe.knapper@glasgow.ac.uk" },
+  { name="Richard Bowman", email="richard.bowman@glasgow.ac.uk" },
+  { name="Julian Stirling", email="julian@julianstirling.co.uk" },
+]
+description = "Stitch microscopy images together into large scans."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "camera-stage-mapping>=0.1.8",
+    "numpy",
+    "memory_profiler",
+    "pyvips~=3.0",
+    "piexif",
+    "pydantic~=2.10",
+    "matplotlib",
+    "psutil",
+    "scipy",
+]
+[project.optional-dependencies]
+
+libvips = ["pyvips-binary"]
+
+dev = [
+    "pylint~=3.3",
+    "pylint_pydantic~=0.3",
+    "pylint-gitlab~=2.0",
+    "pytest~=8.3",
+    "pytest-mock==3.14",
+    "ruff~=0.11",
+    "pytest-cov~=6.1",
+    "coverage~=7.8.0",
+    "pdoc",
+    "build",
+    "twine",
+    "mypy",
+    "types-psutil",
+    "types-Pillow",
+    "scipy-stubs",
+]
+
+[project.urls]
+"Homepage" = "https://gitlab.com/openflexure/openflexure-stitching"
+"Bug Tracker" = "https://gitlab.com/openflexure/openflexure-stitching/-/issues"
+
+[project.scripts]
+"openflexure-stitch" = "openflexure_stitching.__main__:load_tile_and_stitch_cli"
+
+
+[tool.ruff]
+target-version = "py311"
+line-length = 99
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+    "--cov=openflexure_stitching",
+    "--cov-report=term",
+    "--cov-report=xml:coverage.xml",
+    "--junitxml=report.xml",
+]
+
+[tool.mypy]
+python_version = "3.11"
+exclude = ["external"]
+
+[[tool.mypy.overrides]]
+module = [
+    "camera_stage_mapping.*",
+    "piexif",
+    "pyvips"
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["numpy-mypy"]
+follow_imports = "skip"
+follow_imports_for_stubs = true
