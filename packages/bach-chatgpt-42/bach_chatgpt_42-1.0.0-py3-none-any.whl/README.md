@@ -1,0 +1,360 @@
+# Chatgpt 42 MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Chatgpt 42 API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-chatgpt_42`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Chatgpt 42 API。
+
+- **PyPI 包名**: `bach-chatgpt_42`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-chatgpt_42
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-chatgpt_42 bach_chatgpt_42
+
+# 或指定版本
+uvx --from bach-chatgpt_42@latest bach_chatgpt_42
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-chatgpt_42
+
+# 运行（命令名使用下划线）
+bach_chatgpt_42
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-chatgpt_42": {
+      "command": "uvx",
+      "args": ["--from", "bach-chatgpt_42", "bach_chatgpt_42"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-chatgpt_42": {
+      "command": "uvx",
+      "args": ["--from", "bach-chatgpt_42", "bach_chatgpt_42"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `ai_to_human__ai_powered`
+
+AI to human ( AI powered)
+
+**端点**: `POST /aitohuman`
+
+
+
+---
+
+
+### `chat_open_ai_compatible`
+
+why not you explore the supported models yourself? 😉😉😉
+
+**端点**: `POST /chat`
+
+
+
+---
+
+
+### `gpt_4_based_chat_bot__fast_response__mata_g_20_ai`
+
+Enjoy GPT 4 at most affordable rate with web access
+
+**端点**: `POST /conversationgpt4`
+
+
+
+---
+
+
+### `gpt_4o`
+
+gpt 4o
+
+**端点**: `POST /gpt4o`
+
+
+
+---
+
+
+### `o3_mini`
+
+try o3mini
+
+**端点**: `POST /o3mini`
+
+
+
+---
+
+
+### `gpt_4o_powerful__accurate_and_real_time_information`
+
+Enjoy GPT4  at most affordable rate  This is an customized version of the GPT 4 with web access. Tone- Precise , Balanced , Creative
+
+**端点**: `POST /gpt4`
+
+
+
+---
+
+
+### `vision__chat_ai___mata_g`
+
+more Vision API on https://rapidapi.com/rphrp1985/api/chatgpt-vision1  access Chat bot with vision capabilities
+
+**端点**: `POST /matagvision`
+
+
+
+---
+
+
+### `llama_33_70b_instruct`
+
+Llama 3 at most affordable price
+
+**端点**: `POST /conversationllama3`
+
+
+
+---
+
+
+### `chatgpt_35`
+
+ChatGPT 3.5
+
+**端点**: `POST /chatgpt`
+
+
+
+---
+
+
+### `deepseek_r1_hosted_in_usa`
+
+Try the new DeepSeek R1 model
+
+**端点**: `POST /deepseekai`
+
+
+
+---
+
+
+### `text_to_image_fast_and_best_results_copy`
+
+TEXT TO IMAGE v3
+
+**端点**: `POST /texttoimage3`
+
+
+
+---
+
+
+### `ping_test`
+
+ping
+
+**端点**: `GET /`
+
+
+
+---
+
+
+### `gpt_4_based_chat_bot__fast_response__mata_g_21_ai`
+
+Enjoy GPT 4 based chatbot at most affordable rate with web access
+
+**端点**: `POST /conversationgpt4-2`
+
+
+
+---
+
+
+### `gpt_4_based_chatbot__mata_g_20_ai_powerful__accurate_with_real_time_data`
+
+Try Our Most Powerful Model with Vision and Image generation support(powered by GPT4).  Just Ask AI to generate image. It will generate image based on conversation. To discuss about image, just paste image link in \
+
+**端点**: `POST /matag2`
+
+
+
+---
+
+
+### `get_bot_details`
+
+GET BOT DETAILS
+
+**端点**: `POST /getbotdetails`
+
+
+
+---
+
+
+### `chat`
+
+select a bot from https://prlabsapi.com/assistants?red=rapidapi get bot id from website and paste here to use the chatbot Note : user id is required for private bots available models : 'matag2.1','matag2.0','matag1.0', llama2-70b, gpt 3.5
+
+**端点**: `POST /chatbotapi`
+
+
+
+---
+
+
+### `whisper_v3`
+
+Powerful and affordable speech recognition.
+
+**端点**: `POST /whisperv3`
+
+
+
+---
+
+
+### `dalle_based_model_for_high_quality_image_generation`
+
+Try Our most powerful Image Model
+
+**端点**: `POST /texttoimage`
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
