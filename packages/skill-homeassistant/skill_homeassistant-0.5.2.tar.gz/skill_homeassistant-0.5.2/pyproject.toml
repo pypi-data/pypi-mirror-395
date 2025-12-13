@@ -1,0 +1,91 @@
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "skill-homeassistant"
+version = "0.5.2"
+description = "A unified OVOS/Neon.AI Skill for Home Assistant."
+authors = ["Mike Gray <mike@oscillatelabs.net>"]
+readme = "README.md"
+license = "Apache-2.0"
+include = ["skill_homeassistant/locale/*"]
+keywords = [
+    "ovos",
+    "neon",
+    "home",
+    "assistant",
+    "voice",
+    "interface",
+    "skill",
+    "plugin",
+]
+
+[tool.poetry.extras]
+test = ["neon-minerva"]
+
+[tool.poetry.dependencies]
+python = "^3.9,<4.0"
+ovos-bus-client = ">=0.0.8"
+ovos-workshop = ">=0.0.15"
+setuptools = "^80.9.0"
+ovos-plugin-manager = ">=0.0.23"
+ovos-utils = ">=0.0.27"
+ovos-config = ">=0.0.5"
+ovos-phal-plugin-oauth = ">=0.0.3"
+nested-lookup = ">=0.2,<1.0"
+webcolors = ">=24.11.1"
+urllib3 = ">=2.6.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pylint = "*"
+flake8 = "*"
+pydocstyle = "*"
+pycodestyle = "*"
+black = "*"
+mypy = "*"
+bandit = "*"
+types-pyyaml = "*"
+ovos-utils = { version = "*", allow-prereleases = true }
+padacioso = { version = "*", allow-prereleases = true }
+adapt-parser = { git = "https://github.com/mycroftai/adapt" }
+poethepoet = "^0.37.0"
+pytest-cov = "^6.2.1"
+toml = "^0.10.2"
+mock = "^5.2.0"
+
+[tool.ruff]
+line-length = 119
+
+[tool.black]
+line-length = 119
+
+[tool.mypy]
+exclude = ["test"]
+
+[tool.isort]
+profile = "black"
+
+[tool.poe.tasks.test]
+help = "Run the test suite"
+cmd = "pytest --cov=skill_homeassistant --cov-report term-missing --cov-report xml --junitxml=tests/unit-test-results.xml -vv test/"
+
+[tool.poe.tasks.format]
+help = "Run code formatters"
+shell = "black --line-length=119 skill_homeassistant && isort --overwrite-in-place skill_homeassistant"
+
+[tool.poetry.scripts]
+"neon-homeassistant-skill" = "skill_homeassistant:HomeAssistantSkill"
+
+[tool.poetry.plugins."ovos.plugin.skill"]
+"skill_homeassistant.oscillatelabsllc" = "skill_homeassistant:HomeAssistantSkill"
+
+[tool.pylint.messages_control]
+disable = [
+    "W0718", # broad-except
+    "C0415", # import-outside-toplevel
+]
+
+[tool.coverage.run]
+relative_files = true
