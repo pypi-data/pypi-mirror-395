@@ -1,0 +1,68 @@
+version: '{build}'
+
+image:
+  - Ubuntu2204
+  - macOS
+
+configuration: Release
+
+platform:
+  - x64
+
+# Do not build feature branch with open Pull Requests.
+# Note that a feature branch build may still occur on the first push to
+# the branch -- see
+# https://help.appveyor.com/discussions/questions/18437-skip_branch_with_pr-setting-doesnt-work
+skip_branch_with_pr: true
+
+for:
+-
+  matrix:
+    only:
+      - image: macOS
+  install:
+    - curl -Ls https://micro.mamba.pm/api/micromamba/osx-64/latest | tar -xvj bin/micromamba
+    - mv bin/micromamba ./micromamba
+-
+  matrix:
+    only:
+      - image: Ubuntu2204
+  install:
+    - curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    - mv bin/micromamba ./micromamba
+
+build_script:
+  # Diagnostics
+  - echo $PLATFORM
+  - echo $APPVEYOR_BUILD_WORKER_IMAGE
+  - echo $APPVEYOR_BUILD_FOLDER
+  - uname -a
+  - pwd
+  - ls
+
+  # Set up micromamba
+  - ./micromamba shell init -s bash --root-prefix ~/micromamba
+  - source ~/.bashrc
+  - source ~/.profile
+  - hash -r
+  - mkdir -p ~/micromamba/pkgs/
+  - export MAMBA_ROOT_PREFIX=~/micromamba
+  - export MAMBA_EXE=$(pwd)/micromamba
+  - . $MAMBA_ROOT_PREFIX/etc/profile.d/mamba.sh
+
+  # Create environment from build folder environment.yml and install xcube
+  - micromamba create --name ect --file $APPVEYOR_BUILD_FOLDER/environment.yml
+  - micromamba activate ect
+  - cd $APPVEYOR_BUILD_FOLDER
+  - pip install --no-deps .
+
+  # Make sure pytest is installed
+  - micromamba install --yes --name ect --channel conda-forge pytest attrs
+
+  # Print some diagnostics (useful for debugging)
+  - git status
+  - micromamba list
+  - python -c "from esa_climate_toolbox import __version__; print(f'ESA CCI Toolbox version {__version__}')"
+
+  # Run the test suite
+  - pytest -v --cov=esa_climate_toolbox
