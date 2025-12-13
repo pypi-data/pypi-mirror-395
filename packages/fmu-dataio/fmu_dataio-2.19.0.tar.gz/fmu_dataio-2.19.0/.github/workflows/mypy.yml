@@ -1,0 +1,50 @@
+name: Mypy
+
+on:
+  pull_request:
+    branches: [main]
+  schedule: 
+     - cron: "0 0 * * *" 
+
+
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up python
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dev-env.
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            uv sync --all-extras --upgrade
+          else
+            uv sync --all-extras --frozen
+          fi
+
+      # Install repos from their Github main branches instead of Pypi.
+      # This removes the need to manually pin these version of the repos
+      # during the development phase.
+
+      - name: Install fmu-datamodels
+        run: |
+          uv pip install \
+            "fmu-datamodels @ git+https://github.com/equinor/fmu-datamodels.git"
+
+      - name: Mypy
+        run: |
+          uv run mypy .
