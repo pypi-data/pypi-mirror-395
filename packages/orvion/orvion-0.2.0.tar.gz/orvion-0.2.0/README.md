@@ -1,0 +1,289 @@
+# Orvion Python SDK
+
+Python SDK for integrating x402 payment-protected APIs with Orvion.
+
+## Installation
+
+```bash
+pip install orvion
+
+# With FastAPI support
+pip install orvion[fastapi]
+```
+
+## Quick Start
+
+### FastAPI Integration
+
+```python
+import os
+from fastapi import FastAPI, Request
+from orvion.fastapi import OrvionMiddleware, require_payment
+
+app = FastAPI()
+
+# Initialize Orvion middleware
+app.add_middleware(
+    OrvionMiddleware,
+    api_key=os.environ["ORVION_API_KEY"],
+)
+
+# Protect an endpoint with payment requirement
+@app.get("/api/premium/data")
+@require_payment()  # Uses price from dashboard
+async def premium_data(request: Request):
+    # Access payment info
+    payment = request.state.payment
+    return {
+        "data": "Premium content!",
+        "paid": payment.amount,
+        "transaction_id": payment.transaction_id,
+    }
+
+# Override price in code
+@app.get("/api/reports/generate")
+@require_payment(amount="5.00", currency="USD")
+async def generate_report(request: Request):
+    return {"report": "..."}
+
+# Require customer identification (no anonymous access)
+@app.get("/api/ai/chat")
+@require_payment(allow_anonymous=False)
+async def ai_chat(request: Request):
+    customer_id = request.state.payment.customer_ref
+    return {"response": "..."}
+```
+
+### Standalone Client
+
+```python
+from orvion import OrvionClient
+
+client = OrvionClient(api_key="your_api_key")
+
+# Create a charge
+charge = await client.create_charge(
+    amount="0.10",
+    currency="USD",
+    customer_ref="user_123",
+    resource_ref="protected_route:abc-123",
+)
+
+print(f"Charge ID: {charge.id}")
+print(f"Payment URL: {charge.x402_requirements}")
+
+# Verify a payment
+result = await client.verify_charge(
+    transaction_id="tx_abc123",
+    resource_ref="protected_route:abc-123",
+)
+
+if result.verified:
+    print("Payment verified!")
+```
+
+## Configuration
+
+### Environment Variables
+
+- `ORVION_API_KEY` - Your Orvion API key
+- `ORVION_BASE_URL` - API base URL (default: https://api.orvion.sh)
+
+### Middleware Options
+
+```python
+app.add_middleware(
+    OrvionMiddleware,
+    api_key="your_api_key",
+    base_url="https://api.orvion.sh",  # Custom API URL
+    cache_ttl_seconds=60,  # Route config cache TTL
+    transaction_header="X-Transaction-Id",  # Custom header name
+    customer_header="X-Customer-Id",  # Custom header name
+)
+```
+
+### Decorator Options
+
+```python
+@require_payment(
+    amount="0.10",  # Override dashboard price
+    currency="USD",
+    allow_anonymous=False,  # Require customer identification
+    customer_resolver=lambda req: req.state.user.id,  # Custom customer ID extraction
+    hosted_checkout=True,  # Enable hosted checkout mode (redirects to pay.orvion.sh)
+)
+```
+
+### Hosted Checkout Mode
+
+For web applications, use hosted checkout mode for a seamless payment experience:
+
+```python
+# API endpoint - protected with payment
+@app.get("/api/premium")
+@require_payment(
+    amount="1.00",
+    currency="USDC",
+    hosted_checkout=True,  # Just add this!
+)
+async def premium_api(request: Request):
+    return {"message": "Premium content!"}
+
+# Frontend page - serves the UI
+@app.get("/premium")
+async def premium_page():
+    return FileResponse("static/premium.html")
+```
+
+**Automatic URL Convention**: The SDK strips `/api` prefix automatically:
+- API at `/api/premium` → Frontend at `/premium`
+- After payment, users are redirected to `/premium?charge_id=xxx&status=succeeded`
+- No `return_url` configuration needed!
+
+## Testing
+
+The SDK includes comprehensive testing utilities and is fully tested with pytest.
+
+### Testing Utilities
+
+```python
+from orvion.testing import mock_orvion, fake_payment
+
+# Mock all Orvion calls
+with mock_orvion(always_approve=True):
+    response = client.get("/api/premium/data")
+    assert response.status_code == 200
+
+# Create fake payment for testing
+request.state.payment = fake_payment(
+    amount="0.10",
+    currency="USD",
+    transaction_id="test_tx_123",
+)
+```
+
+### Running Tests
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev,fastapi]"
+
+# Run all tests
+pytest
+
+# Run tests with coverage
+pytest --cov=orvion --cov-report=html
+
+# Run specific test categories
+pytest tests/unit/          # Unit tests only
+pytest tests/integration/   # Integration tests only
+pytest tests/e2e/          # E2E tests (requires ORVION_STAGING_API_KEY)
+
+# Run with linting and type checking
+ruff check orvion tests
+mypy orvion
+```
+
+### Test Structure
+
+The SDK uses a three-layer testing approach:
+
+- **Unit Tests** (`tests/unit/`) - Pure logic tests for matcher, cache, and models
+- **Integration Tests** (`tests/integration/`) - HTTP mocking with respx for client and middleware
+- **E2E Tests** (`tests/e2e/`) - Smoke tests against staging API
+
+### HTTP Mocking with RESPX
+
+The SDK uses [respx](https://github.com/lundberg/respx) for HTTP mocking in integration tests:
+
+```python
+import respx
+from httpx import Response
+
+# Mock API endpoints
+with respx.mock(base_url="https://api.orvion.sh") as mock:
+    mock.post("/v1/charges").mock(
+        return_value=Response(
+            200,
+            json={
+                "id": "custom_charge",
+                "amount": "1.00",
+                "currency": "USD",
+                "status": "pending",
+            },
+        )
+    )
+    
+    charge = await client.create_charge(amount="1.00", currency="USD")
+    assert charge.id == "custom_charge"
+```
+
+### FastAPI Middleware Testing
+
+Test FastAPI middleware with TestClient:
+
+```python
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from orvion.fastapi import OrvionMiddleware, require_payment
+
+app = FastAPI()
+app.add_middleware(OrvionMiddleware, api_key="test_key")
+
+@app.get("/api/premium/data")
+@require_payment()
+async def premium_data(request: Request):
+    return {"data": "premium", "payment": request.state.payment}
+
+# Test
+client = TestClient(app)
+response = client.get(
+    "/api/premium/data",
+    headers={"X-Payment-Transaction": "valid_tx_123"}
+)
+assert response.status_code == 200
+assert response.json()["payment"] is not None
+```
+
+### Telemetry
+
+Opt-in telemetry is available for monitoring SDK usage:
+
+```python
+from orvion import OrvionClient
+from orvion.telemetry import TelemetryConfig
+
+client = OrvionClient(
+    api_key="your_key",
+    telemetry=TelemetryConfig(
+        enabled=True,
+        service_name="my-app",
+        service_version="1.0.0",
+    ),
+)
+```
+
+**Privacy**: Telemetry is opt-in and never collects PII (no customer refs, transaction IDs, or amounts).
+
+### Code Quality
+
+The SDK maintains high code quality standards:
+
+```bash
+# Format code
+black orvion tests
+
+# Sort imports
+isort orvion tests
+
+# Type checking
+mypy orvion
+
+# Linting
+ruff check orvion tests
+```
+
+## License
+
+MIT
+

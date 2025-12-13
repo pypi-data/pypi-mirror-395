@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orvion"
+version = "0.2.0"
+description = "Orvion SDK for x402 payment-protected APIs"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Orvion", email = "support@orvion.sh"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["orvion", "x402", "payments", "api", "fastapi", "middleware"]
+
+dependencies = [
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+fastapi = [
+    "fastapi>=0.100.0",
+    "starlette>=0.27.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-httpx>=0.22.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "respx>=0.20.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "orvion[fastapi,dev]",
+]
+
+[project.urls]
+Homepage = "https://orvion.sh"
+Documentation = "https://orvion.sh/docs"
+Repository = "https://github.com/ekinburak/agent-pay"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["orvion*"]
+
+[tool.black]
+line-length = 120
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "e2e: marks tests as end-to-end (deselect with '-m \"not e2e\"')",
+]
+
+[tool.coverage.run]
+source = ["orvion"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
