@@ -1,0 +1,53 @@
+[build-system]
+requires = [ "poetry-core",]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "scaffoldry"
+version = "0.0.1a3"
+description = "Package to generate projects"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [ "pydantic==2.12.5", "jinja2==3.1.6", "typer==0.20.0", "pre_commit==4.5.0",]
+[[project.authors]]
+name = "Carlos Bustamante Garres"
+email = "c.bustamante.garres@gmail.com"
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+dev = [ "black==25.11.0", "isort==7.0.0", "pytest==9.0.2", "mypy==1.19.0", "wemake-python-styleguide==1.4.0", "poetry==2.2.1", "pytest_cov==7.0.0",]
+
+[project.scripts]
+scaffoldry = "scaffoldry.main:main"
+
+[project.urls]
+Homepage = "https://github.com/cabuga/scaffoldry"
+
+[tool.poetry]
+[[tool.poetry.packages]]
+include = "scaffoldry"
+from = "src"
+
+[tool.black]
+line-length = 80
+target-version = [ "py310",]
+include = "src/"
+extend-exclude = "(\n    .*.j2\n  | .*.pyc\n)\n"
+
+[tool.isort]
+profile = "black"
+src_paths = [ "src",]
+line_length = 80
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = [ "scaffoldry",]
+
+[tool.pytest.ini_options]
+testpaths = [ "tests",]
+pythonpath = [ "src",]
+addopts = "--cov=src --cov-report=term-missing --cov-fail-under=80 -q"
+python_files = "test_*.py"

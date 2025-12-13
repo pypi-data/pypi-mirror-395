@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -e
+
+# Save original working directory
+ORIG_DIR=$(pwd)
+
+# Determine project root (folder containing this script)
+PROJECT_ROOT=$(dirname "$(realpath "$0")")/..
+
+cd "$PROJECT_ROOT"
+
+# Track failures
+FAIL=0
+
+echo "Running flake8 on src/..."
+flake8 src/ || FAIL=1
+
+echo "Running mypy on src/..."
+mypy src/ || FAIL=1
+
+echo "Running black --check on src/..."
+black --check src/ || FAIL=1
+
+# Check if tests folder contains any .py files
+if [ -n "$(find tests -maxdepth 1 -name '*.py' -print -quit)" ]; then
+    echo "Running pytest..."
+    pytest tests/ -cov=src --cov-report=html --cov-fail-under=80 -q || FAIL=1
+    coverage html -d tmp/html_cov
+else
+    echo "No tests found, skipping pytest."
+fi
+
+# Return to original directory
+cd "$ORIG_DIR"
+
+if [ $FAIL -eq 0 ]; then
+    echo "All checks passed! ✅ OK"
+else
+    echo "One or more checks failed. ❌"
+    exit 1
+fi
+
