@@ -1,0 +1,2888 @@
+# Consigne d’annotation
+Vous devez identifier et annoter dans les segments de texte ci-dessous toutes les séquences de mots (ou « spans ») faisant référence à des entités d’intérêt pour la veille sanitaire de défense (par exemple : maladies, agents pathogènes, substances dangereuses, lieux, dates, etc.).
+
+Chaque entité doit être associée à l'une et une seule des étiquettes suivantes :
+{%- set labels=[] -%}
+{%- for l in parameters.candidate_labels.values() -%}
+  {%- do labels.append('"' + l + '"') -%}
+{%- endfor -%}
+{{ labels|join(', ') }}
+
+## Contraintes :
+Les entités ne doivent pas être imbriquées.
+
+Si plusieurs étiquettes sont possibles, choisissez l’étiquette la plus plausible pour le span le plus long possible.
+
+Ne pas annoter les termes trop génériques ou ambigus (cf. définitions).
+
+Respecter les définitions suivantes pour chaque étiquette.
+
+## Définitions des étiquettes
+<definitions>
+Maladies, agents pathogènes
+Pour cette campagne d’annotation, cinq libellés de maladies et agents pathogènes ont été définis :
+
+INF_DISEASE : maladies infectieuses humaines, animales ou végétales, c’est-à-dire toutes les
+maladies provoquées par la pénétration dans un organisme d'un agent infectieux (bactérie, virus,
+parasite, prion ou champignon).
+
+NON_INF_DISEASE : maladies humaines, animales ou végétales, à l’exception des maladies
+infectieuses.
+
+PATHOGEN : bactérie, virus, parasite, prion ou champignon pouvant être à l’origine d’une maladie
+infectieuse. Les termes génériques « bactérie », « virus », « parasite », « prion », « levure »,
+« champignon », etc., sans aucune précision, ne sont pas annotés.
+
+DIS_REF_TO_PATH : nom de maladie infectieuse utilisé pour désigner un agent pathogène. Par
+exemple, dans la phrase « de nombreux parasites tels que le paludisme », le terme « paludisme »
+fait référence aux parasites Plasmodium spp. et doit être annoté comme « DIS_REF_TO_PATH ».
+
+PATH_REF_TO_DIS : nom d’agent pathogène utilisé pour désigner une maladie infectieuse. Par
+exemple, dans la phrase « le nombre de cas de VIH est en augmentation », le terme « VIH » est
+utilisé pour désigner une maladie, l’infection à VIH, et doit être annoté « PATH_REF_TO_DIS ».
+
+Agents NRBCE et toxines
+Les agents NRBCE et les toxines sont regroupés en quatre catégories :
+
+RADIOISOTOPE : forme instable d'un élément qui émet des rayonnements (ex : césium-137). Les
+familles d’éléments incluant uniquement des isotopes instables sont également à annoter, même
+si le numéro atomique de l’élément en question n’est pas précisé (ex : uranium, polonium, etc.).
+
+TOXIC_C_AGENT : tout agent chimique non organique, toxique pour les humains, animaux ou
+plantes.
+
+EXPLOSIVE : toute substance explosive.
+
+BIO_TOXIN : substance chimique organique toxique pour une ou plusieurs espèces vivantes.
+
+Lieux, entités géopolitiques et organisations
+Il y a quatre libellés dans cette catégorie :
+
+LOCATION : zone géographique nommée (continent, pays, région, ville, quartier, rue, montagne,
+rivière, mer, etc.). Les zones sont dépourvues de toute intention. Si une action volontaire ou une
+déclaration peut être rattachée à un lieu, celui-ci doit être annoté comme organisation (cf.
+LOC_REF_TO_ORG).
+
+ORGANIZATION : organisme juridique ou social – à l’exception des pays, régions, départements,
+préfectures, communes, etc. – pouvant être identifié sans contexte (ex : institution, entreprise,
+agence, organisation non gouvernementale, parti politique, armée, gouvernement, etc.). Par
+exemple, les séquences « Tribunal judiciaire de Paris », « hôpital Georges Pompidou » et
+« gouvernement français » doivent être annotées comme « ORGANIZATION ».
+
+LOC_REF_TO_ORG : organisation désignée uniquement par un nom de lieu. Par exemple, dans
+la phrase « Paris a décidé de faire construire un nouveau métro », « Paris » est annoté comme
+« LOC_REF_TO_ORG » car on aurait pu remplacer le terme par « la mairie de Paris ».
+
+ORG_REF_TO_LOC : nom d’organisation utilisé pour désigner la zone géographique sur laquelle
+elle est implantée. Dans le texte : « des fumées toxiques s’échappent de la centrale nucléaire de
+Tchernobyl », le segment « centrale nucléaire de Tchernobyl » sera annoté comme
+« ORG_REF_TO_LOC ».
+
+Dates
+Il y a six libellés dans cette catégorie :
+
+ABS_DATE (date absolue) : référence à un jour donné, pouvant être interprétée sans contexte.
+L’année doit être précisée. Par exemple : « 8 janvier 2015 ».
+
+REL_DATE (date relative) : référence à un jour donné, mais nécessitant un contexte pour être
+interprétée. Par exemple : « hier », « lundi dernier », « 8 janvier ».
+
+DOC_DATE (date du document) : la date de publication ou de mise à jour du document. Elle peut
+être absolue ou relative.
+
+ABS_PERIOD (période absolue) : expression indiquant une plage temporelle supérieure à un jour,
+pouvant être interprétée sans contexte. Les années doivent être précisées ou implicites. Par
+exemple « mars 2024 », « du 1er au 3 mai 2024 », « semaine 51 de 2020 », « 20ème siècle ».
+
+REL_PERIOD (période relative) : expression indiquant une plage temporelle supérieure à un jour,
+délimitée dans le temps (début et fin de période identifiable), mais nécessitant un contexte pour
+être interprétée. Par exemple : « mars prochain », les « 3 derniers jours », « du 10 au 20 mai », la
+« semaine dernière ».
+
+FUZZY_PERIOD (période floue) : expression indiquant une plage temporelle supérieure à un jour
+dont les limites ne sont pas clairement précisées et nécessitant un contexte pour être interprétée.
+Par exemple : à la « fin de la semaine », « depuis plusieurs semaines », au « début du mois »,
+« ces dernières années », « depuis 3 ou 4 mois », etc.
+</definitions>
+
+## Exemples annotés
+<examples>
+<example>
+Input:
+<segment id="0-0">fr.euronews.com
+À vendre : uranium 238, 200 millions d'euros
+~1 minute
+
+
+En Géorgie, 6 hommes ont été arrêtés après avoir voulu vendre de l’uranium 238. Ils pensaient pouvoir le mettre en vente au prix de 200 millions de dollars et risquent aujourd’hui 10 ans de prison.
+L’uranium 238 sert notamment à fabriquer du plutonium 239, capable de libérer une énorme quantité d‘énergie lors de la fission nucléaire.
+Ces dernières années, les pays du Caucase multiplient les arrestations d’individus impliqués dans des trafics de matières radioactives.</segment>
+Output:
+<segment id="0-0">
+RADIOISOTOPE:plutonium 239|uranium 238|uranium 238|uranium 238
+LOCATION:Géorgie|Caucase
+FUZZY_PERIOD:Ces dernières années
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-0">Botulisme : cinq personnes en réanimation pour une suspicion de botulisme en Indre-et-Loire, des bocaux de pesto à l’ail des ours mis en cause
+
+Le Monde
+Publié le 10 septembre 2024 à 10h25, modifié le 10 septembre 2024 à 20h06
+
+Près de 600 produits de la marque Ô Ptits Oignons, qui ont été vendus lors de quatre événements en 2024, sont cherchés dans toute la France. « Les personnes qui [les] ont achetés doivent les jeter, les détruire », a déclaré le préfet.</segment>
+Output:
+<segment id="1-0">
+ORGANIZATION:Ô Ptits Oignons
+NON_INF_DISEASE:Botulisme|botulisme
+LOCATION:Indre-et-Loire|France
+DOC_SOURCE:Le Monde
+DOC_DATE:10 septembre 2024|10 septembre 2024
+ABS_PERIOD:2024
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-1">Cinq personnes sont en réanimation au centre hospitalier de Tours pour une suspicion de botulisme, a annoncé Patrice Latron, le préfet d’Indre-et-Loire, lors d’un point presse, mardi 10 septembre. Une enquête judiciaire a été ouverte.
+
+« Deux couples se sont présentés aux urgences samedi » et une cinquième personne, dimanche, après avoir participé à un même « repas d’anniversaire », a précisé le préfet lors d’un point presse. Les patients, tous majeurs, « sont actuellement en réanimation, conscients, intubés, ventilés » au centre hospitalier de Tours, a détaillé le préfet.</segment>
+Output:
+<segment id="1-1">
+REL_DATE:mardi 10 septembre|dimanche|samedi
+ORG_REF_TO_LOC:centre hospitalier de Tours|centre hospitalier de Tours
+NON_INF_DISEASE:botulisme
+LOC_REF_TO_ORG:Indre-et-Loire
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-2">« Sur la base d’indices convergents », les autorités sanitaires suspectent des cas de botulisme liés à l’ingestion « d’un produit [de la marque] Ô p’tits Oignons, qui est un pesto à l’ail des ours, produit en Touraine », selon le préfet. Ce produit artisanal est « fortement suspecté d’être à l’origine de cette contamination », qui peut être mortelle, a-t-il souligné.
+
+La priorité est désormais de « valider scientifiquement l’hypothèse du botulisme et puis de leur assurer le meilleur traitement possible » ainsi que de faire de « la prévention pour éviter que d’autres personnes ne consomment le produit » suspecté.</segment>
+Output:
+<segment id="1-2">
+ORGANIZATION:Ô p’tits Oignons
+NON_INF_DISEASE:botulisme|botulisme
+LOCATION:Touraine
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-3">« Ce sont six cents bocaux que nous cherchons » sur toute la France, et « les personnes qui [les] ont achetés doivent les jeter, les détruire », a-t-il estimé.
+Alerte donnée au niveau national
+
+Ils ont été vendus lors de quatre événements : la « Fête des Plantes et du Printemps » au château de la Bourdaisière à Montlouis-sur-Loire fin mars, la Fête « Nature en fête » au château de Cangé à Saint-Avertin mi-avril, la « Foire à l’ail et au basilic » à Tours fin juillet et au « Festival de la tomate et des saveurs » au château de la Bourdaisière à Montlouis-sur-Loire, qui s’est tenue samedi et dimanche, a-t-il dit.</segment>
+Output:
+<segment id="1-3">
+REL_DATE:dimanche|samedi
+LOCATION:château de la Bourdaisière|château de la Bourdaisière|Montlouis-sur-Loire|Montlouis-sur-Loire|château de Cangé|Saint-Avertin|France|Tours
+FUZZY_PERIOD:fin juillet|fin mars|mi-avril
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-4">« Le délai d’incubation de cette toxine est entre 4 heures et 8 jours », a-t-il rappelé, voulant « rassurer les personnes qui ont consommé ce produit il y a plusieurs semaines ».
+
+Si les points de vente sont localisés au sein d’une même région, l’alerte a été donnée « immédiatement au niveau national avec un relais au niveau des ministères de la santé et de l’agriculture », selon le directeur de la santé publique pour l’Agence régionale de santé (ARS) du Centre-Val de Loire, Jean-Christophe Comboroure, lors de la même conférence de presse.</segment>
+Output:
+<segment id="1-4">
+ORGANIZATION:Agence régionale de santé (ARS) du Centre-Val de Loire|ARS) du Centre-Val de Loire
+FUZZY_PERIOD:il y a plusieurs semaines
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-5">Quelque 30 % des bocaux ont été vendus par carte bleue et une équipe d’enquêteurs « sont en train de rechercher tous les clients et de les contacter », a signalé la directrice départementale de la protection des populations (DDPP) d’Indre-et-Loire, Carine Bar.
+
+D’après M. Latron, une « enquête alimentaire » a « immédiatement été diligentée » entre l’ARS du Centre-Val de Loire, et les services de la DDPP. Elle est doublée d’une enquête judiciaire, a-t-il confirmé.</segment>
+Output:
+<segment id="1-5">
+ORGANIZATION:ARS du Centre-Val de Loire
+LOC_REF_TO_ORG:Indre-et-Loire
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-6">Cette « enquête pénale », confiée à la direction interdépartementale de la police nationale et la DDPP, retient « pour le moment » l’infraction de « blessures involontaires par personne morale suivies d’une incapacité supérieure à trois mois », selon la procureure de la République de Tours, Catherine Sorita-Minard. Aucune garde à vue n’a été effectuée, précise-t-elle, ajoutant que « les analyses se poursuivent » en vue de confirmer ou d’infirmer les suspicions de botulisme.
+Affection rare et grave
+
+Sur sa page Facebook, le producteur mis en cause s’est dit « sincèrement désolé » de cette situation.</segment>
+Output:
+<segment id="1-6">
+ORGANIZATION:direction interdépartementale de la police nationale
+NON_INF_DISEASE:botulisme
+LOC_REF_TO_ORG:Tours
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-7">« A la suite d’un cas de botulisme, le pesto à l’ail des ours que je produis est peut-être en cause (…). Actuellement, ce n’est pas confirmé mais une forte suspicion » existe, a-t-il écrit.
+
+Le botulisme est une affection neurologique rare et grave, mortelle dans 5 % à 10 % des cas, provoquée par une toxine très puissante produite par une bactérie qui se développe notamment dans les aliments mal conservés, faute de stérilisation suffisante.</segment>
+Output:
+<segment id="1-7">
+NON_INF_DISEASE:botulisme|botulisme
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-8">Elle engendre des problèmes oculaires (vision double), un défaut de déglutition et, dans les formes avancées, une paralysie des muscles, notamment respiratoires, qui peut conduire au décès.
+
+En septembre 2023, seize clients, dont une femme qui en est morte, ont été identifiés comme « cas suspects de botulisme » après avoir mangé des sardines en conserve de fabrication artisanale dans un restaurant touristique du centre de Bordeaux. En France, le botulisme est rare : l’incidence moyenne s’est stabilisée depuis 1980 autour de 20-30 foyers par an, impliquant, le plus souvent chacun, un à trois malades.</segment>
+Output:
+<segment id="1-8">
+REL_PERIOD:depuis 1980
+NON_INF_DISEASE:botulisme|botulisme
+LOCATION:Bordeaux|France
+ABS_PERIOD:septembre 2023
+</segment>
+</example>
+<example>
+Input:
+<segment id="1-9">D’après des données de l’Agence nationale de santé publique, Santé publique France (SPF), datant de 2017, le taux d’incidence national est faible, s’élevant à 0,08 par million d’habitants. La maladie peut s’avérer grave lorsqu’elle n’est pas traitée à temps, et dans 5 % à 10 % des cas elle est mortelle, selon l’Organisation mondiale de la santé (OMS). L’affection est provoquée par une toxine, qui agit sur le système nerveux, produite par la bactérie Clostridium botulinum, explique SPF.</segment>
+Output:
+<segment id="1-9">
+PATHOGEN:Clostridium botulinum
+ORGANIZATION:Agence nationale de santé publique|Organisation mondiale de la santé|Santé publique France|SPF|OMS|SPF
+ABS_PERIOD:2017
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-0">Cachotteries et soupçons autour du nuage radioactif russe
+Le Temps
+4–5 minutes
+
+Publié le 21 novembre 2017 à 20:54. / Modifié le 10 juin 2023 à 15:24.
+Après plusieurs semaines de déni, la Russie reconnaît à demimot être à l’origine de la pollution radioactive détectée dans toute l’Europe. Mais continue à dissimuler la source et la raison exacte de cette fuite de ruthénium-106, un isotope qui n’existe pas dans la nature.</segment>
+Output:
+<segment id="2-0">
+RADIOISOTOPE:ruthénium-106
+LOC_REF_TO_ORG:Russie
+LOCATION:Europe
+DOC_SOURCE:Le Temps
+DOC_DATE:21 novembre 2017|10 juin 2023
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-1">Le service fédéral de météorologie (Rosgidromet) l’a admis lundi à travers une carte de la pollution, où le pic (près de 1000 fois la norme autorisée) se trouve dans le sud de l’Oural, au niveau de la ville d’Argaïach. Or, cette petite ville se trouve à une trentaine de kilomètres du site de retraitement nucléaire Mayak, de sinistre mémoire.
+L’explosion en 1957 d’un entrepôt de plutonium militaire avait lourdement contaminé l’environnement, causé 266 décès et entraîné l’évacuation de 10 000 personnes. Resté secret jusqu’en 1991, il est classé comme le troisième plus grave accident de l’histoire nucléaire après Tchernobyl et Fukushima.</segment>
+Output:
+<segment id="2-1">
+REL_DATE:lundi
+RADIOISOTOPE:plutonium
+ORG_REF_TO_LOC:Mayak
+ORGANIZATION:service fédéral de météorologie|Rosgidromet
+LOCATION:ville d’Argaïach|Oural
+ABS_PERIOD:1957|1991
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-2">Deux sources possibles
+L’Institut de radioprotection et de sécurité nucléaire (IRSN) français avait donné l’alerte en octobre, précisant que les relevés anormaux apparaissaient dès le 25 septembre. D’autres instituts à travers l’Europe ont confirmé la présence d’un nuage radioactif venant soit de Russie (Oural), soit du nord du Kazakhstan. Dès le départ, les scientifiques européens ont lié ce type de pollution à deux sources possibles: des fuites lors de retraitement de carburant nucléaire ou venant d’équipement médical. Le ruthénium-106 est utilisé notamment en radiothérapie pour éliminer certaines tumeurs.
+Rosgidromet vend la mèche alors que la Russie s’est déjà positionnée pour une guerre de l’information.</segment>
+Output:
+<segment id="2-2">
+REL_PERIOD:octobre
+RADIOISOTOPE:ruthénium-106
+ORGANIZATION:Institut de radioprotection et de sécurité nucléaire|Rosgidromet|IRSN
+LOC_REF_TO_ORG:Russie
+LOCATION:Kazakhstan|Europe|Russie|Oural
+FUZZY_PERIOD:dès le 25 septembre
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-3">Le 11 octobre, l’agence d’Etat Rosatom, un géant industriel et énergétique contrôlant toute l’industrie nucléaire russe, dont Mayak, déclarait que la fuite venait non pas de Russie mais d’un « pays d’Europe orientale », sous-entendant probablement l’Ukraine, qui possède de nombreuses centrales nucléaires, dont Tchernobyl.
+Par la suite, Rosatom a indiqué que les relevés à travers la Russie ne comportaient aucune trace de ruthénium-106, hormis à Saint-Pétersbourg, sur sa frontière occidentale avec l’Europe.</segment>
+Output:
+<segment id="2-3">
+REL_DATE:11 octobre
+RADIOISOTOPE:ruthénium-106
+ORGANIZATION:Rosatom|Rosatom|Mayak
+LOC_REF_TO_ORG:Tchernobyl
+LOCATION:Saint-Pétersbourg|Europe orientale|Ukraine|Russie|Russie|Europe
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-4">L’agence d’Etat RIA Novosti titrait: « Rosatom rejette la version occidentale sur la fuite de ruthénium-106 en Russie », comme s’il s’agissait d’accusations calomnieuses rituelles.
+« Aucune menace pour la santé »
+Conformément à une tradition soviétique, Mayak s’est empressé de nier mardi toute responsabilité dans un communiqué destiné à impressionner les béotiens. «Mayak n’a pas manipulé de sources de ruthénium-106 en 2017 (…) l’extraction de ruthénium-106 à Mayak a cessé depuis de nombreuses années.»</segment>
+Output:
+<segment id="2-4">
+REL_DATE:mardi
+RADIOISOTOPE:ruthénium-106|ruthénium-106|ruthénium-106
+ORGANIZATION:RIA Novosti|Rosatom|Mayak|Mayak|Mayak
+LOCATION:Russie
+FUZZY_PERIOD:depuis de nombreuses années
+ABS_PERIOD:2017
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-5">Mais, prenant les devants, la centrale de retraitement souligne aussi que « les chiffres publiés par Rosgidromet suggèrent que les doses que la population a pu recevoir sont 20 000 fois au-dessous de la dose annuelle admise et ne présentent aucune menace pour la santé ».
+Les experts occidentaux s’accordent à dire que les doses ne présentent apparemment pas de danger, ni pour l’homme ni pour l’environnement. En pointe sur l’observation de Mayak, Greenpeace admet que le sujet n’est pas la dangerosité pour la population. Mais l’ONG a réclamé auprès du parquet l’ouverture d’une enquête sur de possibles fuites et dissimulations.</segment>
+Output:
+<segment id="2-5">
+ORGANIZATION:Rosgidromet|Greenpeace|Mayak
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-6">Le quotidien Kommersant rapporte une information venant de « défenseurs des droits humains » de la région de Tcheliabinsk (où se trouve Mayak), selon laquelle de nouveaux containers de stockage de combustible retraité ont fait l’objet de tests les 24 et 25 septembre.
+Possible discrédit
+Les dénégations répétées de Rosatom pourraient aussi jeter le discrédit sur l’industrie nucléaire russe, alors que le monopole d’Etat affiche le premier carnet de commandes du monde en termes de construction de centrales nucléaires (100 milliards de dollars pour 25 pays-clients). Rosatom a en outre annoncé mardi un quintuplement de son programme d’investissement, soit 19 milliards de dollars d’ici à 2023.</segment>
+Output:
+<segment id="2-6">
+REL_DATE:24 et 25 septembre|25 septembre|mardi
+ORG_REF_TO_LOC:Mayak
+ORGANIZATION:Kommersant|Rosatom|Rosatom
+LOCATION:région de Tcheliabinsk
+ABS_PERIOD:2023
+</segment>
+</example>
+<example>
+Input:
+<segment id="2-7">Loin devant les géants énergétiques russes Rosneft et Gazprom. En Suisse, la branche trading de Rosatom (Uranium One) a ouvert un bureau à Zoug le mois dernier pour le négoce d’uranium et de lithium.</segment>
+Output:
+<segment id="2-7">
+REL_PERIOD:mois dernier
+RADIOISOTOPE:uranium
+ORGANIZATION:Uranium One|Rosneft|Gazprom|Rosatom
+LOCATION:Suisse|Zoug
+</segment>
+</example>
+<example>
+Input:
+<segment id="3-0">Cannes: Deux lycéens, soupçonnés d’avoir fait exploser des engins artisanaux, placés en garde à vue
+
+Illustration d'une voiture de police. - C.
+Allain / 20 Minutes / 20 Minutes Cannes: Deux lycéens, soupçonnés d’avoir fait exploser des engins artisanaux, placés en garde à vue Le lycée avait dû être partiellement évacué ce jeudi. Deux internes du lycée Bristol de Cannes ont été placés en garde à vue vendredi, soupçonnés d’avoir fait exploser la veille des bouteilles remplies d’acide sulfurique.</segment>
+Output:
+<segment id="3-0">
+TOXIC_C_AGENT:acide sulfurique
+REL_DATE:vendredi|jeudi
+ORGANIZATION:lycée Bristol de Cannes|20 Minutes
+LOCATION:Cannes|Cannes
+DOC_SOURCE:20 Minutes
+</segment>
+</example>
+<example>
+Input:
+<segment id="3-1">Les deux lycéens, mineurs, ont été interpellés à 14h55 et placés en garde à vue au commissariat de Cannes où ils ont nié avoir fabriqué ces engins explosifs, a rapporté la procureur de Grasse, Fabienne Atzori, confirmant une information de Nice-Matin. L’enquête doit être transférée à Nice, la ville où résident ces deux lycéens en dehors des périodes scolaires.
+Des policiers scientifiques dépêchés sur place
+Jeudi, l’explosion de deux bouteilles de Coca-Cola dans un couloir de l’établissement, remplies sans doute d’un mélange à base d’acide sulfurique selon un tutoriel trouvé sur Internet, avait fait sursauter les élèves, sans faire de blessés.</segment>
+Output:
+<segment id="3-1">
+TOXIC_C_AGENT:acide sulfurique
+REL_DATE:Jeudi
+ORG_REF_TO_LOC:commissariat de Cannes
+ORGANIZATION:Nice-Matin
+LOC_REF_TO_ORG:Grasse
+LOCATION:Nice
+</segment>
+</example>
+<example>
+Input:
+<segment id="3-2">En application des procédures d’alerte, l’établissement avait connu un début d’évacuation.
+Le commissariat de Cannes avait dépêché des policiers scientifiques sur place pour faire tous les prélèvements. Les cours avaient repris rapidement après l’intervention policière. Vendredi, une poubelle de l’établissement a par ailleurs été incendiée.</segment>
+Output:
+<segment id="3-2">
+REL_DATE:Vendredi
+ORGANIZATION:commissariat de Cannes
+</segment>
+</example>
+<example>
+Input:
+<segment id="4-0">Coronavirus - Trump suspend tous les voyages de l'Europe vers les Etats-Unis pour 30 jours
+12/03/2020 &&&
+AFP
+
+
+
+
+Le président américain Donald Trump a annoncé mercredi la suspension pour 30 jours de tous les voyages depuis l'Europe vers les Etats-Unis afin d'endiguer l'épidémie de nouveau coronavirus qui a de nouveau affolé les marchés financiers. "J'ai décidé de prendre des actions fortes mais nécessaires pour protéger la santé et le bien-être de tous les Américains", a annoncé M. Trump lors d'une allocution solennelle depuis le Bureau ovale de la Maison Blanche "Pour empêcher de nouveaux cas de pénétrer dans notre pays, je vais suspendre tous les voyages en provenance d'Europe vers les Etats-Unis pour les 30 prochains jours", a-t-il ajouté, déplorant que l'Union européenne n'ait pas pris "les mêmes précautions" que les Etats-Unis face à la propagation du virus.</segment>
+Output:
+<segment id="4-0">
+REL_DATE:mercredi
+PATH_REF_TO_DIS:nouveau coronavirus
+PATHOGEN:Coronavirus
+ORG_REF_TO_LOC:Bureau ovale de la Maison Blanche
+ORGANIZATION:Union européenne
+LOC_REF_TO_ORG:Etats-Unis
+LOCATION:Etats-Unis|Etats-Unis|Etats-Unis|Europe|Europe|Europe
+DOC_SOURCE:AFP
+DOC_DATE:12/03/2020
+</segment>
+</example>
+<example>
+Input:
+<segment id="4-1">Cette mesure, qui entrera en vigueur vendredi à minuit (04H00 GMT samedi), ne concernera pas le Royaume-Uni, a précisé le milliardaire républicain. Au cours de son allocution de dix minutes, le président de la première puissance mondiale a qualifié le nouveau coronavirus de "virus étranger". Il y a quelques jours, le chef de la diplomatie américaine Mike Pompeo avait provoqué une polémique, et l'ire de Pékin, en parlant de "virus de Wuhan". Le 45e président des Etats-Unis a achevé son discours en martelant sa conviction que l'avenir des Etats-Unis restait "plus radieux que personne ne peut l'imaginer".</segment>
+Output:
+<segment id="4-1">
+REL_DATE:vendredi|samedi
+PATHOGEN:nouveau coronavirus
+LOC_REF_TO_ORG:Etats-Unis|Etats-Unis|Pékin
+LOCATION:Royaume-Uni|Wuhan
+FUZZY_PERIOD:Il y a quelques jours
+</segment>
+</example>
+<example>
+Input:
+<segment id="4-2">Le président américain est accusé par nombre d'élus démocrates de vouloir minimiser à tout prix l'ampleur de la crise sanitaire à venir et d'envoyer des messages confus, parfois en contradiction avec ceux des autorités sanitaires. "Cela va disparaître, restez calme", avait-il encore déclaré mardi. "Tout se déroule bien. Beaucoup de bonnes choses vont avoir lieu". M. Trump a par ailleurs appelé le Congrès américain à adopter rapidement une réduction des taxes sur les salaires pour aider les ménages américains à surmonter l'impact économique de l'épidémie de coronavirus.</segment>
+Output:
+<segment id="4-2">
+REL_DATE:mardi
+PATH_REF_TO_DIS:coronavirus
+ORGANIZATION:Congrès américain
+</segment>
+</example>
+<example>
+Input:
+<segment id="4-3">Cette proposition faite par son administration en début de semaine n'a pas eu un écho très favorable auprès des élus, y compris de son propre parti. Le président a aussi annoncé le report de la date butoir de paiement des impôts pour certains individus et entreprises, qui devrait permettre selon lui de réinjecter 200 milliards de dollars de liquidités supplémentaires dans l'économie. Wall Street a connu une nouvelle séance noire mercredi: le Dow Jones Industrial Average s'est effondré de 5,87%, à 23.550,74 points, et le Nasdaq a perdu 4,70%, à 7.952,05 points.</segment>
+Output:
+<segment id="4-3">
+REL_DATE:mercredi
+ORGANIZATION:Wall Street
+FUZZY_PERIOD:début de semaine
+</segment>
+</example>
+<example>
+Input:
+<segment id="4-4">Quelques heures avant l'allocution présidentielle, le directeur des Centres de détection et de prévention des maladies (CDC) Robert Redfield avait estimé que le principal risque de propagation de l'épidémie pour les Etats-Unis venait d'Europe. "La vraie menace pour nous, c'est désormais l'Europe", avait-il affirmé. "C'est de là qu'arrivent les cas. Pour dire les choses clairement, l'Europe est la nouvelle Chine". Début février, Washington avait provisoirement interdit l'entrée aux Etats-Unis des non-Américains s'étant récemment rendus en Chine.</segment>
+Output:
+<segment id="4-4">
+ORGANIZATION:Centres de détection et de prévention des maladies|CDC
+LOC_REF_TO_ORG:Washington
+LOCATION:Etats-Unis|Etats-Unis|Europe|Europe|Europe|Chine|Chine
+FUZZY_PERIOD:Début février
+</segment>
+</example>
+<example>
+Input:
+<segment id="4-5">Le président Trump a longtemps invoqué cette décision drastique pour assurer que la propagation de l'épidémie était sous contrôle sur le territoire américain. Le département d'Etat a aussi recommandé aux ressortissants américains d'éviter les voyages non indispensables en Italie, un avertissement aux voyageurs susceptible d'être au moins partiellement étendu au reste de l'Europe. Les Etats-Unis ont dépassé mercredi la barre des 1.200 cas d'infection au nouveau coronavirus, et 38 personnes en sont mortes, selon les statistiques de l'université américaine Johns Hopkins.</segment>
+Output:
+<segment id="4-5">
+REL_DATE:mercredi
+ORGANIZATION:université américaine Johns Hopkins|département d'Etat
+LOCATION:territoire américain|Etats-Unis|Italie|Europe
+INF_DISEASE:infection au nouveau coronavirus
+</segment>
+</example>
+<example>
+Input:
+<segment id="5-0">Deux personnes hospitalisées suite à une fuite chimique à l'AIA de Bordeaux
+Publié le 25/04/2015 à 16h30 Mis à jour le 11/06/2020 à 00h51
+Deux personnes travaillant à l'AIA (Atelier Industriel d'Aéronautique) se trouvent dans un état grave, suite à une fuite de produits chimiques. Le site, situé entre Floirac et Bordeaux, dépend du Minsitère de la Défense.
+Les pompiers sont à pied d'oeuvre depuis ce matin, 9 heures, sur le site de l'AIA (Atelier Industriel Aéronautique) entre Floirac et Bordeaux, en Gironde.
+En cause: une fuite d'acide cyanhydrique au sein de l'atelier 67.</segment>
+Output:
+<segment id="5-0">
+TOXIC_C_AGENT:acide cyanhydrique
+ORG_REF_TO_LOC:Atelier Industriel Aéronautique|AIA de Bordeaux|AIA
+ORGANIZATION:Atelier Industriel d'Aéronautique|Minsitère de la Défense|AIA
+LOCATION:Bordeaux|Bordeaux|Floirac|Floirac|Gironde
+DOC_DATE:25/04/2015|11/06/2020
+</segment>
+</example>
+<example>
+Input:
+<segment id="5-1">Deux personnes, âgées de 49 et 57 ans, ont été évacuées dans un état jugé "grave", dans un premier temps, vers l'hôpital bordelais Pellegrin. Finalement, plus de peur que de mal, il s'avère que les deux salariés se portent bien.
+Un produit hautement toxique et dangereux
+L'AIA est un site du ministère de la Défense, le produit ayant causé des dégâts est utilisé pour polir les pièces d'avions militaires. Très toxique, cet acide a nécessité l'intervention de plus d'une vingtaine de pompiers, dont certains étaient spécialisés, ayant pour mission de le confiner et de déterminer l'origine de cette fuite.</segment>
+Output:
+<segment id="5-1">
+ORG_REF_TO_LOC:hôpital bordelais Pellegrin|AIA
+ORGANIZATION:ministère de la Défense
+</segment>
+</example>
+<example>
+Input:
+<segment id="6-0">Du gaz moutarde a été utilisé lors de combats en Syrie, affirme l'OIAC
+
+L'Organisation pour l'interdiction des armes chimiques (OIAC) a confirmé que du gaz moutarde avait été utilisé lors de combats en Syrie en août dernier. Conformément à son statut, l'organisation n'a pas désigné de responsable.
+Publié le : 06/11/2015 - 09:40	Modifié le : 06/11/2015 - 16:26
+
+Pour afficher ce contenu, il est nécessaire d'autoriser les cookies de mesure d'audience et de publicité.</segment>
+Output:
+<segment id="6-0">
+TOXIC_C_AGENT:gaz moutarde|gaz moutarde
+REL_PERIOD:août dernier
+ORGANIZATION:Organisation pour l'interdiction des armes chimiques|OIAC|OIAC
+LOCATION:Syrie|Syrie
+DOC_DATE:06/11/2015|06/11/2015
+</segment>
+</example>
+<example>
+Input:
+<segment id="6-1">Du gaz moutarde a été utilisé cet été lors de combats en Syrie, a confirmé pour la première fois vendredi 6 novembre l'Organisation pour l'interdiction des armes chimiques (OIAC), qui, conformément à son statut, n'a désigné aucun responsable.
+Les experts en armes chimiques ont conclu que ce gaz asphyxiant avait été utilisé le 21 août à Marea, une ville de la province d'Alep, dans le nord du pays. Un rapport encore confidentiel a été envoyé aux États membres de l'OIAC, qui doivent se réunir fin novembre.</segment>
+Output:
+<segment id="6-1">
+TOXIC_C_AGENT:gaz asphyxiant|gaz moutarde
+REL_PERIOD:cet été
+REL_DATE:vendredi 6 novembre|21 août
+ORGANIZATION:Organisation pour l'interdiction des armes chimiques|OIAC|OIAC
+LOCATION:province d'Alep|Syrie|Marea
+FUZZY_PERIOD:fin novembre
+</segment>
+</example>
+<example>
+Input:
+<segment id="6-2">"On ne peut pas écarter l’hypothèse selon laquelle des stocks résiduels du programme militaire chimique syrien puissent être présents sur le théâtre des opérations et que l’un des belligérants ait pu mettre la main sur des petites quantités du stock", a expliqué sur France 24 Olivier Le Pick, spécialiste des armes chimiques.
+Et d’ajouter, "on ne peut pas non plus écarter l’hypothèse d’une fabrication endogène. Contrairement au gaz sarin qui a été utilisé dans la banlieue de Damas il y a une dizaine de mois, le gaz moutarde est beaucoup plus facile à synthétiser et il est à la portée de chimistes relativement peu compétents à fabriquer".</segment>
+Output:
+<segment id="6-2">
+TOXIC_C_AGENT:gaz moutarde|gaz sarin
+ORGANIZATION:France 24
+LOCATION:Damas
+FUZZY_PERIOD:il y a une dizaine de mois
+</segment>
+</example>
+<example>
+Input:
+<segment id="6-3">Ce n'est d'ailleurs pas la première fois que l'usage du gaz moutarde en Syrie est évoqué. Des militants syriens et des ONG médicales avaient déjà affirmé fin août qu'une attaque à l'arme chimique avait touché des dizaines de personnes à Marea, où des combats opposaient des rebelles à des jihadistes de l'organisation de l'État islamique (EI).
+Accusations contre l'EI
+Des patients soignés dans un hôpital d'Alep rattaché à Médecins sans Frontières avaient également évoqué un obus de mortier dégageant "un gaz jaune" dans leur maison.</segment>
+Output:
+<segment id="6-3">
+TOXIC_C_AGENT:gaz moutarde
+ORGANIZATION:Médecins sans Frontières|État islamique|EI|EI
+LOCATION:Syrie|Marea|Alep
+FUZZY_PERIOD:fin août
+</segment>
+</example>
+<example>
+Input:
+<segment id="6-4">Selon des militants présents sur place au moment des faits, plus de 50 obus avaient été tirés ce jour-là sur Marea par l'EI.
+Les accusations de recours aux armes chimiques par l'EI se sont multipliées ces derniers mois en Irak comme en Syrie, où le groupe jihadiste occupe de vastes régions.
+Washington, Londres et Paris avaient également accusé en août le régime syrien d'avoir utilisé du gaz de chlore contre des rebelles.
+Le régime syrien est censé avoir détruit tout son arsenal chimique, aux termes d'un accord américano-russe de septembre 2013 qui lui a permis d'éviter des bombardements occidentaux - après, déjà, des accusations d'utilisation de chlore.</segment>
+Output:
+<segment id="6-4">
+TOXIC_C_AGENT:gaz de chlore|chlore
+REL_PERIOD:août
+ORGANIZATION:régime syrien|régime syrien|EI|EI
+LOC_REF_TO_ORG:Washington|Londres|Paris
+LOCATION:Marea|Syrie|Irak
+ABS_PERIOD:septembre 2013
+</segment>
+</example>
+<example>
+Input:
+<segment id="6-5">Mais l'OIAC a conclu, en 2014, que du gaz de chlore avait été utilisé dans le conflit.
+Déclenché en 2011 après la répression sanglante de manifestations réclamant des réformes, le conflit en Syrie est devenu complexe au fil des années, avec une multiplication des acteurs, locaux et étrangers, sur un territoire de plus en plus morcelé. Il a causé la mort de plus de 250 000 personnes et poussé à la fuite des millions de Syriens.
+Avec AFP</segment>
+Output:
+<segment id="6-5">
+TOXIC_C_AGENT:gaz de chlore
+ORGANIZATION:OIAC
+LOCATION:Syrie
+DOC_SOURCE:AFP
+ABS_PERIOD:2014|2011
+</segment>
+</example>
+<example>
+Input:
+<segment id="7-0">Empoisonnement au polonium : Londres désigne Poutine
+La Dépêche du Midi
+4–5 minutes
+
+Publié le 22/01/2016 à 07:30 , mis à jour à 08:14
+La Dépêche du Midi
+Il était mort dans d'atroces souffrances à l'University College Hospital de Londres en 2006. Et l'on s'était rendu compte qu'Alexandre Litvinenko avait été victime d'un meurtre au Polonium 210, un élément radioactif aussi rare que mortel, qui lui avait été administré dans des conditions rocambolesques, digne des pires romans d'espionnage.</segment>
+Output:
+<segment id="7-0">
+RADIOISOTOPE:Polonium 210|polonium
+ORG_REF_TO_LOC:University College Hospital de Londres
+LOC_REF_TO_ORG:Londres
+DOC_SOURCE:La Dépêche du Midi|La Dépêche du Midi
+DOC_DATE:22/01/2016
+ABS_PERIOD:2006
+</segment>
+</example>
+<example>
+Input:
+<segment id="7-1">Du reste, Litvinenko était lui-même un ex-agent du KGB, et hier, un juge de Londres a assuré que Vladimir Poutine, le chef de l'État russe ne pouvait pas ne pas être au courant de cette exécution. Dans le rapport de l'enquête publique, le magistrat a dit avoir réuni « des preuves qui établissent clairement la responsabilité de l'État russe dans la mort de M. Litvinenko ».
+Le juge a ajouté que « l’opération du FSB (successeur du KGB) a probablement été approuvée par Nikolaï Patrouchev, ex-chef du FSB et aussi par le président Poutine ».</segment>
+Output:
+<segment id="7-1">
+REL_DATE:hier
+ORGANIZATION:État russe|État russe|KGB|FSB|KGB|FSB
+LOCATION:Londres
+</segment>
+</example>
+<example>
+Input:
+<segment id="7-2">Fureur à Moscou, qui a aussitôt dénoncé une enquête « politiquement orientée », la qualifiant de «blague». Mais le gouvernement britannique a convoqué l'ambassadeur de Russie à Londres. Et la ministre de l'Intérieur Theresa May a annoncé le gel des avoirs des deux exécutants présumés, Andreï Lougovoï et Dmitri Kovtoun.
+Les conclusions du juge disant « que le meurtre de l'ex-agent du KGB Alexander Litvinenko a été autorisé au plus haut niveau de l'État russe sont extrêmement dérangeantes », a réagi le porteparole du Premier ministre David Cameron.</segment>
+Output:
+<segment id="7-2">
+ORGANIZATION:gouvernement britannique|État russe|KGB
+LOC_REF_TO_ORG:Moscou|Russie
+LOCATION:Londres
+</segment>
+</example>
+<example>
+Input:
+<segment id="7-3">« Ce n'est pas une manière de se comporter, encore moins pour un pays qui est membre permanent du Conseil de Sécurité de l’ONU », a-t-il insisté, sur un ton parfaitement britannique.
+La police a demandé l'extradition de Lougovoï et Kovtoun pour les juger, ce à quoi Moscou s'est toujours refusé.
+La veuve de Litvinenko, Marina, a appelé Londres à aller plus loin en imposant « des sanctions économiques ciblées» à la Russie et «des interdictions de voyage à MM. Patrouchev et Poutine notamment».
+Mais Londres doit aussi ménager un pays clef, engagé dans les négociations sur le conflit en Syrie, alors…</segment>
+Output:
+<segment id="7-3">
+ORGANIZATION:Conseil de Sécurité de l’ONU
+LOC_REF_TO_ORG:Londres|Londres|Moscou|Russie
+LOCATION:Syrie
+</segment>
+</example>
+<example>
+Input:
+<segment id="8-0">Explosion à Paris : le bilan s'aggrave et passe à au moins trois morts après le décès d'une touriste espagnole
+
+Article rédigé par franceinfo
+France Télévisions
+Publié le 12/01/2019 09:31 Mis à jour le 12/01/2019 18:01
+
+Selon le dernier bilan, deux pompiers sont morts, ainsi qu'une Espagnole. Par ailleurs, une cinquantaine de personnes ont été blessées.
+Ce qu'il faut savoir
+Deux pompiers et une touriste espagnole sont morts dans la violente explosion qui a détruit une boulangerie à Paris, samedi 12 janvier.</segment>
+Output:
+<segment id="8-0">
+REL_DATE:samedi 12 janvier
+ORGANIZATION:France Télévisions
+LOCATION:Paris|Paris
+DOC_SOURCE:franceinfo
+DOC_DATE:12/01/2019|12/01/2019
+</segment>
+</example>
+<example>
+Input:
+<segment id="8-1">La très forte détonation a été entendue à 9 heures dans la rue de Trévise, située dans le 9e arrondissement de la capitale. Au moins neuf personnes sont en urgence absolue, dont un pompier, et 39 autres sont blessées. "Certains bâtiments sont vraiment détériorés et pourraient s'écrouler à tout moment, a prévenu en milieu d'après-midi le commandant Eric Moulin, des sapeurs-pompiers de Paris. Nous avons un doute sur la stabilité bâtimentaire de certains immeubles. C'est une zone sinistrée."
+Un incendie s'est déclenché dans une boulangerie et les pompiers sont intervenus à 8h37.</segment>
+Output:
+<segment id="8-1">
+ORGANIZATION:sapeurs-pompiers de Paris
+LOCATION:9e arrondissement de la capitale|rue de Trévise
+</segment>
+</example>
+<example>
+Input:
+<segment id="8-2">Une violente explosion a alors retenti, détruisant l'immeuble et soufflant de nombreuses vitrines dans le quartier.
+Un bilan humain très lourd. Deux pompiers, âgés de 27 et 28 ans, sont morts. Une Espagnole qui faisait du tourisme, et dont l'identité n'a pas été divulguée, est décédée à l'hôpital.
+Une cause "manifestement accidentelle". Pour l'instant, la piste d'une fuite de gaz est privilégiée pour expliquer le sinistre, selon le procureur de la République de Paris. Une enquête a été confiée à la direction régionale de la police judiciaire.
+Des vérifications sur les bâtiments alentour.</segment>
+Output:
+<segment id="8-2">
+ORGANIZATION:direction régionale de la police judiciaire
+LOC_REF_TO_ORG:Paris
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-0">Faits divers Rouffach : menace d'attentat à la bombe radioactive, un suspect en détention
+
+Quatre bombes artisanales, dont trois prêtes à l'emploi, ont été découvertes le 26 août lors d'une perquisition dans une maison à Rouffach, a-t-on appris ce mercredi matin de sources concordantes.
+L'affaire remonte au 26 août dernier. Ce matin-là, le commissariat de Colmar a reçu un appel du Centre de formation des apprentis de Colmar. L'un de ses élèves se serait vanté d'avoir confectionné plusieurs engins explosifs qu'il prévoyait d'utiliser contre des bâtiments publics.</segment>
+Output:
+<segment id="9-0">
+REL_DATE:26 août dernier|mercredi|26 août
+ORGANIZATION:Centre de formation des apprentis de Colmar|commissariat de Colmar
+LOCATION:Rouffach|Rouffach
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-1">Selon un communiqué de la procureure de Colmar Catherine Sorita-Minard (lire ci-dessous), le jeune homme, né en 1995, diffusait des vidéos sur ces explosifs.
+
+Le suspect fréquentait le Centre de formation des apprentis de Colmar. Photo L'Alsace
+
+Les forces de l'ordre se sont rendues en milieu d'après-midi au domicile des parents du jeune homme à Rouffach où ils découvrent les engins explosifs, a révélé Le Canard Enchaîné dans son édition de mercredi.</segment>
+Output:
+<segment id="9-1">
+REL_DATE:mercredi
+ORG_REF_TO_LOC:Centre de formation des apprentis de Colmar
+ORGANIZATION:Le Canard Enchaîné|L'Alsace
+LOC_REF_TO_ORG:Colmar
+LOCATION:Rouffach
+ABS_PERIOD:1995
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-2">Une source proche de l'enquête a confirmé que le jeune homme affirmait, dans sa structure de formation, qu'il avait confectionné deux engins explosifs et qu'il voulait les faire sauter pour le Nouvel An. Selon cette source, ces engins présentaient un réel risque d'explosion.
+Du minerai d'uranium
+Les enquêteurs ont également trouvé du minerai d'uranium. De quoi permettre de confectionner un engin explosif qui aurait pu propager de la radioactivité, sous une forme limitée.</segment>
+Output:
+<segment id="9-2">
+REL_DATE:Nouvel An
+RADIOISOTOPE:uranium|uranium
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-3">Ces opérations se sont déroulées dans le plus grand secret, les autorités craignant d'affoler la population.
+Écussons néonazis
+Aux enquêteurs, le jeune homme, âgé de 26 ans, a expliqué s'être fourni sur eBay et avoir appris à confectionner ses engins explosifs à l'aide de tutoriels. Dans son logement, un studio également situé à Rouffach, selon le parquet, les policiers ont découvert des écussons nazis et une tenue complète du Ku Klux Klan. L'homme n'est pas fiché S ni connu comme actif dans le terrorisme.
+Le jeune homme s'est défendu en affirmant vouloir faire exploser ses bombes dans un champ ou un lieu neutre...</segment>
+Output:
+<segment id="9-3">
+ORGANIZATION:Ku Klux Klan|eBay
+LOCATION:Rouffach
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-4">Une information judiciaire a été ouverte pour fabrication d'engins explosifs. Il a été placé en détention provisoire. Suivi en médecine psychiatrique, il était inconnu des services de renseignement, mais connu des gendarmes comme un collectionneur compulsif.
+L'enquête a été confiée à la direction zonale de la police judiciaire Est sur ordre du parquet de Colmar.
+Un suspect sans antécédent judiciaire
+Dans un communiqué diffusé ce mercredi après-midi, Catherine Sorita-Minard, procureure de la République de Colmar, revient sur l'interpellation du jeune homme suspecté d'avoir fabriqué des engins explosifs à Rouffach.</segment>
+Output:
+<segment id="9-4">
+REL_DATE:mercredi
+ORGANIZATION:direction zonale de la police judiciaire Est|parquet de Colmar
+LOC_REF_TO_ORG:Colmar
+LOCATION:Rouffach
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-5">« Le 26 août 2021, le parquet de Colmar a été informé qu’un élève du
+Centre de Formation des Apprentis de Colmar se vantait d’avoir fabriqué des engins explosifs, et diffusait des vidéos sur ce sujet. Il était rapidement identifié, localisé, interpellé et placé en garde à vue le jour même.
+Il s’agit d’un jeune homme né en 1995 à Colmar, sans antécédent judiciaire, consommateur de stupéfiants ayant présenté par le passé des troubles psychiatriques ayant justifié des hospitalisations en psychiatrie.</segment>
+Output:
+<segment id="9-5">
+ORGANIZATION:Centre de Formation des Apprentis de Colmar|parquet de Colmar
+LOCATION:Colmar
+ABS_PERIOD:1995
+ABS_DATE:26 août 2021
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-6">Des perquisitions ont été menées dans le temps de la garde à vue à Rouffach où il est domicilié, permettant la découverte d’engins explosifs, d’ensembles de poudres noires, des initiateurs, des pièces métalliques, un morceau d’uranium naturel. Les engins explosifs fabriqués ont été neutralisés par une équipe de démineurs.
+De nombreux matériels informatiques ont également été saisis, ainsi que de la documentation en lien avec le Klu Klux Klan, certains documents étant ornés de croix gammée.
+Les faire exploser dans un champ
+Les premiers actes d’enquête ont été effectués par le commissariat de Colmar.</segment>
+Output:
+<segment id="9-6">
+RADIOISOTOPE:uranium
+ORGANIZATION:commissariat de Colmar|Klu Klux Klan
+LOCATION:Rouffach
+EXPLOSIVE:poudres noires
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-7">J’ai ensuite saisi la direction zonale de la police judiciaire Est aux fins de poursuite de l’enquête. L’intéressé a indiqué avoir fabriqué ces engins explosifs en vue de les faire exploser dans un champ ou dans des endroits neutres, sans danger pour les personnes ni pour les biens. Il a précisé avoir trouvé sur les réseaux sociaux les informations utiles pour fabriquer ces engins.
+Il apparaît en lien avec au moins une personne domiciliée en Belgique adhérant à des thèses d’ultra-droite.</segment>
+Output:
+<segment id="9-7">
+ORGANIZATION:direction zonale de la police judiciaire Est
+LOCATION:Belgique
+</segment>
+</example>
+<example>
+Input:
+<segment id="9-8">Il a été déféré au parquet le 28 août, et j’ai ouvert une information judiciaire des chefs suivants :
+· détention et transport de substances ou produit incendiaire ou explosif ou d’éléments servant à la confection d’engins explosifs
+· fabrication non autorisée d’engin explosif
+· fabrication d’éléments destinés à entrer dans la composition d’un produit explosif ».</segment>
+Output:
+<segment id="9-8">
+REL_DATE:28 août
+</segment>
+</example>
+<example>
+Input:
+<segment id="10-0">L'explosion à Beyrouth a généré un cratère de 43 mètres de profondeur
+Le Temps
+4–5 minutes
+
+1. Accueil
+2. Monde
+3. Moyen-Orient
+Publié le 09 août 2020 à 10:12. / Modifié le 09 août 2020 à 10:12.
+L'énorme explosion au port de Beyrouth a engendré un cratère de 43 mètres de profondeur, a indiqué dimanche une source sécuritaire libanaise, citant des évaluations effectuées par des experts français en pyrotechnie dépêchés sur le terrain.
+La déflagration survenue mardi a fait plus de 150 morts et 6000 blessés, alors que des dizaines de personnes sont toujours portées disparues.</segment>
+Output:
+<segment id="10-0">
+REL_DATE:dimanche|mardi
+LOCATION:port de Beyrouth|Moyen-Orient|Beyrouth|Monde
+DOC_SOURCE:Le Temps
+DOC_DATE:09 août 2020|09 août 2020
+</segment>
+</example>
+<example>
+Input:
+<segment id="10-1">Elle a été provoquée par l'explosion d'un entrepôt où étaient stockées selon le premier ministre libanais Hassan Diab 2.750 tonnes de nitrate d'ammonium depuis six ans « sans mesures de précaution ».
+La journée de samedi: Après une journée de colère à
+Beyrouth, le premier ministre annonce des élections anticipées
+Comme un séisme de 3,3
+L'explosion « a provoqué un cratère de 43 mètres de profondeur », d'après la source de sécurité. L'institut américain de géophysique (USGS) basé en Virginie avait indiqué que ses capteurs avaient enregistré l'explosion comme un séisme de 3,3 sur l'échelle de Richter.</segment>
+Output:
+<segment id="10-1">
+REL_DATE:samedi
+ORGANIZATION:institut américain de géophysique|USGS
+LOCATION:Beyrouth|Virginie
+EXPLOSIVE:nitrate d'ammonium
+</segment>
+</example>
+<example>
+Input:
+<segment id="10-2">A titre de comparaison, l'explosion en 1962 d'une bombe atomique de 104 kilotonnes sur le site d'essais nucléaires de « Sedan » au Nevada (dans l'ouest des Etats-Unis), avait creusé un cratère de près de 100 mètres de profondeur.
+
+© Haytham Al Achkar/Getty Images
+Le spectaculaire attentat qui a tué l'ancien premier ministre Rafic Hariri en 2005, mené avec une camionnette bourrée d'explosifs, avait laissé un cratère d'au moins dix mètres de diamètre et de deux mètres de profondeur, selon le site Internet du Tribunal spécial international (TSL).
+Lire aussi : Emilie Sueur: « Les Libanais demandent à la classe politique de se suicider »
+Colère dans la rue
+
+© AFP
+Samedi, des milliers de manifestants en colère contre la classe dirigeante accusée de corruption, d'incompétence et de négligence après l'explosion, ont pris d'assaut brièvement des ministères et défilé dans le centre-ville de Beyrouth pour crier vengeance.</segment>
+Output:
+<segment id="10-2">
+REL_DATE:Samedi
+ORGANIZATION:Tribunal spécial international|Getty Images|TSL|AFP
+LOCATION:Etats-Unis|Beyrouth|Nevada|Sedan
+ABS_PERIOD:1962|2005
+</segment>
+</example>
+<example>
+Input:
+<segment id="10-3">Ils ont brandi des potences de fortune symbolisant la rage à l'égard des dirigeants.
+Ce dimanche, conférence des donateurs
+Des Etats-Unis à la France en passant par la Chine, la Russie
+et l'Egypte, les donateurs internationaux se réunissent dimanche pour une visioconférence de soutien au Liban.
+La conférence en ligne, organisée à l'initiative de la France et de l'ONU, commence dimanche à 14h. Elle doit marquer le début d'une « démarche d'urgence et d'espoir pour l’avenir » du pays, a indiqué samedi la présidence française.
+Le président américain Donald Trump a annoncé qu'il participerait à cette réunion.</segment>
+Output:
+<segment id="10-3">
+REL_DATE:dimanche|dimanche|dimanche|samedi
+ORGANIZATION:présidence française|ONU
+LOC_REF_TO_ORG:Etats-Unis|France|Russie|Egypte|France|Chine|Liban
+</segment>
+</example>
+<example>
+Input:
+<segment id="10-4">« Tout le monde veut aider! » a-t-il tweeté, mentionnant avoir parlé avec le président français.
+Israël ne sera « pas dans le tour de table » de cette conférence, a-t-on précisé à l'Élysée, mais un contact est « pris par l’ONU ».
+
+© ANWAR AMRO / european afp / AFP
+Pour sa part, l'Iran n'a « pas manifesté sa volonté de participer », mais « les pays du Golfe – Koweït, Qatar, Émirats arabes unis, Arabie saoudite – ont été invités », a ajouté l'Élysée précisant n'avoir « aucun doute qu'ils seront représentés ».</segment>
+Output:
+<segment id="10-4">
+ORGANIZATION:Élysée|Élysée|ONU|AFP
+LOC_REF_TO_ORG:Émirats arabes unis|Arabie saoudite|Israël|Koweït|Qatar|Iran
+LOCATION:Golfe
+</segment>
+</example>
+<example>
+Input:
+<segment id="10-5">Les institutions européennes participeront aussi à cette conférence pour mobiliser une aide humanitaire d'urgence.
+Si l'ONU a évalué à 85 millions de dollars les besoins du Liban pour le seul secteur de la santé, l'entourage du président français n'a pas voulu donner le montant de l'aide qui pourrait être dégagée dimanche.</segment>
+Output:
+<segment id="10-5">
+REL_DATE:dimanche
+ORGANIZATION:ONU
+LOC_REF_TO_ORG:Liban
+</segment>
+</example>
+<example>
+Input:
+<segment id="11-0">letemps.ch
+La Britannique exposée au Novitchok est morte
+Le Temps
+~4 minutes
+
+Publié le 08 juillet 2018 à 05:52. / Modifié le 10 juin 2023 à 16:24.
+La Britannique contaminée à l’agent innervant Novitchok est décédée dimanche soir à l’hôpital de Salisbury (sud-ouest de l’Angleterre) où elle avait été admise il y a huit jours, a annoncé la police. « La police a ouvert une enquête pour meurtre après que la femme exposée à l’agent Novitchok à Amesbury, dans le Wiltshire, est décédée », a annoncé Scotland Yard. La victime, âgée de 44 ans, était originaire de Durrington.</segment>
+Output:
+<segment id="11-0">
+TOXIC_C_AGENT:Novitchok|Novitchok|Novitchok
+REL_DATE:il y a huit jours|dimanche
+ORG_REF_TO_LOC:hôpital de Salisbury
+ORGANIZATION:Scotland Yard|police|police
+LOCATION:Angleterre|Durrington|Wiltshire|Amesbury
+DOC_SOURCE:Le Temps
+DOC_DATE:08 juillet 2018|10 juin 2023
+</segment>
+</example>
+<example>
+Input:
+<segment id="11-1">La première ministre Theresa May a immédiatement réagi, se disant « horrifiée et choquée » dans un communiqué. « La police et les agents de sécurité travaillent pour établir les faits de manière urgente », a-t-elle ajouté. « Le gouvernement apporte tout son soutien à la population locale, confrontée à cette tragédie. »
+Neil Basu, le chef de la police antiterroriste, en charge de l’investigation, a déclaré que « cette terrible nouvelle ne servira qu’à renforcer notre détermination à résoudre cette enquête, identifier et traduire en justice les responsables ».</segment>
+Output:
+<segment id="11-1">
+ORGANIZATION:police antiterroriste|gouvernement|police
+</segment>
+</example>
+<example>
+Input:
+<segment id="11-2">La victime « laisse derrière elle sa famille, ses trois enfants, nos pensées et nos prières sont pour eux dans cette période extrêmement difficile ».
+Lire aussi : A Salisbury, l’agent innervant Novitchok a frappé au hasard
+L’homme de 45 ans – qui avait aussi été hospitalisé le 30 juin – est toujours dans un état critique, a précisé Scotland Yard. Les deux quadragénaires avaient été hospitalisés après avoir manipulé un « objet contaminé», avait indiqué la police en fin de semaine. Une des hypothèses est que « l’un des deux a ramassé le contenant utilisé pour stocker l’agent neurotoxique utilisé contre les Skripal », selon une source gouvernementale.</segment>
+Output:
+<segment id="11-2">
+TOXIC_C_AGENT:Novitchok
+REL_DATE:30 juin
+ORGANIZATION:Scotland Yard|police
+LOCATION:Salisbury
+FUZZY_PERIOD:fin de semaine
+</segment>
+</example>
+<example>
+Input:
+<segment id="11-3">La population inquiète
+Leur contamination est survenue quatre mois après la tentative d’empoisonnement au Novitchok qui a visé l’ex-espion russe Sergueï Skripal et sa fille Ioulia à Salisbury, une ville située à une dizaine de kilomètres seulement d’Amesbury, où les ambulances avaient pris en charge le couple de Britanniques. La police n’a pas pu établir si le Novitchok provenait du même lot dans les deux cas.
+Ioulia et Sergueï Skripal avaient pu sortir de l’hôpital après plusieurs semaines de soins, tout comme Nick Bailey, le premier policier qui leur avait porté secours. Ce dernier avait été hospitalisé dans un état grave.</segment>
+Output:
+<segment id="11-3">
+TOXIC_C_AGENT:Novitchok|Novitchok
+REL_DATE:quatre mois après la tentative d’empoisonnement
+LOCATION:Salisbury|Amesbury
+FUZZY_PERIOD:plusieurs semaines
+</segment>
+</example>
+<example>
+Input:
+<segment id="11-4">« Je sais que cette nouvelle va affecter beaucoup de monde, audelà de ceux qui connaissaient la victime », a dit Kier Pritchard, chef de la police du comté de Wiltshire. Elle devrait aussi faire augmenter l’ « inquiétude» de la population, a-t-il ajouté. Les habitants de Salisbury et d’Amesbury avaient déjà fait part de leurs craintes et de leur incompréhension après l’annonce de l’hospitalisation du couple et l’apparition de plusieurs cordons policiers dans les deux villes.
+Lire aussi : Mais qu’est-ce que le Novitchok, ce poison utilisé contre Sergueï Skripal?</segment>
+Output:
+<segment id="11-4">
+TOXIC_C_AGENT:Novitchok
+ORGANIZATION:police du comté de Wiltshire
+LOCATION:Salisbury|Amesbury
+</segment>
+</example>
+<example>
+Input:
+<segment id="11-5">La tentative d’empoisonnement des Skripal avait été attribuée par Londres à Moscou, qui avait nié toute implication. L’affaire avait déclenché une grave crise diplomatique entre le Kremlin et les Occidentaux et une vague d’expulsions croisées de diplomates. En visite à Salisbury dimanche, le ministre de l’Intérieur Sajid Javid a annoncé que le gouvernement britannique n’avait «pas pour projet actuel» d’imposer de nouvelles sanctions à la Russie.
+Lire aussi: Les articles du Temps.ch sur l’affaire Skripal</segment>
+Output:
+<segment id="11-5">
+REL_DATE:dimanche
+ORGANIZATION:gouvernement britannique
+LOC_REF_TO_ORG:Londres|Kremlin|Moscou|Russie
+LOCATION:Salisbury
+</segment>
+</example>
+<example>
+Input:
+<segment id="12-0">Les rejets de césium 137 à Fukushima 168 fois plus importants qu'à Hiroshima
+
+La quantité de césium radioactif dégagée depuis le 11 mars par la centrale nucléaire accidentée de Fukushima (nord-est du Japon) est 168 fois plus importante que celle dispersée en un instant par la bombe atomique d'Hiroshima, a affirmé jeudi un journal nippon.
+Selon le Tokyo Shimbun, qui dit s'appuyer sur des estimations du gouvernement, les réacteurs endommagés par un tsunami géant ont dégagé jusqu'ici 15.000 terabecquerels de césium 137 au fil des mois.</segment>
+Output:
+<segment id="12-0">
+REL_PERIOD:depuis le 11 mars
+REL_DATE:jeudi
+RADIOISOTOPE:césium radioactif|césium 137|césium 137
+ORG_REF_TO_LOC:centrale nucléaire accidentée de Fukushima
+ORGANIZATION:Tokyo Shimbun
+LOCATION:Fukushima|Hiroshima|Hiroshima|Japon
+</segment>
+</example>
+<example>
+Input:
+<segment id="12-1">En août 1945, la bombe atomique larguée par l'armée américaine au-dessus de la ville d'Hiroshima (sud-ouest) avait relâché instantanément dans l'atmosphère 89 terabecquerels de cet isotope dont la période radioactive est de 30 ans, a ajouté le journal.
+"En théorie, la quantité de césium 137 échappé de la centrale de Fukushima est donc 168,5 fois plus importante que celle de la bombe américaine", a-t-il souligné, en affirmant que cette estimation avait été calculée par le gouvernement à la demande d'une commission du Parlement.</segment>
+Output:
+<segment id="12-1">
+RADIOISOTOPE:césium 137
+ORG_REF_TO_LOC:centrale de Fukushima
+ORGANIZATION:armée américaine|gouvernement|Parlement
+LOCATION: ville d'Hiroshima
+ABS_PERIOD:août 1945
+</segment>
+</example>
+<example>
+Input:
+<segment id="12-3">La même comparaison révèlerait que l'explosion du réacteur de Tchernobyl (Ukraine) en 1986 a dispersé dans l'environnement 900 fois plus de césium 137 que la bombe d'Hiroshima, si l'on s'en réfère aux évaluations de l'Institut français de la radioprotection et de la sûreté nucléaire (IRSN).
+Après l'éclatement de la crise nucléaire de la centrale de Fukushima Daiichi (exploitée par Tepco), la plus grave depuis celle de Tchernobyl, les autorités japonaises ont décrété une zone d'évacuation obligatoire dans un rayon de 20 kilomètres autour site.</segment>
+Output:
+<segment id="12-3">
+RADIOISOTOPE:césium 137
+ORG_REF_TO_LOC:Tchernobyl
+ORGANIZATION:Institut français de la radioprotection et de la sûreté nucléaire|centrale de Fukushima Daiichi|Tepco|IRSN
+LOCATION:Tchernobyl|Hiroshima|Ukraine
+ABS_PERIOD:1986
+</segment>
+</example>
+<example>
+Input:
+<segment id="12-4">Plus de 85.000 personnes vivent depuis plus de cinq mois dans des centres d'accueil ou des logements préfabriqués, sans aucune certitude de retrouver un jour leur habitation.</segment>
+Output:
+<segment id="12-4">
+FUZZY_PERIOD:depuis plus de cinq mois
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-0">Lutte contre le cancer: MSF mène deux projets d’oncologie au Malawi et au Mali
+
+4 février 2025
+
+La salle d'attente du projet cancer du col de l'utérus de MSF, à l'hôpital Queens Elizabeth de Blantyre, au Malawi. © DIEGO MENJIBAR
+
+A l’occasion de la  journée mondiale contre le cancer, le 4 février, nous faisons le point sur les projets d’oncologie de MSF au Malawi et au Mali. Interview avec Alice Authier, responsable d’unité médico-opérationnelle d’oncologie pour MSF.
+Comment MSF a-t-elle été amenée à s’engager dans la lutte contre le cancer ?</segment>
+Output:
+<segment id="13-0">
+REL_DATE:4 février
+ORG_REF_TO_LOC:hôpital Queens Elizabeth de Blantyre
+ORGANIZATION:MSF|MSF|MSF|MSF|MSF
+NON_INF_DISEASE:cancer du col de l'utérus|cancer|cancer|cancer
+LOCATION:Malawi|Malawi|Malawi|Mali|Mali
+DOC_DATE:4 février 2025
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-1">Dès 2017, nous avons mené un premier état des lieux en analysant la prévalence des différents types de cancers dans les pays où nous intervenons, et plus largement dans les pays à ressources limitées, et les enjeux liés à leur prise en charge.
+
+Le cancer est  l’une des principales causes de mortalité dans le monde, mais avec de grandes disparités: 70% des décès liés à la maladie surviennent dans les pays à revenu faible ou intermédiaire. Sur le continent africain des cancers qui pourraient être prévenus ou guéris, s’ils étaient dépistés à temps notamment, le sont beaucoup moins.</segment>
+Output:
+<segment id="13-1">
+NON_INF_DISEASE:cancers|cancers|cancer
+LOCATION:continent africain|monde
+ABS_PERIOD:2017
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-2">C’est sur la base de ce constat, que nous avons décidé, en 2018, de nous investir dans la prévention et la prise en charge des cancers féminins (cancer du col de l’utérus et cancer du sein), au Mali et au Malawi. Le taux de prévalence du cancer du col de l’utérus au Malawi est un des plus élevé au monde.</segment>
+Output:
+<segment id="13-2">
+NON_INF_DISEASE:cancer du col de l’utérus|cancer du col de l’utérus|cancers féminins|cancer du sein
+LOCATION:Malawi|Malawi|Mali
+ABS_PERIOD:2018
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-3">Il représente près de 40% des cancers chez les femmes et provoque plus de 2 300 décès par an. Au Mali, ces deux cancers sont les plus fréquents chez les femmes et provoquent plus de 2600 décès par an.
+
+Si nous nous sommes concentrés sur ces deux types de cancers, c’est d’une part en raison de leur forte prévalence mais également parce que ce sont des pathologies que l’on peut dans une certaine mesure prévenir, notamment dans le cas du cancer du col de l’utérus, et dans les deux cas, dont les chances de guérison sont élevées si la maladie est détectée et prise en charge à temps. Le manque d’accès à l'information et aux services de prévention et de traitement dans ces deux pays illustre particulièrement ces inégalités.</segment>
+Output:
+<segment id="13-3">
+NON_INF_DISEASE:cancer du col de l’utérus|cancers|cancers|cancers
+LOCATION:Mali
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-4">Quels sont les spécificités de l’offre de soins en oncologie dans ces deux contextes ?
+
+Au Malawi, notre collaboration avec les autorités de santé depuis 25 ans, pour répondre à l’épidémie de VIH/sida nous a permis de développer une connaissance des enjeux liés à l’accès aux soins dans le pays, et de nous positionner comme acteur de santé reconnu. Cela nous a été très utile pour démarrer le projet autour du cancer du col de l’utérus. L’offre de soins était incomplète au moment du démarrage du projet, les services de dépistage rarement ou non disponibles dans les centres de santé et les traitements insuffisants au niveau tertiaire.</segment>
+Output:
+<segment id="13-4">
+REL_PERIOD:depuis 25 ans
+PATH_REF_TO_DIS:VIH
+NON_INF_DISEASE:cancer du col de l’utérus
+LOCATION:Malawi
+INF_DISEASE:sida
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-5">Au Mali, c’est un peu différent. Il existait déjà un début de prise en charge avec des spécialistes formés mais qui disposaient de moyens insuffisants aux vues des besoins importants comme, par exemple, la prise en charge de certains médicaments anticancéreux par l’Etat mais en quantité insuffisante, ou de séances de radiothérapie gratuites pour les patientes, mais avec de nombreuses jours de panne des machines.</segment>
+Output:
+<segment id="13-5">
+LOCATION:Mali
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-6">En ce qui concerne le dépistage et le diagnostic précoce, le constat était que les femmes consultaient peu en préventif et plutôt à l’apparition de symptômes, essentiellement en raison du manque d’information et des coûts élevés des bilans pré-thérapeutiques ou de diagnostic, qui restaient à leur charge. Résultat, les patientes arrivaient souvent à un stade de cancer déjà très avancé.</segment>
+Output:
+<segment id="13-6">
+NON_INF_DISEASE:cancer
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-7">Campagne de dépistage de masse des cancers du sein et de l'utérus lancée par MSF et le ministère de la Santé dans la commune IV de Bamako, en mars 2022. © Mohamed Dayfour Diawara
+Campagne de dépistage de masse des cancers du sein et de l'utérus lancée par MSF et le ministère de la Santé dans la commune IV de Bamako, en mars 2022. © Mohamed Dayfour Diawara
+Et concrètement quels sont les différents volets d’activités menés par MSF      dans ces deux projets ?
+
+Dans les deux pays, les programmes se sont construits progressivement pour répondre aux besoins de prise en charge de ces cancers sur tout le continuum de soins.</segment>
+Output:
+<segment id="13-7">
+ORGANIZATION:ministère de la Santé|ministère de la Santé|MSF|MSF|MSF
+NON_INF_DISEASE:cancers du sein et de l'utérus|cancers du sein et de l'utérus|cancers du sein|cancers du sein| ces ca
+LOCATION:commune IV de Bamako|commune IV de Bamako
+ABS_PERIOD:mars 2022|mars 2022
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-8">Aujourd’hui nous intervenons à quatre niveaux principaux :  la prévention primaire et secondaire (par la sensibilisation, la vaccination et le dépistage); le diagnostic et le traitement (que ce soit de la chirurgie, de la chimiothérapie ou radiothérapie); les soins palliatifs si nécessaire ;  les soins de support aux patientes tout au long de leur parcours (santé mentale, lien avec les associations de patientes, kinésithérapie, soutien social).
+
+Au Malawi, nous avons commencé par déployer des activités de dépistage, dans dix centres de santé dans les districts de Chiradzulu et de Blantyre, plus tard, couplé avec une activité de dépistage mobile (via un camion) Nous avons ensuite soutenu le renforcement de capacité de prise en charge ambulatoire et chirurgicale au sein de l’Hôpital Queen Elizabeth de Blantyre.</segment>
+Output:
+<segment id="13-8">
+ORGANIZATION:de l’Hôpital Queen Elizabeth de Bla
+LOCATION:s de Chira|t de Bla|
+Au M
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-9">Forte de plus de quatre années d’expérience, l’équipe MSF en place propose un parcours personnalisé pour chaque femme. Leur sont proposées des options thérapeutiques allant de la chirurgie à la chimiothérapie.
+
+Aujourd'hui ces traitements sont délivrés au sein de différentes structures : la chirurgie et la chimiothérapie dans l'hôpital Queen Elizabeth, et la radiothérapie dans une structure privée de Blantyre. Avant que le traitement par radiothérapie soit disponible au Malawi, nous avons organisé le référencement de certaines patientes au Kenya, pour bénéficier d’une prise en charge complémentaire.</segment>
+Output:
+<segment id="13-9">
+ORG_REF_TO_LOC:ns l'hôpital Queen Eliz
+ORGANIZATION:uip
+LOCATION:e de Bla|e au M|s au
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-10">Lorsque la maladie est détectée à un stade trop avancé,  nous offrons un parcours de soins palliatifs à l’hôpital ou à domicile et dans les régions les plus éloignées de Blantyre. Enfin, chaque patiente peut disposer de service d’éducation thérapeutique, d’accompagnement, de soutien financier et de kinésithérapie tout au long de son parcours, pour mieux vivre avec ses traitements et la maladie.</segment>
+Output:
+<segment id="13-10">
+LOCATION:s de Bla
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-11">La chanteuse Bintou Soumbounou lors de la cérémonie de lancement de la campagne d'Octobre Rose au centre de santé communautaire du quartier de Yirimadio à Bamako, octobre 2021.  © Mohammed Dayfour Diawara
+La chanteuse Bintou Soumbounou lors de la cérémonie de lancement de la campagne d'Octobre Rose au centre de santé communautaire du quartier de Yirimadio à Bamako, octobre 2021.  © Mohammed Dayfour Diawara
+
+Au Mali, nous nous sommes d’abord concentrés sur les soins palliatifs car il était urgent de prendre en charge toutes ces femmes qui se présentaient à l’hôpital du Point G à Bamako, avec des cancers à des stades très avancés. Nous avons donc travaillé sur la prise en charge de la douleur et des plaies tumorales, ces plaies extrêmement douloureuses et socialement excluantes car visibles et souvent malodorantes.</segment>
+Output:
+<segment id="13-11">
+ORG_REF_TO_LOC:e au centre de santé communautaire du quartier de Yiri|centre de santé communautaire du quartier de Yirimadio|hôpital du Point G
+NON_INF_DISEASE:cancers
+LOCATION:io à B|Bamako|Bamako|Mali
+ABS_PERIOD:ako, octobre|octobre 2021
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-12">Puis nous nous sommes investis dans le dépistage et le diagnostic précoce. D’abord, en organisant avec des associations des campagnes de communication (octobre rose) afin de sensibiliser, puis en renforçant les services de dépistages gratuits dans un nombre important de centres de santé de Bamako. En travaillant sur la disponibilité et la qualité des services de diagnostic, en réhabilitant le laboratoire d’anatomo-pathologie de l’hôpital du Point G, nous contribuons à détecter plus tôt un cancer du sein ou du col de l’utérus et ainsi à augmenter les chances de guérison.</segment>
+Output:
+<segment id="13-12">
+ORGANIZATION:hôpital du Point G
+NON_INF_DISEASE:cancer du sein ou du col de l’utérus|cancer du sein
+LOCATION:Bamako
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-13">La prise en charge se fait ensuite de manière pluridisciplinaire, dans les services de chirurgie des hôpitaux du ministère de la Santé, dans le service de chimiothérapie, que nous soutenons notamment dans l’approvisionnement en médicaments anticancéreux et dans l’administration et le suivi de ceux-ci. Le service de radiothérapie reste un axe d’amélioration important au Mali. Dans les deux projets, nous nous efforçons de garder une approche centrée sur la patiente tout au long du parcours thérapeutique.</segment>
+Output:
+<segment id="13-13">
+ORGANIZATION:ministère de la Santé
+LOCATION:Mali
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-14">Les femmes que nous accueillons témoignent d’un parcours difficile, souvent stigmatisées à l’annonce de la maladie, parfois avec une perte de soutien de l’entourage familial, et / ou une perte d‘autonomie physique et financière. C’est pourquoi nous portons une attention particulière au support psychosocial et holistique : également en collaboration avec des associations de patientes, ou une collaboration avec des organismes de soutien financiers pour atténuer les effets de fardeau financier du cancer.
+Quelles sont aujourd’hui les pistes d’amélioration pour MSF dans ces deux projets ?</segment>
+Output:
+<segment id="13-14">
+ORGANIZATION:MSF
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-15">De toute évidence, le dépistage précoce de ces cancers est essentiel ainsi que l’accès à des traitements de qualité, si l’on veut réduire la mortalité. La documentation et la recherche sont essentiels pour faire évoluer nos pratiques et définir les modèles de soins les plus adéquats.</segment>
+Output:
+<segment id="13-15">
+NON_INF_DISEASE:cancers
+</segment>
+</example>
+<example>
+Input:
+<segment id="13-16">Au Malawi par exemple, nous participons à une initiative en collaboration avec le National Cancer Insitute, la Fondation MSF et Epicentre pour participer à l’amélioration de pratiques de dépistage du cancer du col de l’utérus plus performantes, combinant la mise à disposition de tests HPV à moindre coût, l’apport de l’intelligence artificielle pour catégoriser les femmes avec un haut risque de développer des lésions précancéreuses et pouvoir les traiter le plus rapidement.</segment>
+Output:
+<segment id="13-16">
+PATHOGEN:HPV
+ORGANIZATION:National Cancer Insitute|Fondation MSF|Epicentre
+NON_INF_DISEASE:cancer du col de l’utérus
+LOCATION:Malawi
+</segment>
+</example>
+<example>
+Input:
+<segment id="14-0">Mort d'un étudiant qui avait fabriqué un engin explosif grâce à Internet
+
+La division de lutte contre la cybercriminalité de la gendarmerie a été chargée d'enquêter, vendredi 8 février, sur le ou les sites Internet qui ont aidé quatre jeunes hommes de l'Oise à fabriquer des engins explosifs artisanaux. L'un d'entre eux est mort jeudi après que l'un de ces engins a explosé accidentellement.
+Dan Thibout, 21 ans, étudiant en informatique, se trouvait dans la cave du domicile familial à Lamorlaye (Oise) quand il a voulu perforer le tube rempli de désherbant et de sucre qu'il "bricolait".</segment>
+Output:
+<segment id="14-0">
+REL_DATE:vendredi 8 février|jeudi
+ORGANIZATION:division de lutte contre la cybercriminalité de la gendarmerie
+LOCATION:Lamorlaye|Oise|Oise
+</segment>
+</example>
+<example>
+Input:
+<segment id="14-1">Selon les premiers éléments de l'enquête, confiée à la gendarmerie de Chantilly, c'est le blast de l'explosion qui l'aurait tué. Son frère, son cousin et un ami ont été légèrement blessés. Placés en garde à vue puis libérés, ils ont déclaré qu'ils voulaient refaire, en un peu plus gros, le feu d'artifice que la famille avait acheté pour la Saint Sylvestre. La nature de ces explosifs, et l'absence de toute documentation, ont permis aux gendarmes de Chantilly d'écarter la piste des mystérieux destructeurs de radars routiers actifs dans la région.</segment>
+Output:
+<segment id="14-1">
+REL_DATE:Saint Sylvestre
+ORGANIZATION:gendarmerie de Chantilly
+LOC_REF_TO_ORG:Chantilly
+</segment>
+</example>
+<example>
+Input:
+<segment id="14-2">Les trois jeunes hommes, âgés de 18 à 21 ans, sont passibles de poursuites pour fabrication de substances explosives, indique Etienne Laguarigue de Survilliers, substitut du procureur. Mais l'enquête sur les sites Internet risque de se révéler délicate.
+A supposer que la division cybercriminalité, associée à la brigade départementale de renseignement et d'investigation judiciaire (BDRIJ), remonte jusqu'à une adresse IP lui permettant d'identifier les ordinateurs des sites concernés, bien souvent la quête aboutit à l'étranger. En France, le code pénal prévoit une peine de trois ans d'emprisonnement et 45 000 euros d'amende pour diffusion à un public non professionnel de fabrication d'engins explosifs.</segment>
+Output:
+<segment id="14-2">
+ORGANIZATION:brigade départementale de renseignement et d'investigation judiciaire|division cybercriminalité|BDRIJ
+LOCATION:France
+</segment>
+</example>
+<example>
+Input:
+<segment id="14-3">Cette peine est aggravée, cinq ans d'emprisonnement et 75 000 euros, si cette diffusion passe par Internet.
+Isabelle Mandraud</segment>
+Output:
+<segment id="14-3">
+DOC_AUTHOR:Isabelle Mandraud
+</segment>
+</example>
+<example>
+Input:
+<segment id="15-0">Quatre suspects ont fui la Malaisie le jour de l'assassinat
+Mort de Kim JongNam: le VX a paralysé la victime, dit Kuala Lumpur
+Publié le 26 février 2017 à 13:31
+
+Le demi-frère du numéro un nord-coréen a succombé à une paralysie causée par un puissant agent neurotoxique, selon les résultats d'autopsie révélés dimanche par le ministre malaisien de la Santé tandis que l'aéroport de Kuala Lumpur, théâtre de son assassinat, était déclaré exempt de tout danger.
+La Malaisie a révélé vendredi que le meurtre le 13 février de Kim Jong-Nam, demi-frère de Kim Jong-Un, avait été perpétré avec du VX, un agent neurotoxique classé comme arme de destruction massive, dans un scénario digne d'un roman d'espionnage.</segment>
+Output:
+<segment id="15-0">
+TOXIC_C_AGENT:VX|VX
+REL_DATE:jour de l'assassinat|13 février|dimanche|vendredi
+ORG_REF_TO_LOC:aéroport de Kuala Lumpur
+LOC_REF_TO_ORG:Kuala Lumpur|Malaisie
+LOCATION:Malaisie
+DOC_DATE:26 février 2017
+</segment>
+</example>
+<example>
+Input:
+<segment id="15-1">Les résultats de l'autopsie suggèrent que la victime âgée de 45 ans a succombé à une "paralysie très grave" et est décédée dans "un très court laps de temps", a déclaré le ministre S.
+Subramaniam. Deux femmes soupçonnées d'avoir administré la substance ont été placées en détention provisoire, de même qu'un Nord-Coréen. La police veut entendre sept autres Nord-Coréens -- dont un diplomate de l'ambassade de Corée du Nord à Kuala Lumpur -- mais quatre des suspects ont fui la Malaisie le jour de l'assassinat.</segment>
+Output:
+<segment id="15-1">
+REL_DATE:jour de l'assassinat
+ORGANIZATION:ambassade de Corée du Nord à Kuala Lumpur
+LOCATION:Malaisie
+</segment>
+</example>
+<example>
+Input:
+<segment id="15-2">Sur des images de vidéo-surveillance qui ont fuité dans les médias, on peut voir Kim Jong-Nam approché de dos par deux femmes dont l'une lui projette apparemment quelque chose au visage. La victime avait ensuite été conduite à la clinique de l'aéroport avant de succomber pendant son transfert à l'hôpital.
+Les deux suspectes affirment qu'elles ont été dupées bien que la police malaisienne assure qu'elles savaient ce qu'elles faisaient.
+Le VX est une version plus mortelle du gaz sarin, indolore, inodore et hautement toxique. Les agents neurotoxiques stimulent excessivement les glandes et muscles, ce qui les fatigue rapidement et attaque la respiration.</segment>
+Output:
+<segment id="15-2">
+TOXIC_C_AGENT:gaz sarin|VX
+ORG_REF_TO_LOC:clinique de l'aéroport
+ORGANIZATION:police malaisienne
+</segment>
+</example>
+<example>
+Input:
+<segment id="15-3">D'après M. Subramaniam, les causes de la mort sont désormais "plus ou moins confirmées".
+Pendant toute la nuit, les personnels de la défense civile vêtus de combinaisons de protection blanches ont passé au crible la scène du crime. Les autorités ont ensuite déclaré n'avoir rien trouvé et que l'aéroport était sûr.
+- L'enquête continue -
+La police avait établi un cordon de sécurité dans une grande partie du hall des départs du terminal 2 sous les regards des curieux.</segment>
+Output:
+<segment id="15-3">
+ORGANIZATION:défense civile
+LOCATION:hall des départs du terminal 2
+</segment>
+</example>
+<example>
+Input:
+<segment id="15-4">"La police a bouclé trois zones: la scène de l'attaque, les toilettes où les deux suspectes se sont lavé les mains et le chemin emprunté pour aller à la clinique de l'aéroport", selon un porte-parole.
+Cette opération menée près de deux semaines après l'assassinat en a surpris plus d'un. "Je suis un peu inquiet", a déclaré à l'AFP Hariz Syafiq, étudiant de 21 ans en attendant son vol. "Pourquoi n'ont-ils pas placé l'aéroport sous quarantaine? C'est un peu étrange".</segment>
+Output:
+<segment id="15-4">
+REL_DATE:près de deux semaines après l'assassinat
+ORG_REF_TO_LOC:clinique de l'aéroport
+ORGANIZATION:AFP
+</segment>
+</example>
+<example>
+Input:
+<segment id="15-6">Abdul Samah Mat, chef de la police de l'Etat de Selangor, où est situé l'aéroport, a expliqué à la presse que l'enquête se poursuivait dans un complexe résidentiel de Kuala Lumpur, en lien avec les quatre Nord-Coréens ayant fui la Malaisie le jour du meurtre.
+Des prélèvements ont été effectués sur les lieux aux fins d'analyses chimiques. L'annonce de l'emploi du VX a semé la colère en Malaisie. La Corée du Sud, qui depuis le début de cette affaire pointe un doigt accusateur sur son voisin du Nord, a dénoncé une "violation patente de la Convention sur les armes chimiques".</segment>
+Output:
+<segment id="15-6">
+TOXIC_C_AGENT:VX
+ORGANIZATION:police de l'Etat de Selangor
+LOC_REF_TO_ORG:voisin du Nord|Corée du Sud
+LOCATION:Kuala Lumpur|Malaisie|Malaisie
+</segment>
+</example>
+<example>
+Input:
+<segment id="15-7">Jeudi, Pyongyang a rompu le silence qu'il conservait depuis l'assassinat en tirant à boulets rouges sur la Malaisie, accusée d'être responsable du décès et de comploter avec la Corée du Sud.</segment>
+Output:
+<segment id="15-7">
+REL_DATE:Jeudi
+LOC_REF_TO_ORG:Corée du Sud|Pyongyang|Malaisie
+</segment>
+</example>
+<example>
+Input:
+<segment id="16-0">Nouveaux cas d'Ebola en Guinée - réouverture en urgence d'un centre de traitement
+18/03/2016 &&
+AFP
+
+
+
+
+Il s'agit d'une mère et de son fils de cinq ans, selon l'OMS. L'organisation Alima a rouvert en urgence le centre de traitement Ebola de N'Zérékoré, en Guinée forestière. Deux malades d'Ebola identifiés dans le sud de la Guinée après le décès de deux membres de leur famille atteints par le virus ont été admis dans un centre de traitement, a annoncé vendredi l'ONG Alima, qui les a pris en charge.</segment>
+Output:
+<segment id="16-0">
+REL_DATE:vendredi
+ORG_REF_TO_LOC:centre de traitement Ebola de N'Zérékoré
+ORGANIZATION:Alima|Alima|OMS
+LOCATION:Guinée forestière|Guinée|Guinée
+INF_DISEASE:Ebola|Ebola
+DOC_SOURCE:AFP
+DOC_DATE:18/03/2016
+</segment>
+</example>
+<example>
+Input:
+<segment id="16-1">Il s'agit d'"une mère et de son fils de 5 ans", a indiqué de son côté l'Organisation mondiale de la Santé (OMS) dans un communiqué, précisant avoir été alertée sur une possible résurgence d'Ebola en Guinée depuis le 16 mars, à la suite de décès inexpliqués dans une famille présentant des symptômes du virus. Les équipes dépêchées sur place par l'OMS et le ministère de la Santé "s'efforceront d'enquêter sur l'origine des nouvelles contaminations et d'identifier, isoler, vacciner et surveiller tous les contacts des nouveaux cas et des morts", ajoute l'organisation.</segment>
+Output:
+<segment id="16-1">
+REL_PERIOD:depuis le 16 mars
+ORGANIZATION:Organisation mondiale de la Santé|ministère de la Santé|OMS|OMS
+LOCATION:Guinée
+INF_DISEASE:Ebola
+</segment>
+</example>
+<example>
+Input:
+<segment id="16-2">Selon un communiqué d'Alima, "deux patients confirmés Ebola ont été pris en charge par l'organisation Alima (The Alliance For International Medical Action) qui a rouvert en urgence le centre de traitement Ebola de N'Zérékoré, en Guinée forestière", à une centaine de kilomètres de Koropara, où les nouveaux cas ont été signalés. "Nous espérons que ce nouveau foyer sera très vite circonscrit car aujourd'hui les autorités et les communautés se sont approprié les bonnes pratiques pour lutter contre la maladie", a dit le président d'Alima, Richard Kojan, présent en Guinée, cité dans le texte.</segment>
+Output:
+<segment id="16-2">
+ORG_REF_TO_LOC:centre de traitement Ebola de N'Zérékoré
+ORGANIZATION:The Alliance For International Medical Action|Alima|Alima|Alima
+LOCATION:Guinée forestière|Koropara|Guinée
+INF_DISEASE:Ebola
+</segment>
+</example>
+<example>
+Input:
+<segment id="16-3">L'ONG, qui a participé à l'expérimentation d'un traitement antiviral japonais prometteur contre Ebola, assure en Guinée "des soins médicaux et un soutien psycho-social à près de 115 patients guéris". Le virus Ebola a été identifié sur deux personnes d'une même famille décédées dans le sud-est de la Guinée, ainsi qu'au moins deux de leurs proches, les deux premiers cas signalés dans ce pays depuis que la fin de l'épidémie y a été proclamée le 29 décembre, a annoncé jeudi le gouvernement.</segment>
+Output:
+<segment id="16-3">
+REL_DATE:29 décembre|jeudi
+PATHOGEN:virus Ebola
+ORGANIZATION:gouvernement|ONG
+LOCATION:Guinée|Guinée
+INF_DISEASE:Ebola
+</segment>
+</example>
+<example>
+Input:
+<segment id="16-4">Une source proche de la Coordination locale de lutte contre Ebola a précisé à l'AFP sous le couvert de l'anonymat que les deux personnes décédées étaient un couple marié. Jeudi matin, l'OMS avait pourtant annoncé l'arrêt présumé de "toutes les chaînes de transmission initiales" de l'épidémie en Afrique de l'Ouest après la fin du dernier épisode de la maladie en Sierra Leone voisine.</segment>
+Output:
+<segment id="16-4">
+REL_DATE:Jeudi
+ORGANIZATION:Coordination locale de lutte contre Ebola|AFP|OMS
+LOCATION:Afrique de l'Ouest|Sierra Leone
+</segment>
+</example>
+<example>
+Input:
+<segment id="17-0">© Photo
+Sanofi renonce à développer un vaccin anti-Zika
+07/09/2017 &&
+Communiqué de presse
+
+Le géant pharmaceutique français Sanofi a abandonné son programme de développement d'un vaccin contre le virus Zika, après qu'une autorité américaine a décidé de réduire ses financements en raison du déclin de l'épidémie. Il y a un an, Sanofi avait obtenu un engagement de 43,2 millions de dollars de la part de l'Autorité américaine de recherche et développement avancés dans le domaine biomédical (BARDA), pour financer le développement d'un vaccin anti-Zika.</segment>
+Output:
+<segment id="17-0">
+ORGANIZATION:Autorité américaine de recherche et développement avancés dans le domaine biomédical|Sanofi|Sanofi|Sanofi|BARDA
+DOC_DATE:07/09/2017
+</segment>
+</example>
+<example>
+Input:
+<segment id="17-1">Cependant le mois dernier, cette institution a décidé de réduire drastiquement le périmètre de son accord avec Sanofi Pasteur, la division vaccins du groupe, selon une déclaration de Sanofi discrètement publiée sur son site américain début septembre. "Par conséquent, Sanofi n'a pas l'intention de continuer à développer un candidat-vaccin contre Zika pour le moment", ni d'obtenir une licence sur une technologie de l'institut de recherche Walter Reed Army, que ce vaccin devait utiliser, a ajouté Sanofi. Son développement risquait par ailleurs de prendre bien plus de temps et de moyens que prévu.</segment>
+Output:
+<segment id="17-1">
+REL_PERIOD:mois dernier
+ORGANIZATION:institut de recherche Walter Reed Army|Sanofi Pasteur|Sanofi|Sanofi|Sanofi
+FUZZY_PERIOD:début septembre
+</segment>
+</example>
+<example>
+Input:
+<segment id="17-2">Sanofi "respecte la décision de la BARDA de réallouer ses ressources limitées vers ses priorités", sur fond d'une "forte réduction du nombre de nouveaux cas de Zika aux Etats-Unis et dans le monde en 2017", a encore commenté le groupe. L'Organisation mondiale de la santé (OMS) avait retiré en novembre dernier le statut d'"urgence de santé publique de portée mondiale" du virus Zika, lié à de graves anomalies cérébrales chez les nourrissons et touchant majoritairement des pays d'Amérique latine.</segment>
+Output:
+<segment id="17-2">
+REL_PERIOD:novembre dernier
+PATHOGEN:virus Zika
+ORGANIZATION:Organisation mondiale de la santé|Sanofi|BARDA|OMS
+LOCATION:Amérique latine|Etats-Unis|monde
+INF_DISEASE:Zika
+ABS_PERIOD:2017
+</segment>
+</example>
+<example>
+Input:
+<segment id="17-3">Plusieurs dizaines de vaccins contre le Zika sont actuellement à l'étude, mais aucun ne sera disponible pour les femmes en âge de procréer avant 2020, avait estimé ultérieurement l'OMS. Sanofi va limiter sa collaboration avec la BARDA à une étude de cas et de surveillance épidémiologique du Zika sur 2.400 volontaires en Colombie, au Honduras, au Mexique et à Puerto Rico, a précisé le groupe dans sa déclaration.</segment>
+Output:
+<segment id="17-3">
+ORGANIZATION:Sanofi|BARDA|OMS
+LOCATION:Puerto Rico|Colombie|Honduras|Mexique
+INF_DISEASE:Zika
+ABS_PERIOD:2020
+</segment>
+</example>
+<example>
+Input:
+<segment id="18-0">Un disparu, douze blessés et des milliers d’évacués après l’explosion d’un dépôt de munitions en Sibérie
+
+L’explosion survenue lundi 5 août dans un dépôt militaire en Sibérie a rendu nécessaires de nombreuses évacuations. DMITRY DUB / AP
+Les débris ont volé à plusieurs kilomètres alentour. Une personne est portée disparue, douze ont été blessées et des milliers de personnes évacuées, lundi 5 août, à la suite d’explosions causées par un incendie dans un dépôt de munitions en Sibérie. D’après des médecins, sept personnes ont été blessées, et deux d’entre elles ont été hospitalisées, a rapporté l’agence publique TASS.</segment>
+Output:
+<segment id="18-0">
+REL_DATE:lundi 5 août|lundi 5 août
+ORGANIZATION:TASS|AP
+LOCATION:Sibérie|Sibérie|Sibérie
+</segment>
+</example>
+<example>
+Input:
+<segment id="18-1">Provoquée par un feu d’origine inconnue, l’explosion principale s’est produite vers 17 heures, heure locale. Il a pris dans un dépôt d’obus d’une unité militaire stationnée près du village de Kamenka, a précisé le communiqué publié sur le site officiel du gouverneur de la région de Krasnoïarsk. D’après les autorités locales, 9 500 habitants ont été évacués dans un rayon de 15 kilomètres autour de la catastrophe. L’état d’urgence a été décrété.
+Des témoins ont publié sur Internet des vidéos montrant une épaisse fumée noire s’élevant au-dessus d’une forêt située à côté du dépôt de munitions.</segment>
+Output:
+<segment id="18-1">
+LOCATION:région de Krasnoïarsk|village de Kamenka
+</segment>
+</example>
+<example>
+Input:
+<segment id="18-2">Le quotidien britannique The Guardian a publié sur site une vidéo montrant l’explosion :
+« Les munitions continuent d’exploser depuis déjà cinq heures. Plusieurs milliers ont explosé », a déclaré une source aux services de secours locaux, citée par l’agence TASS. Plusieurs trains équipés pour la lutte antiincendie ont été dépêchés sur les lieux. « Des mesures ont été prises pour empêcher la propagation du feu et assurer la sécurité » dans la zone des explosions, a fait savoir l’antenne locale du ministère des situations d’urgence russe.
+Le Monde avec AFP</segment>
+Output:
+<segment id="18-2">
+ORGANIZATION:ministère des situations d’urgence russe|The Guardian|TASS
+DOC_SOURCE:Le Monde|AFP
+</segment>
+</example>
+<example>
+Input:
+<segment id="19-0">Zika - Porto Rico décrète l'état d'urgence sanitaire, une femme enceinte infectée
+
+Publié le 05/02/2016 à 08h01
+
+Le gouverneur de Porto Rico, Alejandro Garcia Padilla, a décrété l'état d'urgence sanitaire vendredi dans l'île des Caraïbes où 22 personnes ont été infectées par le virus Zika, dont une femme enceinte. "Notre objectif principal est d'assurer la sécurité des Porto-ricains et de leur donner des conseils sur les mesures préventives nécessaires", a déclaré M. Garcia Padilla dans un discours depuis le palais présidentiel.</segment>
+Output:
+<segment id="19-0">
+REL_DATE:vendredi
+PATHOGEN:virus Zika
+LOC_REF_TO_ORG:Porto Rico|Porto Rico
+LOCATION:palais présidentiel|Caraïbes
+INF_DISEASE:Zika
+DOC_DATE:05/02/2016
+</segment>
+</example>
+<example>
+Input:
+<segment id="19-1">Des responsables ont précisé que dans le cadre de ce plan d'urgence, l'accent allait être mis sur la lutte contre les moustiques, principaux vecteurs du virus. D'autres mesures vont également entrer en vigueur, comme le gel des prix de certains produits -les préservatifs par exemple- une mesure prise après un cas confirmé de transmission du virus par voie sexuelle aux Etats-Unis. "Le Zika doit être traité comme une maladie sexuellement transmissible, nous devons prendre les précautions adéquates", a dit Ana Rius, secrétaire à la Santé de l'île des Caraïbes.</segment>
+Output:
+<segment id="19-1">
+LOCATION:Etats-Unis|Caraïbes
+INF_DISEASE:maladie sexuellement transmissible|Zika
+</segment>
+</example>
+<example>
+Input:
+<segment id="19-2">Trois nouveaux cas de Zika ont été répertoriés dans l'archipel américain de Porto Rico, ce qui porte le nombre total de personnes infectées à 22, selon les autorités. Parmi ces patients figure une femme enceinte. Mme Rius, qui avait déjà conseillé aux femmes le mois dernier d'éviter de tomber enceintes, a aussi annoncé qu'une période de quarantaine avait été établie pour les dons du sang. Les autorités de santé américaines ont recommandé plus tôt vendredi aux personnes de retour de pays où sévit le virus Zika d'utiliser des préservatifs ou de s'abstenir d'avoir des relations sexuelles, le virus pouvant se transmettre par cette voie.</segment>
+Output:
+<segment id="19-2">
+REL_PERIOD:mois dernier
+REL_DATE:vendredi
+PATHOGEN:virus Zika
+LOCATION:Porto Rico
+INF_DISEASE:Zika
+</segment>
+</example>
+<example>
+Input:
+<segment id="19-3">Bénigne en apparence, l'infection par ce virus est soupçonnée de provoquer de graves malformations congénitales du cerveau du foetus chez les femmes enceintes. L'organisation mondiale de la santé (OMS) a qualifié l'épidémie d'"urgence de santé publique de portée mondiale".</segment>
+Output:
+<segment id="19-3">
+ORGANIZATION:organisation mondiale de la santé|OMS
+</segment>
+</example>
+<example>
+Input:
+<segment id="20-0">RHÔNE Lyon 8e : 500 grammes d’un puissant explosif découverts dans un square
+500 grammes d’un puissant explosif, le Semtex, ont été découverts jeudi après-midi dans le quartier Mermoz, lors d’une opération initialement menée sur de la recherche de produits stupéfiants. La saisie a été effectuée dans un jardin public.
+Le Progrès - 04 déc. 2015 à 10:32 | mis à jour le 05 déc. 2015 à 14:14 - Temps de lecture : 1 min
+La marchandise avait été dissimulée dans la souche d’un arbre, vraisemblablement pour que ses propriétaires puissent se soustraire aux risques des perquisitions menées dans le cadre de l’état d’urgence.</segment>
+Output:
+<segment id="20-0">
+REL_DATE:jeudi
+LOCATION:quartier Mermoz|Lyon 8e|RHÔNE
+EXPLOSIVE:Semtex
+DOC_SOURCE:Le Progrès
+DOC_DATE:04 déc. 2015|05 déc. 2015
+</segment>
+</example>
+<example>
+Input:
+<segment id="20-1">Selon une source proche du dossier, cette découverte n’a pas de lien avec la piste terroriste, mais celle du grand banditisme. Le semtex a déjà été utilisé, dans la région, pour faire sauter des distributeurs automatiques de billets. L’enquête a d’ailleurs été confiée à la Police Judiciaire de Lyon.
+La même substance dérobée en 2008 au fort de Corbas
+Le Semtex est un puissant explosif très polyvalent : utilisé tant dans le domaine industriel pour la démolition, que dans l’armée pour produire des mines, il est aussi très prisé par les terroristes car son absence d’odeur le rend très difficile à détecter.</segment>
+Output:
+<segment id="20-1">
+ORGANIZATION:Police Judiciaire de Lyon
+LOCATION:fort de Corbas
+EXPLOSIVE:semtex|Semtex
+ABS_PERIOD:2008
+</segment>
+</example>
+<example>
+Input:
+<segment id="20-2">En 2008, 28 kilos de cette substance avaient été dérobés au fort de Corbas suite à une négligence de sécurité. Le butin de ce vol retentissant n’a jamais été retrouvé. Il est encore trop tôt pour savoir si la découverte d’hier en fait partie.</segment>
+Output:
+<segment id="20-2">
+REL_DATE:hier
+LOCATION:fort de Corbas
+ABS_PERIOD:2008
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-0">Allemagne: un Iranien soupçonné de préparer un attentat "islamiste" au cyanure et à la ricine arrêté
+J.D. avec AFP
+Le 08/01/2023 à 08h18 - mis à jour le 08/01/2023 à 18h32
+Des policiers en Allemagne (photo d'illustration). - Christof Stache - AFP
+L'homme de 32 ans a été interpellé, ainsi qu'une autre personne, dans l'ouest de l'Allemagne. Il est "soupçonné d'avoir préparé un acte de violence grave menaçant la sûreté de l'État".</segment>
+Output:
+<segment id="21-0">
+TOXIC_C_AGENT:cyanure
+ORGANIZATION:AFP
+LOCATION:Allemagne|Allemagne|Allemagne
+DOC_SOURCE:AFP
+DOC_DATE:08/01/2023|08/01/2023
+DOC_AUTHOR:J.D.
+BIO_TOXIN:ricine
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-1">Les autorités allemandes ont annoncé ce dimanche avoir interpellé un Iranien de 32 ans à la suite d'indications sur un possible attentat "islamiste" à la ricine et au cyanure, suite à une mise en garde du FBI selon la presse.
+L'appartement situé à Castrop-Rauxel dans l'ouest du pays, en Rhénanie du nord-Westphalie, a été perquisitionné dans la nuit en vue de vérifier l'éventuelle présence de ces "substances toxiques" destinées à commettre une telle attaque, selon un communiqué du parquet régional et de la police.</segment>
+Output:
+<segment id="21-1">
+TOXIC_C_AGENT:cyanure
+REL_DATE:dimanche
+ORGANIZATION:parquet régional|police|FBI
+LOCATION:Rhénanie du nord-Westphalie|Castrop-Rauxel
+BIO_TOXIN:ricine
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-2">Les enquêteurs n'ont cependant trouvé "aucun indice" sur la présence de ces produits sur place, a indiqué à l'AFP le procureur de Düsseldorf, Holger Heming.
+Alerte du FBI
+Le ministre régional de l'Intérieur, Herbert Reul, a expliqué que les autorités avaient reçu "des indications à prendre au sérieux" qui ont conduit la police à "agir durant la nuit".
+Selon les journaux Spiegel et Süddeutsche Zeitung, c'est le FBI américain qui a mis en garde les services allemands durant la période de Noël.</segment>
+Output:
+<segment id="21-2">
+ORGANIZATION:Süddeutsche Zeitung|Spiegel|police|AFP|FBI|FBI
+LOC_REF_TO_ORG:Düsseldorf
+FUZZY_PERIOD:période de Noël
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-3">La police fédérale américaine aurait réussi à infiltrer un groupe de la messagerie Telegram, où le suspect se serait renseigné d'abord sur des attentats à la bombe puis sur ceux commis à l'aide de substance toxiques, selon Der Spiegel.
+Le frère du suspect interpellé
+L'homme, en compagnie d'une deuxième personne également interpellée dans la nuit au même endroit, et qui selon les médias allemands est son frère, auraient envisagé de passer à l'action la nuit de la Saint-Sylvestre, mais il leur manquait des éléments pour la confection des poisons à la ricine et au cyanure, ajoute le Spiegel.</segment>
+Output:
+<segment id="21-3">
+TOXIC_C_AGENT:cyanure
+REL_DATE:Saint-Sylvestre
+ORGANIZATION:police fédérale américaine|Der Spiegel|Telegram|Spiegel
+BIO_TOXIN:ricine
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-4">Malgré l'absence d'éléments à charge découverts immédiatement, la ministre fédérale de l'Intérieur, Nancy Faeser, a justifié le raid de la police. "Nos services de sécurité prennent chaque indice portant sur le danger du terrorisme islamiste très au sérieux", a-t-elle dit dans un communiqué. Reste à savoir maintenant si la justice aura suffisamment d'éléments pour engager des procédures.
+À ce stade, le principal suspect reste encore "soupçonné d'avoir préparé un acte de violence grave menaçant la sûreté de l'État en se procurant du cyanure et de la ricine en vue de commettre un attentat à caractère islamiste", selon le communiqué publié par la justice locale.</segment>
+Output:
+<segment id="21-4">
+TOXIC_C_AGENT:cyanure
+ORGANIZATION:police|État
+BIO_TOXIN:ricine
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-5">Sympathisant de l'EI
+Selon le Spiegel, l'homme est un Iranien sunnite sympathisant du groupe État islamique (EI).
+La ricine est un agent très toxique classé par l'Institut Robert Koch, chargé en Allemagne de la veille médicale et sanitaire, comme "arme biologique" et est extraite de graines de la plante de ricine. Elle peut constituer un poison mortel, à l'instar du cyanure.
+Sur les images de la chaîne de télévision privée NTV, on voit les deux personnes interpellées emmenées en sous-vêtements par des agents, vêtus eux de combinaison de protection spéciale en raison du risque biologique.</segment>
+Output:
+<segment id="21-5">
+TOXIC_C_AGENT:cyanure
+ORGANIZATION:Institut Robert Koch|État islamique|Spiegel|NTV|EI|EI
+LOCATION:Allemagne
+BIO_TOXIN:ricine
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-6">Un projet d'attentat à la ricine déjoué en 2018
+En 2018, la police allemande avait déjà arrêté un Tunisien de 31 ans et son épouse, soupçonnés d'avoir voulu préparer ce qui aurait été le premier attentat "biologique" dans le pays.
+Chez le couple, qui avait prêté allégeance au groupe État islamique, les enquêteurs avaient retrouvé 84,3 mg de ricine et quelque 3300 graines de ricin permettant de fabriquer le poison. L'homme a été condamné deux ans plus tard à 10 ans de prison et sa femme à 8 ans d'emprisonnement.</segment>
+Output:
+<segment id="21-6">
+ORGANIZATION:police allemande|État islamique
+BIO_TOXIN:ricine|ricine
+ABS_PERIOD:2018|2018
+</segment>
+</example>
+<example>
+Input:
+<segment id="21-7">L'Allemagne a été visée ces dernières années par plusieurs attaques islamistes, dont un attentat au camion-bélier sur un marché de Noël en décembre 2016 qui avait fait 13 morts.</segment>
+Output:
+<segment id="21-7">
+LOCATION:Allemagne
+ABS_PERIOD:décembre 2016
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-0">Kenya : la farine de maïs susceptible d'être infectée par une substance cancérigène
+Author, Basillioh Mutahi
+Role, BBC News, Nairobi
+15 novembre 2019
+Le maïs et ses dérivés sont susceptibles d'être contaminés par une substance appelée aflatoxine, celle-ci est toxique et cancérigène, selon l'OMS.
+Plusieurs marques bien connues de farine de maïs ont été retirées des rayons des supermarchés au Kenya, après un avertissement concernant les niveaux de dangerosité de cette substance toxique.
+Cette situation a suscité de vives inquiétudes, le maïs étant la principale denrée de base du pays.</segment>
+Output:
+<segment id="22-0">
+ORGANIZATION:OMS
+LOCATION:Nairobi|Kenya|Kenya
+DOC_SOURCE:BBC
+DOC_DATE:15 novembre 2019
+DOC_AUTHOR:Basillioh Mutahi
+BIO_TOXIN:aflatoxine
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-1">La farine est utilisée pour préparer l'Ugali, une pâte amylacée cuite dont les ingrédients clés sont la farine et l'eau. Le maïs est également utilisé pour préparer un autre plat traditionnel de la région, le Githeri, qui est un mélange de maïs et de haricots, cuits ensemble.
+Le maïs n'est pas seulement un plat courant dans la plupart des ménages kenyans, c'est aussi un aliment familier dans l'Est, le Centre et le Sud de l'Afrique, sous différents noms tels que Nshima, Sima, Sadza, ou Posho.
+En fait, l'Afrique consomme 30% du maïs produit dans le monde, selon les recherches.</segment>
+Output:
+<segment id="22-1">
+LOC_REF_TO_ORG:Afrique
+LOCATION:Afrique|monde
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-2">Une portion d'Ugali, un plat à base de farine de maïs, vue dans un restaurant de Nairobi, au Kenya, le 24 mai 2017.
+Mais le maïs n'est pas le seul aliment susceptible d'être contaminé par l'aflatoxine. En Afrique de l'Est, le maïs, le lait et les arachides sont les principales denrées d'exposition à cette substances toxiques.
+Ceux-ci sont généralement mélangés pour faire une bouillie pour les nourrissons et les enfants, ce qui expose ces derniers à un risque particulier d'intoxication par les aflatoxines.
+Pour le Kenya, la contamination par les aflatoxines est un problème de longue date.</segment>
+Output:
+<segment id="22-2">
+LOC_REF_TO_ORG:Kenya
+LOCATION:Afrique de l'Est|Nairobi|Kenya
+BIO_TOXIN:aflatoxines|aflatoxines|aflatoxine
+ABS_DATE:24 mai 2017
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-3">Le pays est considéré comme un point critique mondial, avec des incidents de toxicité aiguë enregistrés en 2004 et 2010. Il est probable qu'un problème alimentaire dans un pays puisse avoir un effet sur ses voisins, car les produits agricoles font souvent l'objet d'échanges transfrontaliers.
+Déjà, l'Ouganda et le Rwanda ont interdit les marques d'arachides importées du Kenya après que le Kenya Bureau of Standards (Kebs) les a inscrites sur la liste noire en raison de niveaux dangereux d'aflatoxines.
+Comment savez-vous quelle farine est sans danger ?</segment>
+Output:
+<segment id="22-3">
+ORGANIZATION:Kenya Bureau of Standards|Kebs
+LOC_REF_TO_ORG:Ouganda|Rwanda
+LOCATION:Kenya
+BIO_TOXIN:aflatoxines
+ABS_PERIOD:2004|2010
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-4">Kebs qui est chargé d'assurer la qualité globale des normes dans l'industrie, a suspendu les licences de cinq marques de farine de maïs et ordonné leur retrait du marché.
+Il s'agit du Dola, fabriqué par Kitui Flour Mills, du Starehe, fabriqué par Pan African Grain et du Kifaru, par Alpha Grain Limited.
+Les autres marques interdites sont 210 (Kenblest Limited) et Jembe by Kensalrise Limited. Toutes ces marques sont vendues partout au pays.
+L'agence gouvernementale a déclaré que la suspension faisait suite à une surveillance du marché et à des tests qui ont établi que ces marques avaient des niveaux d'aflatoxines plus qu'acceptables.</segment>
+Output:
+<segment id="22-4">
+ORGANIZATION:Alpha Grain Limited|Kensalrise Limited|Kitui Flour Mills|Pan African Grain|Kenblest Limited|Kebs
+BIO_TOXIN:aflatoxines
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-5">Mais une association représentant les producteurs de farine de céréale du pays a protesté contre l'interdiction, contestant la validité des méthodes utilisées pour tester les niveaux d'aflatoxines. Ils disent que d'autres tests indépendants ont donné des résultats différents.
+En effet, les tests commandés par une station de télévision locale pour un reportage d'investigation ont eu un résultat différent. Le reportage de NTV indiquait que trois marques différentes, Jogoo, Jimbi et Heri, présentaient des niveaux d'aflatoxine dangereux - à 13,8, 16,2 et 16,19 parties par milliard (microgramme par kilogramme) respectivement.</segment>
+Output:
+<segment id="22-5">
+ORGANIZATION:NTV
+BIO_TOXIN:aflatoxines|aflatoxine
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-6">Kebs considère que des quantités de maïs et d'autres céréales supérieures à 10 par milliard ne sont pas sûres.
+Cependant, le reportage télévisé indiquait que ses tests sur la marque de farine de maïs Kifaru, que Kebs a suspendue, avaient révélé qu'elle n'était pas affectée par l'aflatoxine.
+Pour les consommateurs, tout cela est confus et il est difficile de s'assurer que les dizaines de produits à base de maïs qui restent en vente sont sûrs.
+"Quelqu'un peut-il me donner la raison pour laquelle seules les cinq marques de farine ont été retirées du marché ?</segment>
+Output:
+<segment id="22-6">
+ORGANIZATION:Kebs|Kebs
+BIO_TOXIN:aflatoxine
+</segment>
+</example>
+<example>
+Input:
+<segment id="22-7">Tous les producteurs de farine achètent du maïs au Kenya National Cereals and Produce Board, une structure qui appartient au gouvernement", a déclaré Morphat Gold sur Twitter.
+Une personne du nom de Potentash a twitté : "Effrayant. Nous devons demander des comptes au gouvernement. Ils ont la responsabilité de s'assurer que les aliments que nous mangeons sont propres à la consommation."</segment>
+Output:
+<segment id="22-7">
+ORGANIZATION:Kenya National Cereals and Produce Board|gouvernement|gouvernement|Twitter
+</segment>
+</example>
+<example>
+Input:
+<segment id="23-0">Sciences & Innovations
+Environnement
+Aberkane : ces venins qui valent trente mille fois plus que l'or
+Les neurotechnologies ont besoin des peptides contenus dans les venins et que nous ne savons pas encore synthétiser. Mais ils ont bien plus à nous apprendre.
+Par Idriss J. Aberkane
+Publié le 26/10/2014 à 12h03
+La toxine APETx2 d'Anthopleura elegantissima se négocie à 600 euros le milligramme.</segment>
+Output:
+<segment id="23-0">
+DOC_DATE:26/10/2014
+DOC_AUTHOR:Idriss J. Aberkane|Aberkane
+BIO_TOXIN:APETx2
+</segment>
+</example>
+<example>
+Input:
+<segment id="23-1">Si un jour vous entendez un de ces pseudo-docteurs en écologie industrielle ou un de ces Nobel d'économie du café des sports disserter sur l'intérêt de bétonner la barrière de corail ou d'industrialiser la forêt primaire pour mettre au travail ces paresseux de natifs, parlez-lui de la tarentule chinoise ou du cône du Pacifique. À côté de ce petit mollusque ultra-venimeux, la poule aux oeufs d'or fait figure de plaisanterie. La mu-conotoxine GIIIB se négocie à presque 500 euros le milligramme chez Alomone Labs. La variante PIIIA est, elle, à 800 euros le milligramme chez Smartox Biotech... 800 millions d'euros le kilo !</segment>
+Output:
+<segment id="23-1">
+ORGANIZATION:Smartox Biotech|Alomone Labs
+LOCATION:Pacifique
+BIO_TOXIN:GIIIB|PIIIA
+</segment>
+</example>
+<example>
+Input:
+<segment id="23-2">Le platine et l'héroïne pure ? Du terreau de jardin en comparaison.
+La newsletter sciences et tech
+Tous les samedis à 16h
+Recevez toute l’actualité de la sciences et des techs et plongez dans les Grands entretiens, découvertes majeures, innovations et coulisses...
+En vous inscrivant, vous acceptez les conditions générales d’utilisations et notre politique de confidentialité.
+Certaines variantes de la jingzhao toxine, issues du venin de la tarentule chinoise (Chilobrachys jingzhao venom), frisent 1 000 euros le milligramme, soit un milliard le kilo. L'hainantoxine, extraite elle de l'araignée chinoise Ornithoctonus hainana, se négocie à 950 euros le milligramme.</segment>
+Output:
+<segment id="23-2">
+TOXIC_C_AGENT:héroïne
+REL_DATE:samedis
+BIO_TOXIN:Chilobrachys jingzhao venom|jingzhao toxine|hainantoxine
+</segment>
+</example>
+<example>
+Input:
+<segment id="23-3">En comparaison, l'anémone de mer (Anthopleura elegantissima) ferait presque figure de parent pauvre avec sa toxine APETx2 à 600 euros le milligramme. Quant au peptide toxique Tx2-6 de l'araignée très agressive Phoneutria, étudié dans le traitement des troubles érectiles, son coût de synthèse n'est pas encore disponible.
+Pourquoi une telle inflation ?
+À l'origine d'une telle envolée des venins, l'essor des neurotechnologies, les nouvelles biotechnologies, qui dopent la demande mondiale en peptides que nous ne savons pas synthétiser facilement, voire pas du tout, et qui doivent alors être collectés sur la bête.</segment>
+Output:
+<segment id="23-3">
+BIO_TOXIN:APETx2|Tx2-6
+</segment>
+</example>
+<example>
+Input:
+<segment id="23-4">Les conotoxines, jingzhaotoxines, huwentoxines et hainantoxines affectent différents canaux à sodium, dont ceux que les neuroscientifiques inhibent pour révéler leur potentiel d'action et qui sont aussi nécessaires aux neurones pour communiquer entre eux.
+On utilise bien évidemment les venins en pharmaceutique, diverses toxines de scorpion traitant les polyarthrites rhumatoïdes ou les scléroses en plaques. Le venin du cobra royal peut être employé comme analgésique. Quant à l'épibatidine, un alcaloïde accumulé par la grenouille Epipedobates tricolor à partir des insectes dont elle se nourrit, elle est 200 fois plus puissante que la morphine !</segment>
+Output:
+<segment id="23-4">
+NON_INF_DISEASE:polyarthrites rhumatoïdes|scléroses en plaques
+BIO_TOXIN:jingzhaotoxines|hainantoxines|huwentoxines|conotoxines|épibatidine
+</segment>
+</example>
+<example>
+Input:
+<segment id="23-6">Le principe de la reine rouge
+Si, par exemple, les cônes produisent une telle diversité de toxines, c'est probablement en raison du "principe de la reine rouge" selon lequel en évolution parfois "il faut courir pour rester à la même place", comme le dit la reine rouge dans Alice au pays des merveilles. Bref, continuer à évoluer et à se diversifier pour survivre, une intéressante leçon industrielle que la sidérurgie allemande a très bien comprise, au grand dam de la nôtre.
+Meilleure leçon encore : celle du couple proie-prédateur composé de la salamandre Taricha granulosa et du serpent Thamnophis sirtalis en Californie.</segment>
+Output:
+<segment id="23-6">
+LOCATION:Californie
+</segment>
+</example>
+<example>
+Input:
+<segment id="23-7">Dans la compétition entre la salamandre toxique et le serpent résistant, ce dernier a toujours un temps d'avance sur son prédateur. Hanifin et al. (2008) [1] ont démontré que là où la salamandre fait de la compétition quantitative (travailler plus pour gagner plus) en produisant plus de sa tétrodotoxine, le serpent fait de la compétition qualitative en produisant un nouvel antidote : travailler mieux pour gagner... beaucoup plus.</segment>
+Output:
+<segment id="23-7">
+BIO_TOXIN:tétrodotoxine
+ABS_PERIOD:2008
+</segment>
+</example>
+<example>
+Input:
+<segment id="24-0">La Polynésie, seul pays au monde « à fabriquer de la ciguatoxine pure »
+16 Avr 2019 Vaite Urarii Pambrun Vaite Urarii Pambrun
+Lors de l’inauguration de l’exposition célébrant les 70 ans de L’Institut Louis Malardé, le président du Pays a annoncé que la Polynésie va se doter d’un « centre de production de micro-algues » à Paea. Une algue endémique « recherchée par les laboratoires » pour l’alimentaire et la biomédecine. Selon le docteur Raymond Bagnis, la Polynésie est le seul pays au monde « à fabriquer de la ciguatoxine pure ».</segment>
+Output:
+<segment id="24-0">
+ORGANIZATION:Institut Louis Malardé
+LOC_REF_TO_ORG:Polynésie|Polynésie|Polynésie
+LOCATION:Paea
+DOC_DATE:16 Avr 2019
+BIO_TOXIN:ciguatoxine|ciguatoxine
+</segment>
+</example>
+<example>
+Input:
+<segment id="24-1">Les 70 ans de l’Institut Louis Malardé ont été retracés mardi matin dans le hall de l’Assemblée de la Polynésie au travers de divers exposés. L’occasion de revenir sur les moments forts de cette institution, mais aussi de rendre hommage à William Robinson, ingénieur naval, qui avait décidé de s’investir au fenua et notamment dans la recherche sur la filariose, comme nous le précise le directeur de l’Institut, Hervé Varet.
+Le taote Raymond Bagnis, qui a mis en place le service dédié à la ciguatera, était aussi présent lors de cette inauguration.</segment>
+Output:
+<segment id="24-1">
+REL_DATE:mardi
+ORG_REF_TO_LOC:hall de l’Assemblée de la Polynésie
+ORGANIZATION:Institut Louis Malardé
+NON_INF_DISEASE:ciguatera
+INF_DISEASE:filariose
+</segment>
+</example>
+<example>
+Input:
+<segment id="24-2">L’Institut Louis Malardé « marche très bien car il est composé de personnes motivées comme nous l’étions à cette époque-là », dit-il. Il estime d’ailleurs que pour les recherches sur la ciguatera
+« nous avons la chance d’avoir un milieu marin extraordinaire, et que l’Institut soit tourné vers la recherche appliquée à la population ». Selon lui la Polynésie est le seul Pays au monde « à fabriquer de la ciguatoxine pure ».
+Le président du Pays a d’ailleurs annoncé dans son discours que de nouvelles infrastructures seront mises à disposition de l’Institut Malardé à Paea.</segment>
+Output:
+<segment id="24-2">
+ORGANIZATION:Institut Louis Malardé|Institut Malardé
+NON_INF_DISEASE:ciguatera
+LOC_REF_TO_ORG:Polynésie
+LOCATION:Paea
+BIO_TOXIN:ciguatoxine
+</segment>
+</example>
+<example>
+Input:
+<segment id="24-3">Il s’agira notamment d’ « un centre de production de microalgues qui permettra de valoriser la chimiodiversité d’une algue endémique (…) recherchée par les laboratoires »  dans les domaines de l’alimentaire et de la biomédecine. Le président du Pays compte bien travailler avec les pays du Pacifique pour « partager les recherches et les connaissances ».</segment>
+Output:
+<segment id="24-3">
+LOCATION:Pacifique
+</segment>
+</example>
+<example>
+Input:
+<segment id="25-0">Israël aurait utilisé la bombe anti-bunker BLU-109 contre le chef du Hezbollah
+Maroc diplomatique1 octobre 2024
+Hezbollah
+Le 27 septembre, une opération militaire d’envergure a été menée par les forces armées israéliennes, aboutissant à l’élimination du chef du Hezbollah. Une frappe aérienne de précision, visant un bunker profondément enfoui à environ 18 mètres sous terre dans le sud de Beyrouth, a entraîné la mort de plusieurs figures importantes de l’organisation, y compris son chef, Hassan Nasrallah.</segment>
+Output:
+<segment id="25-0">
+REL_DATE:27 septembre
+ORGANIZATION:Hezbollah|Hezbollah|Hezbollah
+LOC_REF_TO_ORG:Israël
+LOCATION:Beyrouth
+DOC_SOURCE:Maroc diplomatique
+DOC_DATE:1 octobre 2024
+</segment>
+</example>
+<example>
+Input:
+<segment id="25-1">Les avions chasseurs israéliens F-15I Ra’am, auraient utilisé des bombes anti-bunker d’une technologie avancée : les GBU-31(V)3/B.
+La clé de cette opération résidait dans l’utilisation par l’armée de l’air israélienne de chasseurs F-15I Ra’am, chacun équipé de six bombes anti-bunker d’une technologie avancée : les GBU-31(V)3/B. Ces bombes, dotées de l’ogive pénétrante BLU-109, sont très puissantes grâce à leur capacité à atteindre des cibles fortifiées bien en dessous de la surface terrestre.
+Conçue pour des opérations nécessitant la destruction de structures très protégées, l’ogive BLU-109 est le fruit d’une ingénierie de haute précision.</segment>
+Output:
+<segment id="25-1">
+ORGANIZATION:armée de l’air israélienne
+</segment>
+</example>
+<example>
+Input:
+<segment id="25-2">Elle pèse environ 874 kg et contient 240 kg de charge explosive. L’élément déterminant de cette ogive réside dans sa coque en acier à haute résistance, spécialement conçue pour maintenir l’intégrité de l’arme lors de l’impact. Cette conception unique permet une pénétration efficace de 1,8 à 2,4 mètres de béton armé avant que la charge explosive ne détonne, une capacité cruciale pour neutraliser des cibles profondément enfouies.
+Lire aussi : Israël a lancé une offensive terrestre contre le Hezbollah au Liban
+L’efficacité de la GBU-31(V)3/B est en grande partie due à sa charge composée de tritonal.</segment>
+Output:
+<segment id="25-2">
+ORGANIZATION:Hezbollah
+LOC_REF_TO_ORG:Israël
+LOCATION:Liban
+EXPLOSIVE:tritonal
+</segment>
+</example>
+<example>
+Input:
+<segment id="25-3">Ce puissant explosif est un mélange de 80 % de TNT et de 20 % de poudre d’aluminium. Ce mélange spécifique a été choisi pour son rendement énergétique élevé. Le tritonal est réputé pour sa capacité à générer une explosion suffisamment puissante pour détruire des infrastructures à la structure complexe et renforcée, comme celles souvent utilisées par des organisations militaires non-étatiques telles que le Hezbollah.
+L’utilisation de telles armes sophistiquées illustre la volonté d’Israël de cibler avec précision des infrastructures stratégiques qui représentent une menace importante.</segment>
+Output:
+<segment id="25-3">
+ORGANIZATION:Hezbollah
+LOC_REF_TO_ORG:Israël
+EXPLOSIVE:tritonal|TNT
+</segment>
+</example>
+<example>
+Input:
+<segment id="25-4">Cette frappe aérienne, bien que réussie sur le plan opérationnel, soulève toutefois des questions sur les implications géopolitiques et humanitaires de l’utilisation de telles armes dans des zones densément peuplées.
+En ciblant directement le leadership du Hezbollah, Israël veut aussi envoyer un message à l’organisation et à ses partisans. La nouvelle escalade intervient dans un contexte de tension préoccupante dans la région, où l’échiquier politique et militaire est marqué par une incertitude quant à l’évolution future des relations entre Israël et ses voisins.</segment>
+Output:
+<segment id="25-4">
+ORGANIZATION:Hezbollah
+LOC_REF_TO_ORG:Israël|Israël
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-0">Le TATP : un redoutable explosif facile à fabriquer
+On l'appelle "la mère de Satan", et de Raqqa à Bruxelles, c'est l'explosif préféré des djihadistes de l'organisation État islamique. Explications.</segment>
+Output:
+<segment id="26-0">
+ORGANIZATION:État islamique
+LOCATION:Bruxelles|Raqqa
+EXPLOSIVE:TATP
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-1">Source AFP
+Publié le 23/03/2016 à 17h41
+À la suite d'une explosion dans une rame de métro à Bruxelles, installation d'un hôpital de campagne rue de la Loi. © Danny GYS/REPORTERS-REA
+C'est une poudre blanche, discrète, facile à fabriquer, mortelle. À Bruxelles mardi, comme au Bataclan à Paris ou sur les champs de bataille syriens, le TATP, surnommé dans les milieux djihadistes « la mère de Satan », s'avère être un explosif de choix pour le groupe État islamique. « Quinze kilos d'explosif de type TATP, 150 litres d'acétone, 30 litres d'eau oxygénée, des détonateurs, une valise remplie de clous et de vis » ont été trouvés dans un appartement des kamikazes de Bruxelles, a révélé mercredi le procureur fédéral belge Frédéric Van Leeuw.</segment>
+Output:
+<segment id="26-1">
+TOXIC_C_AGENT:eau oxygénée|acétone
+REL_DATE:mercredi|mardi
+ORG_REF_TO_LOC:Bataclan
+ORGANIZATION:État islamique|REA
+LOCATION:rue de la Loi|Bruxelles|Bruxelles|Bruxelles|Paris
+EXPLOSIVE:TATP|TATP
+DOC_SOURCE:AFP
+DOC_DATE:23/03/2016
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-2">Découvert à la fin du XIXe siècle par un chimiste allemand, le peroxyde d'acétone (en anglais TATP : triacetone triperoxide) est un explosif artisanal obtenu en mélangeant, dans des proportions précises, de l'acétone, de l'eau oxygénée et un acide (sulfurique, chlorhydrique ou nitrique), produits faciles à trouver dans le commerce. On obtient alors une poudre constituée de cristaux blancs, ressemblant à un sucre grossier, qu'un détonateur simple suffit à faire exploser, dans une déflagration produisant un terrible dégagement de gaz brûlants.</segment>
+Output:
+<segment id="26-2">
+TOXIC_C_AGENT:acide (sulfurique, chlorhydrique ou nitrique|acide (sulfurique, chlorhydrique|acide (sulfurique|eau oxygénée|acétone
+FUZZY_PERIOD:fin du XIXe siècle
+EXPLOSIVE:triacetone triperoxide|peroxyde d'acétone|TATP
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-3">« Regarder un tutoriel ne suffit pas »
+Ces dernières années, en Irak et en Syrie, les laboratoires, d'abord sommaires puis quasi industriels, de TATP et d'autres matières explosives artisanales se sont multipliés. Dans un rapport publié en février, l'ONG Conflict Armament Research a mis au jour, après une enquête de vingt mois, un réseau de 51 sociétés, basées dans vingt pays, dont la Turquie, la Russie mais aussi la Belgique et les États-Unis, ayant fourni à l'EI les composants nécessaires à la fabrication semi-industrielle d'explosifs artisanaux.</segment>
+Output:
+<segment id="26-3">
+REL_PERIOD:février
+ORGANIZATION:Conflict Armament Research|EI
+LOCATION:États-Unis|Belgique|Turquie|Russie|Syrie|Irak
+EXPLOSIVE:TATP
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-4">« Contrairement à ce qu'on dit parfois, regarder un tutoriel sur Internet ne suffit pas », assure à l'Agence France-Presse Éric, un ancien officier du génie, spécialiste des explosifs, qui demande à ne pas être davantage identifié. « Il faut quand même que quelqu'un vous ait montré une fois. Mais des instructeurs, les gars de l'État islamique n'en manquent pas, en Syrie et en Irak. Puis ça se diffuse de cours pratique en cours pratique.</segment>
+Output:
+<segment id="26-4">
+ORGANIZATION:Agence France-Presse|État islamique|génie
+LOCATION:Syrie|Irak
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-5">Quand on vous a montré, vous pouvez effectivement le faire dans votre cuisine. »
+« Ça a pété fort »
+La partie la plus délicate est l'ajout d'acide au mélange d'acétone et d'eau oxygénée, qui dégage de la chaleur, de fortes émanations et peut s'enflammer, mais un opérateur soigneux, protégé par un simple masque, peut y parvenir sans peine. C'est de TATP qu'étaient constituées les ceintures explosives des kamikazes du 13 novembre à Paris, comme, selon les premières présomptions, les gilets et bombes que les djihadistes ont fait sauter mardi dans l'aéroport et le métro de Bruxelles, faisant au moins 31 morts et 270 blessés, dont beaucoup souffrent de graves brûlures.</segment>
+Output:
+<segment id="26-5">
+TOXIC_C_AGENT:eau oxygénée|acétone
+REL_DATE:13 novembre|mardi
+LOCATION:Bruxelles|Paris
+EXPLOSIVE:TATP
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-6">Pour provoquer l'explosion du TATP, un détonateur est nécessaire. Il peut être fabriqué, à l'aide d'un fin tube métallique rempli de pâte et relié à deux fils électriques qui, mis en contact, vont provoquer un arc électrique puis une flamme. Plus simplement, ils peuvent être achetés dans le commerce. C'est ce qu'a fait Salah Abdeslam, l'un des djihadistes du 13 novembre, arrêté le 18 mars à Bruxelles : après avoir laissé photocopier son permis de conduire, il avait acheté une dizaine de détonateurs pyrotechniques chez un vendeur de matériel pour feux d'artifice de la région parisienne, sans éveiller le moindre soupçon.</segment>
+Output:
+<segment id="26-6">
+REL_DATE:13 novembre|18 mars
+LOCATION:région parisienne|Bruxelles
+EXPLOSIVE:TATP
+</segment>
+</example>
+<example>
+Input:
+<segment id="26-7">« Le principal problème que nous pose le TATP », confie à l'Agence France-Presse un membre des services français antiterroristes, qui demande à rester anonyme, « c'est la disponibilité des ingrédients. On peut surveiller les ventes d'eau oxygénée, d'ailleurs on le fait bien sûr, mais si les gars sont assez malins pour faire vingt pharmacies et acheter de petites quantités, ça passe. Pareil pour l'acétone et l'acide... » « Lors d'un stage, on a passé l'après-midi à fabriquer des explosifs artisanaux, notamment du TATP, ensuite testés. C'est d'une facilité déconcertante.</segment>
+Output:
+<segment id="26-7">
+TOXIC_C_AGENT:eau oxygénée|acétone
+ORGANIZATION:Agence France-Presse
+EXPLOSIVE:TATP|TATP
+</segment>
+</example>
+<example>
+Input:
+<segment id="27-0">Sept tonnes d'explosifs en provenance d'Iran saisies dans un port italien
+Les autorités italiennes ont saisi sept tonnes de RDX, un puissant explosif, expédiées d'Iran en Syrie, a annoncé mercredi la police.
+Publié le : 22/09/2010 - 20:48 Modifié le : 23/09/2010 - 15:07
+Les pains explosifs ont été découverts la semaine dernière dans un port de Calabre dans le sud de l'Italie. Ils étaient cachés dans un conteneur plein de lait en poudre. Le conteneur avait été déchargé par un cargo en provenance d'Iran sa destination finale était la Syrie.</segment>
+Output:
+<segment id="27-0">
+REL_PERIOD:semaine dernière
+REL_DATE:mercredi
+ORGANIZATION:police
+LOCATION:Calabre|Italie|Syrie|Syrie|Iran|Iran|Iran
+EXPLOSIVE:RDX
+DOC_DATE:22/09/2010|23/09/2010
+</segment>
+</example>
+<example>
+Input:
+<segment id="27-1">L'annonce de cette prise spectaculaire a été retardée pour faciliter le travail des enquêteurs. Le chef de la police locale a affirmé que la cargaison était arrivée en Italie grâce à des organisations criminelles. Il n'a pas précisé lesquelles mais la 'Ndrangheta, la mafia calabraise, semble être hors jeu. La piste privilégiée est celle d'un trafic international d'explosif.
+La quantité d'explosif a d'ailleurs impressionné la police italienne. Les sept tonnes de RDX, aurait pu faire sauter tout le port à conteneur. Le RDX est un explosif plastique souple et malléable.</segment>
+Output:
+<segment id="27-1">
+ORGANIZATION:mafia calabraise|police italienne|police locale|'Ndrangheta
+LOCATION:Italie
+EXPLOSIVE:RDX|RDX
+</segment>
+</example>
+<example>
+Input:
+<segment id="28-0">Recrudescence des cas de leptospirose, en ce début d'année
+
+Soixante-trois cas de leptospirose ont déjà été recensés, depuis le mois de janvier, en Nouvelle-Calédonie. Cinquante-cinq patients ont dû être hospitalisés, dont 20 en réanimation. La maladie du rat sévit, chaque année, durant la saison des pluies.
+Martine Nollet (Gédéon Richard)
+Publié le 2 mars 2022 à 11h15, mis à jour le 2 mars 2022 à 11h54
+
+En cas de fatigue, de fièvre élevée, de douleurs musculaires, articulaires et abdominales, consultez un médecin au plus vite. L’an dernier, quatre personnes sont décédées de la leptospirose.</segment>
+Output:
+<segment id="28-0">
+REL_PERIOD:depuis le mois de janvier|an dernier
+LOCATION:Nouvelle-Calédonie
+INF_DISEASE:leptospirose |leptospirose|leptospirose
+FUZZY_PERIOD:durant la saison des pluies|ce début d'année
+DOC_DATE:2 mars 2022|2 mars 2022
+DOC_AUTHOR:Martine Nollet|Gédéon Richard
+</segment>
+</example>
+<example>
+Input:
+<segment id="28-1">Depuis le début de l'année, 63 cas de contamination à cette bactérie, appelée maladie du rat, ont été recensés, dont 87% ont conduit à une hospitalisation.
+
+La Nouvelle-Calédonie n'est pas épargnée par cette maladie grave, parfois mortelle. L'an dernier, 229 cas ont été déplorés. "C'est une maladie que l'on retrouve plus fréquemment en début d'année. Il faut diagnostiquer suffisamment tôt cette pathologie, pour qu'elle soit traitée le plus rapidement possible", explique Stéphane Chabaud, infirmier référent leptospirose.</segment>
+Output:
+<segment id="28-1">
+REL_PERIOD:an dernier
+LOCATION:Nouvelle-Calédonie
+INF_DISEASE:leptospirose
+FUZZY_PERIOD:Depuis le début de l'année|début d'année
+</segment>
+</example>
+<example>
+Input:
+<segment id="28-2">Une maladie davantage présente en province Nord
+
+"Le moment entre lequel nous sommes affectés et celui où nous déclarons des signes cliniques varie, à peu près, d'une à trois semaines. En début de maladie, les signes peuvent ressembler à d'autres maladies, comme la dengue et la Covid-19. Si on attend, [on observe, NDLR] une apparition de jaunisse", complète le docteur Anne Pfannstiel, médecin de prévention à la Dass-NC (Direction de l'agence sanitaire et sociale).
+
+"Nous avons une recrudescence de cas, habituellement, dans le premier semestre de l'année.</segment>
+Output:
+<segment id="28-2">
+REL_PERIOD:premier semestre de l'année
+ORGANIZATION:Direction de l'agence sanitaire et sociale|Dass-NC
+LOCATION:province Nord
+INF_DISEASE:Covid-19|dengue
+</segment>
+</example>
+<example>
+Input:
+<segment id="28-3">En 1999, nous avions eu 19 décès dus à la leptospirose", poursuit-elle. En deux mois, en 2022, 63 cas ont été comptabilisés. "C'est énorme, avec 22 enfants touchés. Les deux tiers des cas concernent la province Nord ", précise le docteur. La province des Iles Loyauté est, a contrario, épargnée. Depuis le mois de janvier, le patient le plus jeune est âgé de 6 ans. Le plus âgé a 71 ans. La plus grande prudence est donc recommandée, d'autant que cette maladie peut être évitée.
+
+Eviter de marcher pieds nus
+
+"La peau est une très très bonne barrière.</segment>
+Output:
+<segment id="28-3">
+REL_PERIOD:Depuis le mois de janvier
+LOCATION:province des Iles Loyauté|province Nord
+INF_DISEASE:leptospirose
+ABS_PERIOD:1999|2022
+</segment>
+</example>
+<example>
+Input:
+<segment id="28-4">C'est pour cela que nous recommandons fortement aux personnes d'éviter de marcher pieds nus. Si nous limitons ce risque, en portant des chaussures et en portant des gants, cela constitue une barrière. En cette période très pluvieuse, il y a un risque de contracter cette bactérie", insiste Stéphane Chabaud. Autrement dit, évitez de marcher pieds nus, surtout si vous avez des plaies.
+
+La leptospirose est causée par des bactéries qui se trouvent dans les urines des rongeurs et d'autres mammifères. Elle peut s’attraper plusieurs fois et se contracte en cas de contact avec les eaux, les sols, par la peau et surtout par les muqueuses.</segment>
+Output:
+<segment id="28-4">
+INF_DISEASE:leptospirose
+</segment>
+</example>
+<example>
+Input:
+<segment id="29-0">Irak: 27 décès dus à la fièvre du Congo depuis le début de l'année
+11 juin 2022
+Par WWW.DEFIMEDIA.INFO Contact: webmaster@defimedia.info
+Des hommes désinfectant une ferme du village d'al-Bojari, dans la province de Dhi Qar, dans le sud de l'Irak, en mai 2022. Photo : L’orient- Le jour/ AFP/ ASSAAD NIAZI
+
+Au moins 27 personnes sont mortes en Irak de la fièvre du Congo depuis le début de l'année, un bilan en hausse diffusé samedi par les autorités qui tentent de freiner la propagation de cette maladie transmise par le bétail.</segment>
+Output:
+<segment id="29-0">
+REL_DATE:samedi
+ORGANIZATION:L’orient- Le jour|AFP
+LOCATION:village d'al-Bojari|province de Dhi Qar|Irak |Irak|Irak
+INF_DISEASE: fièvre du Congo|fièvre du Congo
+FUZZY_PERIOD:depuis le début de l'année|depuis le début de l'année
+DOC_DATE:11 juin 2022
+ABS_PERIOD:mai 2022
+</segment>
+</example>
+<example>
+Input:
+<segment id="29-1">Un précédent bilan officiel avait fait état il y a un mois de 12 décès dus à cette fièvre hémorragique depuis début 2022.
+
+La transmission de la maladie se produit "soit par les piqûres de tiques, soit par contact avec du sang ou des tissus d'animaux infectés, pendant ou immédiatement après l'abattage", selon l'Organisation mondiale de la santé (OMS).
+
+"Depuis le début de l'année, 162 cas de fièvre hémorragique ont été recensés, dont 27 décès.</segment>
+Output:
+<segment id="29-1">
+REL_DATE: il y a un mois
+ORGANIZATION:Organisation mondiale de la santé|OMS
+INF_DISEASE:fièvre hémorragique|fièvre hémorragique
+FUZZY_PERIOD:Depuis le début de l'année|depuis début 2022
+</segment>
+</example>
+<example>
+Input:
+<segment id="29-2">La moitié des personnes affectées sont désormais rétablies", a déclaré le porte-parole du ministère de la Santé, Seif al-Badr, relevant qu'un premier décès avait été enregistré dans la région automne du Kurdistan, dans le nord de l'Irak.
+
+Le ministère de la Santé s'efforce de "détecter les cas de la façon la plus précoce possible", a assuré M. Badr.
+
+De nombreux cas (61) ont été recensés à Dhi Qar, une province pauvre et rurale du sud du pays où sont élevés des bovins, des moutons et des chèvres, animaux qui sont autant d'hôtes intermédiaires de la fièvre hémorragique de Crimée-Congo (FHCC).</segment>
+Output:
+<segment id="29-2">
+ORGANIZATION:ministère de la Santé|ministère de la Santé
+LOCATION:région automne du Kurdistan| Dhi Qar|Irak
+INF_DISEASE:fièvre hémorragique de Crimée-Congo|FHCC
+</segment>
+</example>
+<example>
+Input:
+<segment id="29-3">Les autorités font la chasse aux abattoirs qui ne respectent pas les protocoles d'hygiène. Plusieurs provinces ont interdit toute entrée et sortie de bétail de la région et ont lancé des campagnes de désinfection parmi les bêtes.
+
+Selon le ministère de la Santé irakien, les personnes les plus touchées par la fièvre hémorragique sont les éleveurs de bétail ainsi que les employés des abattoirs.
+
+Le virus provoque la mort dans 10 à 40% des cas. Entre humains, la transmission de la maladie "peut survenir à la suite d'un contact direct avec du sang, des sécrétions, des organes ou des liquides biologiques de sujets infectés", selon l'OMS.
+
+© Agence France-Presse</segment>
+Output:
+<segment id="29-3">
+ORGANIZATION:ministère de la Santé irakien|Agence France-Presse|OMS
+INF_DISEASE:fièvre hémorragique
+</segment>
+</example>
+<example>
+Input:
+<segment id="30-0">La Guinée annonce un cas de fièvre de Lassa dans le Sud
+Le virus tire son nom de la ville de Lassa dans le nord du pays, où il a été pour la première fois identifié en 1969. © Crédit photo : AFP/SEYLLOU
+Par SudOuest.fr avec AFP
+Publié le 23/04/2022 à 14h40.
+
+Le virus de la fièvre de Lassa a été détecté sur une patiente de 17 ans
+
+Les autorités sanitaires de Guinée ont annoncé avoir identifié un cas de fièvre hémorragique de Lassa, une maladie virale apparentée à Ebola, dans le sud du pays, dans un communiqué.</segment>
+Output:
+<segment id="30-0">
+PATHOGEN:virus de la fièvre de Lassa
+ORGANIZATION: AFP|AFP
+LOC_REF_TO_ORG:Guinée
+LOCATION:ville de Lassa|Guinée
+INF_DISEASE:fièvre hémorragique de Lassa|fièvre de Lassa|Ebola
+DOC_DATE:23/04/2022
+ABS_PERIOD:1969
+</segment>
+</example>
+<example>
+Input:
+<segment id="30-1">Le virus de la fièvre de Lassa a été détecté sur une patiente de 17 ans « en provenance de la sous-préfecture de Kassadou », dans la préfecture de Guéckédou (sud), où l’épidémie a été déclarée, a indiqué le ministère de la Santé dans un communiqué publié vendredi soir.
+
+La pandémie de Covid-19 a causé des « perturbations » selon l’OMS dans l’accès au soin et la prise en charge du paludisme dans les populations les plus concernées en Afrique
+
+La malade est traitée dans un centre de prise de charge de Guéckédou, dans la région de Nzérékoré, et « son état est à ce jour satisfaisant », selon ce communiqué.</segment>
+Output:
+<segment id="30-1">
+REL_DATE:vendredi
+PATHOGEN:virus de la fièvre de Lassa
+ORGANIZATION:ministère de la Santé|OMS
+LOCATION:sous-préfecture de Kassadou|préfecture de Guéckédou|région de Nzérékoré|Guéckédou|Afrique
+INF_DISEASE:paludisme | Covid-19
+</segment>
+</example>
+<example>
+Input:
+<segment id="30-2">Le virus a été identifié le 20 avril par un laboratoire de Guéckédou et « un second test réalisé au laboratoire de référence de Conakry a confirmé le premier résultat », précise le texte.
+
+Une fièvre sévère
+
+La transmission de la fièvre de Lassa se fait par les excrétions de rongeurs ou par contact direct avec du sang, des urines, des selles ou d’autres liquides biologiques d’une personne malade. Une fois déclarée, cette fièvre peut causer des hémorragies dans les cas les plus sévères (environ un cas sur cinq)</segment>
+Output:
+<segment id="30-2">
+REL_DATE:20 avril
+LOCATION:laboratoire de référence de Conakry|Guéckédou
+INF_DISEASE:fièvre de Lassa
+</segment>
+</example>
+<example>
+Input:
+<segment id="31-0">Hong Kong. Des dizaines de personnes atteintes par une hépatite transmise par les rats
+
+Un nouveau virus est apparu depuis quelques mois dans la province chinoise de Hong Kong. Une forme d’hépatite, transmise par les rats, a déjà entraîné l’hospitalisation de dizaines de patients.
+A Hong Kong, le rat transmet une nouvelle forme d'hépatite aux humains. | THIERRY CREUX / OUEST FRANCE
+
+Ouest France
+Publié le 09/05/2020 à 05h36
+
+Une dizaine d’habitants de Hong Kong ont été testés positifs à l’hépatite E provenant des rats, une maladie également connue sous le nom de VHE du rat.</segment>
+Output:
+<segment id="31-0">
+PATH_REF_TO_DIS:VHE du rat
+ORGANIZATION:OUEST FRANCE
+LOCATION:province chinoise de Hong Kong|Hong Kong|Hong Kong|Hong Kong
+INF_DISEASE:hépatite E|hépatite |hépatite |hépatite
+FUZZY_PERIOD:depuis quelques mois
+DOC_SOURCE:Ouest France
+DOC_DATE:09/05/2020
+</segment>
+</example>
+<example>
+Input:
+<segment id="31-1">Le cas le plus récent a été découvert le 30 avril : un homme de 61 ans présentant une fonction hépatique anormale. Ce patient testé positif pourrait le premier d’une longue liste. Les médecins de Hong Kong estiment en effet qu’il pourrait exister des centaines d’autres personnes infectées par ce virus et non diagnostiquées.
+
+Le premier cas connu est apparu en 2018. Cette année-là, des experts en maladies infectieuses de l’Université de Hong Kong avaient accueilli un patient inhabituel. Cet homme de 56 ans avait subi une greffe de foie récente, et présentait des fonctions hépatiques anormales sans cause évidente.</segment>
+Output:
+<segment id="31-1">
+REL_DATE:30 avril
+ORGANIZATION:Université de Hong Kong
+LOCATION:Hong Kong
+ABS_PERIOD:2018
+</segment>
+</example>
+<example>
+Input:
+<segment id="31-2">Les tests pratiqués sur le patient avaient alors révélé que son système immunitaire réagissait à l’hépatite E, mais sans identifier la souche humaine du virus de l’hépatite E (VHE) dans son système sanguin. L’hépatite E est en effet une maladie du foie provoquant de la fièvre, une jaunisse et une hypertrophie de l’organe.
+
+Le virus se présente en quatre espèces, qui circulent chez différents animaux ; à l’époque, un seul de ces quatre était connu pour infecter les humains.</segment>
+Output:
+<segment id="31-2">
+PATHOGEN:virus de l’hépatite E|VHE
+INF_DISEASE:hépatite E
+DIS_REF_TO_PATH:hépatite E
+</segment>
+</example>
+<example>
+Input:
+<segment id="31-3">Virus inquiétant
+
+Équipés de tests spécialement conçus pour cette souche humaine de VHE négatif, les chercheurs ont amélioré le test de diagnostic, l’ont exécuté à nouveau et ont découvert, pour la première fois dans l’histoire, l’hépatite E du rat chez un humain.
+
+« Ce qui est inquiétant, c’est que ce virus peut passer de l’animal à l’homme », confie le Dr Siddharth Sridhar, microbiologiste et l’un des chercheurs à l’origine de la découverte. « Cette infection était si inhabituelle et sans précédent que l’équipe s’est demandée s’il s’agissait d’un incident ponctuel, ou d’un patient qui était au mauvais endroit au mauvais moment ».</segment>
+Output:
+<segment id="31-3">
+PATHOGEN:VHE
+INF_DISEASE:hépatite E
+</segment>
+</example>
+<example>
+Input:
+<segment id="31-4">Mais depuis, les cas se multiplient et les médecins craignent que ce virus n’existe en fait depuis plusieurs années et n’ait été « dormant », avant de se transmettre à grande échelle.
+
+Un rapport a donc été réalisé et transmis à l’OMS afin d’alerter tous les pays et les aider à se préparer au cas où cette hépatite deviendrait la prochaine maladie de grande ampleur à toucher la population mondiale.</segment>
+Output:
+<segment id="31-4">
+ORGANIZATION:OMS
+INF_DISEASE:hépatite
+</segment>
+</example>
+<example>
+Input:
+<segment id="32-0">Niger: l'épidémie de méningite a déjà fait 18 morts, s'inquiète l'OMS
+
+08 février 2023
+AFP
+
+Une épidémie de méningite plus forte que d'habitude a fait 18 morts au Niger depuis novembre, a indiqué l'OMS mercredi, mettant en garde contre les risques de propagation à la région.
+Des campagnes de vaccination sont mises en oeuvre, annonce l'Organisation mondiale de la santé dans un bulletin épidémiologique. Plus de 600.000 doses de vaccin ont été livrées.
+Le siège de l'Organisation mondiale de la santé à Genève, en Suisse.</segment>
+Output:
+<segment id="32-0">
+REL_PERIOD:depuis novembre
+REL_DATE:mercredi
+ORGANIZATION:Organisation mondiale de la santé|Organisation mondiale de la santé|OMS|OMS
+LOCATION:Niger |Genève|Suisse|Niger
+INF_DISEASE:méningite |méningite
+DOC_SOURCE:AFP
+DOC_DATE:08 février 2023
+</segment>
+</example>
+<example>
+Input:
+<segment id="32-1">Le Niger est régulièrement frappé par des épidémies de méningite en raison de sa position au sein de la "ceinture africaine de la méningite", s'étirant sur tout le continent, du Sénégal à l'ouest jusqu'à l'Ethiopie à l'est, selon l'OMS.
+"Cependant, l'épidémie actuelle montre à la fois un nombre de cas et un taux de croissance accrus par rapport aux saisons précédentes", indique l'organisation.</segment>
+Output:
+<segment id="32-1">
+ORGANIZATION:OMS
+LOCATION:ceinture africaine de la méningite|Ethiopie |Sénégal |Niger
+INF_DISEASE:méningite
+</segment>
+</example>
+<example>
+Input:
+<segment id="32-2">Du 1er novembre 2022 au 27 janvier 2023, un total de 559 cas de méningite (dont 111 confirmés en laboratoire), y compris 18 décès, ont été signalés dans la région de Zinder, dans le sud-est du pays.
+Cela représente un taux de létalité de 3,2%. Entre le 1er novembre 2021 et le 31 janvier 2022, 231 cas avaient été signalé, selon l'OMS. La majorité des cas confirmés en laboratoire (93,7%) sont dus à la bactérie connue sous le nom de Neisseria meningitidis du sérogroupe C (NmC).</segment>
+Output:
+<segment id="32-2">
+PATHOGEN:Neisseria meningitidis du sérogroupe C|NmC
+ORGANIZATION:OMS
+LOCATION:région de Zinder
+INF_DISEASE:méningite
+ABS_PERIOD:Entre le 1er novembre 2021 et le 31 janvier 2022|Du 1er novembre 2022 au 27 janvier 2023
+</segment>
+</example>
+<example>
+Input:
+<segment id="32-3">La région de Zinder longe l'Etat de Jigawa au Nigeria, où une épidémie de NmC est également en cours, ce qui selon l'OMS "confirme le risque de propagation internationale".
+"En outre, l'apparition simultanée d'autres épidémies, l'insécurité et les déplacements de population, le tout dans le contexte d'une crise humanitaire prolongée, sont susceptibles de contribuer à la propagation de la flambée dans d'autres pays de la sous-région ouest-africaine", poursuit l'organisation.
+L'OMS évalue le risque posé par l'actuelle flambée de méningite au Niger comme élevé au niveau national, modéré au niveau régional et faible au niveau mondial.</segment>
+Output:
+<segment id="32-3">
+PATH_REF_TO_DIS:NmC
+ORGANIZATION:OMS |OMS
+LOCATION: région de Zinder|Etat de Jigawa|Nigeria|Niger
+INF_DISEASE:méningite
+</segment>
+</example>
+<example>
+Input:
+<segment id="32-4">Un comité technique a été créé dans la région de Zinder pour coordonner la réponse à l'épidémie. Une équipe internationale de l'OMS et d'autres partenaires, dont MSF et l'Unicef, a été déployée pour soutenir la réponse.
+La méningite bactérienne, qui se transmet par les gouttelettes de sécrétions respiratoires ou pharyngées des personnes infectées, est particulièrement préoccupante, et peut provoquer des épidémies qui se propagent rapidement.</segment>
+Output:
+<segment id="32-4">
+ORGANIZATION:Unicef|OMS |MSF
+LOCATION:région de Zinder
+INF_DISEASE:méningite bactérienne
+</segment>
+</example>
+<example>
+Input:
+<segment id="33-0">Bordeaux: Pollution au radium sur le chantier des Bassins à Flot
+Mickaël Bosredon
+Le chantier a été suspendu et les zones contaminées recouvertes. La préfecture de la Gironde a annoncé jeudi soir la découverte, lors de travaux de terrassement d'un groupe scolaire au sein du quartier des Bassins à Flot à Bordeaux, «une pollution par du radium 226.» «Les premières analyses menées sur site font état de débits de doses radiologiques significatifs en plusieurs points du chantier.»
+«Le radium 226 est un élément radioactif d’origine naturelle, explique la préfecture dans un communiqué. La principale voie d’exposition au radium pour l’homme est l’inhalation de poussières contaminées.»</segment>
+Output:
+<segment id="33-0">
+REL_DATE:jeudi
+RADIOISOTOPE:radium 226|radium 226|radium |radium
+ORGANIZATION:préfecture de la Gironde
+LOCATION:quartier des Bassins à Flot|Bassins à Flot|Bordeaux|Bordeaux
+DOC_AUTHOR:Mickaël Bosredon
+</segment>
+</example>
+<example>
+Input:
+<segment id="33-2">La mairie a parallèlement entrepris de «rechercher et de lister toutes les personnes directement impliquées dans les travaux de terrassement et de déblaiement et qui ont donc été en contact direct avec la terre», a-t-il souligné.
+«La mairie a sécurisé le site et attend désormais les instructions de l'ASN (Autorité de sûreté nucléaire) car aucune construction n'est envisageable sur ce site, sauf à avoir l'absolue garantie de zéro pollution», a ajouté l'adjoint.
+Pas d'origine naturelle
+Cette pollution ne serait pas naturelle.</segment>
+Output:
+<segment id="33-2">
+ORGANIZATION:Autorité de sûreté nucléaire|ASN
+</segment>
+</example>
+<example>
+Input:
+<segment id="33-3">Le site, situé entre la rue de la Faïencerie et la rue Bourbon, a accueilli par le passé une verrerie et une faïencerie, et le radium était utilisé il y a encore un siècle dans certaines activités artisanales.
+Sur le site de l'Institut de radioprotection et de sûreté nucléaire (IRSN), on apprend ainsi que «de nombreuses utilisations du radium ont été développées au début du 20ème siècle, notamment en raison de ses propriétés physiques (luminescence). Cette utilisation a progressivement décliné à partir des années 1930 pour pratiquement disparaître dans les années 1960.</segment>
+Output:
+<segment id="33-3">
+RADIOISOTOPE:radium |radium
+ORGANIZATION:Institut de radioprotection et de sûreté nucléaire|IRSN
+LOCATION:rue de la Faïencerie|rue Bourbon
+FUZZY_PERIOD:à partir des années 1930|début du 20ème siècle|dans les années 1960
+</segment>
+</example>
+<example>
+Input:
+<segment id="33-4">Il en a résulté de multiples sites d'activité industrielle, artisanale, médicale ayant extrait ou mis en oeuvre ce radioélément (...) Des pollutions radioactives ont pu avoir lieu dans certains locaux et parfois sur les terrains extérieurs du site (...) La situation radiologique des bâtiments qui utilisaient du radium est aujourd'hui mal connue, et devrait faire l'objet d'un diagnostic systématique afin de déceler une éventuelle présence de ce produit.»</segment>
+Output:
+<segment id="33-4">
+RADIOISOTOPE:radium
+</segment>
+</example>
+<example>
+Input:
+<segment id="33-5">Etudes pour déterminer l'ampleur et l'origine
+«Sur le rapport de l’Autorité de sûreté nucléaire, le préfet va prendre un arrêté prescrivant à la mairie de Bordeaux, propriétaire des terrains, de réaliser une étude approfondie afin de déterminer l’origine et l’ampleur de cette pollution. Ces investigations permettront au préfet de définir dans un second temps les mesures de dépollution adaptées» annonce enfin la préfecture.</segment>
+Output:
+<segment id="33-5">
+ORGANIZATION:Autorité de sûreté nucléaire|mairie de Bordeaux
+</segment>
+</example>
+<example>
+Input:
+<segment id="34-0">Vénézuéla : l'enquête avance pour déterminer les auteurs de l'attentat aux drones commis contre le chef de l'Etat.
+Marie-Claude Thébia
+2–3 minutes
+Six personnes arrêtées au Vénézuéla après la tentative d'attentat avortée contre le président Maduro. Les autorités déclarent détenir des preuves accablantes. D'autres arrestations ne sont pas exclues.
+Publié le 6 août 2018 à 17h08
+L'enquête se poursuit pour trouver les auteurs de l'attentat perpétré contre le président vénézuélien Nicolas Maduro lors d'une cérémonie militaire à Caracas samedi 3 août.</segment>
+Output:
+<segment id="34-0">
+REL_DATE:samedi 3 août
+LOCATION:Vénézuéla |Vénézuéla |Caracas
+DOC_DATE:6 août 2018
+DOC_AUTHOR:Marie-Claude Thébia
+</segment>
+</example>
+<example>
+Input:
+<segment id="34-1">Six individus ont été arrêtés, des perquisitions menées, les forces de police vénézueliennes entendent découvrir qui se cache derrière le mystérieux mouvement national des soldats en chemise qui a revendiqué l'attentat.
+Du C4 puissant explosif
+L'attaque a été menée à l'aide de deux drones, chacun chargé de 1kg de C4, un puissant explosif militaire. Les charges n'ont pas explosé à l'endroit prévu car un dispositif de brouillage a permis de désorienter le système de guidage des engins volants. Toutefois, sept militaires ont été blessés. Une attaque qui s'est produite alors que le président vénézuélien prononçait un discours lors d'une cérémonie militaire dans le centre de Caracas.</segment>
+Output:
+<segment id="34-1">
+ORGANIZATION:forces de police vénézueliennes
+LOCATION:Caracas
+EXPLOSIVE:C4 |C4
+</segment>
+</example>
+<example>
+Input:
+<segment id="34-2">Le chaviste a d'entrée accusé son homologue colombien d'être à l'origine de cet attentat. Une accusation vivement démentie par Juan Manuel Santos.
+Un attentat sur fond de misère
+Le 20 mai dernier, Nicolas Maduro successeur d'Hugo Chavez leader incontesté décédé en 2013, a été réélu président et ce jusqu'en 2025. Le pays vit, depuis la baisse du cours du pétrole, une crise sans précédent. Le Fonds monétaire international a annoncé une inflation record de 1.000.000% cette année. Les 5 millions d'habitants sont asphyxiés. La pénurie des produits de première nécessité, alimentaires et médicamenteux est extrêmement alarmante. Tous les voyants sont au rouge.</segment>
+Output:
+<segment id="34-2">
+REL_PERIOD:cette année
+REL_DATE:20 mai dernier
+ORGANIZATION:Fonds monétaire international
+FUZZY_PERIOD:jusqu'en 2025
+ABS_PERIOD:2013
+</segment>
+</example>
+<example>
+Input:
+<segment id="35-0">Tarbes : un tir pour neutraliser des explosifs ce samedi sur l'ancien site de Giat Industries
+Écrit par Juliette Meurin
+Publié le 05/09/2020 à 11h04 Mis à jour le 05/09/2020 à 11h13
+Une opération de pétardement est organisé ce samedi à Tarbes. Il s'agit de neutraliser 19 kilos d'explosifs qui étaient encore stockés sur l'ancien site de Giat Industries. Le bruit d'une forte explosion pourrait être entendu à proximité.
+Un peu avant midi ce samedi le bruit sourd d'une forte explosion pourrait être entendu à proximité de l'ancien site de Giat Industries à Tarbes.</segment>
+Output:
+<segment id="35-0">
+REL_DATE:samedi |samedi |samedi
+ORGANIZATION:Giat Industries|Giat Industries|Giat Industries
+LOCATION:Tarbes |Tarbes|Tarbes
+DOC_DATE:05/09/2020|05/09/2020
+DOC_AUTHOR:Juliette Meurin
+</segment>
+</example>
+<example>
+Input:
+<segment id="35-1">L'entreprise va procéder à la neutralisation de 19 kilos de produits d'amorçage (du fulminate de mercure) qui étaient encore stockés dans les dépôts.
+Avant l'explosion un signal de 3 coups brefs de corne de brume avertira de la mise à feu imminente. Après l’explosion, un long signal sonore de fin de tir retentira pour indiquer que l’opération a été concluante.
+Le pétardement
+C'est la méthode du pétardement qui a été choisie pour la destruction de ces explosifs. "Il s'agit de fulminate de mercure, nous précise Patrick Bourset, chef de projet environnement et immobilier chez GIAT Industries.</segment>
+Output:
+<segment id="35-1">
+ORGANIZATION:GIAT Industries
+EXPLOSIVE: fulminate de mercure|fulminate de mercure
+</segment>
+</example>
+<example>
+Input:
+<segment id="35-2">Ce sont des produits d'amorçage utilisés dans la fabrication chez Giat Industries jusqu'à il y a une trentaine d'années. Ils avaient été conservés en cas de besoin. Aujourd'hui nous avons décidé de nous en débarrasser."
+"L'opération va se dérouler dans une chambre de destruction spécialement aménagée, renforcée par des protections balistiques extérieures de 3m d’épaisseur latérale et de 2m de hauteur", explique l'entreprise dans un communiqué. "Ces protections sont constituées par des big-bags de sable d’1m³ (1,6 t de sable) disposés autour et au-dessus".</segment>
+Output:
+<segment id="35-2">
+ORGANIZATION:Giat Industries
+FUZZY_PERIOD:jusqu'à il y a une trentaine d'années
+</segment>
+</example>
+<example>
+Input:
+<segment id="36-0">Une véritable poudrière au fond d'un lac toulousain
+Publié le 07/03/2000 à 00:00
+Valérie SITNIKOW
+Inquiétant : un stock de nitrocellulose militaire dort dans un lac de la zone chimique Sud de Toulouse. Certaines de ces bandelettes de poudre propulsive, datant de la première guerre mondiale, auraient servi à allumer des incendies au Mirail, en décembre 1998. Une enquête exclusive de «La Dépêche du Midi».
+On les appelle «coton poudre». Ce sont des bandelettes de nitrocellulose qui ont été utilisées par nos arrière-grands-pères, au temps des Poilus, comme poudres propulsives pour la fabrication d'obus.</segment>
+Output:
+<segment id="36-0">
+REL_PERIOD:première guerre mondiale
+ORGANIZATION:La Dépêche du Midi
+LOCATION:zone chimique Sud de Toulouse|Mirail
+EXPLOSIVE:nitrocellulose |nitrocellulose |coton poudre
+DOC_DATE:07/03/2000
+DOC_AUTHOR:Valérie SITNIKOW
+ABS_PERIOD:décembre 1998
+</segment>
+</example>
+<example>
+Input:
+<segment id="36-1">Séchée, la nitrocellulose flambe mieux qu'une allumette, même en l'absence d'oxygène.
+Un stock énorme de ce produit dangereux dort au fond d'un lac situé dans la zone chimique Sud, aux portes de Toulouse, et remonte progressivement à la surface. Car elle flotte bien la nitrocellulose, sous forme de lamelles, semblables à des tablettes de chewing-gum.
+Il y en a des jaunes, des rouges, des marron, des petites, des moyennes et des larges. Depuis des lustres, les eaux vertes du lac régurgitent cette incroyable cargaison de coton-poudre.</segment>
+Output:
+<segment id="36-1">
+LOCATION:zone chimique Sud|Toulouse
+EXPLOSIVE:nitrocellulose |nitrocellulose|coton-poudre
+</segment>
+</example>
+<example>
+Input:
+<segment id="37-0">La souche d'E. coli à Bordeaux est la même qu'en Allemagne
+La bactérie E. coli à l'origine des hospitalisations survenues à Bordeaux est de la même souche que celle qui a causé une trentaine de décès en Allemagne, a annoncé vendredi l'Agence régionale de santé-Aquitaine. Elle proviendrait de graines germées.
+Au total, dix cas ont été détectés et sept personnes étaient toujours hospitalisées vendredi, a déclaré lors d'une conférence de presse le Dr Joao Simoes, responsable de la cellule de veille d'alerte et de gestion sanitaire à l'ARS.
+Deux personnes, un homme de 42 ans et une femme de 67 ans, ont quitté l'hôpital vendredi.</segment>
+Output:
+<segment id="37-0">
+REL_DATE:vendredi|vendredi|vendredi
+PATHOGEN:E. coli|E. coli
+ORGANIZATION:cellule de veille d'alerte et de gestion sanitaire à l'ARS|Agence régionale de santé-Aquitaine
+LOCATION:Bordeaux |Allemagne|Bordeaux |Allemagne
+</segment>
+</example>
+<example>
+Input:
+<segment id="37-1">Aux cinq personnes dont l'hospitalisation a été prolongée s'ajoutent deux autres patients - des adultes - souffrant de diarrhées sanglantes, a précisé le Dr Simoes.
+Ils souffrent comme trois autres personnes d'un "syndrome hémolytique et urémique (SHU)", une intoxication alimentaire communément appelée "maladie du hamburger" qui affecte les fonctions rénales avec plus ou moins de gravité.
+Ces cinq malades, dont l'un présente un état "sérieux mais sable", sont soignés au CHU Pellegrin de Bordeaux. Les deux autres ont été admis à l'hôpital militaire Robert Picqué.</segment>
+Output:
+<segment id="37-1">
+ORG_REF_TO_LOC:hôpital militaire Robert Picqué|CHU Pellegrin
+LOCATION:Bordeaux
+</segment>
+</example>
+<example>
+Input:
+<segment id="37-2">Les premiers examens ont permis de déterminer la présence pour deux patients d'une infection par E.coli d'une souche identique à celle ayant sévi en Allemagne, a expliqué Patrick Rolland, responsable de la cellule de l'institut de veille sanitaire en Aquitaine.
+La souche E. coli EHE 0104:H4, présente dans des graines germées produites dans une ferme "bio" de Basse-Saxe, est la cause la plus probable de l'épidémie qui a touché plus de 3.200 personnes et causé 36 décès en Allemagne et un en Suède.</segment>
+Output:
+<segment id="37-2">
+PATHOGEN:E. coli EHE 0104:H4
+ORGANIZATION:cellule de l'institut de veille sanitaire en Aquitaine
+LOCATION:Basse-Saxe|Allemagne |Allemagne|Suède
+INF_DISEASE: infection par E.coli
+</segment>
+</example>
+<example>
+Input:
+<segment id="37-3">Moutarde, roquette, fenugrec
+Sur les dix cas détectés, huit personnes résident à Bègles, dans la banlieue de Bordeaux, ou dans un quartier bordelais attenant.
+Sept des malades hospitalisés ont assisté le 8 juin à une kermesse de fin d'année au centre de loisirs de la petite enfance de Bègles, a dit Patrick Rolland.
+Au moins six de ces personnes auraient consommé des graines germées, qui avaient été saupoudrées sur des soupes en guise de décoration.
+Le maire de Bègles, Noël Mamère, a dit à Reuters que ces graines avaient été achetées à Jardiland.</segment>
+Output:
+<segment id="37-3">
+REL_DATE:8 juin
+ORG_REF_TO_LOC:centre de loisirs de la petite enfance de Bègles|Jardiland
+ORGANIZATION:Reuters |Bègles
+LOCATION:Bordeaux|Bègles
+</segment>
+</example>
+<example>
+Input:
+<segment id="37-4">"Ce sont ces graines germées de roquette, de moutarde et de fenouil, achetées chez Jardiland et élevées par les parents au centre de loisirs, qui sont à la source de la contamination", a-t-il expliqué.
+"Ces graines ont servi à la fois d'ornement et ont été consommées dans des gaspachos. Lors de la kermesse, il y avait 120 personnes, six ont été atteintes, dont trois membres du personnel municipal", a-t-il déclaré.</segment>
+Output:
+<segment id="37-4">
+ORG_REF_TO_LOC:centre de loisirs|Jardiland
+</segment>
+</example>
+<example>
+Input:
+<segment id="37-5">Les sachets non utilisés ont été confiés aux services de santé et "les services de la répression des fraudes ont perquisitionné et saisi des stocks de ces graines chez Jardiland", a-t-il poursuivi.
+Le secrétaire d'Etat à la Consommation, Frédéric Lefebvre, a précisé dans un communiqué que le fournisseur de ces graines était la société britannique Thompson&Morgan, basée à Ipswich. Il fait état de graines de fenugrec, de moutarde et de roquette.
+Même si "le lien entre les symptômes et la consommation de ces graines n'est pas définitivement établi", il demande aux distributeurs concernés de suspendre sans attendre la commercialisation de ces produits.</segment>
+Output:
+<segment id="37-5">
+ORG_REF_TO_LOC:Jardiland
+ORGANIZATION:répression des fraudes|Thompson&Morgan
+LOCATION:Ipswich
+</segment>
+</example>
+<example>
+Input:
+<segment id="37-6">Le ministère de la Santé rappelle dans un communiqué que la plupart des bactéries E. coli, naturellement présentes dans la flore intestinale de l'homme et des animaux à sang chaud, ne sont pas nocives.
+Pour se prémunir des souches pathogènes, le ministère met en garde contre la consommation d'aliments crus ou peu cuits : viande boeuf (en particulier hachée), laits ou produits laitiers non pasteurisés, jus de pomme, légumes crus.
+(Source : Reuters)</segment>
+Output:
+<segment id="37-6">
+PATHOGEN:E. coli
+ORGANIZATION:ministère de la Santé|Reuters
+</segment>
+</example>
+<example>
+Input:
+<segment id="38-0">Au moins 13 morts dans une épidémie de choléra au Nigeria
+VOA
+06 avril 2018
+Au moins 13 personnes sont mortes du choléra après avoir bu de l'eau contaminée dans l'Etat de Yobe, dans le nord-est du Nigeria, depuis une semaine, a annoncé le ministre local de la santé.
+"Nous avons enregistré 13 morts dans l'épidémie de choléra qui sévit dans la ville de Gashua (...) au cours de la semaine passée. Un total de 159 cas ont été enregistrés", a déclaré Mohammad Bello Kawuwa.
+"Nous avons été en mesure d'identifier la source de l'épidémie dans la contamination de l'eau.</segment>
+Output:
+<segment id="38-0">
+REL_PERIOD:depuis une semaine
+LOCATION:ville de Gashua|Etat de Yobe|Nigeria|Nigeria
+INF_DISEASE:choléra |choléra |choléra
+DOC_SOURCE:VOA
+DOC_DATE:06 avril 2018
+</segment>
+</example>
+<example>
+Input:
+<segment id="38-1">Les échantillons provenant de cinq forages dans la ville ont été testés positifs", a-t-il dit.
+Selon M. Kawuwa, la propagation du virus a pu être stoppée en confinant les cinq puits identifiés.
+"Nous avons envoyé une équipe d'intervention rapide qui a réussi à contenir l'épidémie, distribué des comprimés de stérilisation de l'eau dans les communautés touchées et désinfecté les sources d'eau et les toilettes".
+Yobe fait partie des trois Etats du Nord-Est touchés par l'insurrection de Boko Haram qui a fait au moins 20.000 morts et 2,6 millions de déplacés depuis 2009.</segment>
+Output:
+<segment id="38-1">
+REL_PERIOD:depuis 2009
+ORGANIZATION:Boko Haram
+LOCATION:Yobe
+</segment>
+</example>
+<example>
+Input:
+<segment id="38-2">Beaucoup de gens vivent dans des camps affectés par des pénuries de nourriture et sont exposés à des maladies comme le choléra et le paludisme.
+Le choléra est une infection diarrhéique aiguë provoquée par l'ingestion d'aliments ou d'eau contaminés par le bacille Vibrio cholerae.
+L'année dernière, des dizaines de personnes sont mortes du choléra dans les camps de déplacés de la région, incitant l'Organisation mondiale de la santé (OMS) à lancer une vaste campagne de vaccination ciblant près de 850.000 personnes.</segment>
+Output:
+<segment id="38-2">
+REL_PERIOD:année dernière
+PATHOGEN:Vibrio cholerae
+ORGANIZATION:Organisation mondiale de la santé|OMS
+INF_DISEASE:paludisme|choléra |choléra |choléra
+</segment>
+</example>
+<example>
+Input:
+<segment id="38-3">Les problèmes d'hygiène dans les camps sont aggravés par la saison des pluies, les difficultés d'acheminement d'eau potable - particulièrement dans les zones reculées, la surpopulation et des taux de malnutrition très élevés.
+Avec AFP</segment>
+Output:
+<segment id="38-3">
+ORGANIZATION:AFP
+FUZZY_PERIOD:saison des pluies
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-0">Maladie de Charcot : Hasard ou champignon, les cinq décès dans un village de la Somme posent question
+Gilles Durand
+Publié le 25/01/2024 à 13h15 - Mis à jour le 25/01/2024 à 14h44
+Mystère ou hasard ? Entre 2007 et 2022, cinq habitants de deux rues d’un village de la Somme ont contracté la maladie de Charcot. Une situation qui fait écho à la mortalité excessive d’un village de Savoie, Montchavin, constatée en 2009. Enigme finalement résolue en 2021 après une dizaine d’années d’enquête.</segment>
+Output:
+<segment id="39-0">
+NON_INF_DISEASE:Maladie de Charcot|maladie de Charcot
+LOCATION:Montchavin|Somme |Somme |Savoie
+DOC_DATE:25/01/2024|25/01/2024
+DOC_AUTHOR:Gilles Durand
+ABS_PERIOD:Entre 2007 et 2022|2021 |2009
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-1">Dans le monde médical, la concentration d’une pathologie est appelée cluster – foyer épidémique en français –, même si la maladie de Charcot, appelée aussi sclérose latérale amyotrophique (SLA) n’est pas une épidémie. Il s’agit, en effet, d’une maladie neurologique qui provoque une paralysie progressive des muscles et cause généralement la mort en moins de trois ans.
+« C’est la loi de la probabilité »
+Ce cluster, en tout cas, fait beaucoup parler depuis que Le Courrier Picard a relayé l’inquiétude du maire de la commune de Saint-Vaast-en-Chaussée, un village de moins de 500 habitants, situé près d’Amiens.</segment>
+Output:
+<segment id="39-1">
+ORGANIZATION: Le Courrier Picard
+NON_INF_DISEASE: sclérose latérale amyotrophique|maladie de Charcot|SLA
+LOCATION:commune de Saint-Vaast-en-Chaussée|Amiens
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-2">Après la mort de ces cinq personnes, Santé publique France a été saisie par l’Agence régionale de Santé (ARS) des Hauts-de-France pour « déterminer s’il existe effectivement un excès statistique de maladies dans la population observée ».
+Si cet excès existe, il s’agira alors « de déterminer s’il existe une ou plusieurs causes locales à ce regroupement de cas, autres que le hasard, sur la ou lesquelles il est possible d’agir », a indiqué, à l’AFP, Santé publique France.</segment>
+Output:
+<segment id="39-2">
+ORGANIZATION:Agence régionale de Santé (ARS) des Hauts-de-France|ARS) des Hauts-de-France|Santé publique France|Santé publique France|AFP
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-3">D’autres situations « inhabituelles » de cas groupés de SLA « ont été signalées à Santé publique France au cours des dix dernières années, sans qu’à ce stade on puisse faire l’hypothèse de cause commune aux différents cas », selon Santé publique France.
+Pour Pierre-François Pradat, neurologue à l’hôpital de la Pitié-Salpêtrière (APHP) et coprésident du conseil scientifique de l’Association pour la recherche sur la SLA (ARSLA), « le phénomène de cluster est tout ce qu’il y a de plus normal ». « C’est la loi de la probabilité, explique-t-il à 20 Minutes.</segment>
+Output:
+<segment id="39-3">
+ORGANIZATION:Association pour la recherche sur la SLA|hôpital de la Pitié-Salpêtrière|Santé publique France|Santé publique France|20 Minutes|ARSLA|APHP
+NON_INF_DISEASE:SLA
+FUZZY_PERIOD:au cours des dix dernières années
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-4">Si vous jetez une poignée d’allumettes par terre, certaines risquent de se retrouver en petit tas. »
+Gare aux fausses morilles
+« La concentration dans ce village n’est pas statistiquement significative », renchérit Pierre-François Pradat qui précise néanmoins que les causes de cette maladie rare (environ 8.000 nouveaux cas par an en France) restent encore très mal connues. « On sait que 10 % des cas sont liés à des gènes aujourd’hui bien identifiés, mais la recherche continue concernant les éventuels facteurs environnementaux et comportementaux.</segment>
+Output:
+<segment id="39-4">
+LOCATION:France
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-5">»
+En 2018, des soupçons notamment de dopage avaient germé après l’annonce en Italie, de la mort de plusieurs anciens joueurs de football, souffrant de la maladie de Charcot. Mais aucune hypothèse n’a pu être démontrée sur les causes réelles de cette surincidence de la pathologie. En revanche, certaines études ont bel et bien prouvé que des facteurs extérieurs pouvaient devenir déclencheurs.
+« Dans l’île de Guam, par exemple, les cas de SLA étaient liés à une cyanobactérie », raconte le professeur Gwendal Le Masson, neurologue et responsable du centre SLA au CHU de Bordeaux.</segment>
+Output:
+<segment id="39-5">
+ORGANIZATION:centre SLA au CHU de Bordeaux
+NON_INF_DISEASE:maladie de Charcot|SLA
+LOCATION:île de Guam|Italie
+ABS_PERIOD:2018
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-6">Et de rapporter aussi l’étude effectuée autour de douze cas de maladie de Charcot en vingt ans, dans un village de Savoie : « On a découvert que le responsable était la consommation d’une fausse morille, un champignon toxique. Là aussi, une cyanobactérie était en cause. »
+Pour le professeur bordelais, « la présence dans l’eau de la cyanotoxine BMAA est une piste à envisager » dans le cas du village picard. « Des études scientifiques montrent que des pesticides, qui ne sont plus utilisés aujourd’hui, ont joué un rôle dans l’apparition de cette maladie », avance encore Gwendal Le Masson.</segment>
+Output:
+<segment id="39-6">
+NON_INF_DISEASE:maladie de Charcot
+LOCATION:Savoie
+BIO_TOXIN:BMAA
+</segment>
+</example>
+<example>
+Input:
+<segment id="39-7">Peut-être faudra-t-il alors attendre encore dix ans pour avoir une réponse définitive à Saint-Vaast-en-Chaussée ?</segment>
+Output:
+<segment id="39-7">
+LOCATION:Saint-Vaast-en-Chaussée
+</segment>
+</example>
+<example>
+Input:
+<segment id="40-0">HAUTS-DE-SEINE
+Nanterre : 400 grammes d’un agent neurotoxique retrouvés dans un parc public
+
+400 grammes d’un agent neurotoxique hautement dangereux, le VX, ont été découverts mardi matin dans le quartier du Parc Sud, lors d’une opération initialement ciblée sur le trafic d’armes. La substance a été saisie dans un square pour enfants.</segment>
+Output:
+<segment id="40-0">
+TOXIC_C_AGENT:agent neurotoxique|agent neurotoxique|VX
+REL_DATE:mardi
+ORG_REF_TO_LOC:square pour enfants
+LOCATION:Nanterre|Parc Sud
+</segment>
+</example>
+<example>
+Input:
+<segment id="40-1">Le Courrier d’Île-de-France – 12 mars 2024 à 09:15 | mis à jour le 13 mars 2024 à 11:22 – Temps de lecture : 1 min
+
+Le produit avait été soigneusement dissimulé dans un vieux banc en bois, probablement afin que ses détenteurs puissent éviter une saisie lors des contrôles renforcés menés ces dernières semaines dans le cadre du plan national de lutte contre les réseaux criminels.
+
+D’après une source proche du dossier, aucun lien n’a été établi à ce stade avec une organisation terroriste. L’enquête s’oriente vers une affaire de trafic de substances interdites à très haut risque, probablement liée à des groupes de crime organisé.</segment>
+Output:
+<segment id="40-1">
+ORGANIZATION:groupes de crime organisé
+FUZZY_PERIOD:ces dernières semaines
+DOC_SOURCE:Le Courrier d’Île-de-France
+DOC_DATE:12 mars 2024|13 mars 2024
+ABS_PERIOD:2024|2024
+</segment>
+</example>
+<example>
+Input:
+<segment id="40-2">Le VX aurait déjà été repéré dans des affaires impliquant des tentatives d’assassinat ciblé. L’enquête a été confiée à la Direction interrégionale de la police judiciaire de Paris.
+
+Le même agent disparu d’un laboratoire en 2011 à Grenoble
+Le VX est un neurotoxique extrêmement puissant, interdit par les conventions internationales. D’abord développé à des fins militaires, il a été utilisé dans plusieurs affaires d’empoisonnement dans le monde.
+
+En 2011, plusieurs flacons de VX avaient disparu mystérieusement d’un laboratoire universitaire à Grenoble, à la suite d’une faille dans les procédures de sécurité.</segment>
+Output:
+<segment id="40-2">
+TOXIC_C_AGENT:VX|VX|VX
+ORGANIZATION:Direction interrégionale de la police judiciaire de Paris
+LOCATION:Grenoble|Grenoble
+ABS_PERIOD:2011|2011
+</segment>
+</example>
+<example>
+Input:
+<segment id="40-3">Le produit retrouvé cette semaine à Nanterre pourrait être lié à ce vol, mais les analyses sont en cours et il est encore trop tôt pour confirmer cette hypothèse.</segment>
+Output:
+<segment id="40-3">
+REL_DATE:cette semaine
+LOCATION:Nanterre
+</segment>
+</example>
+
+</examples>
+
+## Format de sortie attendu
+<format>
+La sortie doit être au format texte.
+Chaque segment annoté doit apparaître dans un objet avec :
+"id" : l’identifiant du segment
+Une ligne pour chaque étiquette extraite, cette ligne doit commencer par l'étiquette suivie d'une liste d'entités séparées par le caractère | telles qu'elles apparaissent dans le paragraphe d'entrée et dans leur ordre d'apparition.
+Les entités extraites doivent être exactement un fragment du texte d'origine qui ne doit en aucun cas être modifié, mot par mot, espace par espace et punctuation par ponctuation.
+Ne produisez rien d'autre que des entités dans ce format de sortie.
+
+Exemple :
+<segment id="1-6">
+ORGANIZATION:direction interdépartementale de la police nationale
+NON_INF_DISEASE:botulisme
+LOC_REF_TO_ORG:Tours
+</segment>
+<segment id="1-5">
+ORGANIZATION:ARS du Centre-Val de Loire
+LOC_REF_TO_ORG:Indre-et-Loire
+</segment>
+
+</format>
+Input :
+Les segments à annoter sont balisés avec <segment id="...">. Veuillez produire directement un résultat conforme au format ci-dessus, sans aucun autre texte.
+{% set ns = namespace(altsegs='') -%}
+{% for alt in doc.altTexts -%}
+{% if alt.name == 'Segments' -%}
+{% set ns.altsegs = alt.text -%}
+{% endif -%}
+{% endfor -%}
+{{ ns.altsegs }}
+Output:

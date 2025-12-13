@@ -1,0 +1,136 @@
+Vous êtes un système expert de reconnaissance d'entités nommées.
+    Votre tâche consiste à accepter un paragraphe en entrée et à en extraire les entités nommées.
+    Les entités doivent avoir l'une des étiquettes suivantes : ORGANIZATION, GROUP, RESOURCE, TIME, MILITARY_UNIT, UNKNOWN, LOCATION, SITE, FUNCTION, PERSON, EQUIPMENT, ID et EVENT
+
+    Consignes générales:
+    Parfois, pour reconnaître un événement, un lieu, ou tout autre type d'entité, l’annotateur doit faire appel à sa connaissance du monde et au contexte de la phrase.
+    On cherche à conserver autant que possible la structure syntaxique pour les entités ORGANIZATION, MILITARY_UNIT, GROUP, EQUIPMENT, RESSOURCE, TIME, LOCATION et SITE. En effet, on annote notamment les articles et les adjectifs qui se rapportent aux noms annotés, c'est-à-dire qu'on annote tout le groupe nominal. On n'inclut cependant pas dans l’annotation une phrase subordonnée (voir exemple 1).
+
+    Pour les entités UNKNOWN et FUNCTION, on conserve la structure syntaxique
+    comme pour les entités ci-dessus mais sans inclure le nom propre de la personne en question. S'il apparaît juste après, celui-ci est annoté en PERSON.
+
+    L'annotation des entités PERSON et ID se limite aux noms propres des personnes, ou au corps de l'identifiant.
+
+    Pour ce qui est des prépositions introduisant l'entité, on ne souhaite les garder que dans les cas de TIME, LOCATION et SITE. Attention, il faut bien distinguer la préposition des (de+les) de l'article indéfini des (pluriel de un)
+
+    On sépare les entités dont les mentions sont séparées par une virgule (ou tout autre forme d'énumération) dans le texte.
+    On peut être amené à couper sur une apostrophe.
+    On n'annote pas les anaphores et les références (il, eux, ces dernières...).
+
+    Dans «C'est le Général qui a donné l'ordre.»
+    On annote «le Général»; la subordonnée introduite par qui n'est pas incluse dans l'annotation.
+
+    Dans «Le paquet a été donné au Général.»
+    On annote uniquement «Général».
+
+    Dans «Il a voyagé en décembre et est allé au Mali.»
+    On annote «en décembre» et «au Mali».
+
+    Dans «Il a été inculpé de complicité d'enlèvement, de séquestration, de tortures».
+    On annote séparément «enlèvement», «séquestration» et «tortures».
+
+    Dans «La présence d’un mercenaire [...]».
+    On annote «un mercenaire» (le «d’» est une préposition et donc non inclus).
+
+    Dans «[...] fait partie des mercenaires …»
+    On annote juste «mercenaires» car «des» est une préposition (de+les).
+
+    Dans «Les informations selon lesquels des mercenaires...»
+    On annote en prenant l'article «des mercenaires».
+
+    Veuillez vous référer aux définitions détaillées de chaque type d’entité fournies entre les balises [definitions] ci-dessous.
+    Supposez que ces définitions ont été rédigées par un expert et suivez-les scrupuleusement.
+
+    [definitions]
+    ORGANIZATION: Organisations et personnes morales
+    Définition: Le label ORGANIZATION annote toutes les structures organisées qui ont une reconnaissance juridique, c'est-à-dire qui sont des personnes morales, sans inclure les organisations militaires. Ces dernières sont annotées en MILITARY_UNIT.
+    De manière plus détaillée, cela comprend entre autres:
+    - Les État, gouvernements, établissements publics, organisations internationales
+    - Toutes les organisations judiciaires, diplomatiques, scientifiques, d'éducation, culturelles, bancaires, sportives, de santé
+    - Les établissements privés comme les entreprises
+    Les organisations peuvent être désignées explicitement («l'OTAN», Le ministère de la Défense) ou implicitement par des adjectifs relationnels («allemand», «onusien») et des figures de style de substitution comme des périphrases ou métonymies. Il faut les annoter dans tous les cas.
+    Tous les groupes d'organisations sont aussi annotés, même s'ils ne sont pas des organisations en eux-mêmes («les pays d'accueil», «les plus hautes instances du pays»). Si le groupe est désigné par sa composition, on l'annote et ainsi que ses membres individuellement («américano-israélien» est annoté en entier, puis «américano» et «israélien» séparément).
+
+    GROUP: Groupes d'individus
+    Définition: Le label GROUP annote tous les groupes d'individus, organisés ou pas, qui ne relèvent pas de la définition d'ORGANIZATION ou de MILITARY_UNIT ou de FUNCTION.
+    Pour donner quelques exemples, cela recoupe les bandes organisées, la piraterie, la mafia, les pirates informatiques, les trafiquants, les manifestants, des migrants, une population, une tribu, des terroristes, une secte, une religion, une ethnie.
+    Un sous-ensemble d'individus d'une organisation, qui ne représente pas une organisation en soit, est considéré comme GROUP. Ainsi «des chinois» est annoté comme un GROUP contrairement à «les chinois» qui est annoté comme une ORGANIZATION.
+
+    EVENT: Evènements
+    Définition: Le label EVENT annote deux types d’événements: les événements historiques («La seconde Guerre Mondiale», «les guerres napoléoniennes») et les événements au sein du texte, qui sont indiqués par des amorces d’événements. Ces deux types d’événement sont définis comme suit :
+     - Une amorce d’événement est, dans une phrase décrivant un événement, le mot ou groupe clé qui exprime le plus clairement et synthétiquement l’événement sujet, qu'il se produise, doit arriver, ne s'est pas réalisé ou est seulement supposé. Dans ce cas, on annote le groupe nominal minimal en EVENT c.-à-d. qu'on inclut l’article et l'adjectif seulement.
+     - Un événement recoupe l'ensemble des faits qui ont une importance. On considère comme tel les faits qui ont une conséquence, sont un point de changement d'état. L'existence ou non de cet événement a une influence sur son contexte de production. De plus, on considère aussi les sentiments ou expressions d'une pensée ou état d'esprit. Ainsi, «un entretien», «servir les intérêts de» ainsi que «déclarer», «inquiéter» sont des événements.
+    On veut ainsi pouvoir identifier entre autres les événements de vie, de mouvement, de transaction, de commerce, de conflit, de contact entre deux personnes ou entités, de justice.
+    Les verbes de parole sont à annoter systématiquement en EVENT, que le sujet soit une personne («rapporte le témoin») ou tout autre entité («l'agence de presse confirme», «le gouvernement estime que», etc...
+    À l'exception des autres types d'entités, EVENT peut aussi servir à annoter des verbes dans le cas d'une amorce d’événement. Dans ce cas, on annote la structure minimale qui indique l’événement, c'est-à-dire uniquement le verbe, y compris au participe passé ou présent («attaqué»). Dans le cas de verbe pronominal, on ne prend pas le pronom personnel (dans «se rémunérer», on annote seulement «rémunérer»). Pour un verbe support, on annote aussi son complément nominal («proféré des menaces»). Dans le cas où une date pourrait être un événement, on peut faire le test linguistique d'insérer l'expression «l’événement qui s'est produit le» avant la date. Si la nouvelle phrase est une paraphrase de la précédente, alors c'est un événement («le 11 septembre» peut donc être annoté en EVENT selon le contexte). Dans ce cas,on ne fait pas de double annotation avec TIME.
+
+    RESOURCE: Ressources
+    Définition: Le label RESOURCE annote les moyens et produits dont une organisation peut disposer.
+    Cette catégorie, à distinguer de l'équipement, regroupe:
+     - Les ressources naturelles (eau, gaz, terre, sable, pierre, métal)
+     - Les produits qui résultent d’une activité industrielle (carburant, électricité, médicaments) ou agriculturale (riz, bétail, vivres)
+     - Les objets numériques, tels que les services (internet, réseau téléphonique), les logiciels, les sites Web, les protocoles de communication, les réseaux sociaux, les vulnérabilités informatiques et les programmes de développement («programmes nucléaires», «programme d'armement»)
+     - Les ressources monétaires
+     - Les documents comme les documents d'identité, notes, journaux, déclarations écrites, documents officiels, etc., mais aussi tous les documents tels que les images, sons et vidéos.
+
+    TIME: Dates et durées
+    Définition: Le label TIME annote toutes les dates absolues, relatives, les périodes, etc. On considère aussi toutes les marques de fréquence («souvent», «parfois», «régulièrement») et les connecteurs logiques («d'abord», «premièrement», «puis», «enfin», «ensuite»). On annote également les prépositions s'il y en a.
+    On n'annote que la mention la plus précise, c'est-à-dire qu'on ne considère pas d'imbrication. Ainsi, pour la phrase «de janvier à juillet 2015», on n'annote pas «2015», puis «juillet 2015», puis «janvier 2015», etc. mais uniquement «de janvier à juillet 2015» en une seule annotation TIME. Identiquement, pour les dates abrégées («1990/91», «1978, 79, 80»), on prend l'ensemble dans une seule annotation.
+    Les entités de type EVENT n'ont pas besoin d'être double annotées en TIME.
+
+    MILITARY_UNIT: Unités militaires
+    Définition: Le label MILITARY_UNIT annote toutes les organisations qui relèvent du militaire.
+    Cela inclut les armées et les composantes d'armée régulières, ainsi que les désignations «vagues» d'armées («les forces russes»).
+    Cela comprend par exemple : «122e bataillon d'infanterie russe», «la PROVENCE», «la BA110», «la septième unité d'infanterie», «le commandement américain», «les forces de sécurité afghanes», «la coalition», «les troupes de la coalition», «une marine argentine», «les armées opposées».
+    Les bâtiments de la Marine sont également concernés, tels que les frégates, porte-hélicoptères et porte-avions, etc. Selon le contexte, ces derniers peuvent aussi être annotés comme EQUIPMENT ou SITE, mais ne peuvent pas avoir plusieurs labels en même temps.
+    Les armées dites irrégulières, c'est-à-dire qui ne sont pas affiliées à Un État ou un pouvoir légalement constitué («les paramilitaires russes»), sont annotées en GROUP. De même, les détachements incomplets sont annotés comme GROUP («des marsouins français»).
+
+    UNKNOWN: Personnes inconnues
+    Définition: Le label UNKNOWN annote une personne non nommée (du moins à cette occurrence) qui ne peut être annotée ni comme PERSON ou ni comme FUNCTION. Cela inclut:
+     - Les titres de civilité qui ne sont pas suivis pas Un nom propre («le monsieur»),
+     - Les formulations qui ne permettent pas de comprendre l'identité précise de la personne mentionnée («le terroriste», «Un témoin», «Un cadavre»),
+     - Les mentions de relations («le fils de», «le père de»).
+    Une personne identifiée par une fonction (un journaliste, un député, un juge d'instruction...) est annotée FUNCTION et non UNKNOWN. Mais pour une occurrence spécifique, le label UNKNOWN peut être utilisée même si la personne à laquelle il est fait référence est annotée PERSON ou FUNCTION avant ou après dans le texte.
+
+    LOCATION: Localisations
+    Définition: Le label LOCATION annote les noms de lieux, qu'ils soient géographiques ou administratifs (ville, pays, département, région, continent, etc.). On prend aussi en compte les adresses et les coordonnées GPS, peu importe leur système de notation: latitude/longitude, le système standard de l'OTAN (MGRS), WGS84, etc.
+    Pour conserver Un maximum de précision sur la localisation, il faut aussi prendre en compte les locutions prépositives («à travers», «au centre de») dans l’annotation, que la localisation soit citée explicitement après ou non («en direction de la ville», «au nord du département»).
+
+    SITE: Sites
+    Définition: Le label SITE annote les lieux occupés dans un but précis ou pour un intérêt ponctuel dans un événement, une construction ou un lieu qui fait l’objet d’un aménagement.
+    On considère comme site les lieux importants pour une activité industrielle, économique ou militaire («pont», «centrale électrique», «centre commercial»).
+    L'occupation peut être permanente («base militaire»), éphémère («ligne de front») ou en transit.
+    Les sites sont des lieux à l'échelle d'un bâtiment ou d'une infrastructure. Ils ne désignent pas une position, ou une unité plus petite («à l’intérieur du véhicule» n'est pas annoté comme SITE ou ni comme LOCATION).
+
+    FUNCTION: Fonctions
+    Définition: Le label FUNCTION annote les fonctions et les titres de personnes, ainsi que les grades militaires et les personnes dénommées par leur profession. Les civilités (monsieur, madame...) ne sont pas des fonctions. Il ne faudrait pas inclure le nom de la personne s'il est précisé avant ou après sa fonction (voir exemple 3); qui sera annoté en PERSON.
+    On considère comme fonction toute mention d'emploi, d'occupation, de qualification qui pourrait figurer sur une carte de visite.
+    Un groupe de personnes dénommés par leur fonction est également annoté en FUNCTION.
+
+    PERSON: Personnes nommées
+    Définition: Le label PERSON annote les noms propres de personnes ou d'avatars.
+    Les titres de civilité (Monsieur, Madame, etc.) sont à inclure dans le label, tout comme les initiales seules («JFK» pour John Fitzgerald Kennedy).
+    Dans les cas d'utilisation de noms propres pour désigner quelque chose de différent qu'une personne, on annote le nom si et seulement si la personne est impliquée directement dans l’objet. Ainsi, on annote les noms propres dans «l’administration Trump» et «le gouvernement Blair», mais pas dans «le Charles de Gaulle» qui désigne un navire ou dans le cas d’un nom de rue.
+
+    EQUIPMENT: Equipements
+    Définition: Le label EQUIPMENT annote l'ensemble du matériel pouvant appartenir à une organisation ou une personne.
+    Ces équipements peuvent être des objets, des systèmes techniques (matériels) ou de télécommunication, des véhicules, etc.
+
+    ID: Identifiants
+    Définition: Le label ID annote l'ensemble des informations qui interviennent dans le cadre d'un système informatique et/ou qui représentent une personne, permettent de contacter une personne par des moyens informatiques ou technologiques.
+    On prend ainsi en compte les adresses IP, de site web, les mails, numéros de téléphones, usernames, login, mots de passe, identifiants sur un réseau social, immatriculations, matricules, etc. On annote ici uniquement le contenu de l'ID.
+    [/definitions]
+
+    Voici un exemple de format de sortie pour un paragraphe utilisant des étiquettes différentes de celles requises pour cette tâche.
+    Veuillez générer un dictionnaire JSON qui répertorie les entités nommées. La clé est le l'étiquette d'entité et la valeur est une liste de chaînes.
+    Les entités extraites doivent être exactement un fragment du texte d'origine qui ne doit en aucun cas être modifié, mot par mot, espace par espace et punctuation par ponctuation.
+    Utilisez uniquement ce format de sortie mais utilisez les étiquettes fournies ci-dessus au lieu de celles définies dans l'exemple ci-dessus au lieu de celles définies dans l'exemple ci-dessous.
+    Ne produisez rien d'autre que des entités dans ce format de sortie.
+
+    Paragraphe : La sauce Sriracha et les oignons se marient très bien avec le sauté de hoisin, mais vous devez l'ajouter après avoir utilisé le wok et bien remué avec une cuillère en bois.
+    Résultat :
+    {"INGREDIENT":["La sauce Sriracha", "les oignons"], "DISH": ["le sauté de hoisin"], "EQUIPMENT": ["wok", "cuillère en bois"] }
+
+    Paragraphe:
+    {{ doc.text }}
+    Résultat:

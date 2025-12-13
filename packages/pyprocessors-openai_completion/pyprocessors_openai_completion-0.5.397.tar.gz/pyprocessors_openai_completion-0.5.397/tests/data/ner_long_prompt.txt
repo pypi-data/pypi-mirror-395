@@ -1,0 +1,938 @@
+Vous êtes un système expert de reconnaissance d'entités nommées.
+Votre tâche consiste à accepter un paragraphe en entrée et à en extraire les entités nommées.
+Les entités doivent avoir l'une des étiquettes suivantes : ORGANIZATION, GROUP, RESOURCE, TIME, MILITARY_UNIT, UNKNOWN, LOCATION, SITE, FUNCTION, PERSON, EQUIPMENT, ID et EVENT
+
+Consignes générales:
+Parfois, pour reconnaître un événement, un lieu, ou tout autre type d'entité, l’annotateur doit faire appel à sa connaissance du monde et au contexte de la phrase.
+On cherche à conserver autant que possible la structure syntaxique pour les entités ORGANIZATION, MILITARY_UNIT, GROUP, EQUIPMENT, RESSOURCE, TIME, LOCATION et SITE. En effet, on annote notamment les articles et les adjectifs qui se rapportent aux noms annotés, c'est-à-dire qu'on annote tout le groupe nominal. On n'inclut cependant pas dans l’annotation une phrase subordonnée (voir exemple 1).
+
+Pour les entités UNKNOWN et FUNCTION, on conserve la structure syntaxique
+comme pour les entités ci-dessus mais sans inclure le nom propre de la personne en question. S'il apparaît juste après, celui-ci est annoté en PERSON.
+
+L'annotation des entités PERSON et ID se limite aux noms propres des personnes, ou au corps de l'identifiant.
+
+Pour ce qui est des prépositions introduisant l'entité, on ne souhaite les garder que dans les cas de TIME, LOCATION et SITE. Attention, il faut bien distinguer la préposition des (de+les) de l'article indéfini des (pluriel de un)
+
+On sépare les entités dont les mentions sont séparées par une virgule (ou tout autre forme d'énumération) dans le texte.
+On peut être amené à couper sur une apostrophe.
+On n'annote pas les anaphores et les références (il, eux, ces dernières...).
+
+Dans «C'est le Général qui a donné l'ordre.»
+On annote «le Général»; la subordonnée introduite par qui n'est pas incluse dans l'annotation.
+
+Dans «Le paquet a été donné au Général.»
+On annote uniquement «Général».
+
+Dans «Il a voyagé en décembre et est allé au Mali.»
+On annote «en décembre» et «au Mali».
+
+Dans «Il a été inculpé de complicité d'enlèvement, de séquestration, de tortures».
+On annote séparément «enlèvement», «séquestration» et «tortures».
+
+Dans «La présence d’un mercenaire [...]».
+On annote «un mercenaire» (le «d’» est une préposition et donc non inclus).
+
+Dans «[...] fait partie des mercenaires …»
+On annote juste «mercenaires» car «des» est une préposition (de+les).
+
+Dans «Les informations selon lesquels des mercenaires...»
+On annote en prenant l'article «des mercenaires».
+
+Veuillez vous référer aux définitions détaillées de chaque type d’entité fournies entre les balises [definitions] ci-dessous.
+Supposez que ces définitions ont été rédigées par un expert et suivez-les scrupuleusement.
+
+[definitions]
+ORGANIZATION: Organisations et personnes morales
+Définition: Le label ORGANIZATION annote toutes les structures organisées qui ont une reconnaissance juridique, c'est-à-dire qui sont des personnes morales, sans inclure les organisations militaires. Ces dernières sont annotées en MILITARY_UNIT.
+De manière plus détaillée, cela comprend entre autres:
+- Les État, gouvernements, établissements publics, organisations internationales
+- Toutes les organisations judiciaires, diplomatiques, scientifiques, d'éducation, culturelles, bancaires, sportives, de santé
+- Les établissements privés comme les entreprises
+Les organisations peuvent être désignées explicitement («l'OTAN», Le ministère de la Défense) ou implicitement par des adjectifs relationnels («allemand», «onusien») et des figures de style de substitution comme des périphrases ou métonymies. Il faut les annoter dans tous les cas.
+Tous les groupes d'organisations sont aussi annotés, même s'ils ne sont pas des organisations en eux-mêmes («les pays d'accueil», «les plus hautes instances du pays»). Si le groupe est désigné par sa composition, on l'annote et ainsi que ses membres individuellement («américano-israélien» est annoté en entier, puis «américano» et «israélien» séparément).
+
+GROUP: Groupes d'individus
+Définition: Le label GROUP annote tous les groupes d'individus, organisés ou pas, qui ne relèvent pas de la définition d'ORGANIZATION ou de MILITARY_UNIT ou de FUNCTION.
+Pour donner quelques exemples, cela recoupe les bandes organisées, la piraterie, la mafia, les pirates informatiques, les trafiquants, les manifestants, des migrants, une population, une tribu, des terroristes, une secte, une religion, une ethnie.
+Un sous-ensemble d'individus d'une organisation, qui ne représente pas une organisation en soit, est considéré comme GROUP. Ainsi «des chinois» est annoté comme un GROUP contrairement à «les chinois» qui est annoté comme une ORGANIZATION.
+
+EVENT: Evènements
+Définition: Le label EVENT annote deux types d’événements: les événements historiques («La seconde Guerre Mondiale», «les guerres napoléoniennes») et les événements au sein du texte, qui sont indiqués par des amorces d’événements. Ces deux types d’événement sont définis comme suit :
+ - Une amorce d’événement est, dans une phrase décrivant un événement, le mot ou groupe clé qui exprime le plus clairement et synthétiquement l’événement sujet, qu'il se produise, doit arriver, ne s'est pas réalisé ou est seulement supposé. Dans ce cas, on annote le groupe nominal minimal en EVENT c.-à-d. qu'on inclut l’article et l'adjectif seulement.
+ - Un événement recoupe l'ensemble des faits qui ont une importance. On considère comme tel les faits qui ont une conséquence, sont un point de changement d'état. L'existence ou non de cet événement a une influence sur son contexte de production. De plus, on considère aussi les sentiments ou expressions d'une pensée ou état d'esprit. Ainsi, «un entretien», «servir les intérêts de» ainsi que «déclarer», «inquiéter» sont des événements.
+On veut ainsi pouvoir identifier entre autres les événements de vie, de mouvement, de transaction, de commerce, de conflit, de contact entre deux personnes ou entités, de justice.
+Les verbes de parole sont à annoter systématiquement en EVENT, que le sujet soit une personne («rapporte le témoin») ou tout autre entité («l'agence de presse confirme», «le gouvernement estime que», etc...
+À l'exception des autres types d'entités, EVENT peut aussi servir à annoter des verbes dans le cas d'une amorce d’événement. Dans ce cas, on annote la structure minimale qui indique l’événement, c'est-à-dire uniquement le verbe, y compris au participe passé ou présent («attaqué»). Dans le cas de verbe pronominal, on ne prend pas le pronom personnel (dans «se rémunérer», on annote seulement «rémunérer»). Pour un verbe support, on annote aussi son complément nominal («proféré des menaces»). Dans le cas où une date pourrait être un événement, on peut faire le test linguistique d'insérer l'expression «l’événement qui s'est produit le» avant la date. Si la nouvelle phrase est une paraphrase de la précédente, alors c'est un événement («le 11 septembre» peut donc être annoté en EVENT selon le contexte). Dans ce cas,on ne fait pas de double annotation avec TIME.
+
+RESOURCE: Ressources
+Définition: Le label RESOURCE annote les moyens et produits dont une organisation peut disposer.
+Cette catégorie, à distinguer de l'équipement, regroupe:
+ - Les ressources naturelles (eau, gaz, terre, sable, pierre, métal)
+ - Les produits qui résultent d’une activité industrielle (carburant, électricité, médicaments) ou agriculturale (riz, bétail, vivres)
+ - Les objets numériques, tels que les services (internet, réseau téléphonique), les logiciels, les sites Web, les protocoles de communication, les réseaux sociaux, les vulnérabilités informatiques et les programmes de développement («programmes nucléaires», «programme d'armement»)
+ - Les ressources monétaires
+ - Les documents comme les documents d'identité, notes, journaux, déclarations écrites, documents officiels, etc., mais aussi tous les documents tels que les images, sons et vidéos.
+
+TIME: Dates et durées
+Définition: Le label TIME annote toutes les dates absolues, relatives, les périodes, etc. On considère aussi toutes les marques de fréquence («souvent», «parfois», «régulièrement») et les connecteurs logiques («d'abord», «premièrement», «puis», «enfin», «ensuite»). On annote également les prépositions s'il y en a.
+On n'annote que la mention la plus précise, c'est-à-dire qu'on ne considère pas d'imbrication. Ainsi, pour la phrase «de janvier à juillet 2015», on n'annote pas «2015», puis «juillet 2015», puis «janvier 2015», etc. mais uniquement «de janvier à juillet 2015» en une seule annotation TIME. Identiquement, pour les dates abrégées («1990/91», «1978, 79, 80»), on prend l'ensemble dans une seule annotation.
+Les entités de type EVENT n'ont pas besoin d'être double annotées en TIME.
+
+MILITARY_UNIT: Unités militaires
+Définition: Le label MILITARY_UNIT annote toutes les organisations qui relèvent du militaire.
+Cela inclut les armées et les composantes d'armée régulières, ainsi que les désignations «vagues» d'armées («les forces russes»).
+Cela comprend par exemple : «122e bataillon d'infanterie russe», «la PROVENCE», «la BA110», «la septième unité d'infanterie», «le commandement américain», «les forces de sécurité afghanes», «la coalition», «les troupes de la coalition», «une marine argentine», «les armées opposées».
+Les bâtiments de la Marine sont également concernés, tels que les frégates, porte-hélicoptères et porte-avions, etc. Selon le contexte, ces derniers peuvent aussi être annotés comme EQUIPMENT ou SITE, mais ne peuvent pas avoir plusieurs labels en même temps.
+Les armées dites irrégulières, c'est-à-dire qui ne sont pas affiliées à Un État ou un pouvoir légalement constitué («les paramilitaires russes»), sont annotées en GROUP. De même, les détachements incomplets sont annotés comme GROUP («des marsouins français»).
+
+UNKNOWN: Personnes inconnues
+Définition: Le label UNKNOWN annote une personne non nommée (du moins à cette occurrence) qui ne peut être annotée ni comme PERSON ou ni comme FUNCTION. Cela inclut:
+ - Les titres de civilité qui ne sont pas suivis pas Un nom propre («le monsieur»),
+ - Les formulations qui ne permettent pas de comprendre l'identité précise de la personne mentionnée («le terroriste», «Un témoin», «Un cadavre»),
+ - Les mentions de relations («le fils de», «le père de»).
+Une personne identifiée par une fonction (un journaliste, un député, un juge d'instruction...) est annotée FUNCTION et non UNKNOWN. Mais pour une occurrence spécifique, le label UNKNOWN peut être utilisée même si la personne à laquelle il est fait référence est annotée PERSON ou FUNCTION avant ou après dans le texte.
+
+LOCATION: Localisations
+Définition: Le label LOCATION annote les noms de lieux, qu'ils soient géographiques ou administratifs (ville, pays, département, région, continent, etc.). On prend aussi en compte les adresses et les coordonnées GPS, peu importe leur système de notation: latitude/longitude, le système standard de l'OTAN (MGRS), WGS84, etc.
+Pour conserver Un maximum de précision sur la localisation, il faut aussi prendre en compte les locutions prépositives («à travers», «au centre de») dans l’annotation, que la localisation soit citée explicitement après ou non («en direction de la ville», «au nord du département»).
+
+SITE: Sites
+Définition: Le label SITE annote les lieux occupés dans un but précis ou pour un intérêt ponctuel dans un événement, une construction ou un lieu qui fait l’objet d’un aménagement.
+On considère comme site les lieux importants pour une activité industrielle, économique ou militaire («pont», «centrale électrique», «centre commercial»).
+L'occupation peut être permanente («base militaire»), éphémère («ligne de front») ou en transit.
+Les sites sont des lieux à l'échelle d'un bâtiment ou d'une infrastructure. Ils ne désignent pas une position, ou une unité plus petite («à l’intérieur du véhicule» n'est pas annoté comme SITE ou ni comme LOCATION).
+
+FUNCTION: Fonctions
+Définition: Le label FUNCTION annote les fonctions et les titres de personnes, ainsi que les grades militaires et les personnes dénommées par leur profession. Les civilités (monsieur, madame...) ne sont pas des fonctions. Il ne faudrait pas inclure le nom de la personne s'il est précisé avant ou après sa fonction (voir exemple 3); qui sera annoté en PERSON.
+On considère comme fonction toute mention d'emploi, d'occupation, de qualification qui pourrait figurer sur une carte de visite.
+Un groupe de personnes dénommés par leur fonction est également annoté en FUNCTION.
+
+PERSON: Personnes nommées
+Définition: Le label PERSON annote les noms propres de personnes ou d'avatars.
+Les titres de civilité (Monsieur, Madame, etc.) sont à inclure dans le label, tout comme les initiales seules («JFK» pour John Fitzgerald Kennedy).
+Dans les cas d'utilisation de noms propres pour désigner quelque chose de différent qu'une personne, on annote le nom si et seulement si la personne est impliquée directement dans l’objet. Ainsi, on annote les noms propres dans «l’administration Trump» et «le gouvernement Blair», mais pas dans «le Charles de Gaulle» qui désigne un navire ou dans le cas d’un nom de rue.
+
+EQUIPMENT: Equipements
+Définition: Le label EQUIPMENT annote l'ensemble du matériel pouvant appartenir à une organisation ou une personne.
+Ces équipements peuvent être des objets, des systèmes techniques (matériels) ou de télécommunication, des véhicules, etc.
+
+ID: Identifiants
+Définition: Le label ID annote l'ensemble des informations qui interviennent dans le cadre d'un système informatique et/ou qui représentent une personne, permettent de contacter une personne par des moyens informatiques ou technologiques.
+On prend ainsi en compte les adresses IP, de site web, les mails, numéros de téléphones, usernames, login, mots de passe, identifiants sur un réseau social, immatriculations, matricules, etc. On annote ici uniquement le contenu de l'ID.
+[/definitions]
+
+Veuillez trouver des exemples de texte d'entrée et le résultat attendu fournis entre les balises [exemples] ci-dessous.
+
+[exemples]
+Paragraphe:
+La guerre au milieu des populations présente ce point commun avec la Bourse que son évolution dépend de l’action de quelques grands acteurs politiques mais surtout des anticipations de très nombreux « petits porteurs ».
+Résultat:
+ORGANIZATION:quelques grands acteurs politiques|la Bourse
+GROUP:très nombreux « petits porteurs »|populations
+EVENT:des anticipations|son évolution|La guerre
+
+Paragraphe:
+La population civile est peut-être le centre de gravité de ce type de conflit mais c’est un ensemble vivant fait d’une juxtaposition de micro-stratégies individuelles, familiales, claniques, etc. aux objectifs divers, la survie en premier lieu.
+Résultat:
+TIME:en premier lieu
+GROUP:La population civile
+EVENT:la survie|conflit
+
+Paragraphe:
+Ces civils interviennent donc de multiples façons dans la guerre depuis la simple fourniture de renseignement jusqu’à l’enrôlement dans une des armées opposées, en passant par le coup de feu occasionnel.
+Résultat:
+TIME:occasionnel
+RESOURCE:renseignement
+MILITARY_UNIT:une des armées opposées|armées opposées
+GROUP:Ces civils
+EVENT:le coup de feu occasionnel|la simple fourniture|l’enrôlement|la guerre
+
+Paragraphe:
+Ces milliers d’actes isolés sont parfois forcés mais le plus souvent volontaires, par intérêt ou en réaction, mais aussi par anticipation surtout lorsqu’on « sent » que l’on entre dans la phase finale de la guerre.
+Résultat:
+TIME:dans la phase finale de la guerre|le plus souvent|parfois
+EVENT:Ces milliers d’actes isolés|anticipation|la guerre|réaction|intérêt|sent
+
+Paragraphe:
+Dans cette phase, les grands acteurs politiques armés sont plutôt incités à prendre moins de risques afin de rester sur un bilan acceptable pour la force sur le départ ou de préparer le combat suivant.
+Résultat:
+TIME:Dans cette phase|sur le départ|suivant
+ORGANIZATION:les grands acteurs politiques armés
+MILITARY_UNIT:la force
+EVENT:prendre moins de risques|le combat suivant|le départ
+
+Paragraphe:
+De fait, il est préférable pour les Taliban de prendre des risques plutôt face à l’armée nationale afghane que face à des Américains sur le départ.
+Résultat:
+TIME:sur le départ
+ORGANIZATION:les Taliban|afghane
+MILITARY_UNIT:l’armée nationale afghane|des Américains
+EVENT:prendre des risques|le départ
+
+Paragraphe:
+En revanche, beaucoup de familles, de clans ou de groupes divers doivent se positionner rapidement pour la suite des évènements.
+Résultat:
+TIME:rapidement
+GROUP:groupes divers|familles|clans
+EVENT:la suite des évènements|positionner
+
+Paragraphe:
+Il n’est ainsi pas rare pour une famille afghane d’avoir un fils dans l’armée nationale mais aussi dans le groupe rebelle dominant dans la région.
+Résultat:
+UNKNOWN:un fils
+ORGANIZATION:afghane
+MILITARY_UNIT:l’armée nationale
+LOCATION:dans la région
+GROUP:une famille afghane|le groupe rebelle
+
+Paragraphe:
+Il peut être bon aussi de montrer sa vaillance contre les forces étrangères et la rétractation de ces dernières sur leurs bases, outre qu’elles confirment les anticipations, modifient simplement les modes d’action.
+Résultat:
+SITE:sur leurs bases
+MILITARY_UNIT:les forces étrangères
+EVENT:les anticipations|la rétractation|confirment|modifient|montrer
+
+Paragraphe:
+Au lieu d’accrocher les troupes de la coalition sur le terrain, il suffira de surveiller les axes logistiques, de lancer des projectiles sur les bases ou, si la motivation est importante, de profiter du recrutement massif des forces de sécurité afghanes pour s’infiltrer et frapper.
+Résultat:
+SITE:les axes logistiques|sur le terrain|sur les bases
+ORGANIZATION:la coalition|afghanes
+MILITARY_UNIT:les troupes de la coalition|forces de sécurité afghanes
+EVENT:recrutement massif|la motivation|surveiller|accrocher|infiltrer|frapper|lancer
+EQUIPMENT:des projectiles
+
+Paragraphe:
+Comme l’indiquait un journaliste français, l’attaque d’Abdul Mansour le 20 janvier dernier sur la base Gwan est sans doute le résultat non pas des Taliban ou du HiG, qui n’ont pas revendiqué l’attaque, mais de la pression de sa famille.
+Résultat:
+TIME:le 20 janvier dernier
+SITE:sur la base Gwan
+PERSON:Abdul Mansour
+ORGANIZATION:français|Taliban|HiG
+GROUP:sa famille
+FUNCTION:un journaliste français
+EVENT:la pression|revendiqué|indiquait|l’attaque|l’attaque
+
+Paragraphe:
+Les gages des « amateurs » locaux tendent ainsi à se substituer aux offensives des organisations et grands groupes, en général plus efficaces et meurtrières.
+Résultat:
+ORGANIZATION:grands groupes|organisations
+GROUP:« amateurs » locaux
+EVENT:substituer|offensives
+
+Paragraphe:
+Les pertes de la coalition en Afghanistan (mais pas celles de l’armée nationale afghane) peuvent ainsi se réduire mais pas autant qu’espéré et sans que le nombre d’incidents diminue par ailleurs.
+Résultat:
+ORGANIZATION:afghane
+MILITARY_UNIT:l’armée nationale afghane|la coalition
+LOCATION:en Afghanistan
+EVENT:Les pertes|incidents|réduire|diminue
+
+Paragraphe:
+Il y a 18 soldats français tués de janvier à juillet 2011 inclus, période d’opérations actives, mais encore 11 d’août à janvier 2012, période de rétractation.
+Résultat:
+TIME:de janvier à juillet 2011 inclus|période d’opérations actives|période de rétractation|d’août à janvier 2012|encore
+ORGANIZATION:français
+GROUP:18 soldats français|11
+EVENT:opérations actives|rétractation|tués
+
+Paragraphe:
+Encore ne s’agit-il là que des pertes visibles.
+Résultat:
+EVENT:des pertes visibles
+
+Paragraphe:
+La rétractation sur les bases et la fin des périodes offensives a un effet déprimant, tant le fait de subir est plus stressant que l’action offensive et active.
+Résultat:
+TIME:la fin des périodes offensives
+SITE:sur les bases
+EVENT:l’action offensive et active|La rétractation|offensives|déprimant|stressant|subir
+
+Paragraphe:
+Les pertes psychologiques britanniques en Irak sont devenues aussi élevées que pendant la Seconde Guerre mondiale à partir de la fin de 2005 lorsque le gouvernement Blair a réduit les opérations offensives pour des raisons électorales.
+Résultat:
+TIME:pendant la Seconde Guerre mondiale|à partir de la fin de 2005
+PERSON:Blair
+ORGANIZATION:le gouvernement Blair|britanniques
+LOCATION:en Irak
+EVENT:Les pertes psychologiques britanniques|la Seconde Guerre mondiale|les opérations offensives|électorales|élevées|réduit
+
+Paragraphe:
+A une toute autre échelle, l’armée américaine au Vietnam s’est effondrée moralement lorsqu’elle ne bougeait plus de ses bases après l’offensive du Têt en 1968.
+Résultat:
+TIME:après l’offensive du Têt en 1968
+SITE:de ses bases
+ORGANIZATION:américaine
+MILITARY_UNIT:l’armée américaine
+LOCATION:au Vietnam
+EVENT:l’offensive du Têt|effondrée
+
+Paragraphe:
+Cette politique de retrait intérieur comme préalable au retrait du pays, n’est d’ailleurs pas un gage de réussite si elle ne se fonde pas sur une amélioration réelle et non racontée de la situation locale.
+Résultat:
+TIME:préalable au retrait du pays
+LOCATION:pays
+EVENT:une amélioration réelle et non racontée|retrait intérieur|réussite|retrait
+
+Paragraphe:
+Au printemps 2004, quelques jours après la capture de Saddam Hussein, le général Odierno, alors commandant de la 4e division d’infanterie déclarait que la rébellion était à genoux et que la situation serait complètement normalisée six mois plus tard.
+Résultat:
+TIME:quelques jours après la capture de Saddam Hussein|six mois plus tard|Au printemps 2004
+PERSON:Saddam Hussein|Odierno
+MILITARY_UNIT:la 4e division d’infanterie
+GROUP:la rébellion
+FUNCTION:commandant de la 4e division d’infanterie|le général
+EVENT:la capture|normalisée|déclarait
+
+Paragraphe:
+Trois mois plus tard, les Américains devaient faire face simultanément à la résistance de Falloujah, à la révolte mahdiste et aux révélations d’Abou Ghraïb.
+Résultat:
+TIME:Trois mois plus tard|simultanément
+ORGANIZATION:les Américains|mahdiste
+LOCATION:Abou Ghraïb|Falloujah
+EVENT:la révolte mahdiste|la résistance|révélations|faire face
+
+Paragraphe:
+A la fin de 2005, après la reprise des villes tenues par les rebelles et la réussite des élections, les Américains se repliaient dans de grandes bases.
+Résultat:
+TIME:après la reprise des villes tenues par les rebelles et la réussite des élections|A la fin de 2005
+SITE:villes tenues par les rebelles|dans de grandes bases
+ORGANIZATION:les Américains
+GROUP:les rebelles
+EVENT:la réussite|la reprise|repliaient|élections
+
+Paragraphe:
+Quelques semaines plus tard, l’Irak basculait dans la guerre civile.
+Résultat:
+TIME:Quelques semaines plus tard
+LOCATION:l’Irak
+EVENT:la guerre civile
+
+Paragraphe:
+L’exécutif américain a eu au moins le courage de changer de stratégie, changement lui-même rendu possible par l’acceptation d’une pensée militaire critique par le commandement américain.
+1/29/2012
+Résultat:
+TIME:1/29/2012
+ORGANIZATION:L’exécutif américain|américain|américain
+MILITARY_UNIT:le commandement américain
+EVENT:une pensée militaire critique|l’acceptation|changer
+
+Paragraphe:
+En Iran, exécution de quatre personnes accusées de coopération avec les services de renseignement israéliens...
+Résultat:
+ORGANIZATION:les services de renseignement israéliens|israéliens
+LOCATION:En Iran
+GROUP:quatre personnes
+EVENT:coopération|exécution|accusées
+
+Paragraphe:
+Quatre personnes accusées d’avoir coopéré avec l’agence de renseignement israélienne Mossad ont été exécutées dimanche en Iran, a rapporté l’agence de presse iranienne Fars.
+Résultat:
+TIME:dimanche
+ORGANIZATION:l’agence de renseignement israélienne Mossad|l’agence de presse iranienne Fars|israélienne|iranienne
+LOCATION:en Iran
+GROUP:Quatre personnes
+EVENT:exécutées|accusées|rapporté|coopéré
+
+Paragraphe:
+L’Iran accuse régulièrement Israël de mener des opérations secrètes sur son sol. Téhéran estime que les services de renseignement israéliens et occidentaux sont à l’origine de la vague de contestation qui secoue le pays depuis plus de trois mois.
+Résultat:
+TIME:depuis plus de trois mois|régulièrement
+SITE:sur son sol
+ORGANIZATION:les services de renseignement israéliens|occidentaux|israéliens|Téhéran|L’Iran|Israël
+LOCATION:le pays
+EVENT:la vague de contestation|des opérations secrètes|accuse|estime
+DISC_ORGANIZATION:les services de renseignement israéliens et occidentaux
+
+Paragraphe:
+Mercredi, l’agence de presse Mehr a déclaré que les quatre hommes avaient été condamnés à mort pour avoir coopéré avec les services de renseignement du régime sioniste et pour enlèvement.
+Résultat:
+TIME:Mercredi
+ORGANIZATION:les services de renseignement du régime sioniste|l’agence de presse Mehr|régime sioniste
+GROUP:les quatre hommes
+EVENT:condamnés à mort|enlèvement|déclaré|coopéré
+
+Paragraphe:
+En Iran, les pompes à essence paralysées suite à une cyberattaque...
+Résultat:
+RESOURCE:essence
+LOCATION:En Iran
+EVENT:une cyberattaque|paralysées
+EQUIPMENT:les pompes à essence
+
+Paragraphe:
+La panne générale de distribution de carburant survenue mardi en Iran est due à une cyberattaque a affirmé la plus haute instance sécuritaire du pays.
+Résultat:
+TIME:mardi
+RESOURCE:carburant
+ORGANIZATION:la plus haute instance sécuritaire du pays|pays
+LOCATION:en Iran
+EVENT:La panne générale|une cyberattaque|affirmé
+
+Paragraphe:
+« Le Conseil suprême de la sécurité nationale a confirmé qu'il s'agissait d'une cyberattaque contre le système informatique de distribution du carburant » a indiqué la télévision d’État.
+Résultat:
+RESOURCE:carburant
+ORGANIZATION:Le Conseil suprême de la sécurité nationale|la télévision d’État
+EVENT:une cyberattaque|confirmé|indiqué
+EQUIPMENT:le système informatique de distribution du carburant
+
+Paragraphe:
+La panne d'un système informatique géré par le gouvernement régissant l'approvisionnement des stations-services à travers le pays a engendré mardi une pénurie de carburant à l'échelle nationale.
+Résultat:
+TIME:mardi
+SITE:stations-services
+RESOURCE:carburant
+ORGANIZATION:le gouvernement
+LOCATION:à l'échelle nationale|à travers le pays
+EVENT:l'approvisionnement|une pénurie|La panne
+EQUIPMENT:un système informatique
+
+Paragraphe:
+Des images de longues files d'attente de véhicules à l'entrée des stations-services à Téhéran ont été diffusées par la télévision d’État iranienne.
+Résultat:
+SITE:à l'entrée des stations-services
+RESOURCE:Des images
+ORGANIZATION: la télévision d’État iranienne|iranienne
+LOCATION:à Téhéran
+EVENT:longues files d'attente|diffusées
+EQUIPMENT:véhicules
+
+Paragraphe:
+Les responsables du ministère du Pétrole doivent organiser une réunion d'urgence pour résoudre le problème technique, qui pour l'heure n'a pas été détaillé.
+Résultat:
+TIME:pour l'heure
+ORGANIZATION:ministère du Pétrole
+GROUP:Les responsables du ministère du Pétrole
+EVENT:une réunion d'urgence|résoudre
+
+Paragraphe:
+Selon l'agence de presse semi-officielle ISNA, les utilisateurs de carburant auraient reçu un message indiquant « cyberattaque 64411 », un numéro d'urgence lié au bureau du guide suprême iranien, l'ayatollah Ali Khamenei.
+Résultat:
+RESOURCE:un numéro d'urgence|carburant
+PERSON:Ali Khamenei
+ORGANIZATION:l'agence de presse semi-officielle ISNA|bureau du guide suprême iranien|iranien
+ID:64411
+GROUP:les utilisateurs de carburant
+FUNCTION:guide suprême iranien|l'ayatollah
+EVENT:cyberattaque|reçu
+
+Paragraphe:
+Aucun groupe n'a revendiqué la responsabilité de la panne.
+Résultat:
+EVENT:revendiqué|la panne
+
+Paragraphe:
+Cependant, le numéro 64411 rappelle la cyberattaque commise contre le système ferroviaire iranien au mois de juillet, des pirates avaient alors modifié l'affichage dans les gares en demandant aux passagers de composer le 64411.
+Résultat:
+TIME:au mois de juillet
+SITE:dans les gares
+ORGANIZATION:iranien
+ID:64411|64411
+GROUP:des pirates|passagers
+EVENT:la cyberattaque|modifié
+EQUIPMENT:le système ferroviaire iranien|l'affichage
+
+Paragraphe:
+L'Iran a déjà fait l'objet de plusieurs cyberattaques, dont une au mois d'août sur la prison d'Evine à Téhéran, lors de laquelle des hackers avaient obtenu des vidéos internes montrant des violences sur des détenus. À la fin des années 2000, l'Iran avait par ailleurs déconnecté une grande partie de son infrastructure gouvernementale des services internet après l'introduction du virus informatique Stuxnet - considéré comme une conception conjointe américano-israélienne - qui avait perturbé le programme nucléaire iranien, ciblant les centrifugeuses de la centrale de Natanz.
+Résultat:
+TIME:après l'introduction du virus informatique Stuxnet|À la fin des années 2000|au mois d'août
+SITE:sur la prison d'Evine|la centrale de Natanz
+RESOURCE:le programme nucléaire iranien,|virus informatique Stuxnet|des vidéos internes|services internet
+ORGANIZATION:américano-israélienne|israélienne|américano|iranien|L'Iran|l'Iran
+LOCATION:à Téhéran|Natanz
+ID:Stuxnet
+GROUP:des hackers|des détenus
+EVENT:plusieurs cyberattaques|l'introduction|des violences|déconnecté|perturbé|obtenu
+EQUIPMENT:les centrifugeuses de la centrale de Natanz|son infrastructure gouvernementale
+
+Paragraphe:
+Exercices militaires tactiques de l’armée russe en Biélorussie...
+Résultat:
+ORGANIZATION:russe
+MILITARY_UNIT:l’armée russe
+LOCATION:en Biélorussie
+EVENT:Exercices militaires tactiques
+
+Paragraphe:
+Les troupes russes mènent des exercices tactiques en Biélorussie dans un paysage hivernal, annonce ce jeudi 8 décembre le ministère russe de la Défense dans un communiqué.
+Résultat:
+TIME:ce jeudi 8 décembre|hivernal
+RESOURCE:un communiqué
+ORGANIZATION:le ministère russe de la Défense|russes|russe
+MILITARY_UNIT:Les troupes russes
+LOCATION:en Biélorussie
+EVENT:des exercices tactiques|annonce
+
+Paragraphe:
+« Les militaires de la région militaire ouest poursuivent leur entraînement intensif au combat dans les champs de tir des forces armées de la République de Biélorussie.
+Résultat:
+SITE:dans les champs de tir des forces armées de la République de Biélorussie
+ORGANIZATION:la République de Biélorussie|la région militaire ouest
+MILITARY_UNIT:forces armées de la République de Biélorussie|Les militaires de la région militaire ouest
+EVENT:leur entraînement intensif
+
+Paragraphe:
+L’entraînement au combat a lieu de jour comme de nuit » indique-t-il.
+Résultat:
+TIME:de jour comme de nuit
+EVENT:L’entraînement|indique
+
+Paragraphe:
+Les militaires tirent avec tous les types d'armes légères, ainsi qu'avec des mortiers.
+Résultat:
+GROUP:Les militaires
+EVENT:tirent
+EQUIPMENT:tous les types d'armes légères|des mortiers
+
+Paragraphe:
+Ils perfectionnent leurs compétences dans la conduite de véhicules de combat, réussissent des parcours d'obstacles psychologiques, étudient la médecine tactique et d'autres disciplines.
+Résultat:
+EVENT:perfectionnent|réussissent|étudient
+EQUIPMENT:véhicules de combat
+
+Paragraphe:
+Des clips vidéo publiés par le ministère montrent des soldats russes en tenue de neige s'entraînant près de chars dans un paysage hivernal, tirant avec des armes, notamment de l'artillerie.
+Résultat:
+TIME:hivernal
+RESOURCE:Des clips vidéo
+ORGANIZATION:le ministère|russes
+GROUP:des soldats russes
+EVENT:s'entraînant|publiés|tirant
+EQUIPMENT:tenue de neige|l'artillerie|des armes|chars
+
+Paragraphe:
+La Russie a envoyé un groupe de ses soldats en Biélorussie en octobre pour participer à une nouvelle force conjointe avec les troupes du pays hôte pour renforcer la protection et la défense de la frontière avec l'Ukraine.
+Résultat:
+TIME:en octobre
+SITE:la frontière avec l'Ukraine
+ORGANIZATION:La Russie|pays hôte
+MILITARY_UNIT:les troupes du pays hôte|une nouvelle force
+LOCATION:en Biélorussie| l'Ukraine
+GROUP:un groupe de ses soldats
+EVENT:la protection|participer|la défense|renforcer|envoyé
+
+Paragraphe:
+L'éventuel déploiement de paramilitaires russes au Mali inquiète Washington...
+Résultat:
+ORGANIZATION:Washington|russes
+LOCATION:au Mali
+GROUP:paramilitaires russes
+EVENT:L'éventuel déploiement|inquiète
+
+Paragraphe:
+Les États-Unis s'inquiètent d'un éventuel déploiement de paramilitaires russes au Mali.
+Résultat:
+ORGANIZATION:Les États-Unis|russes
+LOCATION:au Mali
+GROUP:paramilitaires russes
+EVENT:un éventuel déploiement|inquiètent
+
+Paragraphe:
+Dans un communiqué, Linda Thomas-Greenfield, la représentante américaine permanente aux Nations unies, a fait part de ses inquiétudes.
+Résultat:
+RESOURCE:un communiqué
+PERSON:Linda Thomas-Greenfield
+ORGANIZATION:Nations unies|américaine
+FUNCTION:la représentante américaine permanente aux Nations unies
+EVENT:ses inquiétudes|fait part
+
+Paragraphe:
+« J'ai exprimé notre sérieuse inquiétude au sujet des informations selon lesquelles des mercenaires russes pourraient être déployés au Mali » a-t-elle déclaré à l'issue d'un entretien à Niamey avec le président nigérien Mohamed Bazoum.
+Résultat:
+TIME:à l'issue d'un entretien
+RESOURCE:informations
+PERSON:Mohamed Bazoum
+ORGANIZATION:nigérien|russes
+LOCATION:à Niamey|au Mali
+GROUP:des mercenaires russes
+FUNCTION:le président nigérien
+EVENT:notre sérieuse inquiétude|un entretien|déployés|exprimé|déclaré
+
+Paragraphe:
+Madame Linda Thomas-Greenfield fait partie d'une délégation du Conseil de sécurité de l'ONU qui s'est rendue le week-end dernier à Bamako afin de faire pression pour le rétablissement du pouvoir civil au Mali.
+Résultat:
+TIME:le week-end dernier
+PERSON:Madame Linda Thomas-Greenfield
+ORGANIZATION:une délégation du Conseil de sécurité de l'ONU|Conseil de sécurité de l'ONU|l'ONU
+LOCATION:à Bamako|au Mali
+EVENT:le rétablissement du pouvoir civil|faire pression|fait partie|rendue
+
+Paragraphe:
+La délégation s'est ensuite rendue au Niger.
+Résultat:
+TIME:ensuite
+ORGANIZATION:La délégation
+LOCATION:au Niger
+EVENT:rendue
+
+Paragraphe:
+La représentante des États-Unis à l'ONU a estimé que les paramilitaires russes sont pointés du doigt dans des abus sur des civils et que leur présence va aggraver probablement la situation sécuritaire actuelle.
+Résultat:
+TIME:actuelle
+ORGANIZATION:États-Unis|russes|l'ONU
+GROUP:les paramilitaires russes|des civils
+FUNCTION:La représentante des États-Unis à l'ONU
+EVENT:pointés du doigt|leur présence|des abus|aggraver|estimé
+
+Paragraphe:
+La France et l'Allemagne ont prévenu qu'un accord entre Bamako et Wagner remettrait en cause leur présence militaire au Mali.
+Résultat:
+ORGANIZATION:l'Allemagne|La France|Bamako|Wagner
+LOCATION:au Mali
+EVENT:leur présence militaire|un accord|prévenu
+
+Paragraphe:
+Paris accuse le groupe Wagner de se rémunérer sur les ressources des pays d'accueil comme le Centrafrique et la Libye, et de servir les intérêts du Kremlin.
+Résultat:
+RESOURCE:les ressources des pays d'accueil
+ORGANIZATION:le groupe Wagner|le Centrafrique|pays d'accueil|la Libye|Kremlin|Paris
+EVENT:servir les intérêts|rémunérer|accuse
+
+Paragraphe:
+Ce que dément catégoriquement le président russe Vladimir Poutine.
+Résultat:
+PERSON:Vladimir Poutine
+ORGANIZATION:russe
+FUNCTION:le président russe
+EVENT:dément
+
+Paragraphe:
+Il s'agit d’une cyberattaque contre le système de distribution du carburant.
+Résultat:
+RESOURCE:carburant
+EVENT:cyberattaque
+EQUIPMENT:le système de distribution du carburant
+
+Paragraphe:
+L'Iran avait par ailleurs déconnecté une grande partie de son infrastructure gouvernementale des services internet [...].
+Résultat:
+RESOURCE:services internet
+ORGANIZATION:L'Iran
+EVENT:déconnecté
+EQUIPMENT:son infrastructure gouvernementale
+
+Paragraphe:
+Les habitants attendent avec impatience la levée de l'embargo dans les jours suivants.
+Résultat:
+TIME:dans les jours suivants
+GROUP:Les habitants
+EVENT:la levée de l'embargo|impatience|l'embargo
+
+Paragraphe:
+En Iran, exécution de quatre personnes accusées de coopération avec les services de renseignement israéliens.
+Résultat:
+ORGANIZATION:les services de renseignement israéliens|israéliens
+LOCATION:En Iran
+GROUP:quatre personnes
+EVENT:coopération|exécution|accusées
+
+Paragraphe:
+Dans un communiqué, Linda Thomas-Greenfield fait part de ses inquiétudes.
+Résultat:
+RESOURCE:un communiqué
+PERSON:Linda Thomas-Greenfield
+EVENT:inquiétudes|fait part
+
+Paragraphe:
+Les paramilitaires russes ont été déployés au Mali.
+Résultat:
+ORGANIZATION:russes
+LOCATION:au Mali
+GROUP:paramilitaires russes
+EVENT:déployés
+
+Paragraphe:
+La panne générale du système de distribution de carburant ...
+Résultat:
+RESOURCE:carburant
+EVENT:La panne générale
+EQUIPMENT:système de distribution de carburant
+
+Paragraphe:
+L'officier de police fait état de quatre tués et cinq blessés parmi les joueurs.
+Résultat:
+GROUP:cinq blessés|quatre tués|les joueurs
+FUNCTION:L'officier de police
+EVENT:fait état|blessés|tués
+
+Paragraphe:
+Les membres de l'ONU ont voté mardi matin.
+Résultat:
+TIME:mardi matin
+ORGANIZATION:Les membres de l'ONU|l'ONU
+EVENT:voté
+
+Paragraphe:
+Les paramilitaires russes sont pointés du doigt dans des abus sur des civils.
+Résultat:
+ORGANIZATION:russes
+GROUP:Les paramilitaires russes|des civils
+EVENT:pointés du doigt|des abus
+
+Paragraphe:
+Un ancien chef des services de renseignement a été arrêté hier dans l'enquête sur la disparition d’un journaliste en 2016.
+Résultat:
+TIME:en 2016|hier
+ORGANIZATION:services de renseignement
+FUNCTION:Un ancien chef des services de renseignement|un journaliste
+EVENT:l'enquête|arrêté
+
+Paragraphe:
+L'ambassadeur américain à Séoul a pris la parole sur la situation.
+Résultat:
+ORGANIZATION:américain
+LOCATION:à Séoul
+FUNCTION:L'ambassadeur américain à Séoul
+EVENT:pris la parole
+
+Paragraphe:
+L'enquête porte sur la disparition du journaliste Birama Touré.
+Résultat:
+PERSON:Birama Touré
+FUNCTION:journaliste
+EVENT:la disparition|L'enquête
+
+Paragraphe:
+L'assaillant a été arrêté, selon le porte-parole de la police.
+Résultat:
+UNKNOWN:L'assaillant
+ORGANIZATION:la police
+FUNCTION:le porte-parole de la police
+EVENT:arrêté
+
+Paragraphe:
+Les généraux se sont réunis [...].
+Résultat:
+FUNCTION:Les généraux
+EVENT:réunis
+
+Paragraphe:
+Quatre joueurs du club de football local ont été aperçus.
+Résultat:
+FUNCTION:Quatre joueurs du club de football local
+EVENT:aperçus
+
+Paragraphe:
+Dans l'attaque, plusieurs soldats français ont été blessés [...].
+Résultat:
+FUNCTION:plusieurs soldats
+EVENT:l'attaque|blessés
+
+Paragraphe:
+L'utilisateur @baba a proféré des menaces en ligne via Facebook.
+Résultat:
+UNKNOWN:L'utilisateur
+RESOURCE:en ligne|Facebook
+ID:@baba
+EVENT:proféré des menaces
+
+Paragraphe:
+Les utilisateurs de carburant auraient reçu un message indiquant “cyberattaque 64411".
+Résultat:
+RESOURCE:carburant
+ID:64411
+GROUP:Les utilisateurs de carburant
+EVENT:cyberattaque|reçu
+
+Paragraphe:
+Les troupes ont progressé à travers le pays.
+Résultat:
+MILITARY_UNIT:Les troupes
+LOCATION:à travers le pays
+EVENT:progressé
+
+Paragraphe:
+De nouveaux missiles ont été lancés depuis la Corée du Nord.
+Résultat:
+LOCATION:la Corée du Nord
+EVENT:lancés
+EQUIPMENT:De nouveaux missiles
+
+Paragraphe:
+La Corée du Nord a lancé de nouveaux missiles.
+Résultat:
+ORGANIZATION:La Corée du Nord
+EVENT:lancé
+EQUIPMENT:de nouveaux missiles
+
+Paragraphe:
+L'armée russe est en mouvement.
+Résultat:
+ORGANIZATION:russe
+MILITARY_UNIT:L'armée russe
+EVENT:mouvement
+
+Paragraphe:
+Les paramilitaires russes ont attaqué une ville.
+Résultat:
+ORGANIZATION:russes
+LOCATION:une ville
+GROUP:Les paramilitaires russes
+EVENT:attaqué
+
+Paragraphe:
+L'éventuel déploiement de paramilitaires russes au Mali inquiète Washington.
+Résultat:
+ORGANIZATION:Washington|russes
+LOCATION:au Mali
+GROUP:paramilitaires russes
+EVENT:L'éventuel déploiement|inquiète
+
+Paragraphe:
+La secrétaire au bureau du Conseil de Sécurité de l'ONU.
+Résultat:
+ORGANIZATION:bureau du Conseil de Sécurité de l'ONU|Conseil de Sécurité de l'ONU|l'ONU
+FUNCTION:La secrétaire au bureau du Conseil de Sécurité de l'ONU
+
+Paragraphe:
+Les services de renseignement israélien et occidentaux.
+Résultat:
+ORGANIZATION:Les services de renseignement israélien et occidentaux|occidentaux|israélien
+
+Paragraphe:
+Ce que dément catégoriquement le président russe Vladimir Poutine.
+Résultat:
+PERSON:Vladimir Poutine
+ORGANIZATION:russe
+FUNCTION:le président russe
+EVENT:dément
+
+Paragraphe:
+Madame Linda Thomas-Greenfield fait partie d'une délégation du Conseil de Sécurité de l'ONU.
+Résultat:
+PERSON:Madame Linda Thomas-Greenfield
+ORGANIZATION:une délégation du Conseil de Sécurité de l'ONU|Conseil de Sécurité de l'ONU|l'ONU
+
+Paragraphe:
+L'artiste Banksy a réalisé une nouvelle œuvre à Londres.
+Résultat:
+PERSON:Banksy
+LOCATION:à Londres
+FUNCTION:artiste
+
+Paragraphe:
+L'organisation bénéficie d'un accès à internet par le biais des antennes relais qu'elle a installé dans l’ensemble de la région.
+Résultat:
+RESOURCE:internet
+LOCATION:dans l’ensemble de la région
+EVENT:installé
+EQUIPMENT:antennes relais
+
+Paragraphe:
+Un virus informatique a été envoyé à plus de 200 personnes.
+Résultat:
+RESOURCE:Un virus informatique
+GROUP:200 personnes
+EVENT:envoyé
+
+Paragraphe:
+Pyongyang avait fourni des composants de missiles à longue portée.
+Résultat:
+RESOURCE:des composants
+ORGANIZATION:Pyongyang
+EVENT:fourni
+EQUIPMENT:missiles à longue portée
+
+Paragraphe:
+Dans un communiqué, la représentante américaine fait part de son inquiétude.
+Résultat:
+RESOURCE:un communiqué
+ORGANIZATION:américaine
+FUNCTION:la représentante américaine
+EVENT:son inquiétude|fait part
+
+Paragraphe:
+Des images de longues files d'attente de véhicules à l'entrée des stations-services.
+Résultat:
+SITE:stations-services
+RESOURCE:Des images
+EVENT:longues files d'attente
+EQUIPMENT:véhicules
+
+Paragraphe:
+Après l'introduction du virus informatique Stuxnet [...] visant les centrifugeuses de la centrale de Natanz.
+Résultat:
+TIME:Après l'introduction du virus informatique Stuxnet
+SITE:la centrale de Natanz
+RESOURCE:virus informatique Stuxnet
+LOCATION:Natanz
+ID:Stuxnet
+EVENT:l'introduction
+EQUIPMENT:les centrifugeuses
+
+Paragraphe:
+À la fin des années 2000, l'Iran avait par ailleurs [...].
+Résultat:
+TIME:À la fin des années 2000
+ORGANIZATION:l'Iran
+
+Paragraphe:
+L'embargo sur les armes à été prolongé jeudi de douze mois.
+Résultat:
+TIME:douze mois|jeudi
+EVENT:L'embargo|prolongé
+EQUIPMENT:les armes
+
+Paragraphe:
+Demain matin nous aurons des réponses, mais pour l'heure rien n'est sûr.
+
+[..] dans la phase finale de la guerre.
+Résultat:
+TIME:dans la phase finale de la guerre|Demain matin|pour l'heure
+EVENT:la guerre
+
+Paragraphe:
+La fin des périodes offensives [...].
+Résultat:
+TIME:La fin des périodes offensives
+EVENT:offensives
+
+Paragraphe:
+J'ai vu le car brûler a indiqué un témoin.
+Résultat:
+UNKNOWN:un témoin
+EVENT:brûler
+EQUIPMENT:le car
+
+Paragraphe:
+Le fils de l’ancien président Ibrahim Boubacar Keita.
+Résultat:
+UNKNOWN:Le fils de l’ancien président Ibrahim Boubacar Keita
+PERSON:Ibrahim Boubacar Keita
+FUNCTION:l’ancien président
+
+Paragraphe:
+Le responsable du ministère du Pétrole doit organiser une réunion d'urgence.
+Résultat:
+ORGANIZATION:ministère du Pétrole
+FUNCTION:Le responsable du ministère du Pétrole
+EVENT:une réunion d'urgence
+
+Paragraphe:
+John Smith a été cambriolé.
+Résultat:
+PERSON:John Smith
+EVENT:cambriolé
+
+Paragraphe:
+La victime déplore un grand préjudice.
+Résultat:
+UNKNOWN:La victime
+EVENT:déplore
+[/exemples]
+
+Voici un exemple de format de sortie pour un paragraphe utilisant des étiquettes différentes de celles requises pour cette tâche.
+Utilisez uniquement ce format de sortie mais utilisez les étiquettes fournies ci-dessus au lieu de celles définies dans l'exemple ci-dessous.
+Le résultat doit donner une ligne pour chaque étiquette extraite, cette ligne doit commencer par l'étiquette suivie d'une liste d'entités séparées par le caractère | telles qu'elles apparaissent dans le paragraphe d'entrée et dans leur ordre d'apparition.
+Les entités extraites doivent être exactement un fragment du texte d'origine qui ne doit en aucun cas être modifié, mot par mot, espace par espace et punctuation par ponctuation.
+Ne produisez rien d'autre que des entités dans ce format de sortie.
+
+Paragraphe : La sauce Sriracha et les oignons se marient très bien avec le sauté de hoisin, mais vous devez l'ajouter après avoir utilisé le wok et bien remué avec une cuillère en bois.
+Résultat :
+INGREDIENT:La sauce Sriracha|les oignons
+DISH:le sauté de hoisin
+EQUIPMENT:wok|cuillère en bois
+
+Paragraphe:
+{{ doc.text }}
+Résultat:
