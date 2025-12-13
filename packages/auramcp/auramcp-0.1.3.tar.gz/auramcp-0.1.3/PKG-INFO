@@ -1,0 +1,238 @@
+Metadata-Version: 2.4
+Name: auramcp
+Version: 0.1.3
+Summary: Universal MCP Server Generator - Create MCP servers from any OpenAPI spec
+Project-URL: Homepage, https://github.com/simpaira/auramcp
+Project-URL: Documentation, https://github.com/simpaira/auramcp#readme
+Project-URL: Repository, https://github.com/simpaira/auramcp
+Project-URL: Issues, https://github.com/simpaira/auramcp/issues
+Project-URL: Changelog, https://github.com/simpaira/auramcp/releases
+Author-email: Simpaira <info@simpaira.com>
+Maintainer-email: Simpaira <info@simpaira.com>
+License-Expression: MIT
+Keywords: anthropic,api,claude,generator,llm,mcp,model-context-protocol,openapi
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Requires-Dist: click>=8.0.0
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: jinja2>=3.0.0
+Requires-Dist: jsonschema>=4.0.0
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: rich>=13.0.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Provides-Extra: llm
+Requires-Dist: anthropic>=0.18.0; extra == 'llm'
+Description-Content-Type: text/markdown
+
+# AuraMCP - Universal MCP Server Generator
+
+Generate MCP (Model Context Protocol) servers from any OpenAPI specification. Connect LLM agents to Slack, GitHub, Notion, Stripe, and 100+ other APIs instantly.
+
+## How It Works
+
+AuraMCP is a **generator tool** that creates standalone MCP server packages:
+
+1. **Install AuraMCP** → The generator CLI
+2. **Run `auramcp generate <provider>`** → Creates a new Python package (e.g., `auramcp_slack`)
+3. **Install the generated package** → `pip install -e .` in the output folder
+4. **Run the MCP server** → `python -m auramcp_slack`
+
+Each generated server is independent and can be distributed separately.
+
+## Features
+
+- **Parse OpenAPI 2.0 & 3.x** - Automatically handles both Swagger and OpenAPI specs
+- **Generate MCP Servers** - Creates complete, runnable Python packages with FastMCP
+- **Auth Ready** - Pre-configured authentication for popular APIs (OAuth2, API Key, Bearer)
+- **CLI & Programmatic** - Use from command line or import as a library
+- **LLM Enhancement** - Optional Claude-powered review and description enhancement
+
+## Installation
+
+```bash
+pip install auramcp
+```
+
+For LLM review features:
+```bash
+pip install auramcp[llm]
+```
+
+## Quick Start
+
+### 1. Generate a Server
+
+```bash
+# Generate MCP server for Slack
+auramcp generate slack --output ./servers
+
+# Generate with LLM review (optional)
+auramcp generate notion --review --output ./servers
+
+# List available providers
+auramcp list
+
+# Search for APIs
+auramcp list --search "email"
+
+# Get provider info
+auramcp info github
+```
+
+### 2. Install and Run the Generated Server
+
+Each generated server is a standalone pip package. After generation:
+
+```bash
+# Navigate to the generated server
+cd servers/slack
+
+# Install the generated package
+pip install -e .
+
+# Set the required environment variable (shown after generation)
+export SLACK_BOT_TOKEN=xoxb-your-token
+
+# Run the MCP server
+python -m auramcp_slack
+```
+
+### 3. Connect to Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "slack": {
+      "command": "python",
+      "args": ["-m", "auramcp_slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "xoxb-your-token"
+      }
+    }
+  }
+}
+```
+
+> **Note:** The environment variable name depends on the provider and auth type.
+> The CLI will show you the exact variable name after generation.
+
+## Programmatic Usage
+
+```python
+from auramcp.generator import OpenAPIParser, MCPConverter, MCPCodeGenerator
+
+# Parse an OpenAPI spec
+parser = OpenAPIParser()
+parsed = parser.parse("https://api.example.com/openapi.json")
+
+# Convert to MCP tools
+converter = MCPConverter()
+tools = converter.convert(parsed)
+
+# Generate server code
+generator = MCPCodeGenerator()
+server = generator.generate(
+    tools=tools,
+    server_name="myapi",
+    base_url=parsed.base_url,
+    auth_type="bearer",
+)
+
+# Write to disk
+server.write("./output/myapi")
+```
+
+## Supported Providers
+
+### Tier 1 (Production Ready)
+- Slack
+- GitHub
+- Notion
+- Stripe
+- Airtable
+- HubSpot
+- Trello
+- Discord
+
+### Tier 2 (Auto-generated + Reviewed)
+- Asana, Linear, Jira
+- Zendesk, Intercom
+- Mailchimp, SendGrid, Twilio
+- Shopify, Zoom, Calendly
+- And 30+ more...
+
+### Tier 3 (Fully Automated)
+- All 2000+ APIs from APIs.guru
+
+## Development
+
+```bash
+# Clone and install
+git clone https://github.com/auramcp/auramcp.git
+cd auramcp
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run example
+python scripts/generate_example.py
+```
+
+## Environment Variables
+
+```bash
+# For LLM review (optional)
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Per-provider credentials (names shown after generation)
+SLACK_BOT_TOKEN=xoxb-...          # Slack (OAuth2/Bot token)
+GITHUB_TOKEN=ghp_...              # GitHub (Bearer token)
+NOTION_TOKEN=secret_...           # Notion (Bearer token)
+STRIPE_API_KEY=sk_test_...        # Stripe (API Key)
+AIRTABLE_TOKEN=pat...             # Airtable (Bearer token)
+```
+
+> **Tip:** Run `auramcp info <provider>` to see the required environment variable.
+
+## Architecture
+
+```
+auramcp/
+├── generator/          # Core generator engine
+│   ├── parser.py       # OpenAPI 2.0/3.x parsing
+│   ├── converter.py    # OpenAPI → MCP tools
+│   ├── codegen.py      # Python code generation
+│   └── reviewer.py     # LLM enhancement
+├── auth/               # Authentication layer
+│   ├── registry.py     # Auth config management
+│   ├── handlers.py     # OAuth2, API Key, Bearer
+│   └── configs/        # Per-provider YAML configs
+├── specs/              # Spec management
+│   ├── fetcher.py      # APIs.guru + first-party
+│   └── registry.py     # Provider index
+└── cli.py              # Command-line interface
+```
+
+## License
+
+MIT
