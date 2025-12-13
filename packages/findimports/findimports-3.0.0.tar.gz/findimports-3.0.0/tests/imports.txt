@@ -1,0 +1,104 @@
+Showing imports
+===============
+
+findimports prints a simple import report by default:
+
+    >>> from findimports import main
+    >>> exitcode = main(['findimports', sample_tree])
+    apple:
+      os
+      os.path
+      sys
+    box:
+    <BLANKLINE>
+    box.cat:
+      box.yarn
+      decoy
+      gc
+    box.decoy:
+    <BLANKLINE>
+    box.yarn:
+    <BLANKLINE>
+    decoy:
+    <BLANKLINE>
+    orange:
+      gc
+
+We can suppress external dependencies (such as standard library modules)
+
+    >>> exitcode = main(['findimports', '--noext', sample_tree])
+    apple:
+    <BLANKLINE>
+    box:
+    <BLANKLINE>
+    box.cat:
+      box.yarn
+      decoy
+    box.decoy:
+    <BLANKLINE>
+    box.yarn:
+    <BLANKLINE>
+    decoy:
+    <BLANKLINE>
+    orange:
+    <BLANKLINE>
+
+We can look at a higher-level overview (packages only):
+
+    >>> exitcode = main(['findimports', '-p', sample_tree])
+    apple:
+      os
+      sys
+    box:
+      decoy
+      gc
+    decoy:
+    <BLANKLINE>
+    orange:
+      gc
+
+Or we can high-level for external packages, but leave modules in standard view:
+
+    >>> exitcode = main(['findimports', '-pE', sample_tree])
+    apple:
+      os
+      sys
+    box:
+    <BLANKLINE>
+    box.cat:
+      box.yarn
+      decoy
+      gc
+    box.decoy:
+    <BLANKLINE>
+    box.yarn:
+    <BLANKLINE>
+    decoy:
+    <BLANKLINE>
+    orange:
+      gc
+
+There is also option to remove prefixes in the final output:
+
+    >>> from findimports import main
+    >>> exitcode = main(['findimports', sample_tree, '-R', 'box', 'os'])
+    apple:
+      os
+      path
+      sys
+    box:
+    <BLANKLINE>
+    cat:
+      decoy
+      gc
+      yarn
+    decoy:
+    <BLANKLINE>
+    orange:
+      gc
+    yarn:
+    <BLANKLINE>
+
+which is somewhat confusing (the ``box`` package itself, representing
+``box/__init__.py`` remains unchanged, as removing the prefix would leave us
+with an empty string), so I don't recommend this option.

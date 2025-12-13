@@ -1,0 +1,31 @@
+Warnings about unknown modules
+==============================
+
+We print warnings when we cannot find a module/package
+
+    >>> from findimports import ModuleGraph
+
+    >>> with open('marmalade.py', 'w') as f: _ = f.write('''
+    ... import sys
+    ... import os.path
+    ... import email.message as EM
+    ... from . import foobar
+    ... from io import StringIO
+    ... from pickle import dumps as D
+    ... from sys import (argv,
+    ...                  exc_info as EI,
+    ...                  exit)
+    ... from email import *
+    ... import imaginary.package
+    ... import curses.panel
+    ... ''')
+
+    >>> with open('foo.py', 'w') as f: _ = f.write('''
+    ... # decoy, see https://github.com/mgedmin/findimports/issues/10
+    ... ''')
+
+    >>> graph = ModuleGraph()
+    >>> graph.path.append('.')
+    >>> graph.parseFile('marmalade.py', ignore_stdlib_modules=False, import_to_search_for=None)
+    marmalade.py:5: could not find foobar
+    marmalade.py:12: could not find imaginary.package
