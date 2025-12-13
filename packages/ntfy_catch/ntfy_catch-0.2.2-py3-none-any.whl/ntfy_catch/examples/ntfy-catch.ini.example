@@ -1,0 +1,59 @@
+# ntfy-catch configuration example
+# Copy this file to ../config/ntfy-catch.ini and customize
+
+[server]
+# REQUIRED: Your ntfy server URL
+# Examples:
+#   http://localhost:80
+#   http://192.168.1.100:8080
+#   https://ntfy.example.com
+base_url = http://localhost:8009
+
+# OPTIONAL: Authentication credentials for ntfy server
+# Leave empty or omit if no authentication is required
+# username = myuser
+# password = mypassword
+
+[polling]
+# REQUIRED: Topics to monitor (comma-separated for multiple topics)
+# Examples:
+#   alerts
+#   monitoring,alerts,system
+topics = alerts,monitoring
+
+[state]
+# Directory for timestamp tracking (created automatically)
+# Use absolute path or relative to execution directory
+state_dir = ./state
+
+[logging]
+# Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+log_level = INFO
+
+# Log directory (created automatically)
+log_dir = ./logs
+
+[actions]
+# REQUIRED: Path to your action handler script
+# This script receives message JSON on stdin
+# Must be executable (chmod +x handler.py)
+# After running 'ntfy_catch --init-config', customize ~/.config/ntfy_catch/handler.py
+handler_script = ~/.config/ntfy_catch/handler.py
+
+# Timeout for handler execution (seconds)
+handler_timeout = 30
+
+# Continue processing other messages if handler fails
+# true = continue, false = stop on first failure
+continue_on_error = true
+
+[filters]
+# Minimum priority (1-5, default: 1)
+# 1=min, 2=low, 3=default, 4=high, 5=max/urgent
+# Only process messages with priority >= this value
+min_priority = 1
+
+# Only process messages with specific tags (comma-separated)
+# Leave empty to process all messages regardless of tags
+# Example: alert,critical
+target_tags =

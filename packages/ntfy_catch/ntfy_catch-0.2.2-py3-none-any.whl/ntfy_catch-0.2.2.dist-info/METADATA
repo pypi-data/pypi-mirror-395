@@ -1,0 +1,90 @@
+Metadata-Version: 2.4
+Name: ntfy_catch
+Version: 0.2.2
+Summary: catch ntfy message
+Author-email: jaromrax <jaromrax@gmail.com>
+Requires-Python: >=3.10.0
+Requires-Dist: requests>=2.32.5
+Description-Content-Type: text/markdown
+
+# ntfy_catch
+
+A cron-driven ntfy topic watcher that polls messages and dispatches them to a customizable handler script with AI classification support.
+
+## Installation
+
+```bash
+pip install ntfy_catch
+```
+
+## Quick Start
+
+1. **Initialize configuration** (creates `~/.config/ntfy_catch/` with example files):
+   ```bash
+   ntfy_catch --init-config
+   ```
+
+2. **Configure your setup**:
+   - Edit `~/.config/ntfy_catch/ntfy_catch.ini`:
+     - Set your ntfy server URL
+     - Configure topics to monitor
+   - Customize `~/.config/ntfy_catch/handler.py` with your own message handling logic
+
+3. **Set up AI classification** (optional):
+   - Get an API key from [OpenRouter](https://openrouter.ai/)
+   - Save it to `~/.openrouter.key` or set `OPENROUTER_API_KEY` environment variable
+
+4. **Run**:
+   ```bash
+   ntfy_catch                  # Poll for new messages
+   ntfy_catch --dry-run        # Test without executing handler
+   ntfy_catch --topic alerts   # Poll specific topic only
+   ```
+
+5. **Automate with cron**:
+   ```bash
+   */5 * * * * /usr/local/bin/ntfy_catch
+   ```
+
+## Features
+
+- Poll multiple ntfy topics for new messages
+- Filter by priority and tags
+- Dispatch messages to custom handler script (receives JSON on stdin)
+- AI-powered message classification (CALENDAR, TASK, MEMO, OTHER)
+- State tracking to avoid reprocessing messages
+- Configurable timeouts and error handling
+
+## Configuration
+
+Config file location: `~/.config/ntfy_catch/ntfy_catch.ini`
+
+Key settings:
+- `[server] base_url`: Your ntfy server URL
+- `[polling] topics`: Comma-separated list of topics
+- `[actions] handler_script`: Path to your handler script
+- `[filters] min_priority`: Minimum priority level (1-5)
+
+See `~/.config/ntfy_catch/ntfy_catch.ini` (created by `--init-config`) for full documentation.
+
+## Handler Script
+
+The handler receives message JSON on stdin and should exit with:
+- `0`: Success (message marked as processed)
+- `non-zero`: Failure (message will be reprocessed on next run)
+
+Customize `~/.config/ntfy_catch/handler.py` to implement your own actions based on message content, tags, priority, etc.
+
+## Development
+
+```bash
+git clone <repo>
+cd ntfy_catch
+uv venv
+source .venv/bin/activate
+uv pip install -e .
+```
+
+## License
+
+See LICENSE file.
