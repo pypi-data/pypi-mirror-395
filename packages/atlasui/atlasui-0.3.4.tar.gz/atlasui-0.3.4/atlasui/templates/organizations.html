@@ -1,0 +1,812 @@
+{% extends "base.html" %}
+
+{% block title %}Organizations - AtlasUI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h1><i class="bi bi-diagram-3"></i> Atlas Organizations</h1>
+            <div>
+                <button class="btn btn-success btn-sm me-2" id="registerOrgBtn" onclick="window.location.href='/setup?register=true'">
+                    <i class="bi bi-key-fill"></i> Register Organization
+                </button>
+                <button class="btn btn-outline-primary btn-sm" id="expandAll">
+                    <i class="bi bi-arrows-expand"></i> Expand All
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" id="collapseAll">
+                    <i class="bi bi-arrows-collapse"></i> Collapse All
+                </button>
+                <button class="btn btn-outline-success btn-sm" id="refreshTree">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading hierarchy...</p>
+        </div>
+
+        <!-- Error message -->
+        <div id="errorMessage" class="alert alert-danger d-none" role="alert">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span id="errorText"></span>
+        </div>
+
+        <!-- Tree container -->
+        <div id="hierarchyTree" class="hierarchy-tree d-none">
+            <!-- Tree will be dynamically generated here -->
+        </div>
+    </div>
+</div>
+
+<!-- Details Panel (Offcanvas) -->
+<div class="offcanvas offcanvas-end offcanvas-wide" tabindex="-1" id="detailsPanel" aria-labelledby="detailsPanelLabel">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title" id="detailsPanelLabel">
+            <i class="bi bi-info-circle"></i> Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div id="detailsContent">
+            <p class="text-muted">Click on any item in the hierarchy to view its details</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    h1 {
+        font-size: 1.25rem;
+    }
+
+    .offcanvas-wide {
+        width: 600px !important;
+        max-width: 90vw;
+    }
+
+    .hierarchy-tree {
+        font-size: 18px;
+    }
+
+    .tree-node {
+        margin: 4px 0;
+        padding: 6px 12px;
+        border-left: 2px solid #e0e0e0;
+        transition: all 0.2s;
+    }
+
+    .tree-node:hover {
+        background-color: #f8f9fa;
+        border-left-color: #00684a;
+    }
+
+    .tree-node-header {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tree-node-header:hover .tree-node-name {
+        color: #00684a;
+    }
+
+    .tree-expand-icon {
+        width: 24px;
+        text-align: center;
+        transition: transform 0.2s;
+        cursor: pointer;
+        font-size: 18px;
+    }
+
+    .tree-expand-icon.expanded {
+        transform: rotate(90deg);
+    }
+
+    .tree-node-icon {
+        width: 28px;
+        text-align: center;
+        font-size: 20px;
+    }
+
+    .tree-node-name {
+        font-weight: 500;
+    }
+
+    .tree-node-link {
+        text-decoration: none;
+        color: inherit;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .tree-node-link:hover .tree-node-name {
+        color: #00684a;
+        text-decoration: underline;
+    }
+
+    .tree-node-badge {
+        font-size: 14px;
+        padding: 3px 10px;
+    }
+
+    .tree-node-children {
+        margin-left: 24px;
+        display: none;
+    }
+
+    .tree-node-children.show {
+        display: block;
+    }
+
+    .org-node {
+        border-left-color: #dc3545;
+    }
+
+    .project-node {
+        border-left-color: #0d6efd;
+    }
+
+    .cluster-node {
+        border-left-color: #00684a;
+    }
+
+    .tree-node-info {
+        margin-left: 52px;
+        font-size: 15px;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+
+    /* Make error and success messages wrap long URLs properly */
+    #addOrgError, #addOrgSuccess {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+
+    #addOrgError a, #addOrgSuccess a {
+        word-break: break-all;
+        overflow-wrap: anywhere;
+    }
+</style>
+
+<script>
+let hierarchyData = null;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadHierarchy();
+
+    document.getElementById('expandAll').addEventListener('click', expandAll);
+    document.getElementById('collapseAll').addEventListener('click', collapseAll);
+    document.getElementById('refreshTree').addEventListener('click', loadHierarchy);
+});
+
+async function fetchAllPages(url) {
+    /**
+     * Fetch all pages of results from a paginated API endpoint.
+     *
+     * @param {string} url - The base URL to fetch from
+     * @returns {Array} - Combined results from all pages
+     */
+    let allResults = [];
+    let pageNum = 1;
+    let totalCount = 0;
+
+    do {
+        const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}pageNum=${pageNum}&itemsPerPage=100`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch from ${url}`);
+        }
+
+        const data = await response.json();
+        const results = data.results || [];
+        allResults = allResults.concat(results);
+
+        totalCount = data.totalCount || 0;
+        pageNum++;
+
+        // Continue fetching if there are more results
+    } while (allResults.length < totalCount);
+
+    return allResults;
+}
+
+async function loadHierarchy() {
+    const loading = document.getElementById('loadingIndicator');
+    const error = document.getElementById('errorMessage');
+    const tree = document.getElementById('hierarchyTree');
+
+    loading.classList.remove('d-none');
+    error.classList.add('d-none');
+    tree.classList.add('d-none');
+
+    try {
+        // Fetch all organizations (with pagination support)
+        const organizations = await fetchAllPages('/api/organizations/');
+
+        hierarchyData = {
+            organizations: organizations
+        };
+
+        // For each organization, fetch all its projects
+        for (let org of hierarchyData.organizations) {
+            org.projects = await fetchAllPages(`/api/organizations/${org.id}/projects`);
+
+            // For each project, fetch all its clusters
+            for (let project of org.projects) {
+                project.clusters = await fetchAllPages(`/api/clusters/${project.id}`);
+            }
+        }
+
+        renderTree();
+        expandAll();  // Expand tree by default
+        loading.classList.add('d-none');
+        tree.classList.remove('d-none');
+
+    } catch (err) {
+        console.error('Error loading hierarchy:', err);
+        loading.classList.add('d-none');
+        error.classList.remove('d-none');
+        document.getElementById('errorText').textContent = err.message;
+    }
+}
+
+function makeUrlsClickable(text) {
+    /**
+     * Convert URLs in text to clickable links.
+     * Escapes HTML to prevent XSS while preserving URL functionality.
+     */
+    // Escape HTML entities first
+    const escapeHtml = (str) => {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    };
+
+    const escapedText = escapeHtml(text);
+
+    // Regex to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+    // Replace URLs with clickable links
+    return escapedText.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="alert-link">${url}</a>`;
+    });
+}
+
+function renderTree() {
+    const container = document.getElementById('hierarchyTree');
+    container.innerHTML = '';
+
+    if (!hierarchyData || !hierarchyData.organizations || hierarchyData.organizations.length === 0) {
+        container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> No organizations found</div>';
+        return;
+    }
+
+    hierarchyData.organizations.forEach(org => {
+        container.appendChild(createOrgNode(org));
+    });
+}
+
+function createOrgNode(org) {
+    const node = document.createElement('div');
+    node.className = 'tree-node org-node';
+    node.dataset.type = 'organization';
+    node.dataset.id = org.id;
+    node.dataset.data = JSON.stringify(org);  // Store full object data
+
+    const projectCount = org.projects ? org.projects.length : 0;
+    const orgName = org.name || org.id;
+
+    node.innerHTML = `
+        <div class="tree-node-header">
+            <span class="tree-expand-icon ${projectCount > 0 ? '' : 'invisible'}">
+                <i class="bi bi-chevron-right"></i>
+            </span>
+            <span class="tree-node-icon">
+                <i class="bi bi-building text-danger"></i>
+            </span>
+            <a href="/organizations/${encodeURIComponent(orgName)}/projects" class="tree-node-link">
+                <span class="tree-node-name">${orgName}</span>
+            </a>
+            <a href="/organizations/${encodeURIComponent(orgName)}/projects" style="text-decoration: none;">
+                <span class="badge bg-danger tree-node-badge">${projectCount} projects</span>
+            </a>
+        </div>
+        <div class="tree-node-info">ID: ${org.id}</div>
+        <div class="tree-node-children"></div>
+    `;
+
+    setupNodeEvents(node);
+
+    // Append project nodes as actual DOM elements to preserve event handlers
+    if (org.projects && org.projects.length > 0) {
+        const childrenContainer = node.querySelector('.tree-node-children');
+        org.projects.forEach(project => {
+            childrenContainer.appendChild(createProjectNode(project, org));
+        });
+    }
+
+    return node;
+}
+
+function createProjectNode(project, org) {
+    const node = document.createElement('div');
+    node.className = 'tree-node project-node';
+    node.dataset.type = 'project';
+    node.dataset.id = project.id;
+    node.dataset.data = JSON.stringify(project);  // Store full object data
+
+    const clusterCount = project.clusters ? project.clusters.length : 0;
+
+    const orgName = org ? encodeURIComponent(org.name || org.id) : '';
+    const projectUrl = orgName ? `/organizations/${orgName}/projects` : '/projects';
+
+    node.innerHTML = `
+        <div class="tree-node-header">
+            <span class="tree-expand-icon ${clusterCount > 0 ? '' : 'invisible'}">
+                <i class="bi bi-chevron-right"></i>
+            </span>
+            <span class="tree-node-icon">
+                <i class="bi bi-folder text-primary"></i>
+            </span>
+            <a href="${projectUrl}" class="tree-node-link">
+                <span class="tree-node-name">${project.name}</span>
+            </a>
+            <a href="/clusters" style="text-decoration: none;">
+                <span class="badge bg-primary tree-node-badge">${clusterCount} clusters</span>
+            </a>
+        </div>
+        <div class="tree-node-info">ID: ${project.id}</div>
+        <div class="tree-node-children"></div>
+    `;
+
+    setupNodeEvents(node);
+
+    // Append cluster nodes as actual DOM elements to preserve event handlers
+    if (project.clusters && project.clusters.length > 0) {
+        const childrenContainer = node.querySelector('.tree-node-children');
+        project.clusters.forEach(cluster => {
+            childrenContainer.appendChild(createClusterNode(cluster));
+        });
+    }
+
+    return node;
+}
+
+function createClusterNode(cluster) {
+    const node = document.createElement('div');
+    node.className = 'tree-node cluster-node';
+    node.dataset.type = 'cluster';
+    node.dataset.name = cluster.name;
+    node.dataset.data = JSON.stringify(cluster);  // Store full object data
+
+    // Count replica sets from replicationSpecs
+    const replicaSetCount = cluster.replicationSpecs ? cluster.replicationSpecs.length : 0;
+
+    // Only show badge if there are multiple replica sets (more than 1)
+    const replicaSetBadge = replicaSetCount > 1
+        ? `<span class="badge bg-success tree-node-badge">${replicaSetCount} replica sets</span>`
+        : '';
+
+    node.innerHTML = `
+        <div class="tree-node-header">
+            <span class="tree-expand-icon invisible">
+                <i class="bi bi-chevron-right"></i>
+            </span>
+            <span class="tree-node-icon">
+                <i class="bi bi-hdd-rack text-success"></i>
+            </span>
+            <a href="/clusters" class="tree-node-link">
+                <span class="tree-node-name">${cluster.name}</span>
+            </a>
+            ${replicaSetBadge}
+        </div>
+        <div class="tree-node-info">
+            ${cluster.clusterType || 'N/A'} •
+            ${cluster.mongoDBVersion || 'N/A'} •
+            ${cluster.providerSettings?.instanceSizeName || 'N/A'}
+        </div>
+    `;
+
+    setupNodeEvents(node);
+    return node;
+}
+
+function setupNodeEvents(node) {
+    const header = node.querySelector('.tree-node-header');
+    const expandIcon = node.querySelector('.tree-expand-icon');
+    const children = node.querySelector('.tree-node-children');
+
+    if (expandIcon && !expandIcon.classList.contains('invisible')) {
+        expandIcon.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleNode(node);
+        });
+    }
+
+    header.addEventListener('click', function(e) {
+        // Don't show details if clicking on a link
+        if (e.target.tagName === 'A' || e.target.closest('a')) {
+            return;
+        }
+        if (e.target === header || e.target.classList.contains('tree-node-name')) {
+            showDetails(node);
+        }
+    });
+}
+
+function toggleNode(node) {
+    const expandIcon = node.querySelector('.tree-expand-icon i');
+    const children = node.querySelector('.tree-node-children');
+
+    if (children) {
+        if (children.classList.contains('show')) {
+            children.classList.remove('show');
+            expandIcon.parentElement.classList.remove('expanded');
+        } else {
+            children.classList.add('show');
+            expandIcon.parentElement.classList.add('expanded');
+        }
+    }
+}
+
+function expandAll() {
+    document.querySelectorAll('.tree-node-children').forEach(el => {
+        el.classList.add('show');
+    });
+    document.querySelectorAll('.tree-expand-icon').forEach(el => {
+        el.classList.add('expanded');
+    });
+}
+
+function collapseAll() {
+    document.querySelectorAll('.tree-node-children').forEach(el => {
+        el.classList.remove('show');
+    });
+    document.querySelectorAll('.tree-expand-icon').forEach(el => {
+        el.classList.remove('expanded');
+    });
+}
+
+async function showDetails(node) {
+    const type = node.dataset.type;
+    const detailsContent = document.getElementById('detailsContent');
+
+    // Get the full object data
+    const data = JSON.parse(node.dataset.data);
+
+    let html = `<h5 class="text-capitalize mb-3">
+        <i class="bi bi-${getTypeIcon(type)}"></i> ${type} Details
+    </h5>`;
+
+    // Render based on type
+    if (type === 'organization') {
+        html += renderOrganizationDetails(data);
+        detailsContent.innerHTML = html;
+    } else if (type === 'project') {
+        html += renderProjectDetails(data);
+        detailsContent.innerHTML = html;
+    } else if (type === 'cluster') {
+        // For clusters, show loading first then fetch comprehensive details
+        detailsContent.innerHTML = html + '<div class="text-center my-5"><div class="spinner-border text-primary"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading cluster details...</p></div>';
+        const offcanvas = new bootstrap.Offcanvas(document.getElementById('detailsPanel'));
+        offcanvas.show();
+        await showComprehensiveClusterDetails(data, detailsContent);
+        return;
+    }
+
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('detailsPanel'));
+    offcanvas.show();
+}
+
+function getTypeIcon(type) {
+    const icons = {
+        'organization': 'building',
+        'project': 'folder',
+        'cluster': 'hdd-rack'
+    };
+    return icons[type] || 'info-circle';
+}
+
+function renderOrganizationDetails(org) {
+    return `
+        <div class="mb-3">
+            <h6 class="text-muted">Basic Information</h6>
+            <table class="table table-sm">
+                <tbody>
+                    <tr><th>Name</th><td>${org.name || 'N/A'}</td></tr>
+                    <tr><th>ID</th><td><code class="small">${org.id}</code></td></tr>
+                    <tr><th>Is Deleted</th><td>${org.isDeleted ? 'Yes' : 'No'}</td></tr>
+                    <tr><th>Skip Default Alerts</th><td>${org.skipDefaultAlertsSettings ? 'Yes' : 'No'}</td></tr>
+                    ${org.projects ? `<tr><th>Projects</th><td>${org.projects.length}</td></tr>` : ''}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderProjectDetails(project) {
+    return `
+        <div class="mb-3">
+            <h6 class="text-muted">Basic Information</h6>
+            <table class="table table-sm">
+                <tbody>
+                    <tr><th>Name</th><td>${project.name}</td></tr>
+                    <tr><th>ID</th><td><code class="small">${project.id}</code></td></tr>
+                    <tr><th>Organization ID</th><td><code class="small">${project.orgId}</code></td></tr>
+                    <tr><th>Cluster Count</th><td>${project.clusterCount || 0}</td></tr>
+                    <tr><th>Created</th><td>${new Date(project.created).toLocaleString()}</td></tr>
+                    <tr><th>Default Alerts</th><td>${project.withDefaultAlertsSettings ? 'Enabled' : 'Disabled'}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        ${project.tags && project.tags.length > 0 ? `
+            <div class="mb-3">
+                <h6 class="text-muted">Tags</h6>
+                ${project.tags.map(tag => `<span class="badge bg-secondary me-1">${tag}</span>`).join('')}
+            </div>
+        ` : ''}
+    `;
+}
+
+async function showComprehensiveClusterDetails(cluster, detailsContent) {
+    try {
+        const statusClass = getStatusBadgeClass(cluster.stateName);
+
+        // Fetch additional data in parallel
+        const [alertsData, snapshotsData, advancedConfigData, usersData] = await Promise.all([
+            fetch(`/api/alerts/${cluster.projectId}`).then(r => r.ok ? r.json() : {results: []}),
+            fetch(`/api/backups/${cluster.projectId}/${cluster.name}/snapshots`).then(r => r.ok ? r.json() : {results: []}),
+            fetch(`/api/clusters/${cluster.projectId}/${cluster.name}/advanced-configuration`).then(r => r.ok ? r.json() : {}),
+            fetch(`/api/users/${cluster.projectId}`).then(r => r.ok ? r.json() : {results: []})
+        ]);
+
+        const alerts = (alertsData.results || []).filter(alert => alert.clusterName === cluster.name);
+        const snapshots = snapshotsData.results || [];
+        const advancedConfig = advancedConfigData;
+        const users = usersData.results || [];
+
+        // Build comprehensive HTML
+        let html = `
+            <h5 class="mb-3"><i class="bi bi-hdd-rack"></i> ${cluster.name}</h5>
+            <div class="mb-3">
+                <span class="badge ${statusClass}">${cluster.stateName || 'UNKNOWN'}</span>
+                ${cluster.paused ? '<span class="badge bg-warning text-dark ms-1">PAUSED</span>' : ''}
+                ${alerts.length > 0 ? `<span class="badge bg-danger ms-1">${alerts.length} Alert${alerts.length > 1 ? 's' : ''}</span>` : ''}
+            </div>
+
+            <div class="mb-3">
+                <h6 class="text-muted">Basic Information</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr><th>Name</th><td>${cluster.name}</td></tr>
+                        ${cluster.id ? `<tr><th>ID</th><td><code class="small">${cluster.id}</code></td></tr>` : ''}
+                        ${cluster.groupId ? `<tr><th>Group ID</th><td><code class="small">${cluster.groupId}</code></td></tr>` : ''}
+                        <tr><th>Status</th><td><span class="badge ${statusClass}">${cluster.stateName || 'UNKNOWN'}</span></td></tr>
+                        <tr><th>Cluster Type</th><td>${cluster.clusterType || 'N/A'}</td></tr>
+                        <tr><th>MongoDB Version</th><td>${cluster.mongoDBVersion || 'N/A'}</td></tr>
+                        ${cluster.mongoDBMajorVersion ? `<tr><th>Major Version</th><td>${cluster.mongoDBMajorVersion}</td></tr>` : ''}
+                        ${cluster.createDate ? `<tr><th>Created</th><td>${new Date(cluster.createDate).toLocaleString()}</td></tr>` : ''}
+                        ${cluster.paused !== undefined ? `<tr><th>Paused</th><td>${cluster.paused ? 'Yes' : 'No'}</td></tr>` : ''}
+                    </tbody>
+                </table>
+            </div>
+
+            ${cluster.providerSettings ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Provider Settings</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            ${cluster.providerSettings.providerName ? `<tr><th>Provider</th><td><span class="badge bg-info">${cluster.providerSettings.providerName}</span></td></tr>` : ''}
+                            ${cluster.providerSettings.regionName ? `<tr><th>Region</th><td>${cluster.providerSettings.regionName}</td></tr>` : ''}
+                            ${cluster.providerSettings.instanceSizeName ? `<tr><th>Instance Size</th><td><span class="badge bg-primary">${cluster.providerSettings.instanceSizeName}</span></td></tr>` : ''}
+                            ${cluster.providerSettings.backingProviderName ? `<tr><th>Backing Provider</th><td>${cluster.providerSettings.backingProviderName}</td></tr>` : ''}
+                            ${cluster.providerSettings.diskIOPS ? `<tr><th>Disk IOPS</th><td>${cluster.providerSettings.diskIOPS}</td></tr>` : ''}
+                            ${cluster.providerSettings.diskSizeGB ? `<tr><th>Disk Size</th><td>${cluster.providerSettings.diskSizeGB} GB</td></tr>` : ''}
+                            ${cluster.providerSettings.encryptEBSVolume !== undefined ? `<tr><th>Encrypt EBS</th><td>${cluster.providerSettings.encryptEBSVolume ? 'Yes' : 'No'}</td></tr>` : ''}
+                            ${cluster.providerSettings.volumeType ? `<tr><th>Volume Type</th><td>${cluster.providerSettings.volumeType}</td></tr>` : ''}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            ${cluster.autoScaling ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Auto-Scaling</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            ${cluster.autoScaling.compute ? `<tr><th>Compute Auto-Scaling</th><td>${cluster.autoScaling.compute.enabled ? '<span class="badge bg-success">Enabled</span>' : '<span class="badge bg-secondary">Disabled</span>'}</td></tr>` : ''}
+                            ${cluster.autoScaling.diskGBEnabled !== undefined ? `<tr><th>Disk Auto-Scaling</th><td>${cluster.autoScaling.diskGBEnabled ? '<span class="badge bg-success">Enabled</span>' : '<span class="badge bg-secondary">Disabled</span>'}</td></tr>` : ''}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            ${cluster.replicationSpecs && cluster.replicationSpecs.length > 0 ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Replication Specs</h6>
+                    ${cluster.replicationSpecs.map((spec, idx) => `
+                        <div class="card mb-2">
+                            <div class="card-body p-2">
+                                <small class="text-muted">Spec ${idx + 1}</small>
+                                <table class="table table-sm mb-0 small">
+                                    <tbody>
+                                        ${spec.numShards ? `<tr><th>Shards</th><td>${spec.numShards}</td></tr>` : ''}
+                                        ${spec.zoneName ? `<tr><th>Zone</th><td>${spec.zoneName}</td></tr>` : ''}
+                                        ${spec.regionConfigs ? spec.regionConfigs.map(rc => `
+                                            <tr><th>Region</th><td>${rc.regionName || 'N/A'} (Priority: ${rc.priority || 'N/A'})</td></tr>
+                                        `).join('') : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+
+            ${advancedConfig && Object.keys(advancedConfig).length > 0 ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Advanced Configuration</h6>
+                    <table class="table table-sm small">
+                        <tbody>
+                            ${Object.entries(advancedConfig).filter(([key]) => !key.startsWith('_') && key !== 'links').slice(0, 10).map(([key, value]) => `
+                                <tr><th class="text-nowrap">${key}</th><td>${value !== null && value !== undefined ? value.toString() : 'N/A'}</td></tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            ${cluster.connectionStrings ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Connection Strings</h6>
+                    ${cluster.connectionStrings.standard ? `
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Standard</small>
+                            <code class="small d-block text-break">${formatConnectionString(cluster.connectionStrings.standard)}</code>
+                        </div>
+                    ` : ''}
+                    ${cluster.connectionStrings.standardSrv ? `
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Standard SRV</small>
+                            <code class="small d-block text-break">${formatConnectionString(cluster.connectionStrings.standardSrv)}</code>
+                        </div>
+                    ` : ''}
+                    ${cluster.connectionStrings.private ? `
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Private</small>
+                            <code class="small d-block text-break">${formatConnectionString(cluster.connectionStrings.private)}</code>
+                        </div>
+                    ` : ''}
+                    ${cluster.connectionStrings.privateSrv ? `
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Private SRV</small>
+                            <code class="small d-block text-break">${formatConnectionString(cluster.connectionStrings.privateSrv)}</code>
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+
+            ${snapshots.length > 0 ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Recent Snapshots (${Math.min(snapshots.length, 5)})</h6>
+                    <div class="list-group list-group-flush">
+                        ${snapshots.slice(0, 5).map(snapshot => `
+                            <div class="list-group-item px-0 py-2 small">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>${snapshot.id || 'N/A'}</strong>
+                                        <div class="text-muted small">
+                                            ${snapshot.createdAt ? new Date(snapshot.createdAt).toLocaleString() : 'N/A'}
+                                        </div>
+                                    </div>
+                                    <span class="badge ${snapshot.status === 'completed' ? 'bg-success' : 'bg-warning'}">${snapshot.status || 'N/A'}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            ${alerts.length > 0 ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Active Alerts (${Math.min(alerts.length, 5)})</h6>
+                    <div class="list-group list-group-flush">
+                        ${alerts.slice(0, 5).map(alert => `
+                            <div class="list-group-item px-0 py-2 small">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>${alert.eventTypeName || 'Unknown Alert'}</strong>
+                                        <div class="text-muted small">
+                                            ${alert.created ? new Date(alert.created).toLocaleString() : 'N/A'}
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-${alert.status === 'OPEN' ? 'danger' : 'secondary'}">${alert.status || 'N/A'}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            ${users.length > 0 ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Database Users (${users.length})</h6>
+                    <div class="list-group list-group-flush">
+                        ${users.map(user => `
+                            <div class="list-group-item px-0 py-2 small">
+                                <strong>${user.username}</strong>
+                                <div class="text-muted small">
+                                    ${user.roles && user.roles.length > 0 ? user.roles.map(r => r.roleName || r).join(', ') : 'No roles'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            ${cluster.tags && cluster.tags.length > 0 ? `
+                <div class="mb-3">
+                    <h6 class="text-muted">Tags</h6>
+                    ${cluster.tags.map(tag => `<span class="badge bg-secondary me-1">${tag.key}: ${tag.value}</span>`).join('')}
+                </div>
+            ` : ''}
+        `;
+
+        detailsContent.innerHTML = html;
+
+    } catch (err) {
+        console.error('Error loading comprehensive cluster details:', err);
+        detailsContent.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i>
+                Failed to load cluster details: ${err.message}
+            </div>
+        `;
+    }
+}
+
+function renderClusterDetails(cluster) {
+    // This function is no longer used but kept for compatibility
+    return '';
+}
+
+function formatConnectionString(connectionString) {
+    // Insert username:password@ placeholder after the protocol (mongodb:// or mongodb+srv://)
+    if (!connectionString) return connectionString;
+
+    // Match mongodb:// or mongodb+srv://
+    const match = connectionString.match(/^(mongodb(?:\+srv)?:\/\/)(.*)/);
+    if (match) {
+        return `${match[1]}<strong>username:password@</strong>${match[2]}`;
+    }
+    return connectionString;
+}
+
+function getStatusBadgeClass(status) {
+    switch (status) {
+        case 'IDLE':
+            return 'bg-success';
+        case 'CREATING':
+        case 'UPDATING':
+            return 'bg-warning';
+        case 'DELETING':
+        case 'DELETED':
+            return 'bg-danger';
+        case 'REPAIRING':
+            return 'bg-info';
+        default:
+            return 'bg-secondary';
+    }
+}
+</script>
+{% endblock %}

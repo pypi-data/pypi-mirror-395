@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AtlasUI - MongoDB Atlas Administration{% endblock %}</title>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/favicon.svg') }}">
+    <link rel="alternate icon" type="image/x-icon" href="{{ url_for('static', path='/favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', path='/favicon.svg') }}">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <div>
+                    <div>
+                        <i class="bi bi-database"></i> AtlasUI
+                    </div>
+                    <div style="font-size: 0.5rem; color: rgba(255,255,255,0.6); line-height: 1; margin-left: 1.2rem;">
+                        v{{ app_version }}
+                    </div>
+                </div>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/organizations">
+                            <i class="bi bi-diagram-3"></i> Organizations
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/projects">
+                            <i class="bi bi-folder"></i> Projects
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/clusters">
+                            <i class="bi bi-hdd-rack"></i> Clusters
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/clusters">
+                            <i class="bi bi-database"></i> Databases
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item me-2">
+                        <a href="/setup?register=true" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-key"></i> New Credentials
+                        </a>
+                    </li>
+                    <li class="nav-item me-2">
+                        <button class="btn btn-outline-light btn-sm" id="configBtn" data-bs-toggle="modal" data-bs-target="#configModal">
+                            <i class="bi bi-gear"></i> Config
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-outline-light btn-sm" id="exitServerBtn" data-bs-toggle="modal" data-bs-target="#exitServerModal">
+                            <i class="bi bi-power"></i> Exit
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-2">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Exit Server Confirmation Modal -->
+    <div class="modal fade" id="exitServerModal" tabindex="-1" aria-labelledby="exitServerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="exitServerModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Confirm Server Shutdown
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Are you sure you want to shut down the AtlasUI server?</strong></p>
+                    <p class="mb-0">This will:</p>
+                    <ul class="mb-0">
+                        <li>Stop the web server</li>
+                        <li>Close all active MongoDB Atlas sessions</li>
+                        <li>Terminate all background operations</li>
+                    </ul>
+                    <p class="mt-3 mb-0 text-muted small">
+                        <i class="bi bi-info-circle"></i> You will need to restart the server manually to continue using AtlasUI.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="confirmShutdown()">
+                        <i class="bi bi-power"></i> Shutdown Server
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Info Modal -->
+    <div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="configModalLabel">
+                        <i class="bi bi-gear-fill"></i> Configuration
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="configLoading" class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading configuration...</p>
+                    </div>
+                    <div id="configContent" style="display: none;">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 40%;"><i class="bi bi-shield-lock"></i> Auth Method</th>
+                                    <td id="configAuthMethod">-</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row"><i class="bi bi-file-earmark-text"></i> Config File</th>
+                                    <td id="configFilePath" class="text-break small">-</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row"><i class="bi bi-check-circle"></i> Status</th>
+                                    <td id="configStatus">-</td>
+                                </tr>
+                                <tr id="configPublicKeyRow" style="display: none;">
+                                    <th scope="row"><i class="bi bi-key"></i> Public Key</th>
+                                    <td id="configPublicKey" class="font-monospace small">-</td>
+                                </tr>
+                                <tr id="configServiceAccountRow" style="display: none;">
+                                    <th scope="row"><i class="bi bi-person-badge"></i> Client ID</th>
+                                    <td id="configClientId" class="font-monospace small">-</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row"><i class="bi bi-globe"></i> API Base URL</th>
+                                    <td id="configBaseUrl" class="text-break small">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <hr class="my-3">
+                        <h6 class="text-muted mb-3"><i class="bi bi-sliders"></i> Cluster Defaults</h6>
+
+                        <div class="mb-3">
+                            <label for="preferredProvider" class="form-label small">Preferred Cloud Provider</label>
+                            <select class="form-select form-select-sm" id="preferredProvider">
+                                <option value="">-- No preference --</option>
+                                <option value="AWS">AWS</option>
+                                <option value="GCP">Google Cloud (GCP)</option>
+                                <option value="AZURE">Microsoft Azure</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="preferredRegion" class="form-label small">Preferred Region</label>
+                            <select class="form-select form-select-sm" id="preferredRegion" disabled>
+                                <option value="">-- Select provider first --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="configError" class="alert alert-danger" style="display: none;">
+                        <i class="bi bi-exclamation-triangle"></i> <span id="configErrorMsg"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary btn-sm" id="savePreferencesBtn" onclick="savePreferences()">
+                        <i class="bi bi-check-circle"></i> Save Preferences
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', path='/js/app.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/operations-queue.js') }}?v=27"></script>
+    <script>
+        // Region data by provider
+        const REGIONS_BY_PROVIDER = {
+            AWS: [
+                { value: 'US_EAST_1', label: 'US East (N. Virginia)' },
+                { value: 'US_EAST_2', label: 'US East (Ohio)' },
+                { value: 'US_WEST_1', label: 'US West (N. California)' },
+                { value: 'US_WEST_2', label: 'US West (Oregon)' },
+                { value: 'EU_WEST_1', label: 'EU (Ireland)' },
+                { value: 'EU_WEST_2', label: 'EU (London)' },
+                { value: 'EU_CENTRAL_1', label: 'EU (Frankfurt)' },
+                { value: 'AP_SOUTH_1', label: 'Asia Pacific (Mumbai)' },
+                { value: 'AP_SOUTHEAST_1', label: 'Asia Pacific (Singapore)' },
+                { value: 'AP_SOUTHEAST_2', label: 'Asia Pacific (Sydney)' },
+                { value: 'AP_NORTHEAST_1', label: 'Asia Pacific (Tokyo)' },
+                { value: 'SA_EAST_1', label: 'South America (São Paulo)' }
+            ],
+            GCP: [
+                { value: 'US_CENTRAL1', label: 'US Central (Iowa)' },
+                { value: 'US_EAST4', label: 'US East (N. Virginia)' },
+                { value: 'US_WEST1', label: 'US West (Oregon)' },
+                { value: 'EUROPE_WEST1', label: 'Europe West (Belgium)' },
+                { value: 'EUROPE_WEST2', label: 'Europe West (London)' },
+                { value: 'ASIA_EAST1', label: 'Asia East (Taiwan)' },
+                { value: 'ASIA_SOUTHEAST1', label: 'Asia Southeast (Singapore)' },
+                { value: 'AUSTRALIA_SOUTHEAST1', label: 'Australia Southeast (Sydney)' }
+            ],
+            AZURE: [
+                { value: 'US_EAST_2', label: 'US East 2' },
+                { value: 'US_WEST_2', label: 'US West 2' },
+                { value: 'EUROPE_NORTH', label: 'North Europe' },
+                { value: 'EUROPE_WEST', label: 'West Europe' },
+                { value: 'UK_SOUTH', label: 'UK South' },
+                { value: 'ASIA_EAST', label: 'East Asia' },
+                { value: 'AUSTRALIA_EAST', label: 'Australia East' }
+            ]
+        };
+
+        // Wait for DOM to be ready before attaching event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load configuration info when modal is shown
+            document.getElementById('configModal').addEventListener('show.bs.modal', loadConfigInfo);
+
+            // Handle provider change to populate regions
+            document.getElementById('preferredProvider').addEventListener('change', function() {
+                updateRegionOptions(this.value, null);
+            });
+        });
+
+        function updateRegionOptions(provider, selectedRegion) {
+            const regionSelect = document.getElementById('preferredRegion');
+            regionSelect.innerHTML = '';
+
+            if (!provider) {
+                regionSelect.innerHTML = '<option value="">-- Select provider first --</option>';
+                regionSelect.disabled = true;
+                return;
+            }
+
+            regionSelect.disabled = false;
+            regionSelect.innerHTML = '<option value="">-- No preference --</option>';
+
+            const regions = REGIONS_BY_PROVIDER[provider] || [];
+            regions.forEach(region => {
+                const option = document.createElement('option');
+                option.value = region.value;
+                option.textContent = region.label;
+                if (region.value === selectedRegion) {
+                    option.selected = true;
+                }
+                regionSelect.appendChild(option);
+            });
+        }
+
+        async function loadConfigInfo() {
+            const loading = document.getElementById('configLoading');
+            const content = document.getElementById('configContent');
+            const error = document.getElementById('configError');
+
+            // Show loading, hide content and error
+            loading.style.display = 'block';
+            content.style.display = 'none';
+            error.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/setup/info');
+                const data = await response.json();
+
+                // Populate the config info
+                document.getElementById('configAuthMethod').innerHTML = data.auth_method
+                    ? `<span class="badge bg-success">${data.auth_method}</span>`
+                    : '<span class="badge bg-secondary">Not configured</span>';
+
+                document.getElementById('configFilePath').textContent = data.config_file_path || 'Not found';
+
+                document.getElementById('configStatus').innerHTML = data.configured
+                    ? '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Connected</span>'
+                    : '<span class="text-warning"><i class="bi bi-exclamation-circle-fill"></i> Not configured</span>';
+
+                document.getElementById('configBaseUrl').textContent = data.base_url;
+
+                // Show/hide appropriate credential row
+                const publicKeyRow = document.getElementById('configPublicKeyRow');
+                const serviceAccountRow = document.getElementById('configServiceAccountRow');
+
+                if (data.public_key_preview) {
+                    publicKeyRow.style.display = '';
+                    serviceAccountRow.style.display = 'none';
+                    document.getElementById('configPublicKey').textContent = data.public_key_preview;
+                } else if (data.client_id_preview) {
+                    publicKeyRow.style.display = 'none';
+                    serviceAccountRow.style.display = '';
+                    document.getElementById('configClientId').textContent = data.client_id_preview;
+                } else {
+                    publicKeyRow.style.display = 'none';
+                    serviceAccountRow.style.display = 'none';
+                }
+
+                // Load preferences
+                const providerSelect = document.getElementById('preferredProvider');
+                providerSelect.value = data.preferred_cloud_provider || '';
+
+                // Update regions and set selected region
+                updateRegionOptions(data.preferred_cloud_provider, data.preferred_region);
+
+                // Show content
+                loading.style.display = 'none';
+                content.style.display = 'block';
+
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                document.getElementById('configErrorMsg').textContent = 'Failed to load configuration: ' + err.message;
+            }
+        }
+
+        async function savePreferences() {
+            const provider = document.getElementById('preferredProvider').value;
+            const region = document.getElementById('preferredRegion').value;
+            const saveBtn = document.getElementById('savePreferencesBtn');
+
+            // Show saving state
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Saving...';
+
+            try {
+                const response = await fetch('/api/setup/preferences', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        preferred_cloud_provider: provider || null,
+                        preferred_region: region || null
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> Saved!';
+                    saveBtn.classList.remove('btn-primary');
+                    saveBtn.classList.add('btn-success');
+                    setTimeout(() => {
+                        saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save Preferences';
+                        saveBtn.classList.remove('btn-success');
+                        saveBtn.classList.add('btn-primary');
+                        saveBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error(result.detail || 'Failed to save preferences');
+                }
+            } catch (err) {
+                saveBtn.innerHTML = '<i class="bi bi-x-circle"></i> Error';
+                saveBtn.classList.remove('btn-primary');
+                saveBtn.classList.add('btn-danger');
+                setTimeout(() => {
+                    saveBtn.innerHTML = '<i class="bi bi-check-circle"></i> Save Preferences';
+                    saveBtn.classList.remove('btn-danger');
+                    saveBtn.classList.add('btn-primary');
+                    saveBtn.disabled = false;
+                }, 2000);
+                console.error('Failed to save preferences:', err);
+            }
+        }
+
+        async function confirmShutdown() {
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('exitServerModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            // Show a clean shutdown message immediately
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div style="background: white; padding: 3rem; border-radius: 1rem; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; max-width: 500px;">
+                        <div style="font-size: 4rem; color: #667eea; margin-bottom: 1rem;">
+                            <i class="bi bi-power"></i>
+                        </div>
+                        <h2 style="color: #333; margin-bottom: 1rem;">Shutting Down...</h2>
+                        <p style="color: #666; margin-bottom: 0.5rem;">AtlasUI server is shutting down</p>
+                        <div class="spinner-border text-primary mt-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            try {
+                // Attempt to call the shutdown endpoint
+                const response = await fetch('/api/server/shutdown', {
+                    method: 'POST'
+                });
+
+                // Update the message whether the call succeeded or not
+                setTimeout(() => {
+                    document.body.innerHTML = `
+                        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div style="background: white; padding: 3rem; border-radius: 1rem; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; max-width: 500px;">
+                                <div style="font-size: 4rem; color: #28a745; margin-bottom: 1rem;">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </div>
+                                <h2 style="color: #333; margin-bottom: 1rem;">Server Stopped</h2>
+                                <p style="color: #666; margin-bottom: 0.5rem;">AtlasUI has been shut down successfully</p>
+                                <p style="color: #999; font-size: 0.875rem;">You can close this window</p>
+                            </div>
+                        </div>
+                    `;
+                }, 500);
+            } catch (err) {
+                // Server already shut down, connection refused - this is expected
+                setTimeout(() => {
+                    document.body.innerHTML = `
+                        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div style="background: white; padding: 3rem; border-radius: 1rem; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; max-width: 500px;">
+                                <div style="font-size: 4rem; color: #28a745; margin-bottom: 1rem;">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </div>
+                                <h2 style="color: #333; margin-bottom: 1rem;">Server Stopped</h2>
+                                <p style="color: #666; margin-bottom: 0.5rem;">AtlasUI has been shut down successfully</p>
+                                <p style="color: #999; font-size: 0.875rem;">You can close this window</p>
+                            </div>
+                        </div>
+                    `;
+                }, 500);
+            }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
