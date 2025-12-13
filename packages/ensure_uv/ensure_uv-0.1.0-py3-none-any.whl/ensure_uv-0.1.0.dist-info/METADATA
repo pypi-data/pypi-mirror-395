@@ -1,0 +1,71 @@
+Metadata-Version: 2.4
+Name: ensure_uv
+Version: 0.1.0
+Summary: Pre-commit hook to ensure uv is installed
+Project-URL: Homepage, https://github.com/bitflight-devops/pre-commit-ensure-uv
+Project-URL: Repository, https://github.com/bitflight-devops/pre-commit-ensure-uv
+Author: Jamie Nelson
+License-Expression: MIT
+License-File: LICENSE
+Keywords: astral,pre-commit,prek,uv
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Quality Assurance
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+# pre-commit-ensure-uv
+
+A [pre-commit](https://pre-commit.com/) hook that ensures [uv](https://github.com/astral-sh/uv) is installed and available.
+
+Works with both [pre-commit](https://pre-commit.com/) and [prek](https://github.com/j178/prek).
+
+## Usage
+
+Add this to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/bitflight-devops/pre-commit-ensure-uv
+    rev: v0.1.0
+    hooks:
+      - id: ensure-uv
+```
+
+Place it **first** in your repos list so uv is available for subsequent hooks.
+
+## Behavior
+
+| Condition                 | Action                                      |
+| ------------------------- | ------------------------------------------- |
+| uv in PATH                | Pass silently                               |
+| uv installed, not in PATH | Re-run hooks with corrected PATH            |
+| uv not installed          | Install uv, then re-run with corrected PATH |
+
+When uv needs to be added to PATH, the hook automatically re-runs all hooks with the corrected environment. No shell restart required.
+
+## Platform Support
+
+- Linux
+- macOS
+- Windows
+
+## Installation Method
+
+Uses the official uv installer:
+
+- **Unix**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Windows**: `powershell irm https://astral.sh/uv/install.ps1 | iex`
+
+## License
+
+MIT
