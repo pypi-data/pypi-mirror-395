@@ -1,0 +1,39 @@
+# Build otdf-python wheel using uv and output the wheel path for downstream workflows
+name: "Build Python Wheel"
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    outputs:
+      wheel: ${{ steps.find_wheel.outputs.wheel_path }}
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Build otdf-python wheel using uv
+        run: |
+          uv sync --frozen
+          uv build
+        shell: bash
+
+      - name: Find built wheel
+        id: find_wheel
+        run: |
+          wheel_path=$(ls dist/*.whl | head -n1)
+          echo "wheel_path=$wheel_path" >> $GITHUB_OUTPUT
+        shell: bash
+
+      # - name: Upload wheel as artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: python-wheel
+      #     path: dist/*.whl
+      #     overwrite: true

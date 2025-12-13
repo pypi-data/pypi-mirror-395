@@ -1,0 +1,48 @@
+---
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+  - post-rewrite
+exclude: |
+  (?x)^(
+    otdf_python/.*
+    | otdf-python-proto/proto-files/.*
+    | otdf-python-proto/generated/.*
+    | otdf-python-proto/src/otdf_python_proto/.*
+    | otdf-python-proto/buf.yaml
+    | otdf-python-proto/buf.gen.yaml
+  )$
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks#
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args:
+          [
+            "--ignore-words-list",
+            "b-long, otdf_python",
+            "--skip=uv.lock,otdf-python-proto/uv.lock",
+          ]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.14.8
+    hooks:
+      # Run the linter.
+      - id: ruff-check
+      # Run the formatter.
+      - id: ruff-format
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.3.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [--verbose, feat, fix, docs, style, test, chore, ci]
