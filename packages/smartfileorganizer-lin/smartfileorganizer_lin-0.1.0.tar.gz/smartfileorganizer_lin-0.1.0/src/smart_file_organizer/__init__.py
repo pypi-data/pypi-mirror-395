@@ -1,0 +1,6 @@
+"""
+Smart File Organizer - 智能文件整理工具
+"""
+
+__version__ = "0.1.0"
+
