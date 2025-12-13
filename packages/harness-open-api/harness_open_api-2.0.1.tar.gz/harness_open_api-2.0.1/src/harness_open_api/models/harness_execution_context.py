@@ -1,0 +1,497 @@
+# coding: utf-8
+
+"""
+    Harness NextGen Software Delivery Platform API Reference
+
+    The Harness Software Delivery Platform uses OpenAPI Specification v3.0. Harness constantly improves these APIs. Please be aware that some improvements could cause breaking changes. # Introduction     The Harness API allows you to integrate and use all the services and modules we provide on the Harness Platform. If you use client-side SDKs, Harness functionality can be integrated with your client-side automation, helping you reduce manual efforts and deploy code faster.    For more information about how Harness works, read our [documentation](https://developer.harness.io/docs/getting-started) or visit the [Harness Developer Hub](https://developer.harness.io/).  ## How it works    The Harness API is a RESTful API that uses standard HTTP verbs. You can send requests in JSON, YAML, or form-data format. The format of the response matches the format of your request. You must send a single request at a time and ensure that you include your authentication key. For more information about this, go to [Authentication](#section/Introduction/Authentication).  ## Get started    Before you start integrating, get to know our API better by reading the following topics:    * [Harness key concepts](https://developer.harness.io/docs/getting-started/learn-harness-key-concepts/)   * [Authentication](#section/Introduction/Authentication)   * [Requests and responses](#section/Introduction/Requests-and-Responses)   * [Common Parameters](#section/Introduction/Common-Parameters-Beta)   * [Status Codes](#section/Introduction/Status-Codes)   * [Errors](#tag/Error-Response)   * [Versioning](#section/Introduction/Versioning-Beta)   * [Pagination](/#section/Introduction/Pagination-Beta)    The methods you need to integrate with depend on the functionality you want to use. Work with  your Harness Solutions Engineer to determine which methods you need.  ## Authentication  To authenticate with the Harness API, you need to:   1. Generate an API token on the Harness Platform.   2. Send the API token you generate in the `x-api-key` header in each request.  ### Generate an API token  To generate an API token, complete the following steps:   1. Go to the [Harness Platform](https://app.harness.io/).   2. On the left-hand navigation, click **My Profile**.   3. Click **+API Key**, enter a name for your key and then click **Save**.   4. Within the API Key tile, click **+Token**.   5. Enter a name for your token and click **Generate Token**. **Important**: Make sure to save your token securely. Harness does not store the API token for future reference, so make sure to save your token securely before you leave the page.  ### Send the API token in your requests  Send the token you created in the Harness Platform in the x-api-key header. For example:   `x-api-key: YOUR_API_KEY_HERE`  ## Requests and Responses    The structure for each request and response is outlined in the API documentation. We have examples in JSON and YAML for every request and response. You can use our online editor to test the examples.  ## Common Parameters [Beta]  | Field Name | Type    | Default | Description    | |------------|---------|---------|----------------| | identifier | string  | none    | URL-friendly version of the name, used to identify a resource within it's scope and so needs to be unique within the scope.                                                                                                            | | name       | string  | none    | Human-friendly name for the resource.                                                                                       | | org        | string  | none    | Limit to provided org identifiers.                                                                                                                     | | project    | string  | none    | Limit to provided project identifiers.                                                                                                                 | | description| string  | none    | More information about the specific resource.                                                                                    | | tags       | map[string]string  | none    | List of labels applied to the resource.                                                                                                                         | | order      | string  | desc    | Order to use when sorting the specified fields. Type: enum(asc,desc).                                                                                                                                     | | sort       | string  | none    | Fields on which to sort. Note: Specify the fields that you want to use for sorting. When doing so, consider the operational overhead of sorting fields. | | limit      | int     | 30      | Pagination: Number of items to return.                                                                                                                 | | page       | int     | 1       | Pagination page number strategy: Specify the page number within the paginated collection related to the number of items in each page.                  | | created    | int64   | none    | Unix timestamp that shows when the resource was created (in milliseconds).                                                               | | updated    | int64   | none    | Unix timestamp that shows when the resource was last edited (in milliseconds).                                                           |   ## Status Codes    Harness uses conventional HTTP status codes to indicate the status of an API request.    Generally, 2xx responses are reserved for success and 4xx status codes are reserved for failures. A 5xx response code indicates an error on the Harness server.    | Error Code  | Description |   |-------------|-------------|   | 200         |     OK      |   | 201         |   Created   |   | 202         |   Accepted  |   | 204         |  No Content |   | 400         | Bad Request |   | 401         | Unauthorized |   | 403         | Forbidden |   | 412         | Precondition Failed |   | 415         | Unsupported Media Type |   | 500         | Server Error |    To view our error response structures, go [here](#tag/Error-Response).  ## Versioning [Beta]  ### Harness Version   The current version of our Beta APIs is yet to be announced. The version number will use the date-header format and will be valid only for our Beta APIs.  ### Generation   All our beta APIs are versioned as a Generation, and this version is included in the path to every API resource. For example, v1 beta APIs begin with `app.harness.io/v1/`, where v1 is the API Generation.    The version number represents the core API and does not change frequently. The version number changes only if there is a significant departure from the basic underpinnings of the existing API. For example, when Harness performs a system-wide refactoring of core concepts or resources.  ## Pagination [Beta]  We use pagination to place limits on the number of responses associated with list endpoints. Pagination is achieved by the use of limit query parameters. The limit defaults to 30. Its maximum value is 100.  Following are the pagination headers supported in the response bodies of paginated APIs:   1. X-Total-Elements : Indicates the total number of entries in a paginated response.   2. X-Page-Number : Indicates the page number currently returned for a paginated response.   3. X-Page-Size : Indicates the number of entries per page for a paginated response.  For example:    ``` X-Total-Elements : 30 X-Page-Number : 0 X-Page-Size : 10   ```   # noqa: E501
+
+    OpenAPI spec version: 1.0
+    Contact: contact@harness.io
+    Generated by: https://github.com/swagger-api/swagger-codegen.git
+"""
+
+import pprint
+import re  # noqa: F401
+
+import six
+from harness_open_api.models.execution_context_v2 import ExecutionContextV2  # noqa: F401,E501
+
+class HarnessExecutionContext(ExecutionContextV2):
+    """NOTE: This class is auto generated by the swagger code generator program.
+
+    Do not edit the class manually.
+    """
+    """
+    Attributes:
+      swagger_types (dict): The key is attribute name
+                            and the value is attribute type.
+      attribute_map (dict): The key is attribute name
+                            and the value is json key in definition.
+    """
+    swagger_types = {
+        'org': 'str',
+        'pipeline_execution_id': 'str',
+        'pipeline_id': 'str',
+        'pipeline_name': 'str',
+        'project': 'str',
+        'runner_detail': 'RunnerDetail',
+        'sequence_id': 'str',
+        'stage_execution_id': 'str',
+        'stage_id': 'str',
+        'stage_name': 'str',
+        'stage_type': 'str',
+        'step_execution_id': 'str',
+        'step_id': 'str',
+        'step_name': 'str',
+        'type': 'str'
+    }
+    if hasattr(ExecutionContextV2, "swagger_types"):
+        swagger_types.update(ExecutionContextV2.swagger_types)
+
+    attribute_map = {
+        'org': 'org',
+        'pipeline_execution_id': 'pipeline_execution_id',
+        'pipeline_id': 'pipeline_id',
+        'pipeline_name': 'pipeline_name',
+        'project': 'project',
+        'runner_detail': 'runner_detail',
+        'sequence_id': 'sequence_id',
+        'stage_execution_id': 'stage_execution_id',
+        'stage_id': 'stage_id',
+        'stage_name': 'stage_name',
+        'stage_type': 'stage_type',
+        'step_execution_id': 'step_execution_id',
+        'step_id': 'step_id',
+        'step_name': 'step_name',
+        'type': 'type'
+    }
+    if hasattr(ExecutionContextV2, "attribute_map"):
+        attribute_map.update(ExecutionContextV2.attribute_map)
+
+    def __init__(self, org=None, pipeline_execution_id=None, pipeline_id=None, pipeline_name=None, project=None, runner_detail=None, sequence_id=None, stage_execution_id=None, stage_id=None, stage_name=None, stage_type=None, step_execution_id=None, step_id=None, step_name=None, type=None, *args, **kwargs):  # noqa: E501
+        """HarnessExecutionContext - a model defined in Swagger"""  # noqa: E501
+        self._org = None
+        self._pipeline_execution_id = None
+        self._pipeline_id = None
+        self._pipeline_name = None
+        self._project = None
+        self._runner_detail = None
+        self._sequence_id = None
+        self._stage_execution_id = None
+        self._stage_id = None
+        self._stage_name = None
+        self._stage_type = None
+        self._step_execution_id = None
+        self._step_id = None
+        self._step_name = None
+        self._type = None
+        self.discriminator = None
+        if org is not None:
+            self.org = org
+        if pipeline_execution_id is not None:
+            self.pipeline_execution_id = pipeline_execution_id
+        if pipeline_id is not None:
+            self.pipeline_id = pipeline_id
+        if pipeline_name is not None:
+            self.pipeline_name = pipeline_name
+        if project is not None:
+            self.project = project
+        if runner_detail is not None:
+            self.runner_detail = runner_detail
+        if sequence_id is not None:
+            self.sequence_id = sequence_id
+        if stage_execution_id is not None:
+            self.stage_execution_id = stage_execution_id
+        if stage_id is not None:
+            self.stage_id = stage_id
+        if stage_name is not None:
+            self.stage_name = stage_name
+        if stage_type is not None:
+            self.stage_type = stage_type
+        if step_execution_id is not None:
+            self.step_execution_id = step_execution_id
+        if step_id is not None:
+            self.step_id = step_id
+        if step_name is not None:
+            self.step_name = step_name
+        self.type = type
+        ExecutionContextV2.__init__(self, *args, **kwargs)
+
+    @property
+    def org(self):
+        """Gets the org of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The org of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._org
+
+    @org.setter
+    def org(self, org):
+        """Sets the org of this HarnessExecutionContext.
+
+
+        :param org: The org of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._org = org
+
+    @property
+    def pipeline_execution_id(self):
+        """Gets the pipeline_execution_id of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The pipeline_execution_id of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._pipeline_execution_id
+
+    @pipeline_execution_id.setter
+    def pipeline_execution_id(self, pipeline_execution_id):
+        """Sets the pipeline_execution_id of this HarnessExecutionContext.
+
+
+        :param pipeline_execution_id: The pipeline_execution_id of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._pipeline_execution_id = pipeline_execution_id
+
+    @property
+    def pipeline_id(self):
+        """Gets the pipeline_id of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The pipeline_id of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._pipeline_id
+
+    @pipeline_id.setter
+    def pipeline_id(self, pipeline_id):
+        """Sets the pipeline_id of this HarnessExecutionContext.
+
+
+        :param pipeline_id: The pipeline_id of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._pipeline_id = pipeline_id
+
+    @property
+    def pipeline_name(self):
+        """Gets the pipeline_name of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The pipeline_name of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._pipeline_name
+
+    @pipeline_name.setter
+    def pipeline_name(self, pipeline_name):
+        """Sets the pipeline_name of this HarnessExecutionContext.
+
+
+        :param pipeline_name: The pipeline_name of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._pipeline_name = pipeline_name
+
+    @property
+    def project(self):
+        """Gets the project of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The project of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._project
+
+    @project.setter
+    def project(self, project):
+        """Sets the project of this HarnessExecutionContext.
+
+
+        :param project: The project of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._project = project
+
+    @property
+    def runner_detail(self):
+        """Gets the runner_detail of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The runner_detail of this HarnessExecutionContext.  # noqa: E501
+        :rtype: RunnerDetail
+        """
+        return self._runner_detail
+
+    @runner_detail.setter
+    def runner_detail(self, runner_detail):
+        """Sets the runner_detail of this HarnessExecutionContext.
+
+
+        :param runner_detail: The runner_detail of this HarnessExecutionContext.  # noqa: E501
+        :type: RunnerDetail
+        """
+
+        self._runner_detail = runner_detail
+
+    @property
+    def sequence_id(self):
+        """Gets the sequence_id of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The sequence_id of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._sequence_id
+
+    @sequence_id.setter
+    def sequence_id(self, sequence_id):
+        """Sets the sequence_id of this HarnessExecutionContext.
+
+
+        :param sequence_id: The sequence_id of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._sequence_id = sequence_id
+
+    @property
+    def stage_execution_id(self):
+        """Gets the stage_execution_id of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The stage_execution_id of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._stage_execution_id
+
+    @stage_execution_id.setter
+    def stage_execution_id(self, stage_execution_id):
+        """Sets the stage_execution_id of this HarnessExecutionContext.
+
+
+        :param stage_execution_id: The stage_execution_id of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._stage_execution_id = stage_execution_id
+
+    @property
+    def stage_id(self):
+        """Gets the stage_id of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The stage_id of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._stage_id
+
+    @stage_id.setter
+    def stage_id(self, stage_id):
+        """Sets the stage_id of this HarnessExecutionContext.
+
+
+        :param stage_id: The stage_id of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._stage_id = stage_id
+
+    @property
+    def stage_name(self):
+        """Gets the stage_name of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The stage_name of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._stage_name
+
+    @stage_name.setter
+    def stage_name(self, stage_name):
+        """Sets the stage_name of this HarnessExecutionContext.
+
+
+        :param stage_name: The stage_name of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._stage_name = stage_name
+
+    @property
+    def stage_type(self):
+        """Gets the stage_type of this HarnessExecutionContext.  # noqa: E501
+
+        Stage type in which the step executed  # noqa: E501
+
+        :return: The stage_type of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._stage_type
+
+    @stage_type.setter
+    def stage_type(self, stage_type):
+        """Sets the stage_type of this HarnessExecutionContext.
+
+        Stage type in which the step executed  # noqa: E501
+
+        :param stage_type: The stage_type of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+        allowed_values = ["BUILD", "DEPLOY", "SECURITY"]  # noqa: E501
+        if stage_type not in allowed_values:
+            raise ValueError(
+                "Invalid value for `stage_type` ({0}), must be one of {1}"  # noqa: E501
+                .format(stage_type, allowed_values)
+            )
+
+        self._stage_type = stage_type
+
+    @property
+    def step_execution_id(self):
+        """Gets the step_execution_id of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The step_execution_id of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._step_execution_id
+
+    @step_execution_id.setter
+    def step_execution_id(self, step_execution_id):
+        """Sets the step_execution_id of this HarnessExecutionContext.
+
+
+        :param step_execution_id: The step_execution_id of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._step_execution_id = step_execution_id
+
+    @property
+    def step_id(self):
+        """Gets the step_id of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The step_id of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._step_id
+
+    @step_id.setter
+    def step_id(self, step_id):
+        """Sets the step_id of this HarnessExecutionContext.
+
+
+        :param step_id: The step_id of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._step_id = step_id
+
+    @property
+    def step_name(self):
+        """Gets the step_name of this HarnessExecutionContext.  # noqa: E501
+
+
+        :return: The step_name of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._step_name
+
+    @step_name.setter
+    def step_name(self, step_name):
+        """Sets the step_name of this HarnessExecutionContext.
+
+
+        :param step_name: The step_name of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+
+        self._step_name = step_name
+
+    @property
+    def type(self):
+        """Gets the type of this HarnessExecutionContext.  # noqa: E501
+
+        This specifies the type of context  # noqa: E501
+
+        :return: The type of this HarnessExecutionContext.  # noqa: E501
+        :rtype: str
+        """
+        return self._type
+
+    @type.setter
+    def type(self, type):
+        """Sets the type of this HarnessExecutionContext.
+
+        This specifies the type of context  # noqa: E501
+
+        :param type: The type of this HarnessExecutionContext.  # noqa: E501
+        :type: str
+        """
+        if type is None:
+            raise ValueError("Invalid value for `type`, must not be `None`")  # noqa: E501
+        allowed_values = ["harness"]  # noqa: E501
+        if type not in allowed_values:
+            raise ValueError(
+                "Invalid value for `type` ({0}), must be one of {1}"  # noqa: E501
+                .format(type, allowed_values)
+            )
+
+        self._type = type
+
+    def to_dict(self):
+        """Returns the model properties as a dict"""
+        result = {}
+
+        for attr, _ in six.iteritems(self.swagger_types):
+            value = getattr(self, attr)
+            if isinstance(value, list):
+                result[attr] = list(map(
+                    lambda x: x.to_dict() if hasattr(x, "to_dict") else x,
+                    value
+                ))
+            elif hasattr(value, "to_dict"):
+                result[attr] = value.to_dict()
+            elif isinstance(value, dict):
+                result[attr] = dict(map(
+                    lambda item: (item[0], item[1].to_dict())
+                    if hasattr(item[1], "to_dict") else item,
+                    value.items()
+                ))
+            else:
+                result[attr] = value
+        if issubclass(HarnessExecutionContext, dict):
+            for key, value in self.items():
+                result[key] = value
+
+        return result
+
+    def to_str(self):
+        """Returns the string representation of the model"""
+        return pprint.pformat(self.to_dict())
+
+    def __repr__(self):
+        """For `print` and `pprint`"""
+        return self.to_str()
+
+    def __eq__(self, other):
+        """Returns true if both objects are equal"""
+        if not isinstance(other, HarnessExecutionContext):
+            return False
+
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        """Returns true if both objects are not equal"""
+        return not self == other
