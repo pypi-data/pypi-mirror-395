@@ -1,0 +1,268 @@
+# Copyright 2010 New Relic, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ===========================
+# Project Build Configuration
+# ===========================
+
+[project]
+name="newrelic"
+description = "New Relic Python Agent"
+authors = [{name = "New Relic", email = "support@newrelic.com"}]
+maintainers = [{name = "New Relic", email = "support@newrelic.com"}]
+readme = "README.md"
+# License requires setuptools>=77.0.3 for pyproject.toml, which is Python 3.9+
+# license = "Apache-2.0"
+# license-files = [
+#     "LICENSE",
+#     "THIRD_PARTY_NOTICES.md",
+# ]
+requires-python = ">=3.8"  # python_requires is also located in setup.py
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: System :: Monitoring",
+]
+dynamic = ["version", "license"]
+
+[project.urls]
+Homepage = "https://docs.newrelic.com/docs/apm/agents/python-agent/"
+GitHub = "https://github.com/newrelic/newrelic-python-agent"
+"Release Notes" = "https://docs.newrelic.com/docs/release-notes/agent-release-notes/python-release-notes/"
+
+[project.optional-dependencies]
+infinite-tracing = ["grpcio", "protobuf"]
+
+[project.scripts]
+newrelic-admin = "newrelic.admin:main"
+
+[build-system]
+requires = [
+    "setuptools>=61.2",
+    "setuptools_scm>=6.4,<10",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+zip-safe = false
+packages = [
+    "newrelic",
+    "newrelic.admin",
+    "newrelic.api",
+    "newrelic.bootstrap",
+    "newrelic.common",
+    "newrelic.core",
+    "newrelic.extras",
+    "newrelic.extras.framework_django",
+    "newrelic.extras.framework_django.templatetags",
+    "newrelic.hooks",
+    "newrelic.network",
+    "newrelic.packages",
+    "newrelic.packages.isort",
+    "newrelic.packages.isort.stdlibs",
+    "newrelic.packages.urllib3",
+    "newrelic.packages.urllib3.util",
+    "newrelic.packages.urllib3.contrib",
+    "newrelic.packages.urllib3.contrib._securetransport",
+    "newrelic.packages.urllib3.packages",
+    "newrelic.packages.urllib3.packages.backports",
+    "newrelic.packages.wrapt",
+    "newrelic.packages.opentelemetry_proto",
+    "newrelic.samplers",
+]
+
+[tool.setuptools.package-data]
+newrelic = ["newrelic.ini", "packages/urllib3/LICENSE.txt", "common/cacert.pem", "scripts/azure-prebuild.sh"]
+
+[tool.setuptools_scm]
+write_to = "newrelic/_version.py"
+# Don't convert git_describe_command to an array, it doesn't seem to work properly on any versions of setuptools_scm.
+git_describe_command = 'git describe --dirty --tags --long --match "*.*.*"'
+
+# ==================
+# Ruff Configuration
+# ==================
+
+[tool.ruff]
+output-format = "grouped"
+line-length = 120
+target-version = "py38"
+force-exclude = true  # Fixes issue with megalinter config preventing exclusion of files
+extend-exclude = [
+    "newrelic/packages/",
+    "newrelic/core/infinite_tracing_*_pb2.py",
+]
+namespace-packages = ["testing_support"]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+isort.split-on-trailing-comma=false
+pep8-naming.extend-ignore-names = ["X", "y"]
+
+select = [
+    # Enabled linters and rules
+    "A",  # flake8-builtins
+    "ASYNC",  # flake8-async
+    "B",  # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "COM",  # flake8-commas
+    "DTZ",  # flake8-datetimez
+    "E",  # pycodestyle
+    "EXE",  # flake8-executable
+    "F",  # Pyflakes
+    "FA",  # flake8-future-annotations
+    "FLY",  # flynt
+    "FURB",  # refurb
+    "G",  # flake8-logging-format
+    "I",  # isort
+    "ICN",  # flake8-import-conventions
+    "INP",  # flake8-no-pep420
+    "INT",  # flake8-gettext
+    "ISC",  # flake8-implicit-str-concat
+    "LOG",  # flake8-logging
+    "PERF",  # Perflint
+    "PGH",  # pygrep-hooks
+    "PL",  # Pylint
+    "PT",  # flake8-pytest-style
+    "PTH",  # flake8-use-pathlib
+    "PYI",  # flake8-pyi
+    "Q",  # flake8-quotes
+    "RSE",  # flake8-raise
+    "RUF",  # Ruff-specific rules
+    "S",  # flake8-bandit
+    "SLOT",  # flake8-slots
+    "T10",  # flake8-debugger
+    "TID",  # flake8-tidy-imports
+    "UP",  # pyupgrade
+    "W",  # pycodestyle
+    "YTT",  # flake8-2020
+    # "ARG",  # flake8-unused-arguments
+    # "BLE",  # flake8-blind-except
+    # "EM",  # flake8-errmsg
+    # "FBT",  # flake8-boolean-trap
+    # "N",  # pep8-naming
+    # "RET",  # flake8-return
+    # "SIM",  # flake8-simplify
+    # "TRY",  # tryceratops
+]
+
+# Disabled Linters
+# "ANN",  # flake8-annotations
+# "D",  # pydocstyle
+# "C90",  # mccabe
+# "DJ",  # flake8-django
+# "PIE",  # flake8-pie
+# "T20",  # flake8-print
+# "SLF",  # flake8-self
+# "TC",  # flake8-type-checking
+# "TD",  # flake8-todos
+# "FIX",  # flake8-fixme
+# "ERA",  # eradicate
+# "PD",  # pandas-vet
+# "NPY",  # NumPy-specific rules
+# "FAST",  # FastAPI
+# "AIR",  # Airflow
+# "SLF",  # flake8-self (only scans for private member access, which is intentional)
+
+# Preview linters (disabled)
+# "CPY",  # flake8-copyright
+# "DOC",  # pydoclint
+
+ignore = [
+    # Temporarily disabled rules
+    "PERF203",  # try-except-in-loop (most of these are unavoidable)
+    "S110",  # try-except-pass (Bandit wants us to log the exception, which is usually pointless. Spot check these later)
+    "PLW0603",  # global-statement (this is currently used extensively)
+    "PLW2901",  # redefined-loop-name (frequently used, not generally an issue)
+    "PLR",  # Pylint Recommendations (too many to fix all at once)
+    "E722",  # bare-except (too many to fix all at once)
+    "PT012",  # pytest-raises-with-multiple-statements (too many to fix all at once)
+    # Permanently disabled rules
+    "PLC0415",  # import-outside-top-level (intentionally used frequently)
+    "UP006",  # non-pep585-annotation (not compatible with Python 3.8)
+    "D203",  # incorrect-blank-line-before-class
+    "D213",  # multi-line-summary-second-line
+    "ARG001",  # unused-argument
+    "PYI024",  # collections-named-tuple (not currently using type annotations)
+    "PLR0913", # too-many-arguments
+    "PLR0915",  # too-many-statements
+    "E501",  # line-too-long (line length handled by formatter)
+    # Ruff recommended linter rules to disable when using formatter
+    "W191",  # tab-indentation
+    "E111",  # indentation-with-invalid-multiple
+    "E114",  # indentation-with-invalid-multiple-comment
+    "E117",  # over-indented
+    "D206",  # docstring-tab-indentation
+    "D300",  # triple-single-quotes
+    "Q000",  # bad-quotes-inline-string
+    "Q001",  # bad-quotes-multiline-string
+    "Q002",  # bad-quotes-docstring
+    "Q003",  # avoidable-escaped-quote
+    "COM812",  # missing-trailing-comma
+    "COM819",  # prohibited-trailing-comma
+]
+
+[tool.ruff.lint.per-file-ignores]
+"setup.py" = [
+    # Disabled rules in setup.py
+    # setup.py needs to not immediately crash on Python 2 to log error messages
+    "UP032",  # f-string (Python 3+ syntax)
+    "B904",  # raise-without-from-inside-except (Python 3+ syntax)
+    "E402",  # module-import-not-at-top-of-file (intentional)
+]
+"tests/*" = [
+    # Disabled rules in tests
+    "S",  # flake8-bandit (security checks are not necessary in tests)
+    "INP",  # flake8-no-pep420 (tests need not be not part of a package)
+    "F401",  # unused-import
+    "F811",  # redefined-while-unused (pytest fixtures trigger this)
+    "F841",  # unused-variable (intentional in tests to document what an unused output is)
+    "RUF012",  # mutable-class-default
+    "RUF015",  # unnecessary-iterable-allocation-for-first-element (more readable in tests)
+    "E731",  # lambda-assignment (acceptable in tests)
+    "RUF012",  # mutable-class-default
+    "RUF015",  # unnecessary-iterable-allocation-for-first-element (more readable in tests)
+    "PLR2004",  # magic-value-comparison (comparing to constant values)
+    "ASYNC251",  # blocking-sleep-in-async-function (acceptable in tests)
+    "B904",  # raise-without-from-inside-except (not necessary in tests)
+    "PT006",  # pytest-parametrize-names-wrong-type (style choice)
+    "PT007",  # pytest-parametrize-values-wrong-type (style choice)
+    "PT011",  # pytest-raises-too-broad (we frequently test for generic errors)
+]
+"newrelic/admin/*" = [
+    # Disabled rules in admin scripts
+    "S108",  # flake8-bandit (hardcoded log files are never used as input)
+]
+
+# =========================
+# Other Tools Configuration
+# =========================
+
+[tool.flynt]
+line-length = 999999
+aggressive = true
+transform-concats = true
+transform-joins = true
+exclude = ["newrelic/packages/", "setup.py"]
+# setup.py needs to not immediately crash on Python 2 to log error messages, so disable fstrings
