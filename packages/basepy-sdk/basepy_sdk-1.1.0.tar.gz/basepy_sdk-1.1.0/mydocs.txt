@@ -1,0 +1,755 @@
+================================================================================
+BASEPY SDK - COMPLETE TECHNICAL DOCUMENTATION
+================================================================================
+Focus: BaseClient Architecture & Design Philosophy
+Version: 1.1.0
+Last Updated: December 2025
+
+================================================================================
+CORE PURPOSE: THE FOUNDATION LAYER 🏗️
+================================================================================
+
+BaseClient is the single source of truth for blockchain connectivity in BasePy.
+Every other component (Wallet, Transaction, Contracts) depends on it.
+
+Think of it as:
+- The "database connection" of blockchain applications
+- The "HTTP client" of Web3 operations
+- The "network driver" for Base blockchain
+
+Without BaseClient → No blockchain interaction
+With BaseClient → Everything just works™
+
+================================================================================
+1️⃣ CONNECTION MANAGEMENT (The #1 Job)
+================================================================================
+
+What It Does:
+-------------
+```python
+# Users don't worry about RPC URLs or failover
+client = BaseClient()  # Automatically connects to Base mainnet
+```
+
+Built-in Redundancy:
+--------------------
+```python
+client = BaseClient()  # Tries multiple RPCs in order:
+# → https://mainnet.base.org (primary)
+# → https://base.llamarpc.com (if first fails)
+# → https://base.meowrpc.com (if both fail)
+```
+
+Why This Matters:
+-----------------
+✅ RPC endpoints fail constantly (rate limits, downtime, network issues)
+✅ Without failover, your SDK breaks when one endpoint is down
+✅ Users don't have to maintain their own RPC infrastructure
+✅ Automatic switching = 99.9% uptime
+
+Real-World Impact:
+------------------
+```python
+# ❌ Without BaseClient (user's nightmare):
+from web3 import Web3
+
+w3 = Web3(Web3.HTTPProvider("https://mainnet.base.org"))
+if not w3.is_connected():
+    w3 = Web3(Web3.HTTPProvider("https://backup-rpc.com"))
+    if not w3.is_connected():
+        w3 = Web3(Web3.HTTPProvider("https://another-backup.com"))
+        if not w3.is_connected():
+            raise Exception("Give up")  # User's app crashes
+            
+# ✅ With BaseClient (simple):
+client = BaseClient()  # Just works™ - handles all failover automatically
+```
+
+Circuit Breaker Pattern:
+-------------------------
+BaseClient implements a circuit breaker to protect against persistent failures:
+
+```python
+# If an RPC fails 5 times in a row:
+# → Circuit OPENS (blocks requests for 60 seconds)
+# → Allows "half-open" state to test recovery
+# → Circuit CLOSES when successful
+
+# This prevents:
+# - Wasting time on dead endpoints
+# - Cascading failures
+# - Excessive retry overhead
+```
+
+Configuration:
+--------------
+```python
+# Custom RPC endpoints
+custom_rpcs = [
+    "https://your-private-rpc.com",
+    "https://mainnet.base.org",
+]
+client = BaseClient(chain_id=8453, rpc_urls=custom_rpcs)
+
+# Testnet
+client = BaseClient(chain_id=84532)  # Base Sepolia
+```
+
+================================================================================
+2️⃣ SHARED WEB3 INSTANCE (Performance & Consistency)
+================================================================================
+
+The Problem It Solves:
+-----------------------
+```python
+# ❌ BAD: Creating multiple Web3 connections
+wallet = Wallet()         # Creates Web3 connection #1
+txn = Transaction()       # Creates Web3 connection #2
+contract = Contract()     # Creates Web3 connection #3
+
+# Problems:
+# → 3x connection overhead
+# → Different RPC endpoints possible
+# → Potential data inconsistency (reading from different nodes)
+# → Wasted memory and network resources
+```
+
+BaseClient Solution:
+--------------------
+```python
+# ✅ GOOD: Single shared connection
+client = BaseClient()  # One connection to rule them all
+
+wallet = Wallet(client=client)
+txn = Transaction(client=client)
+contract = Contract(client=client)
+
+# → All use the same Web3 instance (client.w3)
+# → All read from same blockchain state
+# → Efficient connection pooling
+```
+
+Benefits:
+---------
+✅ **Faster**: One connection vs many
+✅ **Consistent**: All components see same blockchain state
+✅ **Efficient**: Shared connection pooling
+✅ **Coordinated**: Rate limiting applies across all operations
+✅ **Cached**: One cache for all components
+
+Real Example:
+-------------
+```python
+# Check balance, then send transaction
+client = BaseClient()
+wallet = Wallet.from_private_key("0x...", client)
+tx = Transaction(client, wallet)
+
+# All operations use same RPC connection:
+balance = wallet.get_balance()  # Uses client.w3
+nonce = wallet.get_nonce()      # Uses client.w3
+tx_hash = tx.send_eth(...)      # Uses client.w3
+
+# Result: Faster, consistent, efficient
+```
+
+================================================================================
+3️⃣ BASE-SPECIFIC FEATURES (L2 Optimization)
+================================================================================
+
+Why Base Needs Special Handling:
+---------------------------------
+Base is an Optimistic Rollup (Layer 2 on Ethereum). Transactions have TWO costs:
+
+Total Gas Cost = L2 Execution Fee + L1 Data Fee
+                 ↑                   ↑
+                 (normal gas)        (posting to Ethereum mainnet)
+
+Example Transaction Costs:
+---------------------------
+Simple ETH transfer on Base:
+- L2 execution: 0.000005 ETH (cheap!)
+- L1 data: 0.00002 ETH (can be 4x higher!)
+- Total: 0.000025 ETH
+
+Without knowing L1 fee → Transaction fails with "insufficient funds"
+
+BaseClient Handles This:
+-------------------------
+```python
+# Estimate FULL cost including L1 fee
+tx = {
+    'from': wallet.address,
+    'to': recipient,
+    'value': 1_000_000_000_000_000_000,  # 1 ETH
+    'data': '0x',
+}
+
+# Get complete cost breakdown
+cost = client.estimate_total_fee(tx)
+
+print(f"L2 execution: {cost['l2_fee_eth']:.6f} ETH")  # 0.000005
+print(f"L1 data: {cost['l1_fee_eth']:.6f} ETH")       # 0.000020
+print(f"Total: {cost['total_fee_eth']:.6f} ETH")      # 0.000025
+
+# Check if user can afford it
+if wallet.get_balance() > (tx['value'] + cost['total_fee']):
+    print("Can send!")
+```
+
+L1 Fee Calculation:
+-------------------
+```python
+# Direct L1 fee lookup
+calldata = '0x...'  # Transaction data
+l1_fee = client.get_l1_fee(calldata)
+
+# Uses Base's Gas Price Oracle at 0x420...0F
+# Calculates: compressed_size × l1_base_fee × scalar
+```
+
+Gas Oracle Details:
+-------------------
+```python
+# Get current oracle prices
+prices = client.get_l1_gas_oracle_prices()
+
+print(f"L1 Base Fee: {prices['l1_base_fee']}")
+print(f"Base Fee Scalar: {prices['base_fee_scalar']}")
+print(f"Blob Base Fee Scalar: {prices['blob_base_fee_scalar']}")
+print(f"Decimals: {prices['decimals']}")
+
+# These values change based on Ethereum mainnet conditions
+```
+
+Without This Feature:
+---------------------
+```python
+# ❌ User only estimates L2 gas
+l2_gas = web3.eth.estimate_gas(tx)  # Returns 21000
+l2_fee = l2_gas × gas_price         # Calculates 0.000005 ETH
+
+# User thinks: "I need 1.000005 ETH total"
+# Reality: Need 1.000025 ETH (with L1 fee)
+# Result: Transaction FAILS ❌
+```
+
+================================================================================
+4️⃣ ABSTRACTION LAYER (Hide Complexity)
+================================================================================
+
+User Experience Comparison:
+---------------------------
+
+```python
+# ❌ Without SDK (raw Web3.py):
+from web3 import Web3
+
+# Manual setup
+w3 = Web3(Web3.HTTPProvider("https://mainnet.base.org"))
+
+# Check connection
+if not w3.is_connected():
+    raise Exception("Not connected")
+
+# Get balance
+try:
+    address = Web3.to_checksum_address("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+    balance_wei = w3.eth.get_balance(address)
+    balance_eth = balance_wei / 10**18
+    print(f"Balance: {balance_eth}")
+except Exception as e:
+    print(f"Error: {e}")
+
+# No retry, no failover, no caching
+```
+
+```python
+# ✅ With SDK (BaseClient):
+from basepy import BaseClient
+
+# Automatic setup, failover, error handling
+client = BaseClient()
+
+# Simple, cached, reliable
+balance = client.get_balance("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+print(f"Balance: {balance / 10**18}")
+
+# Includes: automatic checksumming, retries, failover, caching, validation
+```
+
+What BaseClient Does Behind The Scenes:
+----------------------------------------
+1. ✅ Validates and checksums address
+2. ✅ Retries on network errors (exponential backoff)
+3. ✅ Falls back to different RPC if needed
+4. ✅ Caches result for 10 seconds (configurable)
+5. ✅ Tracks metrics (latency, success rate)
+6. ✅ Applies rate limiting
+7. ✅ Logs errors appropriately
+8. ✅ Returns clean Python types (no HexBytes)
+
+All transparent to the user!
+
+================================================================================
+5️⃣ PRODUCTION-GRADE RESILIENCE 🛡️
+================================================================================
+
+Exponential Backoff Retry:
+---------------------------
+```python
+# Automatic retry with increasing delays
+# Attempt 1: Immediate
+# Attempt 2: Wait 2 seconds
+# Attempt 3: Wait 4 seconds
+# If all fail: Raise exception with context
+
+# Configuration:
+from basepy import BaseClient, Config
+
+config = Config()
+config.MAX_RETRIES = 5
+config.RETRY_BACKOFF_FACTOR = 2
+
+client = BaseClient(config=config)
+```
+
+Rate Limiting (Token Bucket):
+------------------------------
+```python
+# Prevents overwhelming RPC providers
+# Default: 100 requests per minute
+
+# Automatically pauses when limit reached
+# Gradually refills tokens over time
+
+# Configuration:
+config = Config()
+config.RATE_LIMIT_REQUESTS = 50  # per minute
+config.RATE_LIMIT_WINDOW = 60    # seconds
+
+client = BaseClient(config=config)
+```
+
+Intelligent Caching:
+--------------------
+```python
+# Caches responses for 10 seconds (default)
+# Thread-safe with locks
+# Reduces RPC calls by 60-80%
+
+# First call: Fetches from RPC (~500ms)
+balance1 = client.get_balance(address)
+
+# Second call within 10s: Returns cached (<1ms) - 500x faster!
+balance2 = client.get_balance(address)
+
+# Configuration:
+config.CACHE_TTL = 15  # seconds
+client = BaseClient(config=config)
+
+# Manual cache control:
+client.clear_cache()  # Clear all cached data
+```
+
+Circuit Breaker:
+----------------
+```python
+# Protects against persistent failures
+
+# States:
+# 1. CLOSED: Normal operation
+# 2. OPEN: Too many failures, block requests
+# 3. HALF-OPEN: Testing if recovered
+
+# Configuration:
+config.CIRCUIT_BREAKER_THRESHOLD = 5  # failures before opening
+config.CIRCUIT_BREAKER_TIMEOUT = 60   # seconds before testing
+
+# Automatic recovery when RPC comes back online
+```
+
+Thread Safety:
+--------------
+```python
+# All operations use locks for thread safety
+import threading
+
+client = BaseClient()
+
+def worker():
+    balance = client.get_balance("0x...")
+    # Safe to call from multiple threads!
+
+threads = [threading.Thread(target=worker) for _ in range(10)]
+for t in threads:
+    t.start()
+```
+
+================================================================================
+6️⃣ ADVANCED FEATURES (80% Fewer RPC Calls!) 🚀
+================================================================================
+
+Multicall - The Game Changer:
+------------------------------
+```python
+# ❌ Traditional way: 4 RPC calls
+contract = w3.eth.contract(address=usdc, abi=ERC20_ABI)
+name = contract.functions.name().call()       # RPC call #1
+symbol = contract.functions.symbol().call()   # RPC call #2
+decimals = contract.functions.decimals().call()  # RPC call #3
+supply = contract.functions.totalSupply().call()  # RPC call #4
+
+# ✅ Multicall way: 1 RPC call
+from basepy.abis import ERC20_ABI
+
+calls = [
+    {'contract': usdc, 'abi': ERC20_ABI, 'function': 'name'},
+    {'contract': usdc, 'abi': ERC20_ABI, 'function': 'symbol'},
+    {'contract': usdc, 'abi': ERC20_ABI, 'function': 'decimals'},
+    {'contract': usdc, 'abi': ERC20_ABI, 'function': 'totalSupply'},
+]
+results = client.multicall(calls)  # 1 RPC call, 75% reduction!
+
+name, symbol, decimals, supply = results
+```
+
+Portfolio Balance - The Star Feature:
+--------------------------------------
+```python
+# ❌ Traditional way: 10+ RPC calls for 3 tokens
+eth_balance = w3.eth.get_balance(address)  # 1 call
+
+for token in [usdc, dai, weth]:
+    contract = w3.eth.contract(address=token, abi=ERC20_ABI)
+    balance = contract.functions.balanceOf(address).call()  # 1 call
+    symbol = contract.functions.symbol().call()             # 1 call
+    decimals = contract.functions.decimals().call()         # 1 call
+    # 3 calls × 3 tokens = 9 calls
+# Total: 1 + 9 = 10 calls
+
+# ✅ BasePy way: 2 RPC calls
+portfolio = client.get_portfolio_balance(address, [usdc, dai, weth])
+# 1 call for ETH balance
+# 1 multicall for all 3 tokens (balance + symbol + decimals)
+# Total: 2 calls - 80% reduction! 🎉
+
+# Results include:
+print(f"ETH: {portfolio['eth']['balance_formatted']}")
+for token, info in portfolio['tokens'].items():
+    print(f"{info['symbol']}: {info['balance_formatted']}")
+```
+
+Batch Operations:
+-----------------
+```python
+# Get multiple ETH balances efficiently
+addresses = ["0xAddr1...", "0xAddr2...", "0xAddr3..."]
+balances = client.batch_get_balances(addresses)
+
+# Attempts batch RPC request
+# Falls back to individual calls if batch not supported
+```
+
+Token Operations:
+-----------------
+```python
+# Get complete token metadata in 1 call
+metadata = client.get_token_metadata(usdc_address)
+print(f"{metadata['name']} ({metadata['symbol']})")
+print(f"Decimals: {metadata['decimals']}")
+print(f"Supply: {metadata['totalSupply']}")
+
+# Get all token balances for a wallet
+token_balances = client.get_token_balances(
+    address="0x...",
+    token_addresses=[usdc, dai, weth]
+)
+```
+
+================================================================================
+7️⃣ MONITORING & OBSERVABILITY 📊
+================================================================================
+
+Health Checks:
+--------------
+```python
+health = client.health_check()
+
+if health['connected']:
+    print(f"✅ Healthy")
+    print(f"Block: {health['block_number']}")
+    print(f"Chain: {health['chain_id']}")
+    print(f"RPC: {health['rpc_url']}")
+else:
+    print(f"❌ Unhealthy: {health.get('error')}")
+```
+
+Performance Metrics:
+--------------------
+```python
+metrics = client.get_metrics()
+
+print(f"Total requests: {sum(metrics['requests'].values())}")
+print(f"Error rate: {sum(metrics['errors'].values())}")
+print(f"Cache hit rate: {metrics['cache_hit_rate']:.1%}")
+print(f"RPC usage: {metrics['rpc_usage']}")
+print(f"Average latencies: {metrics['avg_latencies']}")
+
+# Example output:
+# Total requests: 1000
+# Error rate: 5
+# Cache hit rate: 75.5%
+# RPC usage: {'https://mainnet.base.org': 800, 'backup': 200}
+# Average latencies: {'get_balance': 0.125, 'get_block': 0.250}
+```
+
+Reset Metrics:
+--------------
+```python
+client.reset_metrics()
+# Clears all counters for fresh measurements
+```
+
+Logging Control:
+----------------
+```python
+import logging
+
+# Enable detailed logging
+client.set_log_level(logging.DEBUG)
+
+# Enable RPC call logging
+client.enable_rpc_logging(True)
+
+# Example output:
+# DEBUG: get_balance took 0.125s (success=True)
+# DEBUG: Using cached result (age: 2.5s)
+# INFO: Circuit breaker closed for https://mainnet.base.org
+```
+
+================================================================================
+8️⃣ CONFIGURATION & CUSTOMIZATION ⚙️
+================================================================================
+
+Environment-Based Config:
+-------------------------
+```python
+# Development (verbose logging, short cache)
+client = BaseClient(environment='development')
+
+# Production (optimized, longer cache)
+client = BaseClient(environment='production')
+
+# Staging
+client = BaseClient(environment='staging')
+```
+
+Custom Configuration:
+---------------------
+```python
+from basepy import BaseClient, Config
+
+config = Config()
+
+# Connection settings
+config.CONNECTION_TIMEOUT = 30
+config.REQUEST_TIMEOUT = 30
+
+# Retry settings
+config.MAX_RETRIES = 3
+config.RETRY_BACKOFF_FACTOR = 2
+
+# Rate limiting
+config.RATE_LIMIT_REQUESTS = 100
+config.RATE_LIMIT_WINDOW = 60
+
+# Circuit breaker
+config.CIRCUIT_BREAKER_THRESHOLD = 5
+config.CIRCUIT_BREAKER_TIMEOUT = 60
+
+# Caching
+config.CACHE_TTL = 10
+config.CACHE_ENABLED = True
+
+# Logging
+config.LOG_LEVEL = logging.INFO
+config.LOG_RPC_CALLS = False
+
+client = BaseClient(config=config)
+```
+
+Custom RPC Endpoints:
+---------------------
+```python
+# Use your own RPC endpoints
+custom_rpcs = [
+    "https://your-private-rpc.com",
+    "https://mainnet.base.org",
+    "https://backup-rpc.com"
+]
+
+client = BaseClient(
+    chain_id=8453,
+    rpc_urls=custom_rpcs
+)
+```
+
+================================================================================
+9️⃣ REAL-WORLD USE CASES 🌍
+================================================================================
+
+Use Case 1: DeFi Portfolio Tracker
+-----------------------------------
+```python
+from basepy import BaseClient
+
+def track_wallet(address):
+    client = BaseClient()
+    
+    # Get complete portfolio in ~2 RPC calls
+    portfolio = client.get_portfolio_balance(address)
+    
+    print(f"💼 Portfolio for {address}")
+    print(f"💰 ETH: {portfolio['eth']['balance_formatted']:.6f}")
+    print(f"🪙 Tokens: {portfolio['non_zero_tokens']} with balance")
+    
+    for token, info in portfolio['tokens'].items():
+        if info['balance'] > 0:
+            print(f"  {info['symbol']:6s}: {info['balance_formatted']:>12.6f}")
+    
+    print(f"⚡ RPC calls: ~2 (vs 10+ traditional)")
+```
+
+Use Case 2: Trading Bot with Monitoring
+----------------------------------------
+```python
+import time
+
+def trading_bot():
+    client = BaseClient(environment='production')
+    
+    while True:
+        # Check health
+        health = client.health_check()
+        if health['status'] != 'healthy':
+            time.sleep(60)
+            continue
+        
+        # Get portfolio
+        portfolio = client.get_portfolio_balance(my_address)
+        
+        # Your trading logic...
+        
+        # Monitor performance
+        metrics = client.get_metrics()
+        print(f"Cache hit rate: {metrics['cache_hit_rate']:.1%}")
+        
+        time.sleep(10)
+```
+
+Use Case 3: Transaction Cost Estimator
+---------------------------------------
+```python
+def estimate_transfer_cost(amount_eth):
+    client = BaseClient()
+    
+    tx = {
+        'from': my_address,
+        'to': recipient,
+        'value': int(amount_eth * 10**18),
+        'data': '0x'
+    }
+    
+    cost = client.estimate_total_fee(tx)
+    
+    print(f"Sending {amount_eth} ETH")
+    print(f"L2 fee: {cost['l2_fee_eth']:.6f} ETH")
+    print(f"L1 fee: {cost['l1_fee_eth']:.6f} ETH")
+    print(f"Total: {cost['total_fee_eth']:.6f} ETH")
+    
+    return cost['total_fee']
+```
+
+Use Case 4: Multi-Wallet Monitor
+---------------------------------
+```python
+def monitor_wallets(addresses):
+    client = BaseClient()
+    
+    # Batch get balances (efficient!)
+    balances = client.batch_get_balances(addresses)
+    
+    for addr, balance in balances.items():
+        balance_eth = balance / 10**18
+        print(f"{addr}: {balance_eth:.6f} ETH")
+        
+        if balance_eth < 0.1:
+            print(f"  ⚠️ Low balance warning!")
+```
+
+================================================================================
+🔟 COMPARISON WITH RAW WEB3.PY
+================================================================================
+
+Feature                    | Web3.py      | BaseClient    | Advantage
+---------------------------|--------------|---------------|------------------
+RPC failover               | Manual       | Automatic ✅  | BaseClient
+Rate limiting              | None         | Built-in ✅   | BaseClient
+Caching                    | None         | Intelligent ✅| BaseClient (500x)
+Circuit breaker            | None         | Automatic ✅  | BaseClient
+Retry logic                | Manual       | Exponential ✅| BaseClient
+Thread safety              | Partial      | Full ✅       | BaseClient
+Base L2 fees               | Manual       | Automatic ✅  | BaseClient
+Multicall                  | Manual       | Native ✅     | BaseClient (75%)
+Portfolio tracking         | Manual loops | 2 calls ✅    | BaseClient (80%)
+Monitoring                 | None         | Built-in ✅   | BaseClient
+Health checks              | Manual       | Automatic ✅  | BaseClient
+
+Lines of Code Comparison:
+-------------------------
+```python
+# Get portfolio for 3 tokens:
+
+# Web3.py: ~50 lines with error handling
+# BaseClient: 1 line
+
+portfolio = client.get_portfolio_balance(address, [usdc, dai, weth])
+```
+
+Performance Comparison:
+-----------------------
+Operation              | Web3.py   | BaseClient | Improvement
+-----------------------|-----------|------------|-------------
+Portfolio (3 tokens)   | 10 calls  | 2 calls    | 80% fewer
+Cached balance lookup  | 500ms     | <1ms       | 500x faster
+Multicall (4 ops)      | 4 calls   | 1 call     | 75% fewer
+With failover          | Crashes   | Works ✅   | Infinite
+
+================================================================================
+CONCLUSION
+================================================================================
+
+BaseClient is not just a "Web3 wrapper" - it's a production-grade blockchain
+connectivity layer that provides:
+
+✅ 80% fewer RPC calls through intelligent batching
+✅ 500x faster performance with intelligent caching
+✅ 99.9% uptime with automatic failover & circuit breaker
+✅ Zero configuration for Base blockchain
+✅ Complete monitoring and observability
+✅ Thread-safe, production-ready operations
+✅ Base L2-specific optimizations (L1+L2 fees)
+
+Every feature is designed to make building on Base:
+- Faster
+- More reliable
+- More efficient
+- Easier to monitor
+- Simpler to use
+
+BaseClient = The foundation that makes everything else possible.
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

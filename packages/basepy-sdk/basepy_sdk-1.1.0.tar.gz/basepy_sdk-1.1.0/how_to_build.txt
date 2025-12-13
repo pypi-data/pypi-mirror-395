@@ -1,0 +1,654 @@
+================================================================================
+HOW TO BUILD AND RUN BASEPY SDK
+================================================================================
+Complete Guide for Development, Testing, Building, and Deployment
+Version: 1.1.0
+Last Updated: December 2025
+
+================================================================================
+1. PREREQUISITES
+================================================================================
+
+Required Software:
+------------------
+✅ Python 3.8 or higher (3.8, 3.9, 3.10, 3.11, 3.12 supported)
+✅ pip (Python package installer)
+✅ git (for cloning and version control)
+
+Check Your Setup:
+-----------------
+# Check Python version
+python --version
+# or
+python3 --version
+
+# Check pip version
+pip --version
+# or
+pip3 --version
+
+# Check git version
+git --version
+
+Expected Output:
+----------------
+Python 3.8.0 (or higher)
+pip 23.0 (or higher)
+git version 2.30.0 (or higher)
+
+Optional Tools:
+---------------
+✅ virtualenv or venv (recommended for isolated environments)
+✅ VS Code, PyCharm, or your preferred IDE
+✅ Git client (GitHub Desktop, GitKraken, etc.)
+
+================================================================================
+2. PROJECT SETUP
+================================================================================
+
+Option A: Clone from GitHub (Recommended):
+-------------------------------------------
+# Clone the repository
+git clone https://github.com/yourusername/basepy-sdk.git
+cd basepy-sdk
+
+# Verify project structure
+ls -la
+
+# Expected files:
+# - basepy/           (source code)
+# - tests/            (test suite)
+# - examples/         (example scripts)
+# - setup.py          (package setup)
+# - requirements.txt  (dependencies)
+# - README.md         (documentation)
+
+Option B: Download ZIP:
+-----------------------
+1. Download the ZIP from GitHub
+2. Extract to your desired location
+3. Navigate to the directory:
+   cd basepy-sdk
+
+================================================================================
+3. VIRTUAL ENVIRONMENT SETUP (Recommended)
+================================================================================
+
+Why Use Virtual Environments?
+------------------------------
+✅ Isolates project dependencies
+✅ Prevents version conflicts
+✅ Keeps your system Python clean
+✅ Makes development reproducible
+
+Create Virtual Environment:
+----------------------------
+
+# Using venv (built-in):
+python -m venv venv
+
+# Or using virtualenv:
+virtualenv venv
+
+Activate Virtual Environment:
+------------------------------
+
+# On Windows:
+venv\Scripts\activate
+
+# On macOS/Linux:
+source venv/bin/activate
+
+# You should see (venv) in your prompt:
+(venv) $
+
+Deactivate When Done:
+---------------------
+deactivate
+
+================================================================================
+4. INSTALLATION
+================================================================================
+
+Option A: Development Installation (Recommended for Contributors):
+------------------------------------------------------------------
+# Install in editable mode with all dependencies
+pip install -e .
+
+# Or with development tools:
+pip install -e ".[dev]"
+
+# What this does:
+# - Installs basepy in editable mode (changes reflect immediately)
+# - Installs all core dependencies (web3, eth-account, etc.)
+# - [dev] includes testing tools (pytest, black, mypy, etc.)
+
+Option B: User Installation (For End Users):
+---------------------------------------------
+# Install core dependencies only
+pip install -r requirements.txt
+
+# Or install from PyPI (when published):
+pip install basepy-sdk
+
+Option C: Development with All Tools:
+--------------------------------------
+# Install everything (core + dev + docs + testing)
+pip install -e ".[all]"
+
+Verify Installation:
+--------------------
+# Check if basepy is installed
+pip list | grep basepy
+
+# Import in Python
+python -c "from basepy import BaseClient; print('✅ Installation successful!')"
+
+Expected Output:
+----------------
+✅ Installation successful!
+
+================================================================================
+5. CONFIGURATION
+================================================================================
+
+Environment Variables (Optional):
+----------------------------------
+# Create .env file in project root:
+cat > .env << EOF
+# Base Network Configuration
+BASE_MAINNET_RPC=https://mainnet.base.org
+BASE_SEPOLIA_RPC=https://sepolia.base.org
+
+# Development Settings
+BASEPY_ENV=development
+BASEPY_LOG_LEVEL=DEBUG
+
+# Optional: Private key for testing (NEVER commit this!)
+TEST_PRIVATE_KEY=0x...
+EOF
+
+# Load in Python:
+from dotenv import load_dotenv
+load_dotenv()
+
+Custom Configuration:
+---------------------
+# Create config file: basepy_config.py
+from basepy import Config
+
+config = Config()
+config.MAX_RETRIES = 5
+config.CACHE_TTL = 15
+config.LOG_LEVEL = logging.INFO
+
+# Use in code:
+from basepy import BaseClient
+client = BaseClient(config=config)
+
+================================================================================
+6. RUNNING EXAMPLES
+================================================================================
+
+Basic Examples:
+---------------
+
+# 1. Basic connection test
+python examples/basic_connection.py
+
+# Expected output:
+# ✅ Connected to Base Mainnet
+# Chain ID: 8453
+# Current block: 12345678
+
+# 2. Transaction demo
+python examples/transection_demo.py
+
+# 3. New features demo (L2 Gas & Portfolio)
+python examples/new_features_demo.py
+
+# 4. Complete wallet demo (all 42+ features)
+python examples/wallet_demo.py
+
+Advanced Examples:
+------------------
+
+# Portfolio tracker
+python examples/portfolio_tracker.py 0xYourAddress...
+
+# Transaction monitor
+python examples/transaction_monitor.py 0xTxHash...
+
+# Flask backend (REST API)
+python examples/flask_backend.py
+# Then visit: http://localhost:5000
+
+Interactive Testing:
+--------------------
+
+# Start Python REPL with SDK loaded
+python
+
+>>> from basepy import BaseClient, Wallet, Transaction
+>>> client = BaseClient()
+>>> print(f"Connected: {client.is_connected()}")
+>>> print(f"Block: {client.get_block_number()}")
+>>> 
+>>> # Try your own commands!
+>>> balance = client.get_balance("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1")
+>>> print(f"Balance: {balance / 10**18} ETH")
+
+================================================================================
+7. RUNNING TESTS
+================================================================================
+
+Quick Test (Run All Tests):
+----------------------------
+# Using pytest (recommended)
+pytest
+
+# Or using unittest
+python -m unittest discover tests
+
+# Expected output:
+# tests/test_client.py .......... [10 passed]
+# tests/test_wallet.py .......... [15 passed]
+# tests/test_transactions.py .... [20 passed]
+# ===== 45 passed in 5.23s =====
+
+Specific Test Files:
+--------------------
+# Test client only
+pytest tests/test_client.py -v
+
+# Test wallet only
+pytest tests/test_wallet.py -v
+
+# Test transactions only
+pytest tests/test_transactions.py -v
+
+# Test benchmarks
+pytest tests/test_benchmarks.py --benchmark-only
+
+With Coverage:
+--------------
+# Run tests with coverage report
+pytest --cov=basepy --cov-report=html
+
+# Open coverage report in browser
+# File: htmlcov/index.html
+
+# View terminal coverage
+pytest --cov=basepy --cov-report=term-missing
+
+Expected Coverage:
+------------------
+basepy/client.py         95%
+basepy/wallet.py         90%
+basepy/transactions.py   92%
+basepy/utils.py          98%
+basepy/exceptions.py     100%
+---------------------------------
+TOTAL                    93%
+
+Specific Tests:
+---------------
+# Test specific function
+pytest tests/test_client.py::test_get_balance -v
+
+# Test with markers
+pytest -m "not slow"  # Skip slow tests
+pytest -m integration # Only integration tests
+
+# Run with output
+pytest -v -s  # -s shows print statements
+
+================================================================================
+8. CODE QUALITY CHECKS
+================================================================================
+
+Format Code (Black):
+--------------------
+# Format all Python files
+black basepy/
+
+# Check formatting without changing
+black --check basepy/
+
+# Format specific file
+black basepy/client.py
+
+Expected Output:
+----------------
+All done! ✨ 🍰 ✨
+7 files reformatted, 0 files left unchanged.
+
+Lint Code (Flake8):
+-------------------
+# Check all code for issues
+flake8 basepy/
+
+# Ignore specific errors
+flake8 basepy/ --ignore=E501,W503
+
+# Check specific file
+flake8 basepy/client.py
+
+Sort Imports (isort):
+---------------------
+# Sort all imports
+isort basepy/
+
+# Check without changing
+isort --check-only basepy/
+
+Type Check (mypy):
+------------------
+# Check type hints
+mypy basepy/
+
+# Ignore missing imports
+mypy basepy/ --ignore-missing-imports
+
+Run All Quality Checks:
+------------------------
+# Create a script: check_quality.sh
+#!/bin/bash
+echo "🎨 Formatting with Black..."
+black basepy/
+
+echo "📦 Sorting imports..."
+isort basepy/
+
+echo "🔍 Linting with Flake8..."
+flake8 basepy/
+
+echo "🔬 Type checking with mypy..."
+mypy basepy/ --ignore-missing-imports
+
+echo "✅ All checks complete!"
+
+# Run it:
+chmod +x check_quality.sh
+./check_quality.sh
+
+================================================================================
+9. BUILDING THE PACKAGE
+================================================================================
+
+Clean Previous Builds:
+-----------------------
+# Remove old build artifacts
+rm -rf build/ dist/ *.egg-info/
+
+# Or on Windows:
+rmdir /s /q build dist
+del /s /q *.egg-info
+
+Install Build Tools:
+--------------------
+# Install build dependencies
+pip install --upgrade build wheel setuptools
+
+# Verify installation
+pip list | grep -E "build|wheel|setuptools"
+
+Build the Package:
+------------------
+# Build source distribution and wheel
+python -m build
+
+# Or using setup.py:
+python setup.py sdist bdist_wheel
+
+Expected Output:
+----------------
+Successfully built basepy-sdk-1.1.0.tar.gz
+Successfully built basepy_sdk-1.1.0-py3-none-any.whl
+
+# Files created in dist/:
+dist/
+├── basepy-sdk-1.1.0.tar.gz        (source distribution)
+└── basepy_sdk-1.1.0-py3-none-any.whl  (wheel)
+
+Verify Build:
+-------------
+# Check contents of wheel
+unzip -l dist/basepy_sdk-1.1.0-py3-none-any.whl
+
+# Install from local wheel (test)
+pip install dist/basepy_sdk-1.1.0-py3-none-any.whl
+
+# Verify it works
+python -c "from basepy import BaseClient; print('✅ Package works!')"
+
+================================================================================
+10. TESTING THE BUILD
+================================================================================
+
+Test in Clean Environment:
+---------------------------
+# Create new virtual environment
+python -m venv test_env
+
+# Activate it
+source test_env/bin/activate  # macOS/Linux
+# or
+test_env\Scripts\activate  # Windows
+
+# Install from built wheel
+pip install dist/basepy_sdk-1.1.0-py3-none-any.whl
+
+# Test basic functionality
+python -c "
+from basepy import BaseClient
+client = BaseClient()
+print(f'✅ Connected: {client.is_connected()}')
+print(f'✅ Chain ID: {client.get_chain_id()}')
+"
+
+# Clean up
+deactivate
+rm -rf test_env/
+
+================================================================================
+11. PUBLISHING TO PyPI
+================================================================================
+
+Prerequisites:
+--------------
+1. PyPI account (https://pypi.org/account/register/)
+2. API token from PyPI
+3. twine installed: pip install twine
+
+Test on TestPyPI First:
+------------------------
+# Upload to TestPyPI
+python -m twine upload --repository testpypi dist/*
+
+# Install from TestPyPI to test
+pip install --index-url https://test.pypi.org/simple/ basepy-sdk
+
+Publish to PyPI:
+----------------
+# Upload to real PyPI
+python -m twine upload dist/*
+
+# Enter credentials when prompted
+# Or use API token:
+python -m twine upload dist/* -u __token__ -p pypi-YOUR_TOKEN
+
+Verify Publication:
+-------------------
+# Check on PyPI
+https://pypi.org/project/basepy-sdk/
+
+# Install from PyPI
+pip install basepy-sdk
+
+# Verify
+python -c "import basepy; print(basepy.__version__)"
+
+================================================================================
+12. TROUBLESHOOTING
+================================================================================
+
+Common Issues:
+--------------
+
+Issue 1: ImportError
+--------------------
+Error: ModuleNotFoundError: No module named 'basepy'
+
+Solution:
+# Reinstall in editable mode
+pip install -e .
+
+# Or check if installed
+pip list | grep basepy
+
+Issue 2: web3 version conflicts
+--------------------------------
+Error: web3>=7.0.0 is not compatible
+
+Solution:
+# Install correct web3 version
+pip install "web3>=6.0.0,<7.0.0"
+
+# Or reinstall all
+pip install -r requirements.txt --force-reinstall
+
+Issue 3: Tests failing
+-----------------------
+Error: Connection refused
+
+Solution:
+# Check if you're using testnet (no private keys needed)
+# Set environment variable:
+export BASEPY_NETWORK=sepolia
+
+# Or mock RPC calls in tests
+pytest tests/ --mock-rpc
+
+Issue 4: Build errors
+----------------------
+Error: error: invalid command 'bdist_wheel'
+
+Solution:
+# Install wheel
+pip install wheel
+
+# Upgrade setuptools
+pip install --upgrade setuptools
+
+Issue 5: Permission denied
+---------------------------
+Error: PermissionError: [Errno 13] Permission denied
+
+Solution:
+# On Linux/Mac, use --user flag
+pip install --user -e .
+
+# Or use sudo (not recommended)
+sudo pip install -e .
+
+================================================================================
+13. QUICK REFERENCE
+================================================================================
+
+Essential Commands:
+-------------------
+
+# Setup
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -e ".[dev]"
+
+# Development
+black basepy/              # Format code
+flake8 basepy/            # Lint code
+pytest                    # Run tests
+pytest --cov=basepy       # Run with coverage
+
+# Building
+python -m build           # Build package
+pip install dist/*.whl    # Test installation
+
+# Publishing
+twine upload dist/*       # Upload to PyPI
+
+# Cleanup
+deactivate                # Exit venv
+rm -rf venv/ build/ dist/ *.egg-info/
+
+File Structure:
+---------------
+basepy-sdk/
+├── basepy/              # Source code
+│   ├── __init__.py
+│   ├── client.py
+│   ├── wallet.py
+│   ├── transactions.py
+│   └── ...
+├── tests/               # Test suite
+├── examples/            # Example scripts
+├── docs/                # Documentation
+├── setup.py             # Package setup
+├── pyproject.toml       # Modern config
+├── requirements.txt     # Dependencies
+├── README.md            # Documentation
+└── .gitignore           # Git ignore rules
+
+================================================================================
+14. NEXT STEPS
+================================================================================
+
+After Setup:
+------------
+1. ✅ Read README.md for overview
+2. ✅ Run examples/ scripts to understand usage
+3. ✅ Read docs/ for detailed documentation
+4. ✅ Run tests to verify everything works
+5. ✅ Start building your application!
+
+Learning Resources:
+-------------------
+- README.md: Complete feature overview
+- examples/: Real-world usage patterns
+- tests/: How to use each feature
+- docs/: In-depth technical documentation
+
+Getting Help:
+-------------
+- GitHub Issues: Report bugs or ask questions
+- Documentation: Check docs/ folder
+- Examples: Look at examples/ folder
+
+Contributing:
+-------------
+- Fork repository
+- Create feature branch
+- Write tests
+- Submit pull request
+- Follow code style (black, flake8)
+
+================================================================================
+CONCLUSION
+================================================================================
+
+You now have everything you need to:
+✅ Set up BasePy SDK
+✅ Run examples and tests
+✅ Build and distribute the package
+✅ Develop new features
+✅ Publish to PyPI
+
+Happy building! 🚀
+
+For questions or issues:
+- GitHub: https://github.com/yourusername/basepy-sdk
+- Issues: https://github.com/yourusername/basepy-sdk/issues
+
+================================================================================
+END OF BUILD GUIDE
+================================================================================
