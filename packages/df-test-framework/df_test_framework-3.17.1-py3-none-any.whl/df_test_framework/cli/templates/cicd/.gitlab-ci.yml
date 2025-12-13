@@ -1,0 +1,198 @@
+# GitLab CI/CD配置文件
+# 适用于GitLab CI/CD平台
+
+stages:
+  - test
+  - coverage
+  - report
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHON_VERSION: "3.12"
+
+# 缓存配置
+cache:
+  paths:
+    - .cache/pip
+    - .cache/uv
+
+# 测试任务模板
+.test_template: &test_template
+  image: python:${PYTHON_VERSION}
+  before_script:
+    # 安装uv
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.cargo/bin:$PATH"
+    # 同步依赖（使用 pyproject.toml）
+    - uv sync
+  script:
+    - uv run pytest tests/ --verbose --cov=. --cov-report=xml --cov-report=html --alluredir=reports/allure-results
+  artifacts:
+    when: always
+    paths:
+      - coverage.xml
+      - htmlcov/
+      - reports/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 30 days
+
+# 基础测试 - Python 3.12
+test:py312:
+  <<: *test_template
+  stage: test
+  variables:
+    PYTHON_VERSION: "3.12"
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+
+# Python 3.13测试
+test:py313:
+  <<: *test_template
+  stage: test
+  variables:
+    PYTHON_VERSION: "3.13"
+  allow_failure: true
+
+# 集成测试 - 使用PostgreSQL
+test:integration:
+  <<: *test_template
+  stage: test
+  services:
+    - name: postgres:15
+      alias: postgres
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: test
+    POSTGRES_PASSWORD: test
+    DB_URL: postgresql://test:test@postgres:5432/test_db
+  script:
+    - uv run pytest tests/ --verbose -m "integration"
+
+# 覆盖率分析
+coverage:
+  stage: coverage
+  image: python:3.12
+  dependencies:
+    - test:py312
+  script:
+    - pip install coverage
+    - coverage report
+    - coverage html
+  artifacts:
+    paths:
+      - htmlcov/
+    expire_in: 30 days
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  only:
+    - main
+    - master
+
+# 生成测试报告
+report:allure:
+  stage: report
+  image: python:3.12
+  dependencies:
+    - test:py312
+  before_script:
+    - apt-get update && apt-get install -y default-jre
+    - curl -o allure-commandline.tgz -L https://github.com/allure-framework/allure2/releases/download/2.24.1/allure-2.24.1.tgz
+    - tar -zxf allure-commandline.tgz
+    - export PATH=$(pwd)/allure-2.24.1/bin:$PATH
+  script:
+    - allure generate reports/allure-results --clean -o allure-report
+  artifacts:
+    paths:
+      - allure-report/
+    expire_in: 30 days
+  only:
+    - main
+    - master
+
+# Pages部署 - 将测试报告发布到GitLab Pages
+pages:
+  stage: deploy
+  image: alpine:latest
+  dependencies:
+    - report:allure
+    - coverage
+  script:
+    - mkdir -p public
+    - cp -r allure-report/* public/
+    - cp -r htmlcov public/coverage
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
+    - master
+
+# 定时测试任务
+scheduled:test:
+  <<: *test_template
+  stage: test
+  script:
+    - uv run pytest tests/ --verbose -m "not skip_scheduled"
+  only:
+    - schedules
+
+# 发布任务
+release:pypi:
+  stage: deploy
+  image: python:3.12
+  before_script:
+    - pip install build twine
+  script:
+    - python -m build
+    - twine check dist/*
+    # 发布到PyPI（需要配置TWINE_USERNAME和TWINE_PASSWORD环境变量）
+    - twine upload dist/*
+  artifacts:
+    paths:
+      - dist/
+  only:
+    - tags
+  when: manual
+
+# 通知任务
+notify:success:
+  stage: .post
+  image: alpine:latest
+  script:
+    - apk add --no-cache curl
+    - |
+      curl -X POST "$DINGTALK_WEBHOOK" \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "msgtype": "markdown",
+          "markdown": {
+            "title": "测试成功",
+            "text": "### 测试成功 ✅\n\n**项目**: '"$CI_PROJECT_NAME"'\n\n**分支**: '"$CI_COMMIT_REF_NAME"'\n\n**提交**: '"$CI_COMMIT_SHORT_SHA"'"
+          }
+        }'
+  when: on_success
+  only:
+    - main
+    - master
+
+notify:failure:
+  stage: .post
+  image: alpine:latest
+  script:
+    - apk add --no-cache curl
+    - |
+      curl -X POST "$DINGTALK_WEBHOOK" \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "msgtype": "markdown",
+          "markdown": {
+            "title": "测试失败",
+            "text": "### 测试失败 ❌\n\n**项目**: '"$CI_PROJECT_NAME"'\n\n**分支**: '"$CI_COMMIT_REF_NAME"'\n\n**提交**: '"$CI_COMMIT_SHORT_SHA"'\n\n**流水线**: [查看详情]('"$CI_PIPELINE_URL"')"
+          }
+        }'
+  when: on_failure
+  only:
+    - main
+    - master

@@ -1,0 +1,1648 @@
+"""Allure测试观察者
+
+零配置自动记录HTTP请求、拦截器、数据库查询等操作到Allure报告
+
+设计原则:
+- 零配置: 通过pytest autouse fixture自动注入
+- 零侵入: 测试代码无需修改
+- 可视化: 生成Allure HTML报告而非终端日志
+- 行业标准: 使用Allure Report（与Playwright/Selenium对齐）
+- 并发安全: 支持并发请求，使用dict存储多个上下文
+- 异常安全: 使用ExitStack确保上下文正确关闭
+
+架构:
+- AllureObserver: 核心观察者类，记录测试操作到Allure
+- ContextVar: 线程安全的全局observer访问
+- pytest fixture: 自动注入到每个测试
+
+v3.12.0 重构:
+- 修复并发请求覆盖问题（使用dict存储多个上下文）
+- 修复异常安全问题（使用ExitStack）
+- 新增GraphQL和gRPC协议支持
+- 配置化截断长度
+
+v3.17.0 重构:
+- 使用 correlation_id 关联 Start/End 事件（替代 method:url）
+- 支持 CorrelatedEvent 新事件类型
+- 并发安全的事件关联（不再依赖请求路径）
+"""
+
+import json
+import time
+from contextlib import ExitStack
+from contextvars import ContextVar
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+try:
+    import allure
+
+    ALLURE_AVAILABLE = True
+except ImportError:
+    ALLURE_AVAILABLE = False
+    allure = None
+
+if TYPE_CHECKING:
+    from df_test_framework.capabilities.clients.http.core import Request, Response
+
+
+# 线程安全的当前Observer
+_current_observer: ContextVar["AllureObserver | None"] = ContextVar("allure_observer", default=None)
+
+
+def is_allure_enabled() -> bool:
+    """检查Allure集成是否启用
+
+    优先级:
+    1. Allure库是否可用 (ALLURE_AVAILABLE)
+    2. FrameworkSettings.enable_allure配置
+    3. 默认值: True (如果Allure可用)
+
+    Returns:
+        是否启用
+    """
+    if not ALLURE_AVAILABLE or allure is None:
+        return False
+
+    try:
+        from df_test_framework.infrastructure.config import get_settings
+
+        settings = get_settings()
+        return settings.enable_allure
+    except Exception:
+        pass
+
+    return True
+
+
+@dataclass
+class StepContext:
+    """Step上下文状态
+
+    存储单个请求/查询的step上下文和相关信息
+    """
+
+    exit_stack: ExitStack = field(default_factory=ExitStack)
+    start_time: float = field(default_factory=time.time)
+    step_context: Any = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """安全关闭所有上下文"""
+        self.exit_stack.close()
+        return False
+
+
+class AllureObserver:
+    """Allure测试观察者
+
+    自动记录测试操作到Allure报告:
+    - HTTP请求/响应详情
+    - 拦截器执行过程
+    - GraphQL请求（v3.12.0新增）
+    - gRPC调用（v3.12.0新增）
+    - 数据库查询
+    - Redis缓存操作
+    - 错误和异常
+
+    特性:
+    - 零配置: 通过autouse fixture自动启用
+    - 终端静默: 测试通过时无额外输出
+    - 详细报告: Allure HTML报告包含完整详情
+    - 拦截器可见: 每个拦截器都是独立的sub-step
+    - 并发安全: 支持并发请求（v3.12.0）
+    - 异常安全: 使用ExitStack确保上下文正确关闭（v3.12.0）
+
+    使用方式:
+        # 完全自动，通过 autouse fixture 注入
+        def test_api(http_client):
+            response = http_client.post("/api/users", json={"name": "Alice"})
+            assert response.status_code == 201
+
+        # Allure报告自动包含:
+        # - 🌐 POST /api/users (主step)
+        #   ├─ 📤 Request Details (附件)
+        #   ├─ ⚙️ SignatureInterceptor (sub-step)
+        #   ├─ ⚙️ TokenInterceptor (sub-step)
+        #   └─ ✅ Response (201) - 145ms (附件)
+
+    生成报告:
+        pytest --alluredir=./allure-results
+        allure serve ./allure-results
+    """
+
+    # 默认截断长度配置
+    DEFAULT_MAX_BODY_LENGTH = 1000
+    DEFAULT_MAX_VALUE_LENGTH = 500
+    DEFAULT_MAX_SQL_LENGTH = 2000
+
+    def __init__(
+        self,
+        test_name: str,
+        max_body_length: int | None = None,
+        max_value_length: int | None = None,
+        max_sql_length: int | None = None,
+    ):
+        """初始化Observer
+
+        Args:
+            test_name: 当前测试名称
+            max_body_length: HTTP响应体最大截断长度（默认1000）
+            max_value_length: 缓存值等最大截断长度（默认500）
+            max_sql_length: SQL语句最大截断长度（默认2000）
+        """
+        self.test_name = test_name
+        self.request_counter = 0
+        self.query_counter = 0
+        self.graphql_counter = 0
+        self.grpc_counter = 0
+
+        # 配置化截断长度
+        self.max_body_length = max_body_length or self.DEFAULT_MAX_BODY_LENGTH
+        self.max_value_length = max_value_length or self.DEFAULT_MAX_VALUE_LENGTH
+        self.max_sql_length = max_sql_length or self.DEFAULT_MAX_SQL_LENGTH
+
+        # 并发安全: 使用dict存储多个请求/查询上下文
+        self._http_contexts: dict[str, StepContext] = {}
+        self._query_contexts: dict[str, StepContext] = {}
+        self._graphql_contexts: dict[str, StepContext] = {}
+        self._grpc_contexts: dict[str, StepContext] = {}
+
+        # v3.17.0: EventBus 事件关联映射 (correlation_id → request_id)
+        # 用于关联 HttpRequestStartEvent 和 HttpRequestEndEvent
+        # 使用事件的 correlation_id 字段（而非 method:url）确保并发安全
+        self._event_correlations: dict[str, str] = {}
+
+    def _truncate(self, value: str | None, max_length: int) -> str | None:
+        """安全截断字符串
+
+        Args:
+            value: 要截断的字符串
+            max_length: 最大长度
+
+        Returns:
+            截断后的字符串
+        """
+        if value is None:
+            return None
+        if len(value) <= max_length:
+            return value
+        return value[:max_length] + f"... (truncated, total {len(value)} chars)"
+
+    # ========== HTTP 观察方法 ==========
+
+    def on_http_request_start(self, request: "Request") -> str | None:
+        """HTTP请求开始
+
+        创建Allure step并附加请求详情。支持并发请求。
+
+        Args:
+            request: Request对象
+
+        Returns:
+            request_id - 用于关联后续事件（如拦截器、响应）
+        """
+        if not is_allure_enabled():
+            return None
+
+        self.request_counter += 1
+        request_id = f"req-{self.request_counter:03d}"
+
+        # 创建上下文状态
+        ctx = StepContext()
+
+        # 创建Allure step (带emoji图标)
+        step_title = f"🌐 {request.method} {request.url}"
+        ctx.step_context = allure.step(step_title)
+        # 使用ExitStack安全管理上下文
+        ctx.exit_stack.enter_context(ctx.step_context)
+
+        # 存储上下文（支持并发）
+        self._http_contexts[request_id] = ctx
+
+        # 附加请求详情
+        request_details = {
+            "request_id": request_id,
+            "method": request.method,
+            "url": request.url,
+            "headers": dict(request.headers) if request.headers else {},
+            "params": request.params,
+            "json": request.json,
+            "data": request.data,
+        }
+
+        allure.attach(
+            json.dumps(request_details, indent=2, ensure_ascii=False),
+            name="📤 Request Details",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+        return request_id
+
+    def on_interceptor_execute(
+        self, request_id: str, interceptor_name: str, changes: dict[str, Any]
+    ) -> None:
+        """拦截器执行记录
+
+        在当前HTTP请求step下创建子step，展示拦截器做了什么修改
+
+        Args:
+            request_id: 请求ID（用于关联）
+            interceptor_name: 拦截器名称
+            changes: 拦截器做的修改（如添加的headers）
+        """
+        if not is_allure_enabled():
+            return
+
+        # 跳过空变化
+        if not changes:
+            return
+
+        # 在当前HTTP请求step下创建sub-step
+        with allure.step(f"  ⚙️ {interceptor_name}"):
+            allure.attach(
+                json.dumps(changes, indent=2, ensure_ascii=False),
+                name="Changes",
+                attachment_type=allure.attachment_type.JSON,
+            )
+
+    def on_http_request_end(
+        self, request_id: str, response: "Response", duration_ms: float | None = None
+    ) -> None:
+        """HTTP请求结束
+
+        附加响应详情并关闭当前step
+
+        Args:
+            request_id: 请求ID
+            response: Response对象
+            duration_ms: 请求耗时（毫秒），如果未提供则自动计算
+        """
+        if not is_allure_enabled():
+            return
+
+        # 获取上下文
+        ctx = self._http_contexts.get(request_id)
+        if not ctx:
+            return
+
+        try:
+            # 计算耗时
+            if duration_ms is None:
+                duration_ms = (time.time() - ctx.start_time) * 1000
+
+            # 响应详情（使用配置化截断长度）
+            response_details = {
+                "request_id": request_id,
+                "status_code": response.status_code,
+                "headers": dict(response.headers) if response.headers else {},
+                "body": self._truncate(response.body, self.max_body_length),
+                "duration_ms": round(duration_ms, 2) if duration_ms else None,
+            }
+
+            # 根据状态码选择emoji
+            status_emoji = "✅" if 200 <= response.status_code < 300 else "❌"
+            attachment_name = f"{status_emoji} Response ({response.status_code})"
+            if duration_ms:
+                attachment_name += f" - {round(duration_ms, 2)}ms"
+
+            allure.attach(
+                json.dumps(response_details, indent=2, ensure_ascii=False),
+                name=attachment_name,
+                attachment_type=allure.attachment_type.JSON,
+            )
+        finally:
+            # 安全关闭上下文
+            ctx.exit_stack.close()
+            self._http_contexts.pop(request_id, None)
+
+    def on_error(self, error: Exception, context: dict[str, Any]) -> None:
+        """错误记录
+
+        记录错误信息到Allure报告
+
+        Args:
+            error: 异常对象
+            context: 错误上下文信息（如stage, request_id等）
+        """
+        if not is_allure_enabled():
+            return
+
+        error_details = {
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+            "context": context,
+        }
+
+        allure.attach(
+            json.dumps(error_details, indent=2, ensure_ascii=False),
+            name="❌ Error",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+        # 如果有request_id，关闭对应的上下文
+        request_id = context.get("request_id")
+        if request_id and request_id in self._http_contexts:
+            ctx = self._http_contexts.pop(request_id)
+            ctx.exit_stack.close()
+
+    # ========== EventBus 事件处理器 (v3.16.0 新增, v3.17.0 重构) ==========
+
+    async def handle_http_request_start_event(self, event) -> None:
+        """处理 HTTP 请求开始事件 (来自 EventBus)
+
+        v3.16.0: 适配 Middleware 系统的 EventBus 事件订阅机制。
+        v3.17.0: 使用 event.correlation_id 进行事件关联（并发安全）。
+        v3.17.0: 整合 OpenTelemetry 追踪上下文。
+
+        直接附加 HTTP 请求详情到当前 Allure 步骤 (不创建新步骤)。
+
+        Args:
+            event: HttpRequestStartEvent（带 correlation_id、trace_id、span_id）
+        """
+        if not is_allure_enabled():
+            return
+
+        self.request_counter += 1
+
+        # v3.17.0: 使用事件的 correlation_id 进行关联（并发安全）
+        # 存储 event_id 用于 End 事件关联
+        correlation_id = getattr(event, "correlation_id", None)
+        event_id = getattr(event, "event_id", None)
+        if correlation_id and event_id:
+            self._event_correlations[correlation_id] = event_id
+
+        # 附加请求详情
+        # v3.17.0: 包含 OpenTelemetry 追踪上下文（仅在有值时显示）
+        request_details: dict[str, Any] = {
+            "event_id": event_id,
+            "correlation_id": correlation_id,
+            "method": event.method,
+            "url": event.url,
+            "headers": dict(event.headers) if event.headers else {},
+            "body": event.body if hasattr(event, "body") else None,
+        }
+
+        # 仅在启用 OpenTelemetry 时添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            request_details["trace_id"] = trace_id
+        if span_id:
+            request_details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(request_details, indent=2, ensure_ascii=False),
+            name=f"🌐 {event.method} {event.url} - Request",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_http_request_end_event(self, event) -> None:
+        """处理 HTTP 请求结束事件 (来自 EventBus)
+
+        v3.16.0: 适配 Middleware 系统的 EventBus 事件订阅机制。
+        v3.17.0: 使用 event.correlation_id 进行事件关联（并发安全）。
+        v3.17.0: 记录响应体内容，整合 OpenTelemetry 追踪上下文。
+
+        直接附加 HTTP 响应详情到当前 Allure 步骤 (不创建新步骤)。
+
+        Args:
+            event: HttpRequestEndEvent（带 correlation_id、trace_id、span_id）
+        """
+        if not is_allure_enabled():
+            return
+
+        # v3.17.0: 清理关联映射（Start 事件时存储的）
+        correlation_id = getattr(event, "correlation_id", None)
+        if correlation_id:
+            self._event_correlations.pop(correlation_id, None)
+
+        # 计算耗时
+        duration_ms = event.duration * 1000 if event.duration else 0
+
+        # 响应详情
+        # v3.17.0: 包含 OpenTelemetry 追踪上下文（仅在有值时显示）
+        response_details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "status_code": event.status_code,
+            "headers": dict(event.headers) if event.headers else {},
+            "body": self._truncate(event.body, self.max_body_length) if event.body else None,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+
+        # 仅在启用 OpenTelemetry 时添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            response_details["trace_id"] = trace_id
+        if span_id:
+            response_details["span_id"] = span_id
+
+        # 根据状态码选择emoji
+        status_emoji = "✅" if 200 <= event.status_code < 300 else "❌"
+        attachment_name = (
+            f"{status_emoji} {event.method} {event.url} - Response ({event.status_code})"
+        )
+        if duration_ms:
+            attachment_name += f" - {round(duration_ms, 2)}ms"
+
+        allure.attach(
+            json.dumps(response_details, indent=2, ensure_ascii=False),
+            name=attachment_name,
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_http_request_error_event(self, event) -> None:
+        """处理 HTTP 请求错误事件 (来自 EventBus)
+
+        v3.17.0 新增: 处理请求错误事件，整合 OpenTelemetry 追踪上下文。
+
+        Args:
+            event: HttpRequestErrorEvent（带 correlation_id、trace_id、span_id）
+        """
+        if not is_allure_enabled():
+            return
+
+        # v3.17.0: 清理关联映射
+        correlation_id = getattr(event, "correlation_id", None)
+        if correlation_id:
+            self._event_correlations.pop(correlation_id, None)
+
+        # 计算耗时
+        duration_ms = event.duration * 1000 if event.duration else 0
+
+        # 错误详情
+        # v3.17.0: 包含 OpenTelemetry 追踪上下文（仅在有值时显示）
+        error_details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "method": event.method,
+            "url": event.url,
+            "error_type": event.error_type,
+            "error_message": event.error_message,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+
+        # 仅在启用 OpenTelemetry 时添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            error_details["trace_id"] = trace_id
+        if span_id:
+            error_details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(error_details, indent=2, ensure_ascii=False),
+            name=f"❌ {event.method} {event.url} - Error ({event.error_type})",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_middleware_execute_event(self, event) -> None:
+        """处理中间件执行事件 (来自 EventBus)
+
+        v3.17.0 新增: 记录中间件对请求的修改。
+
+        Args:
+            event: MiddlewareExecuteEvent（带 correlation_id）
+        """
+        if not is_allure_enabled():
+            return
+
+        # 跳过空变化
+        changes = getattr(event, "changes", {})
+        if not changes:
+            return
+
+        middleware_name = getattr(event, "middleware_name", "Unknown")
+        phase = getattr(event, "phase", "execute")
+        correlation_id = getattr(event, "correlation_id", None)
+
+        # 中间件执行详情
+        middleware_details = {
+            "middleware": middleware_name,
+            "phase": phase,
+            "correlation_id": correlation_id,
+            "changes": changes,
+        }
+
+        # 使用 sub-step 展示中间件执行
+        phase_emoji = "⬆️" if phase == "before" else "⬇️"
+        allure.attach(
+            json.dumps(middleware_details, indent=2, ensure_ascii=False),
+            name=f"  {phase_emoji} {middleware_name} ({phase})",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    # ========== GraphQL 观察方法 (v3.12.0 新增) ==========
+
+    def on_graphql_request_start(
+        self,
+        operation_name: str | None,
+        operation_type: str,
+        query: str,
+        variables: dict[str, Any] | None = None,
+    ) -> str | None:
+        """GraphQL请求开始
+
+        Args:
+            operation_name: 操作名称
+            operation_type: 操作类型（query/mutation/subscription）
+            query: GraphQL查询字符串
+            variables: 查询变量
+
+        Returns:
+            graphql_id - 用于关联后续事件
+        """
+        if not is_allure_enabled():
+            return None
+
+        self.graphql_counter += 1
+        graphql_id = f"gql-{self.graphql_counter:03d}"
+
+        # 创建上下文状态
+        ctx = StepContext()
+
+        # 创建Allure step
+        op_name = operation_name or "anonymous"
+        step_title = f"📊 GraphQL {operation_type}: {op_name}"
+        ctx.step_context = allure.step(step_title)
+        ctx.exit_stack.enter_context(ctx.step_context)
+
+        # 存储上下文
+        self._graphql_contexts[graphql_id] = ctx
+
+        # 附加请求详情
+        request_details = {
+            "graphql_id": graphql_id,
+            "operation_name": operation_name,
+            "operation_type": operation_type,
+            "query": self._truncate(query, self.max_sql_length),
+            "variables": variables,
+        }
+
+        allure.attach(
+            json.dumps(request_details, indent=2, ensure_ascii=False),
+            name="📤 GraphQL Request",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+        return graphql_id
+
+    def on_graphql_request_end(
+        self,
+        graphql_id: str,
+        data: dict[str, Any] | None = None,
+        errors: list[dict[str, Any]] | None = None,
+        duration_ms: float | None = None,
+    ) -> None:
+        """GraphQL请求结束
+
+        Args:
+            graphql_id: GraphQL请求ID
+            data: 响应数据
+            errors: GraphQL错误列表
+            duration_ms: 请求耗时
+        """
+        if not is_allure_enabled():
+            return
+
+        ctx = self._graphql_contexts.get(graphql_id)
+        if not ctx:
+            return
+
+        try:
+            if duration_ms is None:
+                duration_ms = (time.time() - ctx.start_time) * 1000
+
+            response_details = {
+                "graphql_id": graphql_id,
+                "has_data": data is not None,
+                "has_errors": bool(errors),
+                "error_count": len(errors) if errors else 0,
+                "duration_ms": round(duration_ms, 2) if duration_ms else None,
+            }
+
+            if errors:
+                response_details["errors"] = errors
+
+            # 根据是否有错误选择emoji
+            status_emoji = "❌" if errors else "✅"
+            attachment_name = f"{status_emoji} GraphQL Response"
+            if duration_ms:
+                attachment_name += f" - {round(duration_ms, 2)}ms"
+
+            allure.attach(
+                json.dumps(response_details, indent=2, ensure_ascii=False),
+                name=attachment_name,
+                attachment_type=allure.attachment_type.JSON,
+            )
+        finally:
+            ctx.exit_stack.close()
+            self._graphql_contexts.pop(graphql_id, None)
+
+    # ========== gRPC 观察方法 (v3.12.0 新增) ==========
+
+    def on_grpc_call_start(
+        self,
+        service: str,
+        method: str,
+        request_type: str,
+        metadata: dict[str, str] | None = None,
+    ) -> str | None:
+        """gRPC调用开始
+
+        Args:
+            service: 服务名称
+            method: 方法名称
+            request_type: 请求类型（unary/server_streaming/client_streaming/bidi_streaming）
+            metadata: gRPC元数据
+
+        Returns:
+            grpc_id - 用于关联后续事件
+        """
+        if not is_allure_enabled():
+            return None
+
+        self.grpc_counter += 1
+        grpc_id = f"grpc-{self.grpc_counter:03d}"
+
+        # 创建上下文状态
+        ctx = StepContext()
+
+        # 创建Allure step
+        step_title = f"🔌 gRPC {service}/{method}"
+        ctx.step_context = allure.step(step_title)
+        ctx.exit_stack.enter_context(ctx.step_context)
+
+        # 存储上下文
+        self._grpc_contexts[grpc_id] = ctx
+
+        # 附加请求详情
+        request_details = {
+            "grpc_id": grpc_id,
+            "service": service,
+            "method": method,
+            "request_type": request_type,
+            "metadata": metadata,
+        }
+
+        allure.attach(
+            json.dumps(request_details, indent=2, ensure_ascii=False),
+            name="📤 gRPC Request",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+        return grpc_id
+
+    def on_grpc_call_end(
+        self,
+        grpc_id: str,
+        status_code: str,
+        status_message: str | None = None,
+        duration_ms: float | None = None,
+    ) -> None:
+        """gRPC调用结束
+
+        Args:
+            grpc_id: gRPC调用ID
+            status_code: gRPC状态码（如 "OK", "INVALID_ARGUMENT"）
+            status_message: 状态消息
+            duration_ms: 调用耗时
+        """
+        if not is_allure_enabled():
+            return
+
+        ctx = self._grpc_contexts.get(grpc_id)
+        if not ctx:
+            return
+
+        try:
+            if duration_ms is None:
+                duration_ms = (time.time() - ctx.start_time) * 1000
+
+            response_details = {
+                "grpc_id": grpc_id,
+                "status_code": status_code,
+                "status_message": status_message,
+                "duration_ms": round(duration_ms, 2) if duration_ms else None,
+            }
+
+            # 根据状态码选择emoji
+            status_emoji = "✅" if status_code == "OK" else "❌"
+            attachment_name = f"{status_emoji} gRPC Response ({status_code})"
+            if duration_ms:
+                attachment_name += f" - {round(duration_ms, 2)}ms"
+
+            allure.attach(
+                json.dumps(response_details, indent=2, ensure_ascii=False),
+                name=attachment_name,
+                attachment_type=allure.attachment_type.JSON,
+            )
+        finally:
+            ctx.exit_stack.close()
+            self._grpc_contexts.pop(grpc_id, None)
+
+    # ========== Database EventBus 事件处理器 (v3.18.0) ==========
+
+    def handle_database_query_start_event(self, event) -> None:
+        """处理数据库查询开始事件 (来自 EventBus)
+
+        v3.18.0 新增: 支持 Database CorrelatedEvent
+        v3.17.1 修复: 改为同步以匹配 Database.publish_sync()
+
+        Args:
+            event: DatabaseQueryStartEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        operation = getattr(event, "operation", "QUERY")
+        table = getattr(event, "table", "unknown")
+        sql = getattr(event, "sql", "")
+        params = getattr(event, "params", {})
+        correlation_id = getattr(event, "correlation_id", None)
+
+        # 创建上下文状态（使用 correlation_id 作为 key）
+        if correlation_id:
+            ctx = StepContext()
+            step_title = f"🗄️ {operation} {table}"
+            ctx.step_context = allure.step(step_title)
+            ctx.exit_stack.enter_context(ctx.step_context)
+            self._query_contexts[correlation_id] = ctx
+
+        # 附加查询详情
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "operation": operation,
+            "table": table,
+        }
+        if sql:
+            details["sql"] = self._truncate(sql, self.max_sql_length)
+        if params:
+            details["params"] = params
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False, default=str),
+            name=f"📜 Query Start: {operation} {table}",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    def handle_database_query_end_event(self, event) -> None:
+        """处理数据库查询结束事件 (来自 EventBus)
+
+        v3.18.0 新增: 支持 Database CorrelatedEvent
+        v3.17.1 修复: 改为同步以匹配 Database.publish_sync()
+
+        Args:
+            event: DatabaseQueryEndEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        correlation_id = getattr(event, "correlation_id", None)
+        operation = getattr(event, "operation", "QUERY")
+        table = getattr(event, "table", "unknown")
+        row_count = getattr(event, "row_count", 0)
+        duration_ms = getattr(event, "duration_ms", 0)
+
+        # 构建结果详情
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "operation": operation,
+            "table": table,
+            "row_count": row_count,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        attachment_name = f"✅ Query Done: {row_count} rows"
+        if duration_ms:
+            attachment_name += f" ({duration_ms:.2f}ms)"
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=attachment_name,
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+        # 关闭 step 上下文
+        if correlation_id:
+            ctx = self._query_contexts.pop(correlation_id, None)
+            if ctx:
+                ctx.exit_stack.close()
+
+    def handle_database_query_error_event(self, event) -> None:
+        """处理数据库查询错误事件 (来自 EventBus)
+
+        v3.18.0 新增: 支持 Database CorrelatedEvent
+        v3.17.1 修复: 改为同步以匹配 Database.publish_sync()
+
+        Args:
+            event: DatabaseQueryErrorEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        correlation_id = getattr(event, "correlation_id", None)
+        operation = getattr(event, "operation", "QUERY")
+        table = getattr(event, "table", "unknown")
+        error_type = getattr(event, "error_type", "UnknownError")
+        error_message = getattr(event, "error_message", "")
+        duration_ms = getattr(event, "duration_ms", 0)
+
+        # 构建错误详情
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "operation": operation,
+            "table": table,
+            "error_type": error_type,
+            "error_message": error_message,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=f"❌ Query Error: {error_type}",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+        # 关闭 step 上下文
+        if correlation_id:
+            ctx = self._query_contexts.pop(correlation_id, None)
+            if ctx:
+                ctx.exit_stack.close()
+
+    # ========== Redis EventBus 事件处理器 (v3.18.0) ==========
+
+    async def handle_cache_operation_start_event(self, event) -> None:
+        """处理缓存操作开始事件 (来自 EventBus)
+
+        v3.18.0 新增: 支持 Cache 事件
+
+        Args:
+            event: CacheOperationStartEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        operation = getattr(event, "operation", "UNKNOWN")
+        key = getattr(event, "key", "")
+        field = getattr(event, "field", None)
+        correlation_id = getattr(event, "correlation_id", None)
+
+        # 存储关联 ID
+        if correlation_id:
+            self._event_correlations[correlation_id] = getattr(event, "event_id", "")
+
+        # 附加开始事件详情
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "operation": operation,
+            "key": key,
+        }
+        if field:
+            details["field"] = field
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        if field:
+            attachment_name = f"💾 Redis {operation}: {key}[{field}] - Start"
+        else:
+            attachment_name = f"💾 Redis {operation}: {key} - Start"
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=attachment_name,
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_cache_operation_end_event(self, event) -> None:
+        """处理缓存操作结束事件 (来自 EventBus)
+
+        v3.18.0 新增: 支持 Cache 事件
+
+        Args:
+            event: CacheOperationEndEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        # 清理关联映射
+        correlation_id = getattr(event, "correlation_id", None)
+        if correlation_id:
+            self._event_correlations.pop(correlation_id, None)
+
+        operation = getattr(event, "operation", "UNKNOWN")
+        key = getattr(event, "key", "")
+        hit = getattr(event, "hit", None)
+        duration_ms = getattr(event, "duration_ms", 0)
+
+        # 构建响应详情
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "operation": operation,
+            "key": key,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+        if hit is not None:
+            details["hit"] = hit
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        # 根据操作和命中状态选择 emoji
+        if operation in ("GET", "HGET", "SISMEMBER", "HEXISTS") and hit is not None:
+            status_emoji = "✅" if hit else "⚠️"
+            hit_text = "HIT" if hit else "MISS"
+            attachment_name = f"{status_emoji} Redis {operation}: {key} - {hit_text}"
+        else:
+            attachment_name = f"✅ Redis {operation}: {key} - Done"
+
+        if duration_ms:
+            attachment_name += f" ({duration_ms:.2f}ms)"
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=attachment_name,
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_cache_operation_error_event(self, event) -> None:
+        """处理缓存操作错误事件 (来自 EventBus)
+
+        v3.18.0 新增: 支持 Cache 事件
+
+        Args:
+            event: CacheOperationErrorEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        # 清理关联映射
+        correlation_id = getattr(event, "correlation_id", None)
+        if correlation_id:
+            self._event_correlations.pop(correlation_id, None)
+
+        operation = getattr(event, "operation", "UNKNOWN")
+        key = getattr(event, "key", "")
+        error_type = getattr(event, "error_type", "UnknownError")
+        error_message = getattr(event, "error_message", "")
+        duration_ms = getattr(event, "duration_ms", 0)
+
+        # 构建错误详情
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "operation": operation,
+            "key": key,
+            "error_type": error_type,
+            "error_message": error_message,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        attachment_name = f"❌ Redis {operation}: {key} - Error ({error_type})"
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=attachment_name,
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    # ========== 消息队列方法 (v3.18.0) ==========
+
+    def on_message_publish(
+        self,
+        queue_type: str,
+        topic: str,
+        message: dict[str, Any] | str | bytes,
+        key: str | None = None,
+        partition: int | None = None,
+        headers: dict[str, str] | None = None,
+        message_id: str | None = None,
+        duration_ms: float | None = None,
+    ) -> None:
+        """记录消息发布到 Allure
+
+        v3.18.0 新增
+
+        Args:
+            queue_type: 队列类型 (kafka, rabbitmq, rocketmq)
+            topic: 主题/队列名称
+            message: 消息内容
+            key: 消息键（Kafka）
+            partition: 分区（Kafka）
+            headers: 消息头
+            message_id: 消息 ID
+            duration_ms: 发送耗时
+        """
+        if not is_allure_enabled():
+            return
+
+        # 构建 step 标题
+        step_title = f"📤 {queue_type.upper()}: Publish → {topic}"
+        if duration_ms is not None:
+            step_title += f" ({duration_ms:.2f}ms)"
+
+        with allure.step(step_title):
+            publish_details: dict[str, Any] = {
+                "queue_type": queue_type,
+                "topic": topic,
+            }
+
+            if key:
+                publish_details["key"] = key
+            if partition is not None:
+                publish_details["partition"] = partition
+            if message_id:
+                publish_details["message_id"] = message_id
+            if headers:
+                publish_details["headers"] = headers
+            if duration_ms is not None:
+                publish_details["duration_ms"] = round(duration_ms, 2)
+
+            # 处理消息体
+            if isinstance(message, dict):
+                message_str = json.dumps(message, indent=2, ensure_ascii=False, default=str)
+            elif isinstance(message, bytes):
+                try:
+                    message_str = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    message_str = f"<binary: {len(message)} bytes>"
+            else:
+                message_str = str(message)
+
+            publish_details["message"] = self._truncate(message_str, self.max_body_length)
+
+            allure.attach(
+                json.dumps(publish_details, indent=2, ensure_ascii=False, default=str),
+                name=f"Message Published: {topic}",
+                attachment_type=allure.attachment_type.JSON,
+            )
+
+    def on_message_consume(
+        self,
+        queue_type: str,
+        topic: str,
+        message: dict[str, Any] | str | bytes,
+        consumer_group: str | None = None,
+        partition: int | None = None,
+        offset: int | None = None,
+        message_id: str | None = None,
+        processing_time_ms: float | None = None,
+    ) -> None:
+        """记录消息消费到 Allure
+
+        v3.18.0 新增
+
+        Args:
+            queue_type: 队列类型 (kafka, rabbitmq, rocketmq)
+            topic: 主题/队列名称
+            message: 消息内容
+            consumer_group: 消费者组
+            partition: 分区（Kafka）
+            offset: 偏移量（Kafka）
+            message_id: 消息 ID
+            processing_time_ms: 处理耗时
+        """
+        if not is_allure_enabled():
+            return
+
+        # 构建 step 标题
+        step_title = f"📥 {queue_type.upper()}: Consume ← {topic}"
+        if processing_time_ms is not None:
+            step_title += f" ({processing_time_ms:.2f}ms)"
+
+        with allure.step(step_title):
+            consume_details: dict[str, Any] = {
+                "queue_type": queue_type,
+                "topic": topic,
+            }
+
+            if consumer_group:
+                consume_details["consumer_group"] = consumer_group
+            if partition is not None:
+                consume_details["partition"] = partition
+            if offset is not None:
+                consume_details["offset"] = offset
+            if message_id:
+                consume_details["message_id"] = message_id
+            if processing_time_ms is not None:
+                consume_details["processing_time_ms"] = round(processing_time_ms, 2)
+
+            # 处理消息体
+            if isinstance(message, dict):
+                message_str = json.dumps(message, indent=2, ensure_ascii=False, default=str)
+            elif isinstance(message, bytes):
+                try:
+                    message_str = message.decode("utf-8")
+                except UnicodeDecodeError:
+                    message_str = f"<binary: {len(message)} bytes>"
+            else:
+                message_str = str(message)
+
+            consume_details["message"] = self._truncate(message_str, self.max_body_length)
+
+            allure.attach(
+                json.dumps(consume_details, indent=2, ensure_ascii=False, default=str),
+                name=f"Message Consumed: {topic}",
+                attachment_type=allure.attachment_type.JSON,
+            )
+
+    async def handle_message_publish_event(self, event) -> None:
+        """处理消息发布事件 (来自 EventBus)
+
+        v3.18.0 新增
+
+        Args:
+            event: MessagePublishEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        topic = getattr(event, "topic", "")
+        message_id = getattr(event, "message_id", None)
+        body_size = getattr(event, "body_size", 0)
+        partition = getattr(event, "partition", None)
+
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "topic": topic,
+            "body_size": body_size,
+        }
+
+        if message_id:
+            details["message_id"] = message_id
+        if partition is not None:
+            details["partition"] = partition
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=f"📤 Message Published: {topic}",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_message_consume_event(self, event) -> None:
+        """处理消息消费事件 (来自 EventBus)
+
+        v3.18.0 新增
+
+        Args:
+            event: MessageConsumeEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        topic = getattr(event, "topic", "")
+        message_id = getattr(event, "message_id", None)
+        consumer_group = getattr(event, "consumer_group", None)
+        processing_time = getattr(event, "processing_time", 0)
+        partition = getattr(event, "partition", None)
+        offset = getattr(event, "offset", None)
+
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "topic": topic,
+            "processing_time_ms": round(processing_time * 1000, 2) if processing_time else None,
+        }
+
+        if message_id:
+            details["message_id"] = message_id
+        if consumer_group:
+            details["consumer_group"] = consumer_group
+        if partition is not None:
+            details["partition"] = partition
+        if offset is not None:
+            details["offset"] = offset
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=f"📥 Message Consumed: {topic}",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    # ========== 存储方法 (v3.18.0) ==========
+
+    def on_storage_operation(
+        self,
+        storage_type: str,
+        operation: str,
+        path: str,
+        size: int | None = None,
+        duration_ms: float | None = None,
+        success: bool = True,
+        error: str | None = None,
+    ) -> None:
+        """记录存储操作到 Allure
+
+        v3.18.0 新增
+
+        Args:
+            storage_type: 存储类型 (local, s3, oss)
+            operation: 操作类型 (upload, download, delete, copy, move, list)
+            path: 文件路径或对象键
+            size: 文件大小（字节）
+            duration_ms: 操作耗时
+            success: 是否成功
+            error: 错误信息（失败时）
+        """
+        if not is_allure_enabled():
+            return
+
+        # 选择 emoji
+        emoji_map = {
+            "upload": "⬆️",
+            "download": "⬇️",
+            "delete": "🗑️",
+            "copy": "📋",
+            "move": "📦",
+            "list": "📂",
+        }
+        emoji = emoji_map.get(operation.lower(), "📁")
+
+        # 构建 step 标题
+        step_title = f"{emoji} {storage_type.upper()}: {operation} {path}"
+        if not success:
+            step_title += " ❌"
+        elif duration_ms is not None:
+            step_title += f" ({duration_ms:.2f}ms)"
+
+        with allure.step(step_title):
+            storage_details: dict[str, Any] = {
+                "storage_type": storage_type,
+                "operation": operation,
+                "path": path,
+                "success": success,
+            }
+
+            if size is not None:
+                # 格式化文件大小
+                if size < 1024:
+                    size_str = f"{size} B"
+                elif size < 1024 * 1024:
+                    size_str = f"{size / 1024:.2f} KB"
+                else:
+                    size_str = f"{size / (1024 * 1024):.2f} MB"
+                storage_details["size"] = size_str
+                storage_details["size_bytes"] = size
+
+            if duration_ms is not None:
+                storage_details["duration_ms"] = round(duration_ms, 2)
+
+            if error:
+                storage_details["error"] = error
+
+            allure.attach(
+                json.dumps(storage_details, indent=2, ensure_ascii=False, default=str),
+                name=f"Storage {operation}: {path}",
+                attachment_type=allure.attachment_type.JSON,
+            )
+
+    async def handle_storage_operation_start_event(self, event) -> None:
+        """处理存储操作开始事件 (来自 EventBus)
+
+        v3.18.0 新增
+
+        Args:
+            event: StorageOperationStartEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        storage_type = getattr(event, "storage_type", "unknown")
+        operation = getattr(event, "operation", "UNKNOWN")
+        path = getattr(event, "path", "")
+        size = getattr(event, "size", None)
+        correlation_id = getattr(event, "correlation_id", None)
+
+        # 存储关联 ID
+        if correlation_id:
+            self._event_correlations[correlation_id] = getattr(event, "event_id", "")
+
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "storage_type": storage_type,
+            "operation": operation,
+            "path": path,
+        }
+
+        if size is not None:
+            details["size"] = size
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=f"📁 Storage {operation}: {path} - Start",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_storage_operation_end_event(self, event) -> None:
+        """处理存储操作结束事件 (来自 EventBus)
+
+        v3.18.0 新增
+
+        Args:
+            event: StorageOperationEndEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        # 清理关联映射
+        correlation_id = getattr(event, "correlation_id", None)
+        if correlation_id:
+            self._event_correlations.pop(correlation_id, None)
+
+        storage_type = getattr(event, "storage_type", "unknown")
+        operation = getattr(event, "operation", "UNKNOWN")
+        path = getattr(event, "path", "")
+        size = getattr(event, "size", None)
+        duration_ms = getattr(event, "duration_ms", 0)
+
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "storage_type": storage_type,
+            "operation": operation,
+            "path": path,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+
+        if size is not None:
+            details["size"] = size
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        attachment_name = f"✅ Storage {operation}: {path} - Done"
+        if duration_ms:
+            attachment_name += f" ({duration_ms:.2f}ms)"
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=attachment_name,
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    async def handle_storage_operation_error_event(self, event) -> None:
+        """处理存储操作错误事件 (来自 EventBus)
+
+        v3.18.0 新增
+
+        Args:
+            event: StorageOperationErrorEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        # 清理关联映射
+        correlation_id = getattr(event, "correlation_id", None)
+        if correlation_id:
+            self._event_correlations.pop(correlation_id, None)
+
+        storage_type = getattr(event, "storage_type", "unknown")
+        operation = getattr(event, "operation", "UNKNOWN")
+        path = getattr(event, "path", "")
+        error_type = getattr(event, "error_type", "UnknownError")
+        error_message = getattr(event, "error_message", "")
+        duration_ms = getattr(event, "duration_ms", 0)
+
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "correlation_id": correlation_id,
+            "storage_type": storage_type,
+            "operation": operation,
+            "path": path,
+            "error_type": error_type,
+            "error_message": error_message,
+            "duration_ms": round(duration_ms, 2) if duration_ms else None,
+        }
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=f"❌ Storage {operation}: {path} - Error ({error_type})",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    # ========== 事务事件处理 (v3.18.0) ==========
+
+    def handle_transaction_commit_event(self, event) -> None:
+        """处理事务提交事件（同步）
+
+        v3.18.0: 新增
+
+        Args:
+            event: TransactionCommitEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        repository_count = getattr(event, "repository_count", 0)
+        session_id = getattr(event, "session_id", None)
+
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "repository_count": repository_count,
+            "session_id": session_id,
+        }
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=f"💾 Transaction COMMIT ({repository_count} repositories)",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    def handle_transaction_rollback_event(self, event) -> None:
+        """处理事务回滚事件（同步）
+
+        v3.18.0: 新增
+
+        Args:
+            event: TransactionRollbackEvent
+        """
+        if not is_allure_enabled():
+            return
+
+        repository_count = getattr(event, "repository_count", 0)
+        reason = getattr(event, "reason", "auto")
+        session_id = getattr(event, "session_id", None)
+
+        details: dict[str, Any] = {
+            "event_id": getattr(event, "event_id", None),
+            "repository_count": repository_count,
+            "reason": reason,
+            "session_id": session_id,
+        }
+
+        # 添加追踪信息
+        trace_id = getattr(event, "trace_id", None)
+        span_id = getattr(event, "span_id", None)
+        if trace_id:
+            details["trace_id"] = trace_id
+        if span_id:
+            details["span_id"] = span_id
+
+        # 根据回滚原因使用不同的emoji
+        reason_icon = {
+            "auto": "🔄",  # 自动回滚
+            "exception": "❌",  # 异常回滚
+            "manual": "↩️",  # 手动回滚
+        }.get(reason, "🔄")
+
+        allure.attach(
+            json.dumps(details, indent=2, ensure_ascii=False),
+            name=f"{reason_icon} Transaction ROLLBACK ({reason}, {repository_count} repositories)",
+            attachment_type=allure.attachment_type.JSON,
+        )
+
+    # ========== 清理方法 ==========
+
+    def cleanup(self) -> None:
+        """清理所有未关闭的上下文
+
+        在测试结束时调用，确保所有step正确关闭
+        """
+        # 关闭所有HTTP上下文
+        for ctx in self._http_contexts.values():
+            ctx.exit_stack.close()
+        self._http_contexts.clear()
+
+        # 关闭所有查询上下文
+        for ctx in self._query_contexts.values():
+            ctx.exit_stack.close()
+        self._query_contexts.clear()
+
+        # 关闭所有GraphQL上下文
+        for ctx in self._graphql_contexts.values():
+            ctx.exit_stack.close()
+        self._graphql_contexts.clear()
+
+        # 关闭所有gRPC上下文
+        for ctx in self._grpc_contexts.values():
+            ctx.exit_stack.close()
+        self._grpc_contexts.clear()
+
+
+def get_current_observer() -> AllureObserver | None:
+    """获取当前测试的Observer
+
+    通过ContextVar获取，线程安全
+
+    Returns:
+        当前测试的AllureObserver实例，如果没有则返回None
+    """
+    return _current_observer.get()
+
+
+def set_current_observer(observer: AllureObserver | None) -> None:
+    """设置当前测试的Observer
+
+    通过ContextVar设置，线程安全
+
+    Args:
+        observer: AllureObserver实例或None
+    """
+    _current_observer.set(observer)
+
+
+__all__ = [
+    "AllureObserver",
+    "get_current_observer",
+    "set_current_observer",
+    "is_allure_enabled",
+    "ALLURE_AVAILABLE",
+    "StepContext",
+]

@@ -1,0 +1,130 @@
+# 完整测试矩阵工作流
+# 在多个Python版本和操作系统上运行测试
+
+name: 完整测试矩阵
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 缓存依赖
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-
+
+    - name: 同步依赖（使用 pyproject.toml）
+      run: |
+        uv sync
+
+    - name: 运行测试
+      run: |
+        uv run pytest tests/ --verbose --cov=. --cov-report=xml
+
+    - name: 上传覆盖率
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: ${{ matrix.os }}-py${{ matrix.python-version }}
+        name: ${{ matrix.os }}-${{ matrix.python-version }}
+      continue-on-error: true
+
+  test-with-databases:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, postgresql, mysql]
+
+    services:
+      # PostgreSQL服务
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+        if: matrix.database == 'postgresql'
+
+      # MySQL服务
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: test_db
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+        if: matrix.database == 'mysql'
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖（使用 pyproject.toml）
+      run: |
+        uv sync
+
+    - name: 运行测试 - SQLite
+      if: matrix.database == 'sqlite'
+      env:
+        DB_URL: sqlite:///./test.db
+      run: uv run pytest tests/ --verbose
+
+    - name: 运行测试 - PostgreSQL
+      if: matrix.database == 'postgresql'
+      env:
+        DB_URL: postgresql://test:test@localhost:5432/test_db
+      run: uv run pytest tests/ --verbose
+
+    - name: 运行测试 - MySQL
+      if: matrix.database == 'mysql'
+      env:
+        DB_URL: mysql://root:test@localhost:3306/test_db
+      run: uv run pytest tests/ --verbose

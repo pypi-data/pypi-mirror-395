@@ -1,0 +1,121 @@
+# Docker Compose配置
+# 用于本地测试环境和CI/CD
+
+version: '3.8'
+
+services:
+  # 测试运行器
+  test-runner:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+    container_name: test-runner
+    volumes:
+      - ../../:/app
+      - test-cache:/root/.cache
+    environment:
+      - HTTP_BASE_URL=${HTTP_BASE_URL:-https://api.example.com}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-test_db}
+      - DB_USER=${DB_USER:-test}
+      - DB_PASSWORD=${DB_PASSWORD:-test}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - test-network
+    command: pytest tests/ --verbose
+
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: test-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-test_db}
+      POSTGRES_USER: ${DB_USER:-test}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-test}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # MySQL数据库（可选）
+  mysql:
+    image: mysql:8.0
+    container_name: test-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-test}
+      MYSQL_DATABASE: ${DB_NAME:-test_db}
+      MYSQL_USER: ${DB_USER:-test}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-test}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+    profiles:
+      - mysql
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: test-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+    command: redis-server --appendonly yes
+
+  # Allure报告服务（可选）
+  allure-report:
+    image: "frankescobar/allure-docker-service"
+    container_name: allure-report
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: 5
+      KEEP_HISTORY: 1
+    ports:
+      - "5050:5050"
+    volumes:
+      - ../../reports/allure-results:/app/allure-results
+      - ../../reports/allure-reports:/app/allure-reports
+    networks:
+      - test-network
+    profiles:
+      - allure
+
+# 网络
+networks:
+  test-network:
+    driver: bridge
+
+# 数据卷
+volumes:
+  postgres-data:
+  mysql-data:
+  redis-data:
+  test-cache:

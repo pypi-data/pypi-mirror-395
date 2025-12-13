@@ -1,0 +1,77 @@
+# 基础测试工作流
+# 在每次push到main/master分支或创建PR时运行
+
+name: 测试
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 安装uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: 同步依赖（使用 pyproject.toml）
+      run: |
+        uv sync
+
+    - name: 运行测试
+      env:
+        # 从GitHub Secrets读取环境变量
+        HTTP_BASE_URL: ${{ secrets.HTTP_BASE_URL || 'https://api.example.com' }}
+        DB_HOST: ${{ secrets.DB_HOST || 'localhost' }}
+      run: |
+        uv run pytest tests/ \
+          --verbose \
+          --cov=. \
+          --cov-report=xml \
+          --cov-report=html \
+          --alluredir=reports/allure-results \
+          --junitxml=reports/junit.xml
+
+    - name: 上传覆盖率报告到Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+      continue-on-error: true
+
+    - name: 上传测试报告
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-reports
+        path: |
+          reports/
+          htmlcov/
+        retention-days: 30
+
+    - name: 生成Allure报告
+      if: always()
+      uses: simple-elf/allure-report-action@v1.7
+      with:
+        allure_results: reports/allure-results
+        allure_history: allure-history
+
+    - name: 发布Allure报告到GitHub Pages
+      if: always() && github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: allure-history
+        destination_dir: allure-report
