@@ -1,0 +1,178 @@
+Metadata-Version: 2.4
+Name: plumbking
+Version: 0.1.0
+Summary: Classical CV-based image leveling and thumbnail generator.
+Home-page: https://github.com/your-user/plumbking
+Author: 
+License: AGPL-3.0-or-later
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Multimedia :: Graphics
+Classifier: Topic :: Multimedia :: Graphics :: Graphics Conversion
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+License-File: LICENSE_OVERVIEW.md
+Requires-Dist: numpy>=1.22
+Requires-Dist: opencv-python>=4.8
+Requires-Dist: Pillow>=9.0
+Requires-Dist: scikit-learn==1.7.*
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# PlumbKing 👑 — Classical CV Image Leveling & Thumbnails
+
+![king](king.png)
+
+PlumbKing is a lightweight, classical-CV horizon leveling and thumbnail generator. It processes photo batches using a purely deterministic pipeline:
+
+* Multi-scale K-Means segmentation
+* Canny edge extraction
+* Probabilistic Hough transform
+* Weighted roll voting
+* Optional RANSAC horizon correction
+
+No ML models, no cloud calls — just fast, transparent image geometry.
+
+---
+
+## ✨ Features
+
+* 📐 Automatic roll leveling (multi-scale classical CV)
+* 🔍 Preview mode with confirmation before replacing originals
+* 🧭 EXIF-aware rotation correction
+* 🖼️ Structured thumbnail generation
+* 🛠️ Debug output for each stage (`--debug-dir`)
+* 🐧 Works on Linux, macOS, WSL
+
+---
+
+## 🚀 Installation
+
+```bash
+pip install plumbking
+```
+
+---
+
+## 📦 Basic Usage
+
+Level and thumbnail all images in a directory:
+
+```bash
+plumbking --directory /path/to/images
+```
+
+Dry-run (no writes):
+
+```bash
+plumbking --directory /path/to/images --dry-run
+```
+
+Enable full CV debug logging:
+
+```bash
+plumbking --directory /photos --debug-dir /tmp/pk-debug
+```
+
+This creates per-image folders containing:
+
+* segmentation maps
+* Canny edge maps
+* Hough overlays
+* RANSAC boundary maps
+* intermediate resized crops
+
+---
+
+## 🔧 Workflow Summary
+
+1. Scan the directory
+2. Detect leveling candidates
+3. Generate preview leveled images under `_leveled_preview/`
+4. Prompt for approval
+
+   * **Yes →** originals replaced by leveled versions
+   * **No →** preview removed, originals kept
+5. Generate missing thumbnails
+
+---
+
+## ⚙️ Environment Variables
+
+| Variable              | Default            | Meaning                                                         |
+| --------------------- | ------------------ | --------------------------------------------------------------- |
+| `THUMB_MAX_SIZE`      | `720`              | Max width/height of thumbnails                                  |
+| `LEVELED_PREVIEW_DIR` | `_leveled_preview` | Directory used for preview leveling                             |
+| `LEVEL_ANALYSIS_SIZE` | `720`              | Downscale used during leveling analysis                         |
+| `LEVEL_DEBUG_DIR`     | *(unset)*          | Optional global debug directory *(overridden by `--debug-dir`)* |
+
+---
+
+## 📝 Notes
+
+* Works best for horizon-bearing photos, architecture, landscapes
+* Deterministic classical CV — great for reproducible pipelines
+* Safe to rerun; naming conventions prevent double-processing
+* Designed for large photo collections and batch workflows
+
+---
+
+One hand for the ship, one hand for the soul. Built aboard Moonshot.
+
+* [arpeggio.one](arpeggio.one)
+* [art-c.club](art-c.club)
+
+```
+     :=.:***.       .    .*   ==:            .*.                 ....          ...               
+     .=.  :         =    .+   =-:            .*.                       ..        .               
+     .=.   -        .=    :.  ==:....        .*.                                                 
+     .+:   ..        *   .:.= -=:.           .*.                                                 
+  .*+:+:    +     --:=+:=***-.:+-:           .*................     . ..  .   ...                
+      ++=+:..+.==*+*+-#*++**=****.           .*.                                                 
+-::..:-=++*********+*%%##%##:#**+             *:                                                 
+::.......:.::.. .:-=+%@*. .+  =-:.           .*-                                       ..        
+   -**=#*#*:::....   .  .  -.:+-+-:*****+*++=:=-                                                 
+               . .===##-::.........      .    .+                       ......                    
+         ..                   .:+-. =-:..... :+#+                                 ......:-=+****#
+         ..                         ..   .  -:%:+..-+*****=*+##*=#%# ##%@@@@@@*@@@%%%#@@@@@@@%@@@
+....:......       .             .   :.   . .. . .  .:  ###*#*+**+-#:  :-%%   ::.- .=*: .*#= ..:=*
+++**+++++*+**##**##@%%%##*.   +%%%%%%%%%%%%%% :+#*=-+= =+-:++ :%*-=: - ==#.+:+=*#-=+:=**%@%@%#**%
+==*+*##*+*+*+++++**#%%%#-+:   =##%%%%%%%@%%**:++-==:-...   ..... :+     -%##**:*#*#=:*#+++++++*%%
+##+%%%@#@@*@@@@. @@%#+@=%*+@%-##%@%-=*@@#+*%--++*#       *##***=    +%* #%%%@%-@@%%+*+%+*+=+#+%@%
+%%#@@%@%*@*@@@@+-%@%#*@%*  @%-%%#@%%:+@@%*#%#####       +*#####+     %* #%@@@#:@@@%##*#.:-:::..-%
+#*+#@@@@:@-@@@@@ #@%#-@%+  @@+*- @@%+*@@%-#-                       - =-  *%%%#:%%+=***-*******##%
+%+-@@%@@+@+%@%@@#+@.#+@@*  =@*#..@@+=*@%@##@%@%%%%%#%%%#*##*##**+*++ -  -+*#%#=%%--.+-*+++***++=+
+.  +@@@@%@@#%%@@@=%..=@@+. .@++#=@@***@@@#*%%%%**#%%%%%###%#####+*+= .   **#**-*#.+==**********=*
+.  .@@@@@@@@%%@@@+@-.+@@#*::@*##:+-%%%@@@+#%%##*%%%%%%*=#*+-:+#*=-.     -*#++*.####*-############
+.   %@@@@@@@@%@@#-@*-%@@#+:.@+-+-=#***+.                                * ...... .=*=############
++:.-%@@@@+@#@*@@+:%*-%@@++.-@*-#-=@      =**+++++++++.   -.            =          .#*############
+-...+@@@@+@##:@@#.#%-%*@=#: @+:-.     =*****+=--. -                   #=.........  =++***********
+:.  :@@@@@@##-@@+:#%+#+@=%**@.                                       ==....        .-:::::::----=
+*:  .@@@@@@@#+%@#:*%++%%+:+*         .=-++                          :*............ ..::..........
+#=   @@@@@@@#+#@@%%#-:%%%= .      .                                .: ... ....      .:::::::::..:
+@=   #%%@@@@@%%@@%*=+: -       **=.                        .      ::............    .-------:::::
+%+=. *%%%%%%%%%%%%%@%##       .--.                     ..        +*-..................===----::--
+%**: *%%%%%%%%#%%%%%=  #     :                    :-:         -==##...... ............=====------
+%#+--+%%%%%%%%#%%%%@%% =. -:               .-==--:          -=+-:*................. ..:=====-----
+@%=.-*%%%%%%%%%%%@@@@*  .        ..-=====---:.          .**+=-     ....................=----::::-
+%%***#%%%%%%%%%@@@@# ::     **++==-=====-           +%##+.        -   ............... .--::-:::::
+%%###*%%%%%%%@@@@@*      =*%%@@#+++=-.        .=#%%#-    :     =  .................... .    :.   
+%%###*#%%%%%@@@@@@@##** .:@@%@@@@+.     .:.:*%%#.       .++=     ...................  ..    :... 
+####**#%%%%%@@@@@@@@@%%@@@@@%@@@@@@-   -*#*-            -+-.     .................... ...   ..=. 
+####**#%%@@@@@@@@@@@@%@@@@@##@@@@@%%#*-           -+=   : +. :   ....................:  -=- .:++ 
+####*##%%%%@@@@@@@@@@@@@@%%%%%%%%+.            =****: . =-=  -:  .....................  ... .=++ 
+##%##*##%%@@@@@@@%%%%%%%%%%%#:               =*#*#.     -+:  .= .*%##**:............ .  :...  ...
+```
