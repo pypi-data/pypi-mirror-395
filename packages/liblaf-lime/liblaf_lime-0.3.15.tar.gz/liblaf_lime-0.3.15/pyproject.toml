@@ -1,0 +1,111 @@
+#:schema https://json.schemastore.org/pyproject.json
+# ref: <https://packaging.python.org/en/latest/specifications/pyproject-toml/>
+
+[project]
+name = "liblaf-lime"
+description = "🍋‍🟩 AI-powered Git commit assistant and repository documentation generator"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [
+  { name = "liblaf", email = "30631553+liblaf@users.noreply.github.com" }
+]
+keywords = []
+classifiers = [
+  # ref: <https://pypi.org/classifiers/>
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed"
+]
+dependencies = [
+  "cyclopts>=4,<5",
+  "gitmatch>=0.3,<0.4",
+  "gitpython>=3,<4",
+  "giturlparse>=0.14,<0.15",
+  "jinja2>=3,<4",
+  "lazy-loader>=0.4,<0.5",
+  "liblaf-grapes>=8,<9",
+  "litellm>=1,<2",
+  "platformdirs>=4,<5",
+  "pydantic>=2,<3",
+  "pydantic-settings>=2,<3",
+  "questionary>=2,<3",
+  "rich>=14,<15"
+]
+dynamic = ["version"]
+
+[project.urls]
+"Changelog" = "https://github.com/liblaf/lime/blob/main/CHANGELOG.md"
+"Documentation" = "https://liblaf.github.io/lime/"
+"Homepage" = "https://github.com/liblaf/lime"
+"Issue Tracker" = "https://github.com/liblaf/lime/issues"
+"Release Notes" = "https://github.com/liblaf/lime/releases"
+"Source Code" = "https://github.com/liblaf/lime"
+
+[project.scripts]
+lime = "liblaf.lime.cli:main"
+
+[dependency-groups]
+dev = ["emoji>=2,<3", "githubkit>=0.13,<0.14"]
+build = ["check-wheel-contents>=0.6,<0.7", "hatch>=1,<2", "twine>=6,<7"]
+docs = [
+  "liblaf-mkdocs-preset>=0.2,<0.3",
+  "mkdocs>=1,<2",
+  "mkdocs-gen-files>=0.6,<0.7"
+]
+test = [
+  "liblaf-pytest-preset>=0.1,<0.2",
+  "pytest>=9,<10",
+  "pytest-asyncio>=1,<2"
+]
+
+[build-system]
+requires = ["hatch-vcs", "hatchling"]
+build-backend = "hatchling.build"
+
+[tool.check-wheel-contents]
+ignore = ["W002"]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/liblaf/lime/_version.py"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/liblaf"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.pyright]
+extends = ".config/linters/pyrightconfig.json"
+
+[tool.pytest]
+addopts = [
+  "--doctest-modules",
+  "--hypothesis-show-statistics",
+  "--import-mode=importlib",
+  "--showlocals"
+]
+consider_namespace_packages = true
+strict = true
+testpaths = ["benches", "src", "tests"]
+
+[tool.ruff]
+extend = ".config/linters/.ruff.toml"
+
+[tool.uv]
+default-groups = "all"
