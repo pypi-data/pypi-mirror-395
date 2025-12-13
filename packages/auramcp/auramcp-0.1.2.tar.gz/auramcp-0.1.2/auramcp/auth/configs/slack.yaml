@@ -1,0 +1,48 @@
+# Slack API Authentication Configuration
+provider: slack
+display_name: "Slack"
+docs_url: "https://api.slack.com/authentication"
+
+# Slack supports both OAuth2 (for user tokens) and API Key (for bot tokens)
+auth_type: oauth2
+
+# OAuth2 Configuration for Slack
+oauth2:
+  authorization_url: "https://slack.com/oauth/v2/authorize"
+  token_url: "https://slack.com/api/oauth.v2.access"
+  refresh_url: ""  # Slack tokens don't expire, no refresh needed
+  scopes:
+    - channels:read
+    - channels:write
+    - chat:write
+    - users:read
+    - users:read.email
+    - files:read
+    - files:write
+    - groups:read
+    - im:read
+    - mpim:read
+    - reactions:read
+    - reactions:write
+  token_placement: header
+  token_param_name: "Authorization"
+  token_prefix: "Bearer"
+
+# Bot token can also be used directly (simpler setup)
+api_key:
+  param_name: "Authorization"
+  placement: header
+  prefix: "Bearer"
+
+quirks:
+  - "Workspace tokens vs User tokens have different scopes"
+  - "Bot tokens start with 'xoxb-', user tokens with 'xoxp-'"
+  - "Rate limits vary by method tier (Tier 1: 1/min, Tier 2: 20/min, Tier 3: 50/min, Tier 4: 100/min)"
+  - "Some methods require workspace admin scope"
+  - "Tokens do not expire unless revoked"
+
+env_vars:
+  client_id: "SLACK_CLIENT_ID"
+  client_secret: "SLACK_CLIENT_SECRET"
+  access_token: "SLACK_BOT_TOKEN"
+  # Alternative: SLACK_USER_TOKEN for user-level access
