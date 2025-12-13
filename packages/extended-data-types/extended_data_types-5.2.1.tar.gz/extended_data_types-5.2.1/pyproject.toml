@@ -1,0 +1,174 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "extended-data-types"
+version = "5.2.1"
+description = "Extended functionality for data types"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["python3", "data-types", "utilities"]
+authors = [{ name = "Jon Bogaty", email = "jon@jonbogaty.com" }]
+maintainers = [{ name = "Jon Bogaty", email = "jon@jonbogaty.com" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    "deepmerge>=2.0",
+    "gitpython>=3.1.0",
+    "inflection>=0.5.1",
+    "num2words>=0.5.14",
+    "orjson>=3.10.7",
+    "python-hcl2>=4.3.4",
+    "pyyaml>=6.0.1",
+    "ruamel.yaml>=0.18.0",
+    "sortedcontainers>=2.4.0",
+    "tomlkit>=0.13.2",
+    "typing_extensions>=4.3.0; python_version < '3.10'",
+    "validators>=0.22.0",
+    "wrapt>=1.16.0",
+]
+
+[project.urls]
+Documentation = "https://github.com/jbcom/extended-data-types#readme"
+Issues = "https://github.com/jbcom/extended-data-types/issues"
+Source = "https://github.com/jbcom/extended-data-types"
+
+[project.optional-dependencies]
+tests = [
+    "pytest>=8.2.2",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.6.1",
+    "coverage[toml]>=7.6.0",
+]
+typing = [
+    "mypy>=1.0.0",
+    "types-PyYAML>=6.0.12.20240724",
+    "sortedcontainers-stubs>=2.4.2",
+]
+docs = [
+    "sphinx>=7.0",
+    "sphinxawesome-theme>=5.2.0",
+    "sphinx-autodoc2>=0.5.0",
+    "myst-parser>=3.0.1",
+    "docutils>=0.17",
+]
+
+[tool.uv]
+required-version = ">=0.5.0"
+
+[tool.hatch.envs.default]
+type = "virtual"
+path = ".venv"
+
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+testpaths = "tests"
+xfail_strict = true
+filterwarnings = []
+
+[tool.coverage.paths]
+source = [
+    "src/extended_data_types",
+    ".tox/*/lib/python*/site-packages/extended_data_types",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ["extended_data_types"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 75
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == '__main__':",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "raise ImportError",
+    "except ImportError:",
+    "pass",
+]
+
+[tool.ruff]
+src = ["extended_data_types", "tests"]
+exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN", "C901", "COM", "D205", "D415", "DTZ007", "E501", "EM102",
+    "FBT", "FIX", "PLR0911", "PLR0913", "RET505", "TCH", "TD", "TID252",
+    "TRY003", "TRY300",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "B018", "BLE", "DTZ", "EM", "INP001", "LOG001", "PLC0415", "PLC1901",
+    "PLR2004", "PT011", "RUF012", "S", "SIM300", "TRY",
+]
+"tests/__init__.py" = ["D100", "D104", "D103"]
+"src/extended_data_types/transformations/numbers/words.py" = ["PLR0912", "PLR0124", "PLR2004", "S105"]
+"src/extended_data_types/transformations/numbers/notation.py" = ["PLR0124", "SLF001"]
+"src/extended_data_types/number_transformations.py" = ["PYI041"]
+"src/extended_data_types/transformations/numbers/*.py" = ["PYI041"]
+"src/extended_data_types/file_data_type.py" = ["PLC0415", "S310"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+lines-between-types = 1
+lines-after-imports = 2
+
+[tool.mypy]
+strict = true
+pretty = true
+show_error_codes = true
+enable_error_code = ["ignore-without-code"]
+ignore_missing_imports = true
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "extended_data_types.yaml_utils.tag_classes"
+disable_error_code = ["misc", "name-defined", "type-arg"]
+
+[[tool.mypy.overrides]]
+module = "wrapt.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "validators.*"
+ignore_missing_imports = true
+
+# Python Semantic Release configuration
+[tool.semantic_release]
+build_command = "uv build"
+commit_message = "chore(release): release v{version} [skip ci]"
+allow_zero_version = true
+tag_format = "v{version}"
+version_toml = ["pyproject.toml:project.version"]
+version_variables = ["src/extended_data_types/__init__.py:__version__"]
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
