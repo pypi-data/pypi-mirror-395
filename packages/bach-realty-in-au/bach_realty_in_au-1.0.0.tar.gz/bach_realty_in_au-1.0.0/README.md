@@ -1,0 +1,444 @@
+# Realty In Au MCP Server
+
+[English](./README_EN.md) | 简体中文 | [繁體中文](./README_ZH-TW.md)
+
+用于访问 Realty In Au API 的 MCP 服务器。
+
+## 🚀 使用 EMCP 平台快速体验
+
+**[EMCP](https://sit-emcp.kaleido.guru)** 是一个强大的 MCP 服务器管理平台，让您无需手动配置即可快速使用各种 MCP 服务器！
+
+### 快速开始：
+
+1. 🌐 访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)**
+2. 📝 注册并登录账号
+3. 🎯 进入 **MCP 广场**，浏览所有可用的 MCP 服务器
+4. 🔍 搜索或找到本服务器（`bach-realty_in_au`）
+5. 🎉 点击 **"安装 MCP"** 按钮
+6. ✅ 完成！即可在您的应用中使用
+
+### EMCP 平台优势：
+
+- ✨ **零配置**：无需手动编辑配置文件
+- 🎨 **可视化管理**：图形界面轻松管理所有 MCP 服务器
+- 🔐 **安全可靠**：统一管理 API 密钥和认证信息
+- 🚀 **一键安装**：MCP 广场提供丰富的服务器选择
+- 📊 **使用统计**：实时查看服务调用情况
+
+立即访问 **[EMCP 平台](https://sit-emcp.kaleido.guru)** 开始您的 MCP 之旅！
+
+
+---
+
+## 简介
+
+这是一个 MCP 服务器，用于访问 Realty In Au API。
+
+- **PyPI 包名**: `bach-realty_in_au`
+- **版本**: 1.0.0
+- **传输协议**: stdio
+
+
+## 安装
+
+### 从 PyPI 安装:
+
+```bash
+pip install bach-realty_in_au
+```
+
+### 从源码安装:
+
+```bash
+pip install -e .
+```
+
+## 运行
+
+### 方式 1: 使用 uvx（推荐，无需安装）
+
+```bash
+# 运行（uvx 会自动安装并运行）
+uvx --from bach-realty_in_au bach_realty_in_au
+
+# 或指定版本
+uvx --from bach-realty_in_au@latest bach_realty_in_au
+```
+
+### 方式 2: 直接运行（开发模式）
+
+```bash
+python server.py
+```
+
+### 方式 3: 安装后作为命令运行
+
+```bash
+# 安装
+pip install bach-realty_in_au
+
+# 运行（命令名使用下划线）
+bach_realty_in_au
+```
+
+## 配置
+
+### API 认证
+
+此 API 需要认证。请设置环境变量:
+
+```bash
+export API_KEY="your_api_key_here"
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `API_KEY` | API 密钥 | 是 |
+| `PORT` | 不适用 | 否 |
+| `HOST` | 不适用 | 否 |
+
+
+
+### 在 Cursor 中使用
+
+编辑 Cursor MCP 配置文件 `~/.cursor/mcp.json`:
+
+
+```json
+{
+  "mcpServers": {
+    "bach-realty_in_au": {
+      "command": "uvx",
+      "args": ["--from", "bach-realty_in_au", "bach_realty_in_au"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 在 Claude Desktop 中使用
+
+编辑 Claude Desktop 配置文件 `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bach-realty_in_au": {
+      "command": "uvx",
+      "args": ["--from", "bach-realty_in_au", "bach_realty_in_au"],
+      "env": {
+        "API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+
+## 可用工具
+
+此服务器提供以下工具:
+
+
+### `agentsget_listings`
+
+Get listings of an agent
+
+**端点**: `GET /agents/get-listings`
+
+
+**参数**:
+
+- `page` (number): For paging purpose
+
+- `channel` (string): One of the following : SOLD|BUY
+
+- `linkedSalespeopleIds` (string) *必需*: The values of linkedSalespeopleIds returned in .../agents/list endpoint. Separated by comma to accept multiple IDs
+
+- `pageSize` (number): The number of items returned per page, for paging purpose
+
+
+
+---
+
+
+### `agencyget_listings`
+
+Get listings of an agency
+
+**端点**: `GET /agency/get-listings`
+
+
+**参数**:
+
+- `page` (number): For paging purpose
+
+- `channel` (string): One of the following : SOLD|BUY|RENT
+
+- `agencyId` (string) *必需*: The value of agencyId returned in .../agency/list endpoint
+
+- `timeframe` (string): One of the following : -12|-9|-6|-3 (Only function with channel as SOLD)
+
+- `pageSize` (number): The number of items returned per page, for paging purpose
+
+
+
+---
+
+
+### `agentsdetail`
+
+Get agent detailed information
+
+**端点**: `GET /agents/detail`
+
+
+**参数**:
+
+- `id` (string) *必需*: The value of id field returned in .../agents/list endpoint
+
+
+
+---
+
+
+### `agencydetail`
+
+Get agency detailed information
+
+**端点**: `GET /agency/detail`
+
+
+**参数**:
+
+- `agencyId` (string) *必需*: The value of agencyId returned in .../agency/list endpoint
+
+
+
+---
+
+
+### `agentslist`
+
+List agents with options and filters
+
+**端点**: `GET /agents/list`
+
+
+**参数**:
+
+- `page` (number): For paging purpose
+
+- `sortBy` (string): SUBURB_SALES_AND_PERFORMANCE|LEAD_PROPERTY_SALES|REVIEWS|MEDIAN_SALE_PRICE|MEDIAN_DAYS_ADVERTISED|YEARS_EXPERIENCE|TOTAL_SALES_ACROSS_ALL_SUBURBS
+
+- `propertyType` (string): One of the following : ALL|HOUSE|UNIT_APARTMENT|LAND|TOWNHOUSE|RURAL|VILLA|ACREAGE|UNITBLOCK|RETIRE
+
+- `suburbId` (string) *必需*: The value of 'atlasId' returned in .../auto-complete endpoint. Ex : 7d1625e0-a6fd-420c-b969-572b5dbb5248 type field must be \"suburb\"
+
+- `timeframe` (string): One of the following : -3|-6|-12|-24
+
+- `hasRatingsReviewsToggle` (string): true|false
+
+- `hasRatingsReviewsDisplayToggle` (string): true|false
+
+
+
+---
+
+
+### `agencylist`
+
+List agency with options and filters
+
+**端点**: `GET /agency/list`
+
+
+**参数**:
+
+- `page` (number): For paging purpose
+
+- `sort` (string): One of the following relevance|new-asc|new-desc|price-asc|price-desc|sold-relevance|sold-date-desc|sold-price-desc|sold-price-asc
+
+- `channelType` (string): One of the following : BUY|RENT
+
+- `locationType` (string): One of the following : OPERATING|SERVICING
+
+- `suburb` (string) *必需*: The value of 'display/text' returned in .../auto-complete endpoint. Spaces must be replaced with '-', removed comma if present, and in lower cases. Ex : Caulfield South, VIC 3162 -> caulfield-vic-3162 type field must be 'suburb'
+
+
+
+---
+
+
+### `auto_complete`
+
+Get suggestions by term or phrase. The returned data will be used with .../properties/list endpoint
+
+**端点**: `GET /auto-complete`
+
+
+**参数**:
+
+- `query` (string) *必需*: Any term or phrase you are familiar with. It can be an address to get the property id directly to use with .../properties/detail endpoint.
+
+
+
+---
+
+
+### `schoolslist`
+
+List schools around a GEO location
+
+**端点**: `GET /schools/list`
+
+
+**参数**:
+
+- `lat` (number) *必需*: The latitude of GEO location
+
+- `lon` (string) *必需*: The longitude of GEO location
+
+
+
+---
+
+
+### `propertieslookup_deprecated`
+
+Look for off-market property by id * Use .../properties/v2/lookup endpoint instead for more data returned.
+
+**端点**: `GET /properties/lookup`
+
+
+**参数**:
+
+- `id` (number) *必需*: The value of 'id' field returned in .../auto-complete endpoint with display as 'Property history'
+
+
+
+---
+
+
+### `propertiesv3lookup`
+
+Look for off-market property by id
+
+**端点**: `GET /properties/v3/lookup`
+
+
+**参数**:
+
+- `id` (number) *必需*: The value of 'id' field returned in .../auto-complete endpoint with display as 'Property history'
+
+
+
+---
+
+
+### `propertiesdetail`
+
+Get detailed information of a property
+
+**端点**: `GET /properties/detail`
+
+
+**参数**:
+
+- `id` (number) *必需*: The value of 'listingId' field returned in .../properties/list endpoint or 'id' field returned in .../auto-complete endpoint with type as listing
+
+
+
+---
+
+
+### `propertieslist`
+
+List properties with options and filters
+
+**端点**: `GET /properties/list`
+
+
+**参数**:
+
+- `page` (number): For paging purpose
+
+- `pageSize` (number): The number of items returned per response. For paging purpose (max is 30)
+
+- `sortType` (string): One of the following relevance|new-asc|new-desc|price-asc|price-desc|sold-relevance|sold-date-desc|sold-price-desc|sold-price-asc
+
+- `channel` (string) *必需*: One of the following : buy|rent|sold
+
+- `propertyTypes` (string): Ignore or one of the following : townhouse|unit apartment|retire|acreage|land|unitblock|house|villa|rural. Separated by comma for multiple options. Ex : townhouse,house,villa
+
+- `surroundingSuburbs` (string): Example value: 
+
+- `searchLocation` (string) *必需*: The value of text field returned in .../auto-complete endpoint
+
+- `searchLocationSubtext` (string) *必需*: The value of subtext field returned in .../auto-complete endpoint
+
+- `type` (string) *必需*: The value of region field returned in .../auto-complete endpoint
+
+- `minimumBedrooms` (number): Example value: 
+
+- `maximumBedrooms` (number): Example value: 
+
+- `minimumLandSize` (number): In m2
+
+- `minimumBathroom` (number): Example value: 
+
+- `minimumCars` (number): Example value: 
+
+- `minimumPrice` (number): Example value: 
+
+- `maximumPrice` (number): Example value: 
+
+- `ex-under-contract` (string): Example value: 
+
+- `constructionStatus` (string): Ignore or one of the following : established|new
+
+- `keywords` (string): Facilities you are looking for. Separated by comma for multiple options. Ex : pool,garage,etc...
+
+- `maxSoldAge` (number): Houses sold in the last x months
+
+
+
+---
+
+
+### `propertiesv2lookup_deprecated`
+
+Look for off-market property by id
+
+**端点**: `GET /properties/v2/lookup`
+
+
+**参数**:
+
+- `id` (number) *必需*: The value of 'id' field returned in .../auto-complete endpoint with display as 'Property history'
+
+
+
+---
+
+
+
+## 技术栈
+
+- **传输协议**: stdio
+- **HTTP 客户端**: httpx
+
+
+## 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件。
+
+## 开发
+
+此服务器由 [API-to-MCP](https://github.com/BACH-AI-Tools/api-to-mcp) 工具生成。
+
+版本: 1.0.0
