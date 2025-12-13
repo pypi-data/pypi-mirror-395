@@ -1,0 +1,133 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "netrias_client"
+version = "0.0.9"
+description = "Python client for the Netrias harmonization API"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Chris Harman", email = "charman@netrias.com" },
+]
+dependencies = [
+    "httpx",
+    "boto3",
+    "pyarrow",
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+]
+keywords = ["netrias", "harmonization", "cde", "api", "client"]
+
+[project.urls]
+Homepage = "https://github.com/netrias/netrias_client"
+Repository = "https://github.com/netrias/netrias_client"
+Documentation = "https://github.com/netrias/netrias_client#readme"
+
+# Run with `uv run test` etc
+[project.scripts]
+test = "pytest:main"
+check = "netrias_client.scripts:check"
+live_check = "netrias_client.scripts:live_check"
+release = "netrias_client.scripts:release"
+
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5.0",
+    "basedpyright",
+    "typing-extensions",
+    "ty",
+    "python-dotenv>=1.0",
+    "twine>=5.0",
+]
+
+
+[tool.hatch.build]
+include = [
+    "README.md",
+    "src/netrias_client/**",
+]
+exclude = [
+    "src/netrias_client/tests/**",
+    "src/netrias_client/live_test/**",
+    "architecture.md",
+    "uv.lock",
+    "*.env",
+    "*.csv",
+    "*.log",
+    "debug_*",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/netrias_client"]
+exclude = ["src/netrias_client/tests/**"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "src/netrias_client/tests/**",
+    "src/netrias_client/live_test/**",
+    "architecture.md",
+    "uv.lock",
+    "*.env",
+    "*.csv",
+    "*.log",
+    "debug_*",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5.0",
+    "basedpyright",
+    "typing-extensions",
+    "ty",
+    "python-dotenv>=1.0",
+    "twine>=5.0",
+]
+aws = [
+    "boto3>=1.35.0",
+]
+
+
+[tool.ruff]
+unsafe-fixes = false
+line-length = 140
+
+[tool.ruff.lint.mccabe]
+max-complexity = 4
+
+[tool.ruff.lint]
+select = [
+    "E", # Pycodestyle & Pylint errors
+    "F", # Pyflakes
+    "I", # Import order
+    "C", # Pylint convention messages
+    "R", # Pylint refactor messages
+    "W", # Pylint warning messages
+]
+ignore = [
+    "F401", # Ignore unused import warning
+    "F601", # Ignore dictionary key literal repeated warning
+    "F811", # Ignore redefinition of unused name warning
+    "I001", # Ignore import block is un-sorted or un-formatted
+    "W293", # Ignore whitespace warning
+    "W291", # Ignore trailing whitespace warning
+    "E712", # Ignore comparisons to True/False directly
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**.py" = ["E501"]
