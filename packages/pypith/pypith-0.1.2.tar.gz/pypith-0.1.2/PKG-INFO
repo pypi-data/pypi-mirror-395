@@ -1,0 +1,82 @@
+Metadata-Version: 2.4
+Name: pypith
+Version: 0.1.2
+Summary: Build agent-native Python CLIs with progressive discovery
+Project-URL: Homepage, https://github.com/ThomasRohde/pith
+Project-URL: Repository, https://github.com/ThomasRohde/pith
+Project-URL: Documentation, https://github.com/ThomasRohde/pith#readme
+Project-URL: Changelog, https://github.com/ThomasRohde/pith/releases
+Author-email: Thomas Klok Rohde <rohde.thomas@gmail.com>
+License-Expression: MIT
+Keywords: agent,ai,cli,command-line,llm,progressive-discovery,typer-alternative
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Shells
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Provides-Extra: rich
+Requires-Dist: rich>=13.0; extra == 'rich'
+Provides-Extra: semantic
+Requires-Dist: sentence-transformers>=2.2; extra == 'semantic'
+Description-Content-Type: text/markdown
+
+# pypith
+
+Decorator-based library for building agent-native Python CLIs with progressive discovery.
+
+- Define commands with `@app.command()` and attach intents and hints
+- Auto-generated `pith` discovery subcommand with tiers 0-3
+- Built-in core schema, rendering, and optional semantic search
+- Schema export compatible with `pypith-cli`
+
+## Installation
+
+```bash
+pip install pypith
+
+# With semantic search support
+pip install pypith[semantic]
+```
+
+## Quick Start
+
+```python
+from pith import Pith, Argument, Option
+from pathlib import Path
+
+app = Pith(name="fileops", pith="File manipulation utilities")
+
+@app.command()
+@app.intents("copy files", "duplicate", "backup files")
+def copy(
+    src: Path = Argument(..., pith="Source file or directory"),
+    dest: Path = Argument(..., pith="Destination path"),
+    recursive: bool = Option(False, "-r", "--recursive", pith="Copy directories recursively"),
+):
+    """Copy files or directories to a destination."""
+    import shutil
+    if src.is_dir() and recursive:
+        shutil.copytree(src, dest)
+    else:
+        shutil.copy2(src, dest)
+
+if __name__ == "__main__":
+    app.run()
+```
+
+## Core Module
+
+The library includes the core schema and rendering utilities:
+
+```python
+from pith.core import PithSchema, Command, Tier1, Tier2, Tier3
+from pith.core import render_tier0, build_run_line, search_commands
+```
