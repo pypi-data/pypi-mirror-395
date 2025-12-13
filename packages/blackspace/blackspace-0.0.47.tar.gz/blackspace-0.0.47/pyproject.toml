@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blackspace"
+version = "0.0.47"
+description = "BlackSpace"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+blackspace = "blackspace_compiler.__main__:main"
+
+[project.optional-dependencies]
+build = ["pip-tools", "setuptools", "twine"]
+publish = ["twine"]
+types = ["types-mock"]
+test = [
+    "black",
+    "mock",
+    "mypy",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-mypy",
+    "pytest-timeout",
+    "pytest",
+]
+dotenv = ["python-dotenv"]
+
+[tool.pytest.ini_options]
+timeout = 300
+
+[tool.black]
+line-length = 99
+target-version = "0.0.47"
+include = "blackspace_compiler/"
+
+[tool.mypy]
+disable_error_code = "import"
+exclude = ["conftest\\.py", "__tests__"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["blackspace_compiler", "blackspace_compiler.*"]
+exclude = []
