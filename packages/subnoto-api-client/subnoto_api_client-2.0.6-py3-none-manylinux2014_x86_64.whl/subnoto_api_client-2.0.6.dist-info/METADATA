@@ -1,0 +1,81 @@
+Metadata-Version: 2.1
+Name: subnoto-api-client
+Author: Subnoto
+Author-email: support@subnoto.com
+Home-page: https://subnoto.com
+License: Apache-2.0
+Description-Content-Type: text/markdown
+Summary: Python client for the Subnoto Public API
+Project-URL: Documentation, https://subnoto.com/documentation/developers/sdks/python
+Project-URL: Homepage, https://subnoto.com
+Project-URL: Repository, https://gitlab.com/subnoto/subnoto-monorepo-public
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet :: WWW/HTTP :: HTTP Servers
+Requires-Python: >=3.8
+Requires-Dist: httpx
+Requires-Dist: attrs
+Requires-Dist: http-message-signatures
+Version: 2.0.6
+
+# Subnoto Python SDK
+
+Python client for the Subnoto Public API
+
+Note: the SDK is only available on the linux/amd64 platform for now
+
+## Installation
+
+```bash
+pip install subnoto-api-client
+```
+
+## Usage
+
+### Basic Example
+
+```python
+import asyncio
+from subnoto_api_client import SubnotoClient, SubnotoConfig
+
+async def main():
+    # Create client with configuration
+    config = SubnotoConfig(
+        api_base_url="https://enclave.subnoto.com",
+        access_key="your-access-key",
+        secret_key="your-secret-key-hex"
+    )
+
+    async with SubnotoClient(config) as client:
+        # List workspaces
+        response = await client.post("/public/workspace/list", json={})
+        workspaces = response.json()
+        print(f"Workspaces: {workspaces}")
+
+        # Get current user info
+        response = await client.post("/public/utils/whoami", json={})
+        user_info = response.json()
+        print(f"User: {user_info}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Configuration
+
+| Option         | Type  | Required | Description                                            |
+| -------------- | ----- | -------- | ------------------------------------------------------ |
+| `api_base_url` | str   | Yes      | API base URL (e.g., `https://enclave.subnoto.com`)     |
+| `access_key`   | str   | Yes      | API access key from your team settings                 |
+| `secret_key`   | str   | Yes      | API secret key (hex-encoded) from your team settings   |
+| `unattested`   | bool  | No       | Use unattested mode for development (default: `False`) |
+| `attester_key` | bytes | No       | Public key for attestation verification                |
+
