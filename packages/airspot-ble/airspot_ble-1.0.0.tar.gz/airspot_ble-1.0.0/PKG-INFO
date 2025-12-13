@@ -1,0 +1,193 @@
+Metadata-Version: 2.4
+Name: airspot-ble
+Version: 1.0.0
+Summary: Python library for interacting with Airspot devices via Bluetooth Low Energy (BLE)
+Author-email: Airspot Health <support@airspothealth.com>
+License: MIT
+Project-URL: Homepage, https://github.com/AirSpotHealth/airspot-ble-python
+Project-URL: Documentation, https://github.com/AirSpotHealth/airspot-ble-python#readme
+Project-URL: Repository, https://github.com/AirSpotHealth/airspot-ble-python
+Project-URL: Issues, https://github.com/AirSpotHealth/airspot-ble-python/issues
+Keywords: ble,bluetooth,airspot,co2,sensor,home-assistant
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: bleak>=0.21.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Dynamic: license-file
+
+# Airspot BLE
+
+Python library for interacting with Airspot devices via Bluetooth Low Energy (BLE).
+
+[![GitHub](https://img.shields.io/github/license/AirSpotHealth/airspot-ble-python)](https://github.com/AirSpotHealth/airspot-ble-python/blob/main/LICENSE)
+[![GitHub](https://img.shields.io/github/v/release/AirSpotHealth/airspot-ble-python)](https://github.com/AirSpotHealth/airspot-ble-python/releases)
+
+## Installation
+
+```bash
+pip install airspot-ble
+```
+
+## Usage
+
+### Parse BLE Advertisement
+
+```python
+from airspot_ble.client import AirspotAdvertisement
+from bleak import BleakScanner
+
+async def scan():
+    scanner = BleakScanner()
+    devices = await scanner.discover()
+    
+    for device, advertisement_data in devices:
+        adv = AirspotAdvertisement(device, advertisement_data)
+        
+        if adv.co2 is not None:
+            print(f"Found Airspot device: {device.address}")
+            print(f"  CO2: {adv.co2} ppm")
+            print(f"  Battery: {adv.battery_level}%")
+            print(f"  Charging: {adv.charging}")
+            print(f"  Reading Mode: {adv.reading_mode}")
+            print(f"  Sequence: {adv.sequence}")
+
+# Run scanner
+import asyncio
+asyncio.run(scan())
+```
+
+### With Home Assistant
+
+```python
+from airspot_ble.client import AirspotAdvertisement
+from homeassistant.components.bluetooth.models import BluetoothServiceInfoBleak
+
+def parse_advertisement(service_info: BluetoothServiceInfoBleak):
+    """Parse advertisement for Home Assistant integration."""
+    return AirspotAdvertisement(service_info.device, service_info.advertisement)
+```
+
+## Advertisement Data Format
+
+The library parses 6-byte manufacturer-specific data:
+
+| Byte | Description | Range/Format |
+|------|-------------|--------------|
+| 0-1  | CO2 value | 0-65535 ppm (big-endian) |
+| 2    | Battery level | 0-100% |
+| 3    | Flags byte | Bitfield (see below) |
+| 4-5  | Sequence number | 0-65535 (big-endian, increments) |
+
+### Flags Byte (Byte 3)
+
+| Bit | Name | Description |
+|-----|------|-------------|
+| 0-1 | Reading Mode | 00=On-Demand, 01=Low, 10=Mid, 11=High |
+| 2   | Charging | 1=Charging, 0=Not charging |
+| 3   | Low Battery | 1=Battery < 20%, 0=Normal |
+| 4   | Sensor Error | 1=Error, 0=OK |
+| 5   | Calibration | 1=Active, 0=Idle |
+| 6-7 | Reserved | Always 0 |
+
+## API Reference
+
+### `AirspotAdvertisement`
+
+Dataclass containing parsed advertisement data.
+
+#### Attributes
+
+- `device`: BLEDevice object from bleak
+- `co2`: CO2 concentration in ppm (int | None)
+- `battery_level`: Battery percentage 0-100 (int | None)
+- `reading_mode`: Reading mode string: "On-Demand", "Low", "Mid", or "High" (str | None)
+- `charging`: Whether device is charging (bool)
+- `low_battery`: Whether battery is low (< 20%) (bool)
+- `sensor_error`: Whether sensor error is detected (bool)
+- `calibration_active`: Whether calibration is active (bool)
+- `sequence`: Sequence number (increments on each update) (int | None)
+- `rssi`: Signal strength in dBm (int | None)
+
+#### Constructor
+
+```python
+AirspotAdvertisement(device: BLEDevice | None = None, ad_data: AdvertisementData | None = None)
+```
+
+### Constants
+
+Constants are available from the `airspot_ble.const` module:
+
+```python
+from airspot_ble.const import (
+    MANUFACTURER_ID,
+    SERVICE_UUID,
+    WRITE_CHAR_UUID,
+    NOTIFY_CHAR_UUID,
+    ADV_DATA_LENGTH,
+)
+```
+
+#### Available Constants
+
+- `MANUFACTURER_ID`: Manufacturer ID (0xFFFF for testing)
+- `SERVICE_UUID`: BLE service UUID
+- `WRITE_CHAR_UUID`: Write characteristic UUID
+- `NOTIFY_CHAR_UUID`: Notify characteristic UUID
+- `ADV_DATA_LENGTH`: Expected advertisement data length (6 bytes)
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/AirSpotHealth/airspot-ble-python.git
+cd airspot-ble-python
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Building Package
+
+```bash
+python -m build
+```
+
+### Publishing to PyPI
+
+```bash
+twine upload dist/*
+```
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/AirSpotHealth/airspot-ble-python).
+
+## Links
+
+- **Repository**: https://github.com/AirSpotHealth/airspot-ble-python
+- **Issues**: https://github.com/AirSpotHealth/airspot-ble-python/issues
+- **Home Assistant Integration**: https://www.home-assistant.io/integrations/airspot
+
