@@ -1,0 +1,109 @@
+# Triton Shared Memory Client
+
+[![Python CI](https://github.com/Armaggheddon/triton_shm_client/actions/workflows/ci.yml/badge.svg)](https://github.com/Armaggheddon/triton_shm_client/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/triton-shm-client.svg)](https://badge.fury.io/py/triton-shm-client)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/triton-shm-client)](https://pypi.org/project/triton-shm-client/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A high-performance Python client for [Triton Inference Server](https://github.com/triton-inference-server/server) that simplifies the use of Shared Memory (SHM) for zero-copy inference.
+
+This library is designed for scenarios where the client and the Triton server are colocated on the same machine. By using system shared memory, it avoids the overhead of serializing and deserializing tensors over gRPC/HTTP, resulting in massive throughput improvements for large data transfers.
+
+## Installation
+
+```bash
+pip install triton-shm-client
+```
+
+## How to Use
+
+The library exposes a `TritonSHMClient` that wraps the standard gRPC client but adds shared memory management capabilities.
+
+1. **Initialize the client**.
+2. **Register your model**: Define inputs, outputs, and allocate a shared memory pool.
+3. **Run inference**: Pass your numpy arrays directly.
+
+```python
+import numpy as np
+from triton_shm_client import TritonSHMClient
+
+# 1. Connect to Triton
+client = TritonSHMClient(url="localhost:8001")
+
+# 2. Register the model and allocate shared memory
+#    This pre-allocates a pool of 4 slots, each capable of handling a batch of 8.
+client.register_shm_model(
+    model_name="my_model",
+    inputs=[
+        ("INPUT0", (3, 224, 224), np.float32),
+        ("INPUT1", (10,), np.int32)
+    ],
+    outputs=[
+        ("OUTPUT0", (512,), np.float32),
+        ("OUTPUT1", (5,), np.int32)
+    ],
+    max_batch_size=8,
+    pool_size=4
+)
+
+# 3. Run inference
+#    The client automatically handles copying data to SHM and retrieving results.
+#    If the input size exceeds max_batch_size, it will be automatically chunked.
+#    If the pool is full, this call will block until a slot becomes available.
+results = client.infer_shm(
+    model_name="my_model",
+    inputs={
+        "INPUT0": np.random.randn(100, 3, 224, 224).astype(np.float32),
+        "INPUT1": np.random.randint(0, 100, size=(100, 10)).astype(np.int32)
+    }
+)
+
+# results is a Dict[str, np.ndarray]
+print("Output shape:", results["OUTPUT0"].shape)
+```
+
+## Features
+
+*   **Zero-Copy Inference**: Uses `multiprocessing.shared_memory` to pass data to Triton without network overhead.
+*   **Automatic Pool Management**: Handles the complexity of allocating, registering, and cleaning up shared memory regions.
+*   **Transparent Batching**: Seamlessly handles inputs larger than the model's `max_batch_size` by chunking requests into smaller batches and reassembling the results.
+*   **Blocking Flow Control**: If the shared memory pool is full, inference requests automatically block until a slot is free, providing simple backpressure.
+*   **NumPy Integration**: Native support for NumPy arrays for both inputs and outputs.
+*   **Drop-in Replacement**: Extends the standard `InferenceServerClient`, so you can still use standard gRPC methods if needed.
+*   **Automatic Cleanup**: Registers `atexit` handlers to ensure shared memory regions are unlinked even if the script exits unexpectedly.
+
+## Limitations
+
+*   **Local Only**: The Triton Inference Server **must** be running on the same machine as the client, as they share system memory.
+*   **Linux Only**: Currently tested and supported primarily on Linux.
+*   **Fixed Pool Size**: The shared memory pool size is fixed at registration time.
+
+## Benchmarks
+
+Using shared memory significantly outperforms standard gRPC for medium to large payloads.
+
+| Model Type | Batch Size | Standard gRPC (MB/s) | SHM Client (MB/s) | Speedup |
+|------------|------------|----------------------|-------------------|---------|
+| **Large** | 2 | 89.86 | **3025.43** | **~33x** |
+| **Normal** | 8 | 560.87 | **1282.82** | **~2.3x** |
+| **Multi-IO** | 8 | 592.53 | **1354.45** | **~2.3x** |
+| **Identity** | 8 | 18.59 | 16.41 | ~0.9x |
+
+> [!TIP]
+> For very small payloads (like the Identity model), the overhead of managing shared memory might slightly outweigh the benefits.
+
+## How it Works
+
+Standard Triton clients send data over the network (even localhost). This involves:
+1.  Serializing numpy arrays to bytes.
+2.  Sending bytes over a socket.
+3.  Triton deserializing bytes.
+4.  (And the reverse for outputs).
+
+**Triton SHM Client** optimizes this:
+1.  **Pre-allocation**: On startup (`register_shm_model`), it allocates a large block of System Shared Memory.
+2.  **Slotting**: This block is divided into "slots". Each slot is a pre-calculated memory region big enough to hold one full batch of inputs and outputs.
+3.  **Direct Access**: When you call `infer_shm`, the client writes your numpy data directly into a free slot's memory address.
+4.  **Pointer Passing**: It sends a tiny gRPC message to Triton saying "Read inputs from memory address X, write outputs to address Y".
+5.  **Zero-Copy Read**: Triton reads directly from RAM, processes, and writes back to RAM.
+6.  **Result**: The client returns a numpy view of the output memory region.
