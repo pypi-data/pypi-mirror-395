@@ -1,0 +1,125 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yxr-porn-core"
+dynamic = ["version"]
+description = 'python3.9+ library for crawling porn sites'
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = []
+authors = [{ name = "cromarmot", email = "yexiaorain@gmail.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "requests~=2.31.0",
+  "beautifulsoup4~=4.12.2",
+  "pydantic~=2.8.2",
+  "click~=8.1.3",
+  "lxml~=4.9.2",
+]
+
+[project.urls]
+Documentation = "https://github.com/CroMarmot/yxr-porn-core#readme"
+Issues = "https://github.com/CroMarmot/yxr-porn-core/issues"
+Source = "https://github.com/CroMarmot/yxr-porn-core"
+
+[tool.black]
+target-version = ["py39"]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+select = [
+  "A",
+  "ARG",
+  "B",
+  "C",
+  "DTZ",
+  "E",
+  "EM",
+  "F",
+  "FBT",
+  "I",
+  "ICN",
+  "ISC",
+  "N",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "TID",
+  "UP",
+  "W",
+  "YTT",
+]
+ignore = [
+  # Allow non-abstract empty methods in abstract base classes
+  "B027",
+  # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",
+  # Ignore checks for possible passwords
+  "S105",
+  "S106",
+  "S107",
+  # Ignore complexity
+  "C901",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  # 特殊字符
+  "RUF001",
+  # line length
+  "E501",
+  # relative import
+  "TID252",
+  # 中文逗号
+  "RUF003",
+]
+unfixable = [
+  # Don't touch unused imports
+  "F401",
+]
+
+[tool.ruff.isort]
+known-first-party = ["yxr_porn_core"]
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.coverage.run]
+source_pkgs = ["yxr_porn_core", "tests"]
+branch = true
+parallel = true
+omit = ["src/yxr_porn_core/__version__.py"]
+
+[tool.coverage.paths]
+yxr_porn_core = ["src/yxr_porn_core", "*/yxr-porn-core/src/yxr_porn_core"]
+tests = ["tests", "*/yxr-porn-core/tests"]
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+[tool.pytest.ini_options]
+pythonpath = "src/"

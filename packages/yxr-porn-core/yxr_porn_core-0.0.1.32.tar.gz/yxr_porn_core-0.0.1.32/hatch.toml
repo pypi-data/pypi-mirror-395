@@ -1,0 +1,42 @@
+[version]
+path = "src/yxr_porn_core/__version__.py"
+
+[build.targets.sdist]
+exclude = ["/.github", "/docs", "/tests", "/.gitignore", "mkdocs.yml", "Dockerfile"]
+
+[build.targets.wheel]
+packages = ["src/yxr_porn_core"]
+
+
+[envs.default]
+# TODO
+dependencies = ["coverage[toml]>=6.5", "pytest"]
+
+# [[envs.all.matrix]]
+# python = ["3.8", "3.9", "3.10", "3.11"]
+
+[envs.lint]
+detached = true
+dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
+[envs.lint.scripts]
+typing = "mypy --install-types --non-interactive {args:src/yxr_porn_core tests}"
+style = ["ruff {args:.}", "black --check --diff {args:.}"]
+fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
+all = ["style", "typing"]
+
+[envs.docs]
+dependencies = ["mkdocs", "mkdocs-material"]
+[envs.docs.scripts]
+build = "mkdocs build --clean --strict"
+serve = "mkdocs serve --dev-addr localhost:8000"
+
+
+[envs.test]
+dependencies = ["coverage[toml]>=6.5", "pytest", "pytest-cov", "pytest-mock"]
+[envs.test.scripts]
+run-coverage = "pytest --cov-config=pyproject.toml --cov=pkg --cov=tests"
+run = "run-coverage --no-cov"
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = ["- coverage combine", "coverage report"]
+cov = ["test-cov", "cov-report"]
