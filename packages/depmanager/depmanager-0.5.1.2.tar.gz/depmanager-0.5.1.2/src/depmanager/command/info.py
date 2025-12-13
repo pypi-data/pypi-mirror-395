@@ -1,0 +1,72 @@
+"""
+Add the command for getting information.
+"""
+
+from depmanager.api.internal.messaging import message
+
+possible_info = ["basedir", "cmakedir", "version"]
+
+
+class InfoCommand:
+    """
+    Class managing the information command.
+    """
+
+    def __init__(self, system=None):
+        from depmanager.api.local import LocalManager
+        from depmanager.api.internal.system import LocalSystem
+
+        if type(system) is LocalManager:
+            self.local_instance = system
+        elif type(system) is LocalSystem:
+            self.local_instance = LocalManager(system)
+        else:
+            self.local_instance = LocalManager()
+
+    def basedir(self):
+        """
+        Print the actual base dir in the terminal.
+        """
+        message(f"{self.local_instance.get_base_path()}")
+
+    def cmakedir(self):
+        """
+        Print the actual cmake dir in the terminal.
+        """
+        message(f"{self.local_instance.get_cmake_dir()}")
+
+    def version(self):
+        """
+        Print the actual version of the program.
+        """
+        message(f"depmanager version {self.local_instance.get_version()}.")
+
+
+def info(args, system=None):
+    """
+    Info's entrypoint.
+    :param args: Command Line Arguments.
+    :param system: The local system
+    """
+    if args.what not in possible_info:
+        return
+    getattr(InfoCommand(system), args.what)()
+
+
+def add_info_parameters(sub_parsers):
+    """
+    Definition of info parameters.
+    :param sub_parsers: The parent parser.
+    """
+    from depmanager.api.internal.common import add_common_arguments
+
+    info_parser = sub_parsers.add_parser("info")
+    info_parser.description = "Tool to search for dependency in the library"
+    add_common_arguments(info_parser)  # add -v
+    info_parser.add_argument(
+        "what",
+        type=str,
+        choices=possible_info,
+        help="The information you want about the program",
+    )
+    info_parser.set_defaults(func=info)
