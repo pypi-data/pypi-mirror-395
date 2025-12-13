@@ -1,0 +1,79 @@
+Metadata-Version: 2.4
+Name: yafin
+Version: 0.1.1
+Summary: Unofficial Yahoo Finance API client
+Author: Lukin Kratas
+Project-URL: Homepage, https://github.com/lukinkratas/yahoo_finance_client
+Project-URL: Repository, https://github.com/lukinkratas/yahoo_finance_client
+Project-URL: Issues, https://github.com/lukinkratas/yahoo_finance_client/issues
+Keywords: yahoo finance,finance,api client
+Classifier: Development Status :: 3 - Alpha
+Classifier: Framework :: AsyncIO
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: curl-cffi>=0.13.0
+Requires-Dist: async-lru>=2.0.5
+Dynamic: license-file
+
+# Yafin
+
+Unofficial [Yahoo!Ⓡ finance](https://finance.yahoo.com) Python API client.
+
+- Not affiliated with Yahoo, Inc.
+- Open source library that uses publicly available APIs.
+- Intended for research, educational purposes and personal use only.
+- Synchronous and asynchronous.
+- Not returning pandas dataframes (because why?).
+- Uses caching and utilizes singleton pattern in symbol class to save resources.
+- Minimal and build on [curl-cffi](https://github.com/lexiforest/curl_cffi)
+- Approx. 2x faster, than other Yahoo finance clients. Run the tests yourself - `make test-perf` (All tests running synchronously, returning pandas DataFrame and http responses are mocked.)
+
+![test-perf](docs/test-perf.png)
+
+**Installation**: `pip install yafin` for more details, see the [Documentation](https://lukinkratas.github.io/yafin/)
+
+**Documentation and Examples**: [https://lukinkratas.github.io/yafin/](https://lukinkratas.github.io/yafin/)
+
+## Quick Examples
+
+### Symbol
+
+```python
+from yafin import Symbol
+
+with Symbol('META') as meta:
+    meta_1y_chart = meta.get_chart(interval='1d', period_range='1y')
+```
+
+### AsyncSymbol
+
+
+```python
+import asyncio
+from yafin import AsyncSymbol
+
+async def main() -> None:
+
+    async with AsyncSymbol('META') as meta:
+        meta_1y_chart = await meta.get_chart(interval='1d', period_range='1y')
+
+if __name__ == '__main__':
+    asyncio.run(main())
+```
+
+### Symbols
+
+```python
+from yafin import Symbols
+
+with Symbols('META,AAPL') as meta_aapl:
+    meta_aapl_1y_chart = meta_aapl.get_chart(interval='1d', period_range='1y')
+```
+
+For more details, see the [Examples](https://lukinkratas.github.io/yafin/examples/symbol/) section in documentation.
