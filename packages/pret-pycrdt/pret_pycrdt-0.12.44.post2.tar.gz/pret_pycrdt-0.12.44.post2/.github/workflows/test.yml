@@ -1,0 +1,107 @@
+name: test
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: ${{ matrix.os }} python-${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+        rust-version: [stable]
+        python-version:
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
+        # skip 3.7 for macos
+        exclude:
+          - os: macos-latest
+            python-version: '3.7'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Set up python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+
+    - name: Install rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust-version }}
+        override: true
+
+    - name: Cache rust
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install with test dependencies
+      run: pip install -e ".[test]"
+
+    - name: Check types
+      if: ${{ matrix.python-version != '3.7' && matrix.python-version != '3.8' && matrix.python-version != '3.9' }}
+      run: mypy python
+
+    - name: Run tests without typing
+      if: ${{ matrix.python-version == '3.7' || matrix.python-version == '3.8' || matrix.python-version == '3.9' }}
+      run: pytest --color=yes -v tests -k "not test_type"
+
+    - name: Run tests with typing
+      if: ${{ !((matrix.python-version == '3.14') && (matrix.os == 'ubuntu')) && !(matrix.python-version == '3.7' || matrix.python-version == '3.8' || matrix.python-version == '3.9') }}
+      run: pytest --color=yes -v tests
+
+    - name: Run tests on PyPy
+      if: ${{ (matrix.python-version == 'pypy3.11') }}
+      run: pytest --color=yes --ignore tests/test_types.py -v tests
+
+    - name: Run code coverage
+      if: ${{ (matrix.python-version == '3.14') && (matrix.os == 'ubuntu') }}
+      run: |
+        coverage run -m pytest tests
+        coverage report --show-missing --fail-under=100
+
+  test-build-pyodide:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Rust Nightly
+        run: |
+          rustup toolchain install nightly
+          rustup target add wasm32-unknown-emscripten --toolchain nightly
+          rustup default nightly
+
+      - name: Build Pyodide wheels
+        uses: pypa/cibuildwheel@v3.3.0
+        env:
+          CIBW_PLATFORM: pyodide
+          CIBW_ARCHS: auto
+          # disable wasm-opt step which causes issues (on 2025-12-08, emscripten 3.1.58, rustc 1.94.0-nightly)
+          CIBW_ENVIRONMENT: >
+            RUSTFLAGS="-C link-arg=-O1"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-pyodide
+          path: ./wheelhouse/*.whl
