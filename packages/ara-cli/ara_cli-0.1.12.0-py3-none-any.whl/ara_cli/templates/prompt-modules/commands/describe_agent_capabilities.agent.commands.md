@@ -1,0 +1,1 @@
+Describe in detail what this agent can do for the user. Focus on supported capabilities, limitations, and typical workflows, and output the description as user-facing documentation. Do not use any tools.

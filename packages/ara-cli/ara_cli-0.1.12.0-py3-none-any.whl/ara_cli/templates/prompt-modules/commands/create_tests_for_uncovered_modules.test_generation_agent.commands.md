@@ -1,0 +1,1 @@
+Create pytest tests for all modules that currently have 0% coverage according to the coverage report at {coverage_report_path}. Generate test files for each uncovered module in {tests_output_directory}, ensuring that basic behaviour and key error cases are tested.

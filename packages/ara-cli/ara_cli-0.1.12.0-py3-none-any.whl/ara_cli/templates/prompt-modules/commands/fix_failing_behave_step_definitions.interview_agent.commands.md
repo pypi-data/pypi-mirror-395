@@ -1,0 +1,1 @@
+After the feature file {feature_file_path} was updated to reflect the changed functionality in {implementation_file_path}, the step definitions in {step_definitions_file_path} started failing. Run behave for this feature file, observe the failures, fix the step definitions, write the changes to disk, and repeat the cycle until all scenarios pass.

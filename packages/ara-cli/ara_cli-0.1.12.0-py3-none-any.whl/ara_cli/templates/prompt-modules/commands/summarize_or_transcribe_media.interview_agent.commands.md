@@ -1,0 +1,1 @@
+Here is the path to the multimedia data: {media_file_path} / {attached_media_file_path}. Generate a concise summary of the transcript / return the full transcript of the audio or video.

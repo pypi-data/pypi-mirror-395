@@ -1,0 +1,1 @@
+From the list of tasks attached to the user story at {user_story_task_file_path}, analyse all child tasks and propose the next {number_of_next_tasks} concrete tasks that should be created. For each new task, provide a short name, a one-sentence description, and the main files that will be affected.
