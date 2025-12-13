@@ -1,0 +1,358 @@
+# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+
+from __future__ import annotations
+
+from . import shared
+from .. import _compat
+from .card import Card as Card
+from .client import Client as Client
+from .shared import (
+    Currency as Currency,
+    ErrorData as ErrorData,
+    SimpleObject as SimpleObject,
+    ShippingAddress as ShippingAddress,
+    SimpleObjectAlias as SimpleObjectAlias,
+    ObjectWithChildRef as ObjectWithChildRef,
+    SharedSelfRecursion as SharedSelfRecursion,
+    BasicSharedModelObject as BasicSharedModelObject,
+    PageCursorSharedRefPagination as PageCursorSharedRefPagination,
+    SharedCursorNestedResponsePropMeta as SharedCursorNestedResponsePropMeta,
+)
+from .widget import Widget as Widget
+from .address import Address as Address
+from .balance import Balance as Balance
+from .my_model import MyModel as MyModel
+from .api_status import APIStatus as APIStatus
+from .card_alias import CardAlias as CardAlias
+from .simple_allof import SimpleAllof as SimpleAllof
+from .root_response import RootResponse as RootResponse
+from .my_model_param import MyModelParam as MyModelParam
+from .funding_account import FundingAccount as FundingAccount
+from .api_status_alias import APIStatusAlias as APIStatusAlias
+from .card_list_params import CardListParams as CardListParams
+from .type_dates_params import TypeDatesParams as TypeDatesParams
+from .card_create_params import CardCreateParams as CardCreateParams
+from .card_list_response import CardListResponse as CardListResponse
+from .card_update_params import CardUpdateParams as CardUpdateParams
+from .card_reissue_params import CardReissueParams as CardReissueParams
+from .shared_object_alias import SharedObjectAlias as SharedObjectAlias
+from .type_dates_response import TypeDatesResponse as TypeDatesResponse
+from .client_create_params import ClientCreateParams as ClientCreateParams
+from .object_skipped_props import ObjectSkippedProps as ObjectSkippedProps
+from .unwrap_webhook_event import UnwrapWebhookEvent as UnwrapWebhookEvent
+from .type_datetimes_params import TypeDatetimesParams as TypeDatetimesParams
+from .model_from_nested_path import ModelFromNestedPath as ModelFromNestedPath
+from .model_from_schemas_ref import ModelFromSchemasRef as ModelFromSchemasRef
+from .object_map_model_param import ObjectMapModelParam as ObjectMapModelParam
+from .streaming_basic_params import StreamingBasicParams as StreamingBasicParams
+from .string_map_model_param import StringMapModelParam as StringMapModelParam
+from .model_with_nested_model import ModelWithNestedModel as ModelWithNestedModel
+from .query_param_enum_params import QueryParamEnumParams as QueryParamEnumParams
+from .type_datetimes_response import TypeDatetimesResponse as TypeDatetimesResponse
+from .card_ready_webhook_event import CardReadyWebhookEvent as CardReadyWebhookEvent
+from .query_param_array_params import QueryParamArrayParams as QueryParamArrayParams
+from .streaming_basic_response import StreamingBasicResponse as StreamingBasicResponse
+from .card_provision_foo_params import CardProvisionFooParams as CardProvisionFooParams
+from .custom_api_status_message import CustomAPIStatusMessage as CustomAPIStatusMessage
+from .file_create_base64_params import FileCreateBase64Params as FileCreateBase64Params
+from .query_param_all_of_params import QueryParamAllOfParams as QueryParamAllOfParams
+from .query_param_any_of_params import QueryParamAnyOfParams as QueryParamAnyOfParams
+from .query_param_object_params import QueryParamObjectParams as QueryParamObjectParams
+from .query_param_one_of_params import QueryParamOneOfParams as QueryParamOneOfParams
+from .shared_object_alias_param import SharedObjectAliasParam as SharedObjectAliasParam
+from .card_create_aliased_params import CardCreateAliasedParams as CardCreateAliasedParams
+from .card_created_webhook_event import CardCreatedWebhookEvent as CardCreatedWebhookEvent
+from .card_deleted_webhook_event import CardDeletedWebhookEvent as CardDeletedWebhookEvent
+from .card_errored_webhook_event import CardErroredWebhookEvent as CardErroredWebhookEvent
+from .card_updated_webhook_event import CardUpdatedWebhookEvent as CardUpdatedWebhookEvent
+from .header_param_arrays_params import HeaderParamArraysParams as HeaderParamArraysParams
+from .tool_skipped_params_params import ToolSkippedParamsParams as ToolSkippedParamsParams
+from .unknown_object_model_param import UnknownObjectModelParam as UnknownObjectModelParam
+from .card_provision_foo_response import CardProvisionFooResponse as CardProvisionFooResponse
+from .file_create_base64_response import FileCreateBase64Response as FileCreateBase64Response
+from .file_create_multipart_params import FileCreateMultipartParams as FileCreateMultipartParams
+from .nested_request_model_a_param import NestedRequestModelAParam as NestedRequestModelAParam
+from .nested_request_model_b_param import NestedRequestModelBParam as NestedRequestModelBParam
+from .nested_request_model_c_param import NestedRequestModelCParam as NestedRequestModelCParam
+from .object_with_union_properties import ObjectWithUnionProperties as ObjectWithUnionProperties
+from .path_param_multiple_response import PathParamMultipleResponse as PathParamMultipleResponse
+from .path_param_singular_response import PathParamSingularResponse as PathParamSingularResponse
+from .positional_param_body_params import PositionalParamBodyParams as PositionalParamBodyParams
+from .responses_allof_cross_object import ResponsesAllofCrossObject as ResponsesAllofCrossObject
+from .file_no_file_multipart_params import FileNoFileMultipartParams as FileNoFileMultipartParams
+from .header_param_all_types_params import HeaderParamAllTypesParams as HeaderParamAllTypesParams
+from .positional_param_query_params import PositionalParamQueryParams as PositionalParamQueryParams
+from .query_param_primitives_params import QueryParamPrimitivesParams as QueryParamPrimitivesParams
+from .empty_body_typed_params_params import EmptyBodyTypedParamsParams as EmptyBodyTypedParamsParams
+from .file_create_multipart_response import FileCreateMultipartResponse as FileCreateMultipartResponse
+from .model_with_param_in_name_param import ModelWithParamInNameParam as ModelWithParamInNameParam
+from .response_allof_simple_response import ResponseAllofSimpleResponse as ResponseAllofSimpleResponse
+from .response_nested_array_response import ResponseNestedArrayResponse as ResponseNestedArrayResponse
+from .streaming_nested_params_params import StreamingNestedParamsParams as StreamingNestedParamsParams
+from .decorator_test_keep_me_response import DecoratorTestKeepMeResponse as DecoratorTestKeepMeResponse
+from .envelope_wrapped_array_response import EnvelopeWrappedArrayResponse as EnvelopeWrappedArrayResponse
+from .file_no_file_multipart_response import FileNoFileMultipartResponse as FileNoFileMultipartResponse
+from .file_with_optional_param_params import FileWithOptionalParamParams as FileWithOptionalParamParams
+from .path_param_query_param_response import PathParamQueryParamResponse as PathParamQueryParamResponse
+from .shared_query_param_del_response import SharedQueryParamDelResponse as SharedQueryParamDelResponse
+from .version_1_30_name_create_params import Version1_30NameCreateParams as Version1_30NameCreateParams
+from .body_param_unknown_object_params import BodyParamUnknownObjectParams as BodyParamUnknownObjectParams
+from .complex_query_array_query_params import ComplexQueryArrayQueryParams as ComplexQueryArrayQueryParams
+from .complex_query_union_query_params import ComplexQueryUnionQueryParams as ComplexQueryUnionQueryParams
+from .file_everything_multipart_params import FileEverythingMultipartParams as FileEverythingMultipartParams
+from .header_param_invalid_name_params import HeaderParamInvalidNameParams as HeaderParamInvalidNameParams
+from .object_with_any_of_null_property import ObjectWithAnyOfNullProperty as ObjectWithAnyOfNullProperty
+from .object_with_one_of_null_property import ObjectWithOneOfNullProperty as ObjectWithOneOfNullProperty
+from .path_param_colon_suffix_response import PathParamColonSuffixResponse as PathParamColonSuffixResponse
+from .response_array_response_response import ResponseArrayResponseResponse as ResponseArrayResponseResponse
+from .shared_query_param_delete_params import SharedQueryParamDeleteParams as SharedQueryParamDeleteParams
+from .streaming_nested_params_response import StreamingNestedParamsResponse as StreamingNestedParamsResponse
+from .body_param_enum_properties_params import BodyParamEnumPropertiesParams as BodyParamEnumPropertiesParams
+from .body_param_top_level_array_params import BodyParamTopLevelArrayParams as BodyParamTopLevelArrayParams
+from .complex_query_object_query_params import ComplexQueryObjectQueryParams as ComplexQueryObjectQueryParams
+from .envelope_inline_response_response import EnvelopeInlineResponseResponse as EnvelopeInlineResponseResponse
+from .file_with_optional_param_response import FileWithOptionalParamResponse as FileWithOptionalParamResponse
+from .header_param_nullable_type_params import HeaderParamNullableTypeParams as HeaderParamNullableTypeParams
+from .mixed_param_query_and_body_params import MixedParamQueryAndBodyParams as MixedParamQueryAndBodyParams
+from .path_param_nullable_params_params import PathParamNullableParamsParams as PathParamNullableParamsParams
+from .response_string_response_response import ResponseStringResponseResponse as ResponseStringResponseResponse
+from .streaming_no_discriminator_params import StreamingNoDiscriminatorParams as StreamingNoDiscriminatorParams
+from .version_1_30_name_create_response import Version1_30NameCreateResponse as Version1_30NameCreateResponse
+from .body_param_top_level_all_of_params import BodyParamTopLevelAllOfParams as BodyParamTopLevelAllOfParams
+from .body_param_top_level_any_of_params import BodyParamTopLevelAnyOfParams as BodyParamTopLevelAnyOfParams
+from .body_param_top_level_one_of_params import BodyParamTopLevelOneOfParams as BodyParamTopLevelOneOfParams
+from .complex_query_array_query_response import ComplexQueryArrayQueryResponse as ComplexQueryArrayQueryResponse
+from .complex_query_union_query_response import ComplexQueryUnionQueryResponse as ComplexQueryUnionQueryResponse
+from .file_everything_multipart_response import FileEverythingMultipartResponse as FileEverythingMultipartResponse
+from .path_param_file_extension_response import PathParamFileExtensionResponse as PathParamFileExtensionResponse
+from .positional_param_basic_body_params import PositionalParamBasicBodyParams as PositionalParamBasicBodyParams
+from .response_missing_required_response import ResponseMissingRequiredResponse as ResponseMissingRequiredResponse
+from .shared_query_param_retrieve_params import SharedQueryParamRetrieveParams as SharedQueryParamRetrieveParams
+from .complex_query_object_query_response import ComplexQueryObjectQueryResponse as ComplexQueryObjectQueryResponse
+from .header_param_client_argument_params import HeaderParamClientArgumentParams as HeaderParamClientArgumentParams
+from .model_from_nested_response_body_ref import ModelFromNestedResponseBodyRef as ModelFromNestedResponseBodyRef
+from .positional_param_basic_query_params import PositionalParamBasicQueryParams as PositionalParamBasicQueryParams
+from .streaming_no_discriminator_response import StreamingNoDiscriminatorResponse as StreamingNoDiscriminatorResponse
+from .body_param_property_model_ref_params import BodyParamPropertyModelRefParams as BodyParamPropertyModelRefParams
+from .body_param_top_level_all_of_response import BodyParamTopLevelAllOfResponse as BodyParamTopLevelAllOfResponse
+from .body_param_top_level_any_of_response import BodyParamTopLevelAnyOfResponse as BodyParamTopLevelAnyOfResponse
+from .body_param_top_level_one_of_response import BodyParamTopLevelOneOfResponse as BodyParamTopLevelOneOfResponse
+from .client_param_with_query_param_params import ClientParamWithQueryParamParams as ClientParamWithQueryParamParams
+from .model_referenced_in_parent_and_child import ModelReferencedInParentAndChild as ModelReferencedInParentAndChild
+from .positional_param_kitchen_sink_params import PositionalParamKitchenSinkParams as PositionalParamKitchenSinkParams
+from .shared_query_param_retrieve_response import SharedQueryParamRetrieveResponse as SharedQueryParamRetrieveResponse
+from .undocumented_resource_reissue_params import UndocumentedResourceReissueParams as UndocumentedResourceReissueParams
+from .body_param_with_model_property_params import BodyParamWithModelPropertyParams as BodyParamWithModelPropertyParams
+from .card_create_aliased_deprecated_params import (
+    CardCreateAliasedDeprecatedParams as CardCreateAliasedDeprecatedParams,
+)
+from .client_param_with_path_param_response import ClientParamWithPathParamResponse as ClientParamWithPathParamResponse
+from .name_child_prop_import_clash_response import NameChildPropImportClashResponse as NameChildPropImportClashResponse
+from .binary_with_path_and_body_param_params import BinaryWithPathAndBodyParamParams as BinaryWithPathAndBodyParamParams
+from .body_param_object_map_model_ref_params import BodyParamObjectMapModelRefParams as BodyParamObjectMapModelRefParams
+from .body_param_read_only_properties_params import (
+    BodyParamReadOnlyPropertiesParams as BodyParamReadOnlyPropertiesParams,
+)
+from .body_param_string_map_model_ref_params import BodyParamStringMapModelRefParams as BodyParamStringMapModelRefParams
+from .client_param_with_query_param_response import (
+    ClientParamWithQueryParamResponse as ClientParamWithQueryParamResponse,
+)
+from .mixed_param_query_body_and_path_params import MixedParamQueryBodyAndPathParams as MixedParamQueryBodyAndPathParams
+from .positional_param_query_and_path_params import (
+    PositionalParamQueryAndPathParams as PositionalParamQueryAndPathParams,
+)
+from .positional_param_query_multiple_params import (
+    PositionalParamQueryMultipleParams as PositionalParamQueryMultipleParams,
+)
+from .response_allof_cross_resource_response import (
+    ResponseAllofCrossResourceResponse as ResponseAllofCrossResourceResponse,
+)
+from .response_object_no_properties_response import (
+    ResponseObjectNoPropertiesResponse as ResponseObjectNoPropertiesResponse,
+)
+from .body_param_duplicate_subproperty_params import (
+    BodyParamDuplicateSubpropertyParams as BodyParamDuplicateSubpropertyParams,
+)
+from .body_param_nested_request_models_params import (
+    BodyParamNestedRequestModelsParams as BodyParamNestedRequestModelsParams,
+)
+from .body_param_top_level_shared_type_params import (
+    BodyParamTopLevelSharedTypeParams as BodyParamTopLevelSharedTypeParams,
+)
+from .docstring_leading_double_quote_response import (
+    DocstringLeadingDoubleQuoteResponse as DocstringLeadingDoubleQuoteResponse,
+)
+from .method_config_skipped_tests_go_response import (
+    MethodConfigSkippedTestsGoResponse as MethodConfigSkippedTestsGoResponse,
+)
+from .name_properties_common_conflicts_params import (
+    NamePropertiesCommonConflictsParams as NamePropertiesCommonConflictsParams,
+)
+from .name_response_shadows_pydantic_response import (
+    NameResponseShadowsPydanticResponse as NameResponseShadowsPydanticResponse,
+)
+from .response_additional_properties_response import (
+    ResponseAdditionalPropertiesResponse as ResponseAdditionalPropertiesResponse,
+)
+from .response_object_all_properties_response import (
+    ResponseObjectAllPropertiesResponse as ResponseObjectAllPropertiesResponse,
+)
+from .body_param_union_overlapping_prop_params import (
+    BodyParamUnionOverlappingPropParams as BodyParamUnionOverlappingPropParams,
+)
+from .docstring_trailing_double_quote_response import (
+    DocstringTrailingDoubleQuoteResponse as DocstringTrailingDoubleQuoteResponse,
+)
+from .empty_body_stainless_empty_object_params import (
+    EmptyBodyStainlessEmptyObjectParams as EmptyBodyStainlessEmptyObjectParams,
+)
+from .method_config_skipped_tests_all_response import (
+    MethodConfigSkippedTestsAllResponse as MethodConfigSkippedTestsAllResponse,
+)
+from .positional_param_body_extra_param_params import (
+    PositionalParamBodyExtraParamParams as PositionalParamBodyExtraParamParams,
+)
+from .body_param_param_in_model_name_ref_params import (
+    BodyParamParamInModelNameRefParams as BodyParamParamInModelNameRefParams,
+)
+from .method_config_skipped_tests_java_response import (
+    MethodConfigSkippedTestsJavaResponse as MethodConfigSkippedTestsJavaResponse,
+)
+from .method_config_skipped_tests_node_response import (
+    MethodConfigSkippedTestsNodeResponse as MethodConfigSkippedTestsNodeResponse,
+)
+from .method_config_skipped_tests_ruby_response import (
+    MethodConfigSkippedTestsRubyResponse as MethodConfigSkippedTestsRubyResponse,
+)
+from .name_properties_common_conflicts_response import (
+    NamePropertiesCommonConflictsResponse as NamePropertiesCommonConflictsResponse,
+)
+from .query_param_any_of_string_or_array_params import (
+    QueryParamAnyOfStringOrArrayParams as QueryParamAnyOfStringOrArrayParams,
+)
+from .body_param_union_overlapping_prop_response import (
+    BodyParamUnionOverlappingPropResponse as BodyParamUnionOverlappingPropResponse,
+)
+from .openapi_format_array_type_one_entry_params import (
+    OpenAPIFormatArrayTypeOneEntryParams as OpenAPIFormatArrayTypeOneEntryParams,
+)
+from .streaming_query_param_discriminator_params import (
+    StreamingQueryParamDiscriminatorParams as StreamingQueryParamDiscriminatorParams,
+)
+from .body_param_top_level_any_of_with_ref_params import (
+    BodyParamTopLevelAnyOfWithRefParams as BodyParamTopLevelAnyOfWithRefParams,
+)
+from .method_config_skipped_tests_kotlin_response import (
+    MethodConfigSkippedTestsKotlinResponse as MethodConfigSkippedTestsKotlinResponse,
+)
+from .method_config_skipped_tests_python_response import (
+    MethodConfigSkippedTestsPythonResponse as MethodConfigSkippedTestsPythonResponse,
+)
+from .positional_param_union_body_and_path_params import (
+    PositionalParamUnionBodyAndPathParams as PositionalParamUnionBodyAndPathParams,
+)
+from .response_only_read_only_properties_response import (
+    ResponseOnlyReadOnlyPropertiesResponse as ResponseOnlyReadOnlyPropertiesResponse,
+)
+from .body_param_top_level_one_of_one_entry_params import (
+    BodyParamTopLevelOneOfOneEntryParams as BodyParamTopLevelOneOfOneEntryParams,
+)
+from .openapi_format_array_type_one_entry_response import (
+    OpenAPIFormatArrayTypeOneEntryResponse as OpenAPIFormatArrayTypeOneEntryResponse,
+)
+from .positional_param_multiple_path_params_params import (
+    PositionalParamMultiplePathParamsParams as PositionalParamMultiplePathParamsParams,
+)
+from .streaming_query_param_discriminator_response import (
+    StreamingQueryParamDiscriminatorResponse as StreamingQueryParamDiscriminatorResponse,
+)
+from .body_param_property_with_complex_union_params import (
+    BodyParamPropertyWithComplexUnionParams as BodyParamPropertyWithComplexUnionParams,
+)
+from .name_properties_illegal_go_identifiers_params import (
+    NamePropertiesIllegalGoIdentifiersParams as NamePropertiesIllegalGoIdentifiersParams,
+)
+from .streaming_with_unrelated_default_param_params import (
+    StreamingWithUnrelatedDefaultParamParams as StreamingWithUnrelatedDefaultParamParams,
+)
+from .body_param_object_with_array_of_objects_params import (
+    BodyParamObjectWithArrayOfObjectsParams as BodyParamObjectWithArrayOfObjectsParams,
+)
+from .body_param_object_with_union_properties_params import (
+    BodyParamObjectWithUnionPropertiesParams as BodyParamObjectWithUnionPropertiesParams,
+)
+from .body_param_top_level_array_with_children_params import (
+    BodyParamTopLevelArrayWithChildrenParams as BodyParamTopLevelArrayWithChildrenParams,
+)
+from .name_properties_illegal_go_identifiers_response import (
+    NamePropertiesIllegalGoIdentifiersResponse as NamePropertiesIllegalGoIdentifiersResponse,
+)
+from .streaming_with_unrelated_default_param_response import (
+    StreamingWithUnrelatedDefaultParamResponse as StreamingWithUnrelatedDefaultParamResponse,
+)
+from .body_param_top_level_all_of_nested_object_params import (
+    BodyParamTopLevelAllOfNestedObjectParams as BodyParamTopLevelAllOfNestedObjectParams,
+)
+from .body_param_with_default_body_param_optional_params import (
+    BodyParamWithDefaultBodyParamOptionalParams as BodyParamWithDefaultBodyParamOptionalParams,
+)
+from .body_param_with_default_body_param_required_params import (
+    BodyParamWithDefaultBodyParamRequiredParams as BodyParamWithDefaultBodyParamRequiredParams,
+)
+from .client_param_with_path_param_and_standard_response import (
+    ClientParamWithPathParamAndStandardResponse as ClientParamWithPathParamAndStandardResponse,
+)
+from .body_param_top_level_array_with_other_params_params import (
+    BodyParamTopLevelArrayWithOtherParamsParams as BodyParamTopLevelArrayWithOtherParamsParams,
+)
+from .method_config_should_not_show_up_in_api_docs_params import (
+    MethodConfigShouldNotShowUpInAPIDocsParams as MethodConfigShouldNotShowUpInAPIDocsParams,
+)
+from .method_config_skipped_tests_node_and_python_response import (
+    MethodConfigSkippedTestsNodeAndPythonResponse as MethodConfigSkippedTestsNodeAndPythonResponse,
+)
+from .name_response_property_clashes_model_import_response import (
+    NameResponsePropertyClashesModelImportResponse as NameResponsePropertyClashesModelImportResponse,
+)
+from .openapi_format_array_type_one_entry_with_null_params import (
+    OpenAPIFormatArrayTypeOneEntryWithNullParams as OpenAPIFormatArrayTypeOneEntryWithNullParams,
+)
+from .response_array_object_with_union_properties_response import (
+    ResponseArrayObjectWithUnionPropertiesResponse as ResponseArrayObjectWithUnionPropertiesResponse,
+)
+from .name_properties_illegal_javascript_identifiers_params import (
+    NamePropertiesIllegalJavascriptIdentifiersParams as NamePropertiesIllegalJavascriptIdentifiersParams,
+)
+from .mixed_param_body_with_top_level_one_of_and_path_params import (
+    MixedParamBodyWithTopLevelOneOfAndPathParams as MixedParamBodyWithTopLevelOneOfAndPathParams,
+)
+from .openapi_format_array_type_one_entry_with_null_response import (
+    OpenAPIFormatArrayTypeOneEntryWithNullResponse as OpenAPIFormatArrayTypeOneEntryWithNullResponse,
+)
+from .name_properties_illegal_javascript_identifiers_response import (
+    NamePropertiesIllegalJavascriptIdentifiersResponse as NamePropertiesIllegalJavascriptIdentifiersResponse,
+)
+from .config_tool_model_ref_from_nested_response_body_response import (
+    ConfigToolModelRefFromNestedResponseBodyResponse as ConfigToolModelRefFromNestedResponseBodyResponse,
+)
+from .response_object_with_additional_properties_prop_response import (
+    ResponseObjectWithAdditionalPropertiesPropResponse as ResponseObjectWithAdditionalPropertiesPropResponse,
+)
+from .response_additional_properties_nested_model_reference_response import (
+    ResponseAdditionalPropertiesNestedModelReferenceResponse as ResponseAdditionalPropertiesNestedModelReferenceResponse,
+)
+from .make_ambiguous_schemas_looser_make_ambiguous_schemas_looser_response import (
+    MakeAmbiguousSchemasLooserMakeAmbiguousSchemasLooserResponse as MakeAmbiguousSchemasLooserMakeAmbiguousSchemasLooserResponse,
+)
+from .make_ambiguous_schemas_explicit_make_ambiguous_schemas_explicit_response import (
+    MakeAmbiguousSchemasExplicitMakeAmbiguousSchemasExplicitResponse as MakeAmbiguousSchemasExplicitMakeAmbiguousSchemasExplicitResponse,
+)
+
+# Rebuild cyclical models only after all modules are imported.
+# This ensures that, when building the deferred (due to cyclical references) model schema,
+# Pydantic can resolve the necessary references.
+# See: https://github.com/pydantic/pydantic/issues/11250 for more context.
+if _compat.PYDANTIC_V1:
+    shared.shared_self_recursion.SharedSelfRecursion.update_forward_refs()  # type: ignore
+else:
+    shared.shared_self_recursion.SharedSelfRecursion.model_rebuild(_parent_namespace_depth=0)
