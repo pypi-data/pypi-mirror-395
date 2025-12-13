@@ -1,0 +1,124 @@
+Metadata-Version: 2.4
+Name: c3-cli
+Version: 0.3.0
+Summary: CLI for Compute3 - GPU orchestration and LLM API
+Project-URL: Homepage, https://compute3.ai
+Project-URL: Documentation, https://docs.compute3.ai
+Author-email: Compute3 <support@compute3.ai>
+License-Expression: MIT
+Requires-Python: >=3.10
+Requires-Dist: c3-sdk[comfyui]>=0.3.0
+Requires-Dist: openai>=2.8.1
+Requires-Dist: rich>=14.2.0
+Requires-Dist: typer>=0.20.0
+Requires-Dist: websocket-client>=1.6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.3.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# C3 CLI
+
+Command-line interface for [Compute3](https://compute3.ai) - GPU orchestration and LLM API.
+
+## Installation
+
+```bash
+pip install c3-cli
+```
+
+This also installs the `c3-sdk` as a dependency.
+
+## Setup
+
+Configure your API key:
+
+```bash
+c3 configure
+```
+
+Or set via environment:
+
+```bash
+export C3_API_KEY=your_key
+```
+
+Or create `~/.c3/config`:
+
+```
+C3_API_KEY=your_key
+```
+
+Get your API key at [compute3.ai/dashboard](https://compute3.ai/dashboard)
+
+## Usage
+
+### Billing
+
+```bash
+c3 billing balance
+c3 billing transactions
+c3 billing balance -o json
+```
+
+### LLM
+
+```bash
+# List models
+c3 llm models
+
+# Quick chat
+c3 llm chat deepseek-v3.1 "Explain quantum computing"
+
+# Interactive chat
+c3 llm chat deepseek-v3.1
+
+# With system prompt
+c3 llm chat deepseek-v3.1 "Write a haiku" -s "You are a poet"
+```
+
+### Jobs
+
+```bash
+# List jobs
+c3 jobs list
+c3 jobs list -s running
+
+# Create a job
+c3 jobs create nvidia/cuda:12.0 -g l40s -c "python train.py"
+
+# Create and follow logs with TUI
+c3 jobs create nvidia/cuda:12.0 -g h100 -n 8 -c "torchrun train.py" -f
+
+# Get job details
+c3 jobs get <job_id>
+
+# Stream logs
+c3 jobs logs <job_id> -f
+
+# Watch GPU metrics
+c3 jobs metrics <job_id> -w
+
+# Cancel
+c3 jobs cancel <job_id>
+
+# Extend runtime
+c3 jobs extend <job_id> 7200
+```
+
+### User
+
+```bash
+c3 user
+```
+
+## Output Formats
+
+```bash
+c3 jobs list -o json
+c3 billing balance -o table
+```
+
+## License
+
+MIT
