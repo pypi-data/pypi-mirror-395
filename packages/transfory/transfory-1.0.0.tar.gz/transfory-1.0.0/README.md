@@ -1,0 +1,213 @@
+# Transfory
+
+[![PyPI version](https://badge.fury.io/py/transfory.svg)](https://badge.fury.io/py/transfory)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/transfory)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**An Object-Oriented, Explainable Data Transformation Toolkit for Python.**
+
+`Transfory` is a data preprocessing library designed with clarity and modularity in mind. Inspired by `scikit-learn`'s API, it provides a suite of common data transformation tools that can be easily combined into powerful, reusable pipelines.
+
+What makes `Transfory` unique is its built-in **`InsightReporter`**, an explainability engine that provides detailed, human-readable logs of every step in your transformation process. No more black boxes—understand exactly what happens to your data.
+
+## Key Features
+
+*   **Modular Transformers**: A collection of intuitive, single-purpose transformers for common preprocessing tasks.
+*   **Powerful Pipelines**: Chain transformers together with `Pipeline` and apply different logic to different columns with `ColumnTransformer`.
+*   **Explainability First**: The `InsightReporter` gives you a step-by-step narrative of your data's journey, making debugging and validation effortless.
+*   **Pandas-Native**: Built to work seamlessly with pandas DataFrames.
+
+## Installation
+
+You can install `Transfory` directly from PyPI:
+
+```bash
+pip install transfory
+```
+
+## Quick Start
+
+Let's perform a simple data cleaning operation on the Titanic dataset and see what `Transfory` tells us.
+
+```python
+import pandas as pd
+import seaborn as sns
+from transfory.pipeline import Pipeline
+from transfory.missing import MissingValueHandler
+from transfory.encoder import Encoder
+from transfory.scaler import Scaler
+from transfory.insight import InsightReporter
+
+# 1. Load data and initialize the reporter
+df = sns.load_dataset('titanic')[['age', 'fare', 'embarked', 'sex']]
+reporter = InsightReporter()
+
+# 2. Define a multi-step pipeline
+pipeline = Pipeline(
+    steps=[
+        ("imputer", MissingValueHandler(strategy="mean")),
+        ("encoder", Encoder(method="onehot")),
+        ("scaler", Scaler(method="zscore"))
+    ],
+    logging_callback=reporter.get_callback()
+)
+
+# 3. Fit and transform the data
+transformed_df = pipeline.fit_transform(df)
+
+print("Transformed Data:")
+print(transformed_df.head())
+
+# 4. Review the Insight Report for a step-by-step explanation
+print("\n--- Insight Report ---")
+print(reporter.summary())
+```
+
+The `InsightReporter` will output a clear summary of what happened, such as the value used for imputation, the new columns created by the encoder, and the columns that were scaled.
+
+## Core Modules Explained
+
+`Transfory` is built on a set of core components that can be mixed and matched to create any preprocessing workflow.
+
+### Orchestrators
+
+These modules are used to control the flow and application of transformers.
+
+#### `Pipeline`
+
+Sequentially applies a list of transformers. The output of one step becomes the input to the next, making it easy to define an ordered workflow.
+
+```python
+from transfory.pipeline import Pipeline
+
+pipeline = Pipeline([
+    ("imputer", MissingValueHandler()),
+    ("scaler", Scaler()),
+])
+```
+
+#### `ColumnTransformer`
+
+Applies different transformers to different columns of a DataFrame in parallel. This is highly efficient and essential for workflows where numeric and categorical data need separate handling.
+
+```python
+from transfory.column_transformer import ColumnTransformer
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("numeric_scaler", Scaler(), ['age', 'fare']),
+        ("categorical_encoder", Encoder(), ['embarked', 'sex'])
+    ],
+    remainder='passthrough' # Keep other columns
+)
+```
+
+#### `InsightReporter`
+
+The explainability engine of `Transfory`. It captures events from all transformers in a pipeline and provides a detailed, human-readable summary of the entire process. Simply create an instance and pass its callback to your pipeline.
+
+```python
+from transfory.insight import InsightReporter
+
+reporter = InsightReporter()
+pipeline = Pipeline([...], logging_callback=reporter.get_callback())
+pipeline.fit_transform(df)
+print(reporter.summary())
+```
+
+---
+
+### Data Transformers
+
+These are the building blocks that perform the actual data transformations.
+
+#### `MissingValueHandler`
+
+Handles missing (`NaN`) values in a DataFrame.
+
+*   **Strategies**: `mean`, `median`, `mode`, `constant` (with `fill_value`).
+
+```python
+from transfory.missing import MissingValueHandler
+
+# Impute with the mean for numeric columns and mode for categorical
+imputer = MissingValueHandler(strategy="mean")
+```
+
+#### `Encoder`
+
+Converts categorical columns into a numerical format.
+
+*   **Methods**: `onehot` (creates binary columns), `label` (assigns a unique integer to each category).
+
+```python
+from transfory.encoder import Encoder
+
+# Create new columns for each category
+encoder = Encoder(method="onehot")
+```
+
+#### `Scaler`
+
+Scales numeric features to a common range.
+
+*   **Methods**: `zscore` (standard scaling), `minmax` (scales to a [0, 1] range).
+
+```python
+from transfory.scaler import Scaler
+
+# Scale features to have zero mean and unit variance
+scaler = Scaler(method="zscore")
+```
+
+#### `OutlierHandler`
+
+Caps extreme values (outliers) to mitigate their effect on downstream models.
+
+*   **Methods**: `iqr` (caps at 1.5 * Interquartile Range), `zscore` (caps at a z-score threshold), `quantile`.
+
+```python
+from transfory.outlier import OutlierHandler
+
+# Cap values outside the 1.5 * IQR range
+outlier_handler = OutlierHandler(method="iqr")
+```
+
+#### `DatetimeFeatureExtractor`
+
+Creates new features from datetime columns, such as year, month, day, or day of the week.
+
+```python
+from transfory.datetime import DatetimeFeatureExtractor
+
+# Extract year and month from a 'transaction_date' column
+date_extractor = DatetimeFeatureExtractor(features=['year', 'month'])
+```
+
+#### `FeatureGenerator`
+
+Automatically creates polynomial and interaction features from numeric columns to help models capture non-linear relationships.
+
+```python
+from transfory.featuregen import FeatureGenerator
+
+# Create quadratic features (e.g., a^2, b^2) and interaction features (a*b)
+feature_gen = FeatureGenerator(degree=2, include_interactions=True)
+```
+
+## Demos
+
+For more in-depth examples, check out the Jupyter Notebooks in the `/demo` directory. They provide interactive, step-by-step walkthroughs of the library's capabilities on real datasets.
+
+1.  **`demo1_basic_pipeline.ipynb`**: Introduction to `Pipeline`.
+2.  **`demo2_column_transformer.ipynb`**: Advanced workflows with `ColumnTransformer`.
+3.  **`demo3_feature_engineering.ipynb`**: Using `DatetimeFeatureExtractor` and `FeatureGenerator`.
+4.  **`demo4_outlier_handling.ipynb`**: Using the `OutlierHandler`.
+
+## Contributing
+
+Contributions are welcome! If you have a feature request, bug report, or want to improve the documentation, please open an issue or submit a pull request on the GitHub repository.
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
