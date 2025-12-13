@@ -1,0 +1,35 @@
+version: "3"
+services:
+    devcontainer:
+        image: {{PROJECT_NAME}}_devcontainer:0.0.1
+        container_name: {{PROJECT_NAME}}        
+        build:
+            context: ..
+            dockerfile: .devcontainer/Dockerfile.devcontainer
+            args:
+                VARIANT: "3.10-bullseye"
+                NODE_VERSION: "22.15.0"
+                USERNAME: "vscode"
+                PROJECT_NAME: "{{PROJECT_NAME}}"
+        environment:
+            PYTHONPATH: /workspaces/{{PROJECT_NAME}}/.venv/lib/python3.10/site-packages
+        volumes:
+            # Use anonymous volume for virtual environment
+            - /workspace/.venv
+
+            # Make sure this matches the workspaceFolder in .devcontainer/devcontainer.json
+            - ..:/workspace:cached
+
+            # Mount ~/.gai directory
+            - $HOME/.gai:/home/vscode/.gai
+
+            # Mount gai-lib directory
+            - ../../../../gai-sdk/lib:/workspaces/{{PROJECT_NAME}}-svr/gai-lib
+
+            # Use docker from host
+            - /var/run/docker.sock:/var/run/docker.sock
+
+            # Manually create these mount points for tool's shared libraries
+            # - ../../src/gai/tools/{{TOOL_NAME}}/lib:/workspace/src/gai/tools/{{TOOL_NAME}}/lib
+
+        command: sleep infinity
