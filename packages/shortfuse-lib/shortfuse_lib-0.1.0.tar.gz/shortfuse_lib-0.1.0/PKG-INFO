@@ -1,0 +1,86 @@
+Metadata-Version: 2.4
+Name: shortfuse-lib
+Version: 0.1.0
+Summary: Don't just raise exceptions—kill the process. A fail-fast library for laying traps in forbidden code paths.
+Author-email: Larry Richards <your-email@example.com>
+License: MIT License
+        
+        Copyright (c) 2025 pythonlarry
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/lbrichards/shortfuse
+Project-URL: Bug Tracker, https://github.com/lbrichards/shortfuse/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Debuggers
+Classifier: Topic :: Software Development :: Quality Assurance
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: build; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Requires-Dist: pdoc; extra == "dev"
+Dynamic: license-file
+
+<img src="banner.png" width="700" alt="Shortfuse Banner">
+
+<img src="logo.png" width="200" alt="Shortfuse Logo">
+
+[![PyPI version](https://img.shields.io/badge/pypi-v0.1.0-blue.svg)](https://pypi.org/project/shortfuse-lib/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)]()
+
+**Don't just raise exceptions—kill the process.**
+
+`shortfuse` is a zero-tolerance "fail fast" utility for enforcing architectural boundaries. It creates uncatchable traps in deprecated code paths to instantly halt execution and expose regressions.
+
+---
+
+## 📚 Documentation
+[**Click here for Full API Docs & Examples**](https://lbrichards.github.io/shortfuse/shortfuse.html)
+
+## 🚀 Quick Start
+
+### Installation
+```bash
+pip install shortfuse-lib
+```
+
+### The "Loud" Failure
+When shortfuse halts, it bypasses try/except blocks and finally handlers by using `os._exit(1)`.
+
+```python
+import shortfuse
+
+# 1. Dead Code Trap
+shortfuse.halt("Legacy endpoint is dead")
+
+# 2. Conditional Trap
+shortfuse.halt_unless(config.v3_enabled, "Must use V3 Config")
+
+# 3. Dependency Trap
+shortfuse.halt_if_not_none(legacy_client, "Legacy client must be removed")
+```
+
+For the full visual demonstration of the stack trace, see the [Documentation](https://lbrichards.github.io/shortfuse/shortfuse.html).
