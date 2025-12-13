@@ -1,0 +1,952 @@
+# SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
+import argparse
+import importlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+# Top-level commands to exclude when building the capabilities manifest.
+# These are internal helpers or would cause recursion/noise in the manifest.
+EXCLUDED_ROOT_COMMANDS: set[str] = {"wizard", "generate-manifest"}
+
+# Canonical domains published as separate manifest files.
+CANONICAL_DOMAINS: set[str] = {
+    "acquire",
+    "process",
+    "visualize",
+    "disseminate",
+    "transform",
+    "search",
+    "run",
+    "simulate",
+    "decide",
+    "narrate",
+    "verify",
+}
+
+# Stage aliases mapped to canonical domains.
+INDEX_FILENAME = "zyra_capabilities_index.json"
+
+DOMAIN_ALIAS_MAP: dict[str, str] = {
+    "import": "acquire",
+    "render": "visualize",
+    "export": "disseminate",
+    "decimate": "disseminate",
+    "optimize": "decide",
+}
+
+# Optional notebook-friendly hints for selected commands.
+# Keys are manifest command names (e.g., "acquire http").
+NOTEBOOK_HINTS: dict[str, dict[str, object]] = {
+    # acquire/import
+    "acquire http": {
+        "returns": "bytes",
+        "output_arg": "--output",
+        "side_effects": ["--output-dir"],
+    },
+    "acquire s3": {
+        "returns": "bytes",
+        "output_arg": "--output",
+        "side_effects": ["--output-dir"],
+    },
+    "acquire ftp": {
+        "returns": "bytes",
+        "output_arg": "--output",
+        "side_effects": ["--output-dir"],
+    },
+    "acquire api": {
+        "returns": "bytes",
+        "output_arg": "--output",
+    },
+    "acquire vimeo": {
+        "returns": "bytes",
+        "output_arg": "--output",
+    },
+    # import (alias of acquire)
+    "import http": {
+        "returns": "bytes",
+        "output_arg": "--output",
+        "side_effects": ["--output-dir"],
+    },
+    "import s3": {
+        "returns": "bytes",
+        "output_arg": "--output",
+        "side_effects": ["--output-dir"],
+    },
+    "import ftp": {
+        "returns": "bytes",
+        "output_arg": "--output",
+        "side_effects": ["--output-dir"],
+    },
+    "import api": {
+        "returns": "bytes",
+        "output_arg": "--output",
+    },
+    "import vimeo": {
+        "returns": "bytes",
+        "output_arg": "--output",
+    },
+    # process/transform
+    "process convert-format": {
+        "returns": "path",
+        "output_arg": "--output",
+        "stdin_arg": "file_or_url",
+    },
+    "process extract-variable": {
+        "returns": "bytes",
+        "stdin_arg": "file_or_url",
+    },
+    "process decode-grib2": {
+        "returns": "bytes",
+        "stdin_arg": "file_or_url",
+        "extras": ["grib"],
+    },
+    "process pad-missing": {
+        "returns": "path",
+        "side_effects": ["--output-dir", "--json-report"],
+        "extras": ["pillow"],
+        "impl": {"module": "zyra.processing", "callable": "notebook_pad_missing"},
+    },
+    "process metadata": {"returns": "bytes"},
+    "process scan-frames": {"returns": "bytes"},
+    "process update-dataset-json": {"returns": "path"},
+    "process api-json": {"returns": "path", "stdin_arg": "file_or_url"},
+    "process audio-transcode": {"returns": "path", "output_arg": "--output"},
+    "process audio-metadata": {"returns": "bytes"},
+    "process video-transcode": {"returns": "path", "output_arg": "--output"},
+    # transform aliases mirror process counterparts
+    "transform metadata": {"returns": "bytes"},
+    "transform scan-frames": {"returns": "bytes"},
+    "transform update-dataset-json": {"returns": "path"},
+    "transform enrich-metadata": {"returns": "path"},
+    "transform enrich-datasets": {"returns": "path"},
+    # visualize/render
+    "visualize heatmap": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "visualize contour": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "visualize vector": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "visualize animate": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "visualize compose-video": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "visualize interactive": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "visualize timeseries": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    # render aliases
+    "render heatmap": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "render contour": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "render vector": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "render animate": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "render compose-video": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "render interactive": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    "render timeseries": {
+        "returns": "path",
+        "output_arg": "--output",
+        "extras": ["visualization"],
+    },
+    # decimate/disseminate/export
+    "decimate local": {"returns": "path", "output_arg": "--path"},
+    "decimate s3": {"returns": "uri", "output_arg": "--url"},
+    "decimate ftp": {"returns": "uri", "output_arg": "--path"},
+    "decimate post": {"returns": "uri", "output_arg": "--url"},
+    "decimate vimeo": {"returns": "uri"},
+    "disseminate local": {"returns": "path", "output_arg": "--path"},
+    "disseminate s3": {"returns": "uri", "output_arg": "--url"},
+    "disseminate ftp": {"returns": "uri", "output_arg": "--path"},
+    "disseminate post": {"returns": "uri", "output_arg": "--url"},
+    "disseminate vimeo": {"returns": "uri"},
+    "export local": {"returns": "path", "output_arg": "--path"},
+    "export s3": {"returns": "uri", "output_arg": "--url"},
+    "export ftp": {"returns": "uri", "output_arg": "--path"},
+    "export post": {"returns": "uri", "output_arg": "--url"},
+    "export vimeo": {"returns": "uri"},
+    # narrate/swarm
+    "narrate describe": {"returns": "text", "extras": ["llm"]},
+    "narrate swarm": {
+        "returns": "text",
+        "extras": ["llm"],
+        "impl": {"module": "zyra.narrate", "callable": "notebook_swarm"},
+    },
+    # verify/simulate/decide
+    "verify evaluate": {"returns": "text"},
+    "simulate sample": {"returns": "path"},
+    "decide optimize": {"returns": "object"},
+    "optimize optimize": {"returns": "object"},
+    # run/search
+    "run": {"returns": "object", "stdin_arg": "config"},
+    "search api": {"returns": "bytes", "output_arg": "--output"},
+}
+
+
+def _safe_add_group(
+    sub: argparse._SubParsersAction,
+    *,
+    name: str,
+    help_text: str,
+    dest: str,
+    import_path: str,
+    register_attr: str = "register_cli",
+) -> None:
+    """Import module and register a command group safely.
+
+    Creates the parser/subparsers, then calls module.<register_attr>(subparsers).
+    Silently ignores ImportError/AttributeError to support optional extras.
+    """
+    try:
+        mod = importlib.import_module(import_path)
+        registrar = getattr(mod, register_attr)
+        p = sub.add_parser(name, help=help_text)
+        sp = p.add_subparsers(dest=dest, required=True)
+        registrar(sp)
+    except (ImportError, AttributeError):  # pragma: no cover - optional extras
+        return
+
+
+def _safe_add_group_multi(
+    sub: argparse._SubParsersAction,
+    *,
+    name: str,
+    help_text: str,
+    dest: str,
+    import_paths: list[str],
+    register_attr: str = "register_cli",
+) -> None:
+    """Register multiple modules' CLI under a single group.
+
+    Creates one parser/subparsers entry, then imports each module path in
+    ``import_paths`` and calls its registrar on the same subparsers object.
+    Silently ignores ImportError/AttributeError per module to mirror
+    _safe_add_group behavior.
+    """
+    try:
+        p = sub.add_parser(name, help=help_text)
+        sp = p.add_subparsers(dest=dest, required=True)
+    except (AttributeError, ValueError, TypeError):  # pragma: no cover
+        # Mirror narrow exception handling style used elsewhere; avoid
+        # swallowing unrelated errors that shouldn't be ignored.
+        return
+    for ip in import_paths:
+        try:
+            mod = importlib.import_module(ip)
+            registrar = getattr(mod, register_attr)
+            registrar(sp)
+        except (ImportError, AttributeError):  # pragma: no cover - optional extras
+            continue
+
+
+def _safe_call_register(
+    sub: argparse._SubParsersAction, *, import_path: str, func_name: str
+) -> None:
+    """Import a module and call a registration function with subparsers.
+
+    Used for commands that register directly on the root subparsers.
+    """
+    try:
+        mod = importlib.import_module(import_path)
+        registrar = getattr(mod, func_name)
+        registrar(sub)
+    except (ImportError, AttributeError):  # pragma: no cover
+        return
+
+
+def _safe_add_single(
+    sub: argparse._SubParsersAction,
+    *,
+    name: str,
+    help_text: str,
+    import_path: str,
+    register_attr: str = "register_cli",
+) -> None:
+    """Add a single command parser and call register_cli(parser).
+
+    For groups that expose a single command without subcommands (e.g., search).
+    """
+    try:
+        mod = importlib.import_module(import_path)
+        registrar = getattr(mod, register_attr)
+        p = sub.add_parser(name, help=help_text)
+        registrar(p)
+    except (ImportError, AttributeError):  # pragma: no cover - optional extras
+        return
+
+
+def _safe_register_all(sub: argparse._SubParsersAction) -> None:
+    """Register all top-level groups, skipping modules that fail to import.
+
+    Matches the fallback branch in zyra.cli but wraps imports in try/except
+    to avoid hard-failing when optional extras (e.g., cartopy) are missing.
+    """
+    # acquire
+    _safe_add_group(
+        sub,
+        name="acquire",
+        help_text="Acquire/ingest data from sources",
+        dest="acquire_cmd",
+        import_path="zyra.connectors.ingest",
+    )
+    # alias: import → acquire
+    _safe_add_group(
+        sub,
+        name="import",
+        help_text="Acquire/ingest data from sources (alias)",
+        dest="acquire_cmd",
+        import_path="zyra.connectors.ingest",
+    )
+
+    # process: include both processing and transform under one group
+    _safe_add_group_multi(
+        sub,
+        name="process",
+        help_text="Processing commands (GRIB/NetCDF/GeoTIFF) + transforms",
+        dest="process_cmd",
+        import_paths=["zyra.processing", "zyra.transform"],
+    )
+
+    # visualize
+    # Use lightweight registrar to avoid importing heavy visualization root
+    _safe_add_group(
+        sub,
+        name="visualize",
+        help_text="Visualization commands (static/interactive/animation)",
+        dest="visualize_cmd",
+        import_path="zyra.visualization.cli_register",
+    )
+    # alias: render → visualize
+    _safe_add_group(
+        sub,
+        name="render",
+        help_text="Visualization commands (alias)",
+        dest="visualize_cmd",
+        import_path="zyra.visualization.cli_register",
+    )
+
+    # disseminate (canonical egress) + aliases
+    _safe_add_group(
+        sub,
+        name="disseminate",
+        help_text="Write/egress data to destinations",
+        dest="disseminate_cmd",
+        import_path="zyra.connectors.egress",
+    )
+    # aliases: export/decimate → disseminate
+    _safe_add_group(
+        sub,
+        name="export",
+        help_text="Write/egress data to destinations (alias)",
+        dest="disseminate_cmd",
+        import_path="zyra.connectors.egress",
+    )
+    _safe_add_group(
+        sub,
+        name="decimate",
+        help_text="Write/egress data to destinations (legacy alias)",
+        dest="disseminate_cmd",
+        import_path="zyra.connectors.egress",
+    )
+
+    # transform
+    _safe_add_group(
+        sub,
+        name="transform",
+        help_text="Transform helpers (metadata, etc.)",
+        dest="transform_cmd",
+        import_path="zyra.transform",
+    )
+
+    # skeleton groups and aliases registered below (with verify + optimize alias)
+
+    # search (single command)
+    _safe_add_single(
+        sub,
+        name="search",
+        help_text="Search datasets (local SOS catalog; OGC backends; semantic)",
+        import_path="zyra.connectors.discovery",
+    )
+
+    # run
+    _safe_call_register(
+        sub, import_path="zyra.pipeline_runner", func_name="register_cli_run"
+    )
+
+    # new skeleton groups and aliases
+    _safe_add_group(
+        sub,
+        name="simulate",
+        help_text="Simulate under uncertainty (skeleton)",
+        dest="simulate_cmd",
+        import_path="zyra.simulate",
+    )
+    _safe_add_group(
+        sub,
+        name="decide",
+        help_text="Decision/optimization (skeleton)",
+        dest="decide_cmd",
+        import_path="zyra.decide",
+    )
+    _safe_add_group(
+        sub,
+        name="optimize",
+        help_text="Decision/optimization (alias)",
+        dest="decide_cmd",
+        import_path="zyra.decide",
+    )
+    _safe_add_group(
+        sub,
+        name="narrate",
+        help_text="Narrate/report (skeleton)",
+        dest="narrate_cmd",
+        import_path="zyra.narrate",
+    )
+    _safe_add_group(
+        sub,
+        name="verify",
+        help_text="Evaluation/metrics/validation (skeleton)",
+        dest="verify_cmd",
+        import_path="zyra.verify",
+    )
+
+
+def _collect_options(p: argparse.ArgumentParser) -> dict[str, object]:
+    """Collect option help and tag path-like args.
+
+    Backward-compat: values are strings unless a path-like is detected, in which case
+    the value is an object: {"help": str, "path_arg": true}.
+    """
+    opts: dict[str, object] = {}
+    for act in getattr(p, "_actions", []):  # type: ignore[attr-defined]
+        if act.option_strings:
+            # choose the long option if available, else the first one
+            opt = None
+            for s in act.option_strings:
+                if s.startswith("--"):
+                    opt = s
+                    break
+            if opt is None and act.option_strings:
+                opt = act.option_strings[0]
+            if opt:
+                help_text = (act.help or "").strip()
+                # Heuristic to detect path-like options
+                names = set(act.option_strings)
+                name_hint = any(
+                    n.startswith(
+                        (
+                            "--input",
+                            "--output",
+                            "--output-dir",
+                            "--frames",
+                            "--frames-dir",
+                            "--input-file",
+                            "--manifest",
+                        )
+                    )
+                    or n in {"-i", "-o"}
+                    for n in names
+                )
+                meta = getattr(act, "metavar", None)
+                meta_hint = False
+                if isinstance(meta, str):
+                    ml = meta.lower()
+                    meta_hint = any(k in ml for k in ("path", "file", "dir"))
+                is_path = bool(name_hint or meta_hint)
+                # Additional metadata
+                choices = list(getattr(act, "choices", []) or [])
+                required = bool(getattr(act, "required", False))
+                # Map argparse action/type to a simple string
+                t = getattr(act, "type", None)
+                # Detect boolean flags (store_true/store_false) robustly
+                try:
+                    import argparse as _ap
+
+                    bool_types = tuple(
+                        c
+                        for c in (
+                            getattr(_ap, "_StoreTrueAction", None),
+                            getattr(_ap, "_StoreFalseAction", None),
+                        )
+                        if c is not None
+                    )
+                except Exception:  # pragma: no cover
+                    bool_types = tuple()
+                is_bool_flag = bool(bool_types) and isinstance(act, bool_types)
+                if not is_bool_flag:
+                    # Heuristic fallback
+                    is_bool_flag = (
+                        bool(getattr(act, "option_strings", None))
+                        and getattr(act, "nargs", None) == 0
+                        and getattr(act, "const", None) in (True, False)
+                        and t in (None, bool)
+                    )
+                type_str: str | None
+                if is_bool_flag:
+                    type_str = "bool"
+                elif is_path:
+                    type_str = "path"
+                elif t is int:
+                    type_str = "int"
+                elif t is float:
+                    type_str = "float"
+                elif t is str or t is None:
+                    type_str = "str"
+                else:
+                    # Fallback to the name of the callable/type if available
+                    type_str = getattr(t, "__name__", None) or str(t)
+
+                # Default value (avoid argparse.SUPPRESS sentinel)
+                default_val = getattr(act, "default", None)
+                if default_val == argparse.SUPPRESS:  # type: ignore[attr-defined]
+                    default_val = None
+                # Flag likely-sensitive fields (heuristic by name/help)
+                name_l = " ".join(names).lower()
+                help_l = help_text.lower()
+                sensitive = any(
+                    kw in name_l
+                    for kw in (
+                        "password",
+                        "secret",
+                        "token",
+                        "api_key",
+                        "apikey",
+                        "access_key",
+                        "client_secret",
+                    )
+                ) or any(
+                    kw in help_l for kw in ("password", "secret", "token", "api key")
+                )
+
+                # Emit object only if we have metadata beyond plain help (for backward compat)
+                if (
+                    is_path
+                    or choices
+                    or required
+                    or type_str not in (None, "str")
+                    or default_val is not None
+                ):
+                    obj: dict[str, object] = {"help": help_text}
+                    if is_path:
+                        obj["path_arg"] = True
+                    if choices:
+                        obj["choices"] = choices
+                    if type_str:
+                        obj["type"] = type_str
+                    if required:
+                        obj["required"] = True
+                    if default_val is not None:
+                        # Coerce default for bool flags to a true boolean
+                        obj["default"] = (
+                            bool(default_val) if type_str == "bool" else default_val
+                        )
+                    if sensitive:
+                        obj["sensitive"] = True
+                    opts[opt] = obj
+                else:
+                    opts[opt] = help_text
+    return opts
+
+
+def _collect_positionals(p: argparse.ArgumentParser) -> list[dict[str, object]]:
+    """Collect positional arguments in declaration order with basic metadata.
+
+    Metadata includes: name, help, type (heuristic), required, choices, nargs.
+    """
+    items: list[dict[str, object]] = []
+    for act in getattr(p, "_actions", []):  # type: ignore[attr-defined]
+        if getattr(act, "option_strings", None):
+            continue
+        # Skip help or suppressed
+        if getattr(act, "help", None) == argparse.SUPPRESS:
+            continue
+        # Name and help
+        name = getattr(act, "dest", None) or getattr(act, "metavar", None) or "arg"
+        help_text = (getattr(act, "help", None) or "").strip()
+        # Infer type
+        meta = getattr(act, "metavar", None)
+        meta_s = str(meta).lower() if isinstance(meta, str) else ""
+        t = getattr(act, "type", None)
+        if any(k in meta_s for k in ("path", "file", "dir")):
+            type_str = "path"
+        elif t is int:
+            type_str = "int"
+        elif t is float:
+            type_str = "float"
+        elif t is str or t is None:
+            type_str = "str"
+        else:
+            type_str = getattr(t, "__name__", None) or str(t)
+        # Required heuristic: nargs of None or 1 implies required by default
+        nargs = getattr(act, "nargs", None)
+        required = True
+        if nargs in ("?", "*"):
+            required = False
+        # Choices
+        choices = list(getattr(act, "choices", []) or [])
+        # Sensitive heuristic by name/help
+        help_l = help_text.lower()
+        name_l = str(name).lower()
+        sensitive = any(
+            kw in name_l for kw in ("password", "secret", "token", "api_key", "apikey")
+        ) or any(kw in help_l for kw in ("password", "secret", "token", "api key"))
+
+        entry: dict[str, object] = {
+            "name": str(name),
+            "help": help_text,
+            "type": type_str,
+            "required": required,
+        }
+        if choices:
+            entry["choices"] = choices
+        if nargs is not None:
+            entry["nargs"] = nargs
+        if sensitive:
+            entry["sensitive"] = True
+        items.append(entry)
+    return items
+
+
+def _traverse(parser: argparse.ArgumentParser, *, prefix: str = "") -> dict[str, Any]:
+    """Recursively traverse subparsers to build a manifest mapping."""
+    manifest: dict[str, Any] = {}
+    # find subparsers actions
+    sub_actions = [
+        a
+        for a in getattr(parser, "_actions", [])
+        if a.__class__.__name__ == "_SubParsersAction"
+    ]  # type: ignore[attr-defined]
+    if not sub_actions:
+        # Leaf command: collect options, description, doc, epilog, and groups
+        name = prefix.strip()
+        if name:  # skip root
+            defaults = getattr(parser, "_defaults", {}) or {}
+            func = defaults.get("func") if isinstance(defaults, dict) else None
+            # Option groups: preserve group titles and option flags
+            groups: list[dict[str, Any]] = []
+            for grp in getattr(parser, "_action_groups", []):  # type: ignore[attr-defined]
+                opts: list[str] = []
+                for act in getattr(grp, "_group_actions", []):  # type: ignore[attr-defined]
+                    if getattr(act, "option_strings", None):
+                        # choose the long option if available, else the first one
+                        long = None
+                        for s in act.option_strings:
+                            if s.startswith("--"):
+                                long = s
+                                break
+                        opts.append(long or act.option_strings[0])
+                if opts:
+                    groups.append({"title": getattr(grp, "title", ""), "options": opts})
+            # Derive domain/tool and enrich with simple schema hints
+            parts = name.split(" ", 1)
+            domain = parts[0]
+            # If there's no space in the name, the "tool" should be the full
+            # name rather than mirroring the domain segment. This avoids
+            # producing domain/tool pairs where both are identical.
+            tool = parts[1] if len(parts) > 1 else name
+            # Pydantic arg schema hints from API domain models where available
+            try:
+                from zyra.api.schemas.domain_args import (
+                    resolve_model as _resolve_model,  # local import to avoid heavy deps at module import
+                )
+
+                model = _resolve_model(domain, tool)
+                req, opt = None, None
+                if model is not None:
+                    try:
+                        rq: list[str] = []
+                        op: list[str] = []
+                        for fname, finfo in getattr(model, "model_fields", {}).items():
+                            if getattr(finfo, "is_required", lambda: False)():
+                                rq.append(fname)
+                            else:
+                                op.append(fname)
+                        req = sorted(rq)
+                        opt = sorted(op)
+                    except Exception:
+                        req, opt = None, None
+            except Exception:
+                # Domain models are optional; fall back to manifest inspection when resolution fails.
+                model = None
+                req, opt = None, None
+
+            # Lightweight examples for selected tools
+            examples = {
+                ("visualize", "heatmap"): {
+                    "input": "samples/demo.npy",
+                    "output": "/tmp/heatmap.png",
+                },
+                ("process", "convert-format"): {
+                    "file_or_url": "samples/demo.grib2",
+                    "format": "netcdf",
+                    "stdout": True,
+                },
+                ("decimate", "local"): {"input": "-", "path": "/tmp/out.bin"},
+                ("acquire", "http"): {
+                    "url": "https://example.com/file.bin",
+                    "output": "/tmp/file.bin",
+                },
+            }
+
+            def _default_returns(dom: str) -> str:
+                return {
+                    "acquire": "bytes",
+                    "import": "bytes",
+                    "process": "path",
+                    "transform": "path",
+                    "visualize": "path",
+                    "render": "path",
+                    "disseminate": "path",
+                    "decimate": "path",
+                    "export": "path",
+                    "narrate": "text",
+                    "verify": "object",
+                    "decide": "object",
+                    "optimize": "object",
+                    "run": "object",
+                    "search": "bytes",
+                    "simulate": "path",
+                }.get(dom, "object")
+
+            hints = NOTEBOOK_HINTS.get(name, {})
+            impl = None
+            if func:
+                try:
+                    impl = {"module": func.__module__, "callable": func.__name__}
+                except Exception:
+                    impl = None
+            hint_impl = hints.get("impl")
+            if hint_impl is not None:
+                impl = hint_impl
+
+            entry: dict[str, Any] = {
+                "description": (parser.description or parser.prog or "").strip(),
+                "doc": (parser.description or "") or "",
+                "epilog": (getattr(parser, "epilog", None) or ""),
+                "groups": groups,
+                "options": _collect_options(parser),
+                "positionals": _collect_positionals(parser),
+                "domain": domain,
+                "args_schema": (
+                    {"required": req, "optional": opt}
+                    if req is not None and opt is not None
+                    else None
+                ),
+                "example_args": examples.get((domain, tool)),
+                "impl": impl,
+                "returns": hints.get("returns") or _default_returns(domain),
+            }
+            for key in ("output_arg", "stdin_arg", "extras", "side_effects"):
+                val = hints.get(key)
+                if val is not None:
+                    entry[key] = val
+            manifest[name] = entry
+        return manifest
+
+    for spa in sub_actions:  # type: ignore[misc]
+        for name, subp in spa.choices.items():  # type: ignore[attr-defined]
+            # Skip internal helpers and excluded commands at the root level
+            if prefix == "" and name in EXCLUDED_ROOT_COMMANDS:
+                continue
+            manifest.update(_traverse(subp, prefix=f"{prefix} {name}"))
+    return manifest
+
+
+def build_manifest() -> dict[str, Any]:
+    parser = argparse.ArgumentParser(prog="zyra")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    _safe_register_all(sub)
+    return _traverse(parser)
+
+
+def _canonical_domain(name: str) -> str:
+    return DOMAIN_ALIAS_MAP.get(name, name)
+
+
+def group_manifest_by_domain(
+    manifest: dict[str, Any],
+) -> tuple[dict[str, dict[str, Any]], dict[str, list[str]]]:
+    """Return manifest grouped by canonical domain plus alias metadata."""
+
+    grouped: dict[str, dict[str, Any]] = {}
+    alias_map: dict[str, set[str]] = {}
+    for command, meta in manifest.items():
+        if not isinstance(command, str):
+            continue
+        domain = command.split(" ", 1)[0]
+        canonical = _canonical_domain(domain)
+        grouped.setdefault(canonical, {})[command] = meta
+        if canonical != domain:
+            alias_map.setdefault(canonical, set()).add(domain)
+    alias_out = {k: sorted(v) for k, v in alias_map.items()}
+    return grouped, alias_out
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+
+
+def write_domain_manifests(
+    destination: Path,
+    grouped_manifest: dict[str, dict[str, Any]],
+    *,
+    alias_map: dict[str, list[str]] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Persist per-domain manifest files plus an index."""
+
+    destination = destination.expanduser()
+    destination.mkdir(parents=True, exist_ok=True)
+
+    # Remove stale domain files (aliases, etc.) before writing new ones.
+    for existing in destination.glob("*.json"):
+        if existing.name == INDEX_FILENAME:
+            continue
+        existing.unlink(missing_ok=True)
+
+    for domain, entries in sorted(grouped_manifest.items()):
+        ordered = {k: entries[k] for k in sorted(entries.keys())}
+        _write_json(destination / f"{domain}.json", ordered)
+
+    def _load_existing_index() -> dict[str, Any] | None:
+        idx = destination / "zyra_capabilities_index.json"
+        if not idx.exists():
+            return None
+        try:
+            return json.loads(idx.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+
+    existing_index = _load_existing_index()
+    meta = dict(metadata or {})
+    # Preserve existing metadata fields when unspecified so regeneration is stable
+    for key in ("generated_at", "version", "generator"):
+        if (
+            meta.get(key) is None
+            and existing_index
+            and existing_index.get(key) is not None
+        ):
+            meta[key] = existing_index.get(key)
+
+    generated_at = str(
+        meta.get("generated_at")
+        or datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    alias_lookup: dict[str, str] = {}
+    domains_entry: dict[str, Any] = {}
+    for domain in sorted(grouped_manifest):
+        entry: Any = f"{domain}.json"
+        aliases_for_domain = (alias_map or {}).get(domain) or []
+        if aliases_for_domain:
+            entry = {"file": f"{domain}.json", "aliases": aliases_for_domain}
+            for alias in aliases_for_domain:
+                alias_lookup[alias] = domain
+        domains_entry[domain] = entry
+
+    index: dict[str, Any] = {
+        "version": str(meta.get("version") or "1.0"),
+        "generated_at": generated_at,
+        "generator": str(meta.get("generator") or "zyra.wizard.manifest"),
+        "domains": domains_entry,
+    }
+
+    # Merge existing alias metadata with the newly computed map.
+    existing_aliases = {}
+    if existing_index:
+        existing_aliases = existing_index.get("aliases") or {}
+    if isinstance(meta.get("aliases"), dict):
+        existing_aliases.update(meta["aliases"])
+    existing_aliases.update(alias_lookup)
+    if existing_aliases:
+        index["aliases"] = existing_aliases
+
+    _write_json(destination / "zyra_capabilities_index.json", index)
+
+
+def save_manifest(
+    path: str,
+    *,
+    include_legacy: bool | None = None,
+    legacy_path: str | None = None,
+) -> None:
+    """Save the manifest to a directory (split) or JSON file (legacy)."""
+
+    manifest = build_manifest()
+    target = Path(path).expanduser()
+
+    def _write_legacy(dest: Path) -> None:
+        _write_json(dest, manifest)
+
+    # Legacy JSON path (explicit file)
+    if target.suffix.lower() == ".json" or target.name.endswith(".json"):
+        _write_legacy(target)
+        if (
+            include_legacy
+            and legacy_path
+            and Path(legacy_path).resolve() != target.resolve()
+        ):
+            _write_legacy(Path(legacy_path))
+        return
+
+    grouped, aliases = group_manifest_by_domain(manifest)
+    write_domain_manifests(target, grouped, alias_map=aliases)
+
+    if include_legacy:
+        legacy_dest = (
+            Path(legacy_path).expanduser()
+            if legacy_path
+            else target.parent / "zyra_capabilities.json"
+        )
+        _write_legacy(legacy_dest)
