@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supertable"
+version = "1.5.2"
+description = "SuperTable revolutionizes data management by integrating multiple basic tables into a single, cohesive framework."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Super Table Public Use License (STPUL) v1.0" }
+authors = [{ name = "Levente Kupas", email = "lkupas@kladnasoft.com" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent"
+]
+
+# Read runtime deps from requirements.txt to keep a single source of truth
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[project.optional-dependencies]
+s3    = ["boto3>=1.40.30", "redis>=6.4.0"]
+minio = ["minio>=7.2.15", "redis>=6.4.0"]
+azure = ["azure-storage-blob>=12.26.0", "redis>=6.4.0"]
+gcp   = ["google-cloud-storage>=3.1.0", "redis>=6.4.0"]
+all-cloud = ["supertable[s3,minio,azure,gcp]"]
+
+[project.urls]
+Homepage = "https://github.com/kladnasoft/supertable"
+
+[project.scripts]
+supertable = "supertable.config.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["supertable", "supertable.*"]
