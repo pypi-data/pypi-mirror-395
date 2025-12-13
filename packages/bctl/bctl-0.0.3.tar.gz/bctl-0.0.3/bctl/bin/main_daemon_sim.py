@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+import click
+import bctl.daemon as daemon
+from bctl.config import SimConf
+
+
+@click.command
+@click.option("--debug", is_flag=True, help="log at debug level")
+@click.option("--state/--no-state", default=True, help="whether persisted state should be loaded")
+@click.option("-n", "--number", default=3, help="Number of simulated displays")
+@click.option(
+    "-w",
+    "--wait",
+    type=float,
+    required=True,
+    help="How long to wait for work simulation",
+)
+@click.option("-b", "--brightness", help="Initial brightness", default=50)
+@click.option("-f", "--fail", type=str, help="Failure mode to simulate")
+@click.option("-e", "--exit", default=1, help="code to exit chosen failmode with")
+def main(
+    debug: bool,
+    state: bool,
+    number: int,
+    wait: float,
+    brightness: int,
+    fail: str,
+    exit: int,
+) -> None:
+    failmodes = ["i", "s"]
+    assert number > 0, "number of simulated displays must be positive"
+    assert fail in failmodes + [None], f"allowed failmodes are {failmodes}"
+    assert number >= 0, "exit code needs to be >= 0"
+
+    sim: SimConf = SimConf.model_validate(
+        {
+            "ndisplays": number,
+            "wait_sec": wait,
+            "initial_brightness": brightness,
+            "failmode": fail,
+            "exit_code": exit,
+        }
+    )
+
+    daemon.main(debug, state, sim)
+
+
+if __name__ == "__main__":
+    main()
